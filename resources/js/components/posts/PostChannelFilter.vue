@@ -21,8 +21,13 @@ interface Channel {
 }
 
 const props = withDefaults(
-    defineProps<{ channels: Channel[]; testId?: string }>(),
-    { testId: 'posts-channel' },
+    defineProps<{
+        channels: Channel[];
+        testId?: string;
+        /** Opens as a bottom sheet on phones instead of a popover. */
+        sheetBelowSm?: boolean;
+    }>(),
+    { testId: 'posts-channel', sheetBelowSm: false },
 );
 const selectedIds = defineModel<string[]>({ required: true });
 
@@ -57,6 +62,7 @@ const { open: openConnectDialog } = useConnectChannelDialog();
         :test-id="testId"
         content-class="w-96"
         icon-only-on-mobile
+        :sheet-below-sm="sheetBelowSm"
     >
         <template #icon>
             <IconLayoutGrid class="size-4" />

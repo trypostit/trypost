@@ -120,14 +120,23 @@ test('the apple logo of a mac session turns light on the dark theme', function (
     $page->assertNoJavaScriptErrors();
 });
 
-test('the github mark turns light on the dark theme while google keeps its colors', function () {
+test('the github mark is drawn in the text color on the dark theme while google keeps its colors', function () {
     $this->actingAs(User::factory()->create(['theme' => Theme::Dark]));
 
     $page = visit(route('app.profile.edit', ['tab' => 'login']));
     waitForProfileTabsTestId($page, 'connected-account-icon-github');
 
-    expect($page->script('getComputedStyle(document.querySelector(\'[data-testid="connected-account-icon-github"]\')).filter'))->toBe('invert(1)')
-        ->and($page->script('getComputedStyle(document.querySelector(\'[data-testid="connected-account-icon-google"]\')).filter'))->toBe('none');
+    $github = $page->script(<<<'JS'
+        (() => {
+            const mark = document.querySelector('[data-testid="connected-account-icon-github"]');
+
+            return { fill: getComputedStyle(mark.querySelector('path')).fill, text: getComputedStyle(mark).color, page: getComputedStyle(document.body).backgroundColor };
+        })()
+    JS);
+
+    expect($github['fill'])->toBe($github['text'])
+        ->and($github['fill'])->not->toBe($github['page'])
+        ->and($page->script('[...document.querySelectorAll(\'[data-testid="connected-account-icon-google"] path\')].some((path) => getComputedStyle(path).fill.startsWith("url("))'))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
 

@@ -205,6 +205,8 @@ Vue components must have a single root element.
 
 ## Frontend (Vue/TypeScript)
 
+- **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.
+- **Imports go through the `@/` alias** (`import { formatNumberCompact } from '@/lib/utils'`), never a relative path (`./`, `../`), even for a sibling file. ESLint refuses relative imports (`no-restricted-imports`), with no exception: the stylesheet is loaded by `@vite` in `app.blade.php`, not imported from `app.ts`. CI runs Prettier (`prettier-plugin-organize-imports` reorders imports) before ESLint, so never rely on an `eslint-disable-next-line` above an import.
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
 - Template event handlers call a named function (`@click="openCreateDialog"`), never an inline statement that mutates state (`@click="isCreateDialogOpen = true"`). Opening something usually grows a second step later (reset a form, focus, track an event), and a named function is where that goes. Passing an argument through is fine: `@click="openEditDialog(label)"`.
 - **A button that waits on a request shows it through the `Button` component's own `loading` prop whenever possible** (`<Button :loading="form.processing">`): it disables the button and swaps its label for the spinner, so every button waits the same way. Do not hand-roll a `<Spinner v-if>` inside the label or a separate disabled flag for this. When `loading` cannot fit (the label must stay visible next to the spinner, an `as-child` link, a control that is not our `Button`), keep the label and add the spinner next to it. Many existing buttons predate this rule; move them to `loading` when touching them, not in a sweep.
@@ -825,10 +827,11 @@ with `Mail::to($user)`, run the Maizzle build, and cover it with a render test �
 `tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
 view turns a forgotten variable into a runtime-only failure.
 
-## Icons (@tabler/icons-vue)
+## Icons (@tabler/icons-vue and @thesvg/vue)
 
+- **Icons and logos are always imported straight from their package into the component that draws them** (owner decision November 2026): `import { IconCheck } from '@tabler/icons-vue'`, `import Canva from '@thesvg/vue/canva'`. Never copy an icon's SVG or path into the code, never save it as a file under `public/`, and never wrap the packages in a helper of our own (`lib/brandLogos.ts` was removed for this). When a list needs a logo per item, a module may map items to the imported components (`lib/mcpClients.ts`).
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
-- Brand logos come from `@thesvg/vue`, one import per logo (`import Canva from '@thesvg/vue/canva'`). A one-color logo that must follow the theme goes through `inTextColor()` (`resources/js/lib/brandLogos.ts`).
+- Brand logos come from `@thesvg/vue`, one import per logo. A one-color logo that must follow the theme gets `fill-current` (or `[&_path]:fill-current` when its paths carry their own fill) next to a text color class. A canvas, which cannot draw a component, reads the paths from the imported Tabler component (`lib/shareCard/icons.ts`), never from a copy.
 - **Exception — card brand logos on billing** (owner decision October 2026): the full-color card artwork lives in `public/images/card-brands/*.svg`, mapped by Stripe's `card.brand` in `resources/js/lib/cardBrands.ts` (a brand without its own art uses `generic.svg`).
 - **Exception — competitor logos on the Welcome software step** (owner decision October 2026): each tool's symbol is a static SVG in `public/images/competitors/<PreviousSoftware value>.svg`, drawn by `logo()` in `resources/js/lib/welcomeOptions.ts`. Logos and the Tabler icons of "none" and "other" (`icon()`) sit on a white tile, selected or not, so dark logos stay readable in dark mode. A new `PreviousSoftware` brand needs its file (`PreviousSoftwareTest` fails without it).
 - All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.
@@ -840,6 +843,10 @@ view turns a forgotten variable into a runtime-only failure.
 - For date manipulation, always use `@/dayjs` (pre-configured dayjs instance with utc, timezone, relativeTime plugins).
 - For formatting dates for display (formatDate, formatDateTime, formatTime, diffForHumans), always use `@/date` which centralizes all formatting logic with proper timezone handling.
 - Never use raw `new Date()` for date calculations — use dayjs.
+- **Never hard-code a date, in tests or in code** (owner decision November 2026). Derive it from the clock: Carbon (`now()`, `CarbonImmutable`) on the backend and in Pest tests, `@/dayjs` on the frontend. A test that needs a known day computes it (`now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)`) or freezes the clock on a computed one (`$this->travelTo(...)`); a literal like `'2026-09-01'` breaks the day the calendar moves past it. The one exception is the `2037-12-31` far-future sentinel (see "Database engines").
+    - Write the year out in a relative date: `"first sunday of november {$year}"`. PHP reads `"first sunday of november next year"` as November 1 on any weekday, which broke the calendar's daylight saving tests on the day the clocks changed (November 2026). The calendar tests share `calendarDragNextDstSunday()` for this.
+    - Never assume where a computed day falls: that next week is in this month, that tomorrow is in this year. When a test depends on it, pick a day that guarantees it (the middle of next month is never in this month's grid) and assert it, instead of hoping the run day cooperates.
+    - Existing tests with literal dates move to computed ones when touched, not in a sweep.
 
 ## Routing (Wayfinder)
 

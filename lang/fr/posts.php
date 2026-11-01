@@ -924,6 +924,7 @@ return [
         'title' => 'Publier',
         'all_channels' => 'Tous les canaux',
         'tabs' => [
+            'label' => 'Statut',
             'queue' => 'File d\'attente',
             'approvals' => 'Approbations',
             'drafts' => 'Brouillons',

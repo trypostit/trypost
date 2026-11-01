@@ -1,13 +1,13 @@
 import { useHttp } from '@inertiajs/vue3';
 
-import { start } from '@/routes/app/integrations/google';
-import { claim } from '@/routes/app/integrations/google/returns';
-
 import {
     createPopupNonce,
     openSourcePopup,
     waitForPopupResult,
-} from './popup';
+} from '@/lib/mediaSources/popup';
+import { start } from '@/routes/app/integrations/google';
+import { claim } from '@/routes/app/integrations/google/returns';
+
 
 export type GoogleMediaSource = 'google_drive' | 'google_photos';
 

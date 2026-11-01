@@ -1,6 +1,7 @@
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import { timeFormat, userTimezone } from '@/preferences';
+import type { DateRange } from '@/types/analytics';
 
 /**
  * A dayjs instance bound to the current language. `dayjs.locale()` is global and
@@ -26,6 +27,43 @@ const getUserTimezone = (): string => userTimezone.value;
  */
 const userNow = () =>
     localized(dayjs().tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'));
+
+/** A period's first day with only what its last day does not already say. */
+const rangeStart = (range: DateRange): string => {
+    const start = localized(range.start);
+    const end = localized(range.end);
+
+    if (start.year() !== end.year()) {
+        return start.format('D MMM YYYY');
+    }
+
+    if (start.month() !== end.month()) {
+        return start.format('D MMM');
+    }
+
+    return start.format('D');
+};
+
+/** A period with its last day in full: "25 – 31 Oct 2026", or the day alone when it is one day. */
+const dayMonthYearRange = (range: DateRange): string => spanOf(range, 'D MMM YYYY');
+
+/** A period ending on its last day in `endFormat`, the day alone when the period is one day. */
+const spanOf = (range: DateRange, endFormat: string): string => {
+    const end = localized(range.end).format(endFormat);
+
+    if (range.start === range.end) {
+        return end;
+    }
+
+    return `${rangeStart(range)} – ${end}`;
+};
+
+/** Whether a period starts and ends in the year `other` ends in. */
+const withinYearOf = (range: DateRange, other: DateRange): boolean => {
+    const year = localized(other.end).year();
+
+    return localized(range.start).year() === year && localized(range.end).year() === year;
+};
 
 /**
  * `{ year: 'numeric' }` when the instant falls in another year than now, in
@@ -191,6 +229,30 @@ export default {
 
     formatDayMonthYear(date: string | Date) {
         return localized(date).format('D MMM YYYY');
+    },
+
+    /**
+     * A period as Insights prints it, naming its month and year once when both
+     * ends share them: "25 – 31 Oct 2026", "28 Sep – 4 Oct 2026",
+     * "28 Dec 2025 – 3 Jan 2026".
+     */
+    formatDayMonthYearRange(range: DateRange): string {
+        return dayMonthYearRange(range);
+    },
+
+    /**
+     * The period compared with `current`, without the year when it falls in
+     * the same one: "18 – 24 Oct" next to "25 – 31 Oct 2026".
+     */
+    formatComparedRange(
+        range: DateRange,
+        current: DateRange,
+    ): string {
+        if (!withinYearOf(range, current)) {
+            return dayMonthYearRange(range);
+        }
+
+        return spanOf(range, 'D MMM');
     },
 
     /**

@@ -1,4 +1,4 @@
-import { h, render, type Component } from 'vue';
+import { type AppContext, type Component, h, render } from 'vue';
 
 import { activeLocale } from '@/language';
 
@@ -8,6 +8,7 @@ export const componentToString = (
     config: ChartConfig,
     component: Component,
     props: Record<string, unknown> = {},
+    appContext: AppContext | null = null,
 ): ((data: Record<string, unknown>, x?: number | Date) => string) | undefined => {
     if (typeof document === 'undefined') return undefined;
 
@@ -23,10 +24,23 @@ export const componentToString = (
         if (cached) return cached;
 
         const element = document.createElement('div');
-        render(h(component, { ...props, payload: data, config, x }), element);
+        const tooltip = h(component, { ...props, payload: data, config, x });
+        tooltip.appContext = appContext;
+        render(tooltip, element);
         const content = element.innerHTML;
         render(null, element);
         cache.set(key, content);
         return content;
     };
 };
+
+/**
+ * unovis types an axis tick as `number | Date`, since the same axis also
+ * draws time. Our charts only run on numbers (a column's index or a value),
+ * so each formatter takes the number, and this is the one place that reads
+ * it out of unovis' type.
+ */
+export const numericTick =
+  <Result>(format: (tick: number, index: number, ticks: number[]) => Result) =>
+  (tick: number | Date, index = 0, ticks: number[] | Date[] = []): Result =>
+    format(Number(tick), index, ticks.map(Number))

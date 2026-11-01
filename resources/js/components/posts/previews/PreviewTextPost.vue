@@ -6,15 +6,15 @@ import LinkCard from '@/components/posts/previews/LinkCard.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
 import PreviewMedia from '@/components/posts/previews/PreviewMedia.vue';
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
-import VerifiedBadge from '@/components/VerifiedBadge.vue';
-import { useLinkCard } from '@/composables/useLinkCard';
-import type { MediaItem } from '@/types/media';
-
 import type {
     PreviewAccount,
     PreviewAction,
     PreviewMediaLayout,
-} from './types';
+} from '@/components/posts/previews/types';
+import VerifiedBadge from '@/components/VerifiedBadge.vue';
+import { useLinkCard } from '@/composables/useLinkCard';
+import type { MediaItem } from '@/types/media';
+
 
 const props = withDefaults(
     defineProps<{

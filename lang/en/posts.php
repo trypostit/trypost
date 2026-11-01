@@ -924,6 +924,7 @@ return [
         'title' => 'Publish',
         'all_channels' => 'All channels',
         'tabs' => [
+            'label' => 'Status',
             'queue' => 'Queue',
             'approvals' => 'Approvals',
             'drafts' => 'Drafts',

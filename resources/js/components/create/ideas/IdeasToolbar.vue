@@ -96,6 +96,7 @@ const views: { key: IdeasView; label: string; icon: typeof IconColumns3 }[] = [
             v-model:untagged="untagged"
             :labels="labels"
             test-id="ideas-filter-labels"
+            sheet-below-sm
         />
 
         <div

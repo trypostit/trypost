@@ -105,7 +105,7 @@ class BuildPublicationAnalyticsReport
                 $bucket['accounts'][$key] = $count;
             }
 
-            $bucket['total'] = array_sum(data_get($bucket, 'accounts'));
+            $bucket['total'] = collect(data_get($bucket, 'accounts'))->sum();
         }
         unset($bucket);
 
@@ -116,6 +116,7 @@ class BuildPublicationAnalyticsReport
             'previous_totals' => $this->finalizeTotals($previousTotals),
             'posts' => [
                 'resolution' => $this->buckets->resolution($current),
+                'total' => data_get($currentTotals, 'posts'),
                 'accounts' => $postAccounts,
                 'buckets' => $buckets,
             ],
@@ -315,8 +316,9 @@ class BuildPublicationAnalyticsReport
      */
     private function top(array $rows, Collection $postMedia): array
     {
-        return collect($rows)->map(fn (object $row): array => [
+        return collect($rows)->values()->map(fn (object $row, int $index): array => [
             'id' => $row->id,
+            'rank' => $index + 1,
             'post_id' => $row->post_id,
             'social_account_key' => $row->social_account_key,
             'platform' => $row->platform,

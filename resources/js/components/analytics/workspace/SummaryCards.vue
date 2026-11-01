@@ -1,26 +1,44 @@
 <script setup lang="ts">
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
+import date from '@/date';
 import {
-    formatNumberCompact,
-    formatPercent,
-    formatPercentChange,
-} from '@/lib/utils';
-import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
+    countDelta,
+    type MetricDelta,
+    percentDelta,
+} from '@/lib/channelMetrics';
+import { summaryShareOption } from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/shareCard';
+import { formatNumberCompact, formatPercent } from '@/lib/utils';
+import type {
+    AnalyticsReport,
+    Comparison,
+    SummaryMetric,
+} from '@/types/analytics';
 
-import AnalyticsSection from './AnalyticsSection.vue';
-import InfoTip from './InfoTip.vue';
 
 const props = defineProps<{
     report: AnalyticsReport;
     availableMetrics?: SummaryMetric[];
-    subtitle?: string;
     subtitleTestid?: string;
     network?: string;
+    channel?: string;
 }>();
 
-const defaultCards = computed(() => [
+/** A Summary card: which metric, its label key, its numbers and whether it reads as a percentage. */
+type SummaryCard = {
+    key: SummaryMetric;
+    label: string;
+    metric: Comparison;
+    percent: boolean;
+};
+
+const defaultCards = computed((): SummaryCard[] => [
     {
         key: 'posts',
         label: 'analytics.dashboard.posts',
@@ -53,15 +71,42 @@ const defaultCards = computed(() => [
     },
 ]);
 
+/** A card's change as the page and the share card label it: followers as a count, the rest as a percentage. */
+const cardChange = (key: SummaryMetric, change: number | null): MetricDelta | null => {
+    if (change === null) {
+        return null;
+    }
+
+    if (key === 'followers') {
+        return countDelta(change);
+    }
+
+    return percentDelta(change);
+};
+
+const listedCards = computed((): SummaryCard[] => {
+    if (!props.availableMetrics) {
+        return defaultCards.value;
+    }
+
+    return props.availableMetrics.map((key) => ({
+        key,
+        label: `analytics.channel.metrics.${key}.label`,
+        metric: props.report.summary[key],
+        percent: key === 'engagement_rate',
+    }));
+});
+
 const cards = computed(() =>
-    props.availableMetrics
-        ? props.availableMetrics.map((key) => ({
-              key,
-              label: `analytics.channel.metrics.${key}.label`,
-              metric: props.report.summary[key],
-              percent: key === 'engagement_rate',
-          }))
-        : defaultCards.value,
+    listedCards.value.map((card) => ({
+        ...card,
+        change: cardChange(card.key, card.metric.change),
+    })),
+);
+
+/** Whether any card has a number; with none there is nothing to share. */
+const hasAnyValue = computed((): boolean =>
+    cards.value.some((card) => card.metric.value !== null),
 );
 
 const desktopColumns = computed((): string => {
@@ -78,6 +123,19 @@ const desktopColumns = computed((): string => {
     return 'lg:grid-cols-5';
 });
 
+/** On a phone two cards share a row; an odd count leaves the last one alone, so it takes the whole row. */
+const spansPhoneRow = (index: number): boolean =>
+    cards.value.length % 2 === 1 && index === cards.value.length - 1;
+
+/** A half-width card on a phone stacks its change under the number; a card with the whole row keeps them side by side. */
+const valueRowClass = (index: number): string => {
+    if (spansPhoneRow(index)) {
+        return 'flex flex-wrap items-center gap-x-3 gap-y-1';
+    }
+
+    return 'flex flex-col items-start gap-1 md:flex-row md:flex-wrap md:items-center md:gap-x-3';
+};
+
 const aboutKey = (key: string): string =>
     key === 'reactions' && props.network
         ? 'analytics.channel.metrics.reactions.about_network'
@@ -86,38 +144,58 @@ const aboutKey = (key: string): string =>
 const testId = (key: string): string =>
     props.availableMetrics ? `insights-card-${key}` : `analytics-summary-${key}`;
 
-const display = (value: number | null, percent: boolean): string =>
-    value === null
-        ? '—'
-        : percent
-          ? formatPercent(value)
-          : formatNumberCompact(value);
+const display = (value: number | null, percent: boolean): string => {
+    if (percent) {
+        return formatPercent(value);
+    }
 
-const changeLabel = (key: string, change: number | null): string | null => {
-    if (change === null) return null;
-    return key === 'followers'
-        ? `${change > 0 ? '+' : ''}${formatNumberCompact(change)}`
-        : formatPercentChange(change);
+    return formatNumberCompact(value);
 };
+
+const rangeLabel = computed(() =>
+    date.formatDayMonthYearRange(props.report.range),
+);
+const buildShareOption = (): ShareMetricOption =>
+    summaryShareOption(
+        cards.value.map((card) => ({
+            label: trans(card.label),
+            figure: display(card.metric.value, card.percent),
+            missing: card.metric.value === null,
+            change: card.change,
+        })),
+        props.channel ?? null,
+        rangeLabel.value,
+    );
 </script>
 
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.summary')"
-        :subtitle="subtitle"
+        :range="report.range"
+        :previous-range="report.previous_range"
         :subtitle-testid="subtitleTestid"
         flush
     >
+        <template #actions>
+            <ShareChartButton
+                v-if="hasAnyValue"
+                :subject="channel"
+                :range="rangeLabel"
+                :build="buildShareOption"
+                test-id="share-summary"
+            />
+        </template>
         <div
             class="grid grid-cols-2 border-t border-border md:grid-cols-3"
             :class="desktopColumns"
             data-testid="analytics-summary"
         >
             <div
-                v-for="card in cards"
+                v-for="(card, index) in cards"
                 :key="card.key"
                 :data-testid="testId(card.key)"
                 class="flex min-w-0 flex-col gap-2 px-4 py-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] sm:px-5"
+                :class="{ 'max-md:col-span-2': spansPhoneRow(index) }"
             >
                 <div class="flex min-h-6 items-center gap-0.5">
                     <p class="truncate text-sm text-muted-foreground">
@@ -128,24 +206,20 @@ const changeLabel = (key: string, change: number | null): string | null => {
                         :test-id="`${testId(card.key)}-about`"
                     />
                 </div>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div :class="valueRowClass(index)">
                     <span
                         class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
+                        :data-testid="`${testId(card.key)}-value`"
                         >{{ display(card.metric.value, card.percent) }}</span
                     >
                     <MetricChange
-                        v-if="changeLabel(card.key, card.metric.change)"
+                        v-if="card.change"
                         :data-testid="`${testId(card.key)}-change`"
-                        :change="card.metric.change!"
-                        :label="changeLabel(card.key, card.metric.change)!"
+                        :change="card.change.value"
+                        :label="card.change.label"
                     />
                 </div>
             </div>
         </div>
-        <p
-            class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5"
-        >
-            {{ $t('analytics.dashboard.latest_snapshot_hint') }}
-        </p>
     </AnalyticsSection>
 </template>

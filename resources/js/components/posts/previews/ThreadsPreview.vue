@@ -12,9 +12,9 @@ import {
 import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import { ContentType } from '@/types/content-type';
 
-import type { PreviewProps } from './types';
 
 const props = defineProps<PreviewProps>();
 

@@ -8,7 +8,7 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs `tests/fixtures/media-editor-harness.js` over the real `mediaRules()`
+ * Runs `tests/fixtures/media-editor-harness.ts` over the real `mediaRules()`
  * payload of every content type and returns its JSON output.
  *
  * @return array<string, mixed>
@@ -30,7 +30,7 @@ function runMediaEditorPresetsHarness(): array
     try {
         $process = (new Process([
             $node,
-            base_path('tests/fixtures/media-editor-harness.js'),
+            base_path('tests/fixtures/media-editor-harness.ts'),
             resource_path('js'),
             $input,
         ]))->mustRun();

@@ -44,7 +44,7 @@ test('the editor picks the same facebook link as the publisher', function () {
     $process = new Process([
         'node',
         '--experimental-strip-types',
-        base_path('tests/fixtures/facebook-link-preview-harness.js'),
+        base_path('tests/fixtures/facebook-link-preview-harness.ts'),
         resource_path('js/lib/facebookLinkPreview.ts'),
         $corpusPath,
     ]);

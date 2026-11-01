@@ -3,11 +3,11 @@ import { IconVolumeOff } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
+import type { PreviewMediaLayout } from '@/components/posts/previews/types';
 import VideoPreview from '@/components/posts/previews/VideoPreview.vue';
 import { isDocument, isVideo } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
-import type { PreviewMediaLayout } from './types';
 
 const props = withDefaults(
     defineProps<{

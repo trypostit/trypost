@@ -1,15 +1,15 @@
 import { useHttp } from '@inertiajs/vue3';
 
+import {
+    createPopupNonce,
+    openSourcePopup,
+    waitForPopupResult,
+} from '@/lib/mediaSources/popup';
 import { create, edit } from '@/routes/app/integrations/canva/designs';
 import { show } from '@/routes/app/integrations/canva/returns';
 import type { CanvaPresetOption } from '@/types';
 import type { MediaItem } from '@/types/media';
 
-import {
-    createPopupNonce,
-    openSourcePopup,
-    waitForPopupResult,
-} from './popup';
 
 export interface CanvaResult {
     importId: string;

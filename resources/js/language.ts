@@ -1,8 +1,8 @@
 import { getActiveLanguage, loadLanguageAsync } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
-import dayjs from './dayjs';
-import type { Auth, Language } from './types';
+import dayjs from '@/dayjs';
+import type { Auth, Language } from '@/types';
 
 interface LocaleProps {
     locale?: string;

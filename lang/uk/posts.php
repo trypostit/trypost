@@ -924,6 +924,7 @@ return [
         'title' => 'Публікація',
         'all_channels' => 'Усі канали',
         'tabs' => [
+            'label' => 'Статус',
             'queue' => 'Черга',
             'approvals' => 'Схвалення',
             'drafts' => 'Чернетки',

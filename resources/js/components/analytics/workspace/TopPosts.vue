@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import RankBadge from '@/components/analytics/RankBadge.vue';
+import AccountIdentity from '@/components/analytics/workspace/AccountIdentity.vue';
+import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import AppLogo from '@/components/AppLogo.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -14,9 +18,6 @@ import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
 
-import AccountIdentity from './AccountIdentity.vue';
-import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
-import AnalyticsSection from './AnalyticsSection.vue';
 
 const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];
@@ -104,7 +105,7 @@ const thumbnailFor = (post: TopPost): string | null => {
             class="grid border-t border-border sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
         >
             <article
-                v-for="(post, index) in posts"
+                v-for="post in posts"
                 :key="post.id"
                 class="group relative flex min-w-0 flex-col gap-3 p-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] transition-colors duration-150 has-[button:hover]:bg-muted/60 has-[button:focus-visible]:bg-muted/60 sm:px-5"
                 data-testid="analytics-top-post"
@@ -120,11 +121,10 @@ const thumbnailFor = (post: TopPost): string | null => {
                         }}</span>
                     </div>
                     <div class="flex shrink-0 flex-col items-end justify-between gap-1">
-                        <span
-                            class="inline-flex h-6 min-w-7 items-center justify-center rounded-md bg-primary-selected px-1.5 text-xs font-semibold text-primary-text tabular-nums"
+                        <RankBadge
+                            :rank="post.rank"
                             :data-testid="`analytics-top-post-rank-${post.id}`"
-                            >#{{ index + 1 }}</span
-                        >
+                        />
                         <span
                             class="text-xs leading-4 whitespace-nowrap text-muted-foreground"
                             :data-testid="`analytics-top-post-date-${post.id}`"

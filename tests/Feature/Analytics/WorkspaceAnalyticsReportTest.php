@@ -127,6 +127,7 @@ test('workspace report keeps accounts separate and aggregates only latest normal
         ->and($report['summary']['engagement_rate']['previous'])->toBe(10.0)
         ->and($report['bounds'])->toBe(['min' => '2026-08-25', 'max' => '2026-09-10'])
         ->and($report['posts']['resolution'])->toBe('daily')
+        ->and($report['posts']['total'])->toBe(3)
         ->and(count($report['posts']['buckets']))->toBe(10)
         ->and(array_column($report['posts']['buckets'], 'total'))->toBe([0, 0, 0, 0, 1, 1, 1, 0, 0, 0])
         ->and(array_key_exists('label', $report['posts']['buckets'][0]))->toBeFalse()
@@ -135,7 +136,8 @@ test('workspace report keeps accounts separate and aggregates only latest normal
         ->and($report['followers']['total'])->toBe(170)
         ->and($report['top_posts']['reactions'][0]['social_account_key'])->toBe($instagramA->id)
         ->and($report['top_posts']['reactions'][0]['post_id'])->toBeNull()
-        ->and($report['top_posts']['reactions'][0]['reactions'])->toBe(10);
+        ->and($report['top_posts']['reactions'][0]['reactions'])->toBe(10)
+        ->and(array_column($report['top_posts']['reactions'], 'rank'))->toBe(range(1, count($report['top_posts']['reactions'])));
 
     $performanceKeys = array_column($report['performance'], 'social_account_key');
     expect($performanceKeys)->toContain($instagramA->id, $instagramB->id, $x->id);

@@ -68,6 +68,7 @@ function insightsParitySetup(): array
             'network' => $platform->network(),
             'platform_user_id' => $account->platform_user_id,
             'account_username' => $username,
+            'account_display_name' => ucfirst($username),
             'account_avatar_url' => $platform === Platform::Instagram ? INSIGHTS_PARITY_AVATAR : null,
             'date' => now('UTC')->subDays(2)->toDateString(),
             'followers_count' => $followers,
@@ -85,6 +86,7 @@ function insightsParitySetup(): array
             'platform' => $platform,
             'network' => $platform->network(),
             'account_username' => $username,
+            'account_display_name' => ucfirst($username),
             'account_avatar_url' => $platform === Platform::Instagram ? INSIGHTS_PARITY_AVATAR : null,
             'excerpt' => "Insights parity post {$username}",
             'provider_published_at' => now('UTC')->subDays(3),
@@ -219,7 +221,7 @@ test('the insights dashboard shows channel avatars, explains itself, sorts and c
 
     waitForInsightsParityTestId($page, 'analytics-performance-sort-reactions');
 
-    $order = 'Array.from(document.querySelectorAll("tbody th[scope=row]")).map((cell) => (cell.innerText.match(/@\\w+/) || [""])[0]).join(",")';
+    $order = 'Array.from(document.querySelectorAll("tbody th[scope=row]")).map((cell) => (cell.innerText.match(/Alpha|Bravo/) || [""])[0]).join(",")';
 
     $page->assertScript('document.querySelector("[data-testid=analytics-performance-columns]").closest("table") === null', true)
         ->click('@analytics-performance-sort-reactions');
@@ -230,13 +232,13 @@ test('the insights dashboard shows channel avatars, explains itself, sorts and c
     waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-column-reactions]").getAttribute("aria-sort") === "ascending"');
     $ascending = $page->script($order);
 
-    expect($descending)->toContain('@alpha')
+    expect($descending)->toContain('Alpha')
         ->and($ascending)->toBe(implode(',', array_reverse(explode(',', $descending))));
 
     $page->click('@analytics-performance-sort-channel');
     waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-channel-header]").getAttribute("aria-sort") === "ascending"');
 
-    expect($page->script($order))->toBe('@alpha,@bravo');
+    expect($page->script($order))->toBe('Alpha,Bravo');
     $page->assertNoJavaScriptErrors();
 
     waitForInsightsParityTestId($page, 'analytics-performance-columns');

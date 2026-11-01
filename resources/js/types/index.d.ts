@@ -123,6 +123,9 @@ export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & SharedData;
 
+/** A provider people sign in with besides their password. */
+export type SocialProvider = 'google' | 'github';
+
 export interface User {
     id: string;
     name: string;

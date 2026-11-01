@@ -10,9 +10,9 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
+import WebhookFormFields from '@/components/webhook/WebhookFormFields.vue';
 import { update } from '@/routes/app/webhooks';
 
-import WebhookFormFields from './WebhookFormFields.vue';
 
 interface WebhookItem {
     id: string;

@@ -1,6 +1,9 @@
+import { objectOmit } from '@vueuse/core';
+
 import { classifyBy, MediaType } from '@/lib/mediaType';
 import { uuid } from '@/lib/uuid';
 import { probeVideoDuration } from '@/lib/videoDuration';
+import type { MediaItem } from '@/types/media';
 
 interface ChunkedUploadOptions {
     file: File;
@@ -15,15 +18,8 @@ interface ChunkedUploadOptions {
     onError?: (error: any) => void;
 }
 
-interface ChunkedUploadResult {
-    id: string;
-    path?: string;
-    url: string;
-    type: MediaType;
-    mime_type?: string;
-    original_filename: string;
-    [key: string]: any;
-}
+/** What the server answers a chunk with: more to send, or, on the last one, the uploaded media (its MediaResource). */
+type ChunkAnswer = { done?: false } | (MediaItem & { done: true });
 
 /** The server answered a chunk with an error status; `message` is its first validation message, when it sent one. */
 export class ChunkedUploadError extends Error {
@@ -61,7 +57,7 @@ const sendChunk = (
     chunk: Blob,
     signal: AbortSignal | undefined,
     onChunkProgress: (loaded: number) => void,
-): Promise<any> =>
+): Promise<ChunkAnswer> =>
     new Promise((resolve, reject) => {
         if (signal?.aborted) {
             reject(new DOMException('Aborted', 'AbortError'));
@@ -106,7 +102,8 @@ const sendChunk = (
         xhr.send(chunk);
     });
 
-export const uploadChunked = async (options: ChunkedUploadOptions): Promise<ChunkedUploadResult> => {
+/** Uploads the file in chunks; the last answer is the server's MediaResource, returned as the media item. */
+export const uploadChunked = async (options: ChunkedUploadOptions): Promise<MediaItem> => {
     const {
         file,
         url,
@@ -158,7 +155,8 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
 
             if (data.done) {
                 onComplete?.(data);
-                return data;
+
+                return objectOmit(data, ['done']);
             }
         }
 

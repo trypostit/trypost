@@ -26,7 +26,7 @@ test('the typescript media classifier agrees with the php enum on every corpus e
     // mustRun(): a broken harness or a syntax error in mediaType.ts is a failure, not a skip.
     $process = (new Process([
         $node,
-        base_path('tests/fixtures/media-type-harness.js'),
+        base_path('tests/fixtures/media-type-harness.ts'),
         resource_path('js/lib/mediaType.ts'),
         $corpusPath,
     ]))->mustRun();

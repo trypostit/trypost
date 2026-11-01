@@ -74,64 +74,74 @@ const rowClass =
             </Button>
         </template>
 
-        <template v-if="status !== null">
+        <template #default="{ close }">
+            <template v-if="status !== null">
+                <div
+                    role="group"
+                    :aria-label="$t('calendar.status.label')"
+                    data-testid="calendar-status-filter"
+                >
+                    <p class="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
+                        {{ $t('calendar.status.label') }}
+                    </p>
+                    <button
+                        v-for="option in CALENDAR_STATUSES"
+                        :key="option"
+                        type="button"
+                        :aria-pressed="status === option"
+                        :class="rowClass"
+                        :data-testid="`calendar-status-${option}`"
+                        @click="selectStatus(option)"
+                    >
+                        {{ $t(`calendar.status.${option}`) }}
+                        <IconCheck v-if="status === option" class="ms-auto size-4" />
+                    </button>
+                </div>
+                <div class="my-2 h-px bg-border" />
+            </template>
+
             <div
                 role="group"
-                :aria-label="$t('calendar.status.label')"
-                data-testid="calendar-status-filter"
+                :aria-label="$t('posts.publish.timezone.label')"
+                data-testid="publish-timezone-select"
             >
                 <p class="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
-                    {{ $t('calendar.status.label') }}
+                    {{ $t('posts.publish.timezone.label') }}
                 </p>
-                <button
-                    v-for="option in CALENDAR_STATUSES"
-                    :key="option"
-                    type="button"
-                    :aria-pressed="status === option"
-                    :class="rowClass"
-                    :data-testid="`calendar-status-${option}`"
-                    @click="selectStatus(option)"
-                >
-                    {{ $t(`calendar.status.${option}`) }}
-                    <IconCheck v-if="status === option" class="ms-auto size-4" />
-                </button>
+                <TimezoneSelect
+                    v-model="timezone"
+                    :options="timezones"
+                    testid="publish-timezone"
+                />
             </div>
-            <div class="my-2 h-px bg-border" />
-        </template>
 
-        <div
-            role="group"
-            :aria-label="$t('posts.publish.timezone.label')"
-            data-testid="publish-timezone-select"
-        >
-            <TimezoneSelect
-                v-model="timezone"
-                :options="timezones"
-                testid="publish-timezone"
-            />
-        </div>
+            <template v-if="hasSlotOptions()">
+                <div class="my-2 h-px bg-border" />
+                <button
+                    v-if="showSlots !== null"
+                    type="button"
+                    :aria-pressed="showSlots"
+                    :class="rowClass"
+                    :data-testid="`${testId}-toggle-slots`"
+                    @click="setShowSlots(!showSlots)"
+                >
+                    {{ $t('posts.publish.menu.show_posting_times') }}
+                    <IconCheck v-if="showSlots" class="ms-auto size-4" />
+                </button>
+                <Link
+                    v-if="manageSlotsHref"
+                    :href="manageSlotsHref"
+                    :class="rowClass"
+                    :data-testid="`${testId}-manage-slots`"
+                >
+                    {{ $t('posts.publish.menu.manage_posting_times') }}
+                </Link>
+            </template>
 
-        <template v-if="hasSlotOptions()">
-            <div class="my-2 h-px bg-border" />
-            <button
-                v-if="showSlots !== null"
-                type="button"
-                :aria-pressed="showSlots"
-                :class="rowClass"
-                :data-testid="`${testId}-toggle-slots`"
-                @click="setShowSlots(!showSlots)"
-            >
-                {{ $t('posts.publish.menu.show_posting_times') }}
-                <IconCheck v-if="showSlots" class="ms-auto size-4" />
-            </button>
-            <Link
-                v-if="manageSlotsHref"
-                :href="manageSlotsHref"
-                :class="rowClass"
-                :data-testid="`${testId}-manage-slots`"
-            >
-                {{ $t('posts.publish.menu.manage_posting_times') }}
-            </Link>
+            <template v-if="$slots['compact-items']">
+                <div class="my-2 h-px bg-border" />
+                <slot name="compact-items" :row-class="rowClass" :close="close" />
+            </template>
         </template>
     </ResponsivePopover>
 

@@ -18,8 +18,12 @@ import {
     IconWorld,
 } from '@tabler/icons-vue';
 import { wTrans } from 'laravel-vue-i18n';
-import { computed, ref, type Component } from 'vue';
+import { computed, type Component, reactive, ref } from 'vue';
 
+import ChannelMetricsChart from '@/components/analytics/channel/ChannelMetricsChart.vue';
+import ComparedRange from '@/components/analytics/ComparedRange.vue';
+import MetricChange from '@/components/analytics/MetricChange.vue';
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Button } from '@/components/ui/button';
@@ -40,6 +44,7 @@ import date from '@/date';
 import {
     availablePresets,
     bucketLabel,
+    definedValues,
     formatSeriesValue,
     growthRateSeries,
     hasEnoughHistory,
@@ -48,18 +53,30 @@ import {
     metricInsight,
     monthLabel,
     POST_TOTAL_METRICS,
+    type MetricDelta,
+    seriesDelta,
+    shownPeriod,
     seriesFor,
     type ChartMode,
     type PresetKey,
     type Selection,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
-import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
+import {
+    channelChartShareOption,
+} from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/shareCard';
+import type {
+    ChannelMetricSeries,
+    DateRange,
+    FollowerGrowthRate,
+    SeriesMetric,
+} from '@/types/analytics';
 
-import ChannelMetricsChart from './ChannelMetricsChart.vue';
 
 const props = defineProps<{
     series?: ChannelMetricSeries;
+    channel: string;
 }>();
 
 const METRIC_ICONS: Record<SeriesMetric, Component> = {
@@ -99,29 +116,17 @@ const modes = [
 ] as const;
 const SELECTED = 'border-transparent bg-primary-selected text-primary-text hover:bg-primary-selected hover:text-primary-text';
 
-const translatedLabels = Object.fromEntries(
-    (
-        [
-            'posts',
-            'followers',
-            'net_followers',
-            'reach',
-            'views',
-            'impressions',
-            'profile_visits',
-            'growth_rate',
-        ] as SeriesMetric[]
-    ).map((metric) => [metric, wTrans(`analytics.channel.series.${metric}`)]),
-);
-const comparisonAxis = wTrans('analytics.channel.metrics_card.comparison_axis');
-const seriesLabels = computed<Partial<Record<SeriesMetric, string>>>(() =>
-    Object.fromEntries(
-        Object.entries(translatedLabels).map(([metric, label]) => [
-            metric,
-            label.value,
-        ]),
-    ),
-);
+/** Every series metric's name, kept up to date as the locale loads (see `.ai/rules/js.md`); `reactive` reads each through. */
+const seriesLabels: Record<SeriesMetric, string> = reactive({
+    posts: wTrans('analytics.channel.series.posts'),
+    followers: wTrans('analytics.channel.series.followers'),
+    net_followers: wTrans('analytics.channel.series.net_followers'),
+    reach: wTrans('analytics.channel.series.reach'),
+    views: wTrans('analytics.channel.series.views'),
+    impressions: wTrans('analytics.channel.series.impressions'),
+    profile_visits: wTrans('analytics.channel.series.profile_visits'),
+    growth_rate: wTrans('analytics.channel.series.growth_rate'),
+});
 
 const primaryMetric = ref<SeriesMetric>('posts');
 const selection = ref<Selection>({ kind: 'preset', preset: 'content_impact' });
@@ -163,10 +168,25 @@ const chartSeries = computed<ChannelMetricSeries | undefined>(() =>
         ? growthRateSeries(props.series.growth)
         : props.series,
 );
-const chartMode = computed<ChartMode>(() =>
-    growthRate.value ? 'current' : mode.value,
-);
 const specs = computed<SeriesSpec[]>(() => seriesFor(activeSelection.value));
+/** Whether any metric the chart shows has data in the previous period; without it there is nothing to compare. */
+const hasComparison = computed(() => {
+    const series = chartSeries.value;
+
+    if (!series) {
+        return false;
+    }
+
+    return specs.value.some((spec) => definedValues(series.previous, spec.metric).length > 0);
+});
+/** The periods the chart shows: only this period for the growth rate or when nothing can be compared. */
+const chartMode = computed<ChartMode>(() => {
+    if (growthRate.value || !hasComparison.value) {
+        return 'current';
+    }
+
+    return mode.value;
+});
 const enoughHistory = computed(() =>
     chartSeries.value
         ? hasEnoughHistory(chartSeries.value, specs.value, chartMode.value)
@@ -192,42 +212,81 @@ const insightIcon = computed(() => {
 const showsPostTotals = computed(() =>
     specs.value.some((spec) => POST_TOTAL_METRICS.includes(spec.metric)),
 );
+/** The growth rate's twelve months, as the card names them: "Nov 2025 – Oct 2026". */
+const growthMonths = (growth: FollowerGrowthRate): string =>
+    `${monthLabel(growth.range.start)} – ${monthLabel(growth.range.end)}`;
+
 const rangeCaption = computed(() => {
     if (!props.series) {
         return null;
     }
 
     if (growthRate.value && props.series.growth) {
-        const { start, end } = props.series.growth.range;
-
-        return `${monthLabel(start)} – ${monthLabel(end)}`;
+        return growthMonths(props.series.growth);
     }
 
-    return `${date.formatDayMonthYear(props.series.range.start)} – ${date.formatDayMonthYear(props.series.range.end)}`;
+    return date.formatDayMonthYearRange(props.series.range);
 });
-const previousCaption = computed(() =>
-    props.series
-        ? `${date.formatDayMonthYear(props.series.previous_range.start)} – ${date.formatDayMonthYear(props.series.previous_range.end)}`
-        : '',
-);
-const shownTotals = computed(() =>
-    chartMode.value === 'previous'
-        ? chartSeries.value?.totals.previous
-        : chartSeries.value?.totals.current,
-);
-const axisLabels = computed<Partial<Record<SeriesSpec['axis'], string>>>(() =>
-    Object.fromEntries(
-        specs.value.map((spec) => {
-            const label = seriesLabels.value[spec.metric] ?? '';
+/** The period the chart shows: the previous one in the Comparison view. */
+const shownRange = (series: ChannelMetricSeries): DateRange => {
+    if (chartMode.value === 'previous') {
+        return series.previous_range;
+    }
 
-            return [
-                spec.axis,
-                chartMode.value === 'previous'
-                    ? comparisonAxis.value.replace(':metric', label)
-                    : label,
-            ];
-        }),
-    ),
+    return series.range;
+};
+
+/** The period the share card names, as the page's subtitle does: the growth rate's months, else the days shown. */
+const shareRange = (series: ChannelMetricSeries): string => {
+    if (growthRate.value && props.series?.growth) {
+        return growthMonths(props.series.growth);
+    }
+
+    return date.formatDayMonthYearRange(shownRange(series));
+};
+
+/** What the Share button needs: the chart as it is drawn now, or null while there is nothing to share. */
+const share = computed(
+    (): { range: string; build: () => ShareMetricOption } | null => {
+        const series = chartSeries.value;
+
+        if (!series || specs.value.length === 0 || !enoughHistory.value) {
+            return null;
+        }
+
+        const range = shareRange(series);
+
+        return {
+            range,
+            build: () =>
+                channelChartShareOption(
+                    series,
+                    specs.value,
+                    chartMode.value,
+                    seriesLabels,
+                    props.channel,
+                    range,
+                ),
+        };
+    },
+);
+const shownTotals = computed(
+    () => chartSeries.value?.totals[shownPeriod(chartMode.value)],
+);
+/** How each shown metric moved since the previous period; the Comparison view shows the previous period itself. */
+const deltaOf = (metric: SeriesMetric): MetricDelta | null => {
+    const series = props.series;
+
+    if (!series || chartMode.value === 'previous') {
+        return null;
+    }
+
+    return seriesDelta(series, metric);
+};
+
+/** Each metric of the legend with its change, so the template reads a change it has already checked. */
+const legend = computed((): { spec: SeriesSpec; delta: MetricDelta | null }[] =>
+    specs.value.map((spec) => ({ spec, delta: deltaOf(spec.metric) })),
 );
 
 const isMetricActive = computed(
@@ -267,6 +326,14 @@ const changeMode = (value: string): void => {
         :title="$t('analytics.channel.metrics_card.title')"
         subtitle-testid="insights-metrics-caption"
     >
+        <template v-if="share" #actions>
+            <ShareChartButton
+                :subject="channel"
+                :range="share.range"
+                :build="share.build"
+                test-id="share-channel-metrics"
+            />
+        </template>
         <template v-if="rangeCaption" #subtitle>
             <template v-if="growthRate">
                 {{ rangeCaption }} ·
@@ -278,14 +345,11 @@ const changeMode = (value: string): void => {
                     }}</span
                 >
             </template>
-            <template v-else>
-                {{
-                    $t('analytics.ranges.compared_to', {
-                        current: rangeCaption,
-                        previous: previousCaption,
-                    })
-                }}
-            </template>
+            <ComparedRange
+                v-else-if="series"
+                :range="series.range"
+                :previous="series.previous_range"
+            />
         </template>
 
         <div data-testid="insights-metrics">
@@ -464,7 +528,7 @@ const changeMode = (value: string): void => {
                                 data-testid="insights-metrics-legend"
                             >
                                 <div
-                                    v-for="spec in specs"
+                                    v-for="{ spec, delta } in legend"
                                     :key="spec.metric"
                                     class="flex min-w-0 flex-col gap-1"
                                     :data-testid="`insights-metrics-legend-${spec.metric}`"
@@ -525,10 +589,17 @@ const changeMode = (value: string): void => {
                                             >
                                         </span>
                                     </span>
+                                    <MetricChange
+                                        v-if="delta"
+                                        class="self-start"
+                                        :data-testid="`insights-metrics-legend-${spec.metric}-change`"
+                                        :change="delta.value"
+                                        :label="delta.label"
+                                    />
                                 </div>
                             </div>
                             <AnalyticsModeToggle
-                                v-if="!growthRate"
+                                v-if="!growthRate && hasComparison"
                                 :model-value="mode"
                                 label="analytics.channel.metrics_card.chart_mode"
                                 :options="modes"
@@ -544,7 +615,6 @@ const changeMode = (value: string): void => {
                             :specs="specs"
                             :mode="chartMode"
                             :labels="seriesLabels"
-                            :axis-labels="axisLabels"
                         />
                         <div
                             v-else

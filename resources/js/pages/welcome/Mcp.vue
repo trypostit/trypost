@@ -346,10 +346,10 @@ const goToSchedule = (): void => {
                         :data-testid="`welcome-mcp-connect-${client.id}`"
                         @click="connectWith(client)"
                     >
-                        <img
-                            :src="client.monoLogo"
-                            alt=""
-                            class="size-4 invert dark:invert-0"
+                        <component
+                            :is="client.logo"
+                            aria-hidden="true"
+                            class="size-4 fill-current"
                         />
                         {{
                             client.labelKey
@@ -417,10 +417,10 @@ const goToSchedule = (): void => {
                         <span
                             class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                         >
-                            <img
-                                :src="client.logo"
-                                alt=""
-                                :class="['size-5 object-contain', client.logoClass]"
+                            <component
+                                :is="client.logo"
+                                aria-hidden="true"
+                                class="size-5 text-foreground"
                             />
                         </span>
                         <span class="flex min-w-0 flex-1 flex-col gap-0.5">

@@ -734,6 +734,28 @@ function waitForCondition(mixed $page, string $condition): void
 }
 
 /**
+ * Wait until a condition the test reads on the server (a row in the database)
+ * holds, letting the page's own requests land between tries.
+ */
+function waitForDatabase(mixed $page, Closure $condition): void
+{
+    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
+}
+
+/**
+ * Wait until the page's URL carries this query parameter value.
+ */
+function waitForQueryParameter(mixed $page, string $name, string $value): void
+{
+    $name = json_encode($name);
+    $value = json_encode($value);
+
+    waitForCondition($page, "new URLSearchParams(location.search).get({$name}) === {$value}");
+}
+
+/**
  * The selector as a JavaScript string, with `@name` standing for
  * `[data-testid="name"]` as in `$page->click('@name')`, anywhere in it:
  * `@channel-settings-rows [role="combobox"]`.
@@ -804,4 +826,55 @@ function waitForPath(mixed $page, string $path): void
     $path = json_encode($path);
 
     waitForCondition($page, "location.pathname === {$path}");
+}
+
+/**
+ * Records what every canvas on the page draws from now on: each text with
+ * its direction, place, width, alignment and font (`window.__drawn`), each image's address
+ * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
+ * the share card's hatch for a previous period). A canvas cannot be read back
+ * as text, so a test of a painted card reads these instead.
+ */
+function recordCanvasDrawing(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            if (window.__drawn) {
+                return;
+            }
+
+            window.__drawn = [];
+            window.__images = [];
+            window.__patterns = 0;
+            window.__paths = [];
+            const NativePath2D = window.Path2D;
+            window.Path2D = class extends NativePath2D {
+                constructor(path) {
+                    super(path);
+
+                    if (typeof path === 'string') {
+                        window.__paths.push(path);
+                    }
+                }
+            };
+            const createPattern = CanvasRenderingContext2D.prototype.createPattern;
+            const fillText = CanvasRenderingContext2D.prototype.fillText;
+            const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
+                window.__drawn.push({ text: String(text), direction: this.direction, x: rest[0], y: rest[1], width: this.measureText(String(text)).width, align: this.textAlign, font: this.font });
+
+                return fillText.call(this, text, ...rest);
+            };
+            CanvasRenderingContext2D.prototype.createPattern = function (...args) {
+                window.__patterns += 1;
+
+                return createPattern.apply(this, args);
+            };
+            CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) {
+                window.__images.push(image.src ?? '');
+
+                return drawImage.call(this, image, ...rest);
+            };
+        })();
+    JS);
 }

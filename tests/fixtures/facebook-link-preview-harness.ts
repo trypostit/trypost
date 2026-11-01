@@ -8,6 +8,6 @@ import { pathToFileURL } from 'node:url';
 
 const [modulePath, corpusPath] = process.argv.slice(2);
 const { facebookLinkPreviewUrl } = await import(pathToFileURL(modulePath).href);
-const corpus = JSON.parse(fs.readFileSync(corpusPath, 'utf8'));
+const corpus: string[] = JSON.parse(fs.readFileSync(corpusPath, 'utf8'));
 
 console.log(JSON.stringify(corpus.map((entry) => facebookLinkPreviewUrl(entry))));

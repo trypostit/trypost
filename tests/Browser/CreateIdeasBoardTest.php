@@ -9,37 +9,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use Pest\Browser\Playwright\Client;
 
-function waitForCreateIdeasBoardTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateIdeasBoardCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateIdeasBoardDatabase(mixed $page, Closure $condition): void
-{
-    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
-}
-
 /**
  * @return array{0: User, 1: Workspace, 2: array<string, IdeaStage>}
  */
@@ -162,9 +131,9 @@ test('dragging a card onto another in the same column reorders it', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$b->id}");
+    waitFor($page, "@idea-card-{$b->id}");
     $page->drag("@idea-card-{$b->id}", "@idea-card-{$a->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $b->refresh()->position < $a->refresh()->position);
+    waitForDatabase($page, fn (): bool => $b->refresh()->position < $a->refresh()->position);
 
     expect($b->refresh()->position)->toBeLessThan($a->refresh()->position);
     $page->assertNoJavaScriptErrors();
@@ -176,9 +145,9 @@ test('dragging a card onto an empty column moves it there', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$a->id}");
+    waitFor($page, "@idea-card-{$a->id}");
     $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
+    waitForDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
 
     expect($a->refresh()->idea_stage_id)->toBe($stages['done']->id);
     $page->assertNoJavaScriptErrors();
@@ -189,21 +158,21 @@ test('a new stage is created on enter and nothing is created on escape', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new');
+    waitFor($page, '@idea-stage-new');
     $page->click('@idea-stage-new');
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new-input');
+    waitFor($page, '@idea-stage-new-input');
     $page->type('@idea-stage-new-input', 'Reviewed')->keys('@idea-stage-new-input', 'Enter');
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $workspace->ideaStages()->where('name', 'Reviewed')->exists());
+    waitForDatabase($page, fn (): bool => $workspace->ideaStages()->where('name', 'Reviewed')->exists());
 
     $stage = $workspace->ideaStages()->where('name', 'Reviewed')->firstOrFail();
-    waitForCreateIdeasBoardTestId($page, "idea-column-{$stage->id}");
+    waitFor($page, "@idea-column-{$stage->id}");
     $page->assertVisible("@idea-column-{$stage->id}");
 
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new');
+    waitFor($page, '@idea-stage-new');
     $page->click('@idea-stage-new');
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new-input');
+    waitFor($page, '@idea-stage-new-input');
     $page->type('@idea-stage-new-input', 'Discarded')->keys('@idea-stage-new-input', 'Escape');
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new');
+    waitFor($page, '@idea-stage-new');
 
     expect($workspace->ideaStages()->count())->toBe(4);
     $page->assertMissing('@idea-stage-new-input')
@@ -216,14 +185,14 @@ test('deleting a stage keeps its ideas under unassigned', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-column-menu-{$stages['todo']->id}");
+    waitFor($page, "@idea-column-menu-{$stages['todo']->id}");
     $page->click("@idea-column-menu-{$stages['todo']->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-stage-delete-{$stages['todo']->id}");
+    waitFor($page, "@idea-stage-delete-{$stages['todo']->id}");
     $page->click("@idea-stage-delete-{$stages['todo']->id}");
-    waitForCreateIdeasBoardTestId($page, 'confirm-delete-action');
+    waitFor($page, '@confirm-delete-action');
     $page->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-column-{$stages['todo']->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-column-{$stages['todo']->id}\"]')");
 
     $page->assertMissing("@idea-column-{$stages['todo']->id}");
     expect($page->script("!!document.querySelector('[data-testid=\"idea-column-unassigned\"] [data-testid=\"idea-card-{$a->id}\"]')"))->toBeTrue()
@@ -236,10 +205,10 @@ test('dragging a stage handle onto another column reorders the stages', function
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-stage-handle-{$stages['done']->id}");
+    waitFor($page, "@idea-stage-handle-{$stages['done']->id}");
     $page->hover("@idea-column-{$stages['done']->id}");
     $page->drag("@idea-stage-handle-{$stages['done']->id}", "@idea-column-{$stages['todo']->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $stages['done']->refresh()->position < $stages['in_progress']->refresh()->position);
+    waitForDatabase($page, fn (): bool => $stages['done']->refresh()->position < $stages['in_progress']->refresh()->position);
 
     expect($stages['done']->refresh()->position)->toBeLessThan($stages['in_progress']->refresh()->position);
     $page->assertNoJavaScriptErrors();
@@ -253,31 +222,31 @@ test('selected ideas are deleted in bulk and the selection can be cleared', func
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
+    waitFor($page, "@idea-card-menu-{$a->id}");
     $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-select-{$a->id}");
+    waitFor($page, "@idea-select-{$a->id}");
     $page->click("@idea-select-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-card-checkbox-{$b->id}");
+    waitFor($page, "@idea-card-checkbox-{$b->id}");
     $page->click("@idea-card-checkbox-{$b->id}");
-    waitForCreateIdeasBoardTestId($page, 'ideas-bulk-delete');
+    waitFor($page, '@ideas-bulk-delete');
     $page->assertSeeIn('@ideas-bulk-delete', '2')
         ->click('@ideas-bulk-delete');
-    waitForCreateIdeasBoardTestId($page, 'ideas-bulk-delete-confirm');
+    waitFor($page, '@ideas-bulk-delete-confirm');
     $page->assertMissing('@confirm-delete-input')
         ->click('@ideas-bulk-delete-confirm');
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => Idea::whereKey([$a->id, $b->id])->doesntExist());
+    waitForDatabase($page, fn (): bool => Idea::whereKey([$a->id, $b->id])->doesntExist());
 
     expect(Idea::whereKey([$a->id, $b->id])->exists())->toBeFalse()
         ->and(Idea::whereKey($c->id)->exists())->toBeTrue();
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
     $page->assertMissing('@ideas-bulk-bar');
 
     $page->click("@idea-card-menu-{$c->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-select-{$c->id}");
+    waitFor($page, "@idea-select-{$c->id}");
     $page->click("@idea-select-{$c->id}");
-    waitForCreateIdeasBoardTestId($page, 'ideas-clear-selection');
+    waitFor($page, '@ideas-clear-selection');
     $page->click('@ideas-clear-selection');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
 
     $page->assertMissing('@ideas-bulk-bar')
         ->assertMissing("@idea-card-checkbox-{$c->id}")
@@ -294,9 +263,9 @@ test('the gallery view lists ideas and filters them by label and stage', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, 'ideas-view-gallery');
+    waitFor($page, '@ideas-view-gallery');
     $page->click('@ideas-view-gallery');
-    waitForCreateIdeasBoardTestId($page, 'ideas-gallery');
+    waitFor($page, '@ideas-gallery');
 
     $page->assertVisible("@idea-card-{$tagged->id}")
         ->assertVisible("@idea-card-{$inDone->id}")
@@ -304,34 +273,34 @@ test('the gallery view lists ideas and filters them by label and stage', functio
     expect($page->script('location.search'))->toContain('view=gallery');
 
     $page->click('@ideas-filter-labels-filter');
-    waitForCreateIdeasBoardTestId($page, "ideas-filter-labels-option-{$label->id}");
+    waitFor($page, "@ideas-filter-labels-option-{$label->id}");
     $page->click("@ideas-filter-labels-option-{$label->id}");
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
 
     $page->assertVisible("@idea-card-{$tagged->id}")
         ->assertMissing("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$inDone->id}");
 
     $page->click("@ideas-filter-labels-option-{$label->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$loose->id}");
+    waitFor($page, "@idea-card-{$loose->id}");
 
     $page->click('@ideas-filter-labels-untagged-checkbox');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$tagged->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$tagged->id}\"]')");
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$tagged->id}");
     expect($page->script('location.search'))->toContain('untagged=1');
 
     $page->click('@ideas-filter-labels-clear');
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$tagged->id}");
+    waitFor($page, "@idea-card-{$tagged->id}");
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertPresent('@ideas-filter-labels-settings');
     $page->keys('@ideas-filter-labels-search', 'Escape');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-labels-search\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-labels-search\"]')");
     $page->click('@ideas-filter-stages-filter');
-    waitForCreateIdeasBoardTestId($page, "ideas-filter-stages-option-{$stages['done']->id}");
+    waitFor($page, "@ideas-filter-stages-option-{$stages['done']->id}");
     $page->assertScript("document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['done']->id}\"]').getBoundingClientRect().height <= 32", true);
     $page->click("@ideas-filter-stages-option-{$stages['done']->id}");
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
 
     $page->assertVisible("@idea-card-{$inDone->id}")
         ->assertMissing("@idea-card-{$tagged->id}")
@@ -346,7 +315,7 @@ test('a drop made while a move is in flight is applied after the first move comp
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$b->id}");
+    waitFor($page, "@idea-card-{$b->id}");
     $page->script(<<<'JS'
         (() => {
             const open = XMLHttpRequest.prototype.open;
@@ -369,16 +338,16 @@ test('a drop made while a move is in flight is applied after the first move comp
     JS);
 
     $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
-    waitForCreateIdeasBoardCondition($page, 'window.__ideaMoves.length === 1');
+    waitForCondition($page, 'window.__ideaMoves.length === 1');
     $page->drag("@idea-card-{$b->id}", "@idea-column-{$stages['done']->id}");
-    waitForCreateIdeasBoardCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-idea-id=\"{$b->id}\"]')");
+    waitForCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-idea-id=\"{$b->id}\"]')");
 
     expect($page->script('window.__ideaMoves.length'))->toBe(1)
         ->and($a->refresh()->idea_stage_id)->toBe($stages['todo']->id)
         ->and($b->refresh()->idea_stage_id)->toBe($stages['todo']->id);
 
     $page->script('window.__releaseIdeaMove()');
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $b->refresh()->idea_stage_id === $stages['done']->id);
+    waitForDatabase($page, fn (): bool => $b->refresh()->idea_stage_id === $stages['done']->id);
 
     $order = $page->script("[...document.querySelectorAll('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-idea-id]')].map((el) => el.dataset.ideaId)");
     expect($page->script('window.__ideaMoves.length'))->toBe(2)
@@ -397,18 +366,18 @@ test('move to stage works on a filtered board and appends to the end of the stag
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index', ['labels' => [$label->id]]));
-    waitForCreateIdeasBoardTestId($page, 'ideas-drag-disabled-hint');
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
+    waitFor($page, '@ideas-drag-disabled-hint');
+    waitFor($page, "@idea-card-menu-{$a->id}");
     $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-{$a->id}");
+    waitFor($page, "@idea-move-{$a->id}");
     $page->click("@idea-move-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-to-{$a->id}-{$stages['done']->id}");
+    waitFor($page, "@idea-move-to-{$a->id}-{$stages['done']->id}");
     $page->click("@idea-move-to-{$a->id}-{$stages['done']->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
+    waitForDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
 
     expect($a->refresh()->idea_stage_id)->toBe($stages['done']->id)
         ->and($a->position)->toBeGreaterThan($existing->refresh()->position);
-    waitForCreateIdeasBoardCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-testid=\"idea-card-{$a->id}\"]')");
+    waitForCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-testid=\"idea-card-{$a->id}\"]')");
     expect($page->script("!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-testid=\"idea-card-{$a->id}\"]')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
@@ -420,17 +389,17 @@ test('changing a filter clears the selection', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
+    waitFor($page, "@idea-card-menu-{$a->id}");
     $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-select-{$a->id}");
+    waitFor($page, "@idea-select-{$a->id}");
     $page->click("@idea-select-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, 'ideas-bulk-bar');
-    waitForCreateIdeasBoardCondition($page, "document.body.style.pointerEvents !== 'none' && !document.querySelector('[role=\"menu\"]')");
+    waitFor($page, '@ideas-bulk-bar');
+    waitForCondition($page, "document.body.style.pointerEvents !== 'none' && !document.querySelector('[role=\"menu\"]')");
 
     $page->click('@ideas-filter-labels-filter');
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-labels-untagged-checkbox');
+    waitFor($page, '@ideas-filter-labels-untagged-checkbox');
     $page->click('@ideas-filter-labels-untagged-checkbox');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
 
     $page->assertMissing('@ideas-bulk-bar')
         ->assertNoJavaScriptErrors();
@@ -442,11 +411,11 @@ test('deleting a single idea asks for confirmation without typing a keyword', fu
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
+    waitFor($page, "@idea-card-menu-{$a->id}");
     $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-delete-{$a->id}");
+    waitFor($page, "@idea-delete-{$a->id}");
     $page->click("@idea-delete-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, 'confirm-delete-action');
+    waitFor($page, '@confirm-delete-action');
 
     expect(trim($page->script("document.querySelector('[data-testid=\"confirm-delete-modal\"] [data-slot=\"dialog-description\"]')?.textContent ?? ''")))->toBe(__('create.ideas.delete_confirm_body'));
 
@@ -454,7 +423,7 @@ test('deleting a single idea asks for confirmation without typing a keyword', fu
 
     $page->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action');
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => Idea::whereKey($a->id)->doesntExist());
+    waitForDatabase($page, fn (): bool => Idea::whereKey($a->id)->doesntExist());
 
     expect(Idea::whereKey($a->id)->exists())->toBeFalse();
     $page->assertNoJavaScriptErrors();
@@ -471,12 +440,12 @@ test('a lifted placeholder shows where a dragged card lands, in its own column a
     $done = $stages['done']->id;
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$d->id}");
+    waitFor($page, "@idea-card-{$d->id}");
     $height = $page->script("document.querySelector('[data-testid=\"idea-card-{$c->id}\"]').parentElement.offsetHeight");
     createIdeasBoardRecordDragImages($page);
 
     createIdeasBoardPickUp($page, "idea-card-{$c->id}");
-    waitForCreateIdeasBoardTestId($page, 'idea-card-placeholder');
+    waitFor($page, '@idea-card-placeholder');
 
     expect($page->script('window.__dragImages'))->toBe(['data:image'])
         ->and($page->script("document.querySelector('[data-testid=\"idea-card-placeholder-preview\"]')?.textContent"))->toContain('Idea C')
@@ -496,11 +465,11 @@ test('a lifted placeholder shows where a dragged card lands, in its own column a
         ->and(createIdeasBoardIsDropTarget($page, $todo))->toBeFalse();
 
     createIdeasBoardMouse($page, 'mouseUp', ['button' => 'left', 'clickCount' => 1]);
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $c->refresh()->idea_stage_id === $done);
+    waitForDatabase($page, fn (): bool => $c->refresh()->idea_stage_id === $done);
 
     expect($c->refresh()->idea_stage_id)->toBe($done)
         ->and(Idea::where('idea_stage_id', $done)->orderBy('position')->pluck('id')->all())->toBe([$d->id, $c->id]);
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-card-placeholder\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-placeholder\"]')");
     expect(createIdeasBoardCardSlots($page, $done))->toBe([$d->id, $c->id]);
     $page->assertNoJavaScriptErrors();
 });
@@ -513,10 +482,10 @@ test('a card dropped outside every column goes back where it was', function () {
     $todo = $stages['todo']->id;
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$b->id}");
+    waitFor($page, "@idea-card-{$b->id}");
 
     createIdeasBoardPickUp($page, "idea-card-{$b->id}");
-    waitForCreateIdeasBoardTestId($page, 'idea-card-placeholder');
+    waitFor($page, '@idea-card-placeholder');
     createIdeasBoardMoveTo($page, "idea-card-{$a->id}", 0.5, 0.25);
 
     expect(createIdeasBoardCardSlots($page, $todo))->toBe(['placeholder', $a->id]);
@@ -542,13 +511,13 @@ test('a dragged stage leaves a column-sized placeholder where it will land', fun
     $done = $stages['done']->id;
 
     $page = visit(route('app.create.ideas.index'))->resize(1440, 900);
-    waitForCreateIdeasBoardTestId($page, "idea-column-{$done}");
+    waitFor($page, "@idea-column-{$done}");
     $width = $page->script("document.querySelector('[data-testid=\"idea-column-{$done}\"]').offsetWidth");
     createIdeasBoardRecordDragImages($page);
 
     $page->hover("@idea-column-{$done}");
     createIdeasBoardPickUp($page, "idea-stage-handle-{$done}");
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-placeholder');
+    waitFor($page, '@idea-stage-placeholder');
 
     expect($page->script('window.__dragImages'))->toBe(['data:image'])
         ->and($page->script("document.querySelector('[data-testid=\"idea-stage-placeholder\"]').offsetWidth"))->toBe($width)
@@ -560,10 +529,10 @@ test('a dragged stage leaves a column-sized placeholder where it will land', fun
     expect(createIdeasBoardStageSlots($page))->toBe(['placeholder', $todo, $progress]);
 
     createIdeasBoardMouse($page, 'mouseUp', ['button' => 'left', 'clickCount' => 1]);
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $stages['done']->refresh()->position < $stages['todo']->refresh()->position);
+    waitForDatabase($page, fn (): bool => $stages['done']->refresh()->position < $stages['todo']->refresh()->position);
 
     expect($stages['done']->refresh()->position)->toBeLessThan($stages['todo']->refresh()->position);
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-stage-placeholder\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-stage-placeholder\"]')");
     expect(createIdeasBoardStageSlots($page))->toBe([$done, $todo, $progress]);
     $page->assertNoJavaScriptErrors();
 });
@@ -576,15 +545,15 @@ test('the gallery stage filter has an unassigned option that combines with stage
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index', ['view' => 'gallery']));
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-filter');
+    waitFor($page, '@ideas-filter-stages-filter');
     $page->click('@ideas-filter-stages-filter');
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-unassigned');
+    waitFor($page, '@ideas-filter-stages-unassigned');
 
     expect($page->script("(() => { const rows = [...document.querySelector('[data-testid=\"ideas-filter-stages-unassigned\"]').parentElement.parentElement.querySelectorAll('[data-testid=\"ideas-filter-stages-unassigned\"], [data-testid^=\"ideas-filter-stages-option-\"]')]; return rows[0].dataset.testid; })()"))->toBe('ideas-filter-stages-unassigned')
         ->and($page->script("document.querySelector('[data-testid=\"ideas-filter-stages-unassigned\"]').getBoundingClientRect().height"))->toBeLessThanOrEqual(32);
 
     $page->click('@ideas-filter-stages-unassigned-checkbox');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$inTodo->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$inTodo->id}\"]')");
 
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$inDone->id}")
@@ -592,14 +561,14 @@ test('the gallery stage filter has an unassigned option that combines with stage
     expect($page->script('location.search'))->toContain('unassigned=1');
 
     $page->click("@ideas-filter-stages-option-{$stages['todo']->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$inTodo->id}");
+    waitFor($page, "@idea-card-{$inTodo->id}");
 
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$inDone->id}")
         ->assertSeeIn('@ideas-filter-stages-count', '2');
 
     $page->click('@ideas-filter-stages-toggle-all');
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$inDone->id}");
+    waitFor($page, "@idea-card-{$inDone->id}");
 
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertVisible("@idea-card-{$inTodo->id}")
@@ -614,7 +583,7 @@ test('the new stage button turns into an empty column in place and escape brings
     $done = $stages['done']->id;
 
     $page = visit(route('app.create.ideas.index'))->resize(1600, 900);
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new');
+    waitFor($page, '@idea-stage-new');
     $before = $page->script("(() => { const rect = document.querySelector('[data-testid=\"idea-stage-new\"]').getBoundingClientRect(); return { left: rect.left, top: rect.top }; })()");
 
     $page->click('@idea-stage-new');
@@ -678,8 +647,8 @@ test('on a phone the label filter shows only its icon and the page does not scro
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'))->resize(390, 844);
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-labels-filter');
-    waitForCreateIdeasBoardTestId($page, 'ideas-board');
+    waitFor($page, '@ideas-filter-labels-filter');
+    waitFor($page, '@ideas-board');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -696,7 +665,7 @@ test('on a phone the label filter shows only its icon and the page does not scro
     JS))->toBe(['visibleText' => 0, 'label' => true, 'overflow' => 0, 'boardScrolls' => true]);
 
     $page->resize(1280, 900);
-    waitForCreateIdeasBoardCondition($page, "[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')");
+    waitForCondition($page, "[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')");
     expect($page->script("[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
@@ -708,13 +677,13 @@ test('scrolling a column loads its next ten ideas and the count comes from the d
 
     $page = visit(route('app.create.ideas.index'));
     $column = $stages['todo']->id;
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$ideas[9]->id}");
+    waitFor($page, "@idea-card-{$ideas[9]->id}");
 
     expect(createIdeasBoardCardSlots($page, $column))->toBe($ideas->take(10)->pluck('id')->all());
     $page->assertSeeIn("@idea-column-count-{$column}", '15');
 
     $page->script("document.querySelector('[data-testid=\"idea-column-scroll-{$column}\"]').scrollTop = 100000");
-    waitForCreateIdeasBoardCondition($page, "document.querySelectorAll('[data-testid=\"idea-column-list-{$column}\"] [data-sortable-idea]').length === 15");
+    waitForCondition($page, "document.querySelectorAll('[data-testid=\"idea-column-list-{$column}\"] [data-sortable-idea]').length === 15");
 
     expect(createIdeasBoardCardSlots($page, $column))->toBe($ideas->pluck('id')->all());
     $page->assertSeeIn("@idea-column-count-{$column}", '15')
@@ -728,9 +697,9 @@ test('dragging a card into a partly loaded column keeps the unloaded ideas in or
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$done[1]->id}");
+    waitFor($page, "@idea-card-{$done[1]->id}");
     $page->drag("@idea-card-{$moving->id}", "@idea-card-{$done[1]->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $moving->refresh()->idea_stage_id === $stages['done']->id);
+    waitForDatabase($page, fn (): bool => $moving->refresh()->idea_stage_id === $stages['done']->id);
 
     $order = Idea::where('idea_stage_id', $stages['done']->id)->orderBy('position')->get(['id', 'position']);
     $shown = createIdeasBoardCardSlots($page, $stages['done']->id);
@@ -739,7 +708,7 @@ test('dragging a card into a partly loaded column keeps the unloaded ideas in or
         ->and($order->pluck('id')->reject(fn (string $id): bool => $id === $moving->id)->values()->all())->toBe($done->pluck('id')->all())
         ->and(array_slice($order->pluck('id')->all(), 0, count($shown)))->toBe($shown)
         ->and($shown)->toContain($moving->id);
-    waitForCreateIdeasBoardCondition($page, "document.querySelector('[data-testid=\"idea-column-count-{$stages['done']->id}\"]').textContent.trim() === '13'");
+    waitForCondition($page, "document.querySelector('[data-testid=\"idea-column-count-{$stages['done']->id}\"]').textContent.trim() === '13'");
     $page->assertSeeIn("@idea-column-count-{$stages['done']->id}", '13')
         ->assertNoJavaScriptErrors();
 });
@@ -750,15 +719,29 @@ test('the gallery stage filter search ignores accents and matches each word in a
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index', ['view' => 'gallery']));
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-filter');
+    waitFor($page, '@ideas-filter-stages-filter');
     $page->click('@ideas-filter-stages-filter');
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-search');
+    waitFor($page, '@ideas-filter-stages-search');
     $page->type('@ideas-filter-stages-search', 'FINAL revisao');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['todo']->id}\"]')");
+    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['todo']->id}\"]')");
 
     $page->assertPresent("@ideas-filter-stages-option-{$stages['in_progress']->id}")
         ->assertMissing("@ideas-filter-stages-option-{$stages['todo']->id}")
         ->assertMissing("@ideas-filter-stages-option-{$stages['done']->id}")
         ->assertMissing('@ideas-filter-stages-unassigned')
+        ->assertNoJavaScriptErrors();
+});
+
+test('on a phone the label filter opens as a sheet', function () {
+    [$user, $workspace] = createIdeasBoardSetup();
+    WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'))->resize(390, 844);
+    waitFor($page, '@ideas-filter-labels-filter');
+    $page->click('@ideas-filter-labels-filter');
+    waitFor($page, '@ideas-filter-labels-sheet');
+
+    $page->assertVisible('@ideas-filter-labels-sheet')
         ->assertNoJavaScriptErrors();
 });

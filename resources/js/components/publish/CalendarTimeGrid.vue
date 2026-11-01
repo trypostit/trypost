@@ -207,7 +207,6 @@ watch(
                 v-for="(column, index) in columns"
                 :key="column.key"
                 class="relative"
-                :class="{ 'border-l border-border-strong': index > 0 }"
             >
                 <div
                     v-for="hour in HOURS"
@@ -219,6 +218,7 @@ watch(
                         'bg-primary/15': isHourOver(index, hour),
                         'border-t border-border-strong':
                             hour > 0 && (index > 0 || hour % 2 === 1),
+                        'border-l border-border-strong': index > 0,
                     }"
                     :style="{ height: `${ROW_HEIGHT}px` }"
                     :data-drop-over="isHourOver(index, hour) || undefined"
@@ -230,7 +230,7 @@ watch(
                         aria-hidden="true"
                     >
                         <span
-                            class="px-2 text-xs leading-[15px] font-medium text-muted-foreground"
+                            class="px-2 text-xs leading-[15px] font-medium whitespace-nowrap text-muted-foreground max-sm:px-1"
                             >{{ date.formatHourOption(hourLabel(hour)) }}</span
                         >
                         <span class="h-px flex-1 bg-border-strong" />

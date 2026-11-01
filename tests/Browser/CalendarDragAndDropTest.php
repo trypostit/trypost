@@ -860,8 +860,7 @@ test('a drag that ends on its own cell sends nothing', function () {
 
 test('a post in the repeated hour of a daylight saving change dropped on its own cell sends nothing', function () {
     [$user, $channel] = calendarDragSetup();
-    $fallBack = CarbonImmutable::parse('first sunday of november this year', 'America/New_York');
-    $fallBack = $fallBack->isFuture() ? $fallBack : CarbonImmutable::parse('first sunday of november next year', 'America/New_York');
+    $fallBack = calendarDragNextDstSunday('first sunday of november');
     $key = $fallBack->format('Y-m-d');
     $at = CarbonImmutable::parse("{$key} 06:30", 'UTC');
     $post = calendarDragPost($channel, $at);
@@ -2837,7 +2836,7 @@ test('an older move refused by the server and answered after a newer one still s
 
 test('a move answered after the view changed is not announced as done without knowing', function () {
     [$user, $channel] = calendarDragSetup();
-    $day = calendarDragDay();
+    $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)->toImmutable();
     $key = $day->format('Y-m-d');
     $post = calendarDragPost($channel, $day->setTime(10, 30));
     $this->actingAs($user);
@@ -2855,6 +2854,7 @@ test('a move answered after the view changed is not announced as done without kn
     $page->click('@calendar-view-month');
     waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
     waitFor($page, '@calendar-month-grid');
+    $page->assertMissing("@calendar-day-{$key}");
 
     $post->forceFill(['status' => PostStatus::PendingApproval])->saveQuietly();
     $page->script('window.__releaseHeldRequests()');

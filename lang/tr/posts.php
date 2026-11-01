@@ -924,6 +924,7 @@ return [
         'title' => 'Yayınla',
         'all_channels' => 'Tüm kanallar',
         'tabs' => [
+            'label' => 'Durum',
             'queue' => 'Kuyruk',
             'approvals' => 'Onaylar',
             'drafts' => 'Taslaklar',

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
-
-import type { PreviewProps } from './types';
+import type { PreviewProps } from '@/components/posts/previews/types';
 
 defineProps<PreviewProps>();
 </script>

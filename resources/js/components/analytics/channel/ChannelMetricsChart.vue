@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     VisAxis,
+    VisAxisSelectors,
     VisGroupedBar,
     VisGroupedBarSelectors,
     VisLine,
@@ -10,35 +11,36 @@ import {
 } from '@unovis/vue';
 import { computed } from 'vue';
 
+import ChannelMetricsTooltip from '@/components/analytics/channel/ChannelMetricsTooltip.vue';
 import {
+    type ChartConfig,
     ChartContainer,
     ChartCrosshair,
     ChartTooltip,
     componentToString,
-    type ChartConfig,
+    numericTick,
 } from '@/components/ui/chart';
-import date from '@/date';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import {
     AXIS_STEPS,
+    axisBucketLabel,
+    axisDomain,
+    axisTickLabels,
     bucketLabel,
+    chartPeriods,
     definedValues,
-    formatSeriesValue,
-    isPercentMetric,
-    monthLabel,
-    niceDomain,
+    shownPeriod,
     type ChartMode,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
-import { formatNumberCompact } from '@/lib/utils';
 import type {
     ChannelMetricSeries,
     MetricSeriesPoint,
+    PublicationPeriod,
     SeriesMetric,
 } from '@/types/analytics';
 
-import ChannelMetricsTooltip from './ChannelMetricsTooltip.vue';
 
-type Period = 'current' | 'previous';
 type ChartPoint = {
     index: number;
     current: MetricSeriesPoint;
@@ -50,8 +52,7 @@ const props = defineProps<{
     series: ChannelMetricSeries;
     specs: SeriesSpec[];
     mode: ChartMode;
-    labels: Partial<Record<SeriesMetric, string>>;
-    axisLabels: Partial<Record<SeriesSpec['axis'], string>>;
+    labels: Record<SeriesMetric, string>;
 }>();
 
 const DASH = [5, 4];
@@ -60,35 +61,22 @@ const tickValues = Array.from(
     (_, index) => index / AXIS_STEPS,
 );
 
-const shownPeriods = computed<Period[]>(() =>
-    props.mode === 'both'
-        ? ['current', 'previous']
-        : [props.mode === 'previous' ? 'previous' : 'current'],
-);
+const shownPeriods = computed((): PublicationPeriod[] => chartPeriods(props.mode));
 
-const domains = computed(() => {
-    const domainFor = (axis: SeriesSpec['axis']) => {
-        const specs = props.specs.filter((spec) => spec.axis === axis);
+/** The metrics drawn on an axis. */
+const axisMetrics = (axis: SeriesSpec['axis']): SeriesMetric[] =>
+    props.specs.filter((spec) => spec.axis === axis).map((spec) => spec.metric);
 
-        if (specs.length === 0) {
-            return null;
-        }
+const domainFor = (axis: SeriesSpec['axis']): { min: number; max: number } | null => {
+    const metrics = axisMetrics(axis);
+    const values = metrics.flatMap((metric) =>
+        shownPeriods.value.flatMap((period) => definedValues(props.series[period], metric)),
+    );
 
-        const values = specs.flatMap((spec) =>
-            shownPeriods.value.flatMap((period) =>
-                definedValues(props.series[period], spec.metric),
-            ),
-        );
+    return axisDomain(metrics, values);
+};
 
-        return niceDomain(
-            values,
-            specs.some((spec) => spec.metric !== 'followers'),
-            specs.some((spec) => isPercentMetric(spec.metric)),
-        );
-    };
-
-    return { left: domainFor('left'), right: domainFor('right') };
-});
+const domains = computed(() => ({ left: domainFor('left'), right: domainFor('right') }));
 
 const normalise = (
     value: number | null | undefined,
@@ -124,14 +112,14 @@ const chartData = computed<ChartPoint[]>(() =>
 );
 
 const accessor =
-    (period: Period, metric: SeriesMetric) =>
+    (period: PublicationPeriod, metric: SeriesMetric) =>
     (point: ChartPoint): number | undefined => {
         const value = point[`${period}_${metric}`];
 
         return typeof value === 'number' ? value : undefined;
     };
 const barAccessor =
-    (period: Period, metric: SeriesMetric) =>
+    (period: PublicationPeriod, metric: SeriesMetric) =>
     (point: ChartPoint): number =>
         accessor(period, metric)(point) ?? 0;
 const xAccessor = (point: ChartPoint): number => point.index;
@@ -143,7 +131,7 @@ type Layer = {
     key: string;
     spec: SeriesSpec;
     kind: 'grouped' | 'bar' | 'line';
-    period: Period;
+    period: PublicationPeriod;
     dashed: boolean;
 };
 
@@ -191,38 +179,42 @@ const svgDefs = computed(() =>
         .join(''),
 );
 
-const tickLabel =
-    (axis: SeriesSpec['axis']) =>
-    (tick: number | Date): string => {
-        const domain = domains.value[axis];
+/** Each axis' tick labels, bottom up, read by the axis' tick position. */
+const axisLabels = computed((): Record<SeriesSpec['axis'], string[]> => ({
+    left: tickLabelsFor('left'),
+    right: tickLabelsFor('right'),
+}));
 
-        if (!domain || typeof tick !== 'number') {
-            return '';
-        }
+const tickLabelsFor = (axis: SeriesSpec['axis']): string[] => {
+    const domain = domains.value[axis];
 
-        const spec = props.specs.find((candidate) => candidate.axis === axis);
-        const value = domain.min + tick * (domain.max - domain.min);
+    if (!domain) {
+        return [];
+    }
 
-        return spec && isPercentMetric(spec.metric)
-            ? formatSeriesValue(value, spec.metric)
-            : formatNumberCompact(value, 2);
-    };
+    return axisTickLabels(domain, axisMetrics(axis));
+};
 
-const xTick = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const point =
-        props.mode === 'previous'
-            ? props.series.previous[index]
-            : props.series.current[index];
+const tickLabel = (axis: SeriesSpec['axis']) =>
+    numericTick(
+        (tick): string =>
+            axisLabels.value[axis][Math.round(tick * AXIS_STEPS)] ?? '',
+    );
+
+/** Names each value tick by its axis, so a test reads the labels the axis prints. */
+const axisTickAttributes = (axis: SeriesSpec['axis']): Record<string, Record<string, string>> => ({
+    [VisAxisSelectors.tick]: { 'data-testid': `insights-metrics-${axis}-tick` },
+});
+
+const xTick = numericTick((tick): string => {
+    const point = props.series[shownPeriod(props.mode)][Math.round(tick)];
 
     if (!point) {
         return '';
     }
 
-    return props.series.resolution === 'monthly'
-        ? monthLabel(point.start)
-        : date.formatMonthDay(point.start);
-};
+    return axisBucketLabel(point, props.series.resolution);
+});
 
 const dateLabel = (point: MetricSeriesPoint | undefined): string =>
     bucketLabel(point, props.series.resolution);
@@ -231,18 +223,19 @@ const config = computed<ChartConfig>(() =>
     Object.fromEntries(
         props.specs.map((spec) => [
             spec.metric,
-            { label: props.labels[spec.metric] ?? '', color: spec.color },
+            { label: props.labels[spec.metric], color: spec.color },
         ]),
     ),
 );
 
+const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(config.value, ChannelMetricsTooltip, {
         specs: props.specs,
         labels: props.labels,
         mode: props.mode,
         dateLabel,
-    }),
+    }, appContext),
 );
 
 const xDomain = computed<[number, number]>(() => [
@@ -256,11 +249,22 @@ const barAttributes = {
 const groupedBarAttributes = {
     [VisGroupedBarSelectors.bar]: { 'data-testid': 'insights-metrics-bar' },
 };
+/** Room for an axis' tick labels, and the plain edge on the right when no metric uses that axis. */
+const MARGIN = { top: 12, bottom: 28, axis: 56, edge: 12 };
+
+const rightMargin = (): number => {
+    if (domains.value.right) {
+        return MARGIN.axis;
+    }
+
+    return MARGIN.edge;
+};
+
 const margin = computed(() => ({
-    top: 12,
-    right: domains.value.right ? 64 : 12,
-    bottom: 28,
-    left: 64,
+    top: MARGIN.top,
+    right: rightMargin(),
+    bottom: MARGIN.bottom,
+    left: MARGIN.axis,
 }));
 const numTicks = computed(() =>
     Math.min(props.series.current.length, 6),
@@ -334,9 +338,7 @@ const numTicks = computed(() =>
                 type="y"
                 :tick-format="tickLabel('left')"
                 :tick-values="tickValues"
-                :label="axisLabels.left"
-                label-font-size="11px"
-                label-color="var(--muted-foreground)"
+                :attributes="axisTickAttributes('left')"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
@@ -367,9 +369,7 @@ const numTicks = computed(() =>
                     position="right"
                     :tick-format="tickLabel('right')"
                     :tick-values="tickValues"
-                    :label="axisLabels.right"
-                    label-font-size="11px"
-                    label-color="var(--muted-foreground)"
+                    :attributes="axisTickAttributes('right')"
                     :grid-line="false"
                     :domain-line="false"
                     :tick-line="false"

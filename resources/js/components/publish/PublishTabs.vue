@@ -46,7 +46,10 @@ const closeSelect = (): void => {
                     <IconChevronDown class="size-4 text-muted-foreground" />
                 </button>
             </template>
-            <nav class="flex flex-col gap-1" :aria-label="$t('posts.publish.title')">
+            <nav class="flex flex-col gap-1" :aria-label="$t('posts.publish.tabs.label')">
+                <p class="px-2 pt-1 pb-0.5 text-xs text-muted-foreground">
+                    {{ $t('posts.publish.tabs.label') }}
+                </p>
                 <Link
                     v-for="key in tabs"
                     :key="key"

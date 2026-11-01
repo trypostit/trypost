@@ -22,7 +22,7 @@ test('the typescript defuser agrees with the php one on every corpus entry', fun
 
     $process = new Process([
         'node',
-        base_path('tests/fixtures/defuse-x-links-harness.js'),
+        base_path('tests/fixtures/defuse-x-links-harness.ts'),
         $tldsPath,
         resource_path('js/lib/defuseXLinks.ts'),
         $corpusPath,

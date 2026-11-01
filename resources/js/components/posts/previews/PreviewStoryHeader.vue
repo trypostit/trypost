@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
-
-import type { PreviewAccount } from './types';
+import type { PreviewAccount } from '@/components/posts/previews/types';
 
 defineProps<{
     account: PreviewAccount;

@@ -924,6 +924,7 @@ return [
         'title' => 'Publikuj',
         'all_channels' => 'Wszystkie kanały',
         'tabs' => [
+            'label' => 'Status',
             'queue' => 'Kolejka',
             'approvals' => 'Zatwierdzenia',
             'drafts' => 'Wersje robocze',

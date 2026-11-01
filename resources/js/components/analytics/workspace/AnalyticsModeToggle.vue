@@ -18,7 +18,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 <template>
     <div
-        class="inline-flex items-center gap-1 rounded-lg border border-border-strong p-1"
+        class="inline-flex items-center gap-1 rounded-lg border border-border-strong p-1 max-sm:flex max-sm:w-full"
         role="group"
         :aria-label="trans(label)"
     >
@@ -27,7 +27,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
             :key="option.mode"
             type="button"
             :data-testid="option.test"
-            class="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium whitespace-nowrap transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            class="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium whitespace-nowrap transition-control max-sm:flex-1 max-sm:justify-center max-sm:px-1.5 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
             :class="
                 modelValue === option.mode
                     ? 'bg-primary-selected text-primary-text'
@@ -39,7 +39,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
             <component
                 :is="option.icon"
                 v-if="option.icon"
-                class="size-3.5"
+                class="size-3.5 max-sm:hidden"
                 aria-hidden="true"
             />
             {{ trans(option.label) }}
