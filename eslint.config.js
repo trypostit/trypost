@@ -41,7 +41,7 @@ export default defineConfigWithVueTs(
                 {
                     patterns: [
                         {
-                            regex: '^\\.{1,2}/(?!css/)',
+                            group: ['./*', '../*'],
                             message: "Import through the '@/' alias, e.g. '@/lib/utils'.",
                         },
                     ],
