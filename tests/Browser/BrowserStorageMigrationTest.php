@@ -30,7 +30,7 @@ function seedLegacyBrowserStorage(mixed $page, array $keys): void
     $page->script(sprintf('(() => { Object.entries(%s).forEach(([key, value]) => localStorage.setItem(key, value)); })()', json_encode($keys)));
 }
 
-test('the earlier keys move into the user\'s storage on the first load, and every earlier key is removed', function () {
+test('the earlier keys move into the user\'s storage on the first load and are removed, and no other key is touched', function () {
     [$user, $workspace] = browserStorageMigrationUser();
     $this->actingAs($user);
     $draft = ['version' => 1, 'savedAt' => now()->toISOString(), 'content' => 'Unfinished', 'overrides' => (object) [], 'accountIds' => [], 'media' => [], 'labelIds' => [], 'scheduleMode' => null, 'scheduledAt' => null];
@@ -50,6 +50,8 @@ test('the earlier keys move into the user\'s storage on the first load, and ever
         "trypost:composer:autosave:{$user->id}:{$workspace->id}" => json_encode($draft),
         'trypost:composer:autosave:someone-else:their-workspace' => json_encode($draft),
         'calendar.skipCustomTimeConfirm.someone-else' => 'true',
+        'insights.columns.not-a-network' => '["reach"]',
+        'publish.tz.unrelated' => 'kept',
     ]);
     $page->refresh();
     waitFor($page, '@settings-sidebar');
@@ -64,7 +66,12 @@ test('the earlier keys move into the user\'s storage on the first load, and ever
         ->and(browserStorageItem($page, $user, 'composer.lastUsedAccounts', $workspace->id))->toBe(['channel-a'])
         ->and(browserStorageItem($page, $user, 'commandPalette.recent', $workspace->id))->toBe(['go-calendar'])
         ->and(browserStorageItem($page, $user, 'composer.autosave', $workspace->id)['content'] ?? null)->toBe('Unfinished')
-        ->and($page->script("Object.keys(localStorage).filter((key) => key !== 'trypost:{$user->id}' && (key.startsWith('trypost') || key.startsWith('publish.') || key.startsWith('insights.') || key.startsWith('calendar.')))"))->toBe([]);
+        ->and($page->script("Object.keys(localStorage).filter((key) => key !== 'trypost:{$user->id}').sort()"))->toBe([
+            'calendar.skipCustomTimeConfirm.someone-else',
+            'insights.columns.not-a-network',
+            'publish.tz.unrelated',
+            'trypost:composer:autosave:someone-else:their-workspace',
+        ]);
     $page->assertNoJavaScriptErrors();
 });
 
