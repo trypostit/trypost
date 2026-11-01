@@ -67,13 +67,6 @@ export const CHART = {
 /** `MetricChange`'s tones, as the app's text tokens. */
 export const CHANGE_TOKENS = { up: 'var(--success-text)', down: 'var(--destructive-text)', flat: 'var(--muted-foreground)' } as const;
 
-/** Tabler's trending icons on their 24px grid, as `MetricChange` draws them. */
-export const CHANGE_ICONS = {
-    up: ['M3 17l6 -6l4 4l8 -8', 'M14 7l7 0l0 7'],
-    down: ['M3 7l6 6l4 -4l8 8', 'M21 10l0 7l-7 0'],
-    flat: ['M5 12l14 0'],
-} as const;
-
 /** The white surface, inset from the tint like a cover's panel, over the signature's band. */
 export const PANEL = { x: 56, y: 48, radius: 24, padding: 48, band: 92 };
 

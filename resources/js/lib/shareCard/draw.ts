@@ -1,8 +1,12 @@
+import { IconMinus, IconTrendingDown, IconTrendingUp } from '@tabler/icons-vue';
+import type { Component } from 'vue';
+
 import type { MetricDelta } from '@/lib/channelMetrics';
 import { changeColor, gridColor, muted } from '@/lib/shareCard/colors';
 import { traceMonotone } from '@/lib/shareCard/curve';
+import { iconPaths } from '@/lib/shareCard/icons';
 import { type TextStyle, widest, writeText } from '@/lib/shareCard/text';
-import { CHANGE_ICONS, CHANGE_TOKENS, CHART, PLOT, sans } from '@/lib/shareCard/theme';
+import { CHANGE_TOKENS, CHART, PLOT, sans } from '@/lib/shareCard/theme';
 import type { Box, Point, SharePoint } from '@/lib/shareCard/types';
 import { distinctCountLabels } from '@/lib/utils';
 
@@ -15,6 +19,13 @@ export const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: P
 
 /** `MetricChange`'s trend icon: its size and the gap after it as shares of the label's, and its stroke on the 24px icon grid. */
 export const CHANGE_ICON = { scale: 1.15, gap: 0.3, stroke: 2.5, grid: 24 };
+
+/** The trending icons `MetricChange` draws for each tone. */
+const CHANGE_ICONS: Record<keyof typeof CHANGE_TOKENS, Component> = {
+    up: IconTrendingUp,
+    down: IconTrendingDown,
+    flat: IconMinus,
+};
 
 /** How far an anchor sits from a change's left edge, as a share of its width. */
 const ALIGN_SHIFT = { left: 0, right: 1 } as const;
@@ -61,7 +72,7 @@ export const paintChange = (
     context.lineWidth = CHANGE_ICON.stroke;
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    CHANGE_ICONS[direction].forEach((path) => context.stroke(new Path2D(path)));
+    iconPaths(CHANGE_ICONS[direction]).forEach((path) => context.stroke(new Path2D(path)));
     context.restore();
 
     writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
