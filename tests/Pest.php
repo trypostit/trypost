@@ -829,13 +829,6 @@ function waitForPath(mixed $page, string $path): void
 }
 
 /**
- * Records what every canvas on the page draws from now on: each text with
- * its direction, place, width, alignment and font (`window.__drawn`), each image's address
- * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
- * the share card's hatch for a previous period). A canvas cannot be read back
- * as text, so a test of a painted card reads these instead.
- */
-/**
  * The JS expression that reads one item of a user's browser storage
  * (`trypost:<user id>`, see `resources/js/lib/browserStorage.ts`): from `user`,
  * or from one workspace's block when `$workspaceId` is given.
@@ -879,6 +872,13 @@ function setBrowserStorageItem(mixed $page, User $user, string $item, mixed $val
     JS);
 }
 
+/**
+ * Records what every canvas on the page draws from now on: each text with
+ * its direction, place, width, alignment and font (`window.__drawn`), each image's address
+ * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
+ * the share card's hatch for a previous period). A canvas cannot be read back
+ * as text, so a test of a painted card reads these instead.
+ */
 function recordCanvasDrawing(mixed $page): void
 {
     $page->script(<<<'JS'

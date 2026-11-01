@@ -387,6 +387,8 @@ test('another user\'s choice to skip the dialog on this browser does not skip it
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$post->id}");
     setBrowserStorageItem($page, $other, 'calendar.skipCustomTimeConfirm', true);
+    $page->refresh();
+    waitFor($page, "@calendar-post-{$post->id}");
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@calendar-custom-time-dialog');
 

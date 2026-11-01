@@ -10,7 +10,8 @@ import type {
  * Moves what the app kept in its earlier localStorage keys (#461) into the
  * signed-in user's `trypost:<user id>`, then removes every earlier key, any
  * user's, so nothing is lost and no old draft stays behind. A value already
- * in the new storage wins. Does nothing once the earlier keys are gone:
+ * in the new storage wins. Waits for a page with a current workspace, where
+ * the workspace items have a home. Does nothing once the earlier keys are gone:
  * remove this file a release or two after it ships.
  */
 
@@ -40,7 +41,7 @@ const parsed = (raw: string): unknown => {
 const movedItems = (
     legacy: Map<string, string>,
     userId: string,
-    workspaceId: string | undefined,
+    workspaceId: string,
 ): Pick<BrowserStorage, 'user' | 'workspaces'> => {
     const user: Record<string, unknown> = {};
     const workspaces: Record<string, Record<string, unknown>> = {};
@@ -80,8 +81,9 @@ const movedItems = (
 
 export const moveLegacyBrowserStorage = (auth: Auth | undefined): void => {
     const userId = auth?.user?.id;
+    const workspaceId = auth?.currentWorkspace?.id;
 
-    if (!userId) {
+    if (!userId || !workspaceId) {
         return;
     }
 
@@ -96,7 +98,7 @@ export const moveLegacyBrowserStorage = (auth: Auth | undefined): void => {
             return;
         }
 
-        const moved = movedItems(legacy, userId, auth.currentWorkspace?.id);
+        const moved = movedItems(legacy, userId, workspaceId);
 
         updateBrowserStorage(userId, (storage) => ({
             ...storage,

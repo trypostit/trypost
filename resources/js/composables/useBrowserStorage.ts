@@ -1,5 +1,4 @@
 import { usePage } from '@inertiajs/vue3';
-import { useEventListener } from '@vueuse/core';
 import {
     computed,
     shallowRef,
@@ -14,10 +13,14 @@ import {
     writeUserItem,
     writeWorkspaceItem,
 } from '@/lib/browserStorage';
+import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import type { SharedData } from '@/types';
 import type { UserStorage, WorkspaceStorage } from '@/types/browser-storage';
 
-/** One ref per stored item in this tab, so every component using it sees the others' writes. */
+/**
+ * One ref per stored item in this tab, read once and followed across tabs by
+ * one listener, however many components use it (a list's every card does).
+ */
 const shared = new Map<string, ShallowRef<unknown>>();
 
 /** Whether a stored value has the shape of its default (a list, a flag, a text), so a hand-edited one never breaks its reader. */
@@ -30,8 +33,8 @@ const hasShapeOf = (value: unknown, fallback: unknown): boolean => {
 };
 
 /**
- * An item of the user's browser storage as a ref: read when a component
- * mounts, saved on set, and kept in step with a change made in another tab.
+ * An item of the user's browser storage as a ref: saved on set, and kept in
+ * step with a change made in another tab.
  */
 const useStoredItem = <Value>(
     id: string,
@@ -50,23 +53,25 @@ const useStoredItem = <Value>(
         return fallback;
     };
 
-    const stored = shared.get(id) ?? shallowRef<unknown>();
-    shared.set(id, stored);
-    stored.value = current();
+    if (!shared.has(id)) {
+        const created = shallowRef<unknown>(current());
 
-    const followOtherTabs = (event: StorageEvent): void => {
-        if (event.key !== browserStorageKey(userId)) {
-            return;
-        }
+        window.addEventListener('storage', (event) => {
+            if (event.key !== browserStorageKey(userId)) {
+                return;
+            }
 
-        const next = current();
+            const next = current();
 
-        if (JSON.stringify(next) !== JSON.stringify(stored.value)) {
-            stored.value = next;
-        }
-    };
+            if (JSON.stringify(next) !== JSON.stringify(created.value)) {
+                created.value = next;
+            }
+        });
 
-    useEventListener(window, 'storage', followOtherTabs);
+        shared.set(id, created);
+    }
+
+    const stored = shared.get(id) as ShallowRef<unknown>;
 
     return computed({
         get: () => stored.value as Value,
@@ -77,12 +82,21 @@ const useStoredItem = <Value>(
     });
 };
 
+/** The signed-in user, after the earlier keys moved into their storage. */
+const storageAuth = (): SharedData['auth'] => {
+    const { auth } = usePage<SharedData>().props;
+
+    moveLegacyBrowserStorage(auth);
+
+    return auth;
+};
+
 /** An item the signed-in user keeps in this browser, in every workspace. */
 export const useUserStorage = <Key extends keyof UserStorage>(
     key: Key,
     fallback: UserStorage[Key],
 ): WritableComputedRef<UserStorage[Key]> => {
-    const userId = usePage<SharedData>().props.auth.user.id;
+    const userId = storageAuth().user.id;
 
     return useStoredItem(
         `user|${userId}|${key}`,
@@ -98,7 +112,7 @@ export const useWorkspaceStorage = <Key extends keyof WorkspaceStorage>(
     key: Key,
     fallback: WorkspaceStorage[Key],
 ): WritableComputedRef<WorkspaceStorage[Key]> => {
-    const { user, currentWorkspace } = usePage<SharedData>().props.auth;
+    const { user, currentWorkspace } = storageAuth();
     const workspaceId = currentWorkspace?.id;
 
     const read = (): WorkspaceStorage[Key] | undefined => {

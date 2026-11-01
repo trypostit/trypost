@@ -13,6 +13,7 @@ import {
     updateBrowserStorage,
     writeWorkspaceItem,
 } from '@/lib/browserStorage';
+import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import { classify, MediaType } from '@/lib/mediaType';
 import type { SharedData } from '@/types';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
@@ -147,7 +148,9 @@ export const useComposerAutosave = (): {
     flush: () => void;
     clear: () => void;
 } => {
-    const { user, currentWorkspace } = usePage<SharedData>().props.auth;
+    const { auth } = usePage<SharedData>().props;
+    moveLegacyBrowserStorage(auth);
+    const { user, currentWorkspace } = auth;
     const workspaceId = currentWorkspace?.id;
     const saved = ref<AutosaveSnapshot | null>(read(user.id, workspaceId));
     let pending: AutosaveSnapshot | null = null;

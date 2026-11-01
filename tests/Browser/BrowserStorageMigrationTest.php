@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -83,19 +84,62 @@ test('a value already in the user\'s storage wins over the earlier key', functio
     $page->assertNoJavaScriptErrors();
 });
 
-test('the earlier keys move in when the user signs in, without a reload', function () {
-    [$user] = browserStorageMigrationUser();
+test('the earlier keys move in when the user signs in, and the first page already shows them', function () {
+    [$user, $workspace] = browserStorageMigrationUser();
     $user->update(['email' => 'storage-migration@example.com']);
+    $channel = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $workspace->id,
+        'display_name' => 'Acme LinkedIn',
+    ]);
 
     $page = visit(route('login'));
     waitFor($page, '@login-email');
-    seedLegacyBrowserStorage($page, ['trypost.emoji.recents' => '["🚀"]']);
+    seedLegacyBrowserStorage($page, [
+        'trypost.emoji.recents' => '["🚀"]',
+        "trypost.command-palette.recent.{$user->id}" => json_encode(["channel-{$channel->id}"]),
+    ]);
 
     $page->type('@login-email', 'storage-migration@example.com')
         ->type('@login-password', 'password')
         ->click('@login-submit');
     waitForCondition($page, "localStorage.getItem('trypost.emoji.recents') === null");
+    waitFor($page, '@app-content-shell');
+    $page->keys('@app-content-shell', 'ControlOrMeta+k');
+    waitFor($page, '@command-palette-input');
 
     expect(browserStorageItem($page, $user, 'emoji.recents'))->toBe(['🚀']);
+    $page->assertSeeIn("@command-palette-recent-channel-{$channel->id}", 'Acme LinkedIn')
+        ->assertNoJavaScriptErrors();
+});
+
+test('without a current workspace the earlier keys wait for one', function () {
+    [$user] = browserStorageMigrationUser();
+    $user->update(['current_workspace_id' => null]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.settings.preferences'));
+    waitFor($page, '@settings-sidebar');
+    seedLegacyBrowserStorage($page, ['trypost:composer:last-used-accounts' => '["channel-a"]']);
+    $page->refresh();
+    waitFor($page, '@settings-sidebar');
+
+    expect($page->script("localStorage.getItem('trypost:composer:last-used-accounts')"))->toBe('["channel-a"]');
     $page->assertNoJavaScriptErrors();
+});
+
+test('an unfinished post from the earlier key is offered back in the composer', function () {
+    [$user, $workspace] = browserStorageMigrationUser();
+    $this->actingAs($user);
+    $draft = ['version' => 1, 'savedAt' => now()->toISOString(), 'content' => 'Written before the update', 'overrides' => (object) [], 'accountIds' => [], 'media' => [], 'labelIds' => [], 'scheduleMode' => null, 'scheduledAt' => null];
+
+    $page = visit(route('app.posts.index'));
+    waitFor($page, '@posts-new-post');
+    seedLegacyBrowserStorage($page, ["trypost:composer:autosave:{$user->id}:{$workspace->id}" => json_encode($draft)]);
+    $page->refresh();
+    waitFor($page, '@posts-new-post');
+    $page->click('@posts-new-post');
+    waitFor($page, '@composer-resume-dialog');
+
+    $page->assertSeeIn('@composer-resume-preview', 'Written before the update')
+        ->assertNoJavaScriptErrors();
 });

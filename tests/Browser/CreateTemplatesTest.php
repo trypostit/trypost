@@ -257,11 +257,11 @@ test('a picked emoji is kept among the user\'s recents in this browser', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-new');
+    waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForState($page, '@template-editor', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
     $page->click('@template-editor-emoji');
-    waitForCreateTemplatesTestId($page, 'emoji-picker-option');
+    waitFor($page, '@emoji-picker-option');
     $emoji = $page->script(<<<'JS'
         (() => {
             const option = document.querySelector('[data-testid="emoji-picker-option"]');
@@ -274,12 +274,10 @@ test('a picked emoji is kept among the user\'s recents in this browser', functio
     expect(browserStorageItem($page, $user, 'emoji.recents'))->toBe([$emoji]);
 
     $page->navigate(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-new');
+    waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForState($page, '@template-editor', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
     $page->click('@template-editor-emoji');
-    waitForCreateTemplatesTestId($page, 'emoji-picker-option');
-
     waitFor($page, '@emoji-picker-recent');
 
     $page->assertSeeIn('@emoji-picker-recent', __('posts.edit.emoji_picker.recent'))
