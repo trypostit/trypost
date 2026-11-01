@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
+import Github from '@thesvg/vue/github';
+import Google from '@thesvg/vue/google';
 import { ref } from 'vue';
 
 import ConnectedAccountController from '@/actions/App/Http/Controllers/App/Settings/ConnectedAccountController';
@@ -12,7 +14,6 @@ import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { SOCIAL_PROVIDER_LOGOS } from '@/lib/brandLogos';
 import { connect } from '@/routes/app/profile/connected-accounts';
 import type { SocialProvider } from '@/types';
 
@@ -150,11 +151,17 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     :data-test="`connected-account-${account.provider}`"
                 >
                     <template #media>
-                        <component
-                            :is="SOCIAL_PROVIDER_LOGOS[account.provider].logo"
+                        <Google
+                            v-if="account.provider === 'google'"
                             aria-hidden="true"
-                            :class="['size-7 shrink-0 text-foreground', SOCIAL_PROVIDER_LOGOS[account.provider].logoClass]"
-                            :data-testid="`connected-account-icon-${account.provider}`"
+                            class="size-7 shrink-0"
+                            data-testid="connected-account-icon-google"
+                        />
+                        <Github
+                            v-else
+                            aria-hidden="true"
+                            class="size-7 shrink-0 text-foreground [&_path]:fill-current"
+                            data-testid="connected-account-icon-github"
                         />
                     </template>
                     <p

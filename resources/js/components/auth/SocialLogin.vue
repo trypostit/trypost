@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import Github from '@thesvg/vue/github';
+import Google from '@thesvg/vue/google';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { useGuestLocale } from '@/composables/useGuestLocale';
-import { SOCIAL_PROVIDER_LOGOS } from '@/lib/brandLogos';
 import { detectPreferences } from '@/lib/detectPreferences';
 import { redirect as githubRedirect } from '@/routes/auth/github';
 import { redirect as googleRedirect } from '@/routes/auth/google';
@@ -52,11 +53,7 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="googleUrl"
             >
-                <component
-                    :is="SOCIAL_PROVIDER_LOGOS.google.logo"
-                    aria-hidden="true"
-                    :class="['size-4 text-foreground', SOCIAL_PROVIDER_LOGOS.google.logoClass]"
-                />
+                <Google aria-hidden="true" class="size-4" />
                 {{
                     mode === 'login'
                         ? $t('auth.google_login')
@@ -72,10 +69,9 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="githubUrl"
             >
-                <component
-                    :is="SOCIAL_PROVIDER_LOGOS.github.logo"
+                <Github
                     aria-hidden="true"
-                    :class="['size-4 text-foreground', SOCIAL_PROVIDER_LOGOS.github.logoClass]"
+                    class="size-4 text-foreground [&_path]:fill-current"
                 />
                 {{
                     mode === 'login'
