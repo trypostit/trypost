@@ -38,7 +38,7 @@ const hasShapeOf = <Value>(value: unknown, fallback: Value): value is Value => {
  * An item of the user's browser storage as a ref: saved on set, and kept in
  * step with a change made in another tab.
  */
-const useStoredItem = <Value>(
+const storedItem = <Value>(
     id: string,
     userId: string,
     read: () => unknown,
@@ -86,58 +86,71 @@ const useStoredItem = <Value>(
     });
 };
 
-/** The signed-in user, after the earlier keys moved into their storage. */
-const storageAuth = (): SharedData['auth'] => {
-    const { auth } = usePage<SharedData>().props;
+/**
+ * The item of the page's current user and workspace: a component that stays
+ * mounted while they change (the layout's command palette, when switching
+ * workspace keeps the page) reads and writes the new one.
+ */
+const useCurrentItem = <Value>(
+    item: (auth: SharedData['auth']) => WritableComputedRef<Value>,
+): WritableComputedRef<Value> => {
+    const page = usePage<SharedData>();
+    const current = computed(() => {
+        moveLegacyBrowserStorage(page.props.auth);
 
-    moveLegacyBrowserStorage(auth);
+        return item(page.props.auth);
+    });
 
-    return auth;
+    return computed({
+        get: () => current.value.value,
+        set: (value) => {
+            current.value.value = value;
+        },
+    });
 };
 
 /** An item the signed-in user keeps in this browser, in every workspace. */
 export const useUserStorage = <Key extends keyof UserStorage>(
     key: Key,
     fallback: UserStorage[Key],
-): WritableComputedRef<UserStorage[Key]> => {
-    const userId = storageAuth().user.id;
-
-    return useStoredItem(
-        `user|${userId}|${key}`,
-        userId,
-        () => readUserItem(userId, key),
-        (value) => writeUserItem(userId, key, value),
-        fallback,
+): WritableComputedRef<UserStorage[Key]> =>
+    useCurrentItem(({ user }) =>
+        storedItem(
+            `user|${user.id}|${key}`,
+            user.id,
+            () => readUserItem(user.id, key),
+            (value) => writeUserItem(user.id, key, value),
+            fallback,
+        ),
     );
-};
 
 /** An item the signed-in user keeps in this browser for the current workspace; without one, nothing is kept. */
 export const useWorkspaceStorage = <Key extends keyof WorkspaceStorage>(
     key: Key,
     fallback: WorkspaceStorage[Key],
-): WritableComputedRef<WorkspaceStorage[Key]> => {
-    const { user, currentWorkspace } = storageAuth();
-    const workspaceId = currentWorkspace?.id;
+): WritableComputedRef<WorkspaceStorage[Key]> =>
+    useCurrentItem(({ user, currentWorkspace }) => {
+        const workspaceId = currentWorkspace?.id;
 
-    const read = (): unknown => {
-        if (!workspaceId) {
-            return undefined;
-        }
+        const read = (): unknown => {
+            if (!workspaceId) {
+                return undefined;
+            }
 
-        return readWorkspaceItem(user.id, workspaceId, key);
-    };
+            return readWorkspaceItem(user.id, workspaceId, key);
+        };
 
-    const write = (value: WorkspaceStorage[Key]): void => {
-        if (workspaceId) {
-            writeWorkspaceItem(user.id, workspaceId, key, value);
-        }
-    };
+        const write = (value: WorkspaceStorage[Key]): void => {
+            if (workspaceId) {
+                writeWorkspaceItem(user.id, workspaceId, key, value);
+            }
+        };
 
-    return useStoredItem(
-        `workspace|${user.id}|${workspaceId}|${key}`,
-        user.id,
-        read,
-        write,
-        fallback,
-    );
-};
+        return storedItem(
+            `workspace|${user.id}|${workspaceId}|${key}`,
+            user.id,
+            read,
+            write,
+            fallback,
+        );
+    });

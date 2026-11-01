@@ -29,6 +29,7 @@ function calendarDragSetup(string $timezone = 'UTC', ?string $slotTime = null): 
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
+    connectAiTo($user->fresh());
 
     $schedule = PostingSchedule::empty();
 
