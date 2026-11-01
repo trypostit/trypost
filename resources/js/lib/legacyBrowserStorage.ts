@@ -44,6 +44,7 @@ const LEGACY_PLATFORMS = [
     'google_business',
 ] as const;
 
+/** An earlier JSON value, typed as the item it becomes: its reader checks the shape before use. */
 const parsed = <Value>(raw: string): Value | undefined => {
     try {
         return JSON.parse(raw) as Value;

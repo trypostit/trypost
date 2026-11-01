@@ -20,11 +20,13 @@ import type { UserStorage, WorkspaceStorage } from '@/types/browser-storage';
 /**
  * One ref per stored item in this tab, read once and followed across tabs by
  * one listener, however many components use it (a list's every card does).
+ * Items of every type share the map, so each ref is typed again by the item it
+ * was created for (its id names it).
  */
 const shared = new Map<string, ShallowRef<unknown>>();
 
 /** Whether a stored value has the shape of its default (a list, a flag, a text), so a hand-edited one never breaks its reader. */
-const hasShapeOf = (value: unknown, fallback: unknown): boolean => {
+const hasShapeOf = <Value>(value: unknown, fallback: Value): value is Value => {
     if (Array.isArray(fallback)) {
         return Array.isArray(value);
     }
@@ -47,13 +49,13 @@ const useStoredItem = <Value>(
         const value = read();
 
         if (hasShapeOf(value, fallback)) {
-            return value as Value;
+            return value;
         }
 
         return fallback;
     };
 
-    if (!shared.has(id)) {
+    const followed = (): ShallowRef<unknown> => {
         const created = shallowRef<unknown>(current());
 
         window.addEventListener('storage', (event) => {
@@ -69,9 +71,11 @@ const useStoredItem = <Value>(
         });
 
         shared.set(id, created);
-    }
 
-    const stored = shared.get(id) as ShallowRef<unknown>;
+        return created;
+    };
+
+    const stored = shared.get(id) ?? followed();
 
     return computed({
         get: () => stored.value as Value,
@@ -115,7 +119,7 @@ export const useWorkspaceStorage = <Key extends keyof WorkspaceStorage>(
     const { user, currentWorkspace } = storageAuth();
     const workspaceId = currentWorkspace?.id;
 
-    const read = (): WorkspaceStorage[Key] | undefined => {
+    const read = (): unknown => {
         if (!workspaceId) {
             return undefined;
         }

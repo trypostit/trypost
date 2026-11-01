@@ -23,12 +23,15 @@ export interface WorkspaceStorage {
     'composer.autosave': AutosaveSnapshot;
 }
 
+/** The shape of the stored value; a value of another version reads as empty. */
+export const BROWSER_STORAGE_VERSION = 1;
+
 /**
  * The value of a user's one localStorage key, `trypost:<user id>`: `user`
  * applies in every workspace, `workspaces` holds what only makes sense in one.
  */
 export interface BrowserStorage {
-    version: 1;
+    version: typeof BROWSER_STORAGE_VERSION;
     user: Partial<UserStorage>;
     workspaces: Record<string, Partial<WorkspaceStorage>>;
 }
