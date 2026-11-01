@@ -1,4 +1,8 @@
-import type { BrowserStorage } from '@/types/browser-storage';
+import type {
+    BrowserStorage,
+    UserStorage,
+    WorkspaceStorage,
+} from '@/types/browser-storage';
 
 export const browserStorageKey = (userId: string): string => `trypost:${userId}`;
 
@@ -34,4 +38,44 @@ export const updateBrowserStorage = (
     } catch {
         return;
     }
+};
+
+export const readUserItem = <Key extends keyof UserStorage>(
+    userId: string,
+    key: Key,
+): UserStorage[Key] | undefined => readBrowserStorage(userId).user[key];
+
+/** Saves an item for every workspace; `undefined` removes it. */
+export const writeUserItem = <Key extends keyof UserStorage>(
+    userId: string,
+    key: Key,
+    value: UserStorage[Key] | undefined,
+): void => {
+    updateBrowserStorage(userId, (storage) => ({
+        ...storage,
+        user: { ...storage.user, [key]: value },
+    }));
+};
+
+export const readWorkspaceItem = <Key extends keyof WorkspaceStorage>(
+    userId: string,
+    workspaceId: string,
+    key: Key,
+): WorkspaceStorage[Key] | undefined =>
+    readBrowserStorage(userId).workspaces[workspaceId]?.[key];
+
+/** Saves an item for one workspace; `undefined` removes it. */
+export const writeWorkspaceItem = <Key extends keyof WorkspaceStorage>(
+    userId: string,
+    workspaceId: string,
+    key: Key,
+    value: WorkspaceStorage[Key] | undefined,
+): void => {
+    updateBrowserStorage(userId, (storage) => ({
+        ...storage,
+        workspaces: {
+            ...storage.workspaces,
+            [workspaceId]: { ...storage.workspaces[workspaceId], [key]: value },
+        },
+    }));
 };

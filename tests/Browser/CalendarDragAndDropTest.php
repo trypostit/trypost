@@ -360,7 +360,7 @@ test('ticking the box and confirming stores the choice and the next drop skips t
     $page->click('@calendar-custom-time-confirm');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm.{$user->id}')"))->toBe('true');
+    expect(browserStorageItem($page, $user, 'calendar.skipCustomTimeConfirm'))->toBeTrue();
     waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->setTime(9, 25)));
 
     waitFor($page, "@calendar-post-{$second->id}");
@@ -386,7 +386,7 @@ test('another user\'s choice to skip the dialog on this browser does not skip it
 
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$post->id}");
-    $page->script("localStorage.setItem('calendar.skipCustomTimeConfirm.{$other->id}', 'true'); localStorage.setItem('calendar.skipCustomTimeConfirm', 'true')");
+    setBrowserStorageItem($page, $other, 'calendar.skipCustomTimeConfirm', true);
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@calendar-custom-time-dialog');
 
@@ -409,7 +409,7 @@ test('ticking the box and cancelling stores nothing', function () {
     $page->click('@calendar-custom-time-cancel');
     waitForGone($page, '@calendar-custom-time-dialog');
 
-    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm.{$user->id}')"))->toBeNull()
+    expect(browserStorageItem($page, $user, 'calendar.skipCustomTimeConfirm'))->toBeNull()
         ->and($post->refresh()->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });

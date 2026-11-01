@@ -194,7 +194,7 @@ test('the channel queue skeleton is a plain list while the posting times are hid
 
     $page = visit(route('app.channels.publish', ['account' => $channel, 'tab' => 'drafts']));
     waitForPublishListSkeletonTestId($page, 'empty-state');
-    $page->script("window.localStorage.setItem('publish.showSlots', 'false')");
+    setBrowserStorageItem($page, $user, 'publish.showSlots', false);
     $page->click('@publish-tab-sent');
     waitForPublishListSkeletonTestId($page, 'empty-state');
     holdPublishListReloads($page);

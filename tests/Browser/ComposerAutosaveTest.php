@@ -58,9 +58,12 @@ function composerAutosaveWorkspace(): array
     return [$user, $workspace, $account];
 }
 
-function composerAutosaveKeyFor(User $user, Workspace $workspace): string
+/**
+ * The JS expression that reads the workspace's unfinished post from the browser storage.
+ */
+function composerAutosaveJs(User $user, Workspace $workspace): string
 {
-    return "trypost:composer:autosave:{$user->id}:{$workspace->id}";
+    return '('.browserStorageItemJs($user, 'composer.autosave', $workspace->id).')';
 }
 
 function openComposerForAutosave(mixed $page): void
@@ -79,21 +82,20 @@ function closeComposerForAutosave(mixed $page): void
 /**
  * @param  array<string, mixed>  $snapshot
  */
-function seedComposerAutosave(mixed $page, string $key, array $snapshot): void
+function seedComposerAutosave(mixed $page, User $user, string $workspaceId, array $snapshot): void
 {
-    $json = json_encode([
+    setBrowserStorageItem($page, $user, 'composer.autosave', [
         'version' => 1,
         'savedAt' => now()->toISOString(),
         'content' => '',
-        'overrides' => [],
+        'overrides' => (object) [],
         'accountIds' => [],
         'media' => [],
         'labelIds' => [],
         'scheduleMode' => null,
         'scheduledAt' => null,
         ...$snapshot,
-    ]);
-    $page->script("localStorage.setItem('{$key}', ".json_encode($json).')');
+    ], $workspaceId);
 }
 
 function writeUnfinishedPost(mixed $page, SocialAccount $account, string $content): void
@@ -112,8 +114,8 @@ test('an unfinished post is offered back and resume restores its text and channe
     writeUnfinishedPost($page, $account, 'Half written idea');
     closeComposerForAutosave($page);
 
-    $key = composerAutosaveKeyFor($user, $workspace);
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}')).content"))->toBe('Half written idea');
+    $draft = composerAutosaveJs($user, $workspace);
+    expect($page->script("{$draft}.content"))->toBe('Half written idea');
 
     openComposerForAutosave($page);
     waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
@@ -144,8 +146,8 @@ test('discarding the unfinished post clears it so the next open does not ask aga
     waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="composer-resume-dialog"]\')');
     $page->assertValue('@composer-base-content', '');
 
-    $key = composerAutosaveKeyFor($user, $workspace);
-    expect($page->script("localStorage.getItem('{$key}')"))->toBeNull();
+    $draft = composerAutosaveJs($user, $workspace);
+    expect($page->script("{$draft}"))->toBeNull();
 
     closeComposerForAutosave($page);
     openComposerForAutosave($page);
@@ -164,8 +166,8 @@ test('saving a draft clears the unfinished post', function () {
     waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
 
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
-    $key = composerAutosaveKeyFor($user, $workspace);
-    expect($page->script("localStorage.getItem('{$key}')"))->toBeNull();
+    $draft = composerAutosaveJs($user, $workspace);
+    expect($page->script("{$draft}"))->toBeNull();
 
     openComposerForAutosave($page);
     $page->assertMissing('@composer-resume-dialog')
@@ -192,8 +194,8 @@ test('editing an existing post never offers the unfinished post', function () {
     $edit->assertValue('@composer-base-content', 'Existing post')
         ->assertMissing('@composer-resume-dialog');
 
-    $key = composerAutosaveKeyFor($user, $workspace);
-    expect($edit->script("JSON.parse(localStorage.getItem('{$key}')).content"))->toBe('Unfinished elsewhere');
+    $draft = composerAutosaveJs($user, $workspace);
+    expect($edit->script("{$draft}.content"))->toBe('Unfinished elsewhere');
     $edit->assertNoJavaScriptErrors();
 });
 
@@ -202,8 +204,8 @@ test('resume drops expired temporary uploads and keeps media owned by an idea or
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'With media',
         'accountIds' => [$account->id],
         'media' => [
@@ -217,10 +219,10 @@ test('resume drops expired temporary uploads and keeps media owned by an idea or
     waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
     $page->click('@composer-resume-confirm');
     waitForComposerAutosaveTestId($page, "composer-{$account->id}-media-item-1");
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.media?.length === 2");
+    waitForComposerAutosaveCondition($page, "{$draft}?.media?.length === 2");
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"composer-{$account->id}-media-item-\"]').length"))->toBe(2)
-        ->and($page->script("JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.media?.map((item) => item.id) ?? null"))->toBe(['fresh-upload', 'owned-media']);
+        ->and($page->script("{$draft}?.media?.map((item) => item.id) ?? null"))->toBe(['fresh-upload', 'owned-media']);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -267,8 +269,8 @@ test('an idea opened as a post neither prompts nor overwrites the unfinished pos
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, ['content' => 'Original unfinished', 'accountIds' => [$account->id]]);
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, ['content' => 'Original unfinished', 'accountIds' => [$account->id]]);
 
     $page->navigate(route('app.create.ideas.show', $idea));
     waitForComposerAutosaveTestId($page, 'idea-editor-create-post');
@@ -278,7 +280,7 @@ test('an idea opened as a post neither prompts nor overwrites the unfinished pos
         ->fill('@composer-base-content', 'Edited idea text');
     closeComposerForAutosave($page);
 
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}')).content"))->toBe('Original unfinished');
+    expect($page->script("{$draft}.content"))->toBe('Original unfinished');
 
     $page->navigate(route('app.posts.index'));
     openComposerForAutosave($page);
@@ -292,8 +294,8 @@ test('a custom date already in the past falls back to the default mode', functio
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Missed post',
         'accountIds' => [$account->id],
         'scheduleMode' => 'custom',
@@ -314,8 +316,8 @@ test('a failed save keeps the unfinished post and marks a pruned upload on its t
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Pruned upload',
         'accountIds' => [$account->id],
         'media' => [
@@ -333,7 +335,7 @@ test('a failed save keeps the unfinished post and marks a pruned upload on its t
     $page->assertSeeIn("@composer-{$account->id}-media-error-0", 'This upload expired. Add the file again.')
         ->assertVisible('@post-composer-dialog');
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(0)
-        ->and($page->script("JSON.parse(localStorage.getItem('{$key}')).content"))->toBe('Pruned upload');
+        ->and($page->script("{$draft}.content"))->toBe('Pruned upload');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -342,8 +344,8 @@ test('resuming a single channel adopts its own caption as the post text', functi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Shared text',
         'accountIds' => [$account->id],
         'overrides' => [$account->id => ['content' => 'Channel text']],
@@ -353,33 +355,35 @@ test('resuming a single channel adopts its own caption as the post text', functi
     waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
     $page->click('@composer-resume-confirm');
     waitForComposerAutosaveTestId($page, "composer-caption-{$account->id}");
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.content === 'Channel text'");
+    waitForComposerAutosaveCondition($page, "{$draft}?.content === 'Channel text'");
 
     $page->assertValue("@composer-caption-{$account->id}", 'Channel text')
         ->fill("@composer-caption-{$account->id}", 'Channel text edited');
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.content === 'Channel text edited'");
+    waitForComposerAutosaveCondition($page, "{$draft}?.content === 'Channel text edited'");
 
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}')).overrides['{$account->id}']?.content ?? null"))->toBeNull();
+    expect($page->script("{$draft}.overrides['{$account->id}']?.content ?? null"))->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 
-test('logging out removes every unfinished post from the browser', function () {
+test('logging out removes the user\'s unfinished posts in every workspace, keeping their other items', function () {
     [$user, $workspace, $account] = composerAutosaveWorkspace();
     $this->actingAs($user);
+    $draft = composerAutosaveJs($user, $workspace);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, ['content' => 'Private draft', 'accountIds' => [$account->id]]);
-    seedComposerAutosave($page, 'trypost:composer:autosave:other:workspace', ['content' => 'Another draft']);
+    seedComposerAutosave($page, $user, $workspace->id, ['content' => 'Private draft', 'accountIds' => [$account->id]]);
+    seedComposerAutosave($page, $user, 'other-workspace', ['content' => 'Another draft']);
+    setBrowserStorageItem($page, $user, 'emoji.recents', ['🚀']);
     $page->script("localStorage.setItem('trypost:unrelated', 'kept')");
 
     waitForComposerAutosaveTestId($page, 'sidebar-workspace-menu');
     $page->click('@sidebar-workspace-menu');
     waitForComposerAutosaveTestId($page, 'logout-button');
     $page->click('@logout-button');
-    waitForComposerAutosaveCondition($page, "localStorage.getItem('{$key}') === null");
+    waitForComposerAutosaveCondition($page, "{$draft} === null");
 
-    expect($page->script("Object.keys(localStorage).filter((key) => key.startsWith('trypost:composer:autosave:')).length"))->toBe(0)
+    expect(browserStorageItem($page, $user, 'composer.autosave', 'other-workspace'))->toBeNull()
+        ->and(browserStorageItem($page, $user, 'emoji.recents'))->toBe(['🚀'])
         ->and($page->script("localStorage.getItem('trypost:unrelated')"))->toBe('kept');
 });
 
@@ -391,8 +395,8 @@ test('a restored custom time keeps its moment in the channel zone', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Planned in Sao Paulo',
         'accountIds' => [$account->id],
         'scheduleMode' => 'custom',
@@ -423,8 +427,8 @@ test('an unfinished post from the old shared editor restores one card per networ
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Shared text',
         'accountIds' => [$linkedin->id, $x->id],
         'overrides' => [$x->id => ['content' => 'X text']],
@@ -435,8 +439,8 @@ test('an unfinished post from the old shared editor restores one card per networ
     $page->click('@composer-resume-confirm');
     waitForComposerAutosaveTestId($page, "composer-caption-{$linkedin->id}");
 
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.overrides?.['{$linkedin->id}']?.content !== undefined");
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}')).overrides"))->toEqual([
+    waitForComposerAutosaveCondition($page, "{$draft}?.overrides?.['{$linkedin->id}']?.content !== undefined");
+    expect($page->script("{$draft}.overrides"))->toEqual([
         $linkedin->id => ['content' => 'Shared text', 'media' => []],
         $x->id => ['content' => 'X text', 'media' => []],
     ]);
@@ -462,8 +466,8 @@ test('two pages of one network restore the text of the page that owns one', func
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
         'content' => 'Shared text',
         'accountIds' => [$first->id, $second->id],
         'overrides' => [$second->id => ['content' => 'Second page text']],
@@ -496,8 +500,8 @@ test('resuming an unfinished post keeps its thread replies', function () {
     $page->click('@thread-start');
     waitForComposerAutosaveTestId($page, 'thread-reply-0');
     $page->fill('@thread-reply-0', 'Kept reply');
-    $key = composerAutosaveKeyFor($user, $workspace);
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0] === 'Kept reply'");
+    $draft = composerAutosaveJs($user, $workspace);
+    waitForComposerAutosaveCondition($page, "{$draft}?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0] === 'Kept reply'");
     closeComposerForAutosave($page);
 
     openComposerForAutosave($page);

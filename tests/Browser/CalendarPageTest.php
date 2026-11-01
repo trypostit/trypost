@@ -351,8 +351,8 @@ test('show posting times renders empty slots in the week and month views', funct
     waitForGone($page, '[data-testid^="calendar-posting-slot-"]');
     waitForCondition($page, "!new URLSearchParams(location.search).has('slots')");
 
+    expect(browserStorageItem($page, $user, 'publish.showSlots'))->toBeFalse();
     $page->assertMissing("@calendar-posting-slot-{$slotKey}")
-        ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false')
         ->assertScript("new URLSearchParams(location.search).has('slots')", false)
         ->assertScript("window.__partialData.every((only) => !only.split(',').includes('slots'))", true);
 

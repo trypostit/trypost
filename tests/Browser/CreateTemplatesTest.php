@@ -252,6 +252,41 @@ test('editing a template from its menu updates the card and the row', function (
         ->assertNoJavaScriptErrors();
 });
 
+test('a picked emoji is kept among the user\'s recents in this browser', function () {
+    [$user] = createTemplatesSetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.templates.index'));
+    waitForCreateTemplatesTestId($page, 'templates-new');
+    $page->click('@templates-new');
+    waitForCreateTemplatesDialog($page, 'template-editor');
+    $page->click('@template-editor-emoji');
+    waitForCreateTemplatesTestId($page, 'emoji-picker-option');
+    $emoji = $page->script(<<<'JS'
+        (() => {
+            const option = document.querySelector('[data-testid="emoji-picker-option"]');
+            option.click();
+
+            return option.textContent.trim();
+        })()
+    JS);
+
+    expect(browserStorageItem($page, $user, 'emoji.recents'))->toBe([$emoji]);
+
+    $page->navigate(route('app.create.templates.index'));
+    waitForCreateTemplatesTestId($page, 'templates-new');
+    $page->click('@templates-new');
+    waitForCreateTemplatesDialog($page, 'template-editor');
+    $page->click('@template-editor-emoji');
+    waitForCreateTemplatesTestId($page, 'emoji-picker-option');
+
+    waitFor($page, '@emoji-picker-recent');
+
+    $page->assertSeeIn('@emoji-picker-recent', __('posts.edit.emoji_picker.recent'))
+        ->assertSeeIn('@emoji-picker-recent', $emoji)
+        ->assertNoJavaScriptErrors();
+});
+
 test('the emoji picker sets the template emoji', function () {
     [$user, $workspace] = createTemplatesSetup();
     $this->actingAs($user);

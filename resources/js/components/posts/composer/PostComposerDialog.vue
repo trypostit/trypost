@@ -101,7 +101,6 @@ import { useCanHover } from '@/composables/useCanHover';
 import {
     type AutosaveMediaRef,
     type AutosaveSnapshot,
-    composerAutosaveKey,
     fromAutosaveMedia,
     isExpiredUpload,
     toAutosaveMedia,
@@ -1809,14 +1808,7 @@ const confirmScheduledAt = (value: string): void => {
 
 const autosaveEnabled =
     !props.initialPost && !props.postId && !props.initialDraft;
-const autosave = useComposerAutosave(
-    computed(() =>
-        composerAutosaveKey(
-            page.props.auth?.user?.id,
-            page.props.auth?.currentWorkspace?.id,
-        ),
-    ),
-);
+const autosave = useComposerAutosave();
 const {
     accounts: resumeAccounts,
     mediaCount: resumeMediaCount,

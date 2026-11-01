@@ -140,7 +140,7 @@ const handleCreateWorkspace = (): void => {
 
 const handleLogout = (): void => {
     posthog.reset();
-    clearAllComposerAutosaves();
+    clearAllComposerAutosaves(page.props.auth.user.id);
     router.flushAll();
 };
 

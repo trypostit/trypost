@@ -253,10 +253,10 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 
 Everything the app keeps in the browser for a user lives in one key per user, `trypost:<user id>`, through `resources/js/lib/browserStorage.ts` (owner decision November 2026): `{ "version": 1, "user": { … }, "workspaces": { "<workspace id>": { … } } }`. `user` holds what applies in every workspace, `workspaces` what only makes sense in one (a channel id, a draft). Never add a `localStorage` key of your own.
 
-- Add a new item to the typed `UserStorage` interface in `types/browser-storage.ts` (named `area.thing`, like lang keys; `BrowserStorage` there is the whole stored value) and read it with `useUserStorage(key, default)` (`composables/useBrowserStorage.ts`), which saves on set and follows the user's other tabs. A workspace item adds `WorkspaceStorage` and `useWorkspaceStorage` the first time one is needed.
+- Add a new item to the typed `UserStorage` (every workspace) or `WorkspaceStorage` (one workspace) interface in `types/browser-storage.ts` (named `area.thing`, like lang keys; `BrowserStorage` there is the whole stored value) and use it through `useUserStorage(key, default)` or `useWorkspaceStorage(key, default)` (`composables/useBrowserStorage.ts`): a writable ref read on mount, saved on set, and following the user's other tabs. Code outside a component's setup (a key that changes with a prop, a cleanup on logout) uses `readUserItem` / `writeUserItem` / `readWorkspaceItem` / `writeWorkspaceItem` from the lib; writing `undefined` removes an item.
 - The store does the safe read and write: a missing, unreadable or other-version key reads as empty, a browser without storage works on the defaults, and every write reads the key again first so two tabs never write back a stale copy.
 - The one exception is `trypost.media-source-popup`: not storage but a message the Canva / Google picker popup writes and removes at once, heard through the `storage` event on that key.
-- The keys that predate the store move into it as tracked in #461 (when touched, not in a sweep).
+- Browser tests read and seed it through `browserStorageItem($page, $user, $item, $workspaceId = null)` and `setBrowserStorageItem(...)` in `tests/Pest.php`, never the raw key. Old values were not carried over when the earlier keys moved in (owner decision November 2026, #461); do not add code that reads them.
 
 ## Inviting a user to connect an AI (MCP)
 

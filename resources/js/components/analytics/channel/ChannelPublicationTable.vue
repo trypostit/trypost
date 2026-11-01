@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import {
     IconChartBar,
     IconChevronDown,
@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/table';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
+import { readUserItem, writeUserItem } from '@/lib/browserStorage';
 import { isVideo } from '@/lib/mediaType';
 import {
     copyToClipboard,
@@ -45,6 +46,7 @@ import {
     formatPercent,
 } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
+import type { SharedData } from '@/types';
 import type {
     AnalyticsReport,
     ChannelInsightsFilters,
@@ -80,21 +82,11 @@ const TABLE_METRICS: SummaryMetric[] = [
     'watch_time_minutes',
     'average_watch_time_seconds',
 ];
-const storageKey = computed(() => `insights.columns.${props.platform}`);
-
-const readStoredColumns = (): SummaryMetric[] | null => {
-    try {
-        const stored = JSON.parse(
-            window.localStorage.getItem(storageKey.value) ?? 'null',
-        );
-
-        return Array.isArray(stored) ? (stored as SummaryMetric[]) : null;
-    } catch {
-        return null;
-    }
-};
-
-const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
+const userId = usePage<SharedData>().props.auth.user.id;
+const columnsKey = computed(() => `insights.columns.${props.platform}` as const);
+const storedColumns = ref<SummaryMetric[] | null>(
+    readUserItem(userId, columnsKey.value) ?? null,
+);
 const choosableColumns = computed<SummaryMetric[]>(() =>
     TABLE_METRICS.filter((metric) => props.availableMetrics.includes(metric)),
 );
@@ -116,8 +108,8 @@ const columns = computed<SummaryMetric[]>(() => {
     );
 });
 
-watch(storageKey, () => {
-    storedColumns.value = readStoredColumns();
+watch(columnsKey, () => {
+    storedColumns.value = readUserItem(userId, columnsKey.value) ?? null;
 });
 const isSortable = (metric: SummaryMetric): boolean =>
     props.sortableMetrics.includes(metric);
@@ -137,12 +129,7 @@ const toggleColumn = (
     }
 
     storedColumns.value = next;
-
-    try {
-        window.localStorage.setItem(storageKey.value, JSON.stringify(next));
-    } catch {
-        return;
-    }
+    writeUserItem(userId, columnsKey.value, next);
 };
 
 const keepMenuOpen = (event: Event): void => {

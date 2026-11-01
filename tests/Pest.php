@@ -835,6 +835,50 @@ function waitForPath(mixed $page, string $path): void
  * the share card's hatch for a previous period). A canvas cannot be read back
  * as text, so a test of a painted card reads these instead.
  */
+/**
+ * The JS expression that reads one item of a user's browser storage
+ * (`trypost:<user id>`, see `resources/js/lib/browserStorage.ts`): from `user`,
+ * or from one workspace's block when `$workspaceId` is given.
+ */
+function browserStorageItemJs(User $user, string $item, ?string $workspaceId = null): string
+{
+    $scope = filled($workspaceId) ? "workspaces?.['{$workspaceId}']" : 'user';
+
+    return "JSON.parse(localStorage.getItem('trypost:{$user->id}') ?? 'null')?.{$scope}?.['{$item}'] ?? null";
+}
+
+function browserStorageItem(mixed $page, User $user, string $item, ?string $workspaceId = null): mixed
+{
+    return $page->script(browserStorageItemJs($user, $item, $workspaceId));
+}
+
+/**
+ * Saves one item of a user's browser storage the way the app does, keeping
+ * every other item.
+ */
+function setBrowserStorageItem(mixed $page, User $user, string $item, mixed $value, ?string $workspaceId = null): void
+{
+    $key = json_encode("trypost:{$user->id}");
+    $name = json_encode($item);
+    $json = json_encode($value);
+    $workspace = json_encode($workspaceId);
+
+    $page->script(<<<JS
+        (() => {
+            const storage = JSON.parse(localStorage.getItem({$key}) ?? 'null') ?? { version: 1, user: {}, workspaces: {} };
+            const workspaceId = {$workspace};
+
+            if (workspaceId === null) {
+                storage.user[{$name}] = {$json};
+            } else {
+                storage.workspaces[workspaceId] = { ...storage.workspaces[workspaceId], [{$name}]: {$json} };
+            }
+
+            localStorage.setItem({$key}, JSON.stringify(storage));
+        })()
+    JS);
+}
+
 function recordCanvasDrawing(mixed $page): void
 {
     $page->script(<<<'JS'
