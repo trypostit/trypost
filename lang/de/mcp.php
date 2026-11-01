@@ -76,5 +76,10 @@ return [
         ],
         'waiting' => 'Warte auf die Verbindung deiner KI…',
     ],
+    'prompt' => [
+        'title' => 'Du hast noch keine KI verbunden',
+        'body' => 'Verbinde Claude oder ChatGPT, um Posts einfach per Nachricht zu erstellen, zu planen und zu analysieren.',
+        'not_now' => 'Nicht jetzt',
+    ],
 
 ];

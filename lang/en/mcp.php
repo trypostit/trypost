@@ -76,5 +76,10 @@ return [
         ],
         'waiting' => 'Waiting for your AI to connect…',
     ],
+    'prompt' => [
+        'title' => 'You haven\'t connected an AI yet',
+        'body' => 'Connect Claude or ChatGPT to create, schedule and analyze your posts just by asking.',
+        'not_now' => 'Not now',
+    ],
 
 ];

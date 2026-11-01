@@ -21,17 +21,17 @@ function billingProcessingSubscriber(): User
     return $user;
 }
 
-test('once the subscription and plan are ready the processing page sends the user to the MCP step', function () {
+test('once the subscription and plan are ready the processing page opens the schedule', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $mcpPath = parse_url(route('app.welcome.mcp'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'));
-    waitForPath($page, $mcpPath);
+    waitForPath($page, $schedulePath);
 
-    $page->assertPathIs($mcpPath)
+    $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
 });
 
@@ -42,7 +42,7 @@ test('a subscription started from billing returns to billing, not the onboarding
     Plan::query()->whereKey($user->account->plan_id)->update(['stripe_monthly_price_id' => 'price_123']);
     $this->actingAs($user->fresh());
 
-    $billingPath = parse_url(route('app.billing.index'), PHP_URL_PATH);
+    $billingPath = route('app.billing.index', absolute: false);
 
     $page = visit(route('app.billing.processing', ['from' => 'billing']));
     waitForPath($page, $billingPath);
@@ -51,12 +51,12 @@ test('a subscription started from billing returns to billing, not the onboarding
         ->assertNoJavaScriptErrors();
 });
 
-test('on a phone the processing page skips the MCP step and opens the schedule', function () {
+test('on a phone the processing page opens the schedule too', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'))->on()->mobile();
     waitForPath($page, $schedulePath);

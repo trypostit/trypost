@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar',
     'plan_checkout_button' => 'Mijn account activeren',
     'plan_cancel_anytime' => 'Altijd opzegbaar',
-    'mcp' => [
-        'title' => 'Beheer je socials via chat',
-        'description' => 'Maak, plan en analyseer posts in TryPost met je favoriete AI.',
-        'connect_with' => 'Koppelen met :client',
-        'connect_ai' => 'Koppel je AI',
-        'pick_ai' => 'Waar wil je TryPost gebruiken?',
-        'connect_other' => 'Andere app koppelen',
-        'connected' => ':client is gekoppeld',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Maak en plan vanuit de chat',
-                'hint' => 'Carrousels, threads en video’s',
-                'ask' => 'Pak het volgende idee van mijn bord, maak er een carrousel van en plan hem voor dinsdag om :time op Instagram en LinkedIn.',
-                'reply' => 'Klaar. Je carrousel staat gepland op Instagram en LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Volg je groei',
-                'hint' => 'Al je accounts in één rapport',
-                'ask' => 'Hoe was mijn maand? Heb ik volgers gewonnen?',
-                'reply' => 'Je hebt deze maand 1,2k volgers gewonnen. LinkedIn groeide het snelst.',
-            ],
-            'queue' => [
-                'title' => 'Vul je wachtrij',
-                'hint' => 'Op je beste tijden',
-                'ask' => 'Pak mijn klare concepten en zet ze in mijn wachtrij, op mijn volgende vrije tijden.',
-                'reply' => 'Klaar. Je 3 concepten staan in je wachtrij, op de vrije tijden van morgen.',
-            ],
-            'ideas' => [
-                'title' => 'Organiseer je ideeën',
-                'hint' => 'Van brainstorm naar contentplan',
-                'ask' => 'Geef me 8 postideeën voor volgende week en zet ze op mijn bord.',
-                'reply' => 'Ik heb 8 ideeën op je bord gezet, klaar om posts te worden.',
-            ],
-        ],
-        'skip' => 'Nu overslaan',
-    ],
 ];

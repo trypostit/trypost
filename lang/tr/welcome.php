@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et',
     'plan_checkout_button' => 'Hesabımı etkinleştir',
     'plan_cancel_anytime' => 'İstediğin zaman iptal et',
-    'mcp' => [
-        'title' => 'Sosyal medyanı sohbetle yönet',
-        'description' => 'TryPost’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',
-        'connect_with' => ':client ile bağlan',
-        'connect_ai' => 'Yapay zekânı bağla',
-        'pick_ai' => 'TryPost’u nerede kullanmak istersin?',
-        'connect_other' => 'Başka uygulama bağla',
-        'connected' => ':client bağlandı',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Sohbetten oluştur ve planla',
-                'hint' => 'Karuseller, gönderi dizileri ve videolar',
-                'ask' => 'Panomdaki sıradaki fikri al, karusele dönüştür ve salı :time için Instagram ile LinkedIn’de planla.',
-                'reply' => 'Tamam. Karuselin Instagram ve LinkedIn’de planlandı.',
-            ],
-            'analytics' => [
-                'title' => 'Büyümeni takip et',
-                'hint' => 'Tüm hesapların tek raporda',
-                'ask' => 'Ayım nasıl geçti? Takipçi kazandım mı?',
-                'reply' => 'Bu ay 1,2 bin takipçi kazandın. En hızlı LinkedIn büyüdü.',
-            ],
-            'queue' => [
-                'title' => 'Sıranı doldur',
-                'hint' => 'En iyi paylaşım saatlerinde',
-                'ask' => 'Hazır taslaklarımı al ve bir sonraki boş saatlerime sıraya ekle.',
-                'reply' => 'Tamam. 3 taslağın sırada, yarının bir sonraki boş saatlerinde.',
-            ],
-            'ideas' => [
-                'title' => 'Fikirlerini düzenle',
-                'hint' => 'Beyin fırtınasından içerik planına',
-                'ask' => 'Gelecek hafta için 8 gönderi fikri ver ve panoma kaydet.',
-                'reply' => '8 fikri panona kaydettim, gönderiye dönüşmeye hazır.',
-            ],
-        ],
-        'skip' => 'Şimdilik atla',
-    ],
 ];

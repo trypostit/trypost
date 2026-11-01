@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser',
     'plan_checkout_button' => 'Ativar minha conta',
     'plan_cancel_anytime' => 'Cancele quando quiser',
-    'mcp' => [
-        'title' => 'Gerencie suas redes pelo chat',
-        'description' => 'Crie, agende e analise posts no TryPost usando a sua IA favorita.',
-        'connect_with' => 'Conectar com :client',
-        'connect_ai' => 'Conectar sua IA',
-        'pick_ai' => 'Onde você quer usar o TryPost?',
-        'connect_other' => 'Conectar outro app',
-        'connected' => ':client está conectado',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Crie e agende pelo chat',
-                'hint' => 'Carrosséis, threads e vídeos',
-                'ask' => 'Pegue a próxima ideia do meu quadro, transforme num carrossel e agende para terça às :time no Instagram e no LinkedIn.',
-                'reply' => 'Pronto. O carrossel está agendado no Instagram e no LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Acompanhe seu crescimento',
-                'hint' => 'Todas as contas em um relatório',
-                'ask' => 'Como foi meu mês? Ganhei seguidores?',
-                'reply' => 'Você ganhou 1,2 mil seguidores no mês. O LinkedIn foi o que mais cresceu.',
-            ],
-            'queue' => [
-                'title' => 'Encha a fila',
-                'hint' => 'Nos seus melhores horários',
-                'ask' => 'Pegue meus rascunhos prontos e coloque na fila, nos meus próximos horários livres.',
-                'reply' => 'Feito. Coloquei seus 3 rascunhos na fila, nos próximos horários livres de amanhã.',
-            ],
-            'ideas' => [
-                'title' => 'Organize suas ideias',
-                'hint' => 'Do brainstorm para a pauta',
-                'ask' => 'Me dê 8 ideias de posts para a próxima semana e salve no meu quadro.',
-                'reply' => 'Salvei 8 ideias no seu quadro, prontas para virar post.',
-            ],
-        ],
-        'skip' => 'Pular por agora',
-    ],
 ];

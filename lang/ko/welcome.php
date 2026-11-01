@@ -50,40 +50,4 @@ return [
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능',
     'plan_checkout_button' => '내 계정 활성화',
     'plan_cancel_anytime' => '언제든지 해지 가능',
-    'mcp' => [
-        'title' => 'AI와 대화하며 SNS를 관리하세요',
-        'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
-        'connect_with' => ':client 연결',
-        'connect_ai' => 'AI 연결하기',
-        'pick_ai' => '어디에서 TryPost를 사용할까요?',
-        'connect_other' => '다른 앱 연결',
-        'connected' => ':client 연결됨',
-        'benefits' => [
-            'schedule' => [
-                'title' => '채팅으로 만들고 예약',
-                'hint' => '캐러셀, 스레드, 동영상',
-                'ask' => '내 보드의 다음 아이디어로 캐러셀을 만들어 화요일 :time에 Instagram과 LinkedIn에 예약해 줘.',
-                'reply' => '완료했어요. 캐러셀을 Instagram과 LinkedIn에 예약했어요.',
-            ],
-            'analytics' => [
-                'title' => '성장 추적',
-                'hint' => '모든 계정을 하나의 리포트로',
-                'ask' => '이번 달 어땠어? 팔로워가 늘었어?',
-                'reply' => '이번 달 팔로워가 1,200명 늘었어요. LinkedIn이 가장 빠르게 성장했어요.',
-            ],
-            'queue' => [
-                'title' => '대기열 채우기',
-                'hint' => '가장 좋은 게시 시간에',
-                'ask' => '완성된 초안을 다음 빈 시간대 대기열에 넣어 줘.',
-                'reply' => '완료했어요. 초안 3개를 내일의 빈 시간대 대기열에 넣었어요.',
-            ],
-            'ideas' => [
-                'title' => '아이디어 정리',
-                'hint' => '브레인스토밍에서 콘텐츠 계획으로',
-                'ask' => '다음 주 게시물 아이디어 8개를 주고 내 보드에 저장해 줘.',
-                'reply' => '아이디어 8개를 보드에 저장했어요. 바로 게시물로 만들 수 있어요.',
-            ],
-        ],
-        'skip' => '지금은 건너뛰기',
-    ],
 ];

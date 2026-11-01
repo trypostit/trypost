@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar',
     'plan_checkout_button' => 'Mein Konto aktivieren',
     'plan_cancel_anytime' => 'Jederzeit kündbar',
-    'mcp' => [
-        'title' => 'Social Media per Chat steuern',
-        'description' => 'Erstelle, plane und analysiere Posts in TryPost mit deiner Lieblings-KI.',
-        'connect_with' => 'Mit :client verbinden',
-        'connect_ai' => 'Deine KI verbinden',
-        'pick_ai' => 'Wo willst du TryPost nutzen?',
-        'connect_other' => 'Andere App verbinden',
-        'connected' => ':client ist verbunden',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Erstellen und planen im Chat',
-                'hint' => 'Karussells, Threads und Videos',
-                'ask' => 'Nimm die nächste Idee vom Board, mach ein Karussell daraus und plane es für Dienstag, :time, auf Instagram und LinkedIn.',
-                'reply' => 'Erledigt. Dein Karussell ist auf Instagram und LinkedIn geplant.',
-            ],
-            'analytics' => [
-                'title' => 'Verfolge dein Wachstum',
-                'hint' => 'Alle Konten in einem Bericht',
-                'ask' => 'Wie war mein Monat? Habe ich Follower gewonnen?',
-                'reply' => 'Du hast diesen Monat 1,2 Tsd. Follower gewonnen. LinkedIn ist am stärksten gewachsen.',
-            ],
-            'queue' => [
-                'title' => 'Fülle deine Warteschlange',
-                'hint' => 'Zu deinen besten Zeiten',
-                'ask' => 'Nimm meine fertigen Entwürfe und pack sie in meine nächsten freien Slots.',
-                'reply' => 'Erledigt. Deine 3 Entwürfe stehen in der Warteschlange, in den freien Slots von morgen.',
-            ],
-            'ideas' => [
-                'title' => 'Ordne deine Ideen',
-                'hint' => 'Vom Brainstorming zum Redaktionsplan',
-                'ask' => 'Gib mir 8 Post-Ideen für nächste Woche und speichere sie auf meinem Board.',
-                'reply' => 'Ich habe 8 Ideen auf deinem Board gespeichert, bereit für neue Posts.',
-            ],
-        ],
-        'skip' => 'Jetzt überspringen',
-    ],
 ];

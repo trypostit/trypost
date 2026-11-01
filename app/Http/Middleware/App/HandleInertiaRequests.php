@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
+use App\Actions\AccessToken\HasConnectedMcpClient;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
@@ -69,6 +70,7 @@ class HandleInertiaRequests extends Middleware
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
+            'mcpPrompt' => fn (): ?array => $this->mcpPrompt($user, $isSelfHosted),
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
@@ -135,6 +137,41 @@ class HandleInertiaRequests extends Middleware
     public static function referralSourcesCacheKey(User $user): string
     {
         return "referral-sources.{$user->id}";
+    }
+
+    public static function mcpPromptCacheKey(User $user, Workspace $workspace): string
+    {
+        return "mcp-prompt.{$user->id}.{$workspace->id}";
+    }
+
+    /**
+     * The card inviting the user to connect an AI, with the MCP URL its steps
+     * show, while their workspace can use the app and has no AI of theirs
+     * connected; null otherwise. Cached, and a connection made from the card
+     * forgets the cache. Dismissing the card is kept in the browser.
+     *
+     * @return array{mcp_url: string}|null
+     */
+    private function mcpPrompt(?User $user, bool $isSelfHosted): ?array
+    {
+        $workspace = $user?->currentWorkspace;
+
+        if (blank($workspace)) {
+            return null;
+        }
+
+        $invites = Cache::remember(
+            self::mcpPromptCacheKey($user, $workspace),
+            now()->addMinutes(5),
+            fn (): bool => ($isSelfHosted || $workspace->account?->hasAppAccess() === true)
+                && ! HasConnectedMcpClient::execute($user, $workspace),
+        );
+
+        if (! $invites) {
+            return null;
+        }
+
+        return ['mcp_url' => route('mcp.trypost')];
     }
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool

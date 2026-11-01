@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Then :price/month. Cancel anytime',
     'plan_checkout_button' => 'Activate my account',
     'plan_cancel_anytime' => 'Cancel anytime',
-    'mcp' => [
-        'title' => 'Run your social media from a chat',
-        'description' => 'Create, schedule and analyze your TryPost posts with your favorite AI.',
-        'connect_with' => 'Connect with :client',
-        'connect_ai' => 'Connect your AI',
-        'pick_ai' => 'Where do you want to use TryPost?',
-        'connect_other' => 'Connect another app',
-        'connected' => ':client is connected',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Create and schedule from chat',
-                'hint' => 'Carousels, threads and videos',
-                'ask' => 'Take the next idea on my board, turn it into a carousel and schedule it for Tuesday at :time on Instagram and LinkedIn.',
-                'reply' => 'Done. Your carousel is scheduled on Instagram and LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Track your growth',
-                'hint' => 'Every account in one report',
-                'ask' => 'How was my month? Did I gain followers?',
-                'reply' => 'You gained 1.2k followers this month. LinkedIn grew the fastest.',
-            ],
-            'queue' => [
-                'title' => 'Fill your queue',
-                'hint' => 'At your best posting times',
-                'ask' => 'Take my finished drafts and add them to my queue, in my next free slots.',
-                'reply' => 'Done. Your 3 drafts are in your queue, in tomorrow\'s next free slots.',
-            ],
-            'ideas' => [
-                'title' => 'Organize your ideas',
-                'hint' => 'From brainstorm to content plan',
-                'ask' => 'Give me 8 post ideas for next week and save them to my board.',
-                'reply' => 'I saved 8 ideas to your board, ready to become posts.',
-            ],
-        ],
-        'skip' => 'Skip for now',
-    ],
 ];

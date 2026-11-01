@@ -8,4 +8,6 @@ enum McpEvent: string
 {
     case Connected = 'mcp.connected';
     case ToolCalled = 'mcp.tool_called';
+    case PromptClicked = 'mcp.prompt_clicked';
+    case PromptDismissed = 'mcp.prompt_dismissed';
 }

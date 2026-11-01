@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi',
     'plan_checkout_button' => 'Attiva il mio account',
     'plan_cancel_anytime' => 'Disdici quando vuoi',
-    'mcp' => [
-        'title' => 'Gestisci i social dalla chat',
-        'description' => 'Crea, programma e analizza i post su TryPost con la tua IA preferita.',
-        'connect_with' => 'Collega :client',
-        'connect_ai' => 'Collega la tua IA',
-        'pick_ai' => 'Dove vuoi usare TryPost?',
-        'connect_other' => 'Collega un\'altra app',
-        'connected' => ':client è collegato',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Crea e programma dalla chat',
-                'hint' => 'Caroselli, thread e video',
-                'ask' => 'Prendi la prossima idea dalla mia bacheca, trasformala in un carosello e programmalo per martedì alle :time su Instagram e LinkedIn.',
-                'reply' => 'Fatto. Il tuo carosello è programmato su Instagram e LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Segui la tua crescita',
-                'hint' => 'Tutti gli account in un report',
-                'ask' => 'Com’è andato il mio mese? Ho guadagnato follower?',
-                'reply' => 'Hai guadagnato 1,2k follower questo mese. LinkedIn è cresciuto di più.',
-            ],
-            'queue' => [
-                'title' => 'Riempi la coda',
-                'hint' => 'Nei tuoi orari migliori',
-                'ask' => 'Prendi le mie bozze pronte e mettile in coda, nei miei prossimi orari liberi.',
-                'reply' => 'Fatto. Le tue 3 bozze sono in coda, nei prossimi orari liberi di domani.',
-            ],
-            'ideas' => [
-                'title' => 'Organizza le tue idee',
-                'hint' => 'Dal brainstorming al piano editoriale',
-                'ask' => 'Dammi 8 idee di post per la prossima settimana e salvale nella mia bacheca.',
-                'reply' => 'Ho salvato 8 idee nella tua bacheca, pronte a diventare post.',
-            ],
-        ],
-        'skip' => 'Salta per ora',
-    ],
 ];

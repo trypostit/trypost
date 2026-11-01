@@ -50,40 +50,4 @@ return [
     'plan_terms' => '之后 :price/月，随时取消',
     'plan_checkout_button' => '激活我的账户',
     'plan_cancel_anytime' => '随时取消',
-    'mcp' => [
-        'title' => '和 AI 聊天，轻松管理社交媒体',
-        'description' => '用你最喜欢的 AI，在 TryPost 中创建、排期和分析帖子。',
-        'connect_with' => '连接 :client',
-        'connect_ai' => '连接你的 AI',
-        'pick_ai' => '你想在哪里使用 TryPost？',
-        'connect_other' => '连接其他应用',
-        'connected' => ':client 已连接',
-        'benefits' => [
-            'schedule' => [
-                'title' => '在聊天中创建并排期',
-                'hint' => '轮播图、串文和视频',
-                'ask' => '从我的看板取下一个点子，做成轮播图，并排期到周二 :time 发布在 Instagram 和 LinkedIn。',
-                'reply' => '完成。轮播图已排期到 Instagram 和 LinkedIn。',
-            ],
-            'analytics' => [
-                'title' => '追踪你的增长',
-                'hint' => '所有账号汇总在一份报告里',
-                'ask' => '我这个月怎么样？涨粉了吗？',
-                'reply' => '本月你新增了 1,200 位粉丝，LinkedIn 增长最快。',
-            ],
-            'queue' => [
-                'title' => '填满发布队列',
-                'hint' => '安排在你的最佳时间',
-                'ask' => '把我写好的草稿加入队列，排到接下来的空闲时段。',
-                'reply' => '完成。你的 3 篇草稿已加入队列，排在明天的空闲时段。',
-            ],
-            'ideas' => [
-                'title' => '整理你的想法',
-                'hint' => '从头脑风暴到内容计划',
-                'ask' => '给我下周的 8 个帖子点子，并保存到我的看板。',
-                'reply' => '我已把 8 个点子存到你的看板，随时可以变成帖子。',
-            ],
-        ],
-        'skip' => '暂时跳过',
-    ],
 ];

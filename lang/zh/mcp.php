@@ -76,5 +76,10 @@ return [
         ],
         'waiting' => '正在等待你的 AI 连接…',
     ],
+    'prompt' => [
+        'title' => '你还没有连接 AI',
+        'body' => '连接 Claude 或 ChatGPT，只需开口就能创建、排期和分析帖子。',
+        'not_now' => '以后再说',
+    ],
 
 ];

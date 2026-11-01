@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'その後は:price/月。いつでも解約できます',
     'plan_checkout_button' => 'アカウントを有効にする',
     'plan_cancel_anytime' => 'いつでも解約できます',
-    'mcp' => [
-        'title' => 'AIとの会話でSNSを運用',
-        'description' => 'お気に入りのAIで、TryPostの投稿を作成・予約・分析。',
-        'connect_with' => ':clientと接続',
-        'connect_ai' => 'AIを接続',
-        'pick_ai' => 'どこでTryPostを使いますか？',
-        'connect_other' => '他のアプリを接続',
-        'connected' => ':clientに接続しました',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'チャットで作成・予約',
-                'hint' => 'カルーセル、スレッド、動画',
-                'ask' => 'ボードの次のアイデアをカルーセルにして、火曜日の:timeにInstagramとLinkedInで予約して。',
-                'reply' => '完了。カルーセルをInstagramとLinkedInで予約しました。',
-            ],
-            'analytics' => [
-                'title' => '成長を追いかける',
-                'hint' => 'すべてのアカウントを1つのレポートに',
-                'ask' => '今月はどうだった？フォロワーは増えた？',
-                'reply' => '今月はフォロワーが1,200人増えました。最も伸びたのはLinkedInです。',
-            ],
-            'queue' => [
-                'title' => 'キューを埋める',
-                'hint' => '最適な投稿時間に',
-                'ask' => '完成した下書きを、次の空き枠にキューで入れて。',
-                'reply' => '完了。3件の下書きを、明日の空き枠にキューで入れました。',
-            ],
-            'ideas' => [
-                'title' => 'アイデアを整理',
-                'hint' => 'ブレストからコンテンツ計画へ',
-                'ask' => '来週の投稿アイデアを8つ出して、ボードに保存して。',
-                'reply' => '8つのアイデアをボードに保存しました。すぐ投稿にできます。',
-            ],
-        ],
-        'skip' => '今はスキップ',
-    ],
 ];

@@ -76,5 +76,10 @@ return [
         ],
         'waiting' => 'Esperando a que tu IA se conecte…',
     ],
+    'prompt' => [
+        'title' => 'Aún no has conectado ninguna IA',
+        'body' => 'Conecta Claude o ChatGPT para crear, programar y analizar tus posts con solo pedirlo.',
+        'not_now' => 'Ahora no',
+    ],
 
 ];
