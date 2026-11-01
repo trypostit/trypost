@@ -157,11 +157,11 @@ test('a post opened by its edit link saves and closes onto the list without step
         ->and($page->script('history.length === window.__entries'))->toBeTrue();
 })->with(['save', 'close']);
 
-test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, it lands back there and one back reaches the page before', function (string $from, bool $aiConnected) {
-    $post = seedUnsavedChangesReel();
-    if ($aiConnected) {
-        connectAiTo($post->user);
+test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, it lands back there and one back reaches the page before', function (string $from, bool $invited) {
+    if ($invited) {
+        showMcpPrompt();
     }
+    $post = seedUnsavedChangesReel();
     $account = $post->socialAccount;
     $scheduledAt = now('UTC')->addDay()->setTime(15, 0);
     $state = match ($from) {
@@ -181,7 +181,7 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
     $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
     waitFor($page, '@app-content-shell');
-    expect($page->script('document.querySelector(\'[data-testid="mcp-prompt"]\') !== null'))->toBe(! $aiConnected);
+    expect($page->script('document.querySelector(\'[data-testid="mcp-prompt"]\') !== null'))->toBe($invited);
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");
@@ -204,8 +204,8 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $page->assertPathIs($before)->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
 })->with(['calendar', 'channel drafts', 'approvals'])->with([
-    'with the invitation to connect an AI' => false,
-    'with an AI connected' => true,
+    'without the invitation to connect an AI' => false,
+    'with the invitation to connect an AI' => true,
 ]);
 
 test('saving an edited post never moves through history before the saved page lands', function () {

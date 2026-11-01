@@ -8,6 +8,7 @@ use App\Models\Workspace;
 function mcpPromptUser(array $attributes = []): User
 {
     config(['trypost.self_hosted' => false]);
+    showMcpPrompt();
 
     $user = User::factory()->create($attributes);
     $workspace = Workspace::factory()->create([
@@ -212,7 +213,7 @@ test('the invitation waits while the user is asked where they found us', functio
 
 test('a user with an AI connected is never invited', function () {
     $user = mcpPromptUser();
-    connectAiTo($user);
+    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
     $this->actingAs($user);
 
     $page = visit(route('app.calendar'))->resize(1280, 900);

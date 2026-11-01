@@ -339,10 +339,16 @@ const selectTrack = (track: InstagramAudio): void => {
 const volumeOf = (key: VolumeKey): number => selectedAudio.value?.[key] ?? 100;
 
 const changeVolume = (key: VolumeKey, event: Event): void => {
-    const volume = Number((event.target as HTMLInputElement).value);
-    updateMeta({ audio: { ...selectedAudio.value, [key]: volume } });
+    const audio = selectedAudio.value;
 
-    if (key === 'audio_volume' && playingId.value === selectedAudio.value?.id) {
+    if (!audio) {
+        return;
+    }
+
+    const volume = Number((event.target as HTMLInputElement).value);
+    updateMeta({ audio: { ...audio, [key]: volume } });
+
+    if (key === 'audio_volume' && playingId.value === audio.id) {
         soundtrack.setVolume(volume);
     }
 };

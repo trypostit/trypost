@@ -38,6 +38,7 @@ test('the invitation is not shared once an AI is connected or before the workspa
 })->with([
     'connected' => [fn (User $user, Workspace $workspace) => mcpAccessToken($user, mcpOauthClient('Claude'), $workspace)],
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
+    'the card turned off' => [fn () => config(['trypost.mcp_prompt.enabled' => false])],
 ]);
 
 test('a revoked connection invites the user again', function () {

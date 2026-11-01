@@ -574,13 +574,13 @@ function mcpAccessToken(
 }
 
 /**
- * Connects an AI to the user's current workspace, as connecting one through
- * MCP does, so the in-app invitation to connect one (`McpPromptCard`) is not
- * shown. A browser test whose page should not carry the card calls it.
+ * Shows the in-app invitation to connect an AI (`McpPromptCard`), which browser
+ * tests keep off (`BrowserTestCase`), for a test about the card or a page that
+ * carries it.
  */
-function connectAiTo(User $user): void
+function showMcpPrompt(): void
 {
-    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
+    config(['trypost.mcp_prompt.enabled' => true]);
 }
 
 /**

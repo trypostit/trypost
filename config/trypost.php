@@ -34,6 +34,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Invitation to connect an AI (MCP)
+    |--------------------------------------------------------------------------
+    |
+    | Shows the in-app card inviting a user with no AI connected to their
+    | workspace to connect one. On by default, self-hosted included; browser
+    | tests turn it off and switch it on with `showMcpPrompt()`.
+    |
+    */
+
+    'mcp_prompt' => [
+        'enabled' => (bool) env('MCP_PROMPT_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Legal pages
     |--------------------------------------------------------------------------
     |

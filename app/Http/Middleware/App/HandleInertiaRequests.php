@@ -146,9 +146,10 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * The card inviting the user to connect an AI, with the MCP URL its steps
-     * show, while their workspace can use the app and has no AI of theirs
-     * connected; null otherwise. Cached, and a connection made from the card
-     * forgets the cache. Dismissing the card is kept in the browser.
+     * show, while the card is on (`trypost.mcp_prompt.enabled`) and their
+     * workspace can use the app and has no AI of theirs connected; null
+     * otherwise. Cached, and a connection made from the card forgets the
+     * cache. Dismissing the card is kept in the browser.
      *
      * @return array{mcp_url: string}|null
      */
@@ -156,7 +157,7 @@ class HandleInertiaRequests extends Middleware
     {
         $workspace = $user?->currentWorkspace;
 
-        if (blank($workspace)) {
+        if (! config('trypost.mcp_prompt.enabled') || blank($workspace)) {
             return null;
         }
 
