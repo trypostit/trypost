@@ -164,6 +164,21 @@ test('the Claude button opens its steps on the page, which close once the AI con
         ->assertNoJavaScriptErrors();
 });
 
+test('an AI connected from anywhere else hides the card on its own, without a click', function () {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@mcp-prompt');
+
+    mcpAccessToken($user, mcpOauthClient('Cursor'), $user->currentWorkspace);
+    waitForGone($page, '@mcp-prompt');
+
+    $page->assertMissing('@mcp-prompt')
+        ->assertMissing('@mcp-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the steps stay open while nothing connected, even when the account loses access meanwhile', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);

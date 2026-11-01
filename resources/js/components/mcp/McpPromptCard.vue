@@ -83,7 +83,7 @@ const connect = (client: McpClient): void => {
 
 let stopConfetti = (): void => {};
 
-/** The AI connected: close the steps and celebrate, as the MCP settings do. */
+/** An AI connected: hide the card, close the steps and celebrate, as the MCP settings do. */
 const celebrateConnection = (): void => {
     connected.value = true;
     dialogOpen.value = false;
@@ -100,16 +100,19 @@ const checkConnection = async (): Promise<void> => {
         .get(showConnectionStatus.url())
         .catch(() => null);
 
-    if (status?.connected === true && dialogOpen.value) {
+    if (status?.connected === true) {
         celebrateConnection();
     }
 };
 
-/** While the steps are open, ask whether the AI connected to this workspace. */
+/**
+ * While the card or its steps are on screen, ask whether an AI connected to
+ * this workspace, from the card or from anywhere else.
+ */
 const poll = useIntervalFn(checkConnection, 2000, { immediate: false });
 
-const followDialog = (open: boolean): void => {
-    if (open) {
+const followCard = (onScreen: boolean): void => {
+    if (onScreen) {
         poll.resume();
 
         return;
@@ -118,7 +121,7 @@ const followDialog = (open: boolean): void => {
     poll.pause();
 };
 
-watch(dialogOpen, followDialog);
+watch(() => visible.value || dialogOpen.value, followCard, { immediate: true });
 
 onBeforeUnmount(() => {
     poll.pause();
