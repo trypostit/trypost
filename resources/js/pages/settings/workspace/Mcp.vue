@@ -42,20 +42,13 @@ const props = defineProps<{
 
 const docsUrl = `${DOCS_URL}/ai/introduction`;
 
-/** The app's mark when it is one we know: Claude and ChatGPT as on the Connect tab, the others from their brand logo. */
+/** The app's brand mark when it is one we know. */
 const connectedRows = computed(() =>
     props.connectedClients.map((client) => {
         const name = client.name.toLowerCase();
         const brand = mcpAppLogos.find((app) => name.includes(app.name)) ?? null;
 
-        return {
-            ...client,
-            brand,
-            app:
-                brand === null
-                    ? (mcpClients.find((app) => name.includes(app.label.toLowerCase())) ?? null)
-                    : null,
-        };
+        return { ...client, brand };
     }),
 );
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
@@ -145,23 +138,15 @@ onBeforeUnmount(() => {
                     <SettingsListRow
                         v-for="client in connectedRows"
                         :key="client.client_id"
-                        :icon="client.app || client.brand ? undefined : IconMcp"
+                        :icon="client.brand ? undefined : IconMcp"
                         :data-testid="`mcp-connected-client-${client.client_id}`"
                     >
-                        <template v-if="client.app || client.brand" #media>
+                        <template v-if="client.brand" #media>
                             <span
                                 class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                             >
-                                <img
-                                    v-if="client.app"
-                                    :src="client.app.logo"
-                                    alt=""
-                                    :class="['size-5 object-contain', client.app.logoClass]"
-                                    :data-testid="`mcp-connected-logo-${client.app.id}`"
-                                />
                                 <component
                                     :is="client.brand.logo"
-                                    v-else-if="client.brand"
                                     aria-hidden="true"
                                     :class="['size-5 text-foreground', client.brand.logoClass]"
                                     :data-testid="`mcp-connected-logo-${client.brand.id}`"
@@ -248,10 +233,10 @@ onBeforeUnmount(() => {
                             <span
                                 class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                             >
-                                <img
-                                    :src="client.logo"
-                                    alt=""
-                                    :class="['size-5 object-contain', client.logoClass]"
+                                <component
+                                    :is="client.logo"
+                                    aria-hidden="true"
+                                    class="size-5 text-foreground"
                                 />
                             </span>
                         </template>

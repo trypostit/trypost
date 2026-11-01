@@ -1,5 +1,6 @@
 import AntigravityGoogle from '@thesvg/vue/antigravity-google';
 import CherryStudio from '@thesvg/vue/cherry-studio';
+import Claude from '@thesvg/vue/claude';
 import ClaudeCode from '@thesvg/vue/claude-code';
 import CodexOpenai from '@thesvg/vue/codex-openai';
 import Composio from '@thesvg/vue/composio';
@@ -7,11 +8,15 @@ import Cursor from '@thesvg/vue/cursor';
 import GeminiCli from '@thesvg/vue/gemini-cli';
 import Glama from '@thesvg/vue/glama';
 import GrokXai from '@thesvg/vue/grok-xai';
+import McpModelContextProtocol from '@thesvg/vue/mcp-model-context-protocol';
 import N8n from '@thesvg/vue/n8n';
 import NousresearchHermes from '@thesvg/vue/nousresearch-hermes';
 import OpenWebui from '@thesvg/vue/open-webui';
+import OpenaiChatgpt from '@thesvg/vue/openai-chatgpt';
 import Opencode from '@thesvg/vue/opencode';
 import type { Component } from 'vue';
+
+import { inTextColor } from '@/lib/brandLogos';
 
 export type McpClientId = 'claude' | 'chatgpt' | 'other';
 
@@ -20,11 +25,10 @@ export interface McpClient {
     /** A brand name, or a lang key to resolve with `$t` when `labelKey` is set. */
     label: string;
     labelKey?: boolean;
-    /** The mark on neutral surfaces, with `logoClass` for the theme. */
-    logo: string;
-    logoClass?: string;
-    /** A black mark for primary buttons, inverted to white in light mode. */
-    monoLogo: string;
+    /** The mark on neutral surfaces, in its brand color or the text color. */
+    logo: Component;
+    /** The mark in the text color, for primary buttons. */
+    monoLogo: Component;
     /** Where the user adds a connector in that client; none for a generic app. */
     settingsUrl?: string;
     /** Listed in the client's app store: the user connects from its page, nothing to paste. */
@@ -47,16 +51,15 @@ export const mcpClients: McpClient[] = [
     {
         id: 'claude',
         label: 'Claude',
-        logo: '/images/ai/claude-color.svg',
-        monoLogo: '/images/ai/claude-mono.svg',
+        logo: Claude,
+        monoLogo: inTextColor(Claude),
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
-        logo: '/images/ai/openai.svg',
-        logoClass: 'dark:invert',
-        monoLogo: '/images/ai/openai.svg',
+        logo: OpenaiChatgpt,
+        monoLogo: OpenaiChatgpt,
         settingsUrl: CHATGPT_APP_URL,
         listed: true,
     },
@@ -67,9 +70,8 @@ export const otherMcpClient: McpClient = {
     id: 'other',
     label: 'mcp.other_clients_title',
     labelKey: true,
-    logo: '/images/ai/mcp.svg',
-    logoClass: 'dark:invert',
-    monoLogo: '/images/ai/mcp.svg',
+    logo: McpModelContextProtocol,
+    monoLogo: McpModelContextProtocol,
 };
 
 /** A connected app's logo, found by a word of the name the app registered with. */
@@ -81,7 +83,7 @@ export interface McpAppLogo {
 }
 
 /**
- * The logos of the other MCP apps people connect, most specific name first
+ * The logos of the MCP apps people connect, most specific name first
  * ("Claude Code" before Claude's own mark). An app without one shows the MCP mark.
  */
 export const mcpAppLogos: McpAppLogo[] = [
@@ -91,11 +93,12 @@ export const mcpAppLogos: McpAppLogo[] = [
     { id: 'gemini', name: 'gemini', logo: GeminiCli },
     { id: 'antigravity', name: 'antigravity', logo: AntigravityGoogle },
     { id: 'grok', name: 'grok', logo: GrokXai },
-    { id: 'n8n', name: 'n8n', logo: N8n },
+    { id: 'n8n', name: 'n8n', logo: N8n, logoClass: '[&_path]:fill-current' },
     { id: 'open-webui', name: 'open webui', logo: OpenWebui },
     { id: 'opencode', name: 'opencode', logo: Opencode },
     { id: 'cherry-studio', name: 'cherry studio', logo: CherryStudio },
     { id: 'composio', name: 'composio', logo: Composio, logoClass: '[&_path]:fill-current [&_path]:stroke-current' },
     { id: 'glama', name: 'glama', logo: Glama },
     { id: 'hermes', name: 'hermes', logo: NousresearchHermes },
+    ...mcpClients.map((client) => ({ id: client.id, name: client.label.toLowerCase(), logo: client.logo })),
 ];
