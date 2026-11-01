@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { useGuestLocale } from '@/composables/useGuestLocale';
+import { SOCIAL_PROVIDER_LOGOS } from '@/lib/brandLogos';
 import { detectPreferences } from '@/lib/detectPreferences';
 import { redirect as githubRedirect } from '@/routes/auth/github';
 import { redirect as googleRedirect } from '@/routes/auth/google';
@@ -51,10 +52,10 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="googleUrl"
             >
-                <img
-                    src="/images/social/google.svg"
-                    alt="Google"
-                    class="size-4"
+                <component
+                    :is="SOCIAL_PROVIDER_LOGOS.google.logo"
+                    aria-hidden="true"
+                    :class="['size-4 text-foreground', SOCIAL_PROVIDER_LOGOS.google.logoClass]"
                 />
                 {{
                     mode === 'login'
@@ -71,10 +72,10 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="githubUrl"
             >
-                <img
-                    src="/images/social/github.svg"
-                    alt="GitHub"
-                    class="size-4 dark:invert"
+                <component
+                    :is="SOCIAL_PROVIDER_LOGOS.github.logo"
+                    aria-hidden="true"
+                    :class="['size-4 text-foreground', SOCIAL_PROVIDER_LOGOS.github.logoClass]"
                 />
                 {{
                     mode === 'login'

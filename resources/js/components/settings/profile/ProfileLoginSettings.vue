@@ -12,9 +12,10 @@ import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { SOCIAL_PROVIDER_LOGOS } from '@/lib/brandLogos';
 import { connect } from '@/routes/app/profile/connected-accounts';
+import type { SocialProvider } from '@/types';
 
-export type SocialProvider = 'google' | 'github';
 
 export type ConnectedAccount = {
     provider: SocialProvider;
@@ -149,13 +150,10 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     :data-test="`connected-account-${account.provider}`"
                 >
                     <template #media>
-                        <img
-                            :src="`/images/social/${account.provider}.svg`"
-                            :alt="account.label"
-                            class="size-7 shrink-0 object-contain"
-                            :class="{
-                                'dark:invert': account.provider === 'github',
-                            }"
+                        <component
+                            :is="SOCIAL_PROVIDER_LOGOS[account.provider].logo"
+                            aria-hidden="true"
+                            :class="['size-7 shrink-0 text-foreground', SOCIAL_PROVIDER_LOGOS[account.provider].logoClass]"
                             :data-testid="`connected-account-icon-${account.provider}`"
                         />
                     </template>
