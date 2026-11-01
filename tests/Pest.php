@@ -574,6 +574,16 @@ function mcpAccessToken(
 }
 
 /**
+ * Connects an AI to the user's current workspace, as connecting one through
+ * MCP does, so the in-app invitation to connect one (`McpPromptCard`) is not
+ * shown. A browser test whose page should not carry the card calls it.
+ */
+function connectAiTo(User $user): void
+{
+    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
+}
+
+/**
  * Issue a Passport token, attach it to a dedicated MCP OAuth client, and bind
  * it to a workspace — the post-#222 shape used by middleware / MCP endpoint tests.
  *

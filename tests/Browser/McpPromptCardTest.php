@@ -210,6 +210,18 @@ test('the invitation waits while the user is asked where they found us', functio
         ->assertNoJavaScriptErrors();
 });
 
+test('a user with an AI connected is never invited', function () {
+    $user = mcpPromptUser();
+    connectAiTo($user);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@app-content-shell');
+
+    $page->assertMissing('@mcp-prompt')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a phone never shows the invitation', function () {
     $this->actingAs(mcpPromptUser());
 
