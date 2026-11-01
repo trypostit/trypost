@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, type ComputedRef } from 'vue';
 
 import { useWorkspaceStorage } from '@/composables/useBrowserStorage';
 import type { ComposerAccount } from '@/composables/usePostComposition';
@@ -7,7 +7,12 @@ import type { ComposerAccount } from '@/composables/usePostComposition';
  * The channels the last post of this workspace was sent to, offered as a
  * shortcut in the composer. Kept in this browser only.
  */
-export const useLastUsedAccounts = (accounts: () => ComposerAccount[]) => {
+export const useLastUsedAccounts = (
+    accounts: () => ComposerAccount[],
+): {
+    recentlyUsed: ComputedRef<ComposerAccount[]>;
+    remember: (accountIds: string[]) => void;
+} => {
     const ids = useWorkspaceStorage('composer.lastUsedAccounts', []);
 
     const recentlyUsed = computed(() =>

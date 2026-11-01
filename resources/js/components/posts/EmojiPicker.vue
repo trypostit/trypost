@@ -32,9 +32,17 @@ const STUCK_HEADER_CLASS =
     'shadow-[0_6px_10px_-8px_rgb(0_0_0/0.25)] border-b border-border';
 const stuckCategory = ref<EmojiCategory | 'recent' | null>(null);
 const headerRefs = ref<Record<string, HTMLElement | null>>({});
-const setHeaderRef = (key: string) => (el: unknown) => {
-    headerRefs.value[key] = el instanceof HTMLElement ? el : null;
-};
+const setHeaderRef =
+    (key: string): ((el: unknown) => void) =>
+    (el: unknown): void => {
+        if (el instanceof HTMLElement) {
+            headerRefs.value[key] = el;
+
+            return;
+        }
+
+        headerRefs.value[key] = null;
+    };
 
 const recents = useUserStorage('emoji.recents', []);
 
@@ -78,7 +86,7 @@ const isSearching = computed(() => search.value.trim().length > 0);
 const categoryLabel = (category: EmojiCategory | 'recent'): string =>
     trans(`posts.edit.emoji_picker.${category}`);
 
-const onPick = (emoji: Emoji) => {
+const onPick = (emoji: Emoji): void => {
     emit('select', emoji.c);
     const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(
         0,
@@ -87,7 +95,7 @@ const onPick = (emoji: Emoji) => {
     recents.value = next;
 };
 
-const scrollToCategory = (category: EmojiCategory | 'recent') => {
+const scrollToCategory = (category: EmojiCategory | 'recent'): void => {
     const target = headerRefs.value[category];
     const container = scrollEl.value;
     if (!target || !container) return;
@@ -95,7 +103,7 @@ const scrollToCategory = (category: EmojiCategory | 'recent') => {
     activeCategory.value = category;
 };
 
-const onScroll = () => {
+const onScroll = (): void => {
     const container = scrollEl.value;
     if (!container || isSearching.value) return;
     const top = container.scrollTop + 8;

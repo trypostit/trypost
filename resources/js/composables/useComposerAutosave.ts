@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed, getCurrentScope, onScopeDispose, ref } from 'vue';
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 
 import { mediaUploadLimits } from '@/composables/useMediaUpload';
 import type {
@@ -38,8 +38,11 @@ export type AutosaveOverride = Omit<DestinationOverride, 'media'> & {
     media?: AutosaveMediaRef[];
 };
 
+/** The shape of a saved draft; a draft of another version is not offered back. */
+export const AUTOSAVE_VERSION = 1;
+
 export interface AutosaveSnapshot {
-    version: 1;
+    version: typeof AUTOSAVE_VERSION;
     savedAt: string;
     content: string;
     overrides: Record<string, AutosaveOverride>;
@@ -116,23 +119,33 @@ export const clearAllComposerAutosaves = (userId: string): void => {
     }));
 };
 
-const isSnapshot = (value: unknown): value is AutosaveSnapshot =>
-    typeof value === 'object' &&
-    value !== null &&
-    (value as AutosaveSnapshot).version === 1 &&
-    typeof (value as AutosaveSnapshot).content === 'string' &&
-    Array.isArray((value as AutosaveSnapshot).accountIds) &&
-    Array.isArray((value as AutosaveSnapshot).media) &&
-    Array.isArray((value as AutosaveSnapshot).labelIds) &&
-    typeof (value as AutosaveSnapshot).overrides === 'object' &&
-    (value as AutosaveSnapshot).overrides !== null;
+const isSnapshot = (value: unknown): value is AutosaveSnapshot => {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
 
-const read = (userId: string, workspaceId: string | undefined): AutosaveSnapshot | null => {
+    const snapshot = value as Partial<AutosaveSnapshot>;
+
+    return (
+        snapshot.version === AUTOSAVE_VERSION &&
+        typeof snapshot.content === 'string' &&
+        Array.isArray(snapshot.accountIds) &&
+        Array.isArray(snapshot.media) &&
+        Array.isArray(snapshot.labelIds) &&
+        typeof snapshot.overrides === 'object' &&
+        snapshot.overrides !== null
+    );
+};
+
+const read = (
+    userId: string,
+    workspaceId: string | undefined,
+): AutosaveSnapshot | null => {
     if (!workspaceId) {
         return null;
     }
 
-    const stored: unknown = readWorkspaceItem(userId, workspaceId, 'composer.autosave');
+    const stored = readWorkspaceItem(userId, workspaceId, 'composer.autosave');
 
     if (isSnapshot(stored)) {
         return stored;
@@ -150,15 +163,16 @@ export const useComposerAutosave = (): {
 } => {
     const { auth } = usePage<SharedData>().props;
     moveLegacyBrowserStorage(auth);
-    const { user, currentWorkspace } = auth;
-    const workspaceId = currentWorkspace?.id;
-    const saved = ref<AutosaveSnapshot | null>(read(user.id, workspaceId));
+
+    const userId = auth.user.id;
+    const workspaceId = auth.currentWorkspace?.id;
+    const saved = ref<AutosaveSnapshot | null>(read(userId, workspaceId));
     let pending: AutosaveSnapshot | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const write = (snapshot: AutosaveSnapshot): void => {
         if (workspaceId) {
-            writeWorkspaceItem(user.id, workspaceId, 'composer.autosave', snapshot);
+            writeWorkspaceItem(userId, workspaceId, 'composer.autosave', snapshot);
         }
     };
 
@@ -183,7 +197,7 @@ export const useComposerAutosave = (): {
     const clear = (): void => {
         cancel();
         saved.value = null;
-        clearComposerAutosave(user.id, workspaceId);
+        clearComposerAutosave(userId, workspaceId);
     };
 
     if (getCurrentScope()) {
@@ -201,7 +215,11 @@ export const useComposerAutosave = (): {
 export const useAutosavePreview = (
     saved: Ref<AutosaveSnapshot | null>,
     accounts: () => ComposerAccount[],
-) => ({
+): {
+    accounts: ComputedRef<ComposerAccount[]>;
+    mediaCount: ComputedRef<number>;
+    preview: ComputedRef<string>;
+} => ({
     accounts: computed(() =>
         (saved.value?.accountIds ?? []).flatMap((id) => {
             const account = accounts().find((candidate) => candidate.id === id);

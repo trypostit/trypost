@@ -1,6 +1,7 @@
 import { updateBrowserStorage } from '@/lib/browserStorage';
 import type { Auth } from '@/types';
 import type { UserStorage, WorkspaceStorage } from '@/types/browser-storage';
+import { Platform } from '@/types/platform';
 
 /**
  * Moves what the app kept in its earlier localStorage keys (#461) into the
@@ -21,28 +22,6 @@ type LegacyItem<Storage> = {
     };
 }[keyof Storage];
 
-type LegacyWorkspaceItem = LegacyItem<WorkspaceStorage> & {
-    workspaceId: string;
-};
-
-/** The networks the earlier `insights.columns.<network>` keys were written for. */
-const LEGACY_PLATFORMS = [
-    'linkedin',
-    'linkedin-page',
-    'x',
-    'tiktok',
-    'youtube',
-    'facebook',
-    'instagram',
-    'instagram-facebook',
-    'threads',
-    'pinterest',
-    'bluesky',
-    'mastodon',
-    'telegram',
-    'discord',
-    'google_business',
-] as const;
 
 /** An earlier JSON value, typed as the item it becomes: its reader checks the shape before use. */
 const parsed = <Value>(raw: string): Value | undefined => {
@@ -65,7 +44,7 @@ const legacyUserItems = (userId: string): LegacyItem<UserStorage>[] => [
         item: 'insights.performanceColumns',
         value: parsed,
     },
-    ...LEGACY_PLATFORMS.map(
+    ...Object.values(Platform).map(
         (platform): LegacyItem<UserStorage> => ({
             legacy: `insights.columns.${platform}`,
             item: `insights.columns.${platform}`,
@@ -85,39 +64,46 @@ const legacyUserItems = (userId: string): LegacyItem<UserStorage>[] => [
     },
 ];
 
+const legacyDraft = (
+    userId: string,
+    workspaceId: string,
+): LegacyItem<WorkspaceStorage> => ({
+    legacy: `trypost:composer:autosave:${userId}:${workspaceId}`,
+    item: 'composer.autosave',
+    value: parsed,
+});
+
+/** The earlier keys by the workspace they move into: each workspace's draft, and what was kept for every workspace into the current one. */
 const legacyWorkspaceItems = (
     auth: Auth,
     workspaceId: string,
-): LegacyWorkspaceItem[] => [
-    {
-        workspaceId,
-        legacy: 'trypost:composer:last-used-accounts',
-        item: 'composer.lastUsedAccounts',
-        value: parsed,
-    },
-    {
-        workspaceId,
-        legacy: `trypost.command-palette.recent.${auth.user.id}`,
-        item: 'commandPalette.recent',
-        value: parsed,
-    },
-    ...auth.workspaces.map(
-        (workspace): LegacyWorkspaceItem => ({
-            workspaceId: workspace.id,
-            legacy: `trypost:composer:autosave:${auth.user.id}:${workspace.id}`,
-            item: 'composer.autosave',
-            value: parsed,
-        }),
+): Record<string, LegacyItem<WorkspaceStorage>[]> => ({
+    ...Object.fromEntries(
+        auth.workspaces.map((workspace) => [
+            workspace.id,
+            [legacyDraft(auth.user.id, workspace.id)],
+        ]),
     ),
-];
+    [workspaceId]: [
+        {
+            legacy: 'trypost:composer:last-used-accounts',
+            item: 'composer.lastUsedAccounts',
+            value: parsed,
+        },
+        {
+            legacy: `trypost.command-palette.recent.${auth.user.id}`,
+            item: 'commandPalette.recent',
+            value: parsed,
+        },
+        legacyDraft(auth.user.id, workspaceId),
+    ],
+});
 
 const isStored = ({ legacy }: { legacy: string }): boolean =>
     window.localStorage.getItem(legacy) !== null;
 
 /** The items the earlier keys become; each entry's value was typed against its item above. */
-const movedItems = <Storage>(
-    items: LegacyItem<Storage>[],
-): Partial<Storage> =>
+const movedItems = <Storage>(items: LegacyItem<Storage>[]): Partial<Storage> =>
     Object.fromEntries(
         items.map(({ legacy, item, value }) => [
             item,
@@ -126,45 +112,40 @@ const movedItems = <Storage>(
     ) as Partial<Storage>;
 
 export const moveLegacyBrowserStorage = (auth: Auth | undefined): void => {
-    const userId = auth?.user?.id;
     const workspaceId = auth?.currentWorkspace?.id;
 
-    if (!auth || !userId || !workspaceId) {
+    if (!auth?.user || !workspaceId) {
         return;
     }
 
     try {
-        const userItems = legacyUserItems(userId).filter(isStored);
-        const workspaceItems = legacyWorkspaceItems(auth, workspaceId).filter(isStored);
+        const userItems = legacyUserItems(auth.user.id).filter(isStored);
+        const workspaceItems = Object.entries(
+            legacyWorkspaceItems(auth, workspaceId),
+        )
+            .map(([id, items]) => [id, items.filter(isStored)] as const)
+            .filter(([, items]) => items.length > 0);
 
         if (userItems.length === 0 && workspaceItems.length === 0) {
             return;
         }
 
-        const user = movedItems(userItems);
-        const workspaces = Object.fromEntries(
-            [...new Set(workspaceItems.map(({ workspaceId: id }) => id))].map(
-                (id) => [
-                    id,
-                    movedItems(
-                        workspaceItems.filter(({ workspaceId: itemWorkspaceId }) => itemWorkspaceId === id),
-                    ),
-                ],
-            ),
-        );
-
-        updateBrowserStorage(userId, (storage) => ({
+        updateBrowserStorage(auth.user.id, (storage) => ({
             ...storage,
-            user: { ...user, ...storage.user },
-            workspaces: Object.fromEntries(
-                [...new Set([...Object.keys(workspaces), ...Object.keys(storage.workspaces)])].map(
-                    (id) => [id, { ...workspaces[id], ...storage.workspaces[id] }],
+            user: { ...movedItems(userItems), ...storage.user },
+            workspaces: {
+                ...storage.workspaces,
+                ...Object.fromEntries(
+                    workspaceItems.map(([id, items]) => [
+                        id,
+                        { ...movedItems(items), ...storage.workspaces[id] },
+                    ]),
                 ),
-            ),
+            },
         }));
 
-        [...userItems, ...workspaceItems].forEach(({ legacy }) =>
-            window.localStorage.removeItem(legacy),
+        [...userItems, ...workspaceItems.flatMap(([, items]) => items)].forEach(
+            ({ legacy }) => window.localStorage.removeItem(legacy),
         );
     } catch {
         return;

@@ -55,7 +55,7 @@ const useStoredItem = <Value>(
         return fallback;
     };
 
-    const followed = (): ShallowRef<unknown> => {
+    const share = (): ShallowRef<unknown> => {
         const created = shallowRef<unknown>(current());
 
         window.addEventListener('storage', (event) => {
@@ -75,7 +75,7 @@ const useStoredItem = <Value>(
         return created;
     };
 
-    const stored = shared.get(id) ?? followed();
+    const stored = shared.get(id) ?? share();
 
     return computed({
         get: () => stored.value as Value,

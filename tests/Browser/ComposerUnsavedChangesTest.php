@@ -160,14 +160,15 @@ test('a post opened by its edit link saves and closes onto the list without step
 test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, it lands back there and one back reaches the page before', function (string $from) {
     $post = seedUnsavedChangesReel();
     $account = $post->socialAccount;
+    $scheduledAt = now('UTC')->addDay()->setTime(15, 0);
     $state = match ($from) {
-        'calendar' => ['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => now()->addHour()],
+        'calendar' => ['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => $scheduledAt],
         'approvals' => ['status' => PostStatus::PendingApproval, 'scheduled_at' => now()->addHour(), 'approval_requested_by' => $post->user_id],
         default => [],
     };
     $post->forceFill($state)->saveQuietly();
     $list = match ($from) {
-        'calendar' => route('app.calendar', ['view' => 'week']),
+        'calendar' => route('app.calendar', ['view' => 'week', 'week' => $scheduledAt->startOfWeek()->format('Y-m-d')]),
         'channel drafts' => route('app.channels.publish', ['account' => $account, 'tab' => 'drafts']),
         'approvals' => route('app.posts.index', ['tab' => 'approvals']),
     };

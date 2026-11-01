@@ -54,6 +54,7 @@ import type {
     PublicationPeriod,
     SummaryMetric,
 } from '@/types/analytics';
+import type { PlatformValue } from '@/types/platform';
 
 const props = defineProps<{
     report: AnalyticsReport;
@@ -62,7 +63,7 @@ const props = defineProps<{
     availableMetrics: SummaryMetric[];
     sortableMetrics: SummaryMetric[];
     url: string;
-    platform: string;
+    platform: PlatformValue;
 }>();
 
 const TABLE_METRICS: SummaryMetric[] = [

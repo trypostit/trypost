@@ -99,6 +99,7 @@ import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFac
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
+    AUTOSAVE_VERSION,
     type AutosaveMediaRef,
     type AutosaveSnapshot,
     fromAutosaveMedia,
@@ -444,7 +445,9 @@ const findGroup = (groupKey: string | null): NetworkGroup | undefined =>
         ? undefined
         : networkGroups.value.find((group) => group.key === groupKey);
 const openGroup = computed(() => findGroup(openGroupKey.value));
-const groupDestination = (group: NetworkGroup) =>
+const groupDestination = (
+    group: NetworkGroup,
+): ReturnType<typeof composition.resolvedDestination> =>
     composition.resolvedDestination(group.anchor);
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
@@ -1823,7 +1826,7 @@ const resumeOpen = ref(
         ),
 );
 const autosaveSnapshot = (): AutosaveSnapshot => ({
-    version: 1,
+    version: AUTOSAVE_VERSION,
     savedAt: dayjs().toISOString(),
     content: composition.content.value,
     overrides: Object.fromEntries(

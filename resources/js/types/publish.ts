@@ -1,6 +1,7 @@
 import type { RecurrenceFrequency } from '@/lib/recurrence';
 import type { PublicationAnalyticsDetail } from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
+import type { PlatformValue } from '@/types/platform';
 import type {
     PostOriginValue,
     PostStatusValue,
@@ -19,7 +20,7 @@ export type PublishCounts = Record<PublishTab, number>;
 
 export interface PublishSocialAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     display_name: string | null;
     username: string;
     display_label: string;

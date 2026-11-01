@@ -1,17 +1,22 @@
 import type { AutosaveSnapshot } from '@/composables/useComposerAutosave';
 import type { PerformanceMetric, SummaryMetric } from '@/types/analytics';
+import type { PlatformValue } from '@/types/platform';
+
+/** The columns picked for each network's per-post table on the channel insights. */
+type ChannelColumns = {
+    [Item in `insights.columns.${PlatformValue}`]: SummaryMetric[];
+};
 
 /**
  * What the app keeps in this browser for a user, in every workspace, by name
  * (`area.thing`, like lang keys). An item never set is absent.
  */
-export interface UserStorage {
+export interface UserStorage extends ChannelColumns {
     'mcp.promptDismissed': boolean;
     'calendar.skipCustomTimeConfirm': boolean;
     'publish.tz': string;
     'publish.showSlots': boolean;
     'insights.performanceColumns': PerformanceMetric[];
-    [channelColumns: `insights.columns.${string}`]: SummaryMetric[];
     'composer.instagramCollaboratorsNoticeSeen': boolean;
     'emoji.recents': string[];
 }
