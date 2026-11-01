@@ -846,6 +846,17 @@ function recordCanvasDrawing(mixed $page): void
             window.__drawn = [];
             window.__images = [];
             window.__patterns = 0;
+            window.__paths = [];
+            const NativePath2D = window.Path2D;
+            window.Path2D = class extends NativePath2D {
+                constructor(path) {
+                    super(path);
+
+                    if (typeof path === 'string') {
+                        window.__paths.push(path);
+                    }
+                }
+            };
             const createPattern = CanvasRenderingContext2D.prototype.createPattern;
             const fillText = CanvasRenderingContext2D.prototype.fillText;
             const drawImage = CanvasRenderingContext2D.prototype.drawImage;

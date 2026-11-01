@@ -158,6 +158,24 @@ test('the share card loads each channel photo before the dialog opens and draws 
     $page->assertNoJavaScriptErrors();
 });
 
+test('the share card draws the change and verified icons from the Tabler components the page shows', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    $account->update(['platform' => Platform::X, 'meta' => ['x_verified_type' => 'blue']]);
+    AnalyticsAccountDailySnapshot::query()
+        ->where('social_account_id', $account->id)
+        ->update(['platform' => Platform::X, 'network' => Platform::X->network()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-followers');
+    recordCanvasDrawing($page);
+    openShareCard($page, '@share-followers');
+
+    expect($page->script('window.__paths.includes("M3 7l6 6l4 -4l8 8") && window.__paths.includes("M21 10l0 7l-7 0")'))->toBeTrue()
+        ->and($page->script('window.__paths.some((path) => path.startsWith("M12.01 2.011a3.2 3.2 0 0 1 2.113 .797"))'))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a browser that cannot copy images is told to download the card instead', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);

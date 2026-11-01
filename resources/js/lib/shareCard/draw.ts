@@ -1,5 +1,4 @@
-import { IconMinus, IconTrendingDown, IconTrendingUp } from '@tabler/icons-vue';
-import type { Component } from 'vue';
+import { type Icon, IconMinus, IconTrendingDown, IconTrendingUp } from '@tabler/icons-vue';
 
 import type { MetricDelta } from '@/lib/channelMetrics';
 import { changeColor, gridColor, muted } from '@/lib/shareCard/colors';
@@ -21,7 +20,7 @@ export const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: P
 export const CHANGE_ICON = { scale: 1.15, gap: 0.3, stroke: 2.5, grid: 24 };
 
 /** The trending icons `MetricChange` draws for each tone. */
-const CHANGE_ICONS: Record<keyof typeof CHANGE_TOKENS, Component> = {
+const CHANGE_ICONS: Record<keyof typeof CHANGE_TOKENS, Icon> = {
     up: IconTrendingUp,
     down: IconTrendingDown,
     flat: IconMinus,
