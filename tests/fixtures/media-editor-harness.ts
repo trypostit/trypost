@@ -28,15 +28,19 @@ const { toMediaRules } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/contentTypeMediaRules.ts')).href
 );
 
-const { rules, defaults } = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+type Bounds = { aspectRatioMin: number | null; aspectRatioMax: number | null };
 
-const boundsOf = (rule) => ({ min: rule.aspectRatioMin, max: rule.aspectRatioMax });
+type Preset = { value: string; ratio: number | null };
 
-const summarize = (presets) => presets.map((preset) => ({ value: preset.value, ratio: preset.ratio }));
+const { rules, defaults }: { rules: Record<string, unknown>; defaults: unknown } = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
 
-const valuesFor = (rule) => summarize(cropPresetsFor(presetValuesFor([rule], defaults), boundsOf(rule)));
+const boundsOf = (rule: Bounds) => ({ min: rule.aspectRatioMin, max: rule.aspectRatioMax });
 
-const noChannelValuesFor = (rule) => summarize(cropPresetsFor(defaults, boundsOf(rule)));
+const summarize = (presets: Preset[]) => presets.map((preset) => ({ value: preset.value, ratio: preset.ratio }));
+
+const valuesFor = (rule: Bounds) => summarize(cropPresetsFor(presetValuesFor([rule], defaults), boundsOf(rule)));
+
+const noChannelValuesFor = (rule: Bounds) => summarize(cropPresetsFor(defaults, boundsOf(rule)));
 
 const results = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, valuesFor(toMediaRules(rule))]),
@@ -50,6 +54,6 @@ console.log(
     JSON.stringify({
         contentTypes: results,
         noChannelWithinBounds: noChannelResults,
-        noChannel: cropPresetsFor(presetValuesFor([], defaults)).map((preset) => preset.value),
+        noChannel: cropPresetsFor(presetValuesFor([], defaults)).map((preset: Preset) => preset.value),
     }),
 );

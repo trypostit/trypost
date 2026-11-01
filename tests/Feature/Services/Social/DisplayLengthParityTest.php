@@ -15,7 +15,7 @@ test('the composer counts plain text the way the server measures it on every net
 
     $process = new Process([
         'node',
-        base_path('tests/fixtures/display-length-harness.js'),
+        base_path('tests/fixtures/display-length-harness.ts'),
         resource_path('js'),
         $corpusPath,
         $platformsPath,

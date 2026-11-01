@@ -29,7 +29,9 @@ const { getContentTypeOptions } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'composables/usePlatformLogo.ts')).href
 );
 
-const cases = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+type Case = { platform: string; media: unknown[] };
+
+const cases: Record<string, Case> = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
 
 const results = Object.fromEntries(
     Object.entries(cases).map(([key, { platform, media }]) => [

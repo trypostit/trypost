@@ -6,7 +6,7 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs `tests/fixtures/share-card-harness.js` over the share card's pure
+ * Runs `tests/fixtures/share-card-harness.ts` over the share card's pure
  * arithmetic and returns its JSON output.
  *
  * @return array<string, mixed>
@@ -19,7 +19,7 @@ function runShareCardHarness(): array
         test()->markTestSkipped('node is unavailable');
     }
 
-    $process = (new Process([$node, base_path('tests/fixtures/share-card-harness.js'), resource_path('js')]))->mustRun();
+    $process = (new Process([$node, base_path('tests/fixtures/share-card-harness.ts'), resource_path('js')]))->mustRun();
 
     return json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
 }

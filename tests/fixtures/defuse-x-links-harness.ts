@@ -11,14 +11,14 @@ import fs from 'node:fs';
 
 const [tldsFile, defuserFile, corpusFile] = process.argv.slice(2);
 
-const tlds = new Set(JSON.parse(fs.readFileSync(tldsFile, 'utf8')));
+const tlds = new Set<string>(JSON.parse(fs.readFileSync(tldsFile, 'utf8')));
 const pattern = new RegExp(
-    fs.readFileSync(defuserFile, 'utf8').match(/const LINK_PATTERN =\s*\/(.*)\/giu;/s)[1],
+    fs.readFileSync(defuserFile, 'utf8').match(/const LINK_PATTERN =\s*\/(.*)\/giu;/s)?.[1] ?? '',
     'giu',
 );
 
-const defuse = (content) =>
-    content.replace(pattern, (whole, boundary, prefix, host, tld, path) =>
+const defuse = (content: string): string =>
+    content.replace(pattern, (whole: string, boundary: string, prefix: string, host: string, tld: string, path: string) =>
         prefix === '' && !tlds.has(tld.toLowerCase()) ? whole : boundary + host.replaceAll('.', '(.)') + path);
 
-console.log(JSON.stringify(JSON.parse(fs.readFileSync(corpusFile, 'utf8')).map(defuse)));
+console.log(JSON.stringify((JSON.parse(fs.readFileSync(corpusFile, 'utf8')) as string[]).map(defuse)));

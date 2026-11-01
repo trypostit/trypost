@@ -5,7 +5,7 @@
  * and to hand-worked layouts.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
- * and extension-less specifiers onto `resources/js/**.ts`.
+ * onto `resources/js/**.ts`.
  */
 import { registerHooks } from 'node:module';
 import path from 'node:path';
@@ -20,34 +20,32 @@ registerHooks({
             return nextResolve(pathToFileURL(path.join(root, `${specifier.slice(2)}.ts`)).href, context);
         }
 
-        if (specifier.startsWith('./') && !specifier.endsWith('.ts')) {
-            return nextResolve(`${specifier}.ts`, context);
-        }
-
         return nextResolve(specifier, context);
     },
 });
 
-const load = (file) => import(pathToFileURL(path.join(root, file)).href);
+type Op = [string, ...number[]];
+
+const load = (file: string) => import(pathToFileURL(path.join(root, file)).href);
 const { comboDates, evenDates, fittingColumns, linearTicks, valueAxis } = await load('lib/shareCard/scale.ts');
 const { traceMonotone } = await load('lib/shareCard/curve.ts');
 const { spreadLabels } = await load('lib/labelLayout.ts');
 
 /** A canvas context that records the path it is asked to draw. */
 const recorder = () => {
-    const ops = [];
-    const round = (values) => values.map((value) => Number(value.toFixed(6)));
+    const ops: Op[] = [];
+    const round = (values: number[]): number[] => values.map((value) => Number(value.toFixed(6)));
 
     return {
         ops,
         beginPath: () => {},
-        moveTo: (...values) => ops.push(['M', ...round(values)]),
-        lineTo: (...values) => ops.push(['L', ...round(values)]),
-        bezierCurveTo: (...values) => ops.push(['C', ...round(values)]),
+        moveTo: (...values: number[]) => ops.push(['M', ...round(values)]),
+        lineTo: (...values: number[]) => ops.push(['L', ...round(values)]),
+        bezierCurveTo: (...values: number[]) => ops.push(['C', ...round(values)]),
     };
 };
 
-const curve = (points) => {
+const curve = (points: [number, number][]): Op[] => {
     const context = recorder();
 
     traceMonotone(context, points.map(([x, y]) => ({ x, y })));

@@ -9,8 +9,8 @@ import fs from 'node:fs';
 const [sourceFile, corpusFile] = process.argv.slice(2);
 
 const pattern = new RegExp(
-    fs.readFileSync(sourceFile, 'utf8').match(/const HASHTAG_PATTERN =\s*\/(.*)\/gu;/s)[1],
+    fs.readFileSync(sourceFile, 'utf8').match(/const HASHTAG_PATTERN =\s*\/(.*)\/gu;/s)?.[1] ?? '',
     'gu',
 );
 
-console.log(JSON.stringify(JSON.parse(fs.readFileSync(corpusFile, 'utf8')).map((text) => text.match(pattern)?.length ?? 0)));
+console.log(JSON.stringify((JSON.parse(fs.readFileSync(corpusFile, 'utf8')) as string[]).map((text) => text.match(pattern)?.length ?? 0)));
