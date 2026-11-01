@@ -9,6 +9,7 @@ use App\Http\Requests\App\Mcp\StoreMcpPromptRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Services\PostHogService;
 use Illuminate\Http\Response;
+use Illuminate\Support\Arr;
 
 class McpPromptController extends Controller
 {
@@ -21,14 +22,18 @@ class McpPromptController extends Controller
         $user = $request->user();
         $workspace = $user->currentWorkspace;
         $answer = $request->enum('answer', PromptAnswer::class);
+        $properties = Arr::whereNotNull([
+            'workspace_id' => $workspace?->id,
+            'client' => $request->validated('client'),
+        ]);
 
-        rescue(function () use ($user, $workspace, $answer): void {
+        rescue(function () use ($user, $workspace, $answer, $properties): void {
             CaptureAccountEvent::dispatchIf(
                 PostHogService::isEnabled() && filled($workspace),
                 (string) $user->id,
                 (string) $workspace?->account_id,
                 $answer->event(),
-                ['workspace_id' => (string) $workspace?->id],
+                $properties,
             );
         });
 

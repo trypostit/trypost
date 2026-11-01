@@ -79,7 +79,6 @@ return [
     'prompt' => [
         'title' => 'Je hebt nog geen AI gekoppeld',
         'body' => 'Koppel Claude of ChatGPT om posts te maken, te plannen en te analyseren door het gewoon te vragen.',
-        'connect' => 'App koppelen',
         'not_now' => 'Niet nu',
     ],
 

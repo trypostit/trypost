@@ -79,7 +79,6 @@ return [
     'prompt' => [
         'title' => '你还没有连接 AI',
         'body' => '连接 Claude 或 ChatGPT，只需开口就能创建、排期和分析帖子。',
-        'connect' => '连接应用',
         'not_now' => '以后再说',
     ],
 

@@ -30,6 +30,8 @@ export interface McpClient {
     settingsUrl?: string;
     /** Listed in the client's app store: the user connects from its page, nothing to paste. */
     listed?: boolean;
+    /** A button filled in the brand's color, with the mark in the button's text color. */
+    brandButtonClass?: string;
 }
 
 /** TryPost's page in the ChatGPT app store. */
@@ -50,6 +52,8 @@ export const mcpClients: McpClient[] = [
         label: 'Claude',
         logo: Claude,
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
+        brandButtonClass:
+            'bg-[#d97757] text-white hover:bg-[#c4643f] dark:bg-[#d97757] dark:text-white dark:hover:bg-[#c4643f]',
     },
     {
         id: 'chatgpt',
@@ -57,6 +61,8 @@ export const mcpClients: McpClient[] = [
         logo: OpenaiChatgpt,
         settingsUrl: CHATGPT_APP_URL,
         listed: true,
+        brandButtonClass:
+            'bg-black text-white hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/85',
     },
 ];
 

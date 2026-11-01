@@ -21,14 +21,25 @@ function mcpPromptUser(array $attributes = []): User
     return $user->fresh();
 }
 
-test('a new user is invited to connect an AI, and Not now hides it for good in that browser', function () {
+/**
+ * @return list<string>
+ */
+function mcpPromptAvatars(mixed $page): array
+{
+    return $page->script("[...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => avatar.dataset.testid.replace('mcp-prompt-avatar-', ''))");
+}
+
+test('a new user is invited to connect an AI, and Not now or the close button hide it for good in that browser', function (string $dismiss) {
     $this->actingAs(mcpPromptUser());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@mcp-prompt');
 
+    expect(mcpPromptAvatars($page))->toBe(['chatgpt', 'claude', 'grok', 'gemini', 'cursor', 'n8n'])
+        ->and($page->script("(() => { const layers = [...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => Number(getComputedStyle(avatar).zIndex)); return layers.every((layer, index) => index === 0 || layer < layers[index - 1]); })()"))->toBeTrue();
+
     $page->assertSeeIn('@mcp-prompt', __('mcp.prompt.title'))
-        ->click('@mcp-prompt-dismiss');
+        ->click($dismiss);
     waitForGone($page, '@mcp-prompt');
 
     $page->navigate(route('app.posts.index'));
@@ -37,20 +48,40 @@ test('a new user is invited to connect an AI, and Not now hides it for good in t
 
     $page->assertMissing('@mcp-prompt')
         ->assertNoJavaScriptErrors();
+})->with(['not now' => '@mcp-prompt-dismiss', 'close' => '@mcp-prompt-close']);
+
+test('the Claude button opens its steps on the page, which close once the AI connects', function () {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+    $calendarPath = (string) parse_url(route('app.calendar'), PHP_URL_PATH);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@mcp-prompt-connect-claude');
+    $page->click('@mcp-prompt-connect-claude');
+    waitFor($page, '@mcp-dialog');
+
+    $page->assertSeeIn('@mcp-dialog', __('mcp.dialog.title', ['client' => 'Claude']))
+        ->assertSeeIn('@mcp-dialog', route('mcp.trypost'))
+        ->assertPathIs($calendarPath);
+
+    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
+    waitForGone($page, '@mcp-dialog');
+
+    $page->assertMissing('@mcp-dialog')
+        ->assertMissing('@mcp-prompt')
+        ->assertPathIs($calendarPath)
+        ->assertNoJavaScriptErrors();
 });
 
-test('connecting from the invitation opens the MCP settings on Connect an app, without the card', function () {
+test('Other apps opens the steps for any app that supports MCP', function () {
     $this->actingAs(mcpPromptUser());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitFor($page, '@mcp-prompt-connect');
-    $page->click('@mcp-prompt-connect');
-    waitForPath($page, (string) parse_url(route('app.mcp.index'), PHP_URL_PATH));
-    waitForState($page, '@mcp-tab-connect', "element.getAttribute('aria-selected') === 'true'");
+    waitFor($page, '@mcp-prompt-connect-other');
+    $page->click('@mcp-prompt-connect-other');
+    waitFor($page, '@mcp-dialog');
 
-    $page->assertAttribute('@mcp-tab-connect', 'aria-selected', 'true')
-        ->assertVisible('@mcp-connect-claude')
-        ->assertMissing('@mcp-prompt')
+    $page->assertSeeIn('@mcp-dialog', __('mcp.other_dialog_title'))
         ->assertNoJavaScriptErrors();
 });
 

@@ -79,7 +79,6 @@ return [
     'prompt' => [
         'title' => 'Aún no has conectado ninguna IA',
         'body' => 'Conecta Claude o ChatGPT para crear, programar y analizar tus posts con solo pedirlo.',
-        'connect' => 'Conectar app',
         'not_now' => 'Ahora no',
     ],
 

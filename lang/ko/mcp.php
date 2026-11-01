@@ -79,7 +79,6 @@ return [
     'prompt' => [
         'title' => '아직 연결한 AI가 없습니다',
         'body' => 'Claude나 ChatGPT를 연결하면 요청만으로 게시물을 만들고, 예약하고, 분석할 수 있습니다.',
-        'connect' => '앱 연결',
         'not_now' => '나중에',
     ],
 

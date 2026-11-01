@@ -70,7 +70,9 @@ class HandleInertiaRequests extends Middleware
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
-            'mcpPrompt' => fn (): bool => $this->showsMcpPrompt($user, $isSelfHosted),
+            'mcpPrompt' => fn (): ?array => $this->showsMcpPrompt($user, $isSelfHosted)
+                ? ['mcp_url' => route('mcp.trypost')]
+                : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),

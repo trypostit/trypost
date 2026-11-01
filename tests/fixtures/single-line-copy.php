@@ -205,7 +205,6 @@ return [
     'mcp.connect_other' => 10,
     'mcp.tabs.connected' => 23,
     'mcp.tabs.connect' => 21,
-    'mcp.prompt.connect' => 21,
     'mcp.prompt.not_now' => 11,
     'mcp.connect' => 13,
     'mcp.copy' => 10,
