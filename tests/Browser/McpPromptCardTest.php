@@ -50,6 +50,72 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
         ->assertNoJavaScriptErrors();
 });
 
+test('closing the card keeps it in the user\'s one browser store key, leaving the workspaces block as it was', function () {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+    $key = "trypost:{$user->id}";
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@mcp-prompt');
+    $page->script(sprintf("localStorage.setItem('%s', JSON.stringify({ version: 1, user: {}, workspaces: { kept: { note: true } } }))", $key));
+    $page->click('@mcp-prompt-close');
+    waitForGone($page, '@mcp-prompt');
+
+    expect($page->script("Object.keys(localStorage).filter((key) => key.startsWith('trypost:') || key.startsWith('mcp.'))"))->toBe([$key])
+        ->and($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
+            'version' => 1,
+            'user' => ['mcp.promptDismissed' => true],
+            'workspaces' => ['kept' => ['note' => true]],
+        ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('closing the card in another tab hides it here at once', function () {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+    $key = "trypost:{$user->id}";
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@mcp-prompt');
+    $page->script(sprintf(<<<'JS'
+        (() => {
+            const value = JSON.stringify({ version: 1, user: { 'mcp.promptDismissed': true }, workspaces: {} });
+            localStorage.setItem('%1$s', value);
+            window.dispatchEvent(new StorageEvent('storage', { key: '%1$s', newValue: value }));
+        })()
+    JS, $key));
+    waitForGone($page, '@mcp-prompt');
+
+    $page->assertMissing('@mcp-prompt')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an unreadable or older browser store reads as empty and is replaced on the next save', function (string $stored) {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+    $key = "trypost:{$user->id}";
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@app-header');
+    $page->script(sprintf("localStorage.setItem('%s', %s)", $key, json_encode($stored)));
+    $page->navigate(route('app.posts.index'));
+    waitForPath($page, route('app.posts.index', absolute: false));
+    waitFor($page, '@mcp-prompt');
+
+    $page->click('@mcp-prompt-close');
+    waitForGone($page, '@mcp-prompt');
+
+    expect($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
+        'version' => 1,
+        'user' => ['mcp.promptDismissed' => true],
+        'workspaces' => [],
+    ]);
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'not JSON' => ['not json'],
+    'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
+]);
+
 test('the Claude button opens its steps on the page, which close once the AI connects', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);

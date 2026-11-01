@@ -7,6 +7,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { useUserPref } from '@/composables/useUserPref';
 import {
     mcpAppLogos,
     mcpClients,
@@ -38,25 +39,7 @@ const avatars: McpAppLogo[] = AVATAR_APPS.flatMap((id) =>
 const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
 
-const storageKey = (): string => `mcp.promptDismissed.${page.props.auth.user.id}`;
-
-const readDismissed = (): boolean => {
-    try {
-        return window.localStorage.getItem(storageKey()) === 'true';
-    } catch {
-        return false;
-    }
-};
-
-const storeDismissed = (): void => {
-    try {
-        window.localStorage.setItem(storageKey(), 'true');
-    } catch {
-        return;
-    }
-};
-
-const dismissed = ref(readDismissed());
+const dismissed = useUserPref('mcp.promptDismissed', false);
 const connected = ref(false);
 const prompt = computed(() => page.props.mcpPrompt ?? null);
 
@@ -83,7 +66,6 @@ const statusHttp = useHttp<Record<string, never>, McpConnectionStatus>({});
 
 const dismiss = (): void => {
     dismissed.value = true;
-    storeDismissed();
     dismissHttp.post(storePromptAnswer.url()).catch(() => {});
 };
 
