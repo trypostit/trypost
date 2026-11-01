@@ -11,11 +11,11 @@ import PreviewStoryHeader from '@/components/posts/previews/PreviewStoryHeader.v
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import PreviewVerticalCard from '@/components/posts/previews/PreviewVerticalCard.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
 import { facebookLinkPreviewUrl } from '@/lib/facebookLinkPreview';
 import { ContentType } from '@/types/content-type';
 
-import type { PreviewProps } from './types';
 
 defineProps<PreviewProps>();
 </script>

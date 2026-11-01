@@ -18,6 +18,7 @@ import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
 import PreviewStoryHeader from '@/components/posts/previews/PreviewStoryHeader.vue';
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
 import PreviewVerticalCard from '@/components/posts/previews/PreviewVerticalCard.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import {
     providePreviewSoundtrack,
     soundtrackLabel,
@@ -25,7 +26,6 @@ import {
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
-import type { PreviewProps } from './types';
 
 const props = defineProps<PreviewProps>();
 

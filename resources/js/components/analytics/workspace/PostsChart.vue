@@ -2,6 +2,11 @@
 import { computed, ref } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import AccountIdentity from '@/components/analytics/workspace/AccountIdentity.vue';
+import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import PostsOverTimeStackedBarChart from '@/components/analytics/workspace/charts/PostsOverTimeStackedBarChart.vue';
+import SocialAccountMetricBarChart from '@/components/analytics/workspace/charts/SocialAccountMetricBarChart.vue';
 import date from '@/date';
 import {
     POSTS_ROWS,
@@ -16,11 +21,6 @@ import type {
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
-import AccountIdentity from './AccountIdentity.vue';
-import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
-import AnalyticsSection from './AnalyticsSection.vue';
-import PostsOverTimeStackedBarChart from './charts/PostsOverTimeStackedBarChart.vue';
-import SocialAccountMetricBarChart from './charts/SocialAccountMetricBarChart.vue';
 
 const props = defineProps<{
     posts: WorkspaceAnalyticsReport['posts'];

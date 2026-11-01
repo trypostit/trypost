@@ -1,4 +1,4 @@
-import type { Point } from './types';
+import type { Point } from '@/lib/shareCard/types';
 
 export type TextStyle = {
     font: string;

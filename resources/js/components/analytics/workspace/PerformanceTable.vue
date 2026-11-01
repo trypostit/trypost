@@ -7,6 +7,8 @@ import {
 import { computed, ref } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
+import AccountIdentity from '@/components/analytics/workspace/AccountIdentity.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
@@ -36,8 +38,6 @@ import {
 } from '@/lib/utils';
 import type { PerformanceRow, WorkspaceAnalyticsReport } from '@/types/analytics';
 
-import AccountIdentity from './AccountIdentity.vue';
-import AnalyticsSection from './AnalyticsSection.vue';
 
 const props = defineProps<{
     rows: WorkspaceAnalyticsReport['performance'];

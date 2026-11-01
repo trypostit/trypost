@@ -8,6 +8,11 @@ import {
 } from '@unovis/vue';
 import { computed, h, onBeforeUnmount, render, useTemplateRef } from 'vue';
 
+import AxisChannelRow from '@/components/analytics/workspace/charts/AxisChannelRow.vue';
+import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from '@/components/analytics/workspace/charts/socialAccountChart';
 import {
     ChartContainer,
     ChartTooltip,
@@ -21,11 +26,6 @@ import { accountColor } from '@/lib/analyticsColors';
 import { formatNumberCompact } from '@/lib/utils';
 import type { AccountMetricRow } from '@/types/analytics';
 
-import AxisChannelRow from './AxisChannelRow.vue';
-import {
-    formatCountTick,
-    socialAccountChartConfig,
-} from './socialAccountChart';
 
 const props = withDefaults(
     defineProps<{

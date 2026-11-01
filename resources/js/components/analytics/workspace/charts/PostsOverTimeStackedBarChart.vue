@@ -9,6 +9,10 @@ import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from '@/components/analytics/workspace/charts/socialAccountChart';
+import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
@@ -26,10 +30,6 @@ import type {
     PostBucket,
 } from '@/types/analytics';
 
-import {
-    formatCountTick,
-    socialAccountChartConfig,
-} from './socialAccountChart';
 
 type ChartPoint = {
     index: number;

@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 
-import dayjs from './dayjs';
-import type { Auth } from './types';
+import dayjs from '@/dayjs';
+import type { Auth } from '@/types';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type TimeFormat = '12h' | '24h';

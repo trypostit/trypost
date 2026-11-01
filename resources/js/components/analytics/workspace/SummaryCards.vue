@@ -4,6 +4,8 @@ import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
 import date from '@/date';
 import {
     countDelta,
@@ -19,8 +21,6 @@ import type {
     SummaryMetric,
 } from '@/types/analytics';
 
-import AnalyticsSection from './AnalyticsSection.vue';
-import InfoTip from './InfoTip.vue';
 
 const props = defineProps<{
     report: AnalyticsReport;

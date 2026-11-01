@@ -1,4 +1,4 @@
-import { CHART } from './theme';
+import { CHART } from '@/lib/shareCard/theme';
 
 /** d3's tick rule: the step is 10, 5, 2 or 1 times a power of ten, whichever lands closest to the asked count. */
 const TICK_FACTORS: [number, number][] = [

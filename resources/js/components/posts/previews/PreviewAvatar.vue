@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import type { PreviewAccount } from '@/components/posts/previews/types';
 import { getInitials } from '@/composables/useInitials';
 
-import type { PreviewAccount } from './types';
 
 withDefaults(
     defineProps<{

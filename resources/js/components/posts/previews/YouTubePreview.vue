@@ -11,10 +11,10 @@ import { computed } from 'vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
 import PreviewVerticalCard from '@/components/posts/previews/PreviewVerticalCard.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import { isVideo } from '@/lib/mediaType';
 import { toNullableText } from '@/lib/utils';
 
-import type { PreviewProps } from './types';
 
 const props = defineProps<PreviewProps>();
 

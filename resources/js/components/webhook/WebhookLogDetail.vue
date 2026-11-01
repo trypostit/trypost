@@ -6,12 +6,12 @@ import { computed, ref } from 'vue';
 
 import JsonViewer from '@/components/JsonViewer.vue';
 import { Button } from '@/components/ui/button';
+import { webhookEventLabel } from '@/components/webhook/webhook-events';
+import WebhookDeliveryBadge from '@/components/webhook/WebhookDeliveryBadge.vue';
 import date from '@/date';
 import { replay } from '@/routes/app/webhooks';
 import type { WebhookLog } from '@/types/webhook';
 
-import { webhookEventLabel } from './webhook-events';
-import WebhookDeliveryBadge from './WebhookDeliveryBadge.vue';
 
 const props = defineProps<{
     webhookId: string;

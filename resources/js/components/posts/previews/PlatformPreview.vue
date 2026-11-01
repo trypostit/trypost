@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 
+
+import BlueskyPreview from '@/components/posts/previews/BlueskyPreview.vue';
+import DiscordPreview from '@/components/posts/previews/DiscordPreview.vue';
+import FacebookPreview from '@/components/posts/previews/FacebookPreview.vue';
+import GoogleBusinessPreview from '@/components/posts/previews/GoogleBusinessPreview.vue';
+import InstagramPreview from '@/components/posts/previews/InstagramPreview.vue';
+import LinkedInPreview from '@/components/posts/previews/LinkedInPreview.vue';
+import MastodonPreview from '@/components/posts/previews/MastodonPreview.vue';
+import PinterestPreview from '@/components/posts/previews/PinterestPreview.vue';
+import TelegramPreview from '@/components/posts/previews/TelegramPreview.vue';
+import ThreadsPreview from '@/components/posts/previews/ThreadsPreview.vue';
+import TikTokPreview from '@/components/posts/previews/TikTokPreview.vue';
+import type { PreviewAccount } from '@/components/posts/previews/types';
+import XPreview from '@/components/posts/previews/XPreview.vue';
+import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
-
-import BlueskyPreview from './BlueskyPreview.vue';
-import DiscordPreview from './DiscordPreview.vue';
-import FacebookPreview from './FacebookPreview.vue';
-import GoogleBusinessPreview from './GoogleBusinessPreview.vue';
-import InstagramPreview from './InstagramPreview.vue';
-import LinkedInPreview from './LinkedInPreview.vue';
-import MastodonPreview from './MastodonPreview.vue';
-import PinterestPreview from './PinterestPreview.vue';
-import TelegramPreview from './TelegramPreview.vue';
-import ThreadsPreview from './ThreadsPreview.vue';
-import TikTokPreview from './TikTokPreview.vue';
-import type { PreviewAccount } from './types';
-import XPreview from './XPreview.vue';
-import YouTubePreview from './YouTubePreview.vue';
 
 interface Props {
     platform: string;

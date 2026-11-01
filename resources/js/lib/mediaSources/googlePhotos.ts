@@ -1,9 +1,9 @@
 import { useHttp } from '@inertiajs/vue3';
 
 import dayjs from '@/dayjs';
+import { signInWithGoogle } from '@/lib/mediaSources/googleSignIn';
 import { destroy, show } from '@/routes/app/media/google-photos/sessions';
 
-import { signInWithGoogle } from './googleSignIn';
 
 export interface GooglePhotosPick {
     sessionId: string;

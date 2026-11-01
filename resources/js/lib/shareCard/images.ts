@@ -1,7 +1,6 @@
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
-
-import { heading, sans } from './theme';
-import type { ShareCardOptions, ShareChannel, ShareImages, ShareMetricOption } from './types';
+import { heading, sans } from '@/lib/shareCard/theme';
+import type { ShareCardOptions, ShareChannel, ShareImages, ShareMetricOption } from '@/lib/shareCard/types';
 
 /**
  * How long a font or an image may take before the card draws without it, and

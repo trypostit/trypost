@@ -1,11 +1,10 @@
 import type { MetricDelta } from '@/lib/channelMetrics';
+import { changeColor, gridColor, muted } from '@/lib/shareCard/colors';
+import { traceMonotone } from '@/lib/shareCard/curve';
+import { type TextStyle, widest, writeText } from '@/lib/shareCard/text';
+import { CHANGE_ICONS, CHANGE_TOKENS, CHART, PLOT, sans } from '@/lib/shareCard/theme';
+import type { Box, Point, SharePoint } from '@/lib/shareCard/types';
 import { distinctCountLabels } from '@/lib/utils';
-
-import { changeColor, gridColor, muted } from './colors';
-import { traceMonotone } from './curve';
-import { type TextStyle, widest, writeText } from './text';
-import { CHANGE_ICONS, CHANGE_TOKENS, CHART, PLOT, sans } from './theme';
-import type { Box, Point, SharePoint } from './types';
 
 export const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: Point): void => {
     context.beginPath();

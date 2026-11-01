@@ -11,21 +11,20 @@
 
 import date from '@/date';
 import { canvasToFile } from '@/lib/canvasFile';
+import { lightColor } from '@/lib/shareCard/colors';
+import { paintCombo } from '@/lib/shareCard/combo';
+import { paintGround, paintMark, paintPanel } from '@/lib/shareCard/frame';
+import { prepareShareCard } from '@/lib/shareCard/images';
+import { paintLinesCard } from '@/lib/shareCard/lines';
+import { paintRowsCard } from '@/lib/shareCard/rows';
+import { paintStackedCard } from '@/lib/shareCard/stacked';
+import { paintSummary } from '@/lib/shareCard/summary';
+import { SHARE_CARD_SIZE, SHARE_EXPORT_SCALE } from '@/lib/shareCard/theme';
+import type { Box, ShareCardOptions, ShareImages, ShareShape } from '@/lib/shareCard/types';
 
-import { lightColor } from './colors';
-import { paintCombo } from './combo';
-import { paintGround, paintMark, paintPanel } from './frame';
-import { prepareShareCard } from './images';
-import { paintLinesCard } from './lines';
-import { paintRowsCard } from './rows';
-import { paintStackedCard } from './stacked';
-import { paintSummary } from './summary';
-import { SHARE_CARD_SIZE, SHARE_EXPORT_SCALE } from './theme';
-import type { Box, ShareCardOptions, ShareImages, ShareShape } from './types';
-
-export { periodFigure } from './combo';
-export { prepareShareCard } from './images';
-export { SHARE_CARD_SIZE, SHARE_TINTS, type ShareTint } from './theme';
+export { periodFigure } from '@/lib/shareCard/combo';
+export { prepareShareCard } from '@/lib/shareCard/images';
+export { SHARE_CARD_SIZE, SHARE_TINTS, type ShareTint } from '@/lib/shareCard/theme';
 export type {
     ShareCardOptions,
     ShareChannel,
@@ -35,7 +34,7 @@ export type {
     ShareSeries,
     ShareShape,
     ShareTile,
-} from './types';
+} from '@/lib/shareCard/types';
 
 /** What draws each shape inside the panel. */
 const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box) => void> = {

@@ -10,6 +10,11 @@ import {
 } from '@unovis/vue';
 import { computed, ref, useTemplateRef } from 'vue';
 
+import LineEndLabel from '@/components/analytics/workspace/charts/LineEndLabel.vue';
+import {
+    formatCountTick,
+    socialAccountChartConfig,
+} from '@/components/analytics/workspace/charts/socialAccountChart';
 import {
     ChartContainer,
     ChartCrosshair,
@@ -30,11 +35,6 @@ import type {
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
-import LineEndLabel from './LineEndLabel.vue';
-import {
-    formatCountTick,
-    socialAccountChartConfig,
-} from './socialAccountChart';
 
 type ChartPoint = {
     date: string;

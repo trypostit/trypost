@@ -6,9 +6,7 @@ import {
     chartPeriods,
     type MetricDelta,
 } from '@/lib/channelMetrics';
-import type { PublicationPeriod } from '@/types/analytics';
-
-import { ink, muted } from './colors';
+import { ink, muted } from '@/lib/shareCard/colors';
 import {
     changeWidth,
     definedRuns,
@@ -19,12 +17,13 @@ import {
     strokeGrid,
     tickRoom,
     writeTick,
-} from './draw';
-import { paintIdentity } from './frame';
-import { comboDates, shareOf } from './scale';
-import { widest, writeText } from './text';
-import { CHART, heading, IDENTITY, PANEL, PLOT, sans } from './theme';
-import type { Box, Point, ShareCardOptions, ShareSeries } from './types';
+} from '@/lib/shareCard/draw';
+import { paintIdentity } from '@/lib/shareCard/frame';
+import { comboDates, shareOf } from '@/lib/shareCard/scale';
+import { widest, writeText } from '@/lib/shareCard/text';
+import { CHART, heading, IDENTITY, PANEL, PLOT, sans } from '@/lib/shareCard/theme';
+import type { Box, Point, ShareCardOptions, ShareSeries } from '@/lib/shareCard/types';
+import type { PublicationPeriod } from '@/types/analytics';
 
 /**
  * The previous period's hatch: a tile of the color's light wash with one

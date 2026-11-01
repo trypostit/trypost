@@ -1,14 +1,13 @@
 import { spreadLabels } from '@/lib/labelLayout';
+import { paintChannel } from '@/lib/shareCard/channel';
+import { ink } from '@/lib/shareCard/colors';
+import { besideTicks, definedRuns, paintDates, paintGrid, strokeCurve } from '@/lib/shareCard/draw';
+import { headlinePlot, paintHeadline } from '@/lib/shareCard/frame';
+import { evenDates, linearTicks, shareOf, spread } from '@/lib/shareCard/scale';
+import { writeText } from '@/lib/shareCard/text';
+import { CHART, PLOT, sans } from '@/lib/shareCard/theme';
+import type { Box, Point, ShareCardOptions, ShareImages, ShareLine } from '@/lib/shareCard/types';
 import { distinctCountLabels } from '@/lib/utils';
-
-import { paintChannel } from './channel';
-import { ink } from './colors';
-import { besideTicks, definedRuns, paintDates, paintGrid, strokeCurve } from './draw';
-import { headlinePlot, paintHeadline } from './frame';
-import { evenDates, linearTicks, shareOf, spread } from './scale';
-import { writeText } from './text';
-import { CHART, PLOT, sans } from './theme';
-import type { Box, Point, ShareCardOptions, ShareImages, ShareLine } from './types';
 
 /**
  * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,

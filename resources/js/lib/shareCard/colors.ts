@@ -1,4 +1,4 @@
-import { CHANGE_TOKENS } from './theme';
+import { CHANGE_TOKENS } from '@/lib/shareCard/theme';
 
 /** Every color resolved so far: the light palette never changes while the page is open. */
 const resolved = new Map<string, string>();

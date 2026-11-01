@@ -1,8 +1,8 @@
 import type { ChartMode, MetricDelta } from '@/lib/channelMetrics';
+import type { ShareTint } from '@/lib/shareCard/theme';
 import type { SeriesMetric } from '@/types/analytics';
 import type { VerifiedBadge } from '@/types/social-account';
 
-import type { ShareTint } from './theme';
 
 /** One line per channel, the channel chart, columns split by channel over time, one bar per channel, or the Summary's numbers. */
 export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';

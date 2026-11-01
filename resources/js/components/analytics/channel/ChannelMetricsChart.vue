@@ -11,6 +11,7 @@ import {
 } from '@unovis/vue';
 import { computed } from 'vue';
 
+import ChannelMetricsTooltip from '@/components/analytics/channel/ChannelMetricsTooltip.vue';
 import {
     type ChartConfig,
     ChartContainer,
@@ -39,7 +40,6 @@ import type {
     SeriesMetric,
 } from '@/types/analytics';
 
-import ChannelMetricsTooltip from './ChannelMetricsTooltip.vue';
 
 type ChartPoint = {
     index: number;

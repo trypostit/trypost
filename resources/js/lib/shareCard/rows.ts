@@ -1,11 +1,11 @@
-import { AVATAR, avatarSpace, paintChannel, rowColor } from './channel';
-import { ink, muted } from './colors';
-import { fillBar, paintGrid } from './draw';
-import { headlinePlot, paintHeadline, pointValues } from './frame';
-import { valueAxis } from './scale';
-import { ellipsise, widest, writeText } from './text';
-import { CHART, PLOT, sans } from './theme';
-import type { Box, ShareCardOptions, ShareImages, SharePoint } from './types';
+import { AVATAR, avatarSpace, paintChannel, rowColor } from '@/lib/shareCard/channel';
+import { ink, muted } from '@/lib/shareCard/colors';
+import { fillBar, paintGrid } from '@/lib/shareCard/draw';
+import { headlinePlot, paintHeadline, pointValues } from '@/lib/shareCard/frame';
+import { valueAxis } from '@/lib/shareCard/scale';
+import { ellipsise, widest, writeText } from '@/lib/shareCard/text';
+import { CHART, PLOT, sans } from '@/lib/shareCard/theme';
+import type { Box, ShareCardOptions, ShareImages, SharePoint } from '@/lib/shareCard/types';
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. Bars take 60% of a row, 40px at most: the page's 20px at 2x. */
 const ROWS = {

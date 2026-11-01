@@ -2,6 +2,9 @@
 import { computed, ref } from 'vue';
 
 import RankBadge from '@/components/analytics/RankBadge.vue';
+import AccountIdentity from '@/components/analytics/workspace/AccountIdentity.vue';
+import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import AppLogo from '@/components/AppLogo.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -15,9 +18,6 @@ import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
 
-import AccountIdentity from './AccountIdentity.vue';
-import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
-import AnalyticsSection from './AnalyticsSection.vue';
 
 const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];

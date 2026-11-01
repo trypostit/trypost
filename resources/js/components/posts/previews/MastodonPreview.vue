@@ -10,9 +10,9 @@ import {
 import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
 
-import type { PreviewProps } from './types';
 
 const props = defineProps<PreviewProps>();
 

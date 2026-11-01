@@ -1,9 +1,8 @@
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
+import { surface } from '@/lib/shareCard/colors';
+import { type ShareTint } from '@/lib/shareCard/theme';
+import type { Point, ShareChannel, ShareImages, SharePoint } from '@/lib/shareCard/types';
 import type { VerifiedBadge } from '@/types/social-account';
-
-import { surface } from './colors';
-import { type ShareTint } from './theme';
-import type { Point, ShareChannel, ShareImages, SharePoint } from './types';
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
 export const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };

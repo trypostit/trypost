@@ -20,6 +20,7 @@ import {
 import { wTrans } from 'laravel-vue-i18n';
 import { computed, type Component, reactive, ref } from 'vue';
 
+import ChannelMetricsChart from '@/components/analytics/channel/ChannelMetricsChart.vue';
 import ComparedRange from '@/components/analytics/ComparedRange.vue';
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
@@ -72,7 +73,6 @@ import type {
     SeriesMetric,
 } from '@/types/analytics';
 
-import ChannelMetricsChart from './ChannelMetricsChart.vue';
 
 const props = defineProps<{
     series?: ChannelMetricSeries;

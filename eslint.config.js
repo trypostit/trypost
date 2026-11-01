@@ -36,6 +36,17 @@ export default defineConfigWithVueTs(
         rules: {
             'vue/multi-word-component-names': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            regex: '^\\.{1,2}/(?!css/)',
+                            message: "Import through the '@/' alias, e.g. '@/lib/utils'.",
+                        },
+                    ],
+                },
+            ],
             'import/order': [
                 'error',
                 {

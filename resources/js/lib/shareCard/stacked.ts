@@ -1,13 +1,13 @@
-import { distinctCountLabels } from '@/lib/utils';
 
-import { surface } from './colors';
-import { barWidth } from './combo';
-import { besideTicks, fillBar, paintDates, paintGrid } from './draw';
-import { headlinePlot, paintHeadline, pointValues } from './frame';
-import { fittingColumns, valueAxis } from './scale';
-import { widest } from './text';
-import { CHART, PLOT } from './theme';
-import type { Box, ShareCardOptions, SharePoint, ShareSegment } from './types';
+import { surface } from '@/lib/shareCard/colors';
+import { barWidth } from '@/lib/shareCard/combo';
+import { besideTicks, fillBar, paintDates, paintGrid } from '@/lib/shareCard/draw';
+import { headlinePlot, paintHeadline, pointValues } from '@/lib/shareCard/frame';
+import { fittingColumns, valueAxis } from '@/lib/shareCard/scale';
+import { widest } from '@/lib/shareCard/text';
+import { CHART, PLOT } from '@/lib/shareCard/theme';
+import type { Box, ShareCardOptions, SharePoint, ShareSegment } from '@/lib/shareCard/types';
+import { distinctCountLabels } from '@/lib/utils';
 
 type Column = { middle: number; width: number };
 

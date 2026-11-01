@@ -1,4 +1,4 @@
-import type { Auth } from './types';
+import type { Auth } from '@/types';
 
 interface FlashData {
     conversion_event?: string;

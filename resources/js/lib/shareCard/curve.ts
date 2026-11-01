@@ -1,4 +1,4 @@
-import type { Point } from './types';
+import type { Point } from '@/lib/shareCard/types';
 
 /** d3's `curveMonotoneX`: each segment's handles sit a third along it, and a middle tangent takes at most half the blended slope. */
 const MONOTONE = { handle: 3, blend: 0.5 };

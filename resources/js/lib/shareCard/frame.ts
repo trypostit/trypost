@@ -1,6 +1,6 @@
-import { ink, muted, surface } from './colors';
-import { paintChange } from './draw';
-import { ellipsise, writeText } from './text';
+import { ink, muted, surface } from '@/lib/shareCard/colors';
+import { paintChange } from '@/lib/shareCard/draw';
+import { ellipsise, writeText } from '@/lib/shareCard/text';
 import {
     BORDER,
     heading,
@@ -11,8 +11,8 @@ import {
     sans,
     SHARE_CARD_SIZE,
     type ShareTint,
-} from './theme';
-import type { Box, Point, ShareCardOptions, SharePoint } from './types';
+} from '@/lib/shareCard/theme';
+import type { Box, Point, ShareCardOptions, SharePoint } from '@/lib/shareCard/types';
 
 /** The home hero's dot grid in the ground's corners, fading toward the middle. */
 const DOTS = { gap: 24, radius: 1.4, opacity: 0.22, reach: 0.38 };

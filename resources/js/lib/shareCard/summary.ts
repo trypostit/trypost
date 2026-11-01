@@ -1,11 +1,10 @@
 import type { MetricDelta } from '@/lib/channelMetrics';
-
-import { ink, muted } from './colors';
-import { CHANGE_ICON, changeWidth, paintChange, strokeLine } from './draw';
-import { paintIdentity } from './frame';
-import { ellipsise, writeText } from './text';
-import { BORDER, heading, IDENTITY, PANEL, sans } from './theme';
-import type { Box, Point, ShareCardOptions, ShareTile } from './types';
+import { ink, muted } from '@/lib/shareCard/colors';
+import { CHANGE_ICON, changeWidth, paintChange, strokeLine } from '@/lib/shareCard/draw';
+import { paintIdentity } from '@/lib/shareCard/frame';
+import { ellipsise, writeText } from '@/lib/shareCard/text';
+import { BORDER, heading, IDENTITY, PANEL, sans } from '@/lib/shareCard/theme';
+import type { Box, Point, ShareCardOptions, ShareTile } from '@/lib/shareCard/types';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
 const SUMMARY = { top: 168, tileHeight: 185, inset: 36, crowdedInset: 24, crowdedColumns: 5, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24, changeBelow: 12, minTextShare: 0.7, figureOverhang: 2, crowdedFigure: 52, singleRowFigure: 84, figure: 64, crowdedFrom: 4 };

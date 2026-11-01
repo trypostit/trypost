@@ -4,6 +4,10 @@ import { computed, ref } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import FollowerHistoryLineChart from '@/components/analytics/workspace/charts/FollowerHistoryLineChart.vue';
+import SocialAccountMetricBarChart from '@/components/analytics/workspace/charts/SocialAccountMetricBarChart.vue';
 import type { ChartTooltipDetail } from '@/components/ui/chart';
 import date from '@/date';
 import {
@@ -26,10 +30,6 @@ import type {
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
-import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
-import AnalyticsSection from './AnalyticsSection.vue';
-import FollowerHistoryLineChart from './charts/FollowerHistoryLineChart.vue';
-import SocialAccountMetricBarChart from './charts/SocialAccountMetricBarChart.vue';
 
 const props = defineProps<{
     followers: WorkspaceAnalyticsReport['followers'];
