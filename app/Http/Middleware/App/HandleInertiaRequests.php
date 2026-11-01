@@ -19,6 +19,7 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
+use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
@@ -69,6 +70,7 @@ class HandleInertiaRequests extends Middleware
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
+            'mcpPrompt' => fn (): bool => $this->showsMcpPrompt($user, $isSelfHosted),
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
@@ -135,6 +137,29 @@ class HandleInertiaRequests extends Middleware
     public static function referralSourcesCacheKey(User $user): string
     {
         return "referral-sources.{$user->id}";
+    }
+
+    /**
+     * Whether to invite the user to connect an AI: their workspace can use the
+     * app and they have no MCP connection yet. Dismissing the card is kept in
+     * the browser.
+     */
+    private function showsMcpPrompt(?User $user, bool $isSelfHosted): bool
+    {
+        $workspace = $user?->currentWorkspace;
+
+        if (blank($workspace)) {
+            return false;
+        }
+
+        if (! $isSelfHosted && $workspace->account?->hasAppAccess() !== true) {
+            return false;
+        }
+
+        return AccessToken::query()
+            ->where('user_id', $user->id)
+            ->connectedMcpOAuth()
+            ->doesntExist();
     }
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool

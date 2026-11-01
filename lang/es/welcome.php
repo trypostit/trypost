@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras',
     'plan_checkout_button' => 'Activar mi cuenta',
     'plan_cancel_anytime' => 'Cancela cuando quieras',
-    'mcp' => [
-        'title' => 'Gestiona tus redes desde el chat',
-        'description' => 'Crea, programa y analiza posts en TryPost con tu IA favorita.',
-        'connect_with' => 'Conectar con :client',
-        'connect_ai' => 'Conectar tu IA',
-        'pick_ai' => '¿Dónde quieres usar TryPost?',
-        'connect_other' => 'Conectar otra app',
-        'connected' => ':client está conectado',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Crea y programa desde el chat',
-                'hint' => 'Carruseles, hilos y videos',
-                'ask' => 'Toma la siguiente idea de mi tablero, conviértela en un carrusel y prográmalo para el martes a las :time en Instagram y LinkedIn.',
-                'reply' => 'Listo. Tu carrusel está programado en Instagram y LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Sigue tu crecimiento',
-                'hint' => 'Todas tus cuentas en un informe',
-                'ask' => '¿Cómo fue mi mes? ¿Gané seguidores?',
-                'reply' => 'Ganaste 1,2 mil seguidores este mes. LinkedIn fue la que más creció.',
-            ],
-            'queue' => [
-                'title' => 'Llena tu cola',
-                'hint' => 'En tus mejores horarios',
-                'ask' => 'Toma mis borradores listos y ponlos en mi cola, en mis próximos horarios libres.',
-                'reply' => 'Listo. Tus 3 borradores están en la cola, en los próximos horarios libres de mañana.',
-            ],
-            'ideas' => [
-                'title' => 'Organiza tus ideas',
-                'hint' => 'De la lluvia de ideas al plan',
-                'ask' => 'Dame 8 ideas de posts para la próxima semana y guárdalas en mi tablero.',
-                'reply' => 'Guardé 8 ideas en tu tablero, listas para convertirse en posts.',
-            ],
-        ],
-        'skip' => 'Omitir por ahora',
-    ],
 ];

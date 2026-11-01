@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head, usePage, usePoll } from '@inertiajs/vue3';
 import {
     IconDotsVertical,
     IconMcp,
@@ -74,9 +74,19 @@ const connectWith = (client: McpClient): void => {
     dialogOpen.value = true;
 };
 
-type McpTab = 'connected' | 'connect';
+const MCP_TABS = ['connected', 'connect'] as const;
 
-const tab = ref<McpTab>('connected');
+type McpTab = (typeof MCP_TABS)[number];
+
+const page = usePage();
+
+/** The tab the link asked for (`?tab=connect` from the in-app card), else Connected apps. */
+const tab = ref<McpTab>(
+    MCP_TABS.find(
+        (value) =>
+            value === new URL(page.url, window.location.origin).searchParams.get('tab'),
+    ) ?? 'connected',
+);
 
 const showConnectTab = (): void => {
     tab.value = 'connect';

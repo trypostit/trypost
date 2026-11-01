@@ -76,5 +76,11 @@ return [
         ],
         'waiting' => 'AIの接続を待っています…',
     ],
+    'prompt' => [
+        'title' => 'まだAIを接続していません',
+        'body' => 'ClaudeやChatGPTを接続すると、頼むだけで投稿の作成・予約・分析ができます。',
+        'connect' => 'アプリを接続',
+        'not_now' => '今はしない',
+    ],
 
 ];

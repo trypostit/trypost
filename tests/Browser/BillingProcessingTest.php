@@ -21,17 +21,17 @@ function billingProcessingSubscriber(): User
     return $user;
 }
 
-test('once the subscription and plan are ready the processing page sends the user to the MCP step', function () {
+test('once the subscription and plan are ready the processing page opens the schedule', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $mcpPath = parse_url(route('app.welcome.mcp'), PHP_URL_PATH);
+    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
 
     $page = visit(route('app.billing.processing'));
-    waitForPath($page, $mcpPath);
+    waitForPath($page, $schedulePath);
 
-    $page->assertPathIs($mcpPath)
+    $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
 });
 
@@ -51,7 +51,7 @@ test('a subscription started from billing returns to billing, not the onboarding
         ->assertNoJavaScriptErrors();
 });
 
-test('on a phone the processing page skips the MCP step and opens the schedule', function () {
+test('on a phone the processing page opens the schedule too', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());

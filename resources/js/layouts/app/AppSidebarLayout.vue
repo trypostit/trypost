@@ -12,6 +12,7 @@ import AppSidebar from '@/components/AppSidebar.vue';
 import ChangelogDialog from '@/components/changelog/ChangelogDialog.vue';
 import ConnectChannelDialog from '@/components/channels/ConnectChannelDialog.vue';
 import CommandPalette from '@/components/command-palette/CommandPalette.vue';
+import McpPromptCard from '@/components/mcp/McpPromptCard.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
 import Toast from '@/components/Toast.vue';
@@ -122,5 +123,6 @@ watch(isCompactViewport, (isCompact) => {
     <ChangelogDialog />
     <CommandPalette />
     <ReferralSourceSurvey />
+    <McpPromptCard />
     <Toast />
 </template>

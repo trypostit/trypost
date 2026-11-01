@@ -113,6 +113,7 @@ export interface SharedData {
     plans?: PlanOption[];
     mediaSources?: { menu: MediaSourceOption[] } | null;
     referralSources?: string[] | null;
+    mcpPrompt?: boolean;
     changelog?: SharedChangelog | null;
     changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;

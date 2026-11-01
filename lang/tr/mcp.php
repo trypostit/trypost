@@ -76,5 +76,11 @@ return [
         ],
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
     ],
+    'prompt' => [
+        'title' => 'Henüz bir yapay zekâ bağlamadın',
+        'body' => 'Gönderilerini sadece isteyerek oluşturmak, planlamak ve analiz etmek için Claude veya ChatGPT\'yi bağla.',
+        'connect' => 'Uygulama bağla',
+        'not_now' => 'Şimdi değil',
+    ],
 
 ];

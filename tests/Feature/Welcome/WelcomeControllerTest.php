@@ -258,131 +258,6 @@ test('plan store sends the owner to Stripe checkout on the Socials monthly price
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
-test('picking an AI app on the MCP step records which one', function (string $client) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    attachCurrentWorkspace($this->user);
-    subscribeAccount($this->user->account);
-
-    $this->actingAs($this->user->fresh())
-        ->postJson(route('app.welcome.mcp.connect-click'), ['client' => $client])
-        ->assertNoContent();
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::McpConnectClicked->value
-        && data_get($event->payload, 'properties.client') === $client
-        && data_get($event->payload, 'properties.account_id') === $this->user->account_id);
-})->with(['claude', 'chatgpt', 'other']);
-
-test('picking an AI app requires a known app', function (array $payload) {
-    Bus::fake();
-
-    $this->actingAs($this->user)
-        ->postJson(route('app.welcome.mcp.connect-click'), $payload)
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('client');
-
-    Bus::assertNotDispatched(SendEvent::class);
-})->with([
-    'missing' => [[]],
-    'unknown' => [['client' => 'gemini']],
-]);
-
-test('skipping the MCP step records it and goes to the schedule', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-    attachCurrentWorkspace($this->user);
-    subscribeAccount($this->user->account);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.mcp.skip'))
-        ->assertRedirect(route('app.posts.index'));
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === WelcomeEvent::McpSkipped->value);
-});
-
-test('skipping the MCP step without app access goes back to Welcome and records nothing', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake();
-
-    $this->actingAs($this->user)
-        ->get(route('app.welcome.mcp.skip'))
-        ->assertRedirect(route('app.welcome.plan'));
-
-    Bus::assertNotDispatched(SendEvent::class);
-});
-
-test('the MCP step gives the TryPost MCP URL and the owner connections', function () {
-    attachCurrentWorkspace($this->user);
-    subscribeAccount($this->user->account);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.mcp'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome/Mcp', false)
-            ->where('mcpUrl', route('mcp.trypost'))
-            ->where('connectedClients', [])
-            ->missing('prompt')
-        );
-});
-
-test('the MCP step lists the MCP apps the owner already connected', function () {
-    $workspace = attachCurrentWorkspace($this->user);
-    subscribeAccount($this->user->account);
-    $clientId = mcpOauthClient('Claude');
-    mcpAccessToken($this->user, $clientId, $workspace);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.mcp'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->has('connectedClients', 1)
-            ->where('connectedClients.0.client_id', $clientId)
-            ->where('connectedClients.0.name', 'Claude')
-        );
-});
-
-test('the MCP step sends a user without a current workspace to create one', function () {
-    subscribeAccount($this->user->account);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.mcp'))
-        ->assertRedirect(route('app.workspaces.create'));
-});
-
-test('the MCP step works for a member and on self-hosted', function (Closure $actor) {
-    $this->actingAs($actor($this->user))
-        ->get(route('app.welcome.mcp'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('welcome/Mcp', false));
-})->with([
-    'member' => [function (User $owner): User {
-        $workspace = attachCurrentWorkspace($owner);
-        subscribeAccount($owner->account);
-        $member = User::factory()->create(['account_id' => $owner->account_id]);
-        $workspace->members()->attach($member->id, membershipPivot('member'));
-        $member->update(['current_workspace_id' => $workspace->id]);
-
-        return $member->fresh();
-    }],
-    'self-hosted' => [function (User $owner): User {
-        config(['trypost.self_hosted' => true]);
-        attachCurrentWorkspace($owner);
-
-        return $owner->fresh();
-    }],
-]);
-
-test('the MCP step sends an account without app access back to Welcome', function () {
-    attachCurrentWorkspace($this->user);
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.mcp'))
-        ->assertRedirect(route('app.welcome.plan'));
-});
-
 test('plan store fails loudly when the Socials price is not configured', function () {
     completeWelcomeThroughSoftware($this->user);
     Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => null]);
@@ -543,6 +418,9 @@ test('old onboarding routes are not registered', function (string $routeName) {
     'welcome connect' => 'app.welcome.connect',
     'welcome connect store' => 'app.welcome.connect.store',
     'welcome referral source' => 'app.welcome.referral-source',
+    'welcome mcp' => 'app.welcome.mcp',
+    'welcome mcp connect click' => 'app.welcome.mcp.connect-click',
+    'welcome mcp skip' => 'app.welcome.mcp.skip',
     'checkout' => 'app.onboarding.checkout',
 ]);
 

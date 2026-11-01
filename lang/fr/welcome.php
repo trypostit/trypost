@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Puis :price/mois. Annulez à tout moment',
     'plan_checkout_button' => 'Activer mon compte',
     'plan_cancel_anytime' => 'Annulez à tout moment',
-    'mcp' => [
-        'title' => 'Gérez vos réseaux par chat',
-        'description' => 'Créez, planifiez et analysez vos posts TryPost avec votre IA préférée.',
-        'connect_with' => 'Connecter :client',
-        'connect_ai' => 'Connecter votre IA',
-        'pick_ai' => 'Où voulez-vous utiliser TryPost ?',
-        'connect_other' => 'Connecter une autre app',
-        'connected' => ':client est connecté',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Créez et planifiez depuis le chat',
-                'hint' => 'Carrousels, threads et vidéos',
-                'ask' => 'Prends la prochaine idée de mon tableau, fais-en un carrousel et planifie-le mardi à :time sur Instagram et LinkedIn.',
-                'reply' => 'C’est fait. Ton carrousel est planifié sur Instagram et LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Suivez votre croissance',
-                'hint' => 'Tous vos comptes dans un rapport',
-                'ask' => 'Comment s’est passé mon mois ? J’ai gagné des abonnés ?',
-                'reply' => 'Vous avez gagné 1,2 k abonnés ce mois-ci. LinkedIn a le plus progressé.',
-            ],
-            'queue' => [
-                'title' => 'Remplissez votre file',
-                'hint' => 'Aux meilleurs horaires',
-                'ask' => 'Prends mes brouillons prêts et ajoute-les à ma file, sur mes prochains créneaux libres.',
-                'reply' => 'C’est fait. Tes 3 brouillons sont dans ta file, sur les prochains créneaux libres de demain.',
-            ],
-            'ideas' => [
-                'title' => 'Organisez vos idées',
-                'hint' => 'Du brainstorming au planning',
-                'ask' => 'Donne-moi 8 idées de posts pour la semaine prochaine et enregistre-les dans mon tableau.',
-                'reply' => 'J’ai enregistré 8 idées dans ton tableau, prêtes à devenir des posts.',
-            ],
-        ],
-        'skip' => 'Passer pour l’instant',
-    ],
 ];

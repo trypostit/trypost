@@ -24,6 +24,7 @@ use App\Http\Controllers\App\InstagramAudioController;
 use App\Http\Controllers\App\LibraryTemplateController;
 use App\Http\Controllers\App\LinkPreviewController;
 use App\Http\Controllers\App\LinkPreviewMediaController;
+use App\Http\Controllers\App\McpPromptController;
 use App\Http\Controllers\App\McpSettingsController;
 use App\Http\Controllers\App\MediaAltTextController;
 use App\Http\Controllers\App\MediaFileController;
@@ -99,11 +100,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.plan.store');
-    Route::get('welcome/mcp', [WelcomeController::class, 'mcp'])->name('app.welcome.mcp');
-    Route::post('welcome/mcp/connect-click', [WelcomeController::class, 'storeMcpConnectClick'])
-        ->middleware('throttle:30,1')
-        ->name('app.welcome.mcp.connect-click');
-    Route::get('welcome/mcp/skip', [WelcomeController::class, 'skipMcp'])->name('app.welcome.mcp.skip');
     Route::post('referral-source', [ReferralSourceController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('app.referral-source.store');
@@ -390,6 +386,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::get('settings/workspace/mcp', [McpSettingsController::class, 'index'])->name('app.mcp.index');
     Route::delete('settings/workspace/mcp/{client}', [McpSettingsController::class, 'disconnect'])->name('app.mcp.disconnect');
+    Route::post('settings/workspace/mcp/prompt', [McpPromptController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('app.mcp.prompt.store');
 
     Route::get('repurposes', [RepurposeController::class, 'index'])->name('app.repurposes.index');
     Route::post('repurposes', [RepurposeController::class, 'store'])->name('app.repurposes.store');

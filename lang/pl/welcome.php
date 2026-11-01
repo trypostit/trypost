@@ -50,40 +50,4 @@ return [
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie',
     'plan_checkout_button' => 'Aktywuj moje konto',
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie',
-    'mcp' => [
-        'title' => 'Zarządzaj social mediami w czacie',
-        'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',
-        'connect_with' => 'Połącz z :client',
-        'connect_ai' => 'Połącz swoją AI',
-        'pick_ai' => 'Gdzie chcesz używać TryPost?',
-        'connect_other' => 'Połącz inną aplikację',
-        'connected' => ':client jest połączony',
-        'benefits' => [
-            'schedule' => [
-                'title' => 'Twórz i planuj z czatu',
-                'hint' => 'Karuzele, wątki i filmy',
-                'ask' => 'Weź następny pomysł z mojej tablicy, zrób z niego karuzelę i zaplanuj na wtorek na :time na Instagramie i LinkedIn.',
-                'reply' => 'Gotowe. Twoja karuzela jest zaplanowana na Instagramie i LinkedIn.',
-            ],
-            'analytics' => [
-                'title' => 'Śledź swój wzrost',
-                'hint' => 'Wszystkie konta w jednym raporcie',
-                'ask' => 'Jak minął mój miesiąc? Zyskałem obserwujących?',
-                'reply' => 'W tym miesiącu zyskałeś 1,2 tys. obserwujących. Najszybciej rósł LinkedIn.',
-            ],
-            'queue' => [
-                'title' => 'Wypełnij kolejkę',
-                'hint' => 'W Twoich najlepszych godzinach',
-                'ask' => 'Weź moje gotowe szkice i dodaj je do kolejki, na najbliższe wolne terminy.',
-                'reply' => 'Gotowe. Twoje 3 szkice są w kolejce, w najbliższych wolnych terminach jutro.',
-            ],
-            'ideas' => [
-                'title' => 'Uporządkuj pomysły',
-                'hint' => 'Od burzy mózgów do planu treści',
-                'ask' => 'Daj mi 8 pomysłów na posty na przyszły tydzień i zapisz je na mojej tablicy.',
-                'reply' => 'Zapisałem 8 pomysłów na twojej tablicy, gotowych do zamiany w posty.',
-            ],
-        ],
-        'skip' => 'Pomiń na razie',
-    ],
 ];
