@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
-import { useUserPref } from '@/composables/useUserPref';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import {
     mcpAppLogos,
     mcpClients,
@@ -39,7 +39,7 @@ const avatars: McpAppLogo[] = AVATAR_APPS.flatMap((id) =>
 const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
 
-const dismissed = useUserPref('mcp.promptDismissed', false);
+const dismissed = useUserStorage('mcp.promptDismissed', false);
 const connected = ref(false);
 const prompt = computed(() => page.props.mcpPrompt ?? null);
 

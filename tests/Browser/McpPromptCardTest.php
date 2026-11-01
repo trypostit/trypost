@@ -50,7 +50,7 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
         ->assertNoJavaScriptErrors();
 });
 
-test('closing the card keeps it in the user\'s one browser store key, leaving the workspaces block as it was', function () {
+test('closing the card keeps it in the user\'s one browser storage key, leaving the workspaces block as it was', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);
     $key = "trypost:{$user->id}";
@@ -90,7 +90,7 @@ test('closing the card in another tab hides it here at once', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('an unreadable or older browser store reads as empty and is replaced on the next save', function (string $stored) {
+test('an unreadable or older browser storage value reads as empty and is replaced on the next save', function (string $stored) {
     $user = mcpPromptUser();
     $this->actingAs($user);
     $key = "trypost:{$user->id}";
