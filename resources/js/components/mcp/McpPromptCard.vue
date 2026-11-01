@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
         >
             <section
                 v-if="visible"
-                class="fixed end-4 bottom-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-md"
+                class="fixed end-4 bottom-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-xl bg-popover p-4 text-popover-foreground shadow-lg dark:border dark:border-border"
                 role="dialog"
                 aria-labelledby="mcp-prompt-title"
                 aria-describedby="mcp-prompt-body"
