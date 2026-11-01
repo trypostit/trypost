@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
-import '../css/app.css';
 import '@/echo';
 
 import { createInertiaApp, router } from '@inertiajs/vue3';
