@@ -205,7 +205,7 @@ Vue components must have a single root element.
 
 ## Frontend (Vue/TypeScript)
 
-- **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file.
+- **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.
 - **Imports go through the `@/` alias** (`import { formatNumberCompact } from '@/lib/utils'`), never a relative path (`./`, `../`), even for a sibling file. ESLint refuses relative imports (`no-restricted-imports`); the only one allowed is the stylesheet entry in `app.ts`, which lives outside `resources/js`.
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
 - Template event handlers call a named function (`@click="openCreateDialog"`), never an inline statement that mutates state (`@click="isCreateDialogOpen = true"`). Opening something usually grows a second step later (reset a form, focus, track an event), and a named function is where that goes. Passing an argument through is fine: `@click="openEditDialog(label)"`.
