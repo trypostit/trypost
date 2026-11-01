@@ -11,6 +11,7 @@ import { initializeDataLayer } from '@/datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
 import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
 import { trackInAppPushes } from '@/lib/inAppHistory';
+import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import { capturePageview, initializePostHog, syncPostHogContext } from '@/posthog';
 import { syncPreferences } from '@/preferences';
 import type { Auth } from '@/types';
@@ -29,6 +30,7 @@ createInertiaApp({
         syncPreferences(props.initialPage.props);
 
         const auth = props.initialPage.props.auth as Auth | undefined;
+        moveLegacyBrowserStorage(auth);
         const flash = props.initialPage.props.flash as
             | { conversion_event?: string; [key: string]: unknown }
             | undefined;
@@ -55,6 +57,7 @@ createInertiaApp({
         router.on('success', (event) => {
             syncLocale(event.detail.page.props);
             syncPreferences(event.detail.page.props);
+            moveLegacyBrowserStorage(event.detail.page.props.auth as Auth | undefined);
         });
 
         trackInAppPushes();
