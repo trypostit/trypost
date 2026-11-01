@@ -843,6 +843,10 @@ view turns a forgotten variable into a runtime-only failure.
 - For date manipulation, always use `@/dayjs` (pre-configured dayjs instance with utc, timezone, relativeTime plugins).
 - For formatting dates for display (formatDate, formatDateTime, formatTime, diffForHumans), always use `@/date` which centralizes all formatting logic with proper timezone handling.
 - Never use raw `new Date()` for date calculations — use dayjs.
+- **Never hard-code a date, in tests or in code** (owner decision November 2026). Derive it from the clock: Carbon (`now()`, `CarbonImmutable`) on the backend and in Pest tests, `@/dayjs` on the frontend. A test that needs a known day computes it (`now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)`) or freezes the clock on a computed one (`$this->travelTo(...)`); a literal like `'2026-09-01'` breaks the day the calendar moves past it. The one exception is the `2037-12-31` far-future sentinel (see "Database engines").
+    - Write the year out in a relative date: `"first sunday of november {$year}"`. PHP reads `"first sunday of november next year"` as November 1 on any weekday, which broke the calendar's daylight saving tests on the day the clocks changed (November 2026). The calendar tests share `calendarDragNextDstSunday()` for this.
+    - Never assume where a computed day falls: that next week is in this month, that tomorrow is in this year. When a test depends on it, pick a day that guarantees it (the middle of next month is never in this month's grid) and assert it, instead of hoping the run day cooperates.
+    - Existing tests with literal dates move to computed ones when touched, not in a sweep.
 
 ## Routing (Wayfinder)
 
