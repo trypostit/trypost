@@ -90,7 +90,7 @@ test('closing the card in another tab hides it here at once', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('an unreadable or older browser storage value reads as empty and is replaced on the next save', function (string $stored) {
+test('an unreadable, older or malformed browser storage value reads as empty and is replaced on the next save', function (string $stored) {
     $user = mcpPromptUser();
     $this->actingAs($user);
     $key = "trypost:{$user->id}";
@@ -114,6 +114,8 @@ test('an unreadable or older browser storage value reads as empty and is replace
 })->with([
     'not JSON' => ['not json'],
     'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
+    'no user or workspaces block' => ['{"version":1}'],
+    'an item of the wrong shape' => ['{"version":1,"user":{"mcp.promptDismissed":"yes"},"workspaces":{}}'],
 ]);
 
 test('a browser that refuses storage still shows the card and closes it, on the defaults', function () {

@@ -126,7 +126,11 @@ const isSnapshot = (value: unknown): value is AutosaveSnapshot =>
     typeof (value as AutosaveSnapshot).overrides === 'object' &&
     (value as AutosaveSnapshot).overrides !== null;
 
-const read = (userId: string, workspaceId: string): AutosaveSnapshot | null => {
+const read = (userId: string, workspaceId: string | undefined): AutosaveSnapshot | null => {
+    if (!workspaceId) {
+        return null;
+    }
+
     const stored: unknown = readWorkspaceItem(userId, workspaceId, 'composer.autosave');
 
     if (isSnapshot(stored)) {
@@ -144,13 +148,15 @@ export const useComposerAutosave = (): {
     clear: () => void;
 } => {
     const { user, currentWorkspace } = usePage<SharedData>().props.auth;
-    const workspaceId = currentWorkspace?.id ?? '';
+    const workspaceId = currentWorkspace?.id;
     const saved = ref<AutosaveSnapshot | null>(read(user.id, workspaceId));
     let pending: AutosaveSnapshot | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const write = (snapshot: AutosaveSnapshot): void => {
-        writeWorkspaceItem(user.id, workspaceId, 'composer.autosave', snapshot);
+        if (workspaceId) {
+            writeWorkspaceItem(user.id, workspaceId, 'composer.autosave', snapshot);
+        }
     };
 
     const cancel = (): void => {
@@ -174,7 +180,7 @@ export const useComposerAutosave = (): {
     const clear = (): void => {
         cancel();
         saved.value = null;
-        writeWorkspaceItem(user.id, workspaceId, 'composer.autosave', undefined);
+        clearComposerAutosave(user.id, workspaceId);
     };
 
     if (getCurrentScope()) {

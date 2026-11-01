@@ -861,7 +861,7 @@ function setBrowserStorageItem(mixed $page, User $user, string $item, mixed $val
     $key = json_encode("trypost:{$user->id}");
     $name = json_encode($item);
     $json = json_encode($value);
-    $workspace = json_encode($workspaceId);
+    $workspace = json_encode(filled($workspaceId) ? $workspaceId : null);
 
     $page->script(<<<JS
         (() => {

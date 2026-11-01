@@ -8,7 +8,7 @@ export const browserStorageKey = (userId: string): string => `trypost:${userId}`
 
 const empty = (): BrowserStorage => ({ version: 1, user: {}, workspaces: {} });
 
-/** The user's stored value; a missing, unreadable or other-version one reads as empty. */
+/** The user's stored value; a missing, unreadable or other-version one (or a missing block) reads as empty. */
 export const readBrowserStorage = (userId: string): BrowserStorage => {
     try {
         const stored = JSON.parse(
@@ -16,7 +16,11 @@ export const readBrowserStorage = (userId: string): BrowserStorage => {
         ) as BrowserStorage | null;
 
         if (stored?.version === 1) {
-            return stored;
+            return {
+                version: 1,
+                user: stored.user ?? {},
+                workspaces: stored.workspaces ?? {},
+            };
         }
     } catch {
         return empty();
