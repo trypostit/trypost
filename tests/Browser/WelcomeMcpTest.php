@@ -302,6 +302,10 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     expect(collect(welcomeMcpTops($page, '[data-testid^=welcome-mcp-connect-]:not([data-testid=welcome-mcp-connect-ai])'))->map(fn (float|int $top): float => round($top))->unique()->count())->toBe(1);
 
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid^="welcome-mcp-connect-"]:not([data-testid="welcome-mcp-connect-ai"]) svg')].every((mark) => getComputedStyle(mark).fill === getComputedStyle(mark).color)
+    JS))->toBeTrue();
+
     $page->assertSeeIn('@welcome-mcp-connect-claude', 'Connect with Claude')
         ->assertMissing('@welcome-mcp-copy')
         ->assertMissing('@mcp-dialog')

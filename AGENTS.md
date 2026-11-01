@@ -827,10 +827,11 @@ with `Mail::to($user)`, run the Maizzle build, and cover it with a render test �
 `tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
 view turns a forgotten variable into a runtime-only failure.
 
-## Icons (@tabler/icons-vue)
+## Icons (@tabler/icons-vue and @thesvg/vue)
 
+- **Icons and logos are always imported straight from their package into the component that draws them** (owner decision November 2026): `import { IconCheck } from '@tabler/icons-vue'`, `import Canva from '@thesvg/vue/canva'`. Never copy an icon's SVG or path into the code, never save it as a file under `public/`, and never wrap the packages in a helper of our own (`lib/brandLogos.ts` was removed for this). When a list needs a logo per item, a module may map items to the imported components (`lib/mcpClients.ts`).
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
-- Brand logos come from `@thesvg/vue`, one import per logo (`import Canva from '@thesvg/vue/canva'`). A one-color logo that must follow the theme goes through `inTextColor()` (`resources/js/lib/brandLogos.ts`).
+- Brand logos come from `@thesvg/vue`, one import per logo. A one-color logo that must follow the theme gets `fill-current` (or `[&_path]:fill-current` when its paths carry their own fill) next to a text color class. A canvas, which cannot draw a component, reads the paths from the imported Tabler component (`lib/shareCard/icons.ts`), never from a copy.
 - **Exception — card brand logos on billing** (owner decision October 2026): the full-color card artwork lives in `public/images/card-brands/*.svg`, mapped by Stripe's `card.brand` in `resources/js/lib/cardBrands.ts` (a brand without its own art uses `generic.svg`).
 - **Exception — competitor logos on the Welcome software step** (owner decision October 2026): each tool's symbol is a static SVG in `public/images/competitors/<PreviousSoftware value>.svg`, drawn by `logo()` in `resources/js/lib/welcomeOptions.ts`. Logos and the Tabler icons of "none" and "other" (`icon()`) sit on a white tile, selected or not, so dark logos stay readable in dark mode. A new `PreviousSoftware` brand needs its file (`PreviousSoftwareTest` fails without it).
 - All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.

@@ -16,7 +16,6 @@ import OpenaiChatgpt from '@thesvg/vue/openai-chatgpt';
 import Opencode from '@thesvg/vue/opencode';
 import type { Component } from 'vue';
 
-import { inTextColor } from '@/lib/brandLogos';
 
 export type McpClientId = 'claude' | 'chatgpt' | 'other';
 
@@ -27,8 +26,6 @@ export interface McpClient {
     labelKey?: boolean;
     /** The mark on neutral surfaces, in its brand color or the text color. */
     logo: Component;
-    /** The mark in the text color, for primary buttons. */
-    monoLogo: Component;
     /** Where the user adds a connector in that client; none for a generic app. */
     settingsUrl?: string;
     /** Listed in the client's app store: the user connects from its page, nothing to paste. */
@@ -52,14 +49,12 @@ export const mcpClients: McpClient[] = [
         id: 'claude',
         label: 'Claude',
         logo: Claude,
-        monoLogo: inTextColor(Claude),
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
         logo: OpenaiChatgpt,
-        monoLogo: OpenaiChatgpt,
         settingsUrl: CHATGPT_APP_URL,
         listed: true,
     },
@@ -71,7 +66,6 @@ export const otherMcpClient: McpClient = {
     label: 'mcp.other_clients_title',
     labelKey: true,
     logo: McpModelContextProtocol,
-    monoLogo: McpModelContextProtocol,
 };
 
 /** A connected app's logo, found by a word of the name the app registered with. */

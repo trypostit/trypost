@@ -347,9 +347,9 @@ const goToSchedule = (): void => {
                         @click="connectWith(client)"
                     >
                         <component
-                            :is="client.monoLogo"
+                            :is="client.logo"
                             aria-hidden="true"
-                            class="size-4"
+                            class="size-4 fill-current"
                         />
                         {{
                             client.labelKey

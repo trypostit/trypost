@@ -29,7 +29,6 @@ import {
     type MediaImportPayload,
     useMediaImport,
 } from '@/composables/useMediaImport';
-import { inTextColor } from '@/lib/brandLogos';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
 import {
     type GoogleDrivePick,
@@ -63,7 +62,12 @@ const ICONS: Record<SourceKey, Component> = {
     canva: Canva,
     google_drive: GoogleDrive,
     google_photos: GooglePhotos,
-    unsplash: inTextColor(Unsplash),
+    unsplash: Unsplash,
+};
+
+/** Unsplash's one-color mark is drawn in the text color, so it follows the theme. */
+const ICON_CLASSES: Partial<Record<SourceKey, string>> = {
+    unsplash: 'fill-current',
 };
 
 const page = usePage();
@@ -260,7 +264,7 @@ const pickCanvaPreset = (
                         >
                             <component
                                 :is="ICONS[option.source]"
-                                class="text-foreground"
+                                :class="['text-foreground', ICON_CLASSES[option.source]]"
                             />
                             {{ option.label }}
                         </DropdownMenuSubTrigger>
@@ -307,7 +311,7 @@ const pickCanvaPreset = (
                     >
                         <component
                             :is="ICONS[option.source]"
-                            class="text-foreground"
+                            :class="['text-foreground', ICON_CLASSES[option.source]]"
                         />
                         {{ option.label }}
                     </DropdownMenuItem>
