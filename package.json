@@ -42,7 +42,7 @@
         "@inertiajs/vue3": "^3.8.0",
         "@tabler/icons-vue": "^3.50.0",
         "@tailwindcss/typography": "^0.5.19",
-        "@thesvg/vue": "^3.4.0",
+        "@thesvg/vue": "^4.0.0",
         "@unovis/ts": "^1.7.0",
         "@unovis/vue": "^1.7.0",
         "@vueuse/core": "^12.8.2",

@@ -1,3 +1,18 @@
+import AntigravityGoogle from '@thesvg/vue/antigravity-google';
+import CherryStudio from '@thesvg/vue/cherry-studio';
+import ClaudeCode from '@thesvg/vue/claude-code';
+import CodexOpenai from '@thesvg/vue/codex-openai';
+import Composio from '@thesvg/vue/composio';
+import Cursor from '@thesvg/vue/cursor';
+import GeminiCli from '@thesvg/vue/gemini-cli';
+import Glama from '@thesvg/vue/glama';
+import GrokXai from '@thesvg/vue/grok-xai';
+import N8n from '@thesvg/vue/n8n';
+import NousresearchHermes from '@thesvg/vue/nousresearch-hermes';
+import OpenWebui from '@thesvg/vue/open-webui';
+import Opencode from '@thesvg/vue/opencode';
+import type { Component } from 'vue';
+
 export type McpClientId = 'claude' | 'chatgpt' | 'other';
 
 export interface McpClient {
@@ -56,3 +71,31 @@ export const otherMcpClient: McpClient = {
     logoClass: 'dark:invert',
     monoLogo: '/images/ai/mcp.svg',
 };
+
+/** A connected app's logo, found by a word of the name the app registered with. */
+export interface McpAppLogo {
+    id: string;
+    name: string;
+    logo: Component;
+    logoClass?: string;
+}
+
+/**
+ * The logos of the other MCP apps people connect, most specific name first
+ * ("Claude Code" before Claude's own mark). An app without one shows the MCP mark.
+ */
+export const mcpAppLogos: McpAppLogo[] = [
+    { id: 'claude-code', name: 'claude code', logo: ClaudeCode },
+    { id: 'cursor', name: 'cursor', logo: Cursor, logoClass: '[&_path]:fill-current!' },
+    { id: 'codex', name: 'codex', logo: CodexOpenai },
+    { id: 'gemini', name: 'gemini', logo: GeminiCli },
+    { id: 'antigravity', name: 'antigravity', logo: AntigravityGoogle },
+    { id: 'grok', name: 'grok', logo: GrokXai },
+    { id: 'n8n', name: 'n8n', logo: N8n },
+    { id: 'open-webui', name: 'open webui', logo: OpenWebui },
+    { id: 'opencode', name: 'opencode', logo: Opencode },
+    { id: 'cherry-studio', name: 'cherry studio', logo: CherryStudio },
+    { id: 'composio', name: 'composio', logo: Composio, logoClass: '[&_path]:fill-current [&_path]:stroke-current' },
+    { id: 'glama', name: 'glama', logo: Glama },
+    { id: 'hermes', name: 'hermes', logo: NousresearchHermes },
+];

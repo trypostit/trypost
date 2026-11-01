@@ -86,6 +86,31 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     expect(AccessToken::query()->where('client_id', $clientId)->where('revoked', false)->exists())->toBeFalse();
 });
 
+test('a connected app shows its brand logo, and one without a logo shows the MCP mark', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    $cursor = mcpOauthClient('Cursor');
+    $unknown = mcpOauthClient('Muse Code');
+    mcpAccessToken($user, $cursor, $workspace);
+    mcpAccessToken($user, $unknown, $workspace);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.mcp.index'));
+    waitFor($page, "@mcp-connected-client-{$unknown}");
+
+    $page->assertVisible("[data-testid=\"mcp-connected-client-{$cursor}\"] [data-testid=\"mcp-connected-logo-cursor\"]")
+        ->assertPresent("[data-testid=\"mcp-connected-client-{$unknown}\"] svg.tabler-icon-mcp")
+        ->assertNoJavaScriptErrors();
+});
+
 test('the MCP settings open on the connected tab, whose empty state leads to the connect tab', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([

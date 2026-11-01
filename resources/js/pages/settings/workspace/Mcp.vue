@@ -2,7 +2,7 @@
 import { Head, usePoll } from '@inertiajs/vue3';
 import {
     IconDotsVertical,
-    IconPlugConnected,
+    IconMcp,
     IconPlus,
     IconTrash,
 } from '@tabler/icons-vue';
@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { DOCS_URL } from '@/lib/docs';
-import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
+import { mcpAppLogos, mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 import { fireCelebration } from '@/utils/confetti';
 
@@ -42,15 +42,21 @@ const props = defineProps<{
 
 const docsUrl = `${DOCS_URL}/ai/introduction`;
 
-/** Shows the Claude or ChatGPT mark when the connected app is one of them. */
+/** The app's mark when it is one we know: Claude and ChatGPT as on the Connect tab, the others from their brand logo. */
 const connectedRows = computed(() =>
-    props.connectedClients.map((client) => ({
-        ...client,
-        app:
-            mcpClients.find((app) =>
-                client.name.toLowerCase().includes(app.label.toLowerCase()),
-            ) ?? null,
-    })),
+    props.connectedClients.map((client) => {
+        const name = client.name.toLowerCase();
+        const brand = mcpAppLogos.find((app) => name.includes(app.name)) ?? null;
+
+        return {
+            ...client,
+            brand,
+            app:
+                brand === null
+                    ? (mcpClients.find((app) => name.includes(app.label.toLowerCase())) ?? null)
+                    : null,
+        };
+    }),
 );
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
@@ -139,18 +145,26 @@ onBeforeUnmount(() => {
                     <SettingsListRow
                         v-for="client in connectedRows"
                         :key="client.client_id"
-                        :icon="client.app ? undefined : IconPlugConnected"
+                        :icon="client.app || client.brand ? undefined : IconMcp"
                         :data-testid="`mcp-connected-client-${client.client_id}`"
                     >
-                        <template v-if="client.app" #media>
+                        <template v-if="client.app || client.brand" #media>
                             <span
                                 class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                             >
                                 <img
+                                    v-if="client.app"
                                     :src="client.app.logo"
                                     alt=""
                                     :class="['size-5 object-contain', client.app.logoClass]"
                                     :data-testid="`mcp-connected-logo-${client.app.id}`"
+                                />
+                                <component
+                                    :is="client.brand.logo"
+                                    v-else-if="client.brand"
+                                    aria-hidden="true"
+                                    :class="['size-5 text-foreground', client.brand.logoClass]"
+                                    :data-testid="`mcp-connected-logo-${client.brand.id}`"
                                 />
                             </span>
                         </template>
