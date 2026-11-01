@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { useHttp, usePage, usePoll } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconX } from '@tabler/icons-vue';
+import { useIntervalFn } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
@@ -13,11 +14,16 @@ import {
     type McpClient,
     type McpClientId,
 } from '@/lib/mcpClients';
-import { store as storePromptAnswer } from '@/routes/app/mcp/prompt';
+import {
+    show as showConnectionStatus,
+    store as storePromptAnswer,
+} from '@/routes/app/mcp/prompt';
 import type { SharedData } from '@/types';
 import { fireCelebration } from '@/utils/confetti';
 
-type PromptAnswer = 'connect' | 'dismiss';
+interface McpConnectionStatus {
+    connected: boolean;
+}
 
 /**
  * The apps people connect most, best known first, as a row of overlapping
@@ -51,6 +57,7 @@ const storeDismissed = (): void => {
 };
 
 const dismissed = ref(readDismissed());
+const connected = ref(false);
 const prompt = computed(() => page.props.mcpPrompt ?? null);
 
 /**
@@ -61,26 +68,23 @@ const visible = computed(
     (): boolean =>
         prompt.value !== null &&
         !dismissed.value &&
+        !connected.value &&
         !isPhone.value &&
         (page.props.referralSources ?? []).length === 0 &&
         page.component !== 'settings/workspace/Mcp',
 );
 
-const answerHttp = useHttp<{ answer: PromptAnswer; client: McpClientId | null }>({
-    answer: 'dismiss',
-    client: null,
+const connectHttp = useHttp<{ answer: 'connect'; client: McpClientId }>({
+    answer: 'connect',
+    client: 'claude',
 });
-
-const track = (answer: PromptAnswer, client: McpClientId | null = null): void => {
-    answerHttp.answer = answer;
-    answerHttp.client = client;
-    answerHttp.post(storePromptAnswer.url()).catch(() => {});
-};
+const dismissHttp = useHttp<{ answer: 'dismiss' }>({ answer: 'dismiss' });
+const statusHttp = useHttp<Record<string, never>, McpConnectionStatus>({});
 
 const dismiss = (): void => {
     dismissed.value = true;
     storeDismissed();
-    track('dismiss');
+    dismissHttp.post(storePromptAnswer.url()).catch(() => {});
 };
 
 const dialogOpen = ref(false);
@@ -88,41 +92,54 @@ const activeClient = ref<McpClient>(mcpClients[0]);
 const mcpUrl = ref('');
 
 const connect = (client: McpClient): void => {
-    track('connect', client.id);
+    connectHttp.client = client.id;
+    connectHttp.post(storePromptAnswer.url()).catch(() => {});
     activeClient.value = client;
     mcpUrl.value = prompt.value?.mcp_url ?? '';
     dialogOpen.value = true;
 };
 
-/** While the steps are open, ask the server whether the AI connected. */
-const poll = usePoll(2000, { only: ['mcpPrompt'] }, { autoStart: false });
-
 let stopConfetti = (): void => {};
+
+/** The AI connected: close the steps and celebrate, as the MCP settings do. */
+const celebrateConnection = (): void => {
+    connected.value = true;
+    dialogOpen.value = false;
+    stopConfetti();
+    stopConfetti = fireCelebration();
+};
+
+const checkConnection = async (): Promise<void> => {
+    if (statusHttp.processing) {
+        return;
+    }
+
+    const status = await statusHttp
+        .get(showConnectionStatus.url())
+        .catch(() => null);
+
+    if (status?.connected === true && dialogOpen.value) {
+        celebrateConnection();
+    }
+};
+
+/** While the steps are open, ask whether the AI connected to this workspace. */
+const poll = useIntervalFn(checkConnection, 2000, { immediate: false });
 
 const followDialog = (open: boolean): void => {
     if (open) {
-        poll.start();
+        poll.resume();
 
         return;
     }
 
-    poll.stop();
-};
-
-/** The connection landed: close the steps and celebrate, as the MCP settings do. */
-const celebrateConnection = (shown: unknown, before: unknown): void => {
-    if (before !== null && shown === null && dialogOpen.value) {
-        dialogOpen.value = false;
-        stopConfetti();
-        stopConfetti = fireCelebration();
-    }
+    poll.pause();
 };
 
 watch(dialogOpen, followDialog);
-watch(prompt, celebrateConnection);
 
 onBeforeUnmount(() => {
-    poll.stop();
+    poll.pause();
     stopConfetti();
 });
 </script>

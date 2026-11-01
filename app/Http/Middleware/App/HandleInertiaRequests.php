@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
+use App\Actions\AccessToken\HasConnectedMcpClient;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
@@ -19,7 +20,6 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
-use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
@@ -141,10 +141,15 @@ class HandleInertiaRequests extends Middleware
         return "referral-sources.{$user->id}";
     }
 
+    public static function mcpPromptCacheKey(User $user, Workspace $workspace): string
+    {
+        return "mcp-prompt.{$user->id}.{$workspace->id}";
+    }
+
     /**
      * Whether to invite the user to connect an AI: their workspace can use the
-     * app and they have no MCP connection yet. Dismissing the card is kept in
-     * the browser.
+     * app and they have no AI connected to it yet. Dismissing the card is kept
+     * in the browser; a connection made from the card forgets the cache.
      */
     private function showsMcpPrompt(?User $user, bool $isSelfHosted): bool
     {
@@ -154,14 +159,12 @@ class HandleInertiaRequests extends Middleware
             return false;
         }
 
-        if (! $isSelfHosted && $workspace->account?->hasAppAccess() !== true) {
-            return false;
-        }
-
-        return AccessToken::query()
-            ->where('user_id', $user->id)
-            ->connectedMcpOAuth()
-            ->doesntExist();
+        return Cache::remember(
+            self::mcpPromptCacheKey($user, $workspace),
+            now()->addMinutes(5),
+            fn (): bool => ($isSelfHosted || $workspace->account?->hasAppAccess() === true)
+                && ! HasConnectedMcpClient::execute($user, $workspace),
+        );
     }
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool

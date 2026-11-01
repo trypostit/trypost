@@ -49,6 +49,60 @@ test('a revoked connection invites the user again', function () {
         ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
 });
 
+test('an AI connected to another workspace still invites the user in this one', function () {
+    $other = Workspace::factory()->create([
+        'account_id' => $this->user->account_id,
+        'user_id' => $this->user->id,
+    ]);
+    $other->members()->attach($this->user->id, membershipPivot('admin'));
+    mcpAccessToken($this->user, mcpOauthClient('Claude'), $other);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
+});
+
+test('whether to invite is cached for five minutes', function () {
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
+
+    mcpAccessToken($this->user, mcpOauthClient('Claude'), $this->workspace);
+    $this->travel(4)->minutes();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
+
+    $this->travel(2)->minutes();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt', null));
+});
+
+test('the connection status says whether the AI connected to this workspace, and a connection stops the invitation at once', function () {
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
+
+    $this->actingAs($this->user->fresh())
+        ->getJson(route('app.mcp.prompt.show'))
+        ->assertOk()
+        ->assertExactJson(['connected' => false]);
+
+    mcpAccessToken($this->user, mcpOauthClient('Claude'), $this->workspace);
+
+    $this->actingAs($this->user->fresh())
+        ->getJson(route('app.mcp.prompt.show'))
+        ->assertOk()
+        ->assertExactJson(['connected' => true]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt', null));
+});
+
 test('a member of the account is invited too, and self-hosted needs no subscription', function (Closure $actor) {
     $user = $actor($this->workspace);
 

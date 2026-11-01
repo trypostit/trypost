@@ -43,7 +43,7 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
     waitForGone($page, '@mcp-prompt');
 
     $page->navigate(route('app.posts.index'));
-    waitForPath($page, (string) parse_url(route('app.posts.index'), PHP_URL_PATH));
+    waitForPath($page, route('app.posts.index', absolute: false));
     waitFor($page, '@app-header');
 
     $page->assertMissing('@mcp-prompt')
@@ -53,7 +53,7 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
 test('the Claude button opens its steps on the page, which close once the AI connects', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);
-    $calendarPath = (string) parse_url(route('app.calendar'), PHP_URL_PATH);
+    $calendarPath = route('app.calendar', absolute: false);
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@mcp-prompt-connect-claude');
@@ -70,6 +70,22 @@ test('the Claude button opens its steps on the page, which close once the AI con
     $page->assertMissing('@mcp-dialog')
         ->assertMissing('@mcp-prompt')
         ->assertPathIs($calendarPath)
+        ->assertNoJavaScriptErrors();
+});
+
+test('the steps stay open while nothing connected, even when the account loses access meanwhile', function () {
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@mcp-prompt-connect-chatgpt');
+    $page->click('@mcp-prompt-connect-chatgpt');
+    waitFor($page, '@mcp-dialog');
+
+    $user->account->subscriptions()->delete();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 4500))');
+
+    $page->assertVisible('@mcp-dialog')
         ->assertNoJavaScriptErrors();
 });
 

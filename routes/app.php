@@ -386,6 +386,9 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::get('settings/workspace/mcp', [McpSettingsController::class, 'index'])->name('app.mcp.index');
     Route::delete('settings/workspace/mcp/{client}', [McpSettingsController::class, 'disconnect'])->name('app.mcp.disconnect');
+    Route::get('settings/workspace/mcp/prompt', [McpPromptController::class, 'show'])
+        ->middleware('throttle:60,1')
+        ->name('app.mcp.prompt.show');
     Route::post('settings/workspace/mcp/prompt', [McpPromptController::class, 'store'])
         ->middleware('throttle:30,1')
         ->name('app.mcp.prompt.store');

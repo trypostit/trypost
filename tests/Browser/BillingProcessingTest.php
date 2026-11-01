@@ -26,7 +26,7 @@ test('once the subscription and plan are ready the processing page opens the sch
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'));
     waitForPath($page, $schedulePath);
@@ -42,7 +42,7 @@ test('a subscription started from billing returns to billing, not the onboarding
     Plan::query()->whereKey($user->account->plan_id)->update(['stripe_monthly_price_id' => 'price_123']);
     $this->actingAs($user->fresh());
 
-    $billingPath = parse_url(route('app.billing.index'), PHP_URL_PATH);
+    $billingPath = route('app.billing.index', absolute: false);
 
     $page = visit(route('app.billing.processing', ['from' => 'billing']));
     waitForPath($page, $billingPath);
@@ -56,7 +56,7 @@ test('on a phone the processing page opens the schedule too', function () {
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'))->on()->mobile();
     waitForPath($page, $schedulePath);

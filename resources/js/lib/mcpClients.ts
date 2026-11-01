@@ -43,8 +43,9 @@ const CLAUDE_ADD_CONNECTOR_URL =
     'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours';
 
 /**
- * First-class MCP clients surfaced on workspace MCP settings and the Welcome
- * MCP step. `settingsUrl` is where the user adds a connector in that client.
+ * First-class MCP clients surfaced on workspace MCP settings and the in-app
+ * card that invites the user to connect an AI (`McpPromptCard`).
+ * `settingsUrl` is where the user adds a connector in that client.
  */
 export const mcpClients: McpClient[] = [
     {
