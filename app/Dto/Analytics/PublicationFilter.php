@@ -75,10 +75,25 @@ final readonly class PublicationFilter
                 ->whereIn('destination.content_type', $this->values())
                 ->orWhere(fn (Builder $external): Builder => $external
                     ->whereNull('destination.id')
-                    ->whereIn('publication.content_type', $this->publicationTypes())
-                    ->when($this->platform === Platform::X, fn (Builder $posts): Builder => $posts->whereNull(self::X_POLL)))
-                ->when($this->platform === Platform::X && in_array(ContentType::XPoll, $this->contentTypes, true), fn (Builder $polls): Builder => $polls
-                    ->orWhereNotNull(self::X_POLL))));
+                    ->where(fn (Builder $types): Builder => $this->whereExternalType($types)))));
+    }
+
+    /**
+     * A publication without a post is typed by its publication type, except an
+     * X publication carrying a poll, which is a Poll.
+     */
+    private function whereExternalType(Builder $query): Builder
+    {
+        if ($this->platform !== Platform::X) {
+            return $query->whereIn('publication.content_type', $this->publicationTypes());
+        }
+
+        return $query
+            ->where(fn (Builder $posts): Builder => $posts
+                ->whereNull(self::X_POLL)
+                ->whereIn('publication.content_type', $this->publicationTypes()))
+            ->when(in_array(ContentType::XPoll, $this->contentTypes, true), fn (Builder $polls): Builder => $polls
+                ->orWhereNotNull(self::X_POLL));
     }
 
     /**
