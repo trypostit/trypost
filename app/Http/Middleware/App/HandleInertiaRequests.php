@@ -70,7 +70,7 @@ class HandleInertiaRequests extends Middleware
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
-            'mcpPrompt' => fn (): ?array => $this->mcpPrompt($user, $isSelfHosted),
+            'mcpPrompt' => fn (): ?array => $this->mcpPrompt($user),
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
@@ -153,11 +153,11 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array{mcp_url: string}|null
      */
-    private function mcpPrompt(?User $user, bool $isSelfHosted): ?array
+    private function mcpPrompt(?User $user): ?array
     {
         $workspace = $user?->currentWorkspace;
 
-        if (blank($workspace) || ! ($isSelfHosted || $workspace->account?->hasAppAccess() === true)) {
+        if (blank($workspace) || $workspace->account?->hasAppAccess() !== true) {
             return null;
         }
 
