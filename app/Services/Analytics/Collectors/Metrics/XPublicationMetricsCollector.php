@@ -28,7 +28,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             [
                 'tweet.fields' => implode(',', $fields),
                 'expansions' => 'attachments.poll_ids',
-                'poll.fields' => 'options,voting_status,end_datetime,duration_minutes',
+                'poll.fields' => XPoll::LOOKUP_FIELDS,
             ],
         );
         $tweet = $response->json('data');

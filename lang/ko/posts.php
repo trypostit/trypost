@@ -886,6 +886,7 @@ return [
         'media_item_shape' => '각 미디어 항목에는 upload_token, url, id 중 정확히 하나가 필요합니다.',
         'media_url_unreachable' => ':url에서 미디어를 가져올 수 없습니다.',
         'media_type_unsupported' => '이 파일 형식은 게시물의 채널에서 지원되지 않습니다.',
+        'media_not_accepted' => '이 게시물 유형에는 미디어를 포함할 수 없습니다. 미디어를 추가하려면 게시물 유형을 변경하세요.',
         'media_file_unsupported' => '이 파일 형식은 지원되지 않습니다.',
         'media_file_too_large' => '이 파일은 해당 형식에 허용된 :size MB를 초과합니다.',
         'queue_requires_schedule' => '이 채널에는 아직 게시 시간이 없습니다. 대기열을 사용하려면 채널 설정에서 게시 시간을 추가하세요.',

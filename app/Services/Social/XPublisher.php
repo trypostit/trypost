@@ -112,7 +112,7 @@ class XPublisher
         if (blank($content) && filled(data_get($data, 'poll'))) {
             throw new XPublishException(
                 userMessage: 'An X poll needs a question. Write it in the post text.',
-                category: ErrorCategory::MediaFormat,
+                category: ErrorCategory::ContentPolicy,
             );
         }
 
@@ -136,14 +136,14 @@ class XPublisher
         if ($post->mediaItems->isNotEmpty()) {
             throw new XPublishException(
                 userMessage: 'An X poll cannot include media. Remove the media or change the post type.',
-                category: ErrorCategory::MediaFormat,
+                category: ErrorCategory::ContentPolicy,
             );
         }
 
         $violation = XPoll::requiredViolation($post->meta);
 
         if (filled($violation)) {
-            throw new XPublishException(userMessage: $violation[1], category: ErrorCategory::MediaFormat);
+            throw new XPublishException(userMessage: $violation[1], category: ErrorCategory::ContentPolicy);
         }
 
         return XPoll::payload($post->meta);

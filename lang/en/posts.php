@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Each media item needs exactly one of upload_token, url or id.',
         'media_url_unreachable' => 'Could not fetch media from :url.',
         'media_type_unsupported' => 'This file type is not supported by the post\'s channel.',
+        'media_not_accepted' => 'This post type can\'t include media. Change the post type to add media.',
         'media_file_unsupported' => 'This file type is not supported.',
         'media_file_too_large' => 'This file is larger than the :size MB allowed for its type.',
         'queue_requires_schedule' => 'This channel has no posting times yet. Add posting times in the channel settings to use the queue.',

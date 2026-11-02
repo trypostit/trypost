@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Jedes Medienelement braucht genau eines von upload_token, url oder id.',
         'media_url_unreachable' => 'Medien konnten nicht von :url abgerufen werden.',
         'media_type_unsupported' => 'Dieser Dateityp wird vom Kanal des Beitrags nicht unterstützt.',
+        'media_not_accepted' => 'Dieser Beitragstyp kann keine Medien enthalten. Ändere den Beitragstyp, um Medien hinzuzufügen.',
         'media_file_unsupported' => 'Dieser Dateityp wird nicht unterstützt.',
         'media_file_too_large' => 'Diese Datei ist größer als die für ihren Typ erlaubten :size MB.',
         'queue_requires_schedule' => 'Dieser Kanal hat noch keine Veröffentlichungszeiten. Füge in den Kanaleinstellungen Zeiten hinzu, um die Warteschlange zu nutzen.',

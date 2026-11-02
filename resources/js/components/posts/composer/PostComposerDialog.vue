@@ -481,7 +481,9 @@ const setGroupPoll = (group: NetworkGroup, poll: XPoll): void => {
 };
 /** Each card's meta from before a poll was added, put back as it was when the poll goes and nothing else changed. */
 const metaBeforePoll = new Map<string, Record<string, any>>();
-/** Picking Poll starts an empty poll; any other type drops it, as the server does. */
+/** Each card's poll from before another type was picked, brought back when Poll is picked again. */
+const pollBeforeOtherType = new Map<string, Partial<XPoll>>();
+/** Picking Poll starts an empty poll, or the one this card had; any other type drops it, as the server does. */
 const setGroupContentType = (group: NetworkGroup, contentType: string): void => {
     const current = groupDestination(group).meta ?? {};
     const { poll, ...meta } = current;
@@ -493,9 +495,11 @@ const setGroupContentType = (group: NetworkGroup, contentType: string): void => 
         }
         composition.setGroupOverride(group.key, 'meta', {
             ...meta,
-            poll: poll ?? newPoll(),
+            poll: poll ?? pollBeforeOtherType.get(group.key) ?? newPoll(),
         });
+        pollBeforeOtherType.delete(group.key);
     } else if (poll !== undefined) {
+        pollBeforeOtherType.set(group.key, poll);
         const before = metaBeforePoll.get(group.key);
         metaBeforePoll.delete(group.key);
         composition.setGroupOverride(
@@ -510,6 +514,7 @@ const setGroupContentType = (group: NetworkGroup, contentType: string): void => 
 };
 const removeGroupPoll = (group: NetworkGroup): void => {
     setGroupContentType(group, ContentType.XPost);
+    pollBeforeOtherType.delete(group.key);
 };
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
     isPollGroup(group) && activeReply(group) === undefined

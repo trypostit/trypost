@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Her medya öğesi upload_token, url veya id alanlarından tam olarak birini içermelidir.',
         'media_url_unreachable' => 'Medya :url adresinden alınamadı.',
         'media_type_unsupported' => 'Bu dosya türü, gönderinin kanalı tarafından desteklenmiyor.',
+        'media_not_accepted' => 'Bu gönderi türü medya içeremez. Medya eklemek için gönderi türünü değiştirin.',
         'media_file_unsupported' => 'Bu dosya türü desteklenmiyor.',
         'media_file_too_large' => 'Bu dosya, türü için izin verilen :size MB sınırını aşıyor.',
         'queue_requires_schedule' => 'Bu kanalın henüz paylaşım saati yok. Kuyruğu kullanmak için kanal ayarlarından paylaşım saatleri ekleyin.',

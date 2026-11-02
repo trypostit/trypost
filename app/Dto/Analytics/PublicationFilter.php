@@ -17,11 +17,17 @@ use Illuminate\Database\Query\Builder;
  * Expects the publication query aliased as `publication`, left-joined to its post as `destination`.
  * A publication with a post platform takes that post platform's content type; one without (published
  * outside TryPost and never imported) is typed through ContentType::fromPublication(), and an unknown
- * publication type matches no post type. A publication without a post carries no labels, so it only
- * matches the untagged option.
+ * publication type matches no post type. An X publication that carries a poll is a Poll, whether or not
+ * it was imported. A publication without a post carries no labels, so it only matches the untagged option.
  */
 final readonly class PublicationFilter
 {
+    /**
+     * The poll an X publication carries, kept by discovery. A poll made on x.com
+     * and never imported has no post, and its publication type is plain text.
+     */
+    private const string X_POLL = 'publication.provider_metadata->poll';
+
     /**
      * @param  list<string>  $labelIds  Workspace label ids already validated for tenancy.
      * @param  list<ContentType>  $contentTypes  Content types of $platform.
@@ -69,7 +75,10 @@ final readonly class PublicationFilter
                 ->whereIn('destination.content_type', $this->values())
                 ->orWhere(fn (Builder $external): Builder => $external
                     ->whereNull('destination.id')
-                    ->whereIn('publication.content_type', $this->publicationTypes()))));
+                    ->whereIn('publication.content_type', $this->publicationTypes())
+                    ->when($this->platform === Platform::X, fn (Builder $posts): Builder => $posts->whereNull(self::X_POLL)))
+                ->when($this->platform === Platform::X && in_array(ContentType::XPoll, $this->contentTypes, true), fn (Builder $polls): Builder => $polls
+                    ->orWhereNotNull(self::X_POLL))));
     }
 
     /**

@@ -24,11 +24,12 @@ use App\Services\Analytics\Collectors\Metrics\TikTokPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\XPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\YouTubePublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 test('the metric factory includes every v1 platform and excludes v2 and messaging platforms', function (Platform $platform, string $collector) {
     expect(app(PublicationMetricsCollectorFactory::class)->for($platform))->toBeInstanceOf($collector);
@@ -961,14 +962,13 @@ test('the x collector reads the poll with the metrics in one request', function 
         'remote_id' => '2117330256323379666',
     ]);
     $endsAt = now('UTC')->addDay()->toIso8601ZuluString('millisecond');
-    Http::fake(['*' => Http::response(xPollResponse($endsAt))]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets/2117330256323379666*' => Http::response(xPollResponse($endsAt))]);
 
     $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
 
     Http::assertSentCount(1);
-    Http::assertSent(fn (Request $request): bool => Str::startsWith($request->url(), config('trypost.platforms.x.api').'/tweets/2117330256323379666')
-        && $request['expansions'] === 'attachments.poll_ids'
-        && $request['poll.fields'] === 'options,voting_status,end_datetime,duration_minutes');
+    Http::assertSent(fn (Request $request): bool => $request['expansions'] === 'attachments.poll_ids'
+        && $request['poll.fields'] === XPoll::LOOKUP_FIELDS);
     expect($observation->poll)->toEqual([
         'options' => [
             ['label' => '✅ Refund', 'votes' => 1],
@@ -979,8 +979,29 @@ test('the x collector reads the poll with the metrics in one request', function 
         'duration_minutes' => 1440,
     ]);
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
-    expect($metrics['impressions'])->toBe(200)->and($metrics['reactions'])->toBe(4);
+    expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
 });
+
+test('a poll whose voting state x does not report stores no state', function (array $poll) {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '2117330256323379666',
+    ]);
+    $response = xPollResponse(now('UTC')->addDay()->toIso8601ZuluString('millisecond'));
+    $response['includes']['polls'][0] = [...Arr::except($response['includes']['polls'][0], 'voting_status'), ...$poll];
+    Http::fake([config('trypost.platforms.x.api').'/tweets/2117330256323379666*' => Http::response($response)]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->poll['voting_status'])->toBeNull();
+})->with([
+    'missing' => [[]],
+    'unknown' => [['voting_status' => 'paused']],
+]);
 
 test('a post without a poll stores no poll result', function () {
     Http::fake(['*' => Http::response(['data' => ['public_metrics' => ['impression_count' => 200, 'like_count' => 4]]])]);
@@ -996,5 +1017,5 @@ test('a post without a poll stores no poll result', function () {
 
     expect($observation->poll)->toBeNull();
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
-    expect($metrics['impressions'])->toBe(200)->and($metrics['reactions'])->toBe(4);
+    expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
 });

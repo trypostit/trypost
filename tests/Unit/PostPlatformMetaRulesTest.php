@@ -10,7 +10,7 @@ use App\Rules\ContentFitsPlatformLimits;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Facades\Validator;
 
-test('custom meta messages cover pinterest, instagram collaborators and google business', function () {
+test('custom meta messages cover pinterest, instagram collaborators, google business and x polls', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
         'meta.link.url' => __('posts.form.pinterest.link_invalid'),
         'meta.link.max' => __('posts.form.pinterest.link_max'),
@@ -19,6 +19,11 @@ test('custom meta messages cover pinterest, instagram collaborators and google b
         'meta.collaborators.*.regex' => __('posts.form.instagram.collaborators.invalid'),
         'meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
         'meta.event.title.max' => __('posts.form.google_business.title_max'),
+        'meta.poll.array' => __('posts.form.x.poll.poll_object'),
+        'meta.poll.options.array' => __('posts.form.x.poll.options_list'),
+        'meta.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
+        'meta.poll.duration_minutes.integer' => __('posts.form.x.poll.duration_range'),
+        'meta.poll.duration_minutes.between' => __('posts.form.x.poll.duration_range'),
     ]);
 });
 

@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Cada elemento multimedia necesita exactamente uno de upload_token, url o id.',
         'media_url_unreachable' => 'No se pudo obtener el archivo de :url.',
         'media_type_unsupported' => 'Este tipo de archivo no es compatible con el canal de la publicación.',
+        'media_not_accepted' => 'Este tipo de publicación no admite archivos multimedia. Cambia el tipo de publicación para añadirlos.',
         'media_file_unsupported' => 'Este tipo de archivo no es compatible.',
         'media_file_too_large' => 'Este archivo supera los :size MB permitidos para su tipo.',
         'queue_requires_schedule' => 'Este canal aún no tiene horarios de publicación. Añade horarios en los ajustes del canal para usar la cola.',

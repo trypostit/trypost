@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Elk media-item heeft precies één van upload_token, url of id nodig.',
         'media_url_unreachable' => 'Media kon niet worden opgehaald van :url.',
         'media_type_unsupported' => 'Dit bestandstype wordt niet ondersteund door het kanaal van de post.',
+        'media_not_accepted' => 'Dit type post kan geen media bevatten. Wijzig het type post om media toe te voegen.',
         'media_file_unsupported' => 'Dit bestandstype wordt niet ondersteund.',
         'media_file_too_large' => 'Dit bestand is groter dan de :size MB die voor dit type is toegestaan.',
         'queue_requires_schedule' => 'Dit kanaal heeft nog geen publicatietijden. Voeg tijden toe in de kanaalinstellingen om de wachtrij te gebruiken.',

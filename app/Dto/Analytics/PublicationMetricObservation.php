@@ -10,7 +10,7 @@ final readonly class PublicationMetricObservation
 {
     /**
      * @param  list<MetricValue>  $metrics
-     * @param  array{options: list<array{label: string, votes: int}>, voting_status: string, end_datetime: ?string, duration_minutes: ?int}|null  $poll
+     * @param  array{options: list<array{label: string, votes: int}>, voting_status: ?string, end_datetime: ?string, duration_minutes: ?int}|null  $poll
      */
     public function __construct(
         public CarbonImmutable $date,

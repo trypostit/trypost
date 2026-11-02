@@ -13,6 +13,7 @@ use App\Services\Social\XPublisher;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -114,7 +115,7 @@ test('the post content cap counts the text a reader sees, not the editor markup'
 test('a poll question is capped at 280 characters even with long posts', function (ContentType $type, bool $passes) {
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
     $validator = Validator::make(
-        ['content' => str_repeat('a', 281)],
+        ['content' => Str::repeat('a', 281)],
         ['content' => [new ContentFitsPlatformLimits(collect([$account]), [[]], [$type->value])]],
     );
 
@@ -132,7 +133,7 @@ test('the publisher refuses a 281-character poll question', function () {
     ]);
     $post = Post::factory()->forAccount($account, ContentType::XPoll)->create([
         'user_id' => $this->user->id,
-        'content' => str_repeat('a', 281),
+        'content' => Str::repeat('a', 281),
         'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
     ]);
     Http::fake();

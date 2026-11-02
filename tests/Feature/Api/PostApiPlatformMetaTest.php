@@ -14,6 +14,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1428,10 +1429,10 @@ it('rejects an x poll with invalid choices or length', function (array $poll, st
         'meta' => ['poll' => $poll],
     ])->assertUnprocessable()->assertJsonValidationErrors($error);
 
-    expect(Post::where('social_account_id', $x->id)->exists())->toBeFalse();
+    $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 })->with([
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'meta.poll.options'],
-    'option over 25 characters' => [['options' => [str_repeat('a', 26), 'b'], 'duration_minutes' => 60], 'meta.poll.options.0'],
+    'option over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'meta.poll.options.0'],
     'duration below 5' => [['options' => ['a', 'b'], 'duration_minutes' => 4], 'meta.poll.duration_minutes'],
     'duration above 10080' => [['options' => ['a', 'b'], 'duration_minutes' => 10081], 'meta.poll.duration_minutes'],
     'duration not a number' => [['options' => ['a', 'b'], 'duration_minutes' => 'abc'], 'meta.poll.duration_minutes'],
@@ -1449,7 +1450,7 @@ it('explains what is wrong with an x poll in plain words', function (mixed $poll
         'meta' => ['poll' => $poll],
     ])->assertUnprocessable()->assertJsonValidationErrors([$error => $message]);
 })->with([
-    'choice over 25 characters' => [['options' => [str_repeat('a', 26), 'b'], 'duration_minutes' => 60], 'meta.poll.options.0', 'Each poll choice can have up to 25 characters. Shorten the longer one.'],
+    'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'meta.poll.options.0', 'Each poll choice can have up to 25 characters. Shorten the longer one.'],
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'meta.poll.options', 'A poll can have up to 4 choices. Remove the extra ones.'],
     'duration above 10080' => [['options' => ['a', 'b'], 'duration_minutes' => 10081], 'meta.poll.duration_minutes', 'A poll can stay open from 5 minutes to 7 days. Choose a length in that range.'],
     'poll that is not an object' => ['Yes or no', 'meta.poll', 'Send the poll with its choices (options) and length (duration_minutes).'],
@@ -1488,7 +1489,7 @@ it('asks for the question of an x poll scheduled without text', function () {
 
 it('measures x poll choices after blanks and spaces are dropped', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $exactly25 = str_repeat('a', XPoll::OPTION_MAX_LENGTH);
+    $exactly25 = Str::repeat('a', XPoll::OPTION_MAX_LENGTH);
 
     $response = $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Pick one',
@@ -1573,5 +1574,63 @@ it('refuses media on an x poll', function () {
         'media' => [['upload_token' => $upload->upload_token]],
     ])->assertUnprocessable();
 
-    expect(Post::where('social_account_id', $x->id)->exists())->toBeFalse();
+    $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 });
+
+it('keeps x poll choices that only look alike as numbers', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Pick one',
+        'status' => PostStatus::Draft->value,
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => ['1', '01'], 'duration_minutes' => 60]],
+    ])->assertCreated();
+
+    expect(Post::where('social_account_id', $x->id)->sole()->meta['poll']['options'])->toBe(['1', '01']);
+});
+
+it('keeps the parts of an x poll an update does not send', function (array $poll, array $expected) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Question',
+        'status' => PostStatus::Draft,
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]],
+    ]);
+
+    $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
+        'meta' => ['poll' => $poll],
+    ])->assertOk();
+
+    expect($post->fresh()->meta['poll'])->toEqual($expected);
+})->with([
+    'options only' => [['options' => ['Tabs', 'Spaces', 'Both']], ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 4320]],
+    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+]);
+
+it('refuses to attach media to a post type that takes none', function (ContentType $contentType) {
+    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
+    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    Http::fake();
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.store-media', $post), [
+        'media' => UploadedFile::fake()->image('photo.jpg'),
+    ])->assertUnprocessable()->assertJsonValidationErrors(['media' => __('posts.errors.media_not_accepted')]);
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-upload', $post), [
+        'upload_token' => $upload->upload_token,
+    ])->assertUnprocessable()->assertJsonValidationErrors(['upload_token' => __('posts.errors.media_not_accepted')]);
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-url', $post), [
+        'urls' => [['url' => 'https://example.com/photo.png']],
+    ])->assertUnprocessable()->assertJsonValidationErrors(['urls' => __('posts.errors.media_not_accepted')]);
+
+    expect($post->fresh()->media)->toBeEmpty();
+    Http::assertNothingSent();
+})->with([
+    'x poll' => [ContentType::XPoll],
+    'threads ghost post' => [ContentType::ThreadsGhostPost],
+]);

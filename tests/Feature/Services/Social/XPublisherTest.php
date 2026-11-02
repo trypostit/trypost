@@ -1985,7 +1985,8 @@ test('x publisher refuses to publish an x poll with media', function () {
     ]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(XPublishException::class);
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
 
@@ -1993,7 +1994,8 @@ test('x publisher refuses to publish an x poll without two choices', function ()
     $this->post->update(['content_type' => ContentType::XPoll, 'meta' => xPollMeta(['options' => ['Yes', '  ']])]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(XPublishException::class);
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
 
@@ -2002,6 +2004,7 @@ test('x publisher asks for the question of an x poll without text', function () 
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(XPublishException::class, 'An X poll needs a question. Write it in the post text.');
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe('An X poll needs a question. Write it in the post text.')
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });

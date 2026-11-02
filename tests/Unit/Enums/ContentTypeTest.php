@@ -509,3 +509,16 @@ test('video aspect ratio bounds are the ranges each network documents as accepte
     'x' => [ContentType::XPost, null],
     'bluesky' => [ContentType::BlueskyPost, null],
 ]);
+
+test('a post type that takes no media advertises no media capability', function (ContentType $type) {
+    expect($type->maxMediaCount())->toBe(0)
+        ->and($type->acceptsGif())->toBeFalse()
+        ->and($type->maxImageBytes())->toBeNull()
+        ->and($type->maxVideoBytes())->toBeNull()
+        ->and($type->maxDocumentBytes())->toBeNull()
+        ->and($type->maxVideoDurationSec())->toBeNull()
+        ->and($type->preferredImageDimensions())->toBe(ContentType::ThreadsGhostPost->preferredImageDimensions());
+})->with([
+    'x poll' => [ContentType::XPoll],
+    'threads ghost post' => [ContentType::ThreadsGhostPost],
+]);

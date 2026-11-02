@@ -16,9 +16,9 @@ use Database\Factories\AnalyticsPublicationFactory;
  * @param  array<string, mixed>|null  $poll
  * @return array{0: User, 1: SocialAccount, 2: Post}
  */
-function pollResultsSetup(?array $poll): array
+function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme = 'light'): array
 {
-    $user = User::factory()->create(['timezone' => 'UTC']);
+    $user = User::factory()->create(['timezone' => 'UTC', 'theme' => $theme]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -42,10 +42,10 @@ function pollResultsSetup(?array $poll): array
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
-        'metrics' => [
+        'metrics' => $withMetrics ? [
             'impressions' => ['value' => 900, 'unit' => 'count', 'availability' => 'available'],
             'reactions' => ['value' => 40, 'unit' => 'count', 'availability' => 'available'],
-        ],
+        ] : [],
     ]);
 
     return [$user, $account, $post];
@@ -177,3 +177,87 @@ test('tied choices are both marked as leading', function () {
         ->and($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-1\"]').dataset.leading"))->toBe('true')
         ->and($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-2\"]').dataset.leading"))->toBe('false');
 });
+
+test('the post details show the poll of a post without other metrics', function () {
+    [$user, $account, $post] = pollResultsSetup(refundPoll(), withMetrics: false);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
+    $page->click("@post-details-open-{$post->id}");
+    waitFor($page, '@post-details-poll');
+
+    $page->assertSeeIn('@post-details-poll', '66.7%')
+        ->assertMissing("@post-details-metrics-{$post->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a poll without a known state or end shows only the votes', function () {
+    [$user, $account, $post] = pollResultsSetup([...refundPoll(), 'voting_status' => null, 'end_datetime' => null]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    expect($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-summary\"]').textContent.replace(/\\s+/g, ' ').trim()"))->toBe('3 votes');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a poll without a known state is never called final', function () {
+    [$user, $account, $post] = pollResultsSetup([...refundPoll(), 'voting_status' => null, 'end_datetime' => now()->subHours(2)->toIso8601String()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", 'Voting ended')
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Final results')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the leading choice stays readable in both themes', function (string $theme) {
+    [$user, $account, $post] = pollResultsSetup([
+        ...refundPoll(),
+        'options' => [['label' => 'Yes', 'votes' => 9], ['label' => 'No', 'votes' => 1]],
+    ], theme: $theme);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}-option-0");
+
+    $contrast = $page->script(<<<JS
+        (() => {
+            const parse = (color) => {
+                const [r, g, b, a = 1] = color.match(/[\\d.]+/g).map(Number);
+
+                return { r, g, b, a };
+            };
+            const over = (top, bottom) => ({
+                r: top.r * top.a + bottom.r * (1 - top.a),
+                g: top.g * top.a + bottom.g * (1 - top.a),
+                b: top.b * top.a + bottom.b * (1 - top.a),
+                a: 1,
+            });
+            const luminance = ({ r, g, b }) => {
+                const [lr, lg, lb] = [r, g, b].map((channel) => {
+                    const value = channel / 255;
+
+                    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+                });
+
+                return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+            };
+            const row = document.querySelector('[data-testid="post-poll-{$post->id}-option-0"]');
+            const [bar, label] = row.children;
+            const background = over(parse(getComputedStyle(bar).backgroundColor), parse(getComputedStyle(row).backgroundColor));
+            const [light, dark] = [luminance(parse(getComputedStyle(label).color)), luminance(background)].sort((a, b) => b - a);
+
+            return (light + 0.05) / (dark + 0.05);
+        })()
+        JS);
+
+    expect($contrast)->toBeGreaterThanOrEqual(4.5);
+    expect($page->script("document.documentElement.classList.contains('dark')"))->toBe($theme === 'dark');
+})->with(['light', 'dark']);

@@ -2,8 +2,7 @@
 import { computed } from 'vue';
 
 import date from '@/date';
-import { activeLocale } from '@/language';
-import { formatFullNumber } from '@/lib/utils';
+import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type { PublicationPoll } from '@/types/analytics';
 
 const props = defineProps<{
@@ -19,13 +18,8 @@ const topVotes = computed(() =>
     Math.max(0, ...props.poll.options.map((option) => option.votes)),
 );
 
-const percentFormatter = computed(
-    () =>
-        new Intl.NumberFormat(activeLocale.value, {
-            style: 'percent',
-            maximumFractionDigits: 1,
-        }),
-);
+/** X shows each choice's share with one decimal ("33.3%"). */
+const PERCENT_DIGITS = 1;
 
 const rows = computed(() =>
     props.poll.options.map((option) => {
@@ -35,7 +29,7 @@ const rows = computed(() =>
             label: option.label,
             votes: option.votes,
             share,
-            percent: percentFormatter.value.format(share),
+            percent: formatPercent(share * 100, PERCENT_DIGITS),
             leading: totalVotes.value > 0 && option.votes === topVotes.value,
         };
     }),
@@ -55,6 +49,10 @@ const endsAt = computed(() =>
         ? date.diffForHumans(props.poll.end_datetime)
         : null,
 );
+
+const hasStatus = computed(
+    () => isClosed.value || hasEnded.value || endsAt.value !== null,
+);
 </script>
 
 <template>
@@ -69,7 +67,7 @@ const endsAt = computed(() =>
         >
             <span
                 class="absolute inset-y-0 start-0 rounded-md"
-                :class="row.leading ? 'bg-primary' : 'bg-secondary'"
+                :class="row.leading ? 'bg-primary-selected' : 'bg-secondary'"
                 :style="{ width: `${row.share * 100}%` }"
                 aria-hidden="true"
             />
@@ -83,7 +81,7 @@ const endsAt = computed(() =>
 
         <p class="text-xs text-muted-foreground" :data-testid="`${testId}-summary`">
             {{ $tChoice('posts.poll_results.votes', totalVotes, { count: formatFullNumber(totalVotes) }) }}
-            ·
+            <template v-if="hasStatus">·</template>
             <template v-if="isClosed">
                 {{ $t('posts.poll_results.final') }}
             </template>

@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 /**
  * @param  array<string, mixed>  $attributes
@@ -280,6 +281,70 @@ test('picking poll then post again leaves no unsaved change', function () {
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
+});
+
+test('switching to post and back to poll brings the typed poll back', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->fill('@x-poll-choice-0', 'Yes')
+        ->fill('@x-poll-choice-1', 'No')
+        ->click('@x-poll-add-choice');
+    waitFor($page, '@x-poll-choice-2');
+    $page->fill('@x-poll-choice-2', 'Maybe')
+        ->click('@x-poll-days');
+    waitFor($page, '@x-poll-days-3');
+    $page->click('@x-poll-days-3');
+    waitForText($page, '@x-poll-days', '3');
+
+    $page->click("@composer-type-{$id}-x_post");
+    waitForGone($page, '@x-poll-choice-0');
+    pickXPoll($page, $post);
+    waitFor($page, '@x-poll-choice-2');
+
+    expect($page->script('[0, 1, 2].map((index) => document.querySelector(`[data-testid="x-poll-choice-${index}"]`).value)'))->toBe(['Yes', 'No', 'Maybe']);
+    $page->assertSeeIn('@x-poll-days', '3')->assertNoJavaScriptErrors();
+
+    $page->click("@composer-type-{$id}-x_post");
+    waitForGone($page, '@x-poll-choice-0');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->content_type)->toBe(ContentType::XPost)
+        ->and($post->fresh()->meta)->not->toHaveKey('poll');
+});
+
+test('a saved poll switched to post and back has no unsaved change', function () {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 4320]]]);
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+    waitFor($page, '@x-poll-choice-2');
+
+    $page->click("@composer-type-{$id}-x_post");
+    waitForGone($page, '@x-poll-choice-0');
+    pickXPoll($page, $post);
+    waitFor($page, '@x-poll-choice-2');
+
+    $page->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a choice counter does not count the spaces around it', function () {
+    $post = seedXPollPost();
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->fill('@x-poll-choice-0', Str::repeat('a', 25).' ');
+    waitForText($page, '@x-poll-choice-0-count', '25 / 25');
+
+    expect($page->script("document.querySelector('[data-testid=\"x-poll-choice-0-count\"]').classList.contains('text-destructive-text')"))->toBeFalse();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('a thread reply under a poll can still take media while the poll root cannot', function () {

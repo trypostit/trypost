@@ -285,7 +285,7 @@ test('post metrics carry the poll result on the publication in REST and MCP', fu
 
     expect(app(ReadPublicationAnalytics::class)->forPost($post)['metrics']['publication']['poll'])->toEqual($poll);
 
-    $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
+    $this->withToken($access['plain_token'])
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
         ->assertJsonPath('metrics.publication.poll.options.1.votes', 2);

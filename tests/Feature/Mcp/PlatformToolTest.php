@@ -105,3 +105,22 @@ test('list content types exposes reel max video durations', function () {
             expect($pinterestTypes->firstWhere('value', 'pinterest_carousel')['min_media_count'])->toBe(2);
         });
 });
+
+test('list content types shows the x poll without media capabilities', function () {
+    TryPostServer::actingAs($this->user)
+        ->tool(ListContentTypesTool::class, [])
+        ->assertOk()
+        ->assertStructuredContent(function (AssertableJson $json) {
+            $json->etc();
+
+            $poll = collect(collect($json->toArray()['platforms'])->firstWhere('platform', 'x')['content_types'])->firstWhere('value', 'x_poll');
+
+            expect($poll)->toMatchArray([
+                'max_media_count' => 0,
+                'accepts_gif' => false,
+                'max_image_bytes' => null,
+                'max_video_bytes' => null,
+                'max_video_duration_sec' => null,
+            ]);
+        });
+});

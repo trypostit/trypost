@@ -12,6 +12,7 @@ use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFa
 use App\Services\Analytics\Collectors\Publications\TikTokPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\XPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\YouTubePublicationCollector;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -497,7 +498,6 @@ test('x discovery keeps the poll of a post made on x', function () {
         ->and($page->publications[1]->providerMetadata)->toHaveKey('media')->not->toHaveKey('poll')
         ->and($page->publications[2]->providerMetadata)->toBeNull();
     Http::assertSentCount(1);
-    Http::assertSent(fn (Request $request): bool => str_contains((string) $request['expansions'], 'attachments.media_keys')
-        && str_contains((string) $request['expansions'], 'attachments.poll_ids')
-        && $request['poll.fields'] === 'options,duration_minutes,end_datetime,voting_status');
+    Http::assertSent(fn (Request $request): bool => $request['expansions'] === 'attachments.media_keys,attachments.poll_ids'
+        && $request['poll.fields'] === XPoll::LOOKUP_FIELDS);
 });

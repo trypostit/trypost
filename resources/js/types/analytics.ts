@@ -277,7 +277,7 @@ export interface PublicationMetricFact {
 
 export interface PublicationPoll {
     options: { label: string; votes: number }[];
-    voting_status: 'open' | 'closed';
+    voting_status: 'open' | 'closed' | null;
     end_datetime: string | null;
     duration_minutes: number | null;
 }

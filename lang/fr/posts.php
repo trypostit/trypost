@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Chaque média doit avoir exactement un seul de ces champs : upload_token, url ou id.',
         'media_url_unreachable' => 'Impossible de récupérer le média depuis :url.',
         'media_type_unsupported' => 'Ce type de fichier n\'est pas pris en charge par le canal de la publication.',
+        'media_not_accepted' => 'Ce type de publication n\'accepte pas de médias. Changez le type de publication pour en ajouter.',
         'media_file_unsupported' => 'Ce type de fichier n\'est pas pris en charge.',
         'media_file_too_large' => 'Ce fichier dépasse les :size Mo autorisés pour son type.',
         'queue_requires_schedule' => 'Ce canal n\'a pas encore d\'horaires de publication. Ajoutez-en dans les paramètres du canal pour utiliser la file d\'attente.',

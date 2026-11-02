@@ -886,6 +886,7 @@ return [
         'media_item_shape' => '各メディア項目には、upload_token、url、id のいずれか1つだけを指定してください。',
         'media_url_unreachable' => ':url からメディアを取得できませんでした。',
         'media_type_unsupported' => 'このファイル形式は、投稿のチャンネルでサポートされていません。',
+        'media_not_accepted' => 'この投稿タイプにはメディアを含められません。メディアを追加するには投稿タイプを変更してください。',
         'media_file_unsupported' => 'このファイル形式はサポートされていません。',
         'media_file_too_large' => 'このファイルは、その形式で許可されている :size MB を超えています。',
         'queue_requires_schedule' => 'このチャンネルにはまだ投稿時間がありません。キューを使うには、チャンネル設定で投稿時間を追加してください。',

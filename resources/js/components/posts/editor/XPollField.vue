@@ -98,6 +98,9 @@ const update = (patch: Partial<XPoll>): void => {
     });
 };
 
+/** A choice's length as the server measures it, without the spaces around it. */
+const choiceLength = (option: string): number => characterCount(option.trim());
+
 const choiceLabelKey = (index: number): string =>
     index < X_POLL_MIN_OPTIONS
         ? 'posts.form.x.poll.choice'
@@ -177,12 +180,12 @@ const removePoll = (): void => {
                     <span
                         class="w-11 shrink-0 text-end text-xs tabular-nums"
                         :class="
-                            characterCount(option) > X_POLL_OPTION_MAX_LENGTH
+                            choiceLength(option) > X_POLL_OPTION_MAX_LENGTH
                                 ? 'text-destructive-text'
                                 : 'text-muted-foreground'
                         "
                         :data-testid="`x-poll-choice-${index}-count`"
-                        >{{ characterCount(option) }} /
+                        >{{ choiceLength(option) }} /
                         {{ X_POLL_OPTION_MAX_LENGTH }}</span
                     >
                     <Button

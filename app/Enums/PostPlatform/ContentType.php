@@ -149,7 +149,6 @@ enum ContentType: string
             self::LinkedInPagePost,
             self::FacebookPost,
             self::XPost,
-            self::XPoll,
             self::BlueskyPost,
             self::MastodonPost => ['width' => 1080, 'height' => 1080],
 
@@ -225,7 +224,7 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
             self::YouTubeShort => 3 * 60,
             self::PinterestVideoPin => 15 * 60,
-            self::XPost, self::XPoll => 20 * 60,
+            self::XPost => 20 * 60,
             self::ThreadsPost => 5 * 60,
             self::BlueskyPost => 10 * 60,
             self::TikTokVideo => 10 * 60,
@@ -251,7 +250,7 @@ enum ContentType: string
     public function acceptsGif(): bool
     {
         return match ($this) {
-            self::XPost, self::XPoll, self::BlueskyPost, self::MastodonPost,
+            self::XPost, self::BlueskyPost, self::MastodonPost,
             self::DiscordMessage, self::TelegramPost => true,
             default => false,
         };
@@ -284,7 +283,7 @@ enum ContentType: string
             self::FacebookStory => self::bytesFromMb(10),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
-            self::XPost, self::XPoll => self::bytesFromMb(5),
+            self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
             self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
@@ -313,7 +312,7 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
-            self::XPost, self::XPoll => self::bytesFromGb(8),
+            self::XPost => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
             self::BlueskyPost => self::bytesFromDecimalMb(300),
             self::TikTokVideo => self::bytesFromGb(4),

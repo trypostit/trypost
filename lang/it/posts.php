@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Ogni elemento multimediale richiede esattamente uno tra upload_token, url o id.',
         'media_url_unreachable' => 'Impossibile recuperare il contenuto multimediale da :url.',
         'media_type_unsupported' => 'Questo tipo di file non è supportato dal canale del post.',
+        'media_not_accepted' => 'Questo tipo di post non può includere media. Cambia il tipo di post per aggiungerli.',
         'media_file_unsupported' => 'Questo tipo di file non è supportato.',
         'media_file_too_large' => 'Questo file supera i :size MB consentiti per il suo tipo.',
         'queue_requires_schedule' => 'Questo canale non ha ancora orari di pubblicazione. Aggiungili nelle impostazioni del canale per usare la coda.',

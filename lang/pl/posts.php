@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Każdy element multimedialny wymaga dokładnie jednego z pól: upload_token, url lub id.',
         'media_url_unreachable' => 'Nie udało się pobrać multimediów z :url.',
         'media_type_unsupported' => 'Ten typ pliku nie jest obsługiwany przez kanał posta.',
+        'media_not_accepted' => 'Ten typ posta nie może zawierać multimediów. Zmień typ posta, aby je dodać.',
         'media_file_unsupported' => 'Ten typ pliku nie jest obsługiwany.',
         'media_file_too_large' => 'Ten plik jest większy niż dozwolone dla jego typu :size MB.',
         'queue_requires_schedule' => 'Ten kanał nie ma jeszcze godzin publikacji. Dodaj je w ustawieniach kanału, aby korzystać z kolejki.',

@@ -11,6 +11,7 @@ use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\PublishPost;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
+use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
@@ -21,6 +22,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\XPoll;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1101,7 +1103,7 @@ test('an x poll with invalid choices is refused by the create tool', function (a
     expect(Post::where('social_account_id', $x->id)->exists())->toBeFalse();
 })->with([
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]],
-    'choice over 25 characters' => [['options' => [str_repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],
+    'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],
     'repeated option' => [['options' => ['Yes', ' yes'], 'duration_minutes' => 60], 'posts.form.x.poll.options_distinct', []],
 ]);
 
@@ -1138,4 +1140,60 @@ test('publish post refuses a stored x poll without options or duration', functio
 })->with([
     'no options' => [[], 'posts.form.x.poll.options_required'],
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
+]);
+
+test('choices that only look alike as numbers are kept by the create tool', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'content' => 'Pick one',
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => ['1', '01'], 'duration_minutes' => 60]],
+    ])->assertOk();
+
+    expect(Post::where('social_account_id', $x->id)->sole()->meta['poll']['options'])->toBe(['1', '01']);
+});
+
+test('the update tool keeps the parts of an x poll it was not sent', function (array $poll, array $expected) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Question',
+        'status' => PostStatus::Draft,
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]],
+    ]);
+
+    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
+        'post_id' => $post->id,
+        'meta' => ['poll' => $poll],
+    ])->assertOk();
+
+    expect($post->fresh()->meta['poll'])->toEqual($expected);
+})->with([
+    'options only' => [['options' => ['Tabs', 'Spaces', 'Both']], ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 4320]],
+    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+]);
+
+test('the attach media tools refuse media on a post type that takes none', function (ContentType $contentType) {
+    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
+    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    Http::fake();
+
+    TryPostServer::actingAs($this->user)->tool(AttachMediaFromUploadTool::class, [
+        'post_id' => $post->id,
+        'upload_token' => $upload->upload_token,
+    ])->assertHasErrors([__('posts.errors.media_not_accepted')]);
+
+    TryPostServer::actingAs($this->user)->tool(AttachMediaFromUrlTool::class, [
+        'post_id' => $post->id,
+        'urls' => [['url' => 'https://example.com/photo.png']],
+    ])->assertHasErrors([__('posts.errors.media_not_accepted')]);
+
+    expect($post->fresh()->media)->toBeEmpty();
+    Http::assertNothingSent();
+})->with([
+    'x poll' => [ContentType::XPoll],
+    'threads ghost post' => [ContentType::ThreadsGhostPost],
 ]);

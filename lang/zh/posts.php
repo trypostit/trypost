@@ -886,6 +886,7 @@ return [
         'media_item_shape' => '每个媒体项必须且只能提供 upload_token、url 或 id 中的一个。',
         'media_url_unreachable' => '无法从 :url 获取媒体。',
         'media_type_unsupported' => '帖子的频道不支持此文件类型。',
+        'media_not_accepted' => '此帖子类型不能包含媒体。请更改帖子类型以添加媒体。',
         'media_file_unsupported' => '不支持此文件类型。',
         'media_file_too_large' => '此文件超过其类型允许的 :size MB。',
         'queue_requires_schedule' => '此频道尚未设置发布时间。请在频道设置中添加发布时间以使用队列。',

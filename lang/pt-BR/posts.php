@@ -886,6 +886,7 @@ return [
         'media_item_shape' => 'Cada item de mídia precisa de exatamente um entre upload_token, url ou id.',
         'media_url_unreachable' => 'Não foi possível buscar a mídia em :url.',
         'media_type_unsupported' => 'Este tipo de arquivo não é compatível com o canal do post.',
+        'media_not_accepted' => 'Este tipo de post não aceita mídia. Mude o tipo de post para adicionar mídia.',
         'media_file_unsupported' => 'Este tipo de arquivo não é compatível.',
         'media_file_too_large' => 'Este arquivo é maior que os :size MB permitidos para o tipo dele.',
         'queue_requires_schedule' => 'Este canal ainda não tem horários de postagem. Adicione horários nas configurações do canal para usar a fila.',

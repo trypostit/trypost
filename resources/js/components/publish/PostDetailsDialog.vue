@@ -157,6 +157,12 @@ const metricsDetail = computed(() => {
         : null;
 });
 
+const poll = computed(() => {
+    const detail = current.value.metrics ?? null;
+
+    return detail && detail.available ? detail.publication.poll : null;
+});
+
 const moment = computed(() => {
     if (current.value.published_at) {
         return {
@@ -463,9 +469,9 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     />
 
                     <PostPollResults
-                        v-if="metricsDetail?.publication.poll"
+                        v-if="poll"
                         class="-mx-6"
-                        :poll="metricsDetail.publication.poll"
+                        :poll="poll"
                         test-id="post-details-poll"
                     />
 
