@@ -13,6 +13,7 @@ test('content type has correct labels', function () {
     expect(ContentType::LinkedInPost->label())->toBe('Post');
     expect(ContentType::YouTubeShort->label())->toBe('Short');
     expect(ContentType::XPost->label())->toBe('Post');
+    expect(ContentType::XPoll->label())->toBe('Poll');
     expect(ContentType::TikTokVideo->label())->toBe('Video');
     expect(ContentType::PinterestPin->label())->toBe('Pin');
     expect(ContentType::PinterestVideoPin->label())->toBe('Video Pin');
@@ -104,6 +105,7 @@ test('content type maps to correct platform', function () {
     expect(ContentType::TikTokVideo->platform())->toBe(Platform::TikTok);
     expect(ContentType::YouTubeShort->platform())->toBe(Platform::YouTube);
     expect(ContentType::XPost->platform())->toBe(Platform::X);
+    expect(ContentType::XPoll->platform())->toBe(Platform::X);
     expect(ContentType::ThreadsPost->platform())->toBe(Platform::Threads);
     expect(ContentType::PinterestPin->platform())->toBe(Platform::Pinterest);
     expect(ContentType::BlueskyPost->platform())->toBe(Platform::Bluesky);
@@ -130,6 +132,7 @@ test('content type has correct max media count', function () {
     expect(ContentType::InstagramReel->maxMediaCount())->toBe(1);
     expect(ContentType::LinkedInPost->maxMediaCount())->toBe(10);
     expect(ContentType::XPost->maxMediaCount())->toBe(4);
+    expect(ContentType::XPoll->maxMediaCount())->toBe(0);
     expect(ContentType::PinterestCarousel->maxMediaCount())->toBe(5);
     expect(ContentType::BlueskyPost->maxMediaCount())->toBe(4);
 });
@@ -141,6 +144,7 @@ test('content type supports video correctly', function () {
     expect(ContentType::YouTubeShort->supportsVideo())->toBeTrue();
     expect(ContentType::LinkedInPost->supportsVideo())->toBeTrue();
     expect(ContentType::PinterestPin->supportsVideo())->toBeFalse();
+    expect(ContentType::XPoll->supportsVideo())->toBeFalse();
 });
 
 test('content type supports image correctly', function () {
@@ -153,6 +157,7 @@ test('content type supports image correctly', function () {
     expect(ContentType::FacebookStory->autoFitsImage())->toBeTrue();
     expect(ContentType::TikTokVideo->supportsImage())->toBeFalse();
     expect(ContentType::YouTubeShort->supportsImage())->toBeFalse();
+    expect(ContentType::XPoll->supportsImage())->toBeFalse();
 });
 
 test('content type supports mixed media correctly', function () {

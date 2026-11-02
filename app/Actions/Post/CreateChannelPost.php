@@ -63,7 +63,7 @@ class CreateChannelPost
             ...$account->channelSnapshot(),
             'content_type' => $destination['content_type'],
             'publish_status' => PublishStatus::Pending,
-            'meta' => PostMeta::forChannel($account, $destination['meta'] ?? []),
+            'meta' => PostMeta::forChannel($account, $destination['meta'] ?? [], [], $destination['content_type'] ?? null),
         ]);
 
         SyncOwnedMedia::execute(

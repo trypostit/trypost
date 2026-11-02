@@ -38,6 +38,7 @@ enum ContentType: string
 
     // X (Twitter)
     case XPost = 'x_post';
+    case XPoll = 'x_poll';
 
     // Threads
     case ThreadsPost = 'threads_post';
@@ -92,6 +93,7 @@ enum ContentType: string
             self::TikTokPhoto => 'Photo carousel',
             self::YouTubeShort => 'Short',
             self::XPost => 'Post',
+            self::XPoll => 'Poll',
             self::ThreadsPost => 'Thread',
             self::ThreadsGhostPost => 'Ghost post',
             self::PinterestPin => 'Pin',
@@ -119,7 +121,7 @@ enum ContentType: string
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
-            self::XPost => SocialPlatform::X,
+            self::XPost, self::XPoll => SocialPlatform::X,
             self::ThreadsPost, self::ThreadsGhostPost => SocialPlatform::Threads,
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
             self::BlueskyPost => SocialPlatform::Bluesky,
@@ -147,6 +149,7 @@ enum ContentType: string
             self::LinkedInPagePost,
             self::FacebookPost,
             self::XPost,
+            self::XPoll,
             self::BlueskyPost,
             self::MastodonPost => ['width' => 1080, 'height' => 1080],
 
@@ -188,6 +191,7 @@ enum ContentType: string
             self::TikTokPhoto => 35,
             self::YouTubeShort => 1,
             self::XPost => 4,
+            self::XPoll => 0,
             self::ThreadsPost => 10,
             self::ThreadsGhostPost => 0,
             self::PinterestPin, self::PinterestVideoPin => 1,
@@ -221,7 +225,7 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => 10 * 60,
             self::YouTubeShort => 3 * 60,
             self::PinterestVideoPin => 15 * 60,
-            self::XPost => 20 * 60,
+            self::XPost, self::XPoll => 20 * 60,
             self::ThreadsPost => 5 * 60,
             self::BlueskyPost => 10 * 60,
             self::TikTokVideo => 10 * 60,
@@ -247,7 +251,7 @@ enum ContentType: string
     public function acceptsGif(): bool
     {
         return match ($this) {
-            self::XPost, self::BlueskyPost, self::MastodonPost,
+            self::XPost, self::XPoll, self::BlueskyPost, self::MastodonPost,
             self::DiscordMessage, self::TelegramPost => true,
             default => false,
         };
@@ -280,7 +284,7 @@ enum ContentType: string
             self::FacebookStory => self::bytesFromMb(10),
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
-            self::XPost => self::bytesFromMb(5),
+            self::XPost, self::XPoll => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
             self::TikTokPhoto => self::bytesFromMb(20),
             self::MastodonPost => self::bytesFromMb(10),
@@ -309,7 +313,7 @@ enum ContentType: string
             self::LinkedInPost, self::LinkedInPagePost => self::bytesFromGb(5),
             self::YouTubeShort => self::bytesFromGb(256),
             self::PinterestVideoPin => self::bytesFromGb(2),
-            self::XPost => self::bytesFromGb(8),
+            self::XPost, self::XPoll => self::bytesFromGb(8),
             self::ThreadsPost => self::bytesFromGb(1),
             self::BlueskyPost => self::bytesFromDecimalMb(300),
             self::TikTokVideo => self::bytesFromGb(4),
@@ -446,7 +450,7 @@ enum ContentType: string
             self::InstagramFeed => ['3:4', '4:5', '1:1', '1.91:1'],
             self::InstagramStory, self::InstagramReel, self::FacebookStory, self::FacebookReel,
             self::TikTokVideo, self::YouTubeShort => ['9:16'],
-            self::XPost => ['1:1', '4:3', '16:9', '2:1'],
+            self::XPost, self::XPoll => ['1:1', '4:3', '16:9', '2:1'],
             self::TikTokPhoto => ['4:3', '16:9', '9:16', '1:1'],
             self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => ['1:1', '1.91:1'],
             self::PinterestPin, self::PinterestCarousel => ['2:3', '1:1'],
@@ -704,6 +708,7 @@ enum ContentType: string
             self::TikTokPhoto => false,
             self::YouTubeShort => true,
             self::XPost => true,
+            self::XPoll => false,
             self::ThreadsPost => true,
             self::ThreadsGhostPost => false,
             self::PinterestVideoPin => true,
@@ -725,6 +730,7 @@ enum ContentType: string
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
             self::ThreadsGhostPost => false,
+            self::XPoll => false,
             self::PinterestVideoPin => false,
             default => true,
         };
@@ -777,7 +783,7 @@ enum ContentType: string
     {
         return match ($this) {
             self::LinkedInPost, self::LinkedInPagePost => false,
-            self::XPost => false,
+            self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost => false,
             self::BlueskyPost => false,
             self::MastodonPost => false,

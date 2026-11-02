@@ -64,6 +64,7 @@ class AnalyticsPublication extends Model
             'last_seen_at' => 'immutable_datetime',
             'provider_synced_at' => 'immutable_datetime',
             'provider_metadata' => 'array',
+            'poll' => 'array',
         ];
     }
 

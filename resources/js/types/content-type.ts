@@ -11,6 +11,7 @@ export const ContentType = {
     TikTokPhoto: 'tiktok_photo',
     YouTubeShort: 'youtube_short',
     XPost: 'x_post',
+    XPoll: 'x_poll',
     ThreadsPost: 'threads_post',
     ThreadsGhostPost: 'threads_ghost_post',
     PinterestPin: 'pinterest_pin',
@@ -34,4 +35,5 @@ export const CAPTIONLESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
 /** Content types that carry no media: the composer hides the media tray. */
 export const MEDIALESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
     ContentType.ThreadsGhostPost,
+    ContentType.XPoll,
 ]);

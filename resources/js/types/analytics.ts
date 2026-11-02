@@ -275,6 +275,13 @@ export interface PublicationMetricFact {
     provider_metric?: string | null;
 }
 
+export interface PublicationPoll {
+    options: { label: string; votes: number }[];
+    voting_status: 'open' | 'closed';
+    end_datetime: string | null;
+    duration_minutes: number | null;
+}
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;
@@ -290,6 +297,7 @@ export interface PublicationAnalyticsDetail {
         permalink: string | null;
         excerpt: string | null;
         preview_metadata: Record<string, unknown> | null;
+        poll: PublicationPoll | null;
         account_display_name: string | null;
         account_username: string | null;
         account_avatar_url: string | null;

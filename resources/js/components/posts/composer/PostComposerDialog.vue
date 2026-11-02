@@ -70,6 +70,7 @@ import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfini
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue';
+import XPollField from '@/components/posts/editor/XPollField.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
@@ -175,6 +176,7 @@ import {
     threadRepliesOf,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
+import { newPoll, X_POLL_QUESTION_MAX_LENGTH, type XPoll } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -449,22 +451,70 @@ const groupDestination = (
     group: NetworkGroup,
 ): ReturnType<typeof composition.resolvedDestination> =>
     composition.resolvedDestination(group.anchor);
+/** The medialess types a card cannot switch to while it holds media, with the reason shown. */
+const MEDIALESS_TYPE_REASONS: Record<string, string> = {
+    [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
+    [ContentType.XPoll]: 'posts.form.x.poll.attachments',
+};
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
-
-    if (group.platform !== Platform.Threads) return options;
-
     const attached = groupDestination(group).media.length > 0;
 
     return options.map((option) =>
-        option.value === ContentType.ThreadsGhostPost && attached
+        attached && MEDIALESS_TYPE_REASONS[option.value]
             ? {
                   ...option,
-                  disabledReasonKey: 'posts.form.threads.ghost_post_attachments',
+                  disabledReasonKey: MEDIALESS_TYPE_REASONS[option.value],
               }
             : option,
     );
 };
+const isPollGroup = (group: NetworkGroup): boolean =>
+    groupDestination(group).content_type === ContentType.XPoll;
+const groupPoll = (group: NetworkGroup): Partial<XPoll> =>
+    groupDestination(group).meta?.poll ?? {};
+const setGroupPoll = (group: NetworkGroup, poll: XPoll): void => {
+    composition.setGroupOverride(group.key, 'meta', {
+        ...groupDestination(group).meta,
+        poll,
+    });
+};
+/** Each card's meta from before a poll was added, put back as it was when the poll goes and nothing else changed. */
+const metaBeforePoll = new Map<string, Record<string, any>>();
+/** Picking Poll starts an empty poll; any other type drops it, as the server does. */
+const setGroupContentType = (group: NetworkGroup, contentType: string): void => {
+    const current = groupDestination(group).meta ?? {};
+    const { poll, ...meta } = current;
+    composition.setGroupOverride(group.key, 'content_type', contentType);
+
+    if (contentType === ContentType.XPoll) {
+        if (poll === undefined) {
+            metaBeforePoll.set(group.key, current);
+        }
+        composition.setGroupOverride(group.key, 'meta', {
+            ...meta,
+            poll: poll ?? newPoll(),
+        });
+    } else if (poll !== undefined) {
+        const before = metaBeforePoll.get(group.key);
+        metaBeforePoll.delete(group.key);
+        composition.setGroupOverride(
+            group.key,
+            'meta',
+            before !== undefined &&
+                JSON.stringify({ ...before }) === JSON.stringify(meta)
+                ? before
+                : meta,
+        );
+    }
+};
+const removeGroupPoll = (group: NetworkGroup): void => {
+    setGroupContentType(group, ContentType.XPost);
+};
+const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
+    isPollGroup(group) && activeReply(group) === undefined
+        ? 'posts.form.x.poll.attachments'
+        : 'posts.composer.media_not_supported';
 const openNetwork = (
     groupKey: string,
     accountId: string | null = null,
@@ -993,8 +1043,18 @@ const writeContent = (groupKey: string | null, next: string): void => {
 const assistantContent = computed(() =>
     contentOf(sharedStep.value ? null : openGroupKey.value),
 );
+/** The account's text limit for its current post type: a poll's question stays within 280 even with long posts. */
+const contentLimit = (account: ComposerAccount): number | undefined => {
+    const limit = props.platformConfigs[account.id]?.maxContentLength;
+
+    return typeof limit === 'number' &&
+        composition.resolvedDestination(account).content_type ===
+            ContentType.XPoll
+        ? Math.min(limit, X_POLL_QUESTION_MAX_LENGTH)
+        : limit;
+};
 const accountLimit = (account: ComposerAccount): number =>
-    props.platformConfigs[account.id]?.maxContentLength ?? Infinity;
+    contentLimit(account) ?? Infinity;
 const assistantChannel = computed<AssistantChannel | null>(() => {
     const account = sharedStep.value
         ? undefined
@@ -1006,11 +1066,13 @@ const assistantChannel = computed<AssistantChannel | null>(() => {
               undefined,
           );
     if (!account) return null;
-    const limit = props.platformConfigs[account.id]?.maxContentLength;
+    const limit = contentLimit(account);
 
     return {
         accountId: account.id,
         platform: account.platform,
+        contentType:
+            composition.resolvedDestination(account).content_type || null,
         label: getPlatformLabel(account.platform),
         limit: typeof limit === 'number' ? limit : null,
     };
@@ -1035,7 +1097,7 @@ const contentWarningLength = (account: ComposerAccount): number =>
           )
         : 0;
 const remainingCharacters = (account: ComposerAccount): number | null => {
-    const limit = props.platformConfigs[account.id]?.maxContentLength;
+    const limit = contentLimit(account);
     if (typeof limit !== 'number' || limit <= 0) return null;
     const destination = composition.resolvedDestination(account);
     if (CAPTIONLESS_CONTENT_TYPES.has(destination.content_type)) return null;
@@ -1361,9 +1423,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             params: {
                 platform: getPlatformLabel(account.platform),
                 over: String(-remaining),
-                limit: String(
-                    props.platformConfigs[account.id]?.maxContentLength ?? '',
-                ),
+                limit: String(contentLimit(account) ?? ''),
             },
             contentType,
         });
@@ -2653,11 +2713,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     )
                                 "
                                 @update:content-type="
-                                    composition.setGroupOverride(
-                                        group.key,
-                                        'content_type',
-                                        $event,
-                                    )
+                                    setGroupContentType(group, $event)
                                 "
                                 @paste="onMediaPasted($event, group.key)"
                                 @drop="onGroupMediaDropped($event, group)"
@@ -2834,10 +2890,24 @@ const onDialogOpenChange = (value: boolean): void => {
                                         }}
                                     </p>
                                 </template>
+                                <template
+                                    v-if="isPollGroup(group)"
+                                    #attachment
+                                >
+                                    <XPollField
+                                        :model-value="groupPoll(group)"
+                                        :disabled="cropUploading"
+                                        @update:model-value="
+                                            setGroupPoll(group, $event)
+                                        "
+                                        @remove="removeGroupPoll(group)"
+                                    />
+                                </template>
                                 <template #post-media>
                                     <MediaTray
                                         v-if="
-                                            threadActive === -1 ||
+                                            (threadActive === -1 &&
+                                                !isPollGroup(group)) ||
                                             groupDestination(group).media.length ||
                                             trayHasActivity(group.key)
                                         "
@@ -2964,6 +3034,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :test-id-prefix="`composer-${group.anchor.id}`"
                                         :signatures="availableSignatures"
                                         :media-disabled="!groupAcceptsMedia(group)"
+                                        :media-disabled-reason-key="
+                                            groupMediaDisabledReasonKey(group)
+                                        "
                                         @import-started="
                                             onGroupImportStarted($event, group)
                                         "

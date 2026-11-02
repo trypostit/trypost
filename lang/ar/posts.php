@@ -157,6 +157,7 @@ return [
             'save' => 'حفظ',
             'photo' => 'صورة',
             'ghost_expires' => 'متبقٍ 24 ساعة',
+            'poll_summary' => '0 أصوات · الوقت المتبقي: :time',
         ],
         'preview_empty' => 'معاينة منشورك ستظهر هنا',
         'select_all' => 'تحديد الكل',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'اكتب الموضوع',
             'topic_invalid' => 'يجب أن يتكون الموضوع من 1 إلى 50 حرفًا، بدون . أو &.',
             'ghost_post_attachments' => 'لا تدعم المنشورات الشبحية المرفقات',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'أضف خيارين على الأقل إلى استطلاعك.',
+                'options_distinct' => 'يجب أن يكون كل خيار في الاستطلاع مختلفًا. غيّر الخيار المكرر.',
+                'duration_required' => 'اختر المدة التي يبقى فيها استطلاعك مفتوحًا.',
+                'options_max' => 'يمكن أن يحتوي الاستطلاع على :max خيارات كحد أقصى. احذف الخيارات الزائدة.',
+                'poll_object' => 'أرسل الاستطلاع مع خياراته (options) ومدته (duration_minutes).',
+                'options_list' => 'أرسل خيارات الاستطلاع كقائمة من النصوص.',
+                'choice_text' => 'يجب أن يكون كل خيار في الاستطلاع نصًا.',
+                'choice_max' => 'يمكن أن يحتوي كل خيار في الاستطلاع على :max حرفًا كحد أقصى. اختصر الخيار الأطول.',
+                'duration_range' => 'يمكن أن يبقى الاستطلاع مفتوحًا من 5 دقائق إلى 7 أيام. اختر مدة ضمن هذا النطاق.',
+                'choice' => 'الخيار :number',
+                'choice_optional' => 'الخيار :number (اختياري)',
+                'add_choice' => 'إضافة خيار',
+                'remove_choice' => 'إزالة الخيار :number',
+                'length' => 'مدة الاستطلاع',
+                'days' => 'الأيام',
+                'hours' => 'الساعات',
+                'minutes' => 'الدقائق',
+                'remove' => 'إزالة الاستطلاع',
+                'attachments' => 'الاستطلاعات لا تدعم الوسائط',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'عنوان المستند',
@@ -786,6 +810,10 @@ return [
             'label' => 'منشور',
             'description' => 'تغريدة بنص ووسائط',
         ],
+        'x_poll' => [
+            'label' => 'استطلاع',
+            'description' => 'سؤال بـ 2 إلى 4 خيارات',
+        ],
         'threads_post' => [
             'label' => 'سلسلة',
             'description' => 'منشور نصي مع وسائط اختيارية',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'خيارات الوسائط',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count صوت|[0,*] :count أصوات',
+        'final' => 'النتائج النهائية',
+        'ended' => 'انتهى التصويت',
+        'ends' => 'تنتهي :time',
+    ],
+
     'publish' => [
         'title' => 'نشر',
         'all_channels' => 'جميع القنوات',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'نُشر مباشرةً من :network',
         'slot_aria' => 'أضف منشورًا إلى :channel على :network في :time',
         'no_time' => 'بدون وقت',
+        'pending_slot' => [
+            'next' => 'الخانة التالية',
+            'top' => 'في البداية',
+        ],
         'new_in_slot' => 'جديد',
         'add_post_in_slot' => 'إضافة منشور',
         'more_times' => 'المزيد من الأوقات',

@@ -157,6 +157,7 @@ return [
             'save' => 'Save',
             'photo' => 'Photo',
             'ghost_expires' => '24h left',
+            'poll_summary' => '0 votes · :time left',
         ],
         'preview_empty' => 'Your post preview will appear here.',
         'select_all' => 'Select all',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Type the topic',
             'topic_invalid' => 'The topic must have 1 to 50 characters, without . or &.',
             'ghost_post_attachments' => 'Ghost Posts don\'t support attachments',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Add at least 2 choices to your poll.',
+                'options_distinct' => 'Each poll choice must be different. Change the repeated one.',
+                'duration_required' => 'Choose how long your poll stays open.',
+                'options_max' => 'A poll can have up to :max choices. Remove the extra ones.',
+                'poll_object' => 'Send the poll with its choices (options) and length (duration_minutes).',
+                'options_list' => 'Send the poll choices as a list of text.',
+                'choice_text' => 'Each poll choice must be text.',
+                'choice_max' => 'Each poll choice can have up to :max characters. Shorten the longer one.',
+                'duration_range' => 'A poll can stay open from 5 minutes to 7 days. Choose a length in that range.',
+                'choice' => 'Choice :number',
+                'choice_optional' => 'Choice :number (optional)',
+                'add_choice' => 'Add a choice',
+                'remove_choice' => 'Remove choice :number',
+                'length' => 'Poll length',
+                'days' => 'Days',
+                'hours' => 'Hours',
+                'minutes' => 'Minutes',
+                'remove' => 'Remove poll',
+                'attachments' => 'Polls can\'t have media',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Document title',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet with text and media',
         ],
+        'x_poll' => [
+            'label' => 'Poll',
+            'description' => 'Question with 2 to 4 choices',
+        ],
         'threads_post' => [
             'label' => 'Thread',
             'description' => 'Text post with optional media',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Media options',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count vote|[0,*] :count votes',
+        'final' => 'Final results',
+        'ended' => 'Voting ended',
+        'ends' => 'Ends :time',
+    ],
+
     'publish' => [
         'title' => 'Publish',
         'all_channels' => 'All channels',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'This was published directly from :network',
         'slot_aria' => 'Add a post to :channel on :network at :time',
         'no_time' => 'No time',
+        'pending_slot' => [
+            'next' => 'Next slot',
+            'top' => 'Top of queue',
+        ],
         'new_in_slot' => 'New',
         'add_post_in_slot' => 'Add a post',
         'more_times' => 'More times',

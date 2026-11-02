@@ -6,6 +6,7 @@ use App\Ai\Agents\PostContentShortener;
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
 use App\Enums\PostHog\AiEvent;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Jobs\PostHog\CaptureAccountEvent;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\Support\AiPromptRules;
+use App\Support\XPoll;
 use Illuminate\Auth\Access\Response as AuthResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;
@@ -176,6 +178,24 @@ test('the assistant writes for the account limit of the card it serves', functio
     'premium account' => [['x_subscription_type' => 'Premium'], 25000, false],
     'free account' => [[], 280, true],
 ]);
+
+test('the assistant writes a poll question within 280 characters even on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'ask our followers about tabs or spaces',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+});
 
 test('the assistant rewrites a post as long as the longest post', function () {
     PostWritingAssistant::fake(['Shorter']);

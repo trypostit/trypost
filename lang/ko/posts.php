@@ -157,6 +157,7 @@ return [
             'save' => '저장',
             'photo' => '사진',
             'ghost_expires' => '24시간 남음',
+            'poll_summary' => '0표 · :time 남음',
         ],
         'preview_empty' => '게시물 미리보기가 여기에 표시됩니다',
         'select_all' => '모두 선택',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => '주제 입력',
             'topic_invalid' => '주제는 . 또는 & 없이 1~50자여야 합니다.',
             'ghost_post_attachments' => '고스트 게시물은 첨부 파일을 지원하지 않습니다',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => '투표에 선택지를 2개 이상 추가하세요.',
+                'options_distinct' => '투표 선택지는 서로 달라야 합니다. 중복된 선택지를 바꿔 주세요.',
+                'duration_required' => '투표를 얼마나 열어 둘지 선택하세요.',
+                'options_max' => '투표 선택지는 최대 :max개까지 추가할 수 있습니다. 남는 선택지를 삭제하세요.',
+                'poll_object' => '투표를 선택지(options)와 기간(duration_minutes)과 함께 보내 주세요.',
+                'options_list' => '투표 선택지를 텍스트 목록으로 보내 주세요.',
+                'choice_text' => '투표 선택지는 텍스트여야 합니다.',
+                'choice_max' => '투표 선택지는 각각 최대 :max자까지 입력할 수 있습니다. 긴 선택지를 줄여 주세요.',
+                'duration_range' => '투표는 5분에서 7일까지 열어 둘 수 있습니다. 이 범위 안에서 기간을 선택하세요.',
+                'choice' => '선택지 :number',
+                'choice_optional' => '선택지 :number (선택 사항)',
+                'add_choice' => '선택지 추가',
+                'remove_choice' => '선택지 :number 삭제',
+                'length' => '투표 기간',
+                'days' => '일',
+                'hours' => '시간',
+                'minutes' => '분',
+                'remove' => '투표 삭제',
+                'attachments' => '투표는 미디어를 지원하지 않습니다',
+            ],
         ],
         'linkedin' => [
             'document_title' => '문서 제목',
@@ -786,6 +810,10 @@ return [
             'label' => '게시물',
             'description' => '텍스트와 미디어가 있는 트윗',
         ],
+        'x_poll' => [
+            'label' => '투표',
+            'description' => '선택지 2~4개가 있는 질문',
+        ],
         'threads_post' => [
             'label' => '스레드',
             'description' => '선택적 미디어가 있는 텍스트 게시물',
@@ -920,6 +948,13 @@ return [
             'media_title' => '미디어 옵션',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count표|[0,*] :count표',
+        'final' => '최종 결과',
+        'ended' => '투표 종료',
+        'ends' => '종료 :time',
+    ],
+
     'publish' => [
         'title' => '게시',
         'all_channels' => '모든 채널',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => ':network에서 직접 게시됨',
         'slot_aria' => ':network의 :channel에 :time 게시물 추가',
         'no_time' => '시간 없음',
+        'pending_slot' => [
+            'next' => '다음 슬롯',
+            'top' => '맨 앞',
+        ],
         'new_in_slot' => '신규',
         'add_post_in_slot' => '게시물 추가',
         'more_times' => '더 많은 시간',

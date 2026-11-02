@@ -20,6 +20,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\XPoll;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1065,3 +1066,76 @@ test('publish post rejects instagram music on an account not connected through F
         ->tool(PublishPostTool::class, ['post_id' => $post->id])
         ->assertHasErrors([__('posts.form.instagram.music.requires_facebook')]);
 });
+
+test('an x poll is stored normalized through the create and update tools', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'content' => 'Tabs or spaces?',
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => [' Yes ', '', 'No'], 'duration_minutes' => 60]],
+    ])->assertOk();
+    $post = Post::where('social_account_id', $x->id)->sole();
+
+    expect($post->meta['poll'])->toEqual(['options' => ['Yes', 'No'], 'duration_minutes' => 60]);
+
+    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
+        'post_id' => $post->id,
+        'content_type' => ContentType::XPost->value,
+    ])->assertOk();
+
+    expect($post->fresh()->meta)->not->toHaveKey('poll');
+});
+
+test('an x poll with invalid choices is refused by the create tool', function (array $poll, string $message, array $replace) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'content' => 'Tabs or spaces?',
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => $poll],
+    ])->assertHasErrors([__($message, $replace)]);
+
+    expect(Post::where('social_account_id', $x->id)->exists())->toBeFalse();
+})->with([
+    'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]],
+    'choice over 25 characters' => [['options' => [str_repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],
+    'repeated option' => [['options' => ['Yes', ' yes'], 'duration_minutes' => 60], 'posts.form.x.poll.options_distinct', []],
+]);
+
+test('an incomplete x poll cannot be scheduled through the create tool', function (?array $poll, string $message) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'content' => 'Question',
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => $poll === null ? [] : ['poll' => $poll],
+    ])->assertHasErrors([__($message)]);
+})->with([
+    'no options' => [null, 'posts.form.x.poll.options_required'],
+    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
+]);
+
+test('publish post refuses a stored x poll without options or duration', function (array $poll, string $message) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Question',
+        'status' => PostStatus::Draft,
+        'meta' => ['poll' => $poll],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__($message)]);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+})->with([
+    'no options' => [[], 'posts.form.x.poll.options_required'],
+    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
+]);

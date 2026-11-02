@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\X\MediaProcessingState;
 use App\Exceptions\PlatformUnavailableException;
@@ -17,6 +18,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
+use App\Support\XPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -97,7 +99,11 @@ class XPublisher
             $data['text'] = $content;
         }
 
-        $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
+        if ($post->content_type === ContentType::XPoll) {
+            $data['poll'] = $this->pollPayload($post);
+        } else {
+            $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
+        }
 
         if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
@@ -111,6 +117,29 @@ class XPublisher
         }
 
         return $this->createTweet($data, $post->socialAccount->username);
+    }
+
+    /**
+     * A poll cannot carry media and needs its choices and length.
+     *
+     * @return array{options: list<string>, duration_minutes: int}
+     */
+    private function pollPayload(Post $post): array
+    {
+        if ($post->mediaItems->isNotEmpty()) {
+            throw new XPublishException(
+                userMessage: 'An X poll cannot include media. Remove the media or change the post type.',
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        $violation = XPoll::requiredViolation($post->meta);
+
+        if ($violation !== null) {
+            throw new XPublishException(userMessage: $violation[1], category: ErrorCategory::MediaFormat);
+        }
+
+        return XPoll::payload($post->meta);
     }
 
     /**

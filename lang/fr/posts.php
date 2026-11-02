@@ -157,6 +157,7 @@ return [
             'save' => 'Enregistrer',
             'photo' => 'Photo',
             'ghost_expires' => '24 h restantes',
+            'poll_summary' => '0 vote · il reste :time',
         ],
         'preview_empty' => 'L’aperçu de votre publication apparaîtra ici',
         'select_all' => 'Tout sélectionner',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Saisissez le sujet',
             'topic_invalid' => 'Le sujet doit contenir de 1 à 50 caractères, sans . ni &.',
             'ghost_post_attachments' => 'Les posts fantômes n\'acceptent pas les pièces jointes',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Ajoutez au moins 2 choix à votre sondage.',
+                'options_distinct' => 'Chaque choix du sondage doit être différent. Modifiez celui qui se répète.',
+                'duration_required' => 'Choisissez la durée de votre sondage.',
+                'options_max' => 'Un sondage peut avoir jusqu\'à :max choix. Retirez ceux en trop.',
+                'poll_object' => 'Envoyez le sondage avec ses choix (options) et sa durée (duration_minutes).',
+                'options_list' => 'Envoyez les choix du sondage sous forme de liste de textes.',
+                'choice_text' => 'Chaque choix du sondage doit être du texte.',
+                'choice_max' => 'Chaque choix du sondage peut contenir jusqu\'à :max caractères. Raccourcissez le plus long.',
+                'duration_range' => 'Un sondage peut rester ouvert de 5 minutes à 7 jours. Choisissez une durée dans cet intervalle.',
+                'choice' => 'Choix :number',
+                'choice_optional' => 'Choix :number (facultatif)',
+                'add_choice' => 'Ajouter un choix',
+                'remove_choice' => 'Retirer le choix :number',
+                'length' => 'Durée du sondage',
+                'days' => 'Jours',
+                'hours' => 'Heures',
+                'minutes' => 'Minutes',
+                'remove' => 'Retirer le sondage',
+                'attachments' => 'Un sondage n\'accepte pas de médias',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Titre du document',
@@ -786,6 +810,10 @@ return [
             'label' => 'Publication',
             'description' => 'Tweet avec texte et médias',
         ],
+        'x_poll' => [
+            'label' => 'Sondage',
+            'description' => 'Question avec 2 à 4 choix',
+        ],
         'threads_post' => [
             'label' => 'Fil',
             'description' => 'Publication texte avec média facultatif',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Options de médias',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count vote|[0,*] :count votes',
+        'final' => 'Résultats finaux',
+        'ended' => 'Vote terminé',
+        'ends' => 'Se termine :time',
+    ],
+
     'publish' => [
         'title' => 'Publier',
         'all_channels' => 'Tous les canaux',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Publié directement depuis :network',
         'slot_aria' => 'Ajouter une publication à :channel sur :network à :time',
         'no_time' => 'Sans heure',
+        'pending_slot' => [
+            'next' => 'Créneau libre',
+            'top' => 'En tête',
+        ],
         'new_in_slot' => 'Nouveau',
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',

@@ -515,6 +515,36 @@ test('the destination post types sit centered in their settings panel', function
     $page->assertNoJavaScriptErrors();
 });
 
+test('an x destination offers no poll and a threads destination no ghost post', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+    $x = SocialAccount::factory()->for($workspace)->x()->create();
+    $threads = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [
+            ['social_account_id' => $x->id, 'content_type' => ContentType::XPost->value, 'meta' => []],
+            ['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose))->resize(1440, 1000);
+    waitFor($page, "@channel-row-{$x->id}");
+    waitFor($page, "@channel-row-{$threads->id}");
+    waitForState($page, "@channel-{$x->id}", "element.getAttribute('aria-checked') === 'true'");
+
+    $page->assertAttribute("@channel-{$threads->id}", 'aria-checked', 'true')
+        ->assertMissing("@channel-type-{$x->id}-x_poll")
+        ->assertMissing("@channel-type-{$x->id}")
+        ->assertMissing("@channel-settings-{$x->id}")
+        ->assertMissing("@channel-type-{$threads->id}-threads_ghost_post")
+        ->assertMissing("@channel-type-{$threads->id}")
+        ->assertMissing("@channel-settings-{$threads->id}")
+        ->assertNoJavaScriptErrors();
+});
+
 test('on a phone the header puts the summary and the actions on their own rows', function () {
     [$user, $workspace, $source, $destination] = repurposeOwnerWithAccounts();
 

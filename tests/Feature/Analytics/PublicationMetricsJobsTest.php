@@ -539,3 +539,40 @@ test('the daily run leaves a fresh post to its first read an hour after publishi
     Bus::assertNotDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $fresh->id);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
 })->with([Platform::X, Platform::Instagram]);
+
+test('collecting x metrics stores the poll on the publication', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $response = fn (int $votes): array => [
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [
+                ['position' => 1, 'label' => 'Yes', 'votes' => $votes],
+                ['position' => 2, 'label' => 'No', 'votes' => 2],
+            ],
+        ]]],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($response(1))
+        ->push($response(5))
+        ->push(['data' => ['public_metrics' => ['impression_count' => 12, 'like_count' => 1]]])]);
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->poll['options'])->toEqual([
+        ['label' => 'Yes', 'votes' => 1],
+        ['label' => 'No', 'votes' => 2],
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->poll['options'][0]['votes'])->toBe(5);
+
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->poll['options'][0]['votes'])->toBe(5);
+});

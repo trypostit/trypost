@@ -18,6 +18,7 @@ import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
+import PostPollResults from '@/components/publish/PostPollResults.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -459,6 +460,13 @@ const siblingMoment = (sibling: PostCard): string | null => {
                         :post-id="current.id"
                         :labels="current.labels ?? []"
                         :test-key="`details-${currentKey}`"
+                    />
+
+                    <PostPollResults
+                        v-if="metricsDetail?.publication.poll"
+                        class="-mx-6"
+                        :poll="metricsDetail.publication.poll"
+                        test-id="post-details-poll"
                     />
 
                     <PostMetricsBand

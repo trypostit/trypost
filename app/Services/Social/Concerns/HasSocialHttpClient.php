@@ -40,13 +40,13 @@ trait HasSocialHttpClient
         }
 
         $reserved = $post->platform->reservedLength($post->meta);
-        $overflow = $post->socialAccount?->contentOverflow($content, $reserved) ?? $post->platform->contentOverflow($content, $reserved);
+        $overflow = $post->socialAccount?->contentOverflow($content, $reserved, $post->content_type) ?? $post->platform->contentOverflow($content, $reserved);
 
         if ($overflow === 0) {
             return;
         }
 
-        $maxLength = $post->socialAccount?->maxContentLength() ?? $post->platform->maxContentLength();
+        $maxLength = $post->socialAccount?->maxContentLength($post->content_type) ?? $post->platform->maxContentLength();
 
         $contentLength = mb_strlen($content) + $reserved;
 

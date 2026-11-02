@@ -99,7 +99,8 @@ test('an approver adds a queue request to the queue and rejects another', functi
     waitForApprovalsTestId($page, "post-approve-{$queued->id}");
 
     $page->assertSeeIn('@publish-tab-count-approvals', '2')
-        ->assertVisible("@post-approval-badge-{$queued->id}")
+        ->assertMissing("@post-approval-badge-{$queued->id}")
+        ->assertSeeIn("@post-no-time-{$queued->id}", 'Next slot')
         ->assertSeeIn("@post-approve-{$queued->id}", 'Add to queue')
         ->assertSeeIn("@post-approve-{$timed->id}", 'Schedule')
         ->click("@post-approve-{$queued->id}");

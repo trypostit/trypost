@@ -157,6 +157,7 @@ return [
             'save' => 'Kaydet',
             'photo' => 'Fotoğraf',
             'ghost_expires' => '24 sa kaldı',
+            'poll_summary' => '0 oy · :time kaldı',
         ],
         'preview_empty' => 'Gönderi önizlemen burada görünecek',
         'select_all' => 'Tümünü seç',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Konuyu yazın',
             'topic_invalid' => 'Konu . veya & içermeden 1 ile 50 karakter arasında olmalıdır.',
             'ghost_post_attachments' => 'Hayalet gönderiler ek desteklemez',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Anketine en az 2 seçenek ekle.',
+                'options_distinct' => 'Anket seçeneklerinin her biri farklı olmalı. Tekrar eden seçeneği değiştir.',
+                'duration_required' => 'Anketinin ne kadar açık kalacağını seç.',
+                'options_max' => 'Bir ankette en fazla :max seçenek olabilir. Fazla olanları kaldır.',
+                'poll_object' => 'Anketi seçenekleri (options) ve süresiyle (duration_minutes) birlikte gönder.',
+                'options_list' => 'Anket seçeneklerini metin listesi olarak gönder.',
+                'choice_text' => 'Her anket seçeneği metin olmalı.',
+                'choice_max' => 'Her anket seçeneği en fazla :max karakter olabilir. Uzun olanı kısalt.',
+                'duration_range' => 'Bir anket 5 dakikadan 7 güne kadar açık kalabilir. Bu aralıkta bir süre seç.',
+                'choice' => 'Seçenek :number',
+                'choice_optional' => 'Seçenek :number (isteğe bağlı)',
+                'add_choice' => 'Seçenek ekle',
+                'remove_choice' => ':number. seçeneği kaldır',
+                'length' => 'Anket süresi',
+                'days' => 'Gün',
+                'hours' => 'Saat',
+                'minutes' => 'Dakika',
+                'remove' => 'Anketi kaldır',
+                'attachments' => 'Anketler medya desteklemiyor',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Belge başlığı',
@@ -786,6 +810,10 @@ return [
             'label' => 'Gönderi',
             'description' => 'Metin ve medya içeren tweet',
         ],
+        'x_poll' => [
+            'label' => 'Anket',
+            'description' => '2 ila 4 seçenekli soru',
+        ],
         'threads_post' => [
             'label' => 'Flood',
             'description' => 'İsteğe bağlı medya içeren metin gönderisi',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Medya seçenekleri',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count oy|[0,*] :count oy',
+        'final' => 'Nihai sonuçlar',
+        'ended' => 'Oylama sona erdi',
+        'ends' => 'Bitiş: :time',
+    ],
+
     'publish' => [
         'title' => 'Yayınla',
         'all_channels' => 'Tüm kanallar',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Doğrudan :network üzerinden yayınlandı',
         'slot_aria' => ':network üzerindeki :channel için :time saatine gönderi ekle',
         'no_time' => 'Saat yok',
+        'pending_slot' => [
+            'next' => 'Sonraki slot',
+            'top' => 'En başta',
+        ],
         'new_in_slot' => 'Yeni',
         'add_post_in_slot' => 'Gönderi ekle',
         'more_times' => 'Daha fazla saat',

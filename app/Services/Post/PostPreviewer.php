@@ -70,7 +70,7 @@ class PostPreviewer
             'content_type' => $post->content_type?->value,
             'sanitized_content' => $sanitized,
             'sanitized_length' => mb_strlen($sanitized),
-            'max_content_length' => $post->socialAccount?->maxContentLength() ?? $platform->maxContentLength(),
+            'max_content_length' => $post->socialAccount?->maxContentLength($post->content_type) ?? $platform->maxContentLength(),
             'truncated' => mb_strlen($sanitized) < mb_strlen($original),
         ];
 

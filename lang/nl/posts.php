@@ -157,6 +157,7 @@ return [
             'save' => 'Bewaren',
             'photo' => 'Foto',
             'ghost_expires' => 'Nog 24 u',
+            'poll_summary' => '0 stemmen · nog :time',
         ],
         'preview_empty' => 'Je berichtvoorbeeld verschijnt hier',
         'select_all' => 'Alles selecteren',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Typ het onderwerp',
             'topic_invalid' => 'Het onderwerp moet 1 tot 50 tekens hebben, zonder . of &.',
             'ghost_post_attachments' => 'Ghost-posts ondersteunen geen bijlagen',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Voeg minstens 2 keuzes toe aan je poll.',
+                'options_distinct' => 'Elke keuze in de poll moet anders zijn. Pas de dubbele aan.',
+                'duration_required' => 'Kies hoe lang je poll openstaat.',
+                'options_max' => 'Een poll kan maximaal :max keuzes hebben. Verwijder de overige.',
+                'poll_object' => 'Stuur de poll met de keuzes (options) en de duur (duration_minutes).',
+                'options_list' => 'Stuur de keuzes van de poll als een lijst met tekst.',
+                'choice_text' => 'Elke keuze in de poll moet tekst zijn.',
+                'choice_max' => 'Elke keuze in de poll mag maximaal :max tekens hebben. Maak de langere korter.',
+                'duration_range' => 'Een poll kan van 5 minuten tot 7 dagen openstaan. Kies een duur binnen dat bereik.',
+                'choice' => 'Keuze :number',
+                'choice_optional' => 'Keuze :number (optioneel)',
+                'add_choice' => 'Keuze toevoegen',
+                'remove_choice' => 'Keuze :number verwijderen',
+                'length' => 'Duur van de poll',
+                'days' => 'Dagen',
+                'hours' => 'Uren',
+                'minutes' => 'Minuten',
+                'remove' => 'Poll verwijderen',
+                'attachments' => 'Een poll ondersteunt geen media',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Documenttitel',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet met tekst en media',
         ],
+        'x_poll' => [
+            'label' => 'Poll',
+            'description' => 'Vraag met 2 tot 4 keuzes',
+        ],
         'threads_post' => [
             'label' => 'Thread',
             'description' => 'Tekstpost met optionele media',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Media-opties',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count stem|[0,*] :count stemmen',
+        'final' => 'Eindresultaat',
+        'ended' => 'Stemmen gesloten',
+        'ends' => 'Eindigt :time',
+    ],
+
     'publish' => [
         'title' => 'Publiceren',
         'all_channels' => 'Alle kanalen',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Rechtstreeks gepubliceerd vanuit :network',
         'slot_aria' => 'Bericht toevoegen aan :channel op :network om :time',
         'no_time' => 'Geen tijd',
+        'pending_slot' => [
+            'next' => 'Volgend slot',
+            'top' => 'Bovenaan',
+        ],
         'new_in_slot' => 'Nieuw',
         'add_post_in_slot' => 'Post toevoegen',
         'more_times' => 'Meer tijden',

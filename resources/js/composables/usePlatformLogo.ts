@@ -48,7 +48,7 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     facebook: ['facebook_post', 'facebook_reel', 'facebook_story'],
     tiktok: ['tiktok_video', 'tiktok_photo'],
     youtube: ['youtube_short'],
-    x: ['x_post'],
+    x: ['x_post', 'x_poll'],
     threads: ['threads_post', 'threads_ghost_post'],
     pinterest: ['pinterest_pin', 'pinterest_video_pin', 'pinterest_carousel'],
     bluesky: ['bluesky_post'],
@@ -63,6 +63,7 @@ const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
     'instagram-facebook': ['instagram_reel', 'instagram_story'],
     facebook: ['facebook_reel', 'facebook_story'],
     threads: ['threads_ghost_post'],
+    x: ['x_poll'],
 };
 
 export interface ContentTypeOption {

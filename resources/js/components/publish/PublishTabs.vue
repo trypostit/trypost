@@ -93,7 +93,12 @@ const closeSelect = (): void => {
             >
                 {{ $t(`posts.publish.tabs.${key}`) }}
                 <span
-                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground"
+                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 text-xs font-medium"
+                    :class="
+                        tab === key
+                            ? 'bg-primary-selected text-primary-text'
+                            : 'bg-secondary text-foreground'
+                    "
                     :data-testid="`publish-tab-count-${key}`"
                     >{{ counts[key] }}</span
                 >

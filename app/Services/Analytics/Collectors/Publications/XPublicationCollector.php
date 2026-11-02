@@ -8,6 +8,7 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
+use App\Support\XPoll;
 use Carbon\CarbonImmutable;
 
 class XPublicationCollector extends AbstractPublicationHistoryCollector
@@ -29,10 +30,12 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 'pagination_token' => $cursor,
                 'exclude' => 'retweets,replies',
                 'tweet.fields' => 'created_at,attachments,note_tweet,referenced_tweets',
-                'expansions' => 'attachments.media_keys',
+                'expansions' => 'attachments.media_keys,attachments.poll_ids',
                 'media.fields' => 'media_key,type,preview_image_url,url,variants',
+                'poll.fields' => 'options,duration_minutes,end_datetime,voting_status',
             ],
         );
+        $polls = collect((array) $response->json('includes.polls', []))->keyBy('id');
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
         $crossedCutoff = false;
@@ -70,6 +73,8 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 fn (array $item): bool => filled(data_get($item, 'preview_image_url')) || filled(data_get($item, 'url')),
             );
 
+            $poll = $polls->get((string) data_get($row, 'attachments.poll_ids.0'));
+
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,
                 publishedAt: $publishedAt,
@@ -80,13 +85,16 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 previewMetadata: is_array($preview)
                     ? ['thumbnail_url' => data_get($preview, 'preview_image_url') ?: data_get($preview, 'url')]
                     : null,
-                providerMetadata: $attachedMedia->isEmpty() ? null : ['media' => $attachedMedia
-                    ->map(fn (array $item): array => array_filter([
-                        'type' => data_get($item, 'type'),
-                        'url' => data_get($item, 'url'),
-                        'variants' => data_get($item, 'variants'),
-                    ], fn (mixed $value): bool => $value !== null))
-                    ->all()],
+                providerMetadata: array_filter([
+                    'media' => $attachedMedia->isEmpty() ? null : $attachedMedia
+                        ->map(fn (array $item): array => array_filter([
+                            'type' => data_get($item, 'type'),
+                            'url' => data_get($item, 'url'),
+                            'variants' => data_get($item, 'variants'),
+                        ], fn (mixed $value): bool => $value !== null))
+                        ->all(),
+                    'poll' => is_array($poll) ? XPoll::result($poll) : null,
+                ], fn (mixed $value): bool => $value !== null) ?: null,
             );
         }
 

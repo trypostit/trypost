@@ -157,6 +157,7 @@ return [
             'save' => 'Zapisz',
             'photo' => 'Zdjęcie',
             'ghost_expires' => 'Zostało 24 h',
+            'poll_summary' => '0 głosów · pozostało: :time',
         ],
         'preview_empty' => 'Podgląd posta pojawi się tutaj',
         'select_all' => 'Zaznacz wszystkie',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Wpisz temat',
             'topic_invalid' => 'Temat musi mieć od 1 do 50 znaków, bez . i &.',
             'ghost_post_attachments' => 'Posty-duchy nie obsługują załączników',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Dodaj do ankiety co najmniej 2 opcje.',
+                'options_distinct' => 'Każda opcja ankiety musi być inna. Zmień powtórzoną.',
+                'duration_required' => 'Wybierz, jak długo ankieta ma być otwarta.',
+                'options_max' => 'Ankieta może mieć maksymalnie :max opcje. Usuń nadmiarowe.',
+                'poll_object' => 'Wyślij ankietę z opcjami (options) i czasem trwania (duration_minutes).',
+                'options_list' => 'Wyślij opcje ankiety jako listę tekstów.',
+                'choice_text' => 'Każda opcja ankiety musi być tekstem.',
+                'choice_max' => 'Każda opcja ankiety może mieć maksymalnie :max znaków. Skróć dłuższą.',
+                'duration_range' => 'Ankieta może być otwarta od 5 minut do 7 dni. Wybierz czas trwania w tym zakresie.',
+                'choice' => 'Opcja :number',
+                'choice_optional' => 'Opcja :number (opcjonalna)',
+                'add_choice' => 'Dodaj opcję',
+                'remove_choice' => 'Usuń opcję :number',
+                'length' => 'Czas trwania ankiety',
+                'days' => 'Dni',
+                'hours' => 'Godziny',
+                'minutes' => 'Minuty',
+                'remove' => 'Usuń ankietę',
+                'attachments' => 'Ankieta nie obsługuje multimediów',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Tytuł dokumentu',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet z tekstem i multimediami',
         ],
+        'x_poll' => [
+            'label' => 'Ankieta',
+            'description' => 'Pytanie z 2 do 4 opcjami',
+        ],
         'threads_post' => [
             'label' => 'Wątek',
             'description' => 'Post tekstowy z opcjonalnymi multimediami',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Opcje multimediów',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count głos|[0,*] Głosów: :count',
+        'final' => 'Wyniki końcowe',
+        'ended' => 'Głosowanie zakończone',
+        'ends' => 'Kończy się :time',
+    ],
+
     'publish' => [
         'title' => 'Publikuj',
         'all_channels' => 'Wszystkie kanały',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Opublikowano bezpośrednio w :network',
         'slot_aria' => 'Dodaj post do :channel w :network o :time',
         'no_time' => 'Bez godziny',
+        'pending_slot' => [
+            'next' => 'Następny slot',
+            'top' => 'Na początku',
+        ],
         'new_in_slot' => 'Nowy',
         'add_post_in_slot' => 'Dodaj post',
         'more_times' => 'Więcej godzin',

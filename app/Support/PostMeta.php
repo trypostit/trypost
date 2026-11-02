@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
@@ -26,12 +27,16 @@ class PostMeta
      * @param  array<string, mixed>  $stored  the meta the post had before this save
      * @return array<string, mixed>
      */
-    public static function forChannel(SocialAccount $account, array $meta, array $stored = []): array
+    public static function forChannel(SocialAccount $account, array $meta, array $stored = [], ContentType|string|null $contentType = null): array
     {
         $meta = [
             ...PostPlatformMetaRules::normalize($meta),
             ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
         ];
+
+        if ($contentType instanceof ContentType ? $contentType !== ContentType::XPoll : $contentType !== ContentType::XPoll->value) {
+            $meta = Arr::except($meta, 'poll');
+        }
 
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),

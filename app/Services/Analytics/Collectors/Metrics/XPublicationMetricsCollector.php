@@ -8,6 +8,7 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Support\XPoll;
 use Carbon\CarbonImmutable;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
@@ -24,7 +25,11 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
         $response = $this->get($account,
             rtrim((string) config('trypost.platforms.x.api'), '/')."/tweets/{$publication->remote_id}",
-            ['tweet.fields' => implode(',', $fields)],
+            [
+                'tweet.fields' => implode(',', $fields),
+                'expansions' => 'attachments.poll_ids',
+                'poll.fields' => 'options,voting_status,end_datetime,duration_minutes',
+            ],
         );
         $tweet = $response->json('data');
 
@@ -34,6 +39,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
         $public = (array) data_get($tweet, 'public_metrics', []);
         $private = (array) data_get($tweet, 'non_public_metrics', []);
+        $poll = data_get($response->json(), 'includes.polls.0');
 
         return $this->observation($date, $this->withEngagements($this->present([
             $this->count(MetricKey::Impressions, $public, 'impression_count') ?? $this->count(MetricKey::Impressions, $private, 'impression_count'),
@@ -43,6 +49,6 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $this->count(MetricKey::Quotes, $public, 'quote_count'),
             $this->count(MetricKey::Bookmarks, $public, 'bookmark_count'),
             $this->count(MetricKey::LinkClicks, $private, 'url_link_clicks'),
-        ])));
+        ])), is_array($poll) ? XPoll::result($poll) : null);
     }
 }

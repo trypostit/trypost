@@ -157,6 +157,7 @@ return [
             'save' => 'Salva',
             'photo' => 'Foto',
             'ghost_expires' => '24 h rimaste',
+            'poll_summary' => '0 voti · termina tra :time',
         ],
         'preview_empty' => 'L’anteprima del post apparirà qui',
         'select_all' => 'Seleziona tutti',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Scrivi l\'argomento',
             'topic_invalid' => 'L\'argomento deve avere da 1 a 50 caratteri, senza . o &.',
             'ghost_post_attachments' => 'I post fantasma non supportano allegati',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Aggiungi almeno 2 opzioni al sondaggio.',
+                'options_distinct' => 'Ogni opzione del sondaggio deve essere diversa. Modifica quella ripetuta.',
+                'duration_required' => 'Scegli per quanto tempo resta aperto il sondaggio.',
+                'options_max' => 'Un sondaggio può avere fino a :max opzioni. Rimuovi quelle in più.',
+                'poll_object' => 'Invia il sondaggio con le sue opzioni (options) e la sua durata (duration_minutes).',
+                'options_list' => 'Invia le opzioni del sondaggio come elenco di testi.',
+                'choice_text' => 'Ogni opzione del sondaggio deve essere un testo.',
+                'choice_max' => 'Ogni opzione del sondaggio può avere fino a :max caratteri. Accorcia quella più lunga.',
+                'duration_range' => 'Un sondaggio può restare aperto da 5 minuti a 7 giorni. Scegli una durata in questo intervallo.',
+                'choice' => 'Opzione :number',
+                'choice_optional' => 'Opzione :number (facoltativa)',
+                'add_choice' => 'Aggiungi opzione',
+                'remove_choice' => 'Rimuovi opzione :number',
+                'length' => 'Durata del sondaggio',
+                'days' => 'Giorni',
+                'hours' => 'Ore',
+                'minutes' => 'Minuti',
+                'remove' => 'Rimuovi sondaggio',
+                'attachments' => 'I sondaggi non supportano i media',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Titolo del documento',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet con testo e media',
         ],
+        'x_poll' => [
+            'label' => 'Sondaggio',
+            'description' => 'Domanda con 2-4 opzioni',
+        ],
         'threads_post' => [
             'label' => 'Thread',
             'description' => 'Post di testo con media facoltativi',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Opzioni media',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count voto|[0,*] :count voti',
+        'final' => 'Risultati finali',
+        'ended' => 'Votazione chiusa',
+        'ends' => 'Termina :time',
+    ],
+
     'publish' => [
         'title' => 'Pubblica',
         'all_channels' => 'Tutti i canali',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Pubblicato direttamente da :network',
         'slot_aria' => 'Aggiungi un post a :channel su :network alle :time',
         'no_time' => 'Nessun orario',
+        'pending_slot' => [
+            'next' => 'Prossimo slot',
+            'top' => 'In cima',
+        ],
         'new_in_slot' => 'Nuovo',
         'add_post_in_slot' => 'Aggiungi post',
         'more_times' => 'Altri orari',

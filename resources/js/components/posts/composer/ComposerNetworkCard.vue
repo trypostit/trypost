@@ -239,6 +239,12 @@ const showsHeader = computed(
                         </button>
                     </p>
                 </div>
+                <div
+                    v-if="threaded && !captionCollapsed && $slots.attachment"
+                    class="pt-2"
+                >
+                    <slot name="attachment" />
+                </div>
                 <slot v-if="threaded" name="post-media" />
                 <div
                     v-if="threaded && !captionCollapsed"
@@ -248,6 +254,7 @@ const showsHeader = computed(
             </div>
             <slot name="replies" />
             <div>
+                <slot v-if="!threaded" name="attachment" />
                 <slot v-if="showsMedia" name="media" />
                 <Teleport
                     v-if="threaded"

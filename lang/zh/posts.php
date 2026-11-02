@@ -157,6 +157,7 @@ return [
             'save' => '保存',
             'photo' => '照片',
             'ghost_expires' => '剩余 24 小时',
+            'poll_summary' => '0 票 · 剩余 :time',
         ],
         'preview_empty' => '帖子预览将显示在这里',
         'select_all' => '全选',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => '输入话题',
             'topic_invalid' => '话题须为 1 到 50 个字符，且不含 . 或 &。',
             'ghost_post_attachments' => '幽灵帖子不支持附件',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => '请为投票至少添加 2 个选项。',
+                'options_distinct' => '每个投票选项必须不同，请修改重复的选项。',
+                'duration_required' => '请选择投票的开放时长。',
+                'options_max' => '投票最多可以有 :max 个选项。请删除多余的选项。',
+                'poll_object' => '请发送包含选项（options）和时长（duration_minutes）的投票。',
+                'options_list' => '请以文本列表的形式发送投票选项。',
+                'choice_text' => '每个投票选项都必须是文本。',
+                'choice_max' => '每个投票选项最多 :max 个字符。请缩短较长的选项。',
+                'duration_range' => '投票可开放 5 分钟到 7 天。请在此范围内选择时长。',
+                'choice' => '选项 :number',
+                'choice_optional' => '选项 :number（可选）',
+                'add_choice' => '添加选项',
+                'remove_choice' => '删除选项 :number',
+                'length' => '投票时长',
+                'days' => '天',
+                'hours' => '小时',
+                'minutes' => '分钟',
+                'remove' => '删除投票',
+                'attachments' => '投票不支持媒体',
+            ],
         ],
         'linkedin' => [
             'document_title' => '文档标题',
@@ -786,6 +810,10 @@ return [
             'label' => '帖子',
             'description' => '带文字和媒体的推文',
         ],
+        'x_poll' => [
+            'label' => '投票',
+            'description' => '带 2 到 4 个选项的问题',
+        ],
         'threads_post' => [
             'label' => '串文',
             'description' => '可附带媒体的文字帖子',
@@ -920,6 +948,13 @@ return [
             'media_title' => '媒体选项',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count 票|[0,*] :count 票',
+        'final' => '最终结果',
+        'ended' => '投票已结束',
+        'ends' => ':time结束',
+    ],
+
     'publish' => [
         'title' => '发布',
         'all_channels' => '所有频道',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => '直接从 :network 发布',
         'slot_aria' => '在 :time 为 :network 上的 :channel 添加帖子',
         'no_time' => '无时间',
+        'pending_slot' => [
+            'next' => '下一个空档',
+            'top' => '队首',
+        ],
         'new_in_slot' => '新建',
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',

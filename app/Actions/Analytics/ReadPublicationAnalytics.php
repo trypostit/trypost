@@ -184,6 +184,7 @@ class ReadPublicationAnalytics
                 'permalink' => $publication->permalink,
                 'excerpt' => $publication->excerpt,
                 'preview_metadata' => $publication->preview_metadata,
+                'poll' => $publication->poll,
                 'account_display_name' => $publication->account_display_name,
                 'account_username' => $publication->account_username,
                 'account_avatar_url' => $publication->socialAccount?->avatar_url ?? $publication->account_avatar_url,

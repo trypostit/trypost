@@ -799,3 +799,40 @@ test('a caption with a less-than sign links to its own publication', function ()
     expect(Post::query()->imported()->count())->toBe(0)
         ->and($tryPost->fresh()->platform_post_id)->toBe('media-1');
 });
+
+test('imports an x poll made on x as a poll', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    externalPublication($account, [
+        'remote_id' => 'x-poll-1',
+        'excerpt' => 'Should we refund?',
+        'content_type' => PublicationContentType::Text,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => '✅ Refund', 'votes' => 3], ['label' => '❌ No refund', 'votes' => 1]],
+            'voting_status' => 'open',
+            'end_datetime' => now()->addHour()->toIso8601ZuluString(),
+            'duration_minutes' => 1440,
+        ]],
+    ]);
+    externalPublication($account, ['remote_id' => 'x-plain-1', 'excerpt' => 'Plain', 'content_type' => PublicationContentType::Text]);
+
+    ImportExternalPosts::execute($account);
+
+    $poll = Post::query()->imported()->where('platform_post_id', 'x-poll-1')->sole();
+    $plain = Post::query()->imported()->where('platform_post_id', 'x-plain-1')->sole();
+
+    expect($poll->content_type)->toBe(ContentType::XPoll)
+        ->and($poll->meta)->toEqual(['poll' => ['options' => ['✅ Refund', '❌ No refund'], 'duration_minutes' => 1440]])
+        ->and($plain->content_type)->toBe(ContentType::XPost)
+        ->and($plain->meta)->toBe([]);
+});
+
+test('a poll published through trypost is linked, not imported again', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $tryPost = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'x-poll-2']);
+    $publication = externalPublication($account, ['remote_id' => 'x-poll-2']);
+    $count = Post::query()->count();
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->count())->toBe($count)
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id);
+});

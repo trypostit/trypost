@@ -34,6 +34,7 @@ import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
+import PostPollResults from '@/components/publish/PostPollResults.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
 import { Badge } from '@/components/ui/badge';
@@ -207,6 +208,12 @@ const limitRetryAt = computed(() =>
 
 const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
+);
+
+const pendingSlotKey = computed((): string | null =>
+    isPending.value && props.post.approval_queue_position
+        ? `posts.publish.pending_slot.${props.post.approval_queue_position}`
+        : null,
 );
 
 const isEditable = computed(
@@ -415,12 +422,17 @@ defineExpose({ openDetails });
                 >
                     {{ formatTime(time) }}
                 </time>
-                <span v-else class="text-sm font-medium text-muted-foreground">
-                    {{ $t('posts.publish.no_time') }}
+                <span
+                    v-else
+                    class="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                    data-single-line
+                    :data-testid="`post-no-time-${post.id}`"
+                >
+                    {{ $t(pendingSlotKey ?? 'posts.publish.no_time') }}
                 </span>
             </span>
             <Badge
-                v-if="isPending"
+                v-if="isPending && tab !== 'approvals'"
                 variant="warning"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                 :data-testid="`post-approval-badge-${post.id}`"
@@ -679,6 +691,12 @@ defineExpose({ openDetails });
                     :post-id="post.id"
                     :labels="post.labels ?? []"
                     :test-key="post.id"
+                />
+
+                <PostPollResults
+                    v-if="tab === 'sent' && metricsDetail?.publication.poll"
+                    :poll="metricsDetail.publication.poll"
+                    :test-id="`post-poll-${post.id}`"
                 />
 
                 <PostMetricsBand

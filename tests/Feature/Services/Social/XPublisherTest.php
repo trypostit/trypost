@@ -1925,3 +1925,73 @@ test('x publisher fails on a v1-shaped upload response without data.id', functio
     'simple upload' => ['image/jpeg', 'https://example.com/media/2026-01/photo.jpg', '/2/media/upload'],
     'chunked initialize' => ['video/mp4', 'https://example.com/media/2026-01/clip.mp4', '/2/media/upload/initialize'],
 ]);
+
+function xPollMeta(array $overrides = []): array
+{
+    return ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440, ...$overrides]];
+}
+
+test('x publisher publishes an x poll with its choices and length', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => xPollMeta()]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]);
+});
+
+test('x publisher sends no poll for an x post carrying a stale poll', function () {
+    $this->post->update(['meta' => xPollMeta()]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Hello from X!']);
+});
+
+test('an x poll root starts a thread whose replies carry no poll', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => ['Second']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Second', 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSentCount(2);
+});
+
+test('a retry after the x poll went live does not post it again', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => ['Second']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['title' => 'Forbidden', 'detail' => 'Not allowed', 'status' => 403], 403)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    rescue(fn () => $this->publisher->publish($this->post->fresh()), report: false);
+    $result = (new XPublisher)->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('100');
+    Http::assertSentCount(3);
+    expect(Http::recorded(fn (Request $request): bool => isset($request['poll'])))->toHaveCount(1);
+});
+
+test('x publisher refuses to publish an x poll with media', function () {
+    $this->post->update([
+        'content_type' => ContentType::XPoll,
+        'meta' => xPollMeta(),
+        'media' => [['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg']],
+    ]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(XPublishException::class);
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses to publish an x poll without two choices', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => xPollMeta(['options' => ['Yes', '  ']])]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(XPublishException::class);
+    Http::assertNothingSent();
+});

@@ -197,7 +197,7 @@ class PostCompositionValidator
                     }
                 }
 
-                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, $destination['meta'] ?? []);
+                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, $destination['meta'] ?? [], $destination['content_type'] ?? null);
                 if ($formatViolation !== null) {
                     [$field, $message] = $formatViolation;
                     $validator->errors()->add("{$key}.meta.{$field}", $message);

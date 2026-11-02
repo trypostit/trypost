@@ -19,6 +19,7 @@ use App\Services\Social\ContentSanitizer;
 use App\Support\PostHistoryRetention;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
+use App\Support\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -326,6 +327,9 @@ class ImportExternalPosts
 
     private static function createPost(SocialAccount $account, AnalyticsPublication $publication): Post
     {
+        $poll = $account->platform === Platform::X ? data_get($publication->provider_metadata, 'poll') : null;
+        $isPoll = is_array($poll) && filled($poll);
+
         return Post::query()->forceCreate([
             'workspace_id' => $account->workspace_id,
             'post_group_id' => (string) Str::uuid7(),
@@ -338,11 +342,13 @@ class ImportExternalPosts
             'social_account_id' => $account->id,
             'platform' => $account->platform,
             ...$account->channelSnapshot(),
-            'content_type' => ContentType::fromPublication($account->platform, $publication->content_type),
+            'content_type' => $isPoll
+                ? ContentType::XPoll
+                : ContentType::fromPublication($account->platform, $publication->content_type),
             'publish_status' => PublishStatus::Published,
             'platform_post_id' => $publication->remote_id,
             'platform_url' => $publication->permalink,
-            'meta' => [],
+            'meta' => $isPoll ? ['poll' => XPoll::definition($poll)] : [],
         ]);
     }
 }

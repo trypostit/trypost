@@ -1104,6 +1104,18 @@ an `enabled` flag or posts with several channels. Posts created together share
 - Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
 - `posts.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
 
+## X polls
+
+- A poll is its own content type, `ContentType::XPoll` (`x_poll`), with `meta.poll = {options, duration_minutes}` (owner decision November 2026). `App\Support\XPoll` is the one home for its rules (constants, `normalize()`, `violation()`, `requiredViolation()`, `payload()`, `result()`, `definition()`); `PostPlatformMetaRules`, `PostMeta::forChannel()`, `SocialAccount::maxContentLength($contentType)` and `XPublisher` call it, never a copy of the numbers.
+- 2–4 choices of 1–25 characters, a duration of 5–10080 minutes, and a question (the post text) of at most 280 characters, even on an account with long posts. Blank choices are dropped and duplicates refused. `PostMeta::forChannel()` drops `poll` on any other type.
+- A poll carries no media and sits on the root post of a thread only (replies are `XPost`). A poll with fewer than two choices is a draft that cannot be scheduled; `XPublisher` refuses it.
+- **Cost rule (owner decision):** polls and their votes ride on requests X already makes. Never add a request, job or schedule for polls.
+    - Results are read by `XPublicationMetricsCollector` in the existing X metrics read (`GET /2/tweets/{id}`), on its usual schedule (about an hour after publishing, then at the ages in `SyncCadence::X_METRICS_DAYS`), into `analytics_publications.poll`.
+    - A poll made on x.com is found by `XPublicationCollector`'s existing discovery request (`provider_metadata.poll`) and imported as `x_poll`.
+- Results are exposed as `publication.poll` by `ReadPublicationAnalytics` (web, API, MCP) and shown by `PostPollResults.vue` in the Sent tab and post details. Because results are not read daily, it says "Final results" only when the stored `voting_status` is `closed`; an open poll whose end has passed says "Voting ended", and one still running says when it ends.
+- The duration defaults to 1440 minutes (one day, `XPoll::DEFAULT_DURATION`). Frontend rules mirror in `resources/js/lib/xPoll.ts` and `XPollField.vue`.
+- A poll is never a repurpose destination: the repurpose requests refuse `x_poll` (`RepurposeRules`, `supportsVideo()`), and the repurpose picker (`ChannelConfigurator.vue`) leaves out types without media support.
+
 ## Composer steps
 
 - Step 1 is one shared editor. "Customize for each network" opens one card per network, in channel-list order, grouped by `platform`; each card starts as a copy of the shared text.

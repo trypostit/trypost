@@ -157,6 +157,7 @@ return [
             'save' => 'Merken',
             'photo' => 'Foto',
             'ghost_expires' => 'Noch 24 Std.',
+            'poll_summary' => '0 Stimmen · noch :time',
         ],
         'preview_empty' => 'Hier erscheint deine Beitragsvorschau',
         'select_all' => 'Alle auswählen',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Thema eingeben',
             'topic_invalid' => 'Das Thema muss 1 bis 50 Zeichen ohne . oder & haben.',
             'ghost_post_attachments' => 'Ghost-Posts unterstützen keine Anhänge',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Füge deiner Umfrage mindestens 2 Antworten hinzu.',
+                'options_distinct' => 'Jede Antwort muss anders sein. Ändere die doppelte.',
+                'duration_required' => 'Wähle, wie lange deine Umfrage läuft.',
+                'options_max' => 'Eine Umfrage kann bis zu :max Antworten haben. Entferne die übrigen.',
+                'poll_object' => 'Sende die Umfrage mit ihren Antworten (options) und ihrer Dauer (duration_minutes).',
+                'options_list' => 'Sende die Antworten der Umfrage als Liste von Texten.',
+                'choice_text' => 'Jede Antwort der Umfrage muss Text sein.',
+                'choice_max' => 'Jede Antwort kann bis zu :max Zeichen haben. Kürze die längere.',
+                'duration_range' => 'Eine Umfrage kann 5 Minuten bis 7 Tage laufen. Wähle eine Dauer in diesem Bereich.',
+                'choice' => 'Antwort :number',
+                'choice_optional' => 'Antwort :number (optional)',
+                'add_choice' => 'Antwort hinzufügen',
+                'remove_choice' => 'Antwort :number entfernen',
+                'length' => 'Umfragedauer',
+                'days' => 'Tage',
+                'hours' => 'Stunden',
+                'minutes' => 'Minuten',
+                'remove' => 'Umfrage entfernen',
+                'attachments' => 'Umfragen können keine Medien enthalten',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Dokumenttitel',
@@ -786,6 +810,10 @@ return [
             'label' => 'Beitrag',
             'description' => 'Tweet mit Text und Medien',
         ],
+        'x_poll' => [
+            'label' => 'Umfrage',
+            'description' => 'Frage mit 2 bis 4 Antworten',
+        ],
         'threads_post' => [
             'label' => 'Thread',
             'description' => 'Textbeitrag mit optionalen Medien',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Medienoptionen',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count Stimme|[0,*] :count Stimmen',
+        'final' => 'Endergebnis',
+        'ended' => 'Abstimmung beendet',
+        'ends' => 'Endet :time',
+    ],
+
     'publish' => [
         'title' => 'Veröffentlichen',
         'all_channels' => 'Alle Kanäle',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Direkt über :network veröffentlicht',
         'slot_aria' => 'Beitrag für :channel auf :network um :time hinzufügen',
         'no_time' => 'Keine Uhrzeit',
+        'pending_slot' => [
+            'next' => 'Nächster Slot',
+            'top' => 'Ganz vorne',
+        ],
         'new_in_slot' => 'Neu',
         'add_post_in_slot' => 'Post hinzufügen',
         'more_times' => 'Weitere Zeiten',

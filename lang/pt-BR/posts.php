@@ -157,6 +157,7 @@ return [
             'save' => 'Salvar',
             'photo' => 'Foto',
             'ghost_expires' => '24h restantes',
+            'poll_summary' => '0 votos · termina em :time',
         ],
         'preview_empty' => 'A prévia da publicação aparecerá aqui',
         'select_all' => 'Selecionar todos',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Digite o tópico',
             'topic_invalid' => 'O tópico deve ter de 1 a 50 caracteres, sem . ou &.',
             'ghost_post_attachments' => 'Posts fantasma não aceitam anexos',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Adicione pelo menos 2 opções à sua enquete.',
+                'options_distinct' => 'Cada opção da enquete precisa ser diferente. Altere a repetida.',
+                'duration_required' => 'Escolha por quanto tempo sua enquete fica aberta.',
+                'options_max' => 'Uma enquete pode ter até :max opções. Remova as que sobram.',
+                'poll_object' => 'Envie a enquete com as opções (options) e a duração (duration_minutes).',
+                'options_list' => 'Envie as opções da enquete como uma lista de textos.',
+                'choice_text' => 'Cada opção da enquete precisa ser um texto.',
+                'choice_max' => 'Cada opção da enquete pode ter até :max caracteres. Encurte a mais longa.',
+                'duration_range' => 'Uma enquete pode ficar aberta de 5 minutos a 7 dias. Escolha uma duração nesse intervalo.',
+                'choice' => 'Opção :number',
+                'choice_optional' => 'Opção :number (opcional)',
+                'add_choice' => 'Adicionar opção',
+                'remove_choice' => 'Remover opção :number',
+                'length' => 'Duração da enquete',
+                'days' => 'Dias',
+                'hours' => 'Horas',
+                'minutes' => 'Minutos',
+                'remove' => 'Remover enquete',
+                'attachments' => 'Enquetes não aceitam mídia',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Título do documento',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet com texto e mídia',
         ],
+        'x_poll' => [
+            'label' => 'Enquete',
+            'description' => 'Pergunta com 2 a 4 opções',
+        ],
         'threads_post' => [
             'label' => 'Thread',
             'description' => 'Post de texto com mídia opcional',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'Opções de mídia',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count voto|[0,*] :count votos',
+        'final' => 'Resultado final',
+        'ended' => 'Votação encerrada',
+        'ends' => 'Termina :time',
+    ],
+
     'publish' => [
         'title' => 'Publicar',
         'all_channels' => 'Todos os canais',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => 'Publicado diretamente pelo :network',
         'slot_aria' => 'Adicionar um post em :channel no :network às :time',
         'no_time' => 'Sem horário',
+        'pending_slot' => [
+            'next' => 'Próxima vaga',
+            'top' => 'Topo da fila',
+        ],
         'new_in_slot' => 'Novo',
         'add_post_in_slot' => 'Adicionar post',
         'more_times' => 'Mais horários',

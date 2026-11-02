@@ -66,6 +66,10 @@ class WritePublicationDailySnapshot
             ]);
             $snapshot->save();
 
+            if ($observation->poll !== null) {
+                $publication->forceFill(['poll' => $observation->poll])->save();
+            }
+
             return $snapshot->refresh();
         });
     }

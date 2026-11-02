@@ -157,6 +157,7 @@ return [
             'save' => 'Guardar',
             'photo' => 'Foto',
             'ghost_expires' => 'Quedan 24 h',
+            'poll_summary' => '0 votos · termina en :time',
         ],
         'preview_empty' => 'La vista previa de tu publicación aparecerá aquí',
         'select_all' => 'Seleccionar todos',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'Escribe el tema',
             'topic_invalid' => 'El tema debe tener entre 1 y 50 caracteres, sin . ni &.',
             'ghost_post_attachments' => 'Los posts fantasma no admiten adjuntos',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => 'Añade al menos 2 opciones a tu encuesta.',
+                'options_distinct' => 'Cada opción de la encuesta debe ser distinta. Cambia la repetida.',
+                'duration_required' => 'Elige cuánto tiempo estará abierta tu encuesta.',
+                'options_max' => 'Una encuesta puede tener hasta :max opciones. Quita las que sobran.',
+                'poll_object' => 'Envía la encuesta con sus opciones (options) y su duración (duration_minutes).',
+                'options_list' => 'Envía las opciones de la encuesta como una lista de textos.',
+                'choice_text' => 'Cada opción de la encuesta debe ser texto.',
+                'choice_max' => 'Cada opción de la encuesta puede tener hasta :max caracteres. Acorta la más larga.',
+                'duration_range' => 'Una encuesta puede estar abierta de 5 minutos a 7 días. Elige una duración dentro de ese rango.',
+                'choice' => 'Opción :number',
+                'choice_optional' => 'Opción :number (opcional)',
+                'add_choice' => 'Añadir opción',
+                'remove_choice' => 'Quitar opción :number',
+                'length' => 'Duración de la encuesta',
+                'days' => 'Días',
+                'hours' => 'Horas',
+                'minutes' => 'Minutos',
+                'remove' => 'Quitar encuesta',
+                'attachments' => 'Las encuestas no admiten contenido multimedia',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'Título del documento',
@@ -786,6 +810,10 @@ return [
             'label' => 'Post',
             'description' => 'Tweet con texto y multimedia',
         ],
+        'x_poll' => [
+            'label' => 'Encuesta',
+            'description' => 'Pregunta con 2 a 4 opciones',
+        ],
         'threads_post' => [
             'label' => 'Hilo',
             'description' => 'Post de texto con multimedia opcional',
@@ -921,6 +949,13 @@ return [
             'media_title' => 'Opciones de medios',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count voto|[0,*] :count votos',
+        'final' => 'Resultados finales',
+        'ended' => 'Votación cerrada',
+        'ends' => 'Termina :time',
+    ],
+
     'publish' => [
         'title' => 'Publicar',
         'all_channels' => 'Todos los canales',
@@ -954,6 +989,10 @@ return [
         'published_directly_from' => 'Publicado directamente desde :network',
         'slot_aria' => 'Añadir una publicación a :channel en :network a las :time',
         'no_time' => 'Sin hora',
+        'pending_slot' => [
+            'next' => 'Próximo hueco',
+            'top' => 'Al principio',
+        ],
         'new_in_slot' => 'Nuevo',
         'add_post_in_slot' => 'Añadir post',
         'more_times' => 'Más horarios',

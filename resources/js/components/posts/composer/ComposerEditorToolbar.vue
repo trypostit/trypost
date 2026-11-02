@@ -16,8 +16,13 @@ withDefaults(
         testIdPrefix: string;
         signatures: { id: string; name: string; content: string }[];
         mediaDisabled?: boolean;
+        /** Why the media button is off, shown in its tooltip. */
+        mediaDisabledReasonKey?: string;
     }>(),
-    { mediaDisabled: false },
+    {
+        mediaDisabled: false,
+        mediaDisabledReasonKey: 'posts.composer.media_not_supported',
+    },
 );
 
 const emit = defineEmits<{
@@ -65,7 +70,7 @@ const selectEmoji = (emoji: string): void => {
         <MediaSourceMenu
             :test-id-prefix="testIdPrefix"
             :disabled="mediaDisabled"
-            :disabled-reason="$t('posts.composer.media_not_supported')"
+            :disabled-reason="$t(mediaDisabledReasonKey)"
             @import-started="emit('import-started', $event)"
             @open-unsplash="emit('open-unsplash')"
             @upload="requestUpload"

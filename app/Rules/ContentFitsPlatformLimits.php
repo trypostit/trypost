@@ -46,7 +46,9 @@ class ContentFitsPlatformLimits implements ValidationRule
         foreach ($this->targets as $targetKey => $target) {
             $platform = $target instanceof SocialAccount ? $target->platform : $target;
 
-            if (! $platform instanceof Platform || ContentType::tryFrom((string) data_get($this->contentTypes, $targetKey))?->isCaptionless()) {
+            $contentType = ContentType::tryFrom((string) data_get($this->contentTypes, $targetKey));
+
+            if (! $platform instanceof Platform || $contentType?->isCaptionless()) {
                 continue;
             }
 
@@ -60,8 +62,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 ]));
             }
 
-            $measure = $target instanceof SocialAccount ? $target : $platform;
-            $limit = $measure->maxContentLength();
+            $limit = $target instanceof SocialAccount ? $target->maxContentLength($contentType) : $platform->maxContentLength();
             $reserved = $platform->reservedLength(data_get($this->meta, $targetKey));
             $key = "{$platform->value}:{$limit}:{$reserved}";
 
@@ -69,7 +70,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 continue;
             }
 
-            $over = $measure->contentOverflow($display, $reserved);
+            $over = $target instanceof SocialAccount ? $target->contentOverflow($display, $reserved, $contentType) : $platform->contentOverflow($display, $reserved);
 
             if ($over === 0) {
                 continue;

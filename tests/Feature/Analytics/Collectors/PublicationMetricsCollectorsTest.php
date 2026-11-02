@@ -926,3 +926,78 @@ test('TikTok classifies an invalid access token as an authentication failure', f
     expect(fn () => app(TikTokPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
 });
+
+/**
+ * @return array<string, mixed>
+ */
+function xPollResponse(string $endsAt): array
+{
+    return [
+        'data' => [
+            'attachments' => ['poll_ids' => ['2117330255450890240']],
+            'public_metrics' => ['impression_count' => 200, 'like_count' => 4],
+        ],
+        'includes' => ['polls' => [[
+            'id' => '2117330255450890240',
+            'duration_minutes' => 1440,
+            'end_datetime' => $endsAt,
+            'voting_status' => 'open',
+            'options' => [
+                ['position' => 2, 'label' => '❌ No refund', 'votes' => 2],
+                ['position' => 1, 'label' => '✅ Refund', 'votes' => 1],
+            ],
+        ]]],
+    ];
+}
+
+test('the x collector reads the poll with the metrics in one request', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '2117330256323379666',
+    ]);
+    $endsAt = now('UTC')->addDay()->format('Y-m-d\\TH:i:s.v\\Z');
+    Http::fake(['*' => Http::response(xPollResponse($endsAt))]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $request): bool {
+        $url = urldecode($request->url());
+
+        return str_contains($request->url(), '/tweets/2117330256323379666')
+            && str_contains($url, 'expansions=attachments.poll_ids')
+            && str_contains($url, 'poll.fields=options,voting_status,end_datetime,duration_minutes');
+    });
+    expect($observation->poll)->toEqual([
+        'options' => [
+            ['label' => '✅ Refund', 'votes' => 1],
+            ['label' => '❌ No refund', 'votes' => 2],
+        ],
+        'voting_status' => 'open',
+        'end_datetime' => $endsAt,
+        'duration_minutes' => 1440,
+    ]);
+    $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
+    expect($metrics['impressions'])->toBe(200)->and($metrics['reactions'])->toBe(4);
+});
+
+test('a post without a poll stores no poll result', function () {
+    Http::fake(['*' => Http::response(['data' => ['public_metrics' => ['impression_count' => 200, 'like_count' => 4]]])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+    ]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->poll)->toBeNull();
+    $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
+    expect($metrics['impressions'])->toBe(200)->and($metrics['reactions'])->toBe(4);
+});

@@ -13,10 +13,12 @@ import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { Switch } from '@/components/ui/switch';
 import { isDocumentMedia } from '@/composables/useMedia';
 import {
+    type ContentTypeOption,
     getContentTypeOptions,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
 import type { Channel } from '@/types/channel';
+import { MEDIALESS_CONTENT_TYPES } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
 
@@ -60,8 +62,14 @@ const hasDocument = computed(() =>
     props.media.some((item) => isDocumentMedia(item)),
 );
 
+/** A repurpose publishes the source's media, so it never offers a type that takes none (X poll, Threads ghost post). */
+const contentTypeOptions = (channel: Channel): ContentTypeOption[] =>
+    getContentTypeOptions(channel.platform).filter(
+        (option) => !MEDIALESS_CONTENT_TYPES.has(option.value),
+    );
+
 const hasSettingsCard = (channel: Channel): boolean =>
-    getContentTypeOptions(channel.platform).length > 1 ||
+    contentTypeOptions(channel).length > 1 ||
     channel.platform === Platform.Instagram ||
     channel.platform === Platform.InstagramFacebook ||
     SETTINGS_PLATFORMS.includes(channel.platform) ||
@@ -152,8 +160,8 @@ const settingsIndex = (channel: Channel): number =>
                     :data-testid="`channel-settings-${channel.id}`"
                 >
                     <ContentTypeRadioGroup
-                        v-if="getContentTypeOptions(channel.platform).length > 1"
-                        :options="getContentTypeOptions(channel.platform)"
+                        v-if="contentTypeOptions(channel).length > 1"
+                        :options="contentTypeOptions(channel)"
                         :model-value="channel.contentType"
                         :test-id-prefix="`channel-type-${channel.id}`"
                         :disabled="disabled"

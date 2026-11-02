@@ -157,6 +157,7 @@ return [
             'save' => '保存',
             'photo' => '写真',
             'ghost_expires' => '残り24時間',
+            'poll_summary' => '0票 · 残り:time',
         ],
         'preview_empty' => '投稿のプレビューがここに表示されます',
         'select_all' => 'すべて選択',
@@ -406,6 +407,29 @@ return [
             'topic_placeholder' => 'トピックを入力',
             'topic_invalid' => 'トピックは . と & を含まない1〜50文字にしてください。',
             'ghost_post_attachments' => 'ゴースト投稿は添付ファイルに対応していません',
+        ],
+        'x' => [
+            'poll' => [
+                'options_required' => '投票に選択肢を2つ以上追加してください。',
+                'options_distinct' => '投票の選択肢はそれぞれ異なる内容にしてください。重複しているものを変更してください。',
+                'duration_required' => '投票を受け付ける期間を選んでください。',
+                'options_max' => '投票の選択肢は最大:max個までです。余分な選択肢を削除してください。',
+                'poll_object' => '投票は選択肢（options）と期間（duration_minutes）を含めて送信してください。',
+                'options_list' => '投票の選択肢はテキストのリストで送信してください。',
+                'choice_text' => '投票の選択肢はテキストで入力してください。',
+                'choice_max' => '投票の選択肢はそれぞれ最大:max文字までです。長い選択肢を短くしてください。',
+                'duration_range' => '投票の期間は5分から7日までです。この範囲で期間を選んでください。',
+                'choice' => '選択肢:number',
+                'choice_optional' => '選択肢:number（任意）',
+                'add_choice' => '選択肢を追加',
+                'remove_choice' => '選択肢:numberを削除',
+                'length' => '投票期間',
+                'days' => '日',
+                'hours' => '時間',
+                'minutes' => '分',
+                'remove' => '投票を削除',
+                'attachments' => '投票はメディアに対応していません',
+            ],
         ],
         'linkedin' => [
             'document_title' => 'ドキュメントタイトル',
@@ -786,6 +810,10 @@ return [
             'label' => '投稿',
             'description' => 'テキストとメディア付きのツイート',
         ],
+        'x_poll' => [
+            'label' => '投票',
+            'description' => '2〜4個の選択肢がある質問',
+        ],
         'threads_post' => [
             'label' => 'スレッド',
             'description' => 'メディア（任意）付きのテキスト投稿',
@@ -920,6 +948,13 @@ return [
             'media_title' => 'メディアオプション',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count票|[0,*] :count票',
+        'final' => '最終結果',
+        'ended' => '投票は終了しました',
+        'ends' => '終了:time',
+    ],
+
     'publish' => [
         'title' => '公開',
         'all_channels' => '全チャンネル',
@@ -953,6 +988,10 @@ return [
         'published_directly_from' => ':network から直接公開されました',
         'slot_aria' => ':network の :channel に :time の投稿を追加',
         'no_time' => '時間なし',
+        'pending_slot' => [
+            'next' => '次の枠',
+            'top' => '先頭',
+        ],
         'new_in_slot' => '新規',
         'add_post_in_slot' => '投稿を追加',
         'more_times' => 'その他の時間',
