@@ -8,7 +8,7 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector

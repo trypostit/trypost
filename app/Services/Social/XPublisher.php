@@ -18,7 +18,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -109,7 +109,7 @@ class XPublisher
             $data['made_with_ai'] = true;
         }
 
-        if (empty($content) && isset($data['poll'])) {
+        if (blank($content) && filled(data_get($data, 'poll'))) {
             throw new XPublishException(
                 userMessage: 'An X poll needs a question. Write it in the post text.',
                 category: ErrorCategory::MediaFormat,
@@ -142,7 +142,7 @@ class XPublisher
 
         $violation = XPoll::requiredViolation($post->meta);
 
-        if ($violation !== null) {
+        if (filled($violation)) {
             throw new XPublishException(userMessage: $violation[1], category: ErrorCategory::MediaFormat);
         }
 

@@ -21,7 +21,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Support\Social\ThreadProgress;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;

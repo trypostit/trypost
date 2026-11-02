@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\Support\AiPromptRules;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Illuminate\Auth\Access\Response as AuthResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;

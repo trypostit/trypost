@@ -66,7 +66,7 @@ class WritePublicationDailySnapshot
             ]);
             $snapshot->save();
 
-            if ($observation->poll !== null) {
+            if (filled($observation->poll)) {
                 $publication->withoutTimestamps(fn (): bool => $publication->forceFill(['poll' => $observation->poll])->saveQuietly());
             }
 

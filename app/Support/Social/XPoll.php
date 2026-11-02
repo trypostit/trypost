@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Support;
+namespace App\Support\Social;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -38,7 +38,7 @@ final class XPoll
         return collect(Arr::wrap(data_get($meta, 'poll.options')))
             ->filter(fn (mixed $option): bool => is_string($option))
             ->map(fn (string $option): string => Str::trim($option))
-            ->filter(fn (string $option): bool => $option !== '')
+            ->filter(fn (string $option): bool => filled($option))
             ->values()
             ->all();
     }
@@ -127,7 +127,7 @@ final class XPoll
                 ->map(fn (mixed $option): string => (string) data_get($option, 'label', ''))
                 ->values()
                 ->all(),
-            'duration_minutes' => (int) (data_get($result, 'duration_minutes') ?? self::DEFAULT_DURATION),
+            'duration_minutes' => transform(data_get($result, 'duration_minutes'), fn (mixed $minutes): int => (int) $minutes, self::DEFAULT_DURATION),
         ];
     }
 
@@ -140,7 +140,7 @@ final class XPoll
     {
         return [
             'options' => self::options($meta),
-            'duration_minutes' => (int) (data_get($meta, 'poll.duration_minutes') ?? self::DEFAULT_DURATION),
+            'duration_minutes' => transform(data_get($meta, 'poll.duration_minutes'), fn (mixed $minutes): int => (int) $minutes, self::DEFAULT_DURATION),
         ];
     }
 }

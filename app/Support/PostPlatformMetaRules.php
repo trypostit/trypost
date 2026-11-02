@@ -17,6 +17,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\XPoll;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;

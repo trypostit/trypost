@@ -12,7 +12,7 @@ use App\Jobs\PublishPost;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;

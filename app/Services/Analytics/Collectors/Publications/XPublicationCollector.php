@@ -8,7 +8,7 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 
 class XPublicationCollector extends AbstractPublicationHistoryCollector
@@ -74,6 +74,16 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             );
 
             $poll = $polls->get((string) data_get($row, 'attachments.poll_ids.0'));
+            $providerMetadata = collect([
+                'media' => $attachedMedia->isEmpty() ? null : $attachedMedia
+                    ->map(fn (array $item): array => collect([
+                        'type' => data_get($item, 'type'),
+                        'url' => data_get($item, 'url'),
+                        'variants' => data_get($item, 'variants'),
+                    ])->whereNotNull()->all())
+                    ->all(),
+                'poll' => is_array($poll) ? XPoll::result($poll) : null,
+            ])->whereNotNull();
 
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,
@@ -85,16 +95,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 previewMetadata: is_array($preview)
                     ? ['thumbnail_url' => data_get($preview, 'preview_image_url') ?: data_get($preview, 'url')]
                     : null,
-                providerMetadata: array_filter([
-                    'media' => $attachedMedia->isEmpty() ? null : $attachedMedia
-                        ->map(fn (array $item): array => array_filter([
-                            'type' => data_get($item, 'type'),
-                            'url' => data_get($item, 'url'),
-                            'variants' => data_get($item, 'variants'),
-                        ], fn (mixed $value): bool => $value !== null))
-                        ->all(),
-                    'poll' => is_array($poll) ? XPoll::result($poll) : null,
-                ], fn (mixed $value): bool => $value !== null) ?: null,
+                providerMetadata: $providerMetadata->isEmpty() ? null : $providerMetadata->all(),
             );
         }
 

@@ -19,7 +19,7 @@ use App\Services\Social\ContentSanitizer;
 use App\Support\PostHistoryRetention;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
-use App\Support\XPoll;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
