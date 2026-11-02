@@ -141,13 +141,14 @@ class HandleInertiaRequests extends Middleware
 
     public static function mcpPromptCacheKey(User $user, Workspace $workspace): string
     {
-        return "mcp-prompt.{$user->id}.{$workspace->id}";
+        return "mcp-connected.{$user->id}.{$workspace->id}";
     }
 
     /**
      * The card inviting the user to connect an AI, with the MCP URL its steps
      * show, while their workspace can use the app and has no AI of theirs
-     * connected; null otherwise. Cached, and a connection made from the card
+     * connected; null otherwise. Only the connection is cached, so the card shows
+     * as soon as the account gets app access, and a connection made from the card
      * forgets the cache. Dismissing the card is kept in the browser.
      *
      * @return array{mcp_url: string}|null
@@ -156,18 +157,17 @@ class HandleInertiaRequests extends Middleware
     {
         $workspace = $user?->currentWorkspace;
 
-        if (blank($workspace)) {
+        if (blank($workspace) || ! ($isSelfHosted || $workspace->account?->hasAppAccess() === true)) {
             return null;
         }
 
-        $invites = Cache::remember(
+        $connected = Cache::remember(
             self::mcpPromptCacheKey($user, $workspace),
             now()->addMinutes(5),
-            fn (): bool => ($isSelfHosted || $workspace->account?->hasAppAccess() === true)
-                && ! HasConnectedMcpClient::execute($user, $workspace),
+            fn (): bool => HasConnectedMcpClient::execute($user, $workspace),
         );
 
-        if (! $invites) {
+        if ($connected) {
             return null;
         }
 
@@ -176,17 +176,15 @@ class HandleInertiaRequests extends Middleware
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool
     {
-        if (blank($user)) {
+        if (blank($user) || $isSelfHosted || $account?->hasAppAccess() !== true) {
             return false;
         }
 
         return Cache::remember(
             self::referralSourcesCacheKey($user),
             now()->addMinutes(5),
-            fn (): bool => ! $isSelfHosted
-                && blank($user->getRawOriginal('referral_source'))
-                && $user->created_at?->lte(now()->subHour()) === true
-                && $account?->hasAppAccess() === true,
+            fn (): bool => blank($user->getRawOriginal('referral_source'))
+                && $user->created_at?->lte(now()->subHour()) === true,
         );
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\ReferralSource;
 use App\Jobs\PostHog\SendEvent;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
@@ -45,6 +46,27 @@ test('the question is not shared once answered, on self-hosted, before app acces
     'self-hosted' => [fn () => config(['trypost.self_hosted' => true])],
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
     'signed up less than an hour ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subMinutes(59)])->save()],
+]);
+
+test('the question shows on the first page after subscribing, though Welcome was seen without app access', function (Closure $access) {
+    $this->user->account->subscriptions()->delete();
+
+    $this->actingAs($this->user->fresh())
+        ->followingRedirects()
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('referralSources', null));
+
+    $access($this->user->account->fresh());
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where(
+            'referralSources',
+            array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases()),
+        ));
+})->with([
+    'trial without a card' => [fn (Account $account) => $account->forceFill(['trial_ends_at' => now()->addDays(7)])->save()],
+    'subscription' => [fn (Account $account) => subscribeAccount($account)],
 ]);
 
 test('whether to ask is cached for five minutes', function () {
