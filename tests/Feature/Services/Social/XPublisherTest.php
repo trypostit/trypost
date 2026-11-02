@@ -19,6 +19,7 @@ use App\Services\Social\XPublisher;
 use App\Support\Social\PublishCheckpoint;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
@@ -1973,7 +1974,7 @@ test('a retry after the x poll went live does not post it again', function () {
 
     expect($result['id'])->toBe('100');
     Http::assertSentCount(3);
-    expect(Http::recorded(fn (Request $request): bool => isset($request['poll'])))->toHaveCount(1);
+    expect(Http::recorded(fn (Request $request): bool => Arr::has($request->data(), 'poll')))->toHaveCount(1);
 });
 
 test('x publisher refuses to publish an x poll with media', function () {

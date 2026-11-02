@@ -1464,7 +1464,7 @@ it('cannot schedule an incomplete x poll', function (string $content, ?array $po
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'social_account_id' => $x->id,
         'content_type' => ContentType::XPoll->value,
-        'meta' => $poll === null ? [] : ['poll' => $poll],
+        'meta' => blank($poll) ? [] : ['poll' => $poll],
     ])->assertUnprocessable()->assertJsonValidationErrors($error);
 })->with([
     'no poll' => ['Question', null, 'meta.poll.options'],

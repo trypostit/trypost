@@ -63,10 +63,9 @@ final class XPoll
      */
     public static function violation(mixed $meta): ?array
     {
-        $options = self::options($meta);
-        $distinct = collect($options)->map(fn (string $option): string => Str::lower($option))->unique();
+        $duplicates = collect(self::options($meta))->map(fn (string $option): string => Str::lower($option))->duplicates();
 
-        if ($distinct->count() !== count($options)) {
+        if ($duplicates->isNotEmpty()) {
             return ['poll.options', trans('posts.form.x.poll.options_distinct')];
         }
 

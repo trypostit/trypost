@@ -39,7 +39,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
         $public = (array) data_get($tweet, 'public_metrics', []);
         $private = (array) data_get($tweet, 'non_public_metrics', []);
-        $poll = data_get($response->json(), 'includes.polls.0');
+        $poll = $response->json('includes.polls.0');
 
         return $this->observation($date, $this->withEngagements($this->present([
             $this->count(MetricKey::Impressions, $public, 'impression_count') ?? $this->count(MetricKey::Impressions, $private, 'impression_count'),

@@ -28,6 +28,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 test('the metric factory includes every v1 platform and excludes v2 and messaging platforms', function (Platform $platform, string $collector) {
     expect(app(PublicationMetricsCollectorFactory::class)->for($platform))->toBeInstanceOf($collector);
@@ -959,19 +960,15 @@ test('the x collector reads the poll with the metrics in one request', function 
         'platform_user_id' => $account->platform_user_id,
         'remote_id' => '2117330256323379666',
     ]);
-    $endsAt = now('UTC')->addDay()->format('Y-m-d\\TH:i:s.v\\Z');
+    $endsAt = now('UTC')->addDay()->toIso8601ZuluString('millisecond');
     Http::fake(['*' => Http::response(xPollResponse($endsAt))]);
 
     $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
 
     Http::assertSentCount(1);
-    Http::assertSent(function (Request $request): bool {
-        $url = urldecode($request->url());
-
-        return str_contains($request->url(), '/tweets/2117330256323379666')
-            && str_contains($url, 'expansions=attachments.poll_ids')
-            && str_contains($url, 'poll.fields=options,voting_status,end_datetime,duration_minutes');
-    });
+    Http::assertSent(fn (Request $request): bool => Str::startsWith($request->url(), config('trypost.platforms.x.api').'/tweets/2117330256323379666')
+        && $request['expansions'] === 'attachments.poll_ids'
+        && $request['poll.fields'] === 'options,voting_status,end_datetime,duration_minutes');
     expect($observation->poll)->toEqual([
         'options' => [
             ['label' => '✅ Refund', 'votes' => 1],

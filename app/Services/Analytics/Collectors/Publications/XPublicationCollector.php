@@ -35,7 +35,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 'poll.fields' => 'options,duration_minutes,end_datetime,voting_status',
             ],
         );
-        $polls = collect((array) $response->json('includes.polls', []))->keyBy('id');
+        $polls = $response->collect('includes.polls')->keyBy('id');
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
         $crossedCutoff = false;

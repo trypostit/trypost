@@ -1114,7 +1114,7 @@ test('an incomplete x poll cannot be scheduled through the create tool', functio
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'social_account_id' => $x->id,
         'content_type' => ContentType::XPoll->value,
-        'meta' => $poll === null ? [] : ['poll' => $poll],
+        'meta' => blank($poll) ? [] : ['poll' => $poll],
     ])->assertHasErrors([__($message)]);
 })->with([
     'no options' => [null, 'posts.form.x.poll.options_required'],

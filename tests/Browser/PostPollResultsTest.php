@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Factories\AnalyticsPublicationFactory;
 
 /**
  * @param  array<string, mixed>|null  $poll
@@ -30,13 +31,7 @@ function pollResultsSetup(?array $poll): array
         'scheduled_at' => now()->subHour(),
         'published_at' => now()->subHour(),
     ]);
-    $factory = AnalyticsPublication::factory();
-
-    if ($poll !== null) {
-        $factory = $factory->withPoll($poll);
-    }
-
-    $publication = $factory->create([
+    $publication = AnalyticsPublication::factory()->when(filled($poll), fn (AnalyticsPublicationFactory $factory): AnalyticsPublicationFactory => $factory->withPoll($poll))->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,

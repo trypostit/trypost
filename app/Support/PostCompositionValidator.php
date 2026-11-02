@@ -197,7 +197,7 @@ class PostCompositionValidator
                     }
                 }
 
-                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, data_get($destination, 'meta', []), data_get($destination, 'content_type'));
+                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, data_get($destination, 'meta', []), $contentType);
                 if ($formatViolation !== null) {
                     [$field, $message] = $formatViolation;
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
@@ -216,7 +216,7 @@ class PostCompositionValidator
                 }
 
                 if (blank($destination['content']) && $destination['media'] === []) {
-                    $validator->errors()->add("{$key}.content", ContentType::resolve($destination['content_type']) === ContentType::XPoll
+                    $validator->errors()->add("{$key}.content", $contentType === ContentType::XPoll
                         ? trans('posts.form.x.poll.question_required')
                         : trans('posts.edit.compliance.requires_content_or_media'));
                 }
