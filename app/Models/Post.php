@@ -651,15 +651,6 @@ class Post extends Model
     }
 
     /**
-     * Why media cannot be added to this post: its post type takes none (an X
-     * poll, a Threads ghost post). Null when it takes media.
-     */
-    public function mediaRefusal(): ?string
-    {
-        return $this->content_type?->maxMediaCount() === 0 ? __('posts.errors.media_not_accepted') : null;
-    }
-
-    /**
      * MediaTypes accepted by this post's channel. Without a channel, accept anything.
      *
      * @return array<Type>

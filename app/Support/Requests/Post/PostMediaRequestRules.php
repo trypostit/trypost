@@ -85,8 +85,8 @@ class PostMediaRequestRules
 
     public static function typeViolation(Post $post, ?MediaType $type): ?string
     {
-        if ($violation = $post->mediaRefusal()) {
-            return $violation;
+        if ($post->content_type?->acceptsMedia() === false) {
+            return __('posts.errors.media_not_accepted');
         }
 
         if ($type === null || ! in_array($type, $post->allowedMediaTypes(), true)) {

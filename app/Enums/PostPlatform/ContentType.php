@@ -178,6 +178,15 @@ enum ContentType: string
         };
     }
 
+    /**
+     * Whether a post of this type can carry media at all (an X poll and a
+     * Threads ghost post cannot).
+     */
+    public function acceptsMedia(): bool
+    {
+        return $this->maxMediaCount() > 0;
+    }
+
     public function maxMediaCount(): int
     {
         return match ($this) {
