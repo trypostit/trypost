@@ -969,7 +969,7 @@ test('the x collector reads the poll with the metrics in one request', function 
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $request): bool => $request['expansions'] === 'attachments.poll_ids'
         && $request['poll.fields'] === XPoll::LOOKUP_FIELDS);
-    expect($observation->poll)->toEqual([
+    expect($observation->providerMetadata['poll'])->toEqual([
         'options' => [
             ['label' => '✅ Refund', 'votes' => 1],
             ['label' => '❌ No refund', 'votes' => 2],
@@ -997,7 +997,7 @@ test('a poll whose voting state x does not report stores no state', function (ar
 
     $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
 
-    expect($observation->poll['voting_status'])->toBeNull();
+    expect($observation->providerMetadata['poll']['voting_status'])->toBeNull();
 })->with([
     'missing' => [[]],
     'unknown' => [['voting_status' => 'paused']],
@@ -1015,7 +1015,7 @@ test('a post without a poll stores no poll result', function () {
 
     $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
 
-    expect($observation->poll)->toBeNull();
+    expect($observation->providerMetadata)->toBeNull();
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
     expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
 });

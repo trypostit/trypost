@@ -49,6 +49,6 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $this->count(MetricKey::Quotes, $public, 'quote_count'),
             $this->count(MetricKey::Bookmarks, $public, 'bookmark_count'),
             $this->count(MetricKey::LinkClicks, $private, 'url_link_clicks'),
-        ])), is_array($poll) ? XPoll::result($poll) : null);
+        ])), is_array($poll) ? ['poll' => XPoll::result($poll)] : null);
     }
 }

@@ -10,13 +10,13 @@ final readonly class PublicationMetricObservation
 {
     /**
      * @param  list<MetricValue>  $metrics
-     * @param  array{options: list<array{label: string, votes: int}>, voting_status: ?string, end_datetime: ?string, duration_minutes: ?int}|null  $poll
+     * @param  array<string, mixed>|null  $providerMetadata  Keys the network reported about the publication itself, merged into its `provider_metadata`
      */
     public function __construct(
         public CarbonImmutable $date,
         public array $metrics,
         public ?CarbonImmutable $providerObservedAt = null,
         public ?CarbonImmutable $collectedAt = null,
-        public ?array $poll = null,
+        public ?array $providerMetadata = null,
     ) {}
 }

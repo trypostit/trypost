@@ -45,6 +45,29 @@ class PostMeta
     }
 
     /**
+     * The meta an update starts from: the stored meta with the sent keys on top.
+     * A sent poll is merged into the stored one key by key, so sending only its
+     * choices keeps its length (and the reverse); `options` is replaced as a
+     * whole list.
+     *
+     * @param  array<string, mixed>  $stored
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    public static function merge(array $stored, array $incoming): array
+    {
+        $merged = [...$stored, ...$incoming];
+        $storedPoll = data_get($stored, 'poll');
+        $incomingPoll = data_get($incoming, 'poll');
+
+        if (is_array($storedPoll) && is_array($incomingPoll)) {
+            $merged['poll'] = [...$storedPoll, ...$incomingPoll];
+        }
+
+        return $merged;
+    }
+
+    /**
      * The Discord channel name the preview shows. It is never taken from the
      * request: only `channel_id` is, and the name is read from the server's
      * channel list cached by the composer, the API, MCP or a publish. Saving

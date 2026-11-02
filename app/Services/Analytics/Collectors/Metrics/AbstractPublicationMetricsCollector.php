@@ -34,15 +34,15 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
 
     /**
      * @param  list<MetricValue>  $metrics
-     * @param  array<string, mixed>|null  $poll
+     * @param  array<string, mixed>|null  $providerMetadata
      */
-    protected function observation(CarbonImmutable $date, array $metrics, ?array $poll = null): PublicationMetricObservation
+    protected function observation(CarbonImmutable $date, array $metrics, ?array $providerMetadata = null): PublicationMetricObservation
     {
         if ($metrics === []) {
             throw AnalyticsCollectionException::malformed('Publication metrics response contained no supported measurements.');
         }
 
-        return new PublicationMetricObservation($date, $metrics, collectedAt: CarbonImmutable::now('UTC'), poll: $poll);
+        return new PublicationMetricObservation($date, $metrics, collectedAt: CarbonImmutable::now('UTC'), providerMetadata: $providerMetadata);
     }
 
     protected function count(

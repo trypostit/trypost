@@ -1087,7 +1087,7 @@ an `enabled` flag or posts with several channels. Posts created together share
 
 ## Content limits
 
-- **Per account, not per platform.** Read the cap through `SocialAccount::maxContentLength()`. It is the platform's `Platform::maxContentLength()`, except an X account with long posts (`hasXLongPosts()`: a `Basic`, `Premium` or `PremiumPlus` subscription, or `verified_type=business`), which gets 25000. The tier lives in the account meta and is written by `SyncXSubscription`, called from `ConnectionVerifier` on connect and on the daily `social:check-connections`.
+- **Per account, not per platform.** Read the cap through `SocialAccount::maxContentLength()`. It is the platform's `Platform::maxContentLength()`, except an X account with long posts (`hasXLongPosts()`: a `Basic`, `Premium` or `PremiumPlus` subscription, or `verified_type=business`), which gets 25000. A post type may cap it lower, through `ContentType::maxContentLength($accountLimit)` (an X poll's question stays at 280). The tier lives in the account meta and is written by `SyncXSubscription`, called from `ConnectionVerifier` on connect and on the daily `social:check-connections`.
 - `Post::CONTENT_MAX_LENGTH` (25000 characters of plain text) is the ceiling of any post, enforced by `PostContentFitsMaxLength`.
 - `Platform::reservedLength()` counts what the network adds to the text: the Mastodon content warning (trimmed like `Str::trim`) counts toward the 500.
 - `Platform::maxHashtags()` is 5 on Instagram (both platforms). It is a **save-time** rule (web, API, MCP), never a publish-time failure: a post stored with more still publishes. Repurpose captions are trimmed to the first 5 by `CaptionAdapter` through `Hashtags::keepFirst()`. Hashtags are counted by `App\Support\Hashtags`, mirrored by `resources/js/lib/hashtags.ts` and kept identical by `HashtagParityTest`.
@@ -1106,7 +1106,7 @@ an `enabled` flag or posts with several channels. Posts created together share
 
 ## X polls
 
-- A poll is its own content type, `ContentType::XPoll` (`x_poll`), with `meta.poll = {options, duration_minutes}` (owner decision November 2026). `App\Support\Social\XPoll` is the one home for its rules (constants, `options()` / `choices()`, `normalize()`, `violation()`, `requiredViolation()`, `payload()`, `result()`, `fromPublication()`); `PostPlatformMetaRules`, `PostMeta::forChannel()`, `SocialAccount::maxContentLength($contentType)` and `XPublisher` call it, never a copy of the numbers.
+- A poll is its own content type, `ContentType::XPoll` (`x_poll`), with `meta.poll = {options, duration_minutes}` (owner decision November 2026). `App\Support\Social\XPoll` is the one home for its rules (constants, `options()` / `choices()`, `normalize()`, `violation()`, `requiredViolation()`, `payload()`, `result()`, `fromPublication()`); `PostPlatformMetaRules`, `PostMeta::forChannel()` / `PostMeta::merge()`, `ContentType::maxContentLength()` and `XPublisher` call it, never a copy of the numbers.
 - 2–4 choices of 1–25 characters, a duration of 5–10080 minutes, and a question (the post text) of at most 280 characters, even on an account with long posts. Blank choices are dropped and duplicates refused. `PostMeta::forChannel()` drops `poll` on any other type.
 - A poll carries no media and sits on the root post of a thread only (replies are `XPost`). A poll with fewer than two choices is a draft that cannot be scheduled; `XPublisher` refuses it.
 - **Cost rule (owner decision):** polls and their votes ride on requests X already makes. Never add a request, job or schedule for polls.

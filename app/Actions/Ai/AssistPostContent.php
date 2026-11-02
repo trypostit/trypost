@@ -28,7 +28,10 @@ final class AssistPostContent
         ?ContentType $contentType = null,
     ): string {
         $platform = $account->platform ?? $platform;
-        $limit = $account?->maxContentLength($contentType) ?? $platform?->maxContentLength();
+        $limit = transform(
+            $account?->maxContentLength() ?? $platform?->maxContentLength(),
+            fn (int $accountLimit): int => $contentType?->maxContentLength($accountLimit) ?? $accountLimit,
+        );
 
         $response = (new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit))
             ->prompt($mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.');

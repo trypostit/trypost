@@ -18,7 +18,7 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * `maxContentLength()` is exceeded by the submitted text. Pre-resolve the social
  * accounts (or bare platforms) the post is bound to and pass them in; an account
  * is measured against its own limit (an X account with long posts), a platform
- * against the platform's. Keeps the rule decoupled from the FormRequest payload.
+ * against the platform's, each capped by the post type (`ContentType::maxContentLength()`). Keeps the rule decoupled from the FormRequest payload.
  *
  * Each platform is measured against its own sanitized content, matching what the
  * publisher will actually send: the editor stores HTML, and per-platform rules
@@ -62,7 +62,8 @@ class ContentFitsPlatformLimits implements ValidationRule
                 ]));
             }
 
-            $limit = $target instanceof SocialAccount ? $target->maxContentLength($contentType) : $platform->maxContentLength();
+            $accountLimit = $target instanceof SocialAccount ? $target->maxContentLength() : $platform->maxContentLength();
+            $limit = $contentType?->maxContentLength($accountLimit) ?? $accountLimit;
             $reserved = $platform->reservedLength(data_get($this->meta, $targetKey));
             $key = "{$platform->value}:{$limit}:{$reserved}";
 

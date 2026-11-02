@@ -66,8 +66,10 @@ class WritePublicationDailySnapshot
             ]);
             $snapshot->save();
 
-            if (filled($observation->poll)) {
-                $publication->withoutTimestamps(fn (): bool => $publication->forceFill(['provider_metadata->poll' => $observation->poll])->saveQuietly());
+            if (filled($observation->providerMetadata)) {
+                $publication->withoutTimestamps(fn (): bool => $publication->forceFill(
+                    collect($observation->providerMetadata)->mapWithKeys(fn (mixed $value, string $key): array => ["provider_metadata->{$key}" => $value])->all(),
+                )->saveQuietly());
             }
 
             return $snapshot->refresh();

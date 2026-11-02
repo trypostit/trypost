@@ -152,7 +152,7 @@ class UpdatePost
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
         $meta = PostPlatformMetaRules::normalize(array_filter(
-            self::mergedMeta($post->meta ?? [], data_get($data, 'meta') ?? []),
+            PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
         ));
         $scheduledAt = match (true) {
@@ -286,25 +286,5 @@ class UpdatePost
             PostStatus::Scheduled => ['post' => $post, 'action' => PostAction::Scheduled],
             default => ['post' => $post, 'action' => null],
         };
-    }
-
-    /**
-     * The stored meta with the sent keys on top. A sent poll is merged into the
-     * stored one key by key, so sending only its choices keeps its length (and
-     * the reverse); `options` is replaced as a whole list.
-     *
-     * @param  array<string, mixed>  $stored
-     * @param  array<string, mixed>  $incoming
-     * @return array<string, mixed>
-     */
-    private static function mergedMeta(array $stored, array $incoming): array
-    {
-        $merged = array_merge($stored, $incoming);
-
-        if (is_array(data_get($stored, 'poll')) && is_array(data_get($incoming, 'poll'))) {
-            $merged['poll'] = array_merge(data_get($stored, 'poll'), data_get($incoming, 'poll'));
-        }
-
-        return $merged;
     }
 }

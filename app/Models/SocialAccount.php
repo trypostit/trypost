@@ -20,7 +20,6 @@ use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
 use App\Support\GoogleBusinessResourceName;
-use App\Support\Social\XPoll;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -125,16 +124,11 @@ class SocialAccount extends Model
 
     /**
      * The hard character cap for this account's posts. Same as the platform's,
-     * except an X account with long posts, whose poll question stays at the
-     * poll's own cap.
+     * except an X account with long posts.
      */
-    public function maxContentLength(ContentType|string|null $contentType = null): int
+    public function maxContentLength(): int
     {
-        if (! $this->hasXLongPosts()) {
-            return $this->platform->maxContentLength();
-        }
-
-        return ContentType::resolve($contentType) === ContentType::XPoll ? XPoll::QUESTION_MAX_LENGTH : self::X_LONG_POST_LENGTH;
+        return $this->hasXLongPosts() ? self::X_LONG_POST_LENGTH : $this->platform->maxContentLength();
     }
 
     public function contentOverflow(string $content, int $reserved = 0): int

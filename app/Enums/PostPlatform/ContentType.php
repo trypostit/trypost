@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 
 enum ContentType: string
@@ -175,6 +176,19 @@ enum ContentType: string
             self::PinterestPin, self::PinterestCarousel => '2:3',
             self::PinterestVideoPin => '9:16',
             default => null,
+        };
+    }
+
+    /**
+     * The character cap of a post of this type on an account whose own limit is
+     * `$accountLimit` (`SocialAccount::maxContentLength()`): an X poll's question
+     * stays at the poll's cap even on an account with long posts.
+     */
+    public function maxContentLength(int $accountLimit): int
+    {
+        return match ($this) {
+            self::XPoll => min($accountLimit, XPoll::QUESTION_MAX_LENGTH),
+            default => $accountLimit,
         };
     }
 

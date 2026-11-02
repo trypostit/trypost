@@ -64,13 +64,14 @@ class PostPreviewer
         }
 
         $sanitized = $this->sanitizer->sanitize($original, $platform);
+        $accountLimit = $post->socialAccount?->maxContentLength() ?? $platform->maxContentLength();
 
         $preview = [
             'platform' => $platform->value,
             'content_type' => $post->content_type?->value,
             'sanitized_content' => $sanitized,
             'sanitized_length' => mb_strlen($sanitized),
-            'max_content_length' => $post->socialAccount?->maxContentLength($post->content_type) ?? $platform->maxContentLength(),
+            'max_content_length' => $post->content_type?->maxContentLength($accountLimit) ?? $accountLimit,
             'truncated' => mb_strlen($sanitized) < mb_strlen($original),
         ];
 

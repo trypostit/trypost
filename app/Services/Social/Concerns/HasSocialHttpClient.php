@@ -39,7 +39,8 @@ trait HasSocialHttpClient
             throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
-        $maxLength = $post->socialAccount?->maxContentLength($post->content_type) ?? $post->platform->maxContentLength();
+        $accountLimit = $post->socialAccount?->maxContentLength() ?? $post->platform->maxContentLength();
+        $maxLength = $post->content_type?->maxContentLength($accountLimit) ?? $accountLimit;
         $contentLength = mb_strlen($content) + $post->platform->reservedLength($post->meta);
 
         if ($contentLength <= $maxLength) {
