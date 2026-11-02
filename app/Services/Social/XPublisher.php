@@ -109,6 +109,13 @@ class XPublisher
             $data['made_with_ai'] = true;
         }
 
+        if (empty($content) && isset($data['poll'])) {
+            throw new XPublishException(
+                userMessage: 'An X poll needs a question. Write it in the post text.',
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
         if (empty($content) && ! isset($data['media'])) {
             throw new XPublishException(
                 userMessage: 'X posts require either text or media. Please add content to your post.',

@@ -100,6 +100,43 @@ test('adds choices up to four and removes one', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a new choice takes focus after one was removed', function () {
+    $post = seedXPollPost();
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->click('@x-poll-add-choice');
+    waitFor($page, '@x-poll-choice-2');
+    $page->fill('@x-poll-choice-2', 'Maybe')
+        ->click('@x-poll-add-choice');
+    waitFor($page, '@x-poll-choice-3');
+    $page->click('@x-poll-remove-choice-2');
+    waitForGone($page, '@x-poll-choice-3');
+    $page->click('@x-poll-add-choice');
+    waitFor($page, '@x-poll-choice-3');
+
+    waitForCondition($page, "document.activeElement?.dataset.testid === 'x-poll-choice-3'");
+    expect($page->script('document.activeElement?.dataset.testid'))->toBe('x-poll-choice-3')
+        ->and($page->script('document.activeElement.value'))->toBe('')
+        ->and($page->script("document.querySelector('[data-testid=\"x-poll-choice-2\"]').value"))->toBe('');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('duplicate choices show the error under the choices', function () {
+    $post = seedXPollPost(ContentType::XPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->fill('@x-poll-choice-0', 'Yes')
+        ->fill('@x-poll-choice-1', 'yes')
+        ->click('@composer-submit');
+    waitForText($page, '@x-poll-options-error', __('posts.form.x.poll.options_distinct'));
+
+    $page->assertSeeIn('@x-poll-options-error', __('posts.form.x.poll.options_distinct'))
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('seven days zeroes hours and minutes', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1520]]]);
     $page = openXPollComposer($post);

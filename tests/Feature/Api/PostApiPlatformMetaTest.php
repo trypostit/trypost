@@ -12,6 +12,7 @@ use App\Jobs\PublishPost;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\XPoll;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -1471,6 +1472,35 @@ it('cannot schedule an incomplete x poll', function (string $content, ?array $po
     'no duration' => ['Question', ['options' => ['Yes', 'No']], 'meta.poll.duration_minutes'],
     'no question' => ['', ['options' => ['Yes', 'No'], 'duration_minutes' => 60], 'content'],
 ]);
+
+it('asks for the question of an x poll scheduled without text', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => '',
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+    ])->assertUnprocessable()->assertJsonValidationErrors(['content' => 'Write your poll question in the post text.']);
+});
+
+it('measures x poll choices after blanks and spaces are dropped', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $exactly25 = str_repeat('a', XPoll::OPTION_MAX_LENGTH);
+
+    $response = $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Pick one',
+        'status' => PostStatus::Draft->value,
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => ['Yes', 'No', 'Maybe', "  {$exactly25}  ", ''], 'duration_minutes' => 60]],
+    ])->assertCreated();
+
+    expect(Post::query()->findOrFail($response->json('id'))->meta['poll']['options'])
+        ->toBe(['Yes', 'No', 'Maybe', $exactly25]);
+});
 
 it('saves an incomplete x poll as a draft', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);

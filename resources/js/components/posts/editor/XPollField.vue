@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { IconPlus, IconX } from '@tabler/icons-vue';
+import { IconPlus, IconTrash, IconX } from '@tabler/icons-vue';
 import type { AcceptableValue } from 'reka-ui';
-import { computed, nextTick, ref, useId } from 'vue';
+import { computed, nextTick, useId } from 'vue';
 
+import InputError from '@/components/InputError.vue';
+import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 import { characterCount } from '@/lib/characters';
 import {
     editablePollOptions,
@@ -29,6 +32,8 @@ import {
 const props = withDefaults(
     defineProps<{
         modelValue: { options?: string[]; duration_minutes?: number };
+        /** This card's position in the submitted `destinations`; see useMetaErrors. */
+        platformIndex: number;
         disabled?: boolean;
     }>(),
     { disabled: false },
@@ -40,7 +45,15 @@ const emit = defineEmits<{
 }>();
 
 const id = useId();
-const choiceInputs = ref<{ $el: HTMLInputElement }[]>([]);
+
+const metaError = useMetaErrors(() => props.platformIndex);
+const optionsError = metaError('poll.options');
+const durationError = metaError('poll.duration_minutes');
+const choiceErrors = Array.from({ length: X_POLL_MAX_OPTIONS }, (_, index) =>
+    metaError(`poll.options.${index}`),
+);
+
+const choiceId = (index: number): string => `${id}-choice-${index}`;
 
 const options = computed((): string[] =>
     editablePollOptions(props.modelValue.options),
@@ -85,16 +98,10 @@ const update = (patch: Partial<XPoll>): void => {
     });
 };
 
-const choiceId = (index: number): string => `${id}-choice-${index}`;
-
 const choiceLabelKey = (index: number): string =>
     index < X_POLL_MIN_OPTIONS
         ? 'posts.form.x.poll.choice'
         : 'posts.form.x.poll.choice_optional';
-
-const canAddAfter = (index: number): boolean =>
-    index === options.value.length - 1 &&
-    options.value.length < X_POLL_MAX_OPTIONS;
 
 const setChoice = (index: number, value: string | number): void => {
     update({
@@ -110,7 +117,7 @@ const addChoice = async (): Promise<void> => {
     const added = options.value.length;
     update({ options: [...options.value, ''] });
     await nextTick();
-    choiceInputs.value[added]?.$el.focus();
+    document.getElementById(choiceId(added))?.focus();
 };
 
 const removeChoice = (index: number): void => {
@@ -137,30 +144,38 @@ const removePoll = (): void => {
 </script>
 
 <template>
-    <div
-        class="mx-[9px] rounded-xl border border-border"
-        data-testid="x-poll"
-    >
-        <div class="flex flex-col gap-3 p-3">
-            <div
-                v-for="(option, index) in options"
-                :key="index"
-                class="flex items-start gap-1"
-            >
-                <div class="relative min-w-0 flex-1">
-                    <label
-                        :for="choiceId(index)"
-                        class="pointer-events-none absolute start-2.5 top-1.5 text-xs text-muted-foreground"
-                        data-single-line
-                        >{{
+    <div class="mt-3 space-y-4" data-testid="x-poll">
+        <SettingsRow align-top>
+            <template #label>
+                <span data-single-line>{{
+                    $t('posts.form.x.poll.choices')
+                }}</span>
+            </template>
+            <template v-for="(option, index) in options" :key="index">
+                <div class="flex items-center gap-2">
+                    <Input
+                        :id="choiceId(index)"
+                        :model-value="option"
+                        class="min-w-0 flex-1"
+                        :aria-label="
                             $t(choiceLabelKey(index), {
                                 number: String(index + 1),
                             })
-                        }}</label
-                    >
+                        "
+                        :placeholder="
+                            $t(choiceLabelKey(index), {
+                                number: String(index + 1),
+                            })
+                        "
+                        :aria-invalid="
+                            choiceErrors[index]?.value ? true : undefined
+                        "
+                        :disabled="disabled"
+                        :data-testid="`x-poll-choice-${index}`"
+                        @update:model-value="setChoice(index, $event)"
+                    />
                     <span
-                        v-if="option"
-                        class="pointer-events-none absolute end-2.5 top-1.5 text-xs tabular-nums"
+                        class="w-11 shrink-0 text-end text-xs tabular-nums"
                         :class="
                             characterCount(option) > X_POLL_OPTION_MAX_LENGTH
                                 ? 'text-destructive-text'
@@ -170,22 +185,11 @@ const removePoll = (): void => {
                         >{{ characterCount(option) }} /
                         {{ X_POLL_OPTION_MAX_LENGTH }}</span
                     >
-                    <Input
-                        :id="choiceId(index)"
-                        ref="choiceInputs"
-                        :model-value="option"
-                        class="h-13 px-2.5 pt-5 pb-1.5"
-                        :disabled="disabled"
-                        :data-testid="`x-poll-choice-${index}`"
-                        @update:model-value="setChoice(index, $event)"
-                    />
-                </div>
-                <div class="mt-2.5 flex w-[4.25rem] shrink-0 gap-1">
                     <Button
                         v-if="index >= X_POLL_MIN_OPTIONS"
                         type="button"
                         variant="ghost"
-                        size="icon"
+                        size="icon-sm"
                         class="text-muted-foreground"
                         :aria-label="
                             $t('posts.form.x.poll.remove_choice', {
@@ -196,43 +200,46 @@ const removePoll = (): void => {
                         :data-testid="`x-poll-remove-choice-${index}`"
                         @click="removeChoice(index)"
                     >
-                        <IconX />
+                        <IconX class="size-4" />
                     </Button>
-                    <Button
-                        v-if="canAddAfter(index)"
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        class="text-primary-text"
-                        :aria-label="$t('posts.form.x.poll.add_choice')"
-                        :disabled="disabled"
-                        data-testid="x-poll-add-choice"
-                        @click="addChoice"
-                    >
-                        <IconPlus class="size-5" />
-                    </Button>
+                    <span v-else aria-hidden="true" class="size-7 shrink-0" />
                 </div>
-            </div>
-        </div>
-        <div class="border-t border-border p-3">
-            <p
-                class="mb-2 text-[13px] font-medium text-foreground"
-                data-single-line
+                <InputError
+                    :message="choiceErrors[index]?.value"
+                    :data-testid="`x-poll-choice-${index}-error`"
+                />
+            </template>
+            <InputError
+                :message="optionsError"
+                data-testid="x-poll-options-error"
+            />
+            <Button
+                v-if="options.length < X_POLL_MAX_OPTIONS"
+                type="button"
+                variant="outline"
+                size="sm"
+                :disabled="disabled"
+                data-testid="x-poll-add-choice"
+                @click="addChoice"
             >
-                {{ $t('posts.form.x.poll.length') }}
-            </p>
-            <div class="grid grid-cols-3 gap-2">
+                <IconPlus class="size-4" />
+                <span data-single-line>{{
+                    $t('posts.form.x.poll.add_choice')
+                }}</span>
+            </Button>
+        </SettingsRow>
+        <SettingsRow>
+            <template #label>
+                <span data-single-line>{{
+                    $t('posts.form.x.poll.length')
+                }}</span>
+            </template>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div
                     v-for="lengthPart in lengthParts"
                     :key="lengthPart.part"
-                    class="relative min-w-0"
+                    class="flex items-center gap-1.5"
                 >
-                    <label
-                        :for="`${id}-${lengthPart.part}`"
-                        class="pointer-events-none absolute start-2.5 top-1.5 z-10 text-xs text-muted-foreground"
-                        data-single-line
-                        >{{ $t(lengthPart.labelKey) }}</label
-                    >
                     <Select
                         :model-value="String(duration[lengthPart.part])"
                         :disabled="
@@ -245,7 +252,7 @@ const removePoll = (): void => {
                     >
                         <SelectTrigger
                             :id="`${id}-${lengthPart.part}`"
-                            class="h-13 w-full items-end px-2.5 pt-5 pb-1.5 data-[size=default]:h-13"
+                            class="w-16"
                             :data-testid="`x-poll-${lengthPart.part}`"
                         >
                             <SelectValue>{{
@@ -262,18 +269,36 @@ const removePoll = (): void => {
                             >
                         </SelectContent>
                     </Select>
+                    <label
+                        :for="`${id}-${lengthPart.part}`"
+                        class="text-sm text-muted-foreground"
+                        data-single-line
+                        >{{ $t(lengthPart.labelKey) }}</label
+                    >
                 </div>
             </div>
-        </div>
-        <Button
-            type="button"
-            variant="ghost"
-            class="h-11 w-full rounded-t-none rounded-b-xl border-t border-border text-destructive-text hover:text-destructive-text"
-            :disabled="disabled"
-            data-testid="x-poll-remove"
-            @click="removePoll"
-        >
-            <span data-single-line>{{ $t('posts.form.x.poll.remove') }}</span>
-        </Button>
+            <InputError
+                :message="durationError"
+                data-testid="x-poll-duration-error"
+            />
+        </SettingsRow>
+        <SettingsRow>
+            <div>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    class="text-destructive-text hover:text-destructive-text"
+                    :disabled="disabled"
+                    data-testid="x-poll-remove"
+                    @click="removePoll"
+                >
+                    <IconTrash class="size-4" />
+                    <span data-single-line>{{
+                        $t('posts.form.x.poll.remove')
+                    }}</span>
+                </Button>
+            </div>
+        </SettingsRow>
     </div>
 </template>

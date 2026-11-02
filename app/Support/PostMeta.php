@@ -34,7 +34,7 @@ class PostMeta
             ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
         ];
 
-        if ($contentType instanceof ContentType ? $contentType !== ContentType::XPoll : $contentType !== ContentType::XPoll->value) {
+        if (ContentType::resolve($contentType) !== ContentType::XPoll) {
             $meta = Arr::except($meta, 'poll');
         }
 

@@ -73,8 +73,16 @@ class PostPlatformMetaRules
             "{$prefix}.audio.video_volume" => ['sometimes', 'nullable', 'integer', 'between:0,100'],
 
             "{$prefix}.poll" => ['sometimes', 'nullable', 'array'],
-            "{$prefix}.poll.options" => ['sometimes', 'nullable', 'array', 'max:'.XPoll::MAX_OPTIONS],
-            "{$prefix}.poll.options.*" => ['nullable', 'string', 'max:'.XPoll::OPTION_MAX_LENGTH],
+            "{$prefix}.poll.options" => ['sometimes', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
+                if (count(XPoll::options(['poll' => ['options' => $value]])) > XPoll::MAX_OPTIONS) {
+                    $fail(__('posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]));
+                }
+            }],
+            "{$prefix}.poll.options.*" => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
+                if (is_string($value) && mb_strlen(Str::trim($value)) > XPoll::OPTION_MAX_LENGTH) {
+                    $fail(__('posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]));
+                }
+            }],
             "{$prefix}.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
 
             "{$prefix}.spoiler_text" => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -192,9 +200,7 @@ class PostPlatformMetaRules
             "{$prefix}.event.title.max" => __('posts.form.google_business.title_max'),
             "{$prefix}.poll.array" => __('posts.form.x.poll.poll_object'),
             "{$prefix}.poll.options.array" => __('posts.form.x.poll.options_list'),
-            "{$prefix}.poll.options.max" => __('posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]),
             "{$prefix}.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
-            "{$prefix}.poll.options.*.max" => __('posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]),
             "{$prefix}.poll.duration_minutes.integer" => __('posts.form.x.poll.duration_range'),
             "{$prefix}.poll.duration_minutes.between" => __('posts.form.x.poll.duration_range'),
         ];
@@ -367,12 +373,7 @@ class PostPlatformMetaRules
             return YouTubeMetadata::violation($meta);
         }
 
-        return self::resolveContentType($contentType) === ContentType::XPoll ? XPoll::violation($meta) : null;
-    }
-
-    private static function resolveContentType(ContentType|string|null $contentType): ?ContentType
-    {
-        return $contentType instanceof ContentType ? $contentType : ContentType::tryFrom((string) $contentType);
+        return ContentType::resolve($contentType) === ContentType::XPoll ? XPoll::violation($meta) : null;
     }
 
     /**
@@ -386,7 +387,7 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, mixed $contentType = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $type = self::resolveContentType(is_string($contentType) || $contentType instanceof ContentType ? $contentType : null);
+        $type = ContentType::resolve(is_string($contentType) || $contentType instanceof ContentType ? $contentType : null);
         $isInstagramReel = $type === ContentType::InstagramReel;
         $threadViolation = ThreadReplies::violation($target, $meta);
 

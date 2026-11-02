@@ -576,3 +576,24 @@ test('collecting x metrics stores the poll on the publication', function () {
 
     expect($publication->refresh()->poll['options'][0]['votes'])->toBe(5);
 });
+
+test('storing an x poll result leaves the publication updated_at alone', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $updatedAt = $publication->refresh()->updated_at;
+    $this->travel(1)->hours();
+
+    Http::fake(['*' => Http::response([
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 1], ['position' => 2, 'label' => 'No', 'votes' => 2]],
+        ]]],
+    ])]);
+    app()->call([new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true), 'handle']);
+
+    expect($publication->refresh()->poll)->not->toBeNull()
+        ->and($publication->updated_at->equalTo($updatedAt))->toBeTrue();
+});

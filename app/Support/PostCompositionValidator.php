@@ -216,7 +216,9 @@ class PostCompositionValidator
                 }
 
                 if (blank($destination['content']) && $destination['media'] === []) {
-                    $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
+                    $validator->errors()->add("{$key}.content", ContentType::resolve($destination['content_type']) === ContentType::XPoll
+                        ? trans('posts.form.x.poll.question_required')
+                        : trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)

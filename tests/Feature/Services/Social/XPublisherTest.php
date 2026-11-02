@@ -1995,3 +1995,12 @@ test('x publisher refuses to publish an x poll without two choices', function ()
     expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(XPublishException::class);
     Http::assertNothingSent();
 });
+
+test('x publisher asks for the question of an x poll without text', function () {
+    $this->post->update(['content' => '', 'content_type' => ContentType::XPoll, 'meta' => xPollMeta()]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(XPublishException::class, 'An X poll needs a question. Write it in the post text.');
+    Http::assertNothingSent();
+});

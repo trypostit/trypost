@@ -134,9 +134,7 @@ class SocialAccount extends Model
             return $this->platform->maxContentLength();
         }
 
-        $type = $contentType instanceof ContentType ? $contentType : ContentType::tryFrom((string) $contentType);
-
-        return $type === ContentType::XPoll ? XPoll::QUESTION_MAX_LENGTH : self::X_LONG_POST_LENGTH;
+        return ContentType::resolve($contentType) === ContentType::XPoll ? XPoll::QUESTION_MAX_LENGTH : self::X_LONG_POST_LENGTH;
     }
 
     public function contentOverflow(string $content, int $reserved = 0, ContentType|string|null $contentType = null): int

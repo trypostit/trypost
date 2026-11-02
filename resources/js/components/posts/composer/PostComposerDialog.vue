@@ -2896,6 +2896,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                 >
                                     <XPollField
                                         :model-value="groupPoll(group)"
+                                        :platform-index="
+                                            selectedAccounts.indexOf(group.anchor)
+                                        "
                                         :disabled="cropUploading"
                                         @update:model-value="
                                             setGroupPoll(group, $event)

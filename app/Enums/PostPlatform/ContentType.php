@@ -891,6 +891,14 @@ enum ContentType: string
     }
 
     /**
+     * A content type given as the enum, its value or nothing.
+     */
+    public static function resolve(self|string|null $contentType): ?self
+    {
+        return $contentType instanceof self ? $contentType : self::tryFrom((string) $contentType);
+    }
+
+    /**
      * The content type an imported publication is shown as. One place for every
      * platform and publication type pair.
      */
