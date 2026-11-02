@@ -11,7 +11,7 @@ import {
     IconLink,
     IconPhoto,
 } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
 import RankBadge from '@/components/analytics/RankBadge.vue';
@@ -36,6 +36,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
 import { isVideo } from '@/lib/mediaType';
@@ -53,6 +54,7 @@ import type {
     PublicationPeriod,
     SummaryMetric,
 } from '@/types/analytics';
+import type { PlatformValue } from '@/types/platform';
 
 const props = defineProps<{
     report: AnalyticsReport;
@@ -61,7 +63,7 @@ const props = defineProps<{
     availableMetrics: SummaryMetric[];
     sortableMetrics: SummaryMetric[];
     url: string;
-    platform: string;
+    platform: PlatformValue;
 }>();
 
 const TABLE_METRICS: SummaryMetric[] = [
@@ -80,21 +82,7 @@ const TABLE_METRICS: SummaryMetric[] = [
     'watch_time_minutes',
     'average_watch_time_seconds',
 ];
-const storageKey = computed(() => `insights.columns.${props.platform}`);
-
-const readStoredColumns = (): SummaryMetric[] | null => {
-    try {
-        const stored = JSON.parse(
-            window.localStorage.getItem(storageKey.value) ?? 'null',
-        );
-
-        return Array.isArray(stored) ? (stored as SummaryMetric[]) : null;
-    } catch {
-        return null;
-    }
-};
-
-const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
+const storedColumns = useUserStorage(`insights.columns.${props.platform}`, []);
 const choosableColumns = computed<SummaryMetric[]>(() =>
     TABLE_METRICS.filter((metric) => props.availableMetrics.includes(metric)),
 );
@@ -104,10 +92,9 @@ const defaultColumns = computed<SummaryMetric[]>(() =>
     ),
 );
 const columns = computed<SummaryMetric[]>(() => {
-    const chosen = storedColumns.value;
-    const picked = chosen
-        ? choosableColumns.value.filter((metric) => chosen.includes(metric))
-        : [];
+    const picked = choosableColumns.value.filter((metric) =>
+        storedColumns.value.includes(metric),
+    );
 
     const shown = picked.length ? picked : defaultColumns.value;
 
@@ -116,9 +103,6 @@ const columns = computed<SummaryMetric[]>(() => {
     );
 });
 
-watch(storageKey, () => {
-    storedColumns.value = readStoredColumns();
-});
 const isSortable = (metric: SummaryMetric): boolean =>
     props.sortableMetrics.includes(metric);
 
@@ -137,12 +121,6 @@ const toggleColumn = (
     }
 
     storedColumns.value = next;
-
-    try {
-        window.localStorage.setItem(storageKey.value, JSON.stringify(next));
-    } catch {
-        return;
-    }
 };
 
 const keepMenuOpen = (event: Event): void => {

@@ -90,7 +90,7 @@ test('closing the card in another tab hides it here at once', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('an unreadable or older browser storage value reads as empty and is replaced on the next save', function (string $stored) {
+test('an unreadable, older or malformed browser storage value reads as empty and is replaced on the next save', function (string $stored, array $workspaces = []) {
     $user = mcpPromptUser();
     $this->actingAs($user);
     $key = "trypost:{$user->id}";
@@ -108,12 +108,17 @@ test('an unreadable or older browser storage value reads as empty and is replace
     expect($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
         'version' => 1,
         'user' => ['mcp.promptDismissed' => true],
-        'workspaces' => [],
+        'workspaces' => $workspaces,
     ]);
     $page->assertNoJavaScriptErrors();
 })->with([
     'not JSON' => ['not json'],
     'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
+    'no user or workspaces block' => ['{"version":1}'],
+    'an item of the wrong shape' => ['{"version":1,"user":{"mcp.promptDismissed":"yes"},"workspaces":{}}'],
+    'a list instead of the value' => ['[1]'],
+    'a user block that is not an object' => ['{"version":1,"user":"dismissed","workspaces":{}}'],
+    'a workspace block that is not an object' => ['{"version":1,"user":{},"workspaces":{"workspace-a":"draft"}}', ['workspace-a' => []]],
 ]);
 
 test('a browser that refuses storage still shows the card and closes it, on the defaults', function () {
@@ -200,6 +205,18 @@ test('the invitation waits while the user is asked where they found us', functio
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@referral-source-survey');
+
+    $page->assertMissing('@mcp-prompt')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a user with an AI connected is never invited', function () {
+    $user = mcpPromptUser();
+    connectAiTo($user);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@app-content-shell');
 
     $page->assertMissing('@mcp-prompt')
         ->assertNoJavaScriptErrors();

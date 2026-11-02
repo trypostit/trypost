@@ -340,6 +340,19 @@ test('the column chooser hides and adds columns and remembers the choice', funct
         ->assertNoJavaScriptErrors();
 });
 
+test('columns kept in a shape the table cannot read fall back to the default ones', function () {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitFor($page, '@insights-columns-trigger');
+    setBrowserStorageItem($page, $this->user, 'insights.columns.instagram', 5);
+
+    $page->refresh();
+    waitFor($page, '@insights-columns-trigger');
+
+    $page->assertVisible('@insights-sort-views')
+        ->assertMissing('@insights-column-head-watch_time_minutes')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a chart whose metrics have nothing in the previous period offers no comparison', function () {
     $fresh = SocialAccount::factory()->create([
         'workspace_id' => $this->instagram->workspace_id,

@@ -258,6 +258,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                     />
                     <ChannelPublicationTable
                         v-if="filters"
+                        :key="channel.platform"
                         :report="report"
                         :filters="filters"
                         :publications="publications"

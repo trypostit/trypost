@@ -287,6 +287,31 @@ test('a far display time zone regroups slots under its own calendar day', functi
     $page->assertNoJavaScriptErrors();
 });
 
+test('the time zone picked for the list is kept in the browser and shown again on the next load', function () {
+    [$user] = publishQueueSetup();
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
+    waitFor($page, '@publish-timezone-trigger');
+    $page->click('@publish-timezone-trigger');
+    waitForPublishQueueTestId($page, 'publish-timezone-search');
+    $page->type('@publish-timezone-search', 'Auckland');
+    waitForPublishQueueTestId($page, 'publish-timezone-option-Pacific-Auckland');
+    $page->click('@publish-timezone-option-Pacific-Auckland');
+    waitForQueryParameter($page, 'tz', 'Pacific/Auckland');
+
+    expect(browserStorageItem($page, $user, 'publish.tz'))->toBe('Pacific/Auckland');
+
+    $fresh = publishQueueVisitWithCleanStorage(route('app.posts.index'));
+    waitFor($fresh, '@publish-timezone-trigger');
+    setBrowserStorageItem($fresh, $user, 'publish.tz', 'Asia/Tokyo');
+    $fresh->refresh();
+    waitForText($fresh, '@publish-timezone-trigger', 'Tokyo');
+
+    $fresh->assertSeeIn('@publish-timezone-trigger', 'Tokyo')
+        ->assertNoJavaScriptErrors();
+});
+
 test('changing the time zone keeps a tab that came from a notes link', function () {
     [$user, , $channel] = publishQueueSetup();
     $draft = Post::factory()->forAccount($channel)->create([

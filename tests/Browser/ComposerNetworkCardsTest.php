@@ -71,8 +71,7 @@ function openNetworkCardsComposer(mixed $test, User $user): mixed
  */
 function networkCardsAutosave(mixed $page, User $user, Workspace $workspace, string $condition): array
 {
-    $key = "trypost:composer:autosave:{$user->id}:{$workspace->id}";
-    $snapshot = "JSON.parse(localStorage.getItem('{$key}') ?? 'null')";
+    $snapshot = '('.browserStorageItemJs($user, 'composer.autosave', $workspace->id).')';
     waitForNetworkCardsCondition($page, str_replace('snapshot', $snapshot, $condition));
 
     return (array) $page->script($snapshot);

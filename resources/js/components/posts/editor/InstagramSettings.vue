@@ -33,6 +33,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useReelSoundtrack } from '@/composables/composer/useReelSoundtrack';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import { useMetaErrors } from '@/composables/useMetaErrors';
 import { instagramProfileUrl } from '@/lib/instagram';
 import { rangeFill } from '@/lib/rangeFill';
@@ -56,7 +57,10 @@ const SOUND_WAVE_BARS = [
     { height: '70%', delay: '-150ms' },
     { height: '50%', delay: '-450ms' },
 ];
-const COLLABORATORS_NOTICE_KEY = 'trypost:instagram:collaborators-notice-seen';
+const collaboratorsNoticeSeen = useUserStorage(
+    'composer.instagramCollaboratorsNoticeSeen',
+    false,
+);
 const SEARCH_DEBOUNCE_MS = 300;
 const HOVER_PREVIEW_DELAY_MS = 150;
 const TOO_MANY_REQUESTS = 429;
@@ -86,22 +90,6 @@ const emit = defineEmits<{
 
 const updateMeta = (patch: Record<string, any>): void =>
     emit('update:meta', { ...props.meta, ...patch });
-
-const readFlag = (key: string): boolean => {
-    try {
-        return localStorage.getItem(key) === '1';
-    } catch {
-        return false;
-    }
-};
-
-const writeFlag = (key: string): void => {
-    try {
-        localStorage.setItem(key, '1');
-    } catch {
-        return;
-    }
-};
 
 const metaError = useMetaErrors(() => props.platformIndex);
 const audioError = metaError('audio');
@@ -351,10 +339,16 @@ const selectTrack = (track: InstagramAudio): void => {
 const volumeOf = (key: VolumeKey): number => selectedAudio.value?.[key] ?? 100;
 
 const changeVolume = (key: VolumeKey, event: Event): void => {
-    const volume = Number((event.target as HTMLInputElement).value);
-    updateMeta({ audio: { ...selectedAudio.value, [key]: volume } });
+    const audio = selectedAudio.value;
 
-    if (key === 'audio_volume' && playingId.value === selectedAudio.value?.id) {
+    if (!audio) {
+        return;
+    }
+
+    const volume = Number((event.target as HTMLInputElement).value);
+    updateMeta({ audio: { ...audio, [key]: volume } });
+
+    if (key === 'audio_volume' && playingId.value === audio.id) {
         soundtrack.setVolume(volume);
     }
 };
@@ -394,7 +388,7 @@ const addCollaborator = (): void => {
         trial_graduation: null,
     });
 
-    if (!readFlag(COLLABORATORS_NOTICE_KEY)) {
+    if (!collaboratorsNoticeSeen.value) {
         collaboratorNoticeOpen.value = true;
     }
 };
@@ -415,7 +409,7 @@ const removeCollaborator = (username: string): void => {
 };
 
 const dismissCollaboratorNotice = (): void => {
-    writeFlag(COLLABORATORS_NOTICE_KEY);
+    collaboratorsNoticeSeen.value = true;
     collaboratorNoticeOpen.value = false;
 };
 

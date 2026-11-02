@@ -1,27 +1,11 @@
 import { router } from '@inertiajs/vue3';
 import { onMounted, ref, type Ref } from 'vue';
 
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import date from '@/date';
 import dayjs from '@/dayjs';
 
-const STORAGE_KEY = 'publish.tz';
 const CONTEXT_PARAMS = ['notes', 'note', 'edit'];
-
-const readStoredTimezone = (): string | null => {
-    try {
-        return window.localStorage.getItem(STORAGE_KEY);
-    } catch {
-        return null;
-    }
-};
-
-const storeTimezone = (timezone: string): void => {
-    try {
-        window.localStorage.setItem(STORAGE_KEY, timezone);
-    } catch {
-        return;
-    }
-};
 
 export const useDisplayTimezone = (
     defaultTz: string,
@@ -40,6 +24,7 @@ export const useDisplayTimezone = (
     dayKey: (iso: string) => string;
 } => {
     const timezone = ref(defaultTz);
+    const storedTimezone = useUserStorage('publish.tz', '');
 
     const setTimezone = (tz: string): void => {
         if (!available.includes(tz)) {
@@ -47,7 +32,7 @@ export const useDisplayTimezone = (
         }
 
         timezone.value = tz;
-        storeTimezone(tz);
+        storedTimezone.value = tz;
 
         const query = new URLSearchParams(window.location.search);
         CONTEXT_PARAMS.forEach((key) => query.delete(key));
@@ -72,7 +57,7 @@ export const useDisplayTimezone = (
     };
 
     onMounted(() => {
-        const stored = readStoredTimezone();
+        const stored = storedTimezone.value;
         const hasExplicitTimezone = new URLSearchParams(
             window.location.search,
         ).has('tz');

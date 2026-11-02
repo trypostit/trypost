@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import { AlertDialogCancel } from 'reka-ui';
 import { ref } from 'vue';
 
@@ -13,12 +12,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import date from '@/date';
 
-const page = usePage();
-
-const storageKey = (): string =>
-    `calendar.skipCustomTimeConfirm.${page.props.auth.user.id}`;
+const skipConfirm = useUserStorage('calendar.skipCustomTimeConfirm', false);
 
 const isOpen = ref(false);
 const skipNextTime = ref(false);
@@ -27,22 +24,6 @@ const toTime = ref('');
 const zone = ref('');
 
 let resolveChoice: ((confirmed: boolean) => void) | null = null;
-
-const readSkip = (): boolean => {
-    try {
-        return window.localStorage.getItem(storageKey()) === 'true';
-    } catch {
-        return false;
-    }
-};
-
-const storeSkip = (): void => {
-    try {
-        window.localStorage.setItem(storageKey(), 'true');
-    } catch {
-        return;
-    }
-};
 
 const settle = (confirmed: boolean): void => {
     isOpen.value = false;
@@ -55,7 +36,7 @@ const confirm = (
     to: string,
     timezone: string,
 ): Promise<boolean> => {
-    if (readSkip()) {
+    if (skipConfirm.value) {
         return Promise.resolve(true);
     }
 
@@ -79,7 +60,7 @@ const onOpenChange = (value: boolean): void => {
 
 const accept = (): void => {
     if (skipNextTime.value) {
-        storeSkip();
+        skipConfirm.value = true;
     }
 
     settle(true);

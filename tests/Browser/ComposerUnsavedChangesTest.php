@@ -157,17 +157,21 @@ test('a post opened by its edit link saves and closes onto the list without step
         ->and($page->script('history.length === window.__entries'))->toBeTrue();
 })->with(['save', 'close']);
 
-test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, it lands back there and one back reaches the page before', function (string $from) {
+test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, it lands back there and one back reaches the page before', function (string $from, bool $aiConnected) {
     $post = seedUnsavedChangesReel();
+    if ($aiConnected) {
+        connectAiTo($post->user);
+    }
     $account = $post->socialAccount;
+    $scheduledAt = now('UTC')->addDay()->setTime(15, 0);
     $state = match ($from) {
-        'calendar' => ['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => now()->addHour()],
+        'calendar' => ['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => $scheduledAt],
         'approvals' => ['status' => PostStatus::PendingApproval, 'scheduled_at' => now()->addHour(), 'approval_requested_by' => $post->user_id],
         default => [],
     };
     $post->forceFill($state)->saveQuietly();
     $list = match ($from) {
-        'calendar' => route('app.calendar', ['view' => 'week']),
+        'calendar' => route('app.calendar', ['view' => 'week', 'week' => $scheduledAt->startOfWeek()->format('Y-m-d')]),
         'channel drafts' => route('app.channels.publish', ['account' => $account, 'tab' => 'drafts']),
         'approvals' => route('app.posts.index', ['tab' => 'approvals']),
     };
@@ -176,6 +180,8 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
     $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
+    waitFor($page, '@app-content-shell');
+    expect($page->script('document.querySelector(\'[data-testid="mcp-prompt"]\') !== null'))->toBe(! $aiConnected);
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");
@@ -197,7 +203,10 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
 
     $page->assertPathIs($before)->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
-})->with(['calendar', 'channel drafts', 'approvals']);
+})->with(['calendar', 'channel drafts', 'approvals'])->with([
+    'with the invitation to connect an AI' => false,
+    'with an AI connected' => true,
+]);
 
 test('saving an edited post never moves through history before the saved page lands', function () {
     $post = seedUnsavedChangesReel();

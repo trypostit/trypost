@@ -689,6 +689,30 @@ test('save and link saves a draft reel as a draft before linking Facebook', func
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
 
+test('the collaborators notice shows once in this browser', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', 'alice')
+        ->keys('@instagram-collaborator-input', 'Enter');
+    waitFor($page, '@instagram-collaborators-notice');
+    $page->click('@instagram-collaborators-notice-dismiss');
+    waitForGone($page, '@instagram-collaborators-notice');
+
+    expect(browserStorageItem($page, $post->user, 'composer.instagramCollaboratorsNoticeSeen'))->toBeTrue();
+
+    $page->navigate(route('app.posts.edit', $post));
+    waitFor($page, '@instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', 'bob')
+        ->keys('@instagram-collaborator-input', 'Enter');
+    waitFor($page, '@instagram-collaborator-bob');
+
+    $page->assertMissing('@instagram-collaborators-notice')
+        ->assertNoJavaScriptErrors();
+});
+
 test('an invalid collaborator in any position shows its error', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);

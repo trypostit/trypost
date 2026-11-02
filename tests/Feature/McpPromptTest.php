@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostHog\McpEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
@@ -38,6 +39,24 @@ test('the invitation is not shared once an AI is connected or before the workspa
 })->with([
     'connected' => [fn (User $user, Workspace $workspace) => mcpAccessToken($user, mcpOauthClient('Claude'), $workspace)],
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
+]);
+
+test('the invitation shows on the first page after signing up, though Welcome was seen without app access', function (Closure $access) {
+    $this->user->account->subscriptions()->delete();
+
+    $this->actingAs($this->user->fresh())
+        ->followingRedirects()
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt', null));
+
+    $access($this->user->account->fresh());
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('mcpPrompt.mcp_url', route('mcp.trypost')));
+})->with([
+    'trial without a card' => [fn (Account $account) => $account->forceFill(['trial_ends_at' => now()->addDays(7)])->save()],
+    'subscription' => [fn (Account $account) => subscribeAccount($account)],
 ]);
 
 test('a revoked connection invites the user again', function () {

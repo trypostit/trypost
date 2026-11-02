@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import { useEventListener } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 
 import CommandPaletteContent from '@/components/command-palette/CommandPaletteContent.vue';
 import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
 import { CommandDialog } from '@/components/ui/command';
+import { useWorkspaceStorage } from '@/composables/useBrowserStorage';
 import { useCommandPalette } from '@/composables/useCommandPalette';
 import { isPostComposerOpen } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -13,49 +13,26 @@ import type { CommandPaletteEntry } from '@/types/command-palette';
 
 const RECENT_LIMIT = 3;
 
-const page = usePage();
 const { isOpen, close, toggle } = useCommandPalette();
 const { canManageTeam } = useWorkspaceAbilities();
 
 const inviteMemberDialogOpen = ref(false);
 
-const storageKey = computed(
-    () => `trypost.command-palette.recent.${page.props.auth?.user?.id ?? 'guest'}`,
-);
-
-const readRecent = (): string[] => {
-    try {
-        const stored = JSON.parse(
-            window.localStorage.getItem(storageKey.value) ?? '[]',
-        );
-
-        return Array.isArray(stored)
-            ? stored.filter((id): id is string => typeof id === 'string')
-            : [];
-    } catch {
-        return [];
-    }
-};
+const recent = useWorkspaceStorage('commandPalette.recent', []);
 
 const recentIds = ref<string[]>([]);
 
 watch(isOpen, (open) => {
     if (open) {
-        recentIds.value = readRecent();
+        recentIds.value = recent.value;
     }
 });
 
 const remember = (id: string): void => {
-    const next = [id, ...readRecent().filter((stored) => stored !== id)].slice(
+    recent.value = [id, ...recent.value.filter((stored) => stored !== id)].slice(
         0,
         RECENT_LIMIT * 4,
     );
-
-    try {
-        window.localStorage.setItem(storageKey.value, JSON.stringify(next));
-    } catch {
-        return;
-    }
 };
 
 const onSelect = (entry: CommandPaletteEntry): void => {

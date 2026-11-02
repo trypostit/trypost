@@ -10,6 +10,7 @@ import {
 } from 'vue';
 
 import { Input } from '@/components/ui/input';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import {
     CATEGORY_ICON,
     EMOJIS,
@@ -18,7 +19,6 @@ import {
     type EmojiCategory,
 } from '@/data/emojis';
 
-const RECENTS_KEY = 'trypost.emoji.recents';
 const RECENTS_MAX = 24;
 
 const emit = defineEmits<{
@@ -32,24 +32,19 @@ const STUCK_HEADER_CLASS =
     'shadow-[0_6px_10px_-8px_rgb(0_0_0/0.25)] border-b border-border';
 const stuckCategory = ref<EmojiCategory | 'recent' | null>(null);
 const headerRefs = ref<Record<string, HTMLElement | null>>({});
-const setHeaderRef = (key: string) => (el: unknown) => {
-    headerRefs.value[key] = el instanceof HTMLElement ? el : null;
-};
+const setHeaderRef =
+    (key: string): ((el: unknown) => void) =>
+    (el: unknown): void => {
+        if (el instanceof HTMLElement) {
+            headerRefs.value[key] = el;
 
-const readRecents = (): string[] => {
-    try {
-        const raw = localStorage.getItem(RECENTS_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed)
-            ? parsed.filter((c) => typeof c === 'string')
-            : [];
-    } catch {
-        return [];
-    }
-};
+            return;
+        }
 
-const recents = ref<string[]>(readRecents());
+        headerRefs.value[key] = null;
+    };
+
+const recents = useUserStorage('emoji.recents', []);
 
 const recentEmojis = computed<Emoji[]>(() => {
     const map = new Map(EMOJIS.map((e) => [e.c, e]));
@@ -91,25 +86,16 @@ const isSearching = computed(() => search.value.trim().length > 0);
 const categoryLabel = (category: EmojiCategory | 'recent'): string =>
     trans(`posts.edit.emoji_picker.${category}`);
 
-const persistRecents = () => {
-    try {
-        localStorage.setItem(RECENTS_KEY, JSON.stringify(recents.value));
-    } catch {
-        // localStorage may be unavailable; safe to ignore.
-    }
-};
-
-const onPick = (emoji: Emoji) => {
+const onPick = (emoji: Emoji): void => {
     emit('select', emoji.c);
     const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(
         0,
         RECENTS_MAX,
     );
     recents.value = next;
-    persistRecents();
 };
 
-const scrollToCategory = (category: EmojiCategory | 'recent') => {
+const scrollToCategory = (category: EmojiCategory | 'recent'): void => {
     const target = headerRefs.value[category];
     const container = scrollEl.value;
     if (!target || !container) return;
@@ -117,7 +103,7 @@ const scrollToCategory = (category: EmojiCategory | 'recent') => {
     activeCategory.value = category;
 };
 
-const onScroll = () => {
+const onScroll = (): void => {
     const container = scrollEl.value;
     if (!container || isSearching.value) return;
     const top = container.scrollTop + 8;
@@ -189,7 +175,10 @@ onBeforeUnmount(() => {
             </template>
 
             <template v-else>
-                <section v-if="recentEmojis.length > 0">
+                <section
+                    v-if="recentEmojis.length > 0"
+                    data-testid="emoji-picker-recent"
+                >
                     <h3
                         :ref="setHeaderRef('recent')"
                         class="sticky top-0 z-10 -mx-2 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-shadow"

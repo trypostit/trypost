@@ -99,9 +99,9 @@ import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFac
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
+    AUTOSAVE_VERSION,
     type AutosaveMediaRef,
     type AutosaveSnapshot,
-    composerAutosaveKey,
     fromAutosaveMedia,
     isExpiredUpload,
     toAutosaveMedia,
@@ -445,7 +445,9 @@ const findGroup = (groupKey: string | null): NetworkGroup | undefined =>
         ? undefined
         : networkGroups.value.find((group) => group.key === groupKey);
 const openGroup = computed(() => findGroup(openGroupKey.value));
-const groupDestination = (group: NetworkGroup) =>
+const groupDestination = (
+    group: NetworkGroup,
+): ReturnType<typeof composition.resolvedDestination> =>
     composition.resolvedDestination(group.anchor);
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
@@ -1809,14 +1811,7 @@ const confirmScheduledAt = (value: string): void => {
 
 const autosaveEnabled =
     !props.initialPost && !props.postId && !props.initialDraft;
-const autosave = useComposerAutosave(
-    computed(() =>
-        composerAutosaveKey(
-            page.props.auth?.user?.id,
-            page.props.auth?.currentWorkspace?.id,
-        ),
-    ),
-);
+const autosave = useComposerAutosave();
 const {
     accounts: resumeAccounts,
     mediaCount: resumeMediaCount,
@@ -1831,7 +1826,7 @@ const resumeOpen = ref(
         ),
 );
 const autosaveSnapshot = (): AutosaveSnapshot => ({
-    version: 1,
+    version: AUTOSAVE_VERSION,
     savedAt: dayjs().toISOString(),
     content: composition.content.value,
     overrides: Object.fromEntries(

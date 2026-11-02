@@ -249,3 +249,45 @@ test('the shortcut does not open the palette over the post composer', function (
 
     $page->assertMissing('@command-palette')->assertNoJavaScriptErrors();
 });
+
+test('when the workspace changes while the page stays mounted, a channel picked in the palette is kept under the new workspace', function () {
+    $user = commandPaletteUser('admin');
+    $first = $user->currentWorkspace;
+    $second = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+        'name' => 'Beta Workspace',
+    ]);
+    $second->members()->attach($user->id, membershipPivot('admin'));
+    $channel = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $second->id,
+        'display_name' => 'Beta LinkedIn',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'week']));
+    waitFor($page, '@sidebar-workspace-menu');
+    $switchToSecond = function () use ($page, $second): void {
+        $page->click('@sidebar-workspace-menu');
+        waitFor($page, '@sidebar-workspaces-trigger');
+        $page->click('@sidebar-workspaces-trigger');
+        waitFor($page, "@sidebar-workspace-{$second->id}");
+        $page->click("@sidebar-workspace-{$second->id}");
+        waitForGone($page, "@sidebar-workspace-{$second->id}");
+    };
+    $switchToSecond();
+    $page->script('new Promise((resolve) => setTimeout(resolve, 1500))');
+    $user->refresh();
+    $switchToSecond();
+    waitForText($page, '@sidebar-channels', 'Beta LinkedIn');
+
+    openCommandPalette($page);
+    $page->type('@command-palette-input', 'beta');
+    waitFor($page, "@command-palette-item-channel-{$channel->id}");
+    $page->click("@command-palette-item-channel-{$channel->id}");
+    waitForPath($page, route('app.channels.publish', $channel, absolute: false));
+
+    expect(browserStorageItem($page, $user, 'commandPalette.recent', $second->id))->toBe(["channel-{$channel->id}"])
+        ->and(browserStorageItem($page, $user, 'commandPalette.recent', $first->id))->toBeNull();
+    $page->assertNoJavaScriptErrors();
+});
