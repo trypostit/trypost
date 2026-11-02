@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use App\Enums\SocialAccount\Platform;
+use App\Models\AnalyticsPublication;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -129,12 +131,26 @@ final class XPoll
      * @param  array<string, mixed>  $result
      * @return array{options: list<string>, duration_minutes: int}
      */
-    public static function definition(array $result): array
+    private static function definition(array $result): array
     {
         return [
             'options' => Collection::wrap(data_get($result, 'options'))->pluck('label')->all(),
             'duration_minutes' => transform(data_get($result, 'duration_minutes'), fn (mixed $minutes): int => (int) $minutes, self::DEFAULT_DURATION),
         ];
+    }
+
+    /**
+     * The poll meta of an X post found on the network, or null when it carries no poll.
+     *
+     * @return array{options: list<string>, duration_minutes: int}|null
+     */
+    public static function fromPublication(AnalyticsPublication $publication): ?array
+    {
+        $poll = data_get($publication->provider_metadata, 'poll');
+
+        return $publication->platform === Platform::X && is_array($poll) && filled($poll)
+            ? self::definition($poll)
+            : null;
     }
 
     /**

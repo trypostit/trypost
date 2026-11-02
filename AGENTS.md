@@ -1106,7 +1106,7 @@ an `enabled` flag or posts with several channels. Posts created together share
 
 ## X polls
 
-- A poll is its own content type, `ContentType::XPoll` (`x_poll`), with `meta.poll = {options, duration_minutes}` (owner decision November 2026). `App\Support\Social\XPoll` is the one home for its rules (constants, `normalize()`, `violation()`, `requiredViolation()`, `payload()`, `result()`, `definition()`); `PostPlatformMetaRules`, `PostMeta::forChannel()`, `SocialAccount::maxContentLength($contentType)` and `XPublisher` call it, never a copy of the numbers.
+- A poll is its own content type, `ContentType::XPoll` (`x_poll`), with `meta.poll = {options, duration_minutes}` (owner decision November 2026). `App\Support\Social\XPoll` is the one home for its rules (constants, `normalize()`, `violation()`, `requiredViolation()`, `payload()`, `result()`, `fromPublication()`); `PostPlatformMetaRules`, `PostMeta::forChannel()`, `SocialAccount::maxContentLength($contentType)` and `XPublisher` call it, never a copy of the numbers.
 - 2–4 choices of 1–25 characters, a duration of 5–10080 minutes, and a question (the post text) of at most 280 characters, even on an account with long posts. Blank choices are dropped and duplicates refused. `PostMeta::forChannel()` drops `poll` on any other type.
 - A poll carries no media and sits on the root post of a thread only (replies are `XPost`). A poll with fewer than two choices is a draft that cannot be scheduled; `XPublisher` refuses it.
 - **Cost rule (owner decision):** polls and their votes ride on requests X already makes. Never add a request, job or schedule for polls.
