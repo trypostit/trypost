@@ -179,6 +179,24 @@ test('the assistant writes for the account limit of the card it serves', functio
     'free account' => [[], 280, true],
 ]);
 
+test('the assistant keeps the long post limit for a regular post on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPost->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.SocialAccount::X_LONG_POST_LENGTH.' characters'));
+});
+
 test('the assistant writes a poll question within 280 characters even on an account with long posts', function () {
     config()->set('trypost.self_hosted', true);
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
