@@ -9,9 +9,11 @@ export const X_POLL_DEFAULT_DURATION = 1440;
 /** X caps a poll's question at 280 characters, even for an account with long posts. */
 export const X_POLL_QUESTION_MAX_LENGTH = 280;
 
-const MINUTES_PER_HOUR = 60;
-const MINUTES_PER_DAY = 1440;
-const MAX_DAYS = X_POLL_MAX_DURATION / MINUTES_PER_DAY;
+export const MINUTES_PER_HOUR = 60;
+export const HOURS_PER_DAY = 24;
+const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
+/** The longest a poll runs, in days (7). */
+export const X_POLL_MAX_DAYS = X_POLL_MAX_DURATION / MINUTES_PER_DAY;
 
 export interface XPollDuration {
     days: number;
@@ -32,7 +34,7 @@ export const splitPollDuration = (minutes: number): XPollDuration => ({
 
 /** Minutes for the picked parts, within X's 5 minutes to 7 days; 7 days takes no hours or minutes. */
 export const joinPollDuration = (parts: XPollDuration): number => {
-    if (parts.days >= MAX_DAYS) return X_POLL_MAX_DURATION;
+    if (parts.days >= X_POLL_MAX_DAYS) return X_POLL_MAX_DURATION;
 
     const total =
         parts.days * MINUTES_PER_DAY +

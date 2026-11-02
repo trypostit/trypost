@@ -899,11 +899,15 @@ enum ContentType: string
     }
 
     /**
-     * A content type given as the enum, its value or nothing.
+     * A content type given as the enum or its value; anything else is null.
      */
-    public static function resolve(self|string|null $contentType): ?self
+    public static function resolve(mixed $contentType): ?self
     {
-        return $contentType instanceof self ? $contentType : self::tryFrom((string) $contentType);
+        return match (true) {
+            $contentType instanceof self => $contentType,
+            is_string($contentType) => self::tryFrom($contentType),
+            default => null,
+        };
     }
 
     /**

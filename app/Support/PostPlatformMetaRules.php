@@ -75,7 +75,7 @@ class PostPlatformMetaRules
 
             "{$prefix}.poll" => ['sometimes', 'nullable', 'array'],
             "{$prefix}.poll.options" => ['sometimes', 'nullable', 'array', function (string $attribute, mixed $value, Closure $fail): void {
-                if (count(XPoll::options(['poll' => ['options' => $value]])) > XPoll::MAX_OPTIONS) {
+                if (count(XPoll::choices($value)) > XPoll::MAX_OPTIONS) {
                     $fail(__('posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]));
                 }
             }],
@@ -388,8 +388,7 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, mixed $contentType = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $type = ContentType::resolve(is_string($contentType) || $contentType instanceof ContentType ? $contentType : null);
-        $isInstagramReel = $type === ContentType::InstagramReel;
+        $type = ContentType::resolve($contentType);
         $threadViolation = ThreadReplies::violation($target, $meta);
 
         if ($threadViolation !== null) {
@@ -403,7 +402,7 @@ class PostPlatformMetaRules
         return match (true) {
             $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
-            $isInstagramReel => self::instagramReelViolation($platform, $meta),
+            $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
             $type === ContentType::XPoll => XPoll::violation($meta) ?? XPoll::requiredViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],

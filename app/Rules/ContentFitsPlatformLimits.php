@@ -70,7 +70,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 continue;
             }
 
-            $over = $target instanceof SocialAccount ? $target->contentOverflow($display, $reserved, $contentType) : $platform->contentOverflow($display, $reserved);
+            $over = max(0, mb_strlen($display) + $reserved - $limit);
 
             if ($over === 0) {
                 continue;

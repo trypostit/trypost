@@ -54,6 +54,6 @@ class AnalyticsPublicationFactory extends Factory
     /** @param array<string, mixed> $poll */
     public function withPoll(array $poll): static
     {
-        return $this->state(fn (): array => ['poll' => $poll]);
+        return $this->state(fn (): array => ['provider_metadata' => ['poll' => $poll]]);
     }
 }

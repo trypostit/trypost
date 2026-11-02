@@ -158,9 +158,9 @@ const metricsDetail = computed(() => {
 });
 
 const poll = computed(() => {
-    const detail = current.value.metrics ?? null;
+    const detail = current.value.metrics;
 
-    return detail && detail.available ? detail.publication.poll : null;
+    return detail?.available ? detail.publication.poll : null;
 });
 
 const moment = computed(() => {

@@ -100,20 +100,13 @@ class XPublisher
         }
 
         if ($post->content_type === ContentType::XPoll) {
-            $data['poll'] = $this->pollPayload($post);
+            $data['poll'] = $this->pollPayload($post, $content);
         } else {
             $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
         }
 
         if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
-        }
-
-        if (blank($content) && filled(data_get($data, 'poll'))) {
-            throw new XPublishException(
-                userMessage: 'An X poll needs a question. Write it in the post text.',
-                category: ErrorCategory::ContentPolicy,
-            );
         }
 
         if (empty($content) && ! isset($data['media'])) {
@@ -127,12 +120,20 @@ class XPublisher
     }
 
     /**
-     * A poll cannot carry media and needs its choices and length.
+     * A poll needs its question (the post text), its choices and length, and
+     * cannot carry media.
      *
      * @return array{options: list<string>, duration_minutes: int}
      */
-    private function pollPayload(Post $post): array
+    private function pollPayload(Post $post, ?string $content): array
     {
+        if (blank($content)) {
+            throw new XPublishException(
+                userMessage: trans('posts.form.x.poll.question_required'),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
         if ($post->mediaItems->isNotEmpty()) {
             throw new XPublishException(
                 userMessage: 'An X poll cannot include media. Remove the media or change the post type.',

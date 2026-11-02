@@ -18,9 +18,12 @@ import { useMetaErrors } from '@/composables/useMetaErrors';
 import { characterCount } from '@/lib/characters';
 import {
     editablePollOptions,
+    HOURS_PER_DAY,
     joinPollDuration,
+    MINUTES_PER_HOUR,
     splitPollDuration,
     X_POLL_DEFAULT_DURATION,
+    X_POLL_MAX_DAYS,
     X_POLL_MAX_DURATION,
     X_POLL_MAX_OPTIONS,
     X_POLL_MIN_OPTIONS,
@@ -31,7 +34,7 @@ import {
 
 const props = withDefaults(
     defineProps<{
-        modelValue: { options?: string[]; duration_minutes?: number };
+        modelValue: Partial<XPoll>;
         /** This card's position in the submitted `destinations`; see useMetaErrors. */
         platformIndex: number;
         disabled?: boolean;
@@ -76,17 +79,17 @@ const lengthParts: {
     {
         part: 'days',
         labelKey: 'posts.form.x.poll.days',
-        values: Array.from({ length: 8 }, (_, value) => value),
+        values: Array.from({ length: X_POLL_MAX_DAYS + 1 }, (_, value) => value),
     },
     {
         part: 'hours',
         labelKey: 'posts.form.x.poll.hours',
-        values: Array.from({ length: 24 }, (_, value) => value),
+        values: Array.from({ length: HOURS_PER_DAY }, (_, value) => value),
     },
     {
         part: 'minutes',
         labelKey: 'posts.form.x.poll.minutes',
-        values: Array.from({ length: 60 }, (_, value) => value),
+        values: Array.from({ length: MINUTES_PER_HOUR }, (_, value) => value),
     },
 ];
 
@@ -100,6 +103,11 @@ const update = (patch: Partial<XPoll>): void => {
 
 /** A choice's length as the server measures it, without the spaces around it. */
 const choiceLength = (option: string): number => characterCount(option.trim());
+
+/** The `:number` a choice's labels show, counted from one. */
+const choiceNumber = (index: number): { number: string } => ({
+    number: String(index + 1),
+});
 
 const choiceLabelKey = (index: number): string =>
     index < X_POLL_MIN_OPTIONS
@@ -161,14 +169,10 @@ const removePoll = (): void => {
                         :model-value="option"
                         class="min-w-0 flex-1"
                         :aria-label="
-                            $t(choiceLabelKey(index), {
-                                number: String(index + 1),
-                            })
+                            $t(choiceLabelKey(index), choiceNumber(index))
                         "
                         :placeholder="
-                            $t(choiceLabelKey(index), {
-                                number: String(index + 1),
-                            })
+                            $t(choiceLabelKey(index), choiceNumber(index))
                         "
                         :aria-invalid="
                             choiceErrors[index]?.value ? true : undefined
@@ -195,9 +199,10 @@ const removePoll = (): void => {
                         size="icon-sm"
                         class="text-muted-foreground"
                         :aria-label="
-                            $t('posts.form.x.poll.remove_choice', {
-                                number: String(index + 1),
-                            })
+                            $t(
+                                'posts.form.x.poll.remove_choice',
+                                choiceNumber(index),
+                            )
                         "
                         :disabled="disabled"
                         :data-testid="`x-poll-remove-choice-${index}`"

@@ -2004,7 +2004,7 @@ test('x publisher asks for the question of an x poll without text', function () 
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe('An X poll needs a question. Write it in the post text.')
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.question_required'))
             ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });

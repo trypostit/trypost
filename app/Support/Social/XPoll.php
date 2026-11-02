@@ -50,7 +50,17 @@ final class XPoll
      */
     public static function options(mixed $meta): array
     {
-        return Collection::wrap(data_get($meta, 'poll.options'))
+        return self::choices(data_get($meta, 'poll.options'));
+    }
+
+    /**
+     * A list of choices, trimmed, without blanks.
+     *
+     * @return list<string>
+     */
+    public static function choices(mixed $options): array
+    {
+        return Collection::wrap($options)
             ->filter(fn (mixed $option): bool => is_string($option))
             ->map(fn (string $option): string => Str::trim($option))
             ->filter(fn (string $option): bool => filled($option))
@@ -65,8 +75,8 @@ final class XPoll
     public static function normalize(array $poll): array
     {
         return Arr::whereNotNull([
-            'options' => self::options(['poll' => $poll]),
-            'duration_minutes' => transform(data_get($poll, 'duration_minutes'), fn (mixed $minutes): int => (int) $minutes),
+            'options' => self::choices(data_get($poll, 'options')),
+            'duration_minutes' => self::minutes(data_get($poll, 'duration_minutes')),
         ]);
     }
 
@@ -121,21 +131,7 @@ final class XPoll
                 ->all(),
             'voting_status' => in_array(data_get($poll, 'voting_status'), self::VOTING_STATUSES, true) ? data_get($poll, 'voting_status') : null,
             'end_datetime' => data_get($poll, 'end_datetime'),
-            'duration_minutes' => transform(data_get($poll, 'duration_minutes'), fn (mixed $minutes): int => (int) $minutes),
-        ];
-    }
-
-    /**
-     * A stored poll result turned into the post's poll meta.
-     *
-     * @param  array<string, mixed>  $result
-     * @return array{options: list<string>, duration_minutes: int}
-     */
-    private static function definition(array $result): array
-    {
-        return [
-            'options' => Collection::wrap(data_get($result, 'options'))->pluck('label')->all(),
-            'duration_minutes' => transform(data_get($result, 'duration_minutes'), fn (mixed $minutes): int => (int) $minutes, self::DEFAULT_DURATION),
+            'duration_minutes' => self::minutes(data_get($poll, 'duration_minutes')),
         ];
     }
 
@@ -148,9 +144,14 @@ final class XPoll
     {
         $poll = data_get($publication->provider_metadata, 'poll');
 
-        return $publication->platform === Platform::X && is_array($poll) && filled($poll)
-            ? self::definition($poll)
-            : null;
+        if ($publication->platform !== Platform::X || ! is_array($poll) || blank($poll)) {
+            return null;
+        }
+
+        return [
+            'options' => Collection::wrap(data_get($poll, 'options'))->pluck('label')->all(),
+            'duration_minutes' => self::minutes(data_get($poll, 'duration_minutes'), self::DEFAULT_DURATION),
+        ];
     }
 
     /**
@@ -162,7 +163,12 @@ final class XPoll
     {
         return [
             'options' => self::options($meta),
-            'duration_minutes' => transform(data_get($meta, 'poll.duration_minutes'), fn (mixed $minutes): int => (int) $minutes, self::DEFAULT_DURATION),
+            'duration_minutes' => self::minutes(data_get($meta, 'poll.duration_minutes'), self::DEFAULT_DURATION),
         ];
+    }
+
+    private static function minutes(mixed $value, ?int $default = null): ?int
+    {
+        return transform($value, fn (mixed $minutes): int => (int) $minutes, $default);
     }
 }

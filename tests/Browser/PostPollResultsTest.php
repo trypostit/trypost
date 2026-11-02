@@ -77,36 +77,31 @@ test('the sent card shows each choice with its votes and percentage', function (
         ->assertSeeIn("@post-poll-{$post->id}-option-1", '2 votes')
         ->assertSeeIn("@post-poll-{$post->id}-option-1", '66.7%')
         ->assertSeeIn("@post-poll-{$post->id}-summary", '3 votes')
+        ->assertAttribute("@post-poll-{$post->id}-option-1", 'data-leading', 'true')
+        ->assertAttribute("@post-poll-{$post->id}-option-0", 'data-leading', 'false')
         ->assertNoJavaScriptErrors();
-
-    expect($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-1\"]').dataset.leading"))->toBe('true')
-        ->and($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-0\"]').dataset.leading"))->toBe('false');
 });
 
-test('a closed poll says final results', function () {
-    [$user, $account, $post] = pollResultsSetup(refundPoll('closed'));
+test('the summary says where voting stands', function (Closure $overrides, string $shown, array $hidden) {
+    [$user, $account, $post] = pollResultsSetup([...refundPoll(), ...$overrides()]);
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
     waitFor($page, "@post-poll-{$post->id}");
 
-    $page->assertSeeIn("@post-poll-{$post->id}-summary", 'Final results')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Voting ended')
-        ->assertNoJavaScriptErrors();
-});
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", $shown);
 
-test('an open poll whose end is ahead says when it ends', function () {
-    [$user, $account, $post] = pollResultsSetup(refundPoll());
-    $this->actingAs($user);
+    foreach ($hidden as $text) {
+        $page->assertDontSeeIn("@post-poll-{$post->id}-summary", $text);
+    }
 
-    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
-    waitFor($page, "@post-poll-{$post->id}");
-
-    $page->assertSeeIn("@post-poll-{$post->id}-summary", 'Ends')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Voting ended')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Final results')
-        ->assertNoJavaScriptErrors();
-});
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'closed: final results' => [fn (): array => ['voting_status' => 'closed'], 'Final results', ['Voting ended']],
+    'open, end ahead: when it ends' => [fn (): array => [], 'Ends', ['Voting ended', 'Final results']],
+    'open, end passed: voting ended' => [fn (): array => ['end_datetime' => now()->subHours(2)->toIso8601String()], 'Voting ended', ['Final results', 'Ends']],
+    'unknown state, end passed: never final' => [fn (): array => ['voting_status' => null, 'end_datetime' => now()->subHours(2)->toIso8601String()], 'Voting ended', ['Final results']],
+]);
 
 test('a post without a poll shows no results', function () {
     [$user, $account, $post] = pollResultsSetup(null);
@@ -130,19 +125,6 @@ test('the post details show the poll too', function () {
     waitFor($page, '@post-details-poll');
 
     $page->assertSeeIn('@post-details-poll', '66.7%')->assertNoJavaScriptErrors();
-});
-
-test('an open poll whose end has passed says voting ended, not final results', function () {
-    [$user, $account, $post] = pollResultsSetup([...refundPoll(), 'end_datetime' => now()->subHours(2)->toIso8601String()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
-    waitFor($page, "@post-poll-{$post->id}");
-
-    $page->assertSeeIn("@post-poll-{$post->id}-summary", 'Voting ended')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Final results')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Ends')
-        ->assertNoJavaScriptErrors();
 });
 
 test('a poll with no votes shows 0% and no leader', function () {
@@ -173,9 +155,10 @@ test('tied choices are both marked as leading', function () {
     $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
     waitFor($page, "@post-poll-{$post->id}");
 
-    expect($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-0\"]').dataset.leading"))->toBe('true')
-        ->and($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-1\"]').dataset.leading"))->toBe('true')
-        ->and($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-option-2\"]').dataset.leading"))->toBe('false');
+    $page->assertAttribute("@post-poll-{$post->id}-option-0", 'data-leading', 'true')
+        ->assertAttribute("@post-poll-{$post->id}-option-1", 'data-leading', 'true')
+        ->assertAttribute("@post-poll-{$post->id}-option-2", 'data-leading', 'false')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the post details show the poll of a post without other metrics', function () {
@@ -203,18 +186,6 @@ test('a poll without a known state or end shows only the votes', function () {
 
     expect($page->script("document.querySelector('[data-testid=\"post-poll-{$post->id}-summary\"]').textContent.replace(/\\s+/g, ' ').trim()"))->toBe('3 votes');
     $page->assertNoJavaScriptErrors();
-});
-
-test('a poll without a known state is never called final', function () {
-    [$user, $account, $post] = pollResultsSetup([...refundPoll(), 'voting_status' => null, 'end_datetime' => now()->subHours(2)->toIso8601String()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
-    waitFor($page, "@post-poll-{$post->id}");
-
-    $page->assertSeeIn("@post-poll-{$post->id}-summary", 'Voting ended')
-        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Final results')
-        ->assertNoJavaScriptErrors();
 });
 
 test('the leading choice stays readable in both themes', function (string $theme) {

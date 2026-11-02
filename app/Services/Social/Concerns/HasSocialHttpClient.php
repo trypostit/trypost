@@ -39,16 +39,12 @@ trait HasSocialHttpClient
             throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
-        $reserved = $post->platform->reservedLength($post->meta);
-        $overflow = $post->socialAccount?->contentOverflow($content, $reserved, $post->content_type) ?? $post->platform->contentOverflow($content, $reserved);
+        $maxLength = $post->socialAccount?->maxContentLength($post->content_type) ?? $post->platform->maxContentLength();
+        $contentLength = mb_strlen($content) + $post->platform->reservedLength($post->meta);
 
-        if ($overflow === 0) {
+        if ($contentLength <= $maxLength) {
             return;
         }
-
-        $maxLength = $post->socialAccount?->maxContentLength($post->content_type) ?? $post->platform->maxContentLength();
-
-        $contentLength = mb_strlen($content) + $reserved;
 
         throw ContentLimitException::exceeds($post->platform, $maxLength, $contentLength);
     }

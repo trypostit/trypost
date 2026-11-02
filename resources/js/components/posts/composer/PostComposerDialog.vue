@@ -93,6 +93,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
@@ -176,7 +177,7 @@ import {
     threadRepliesOf,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { newPoll, X_POLL_QUESTION_MAX_LENGTH, type XPoll } from '@/lib/xPoll';
+import { X_POLL_QUESTION_MAX_LENGTH } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -189,6 +190,7 @@ import type {
 import {
     CAPTIONLESS_CONTENT_TYPES,
     ContentType,
+    MEDIALESS_CONTENT_TYPE_REASONS,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
@@ -451,75 +453,30 @@ const groupDestination = (
     group: NetworkGroup,
 ): ReturnType<typeof composition.resolvedDestination> =>
     composition.resolvedDestination(group.anchor);
-/** The medialess types a card cannot switch to while it holds media, with the reason shown. */
-const MEDIALESS_TYPE_REASONS: Record<string, string> = {
-    [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
-    [ContentType.XPoll]: 'posts.form.x.poll.attachments',
-};
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
     const attached = groupDestination(group).media.length > 0;
 
     return options.map((option) =>
-        attached && MEDIALESS_TYPE_REASONS[option.value]
+        attached && MEDIALESS_CONTENT_TYPE_REASONS[option.value]
             ? {
                   ...option,
-                  disabledReasonKey: MEDIALESS_TYPE_REASONS[option.value],
+                  disabledReasonKey: MEDIALESS_CONTENT_TYPE_REASONS[option.value],
               }
             : option,
     );
 };
-const isPollGroup = (group: NetworkGroup): boolean =>
-    groupDestination(group).content_type === ContentType.XPoll;
-const groupPoll = (group: NetworkGroup): Partial<XPoll> =>
-    groupDestination(group).meta?.poll ?? {};
-const setGroupPoll = (group: NetworkGroup, poll: XPoll): void => {
-    composition.setGroupOverride(group.key, 'meta', {
-        ...groupDestination(group).meta,
-        poll,
-    });
-};
-/** Each card's meta from before a poll was added, put back as it was when the poll goes and nothing else changed. */
-const metaBeforePoll = new Map<string, Record<string, any>>();
-/** Each card's poll from before another type was picked, brought back when Poll is picked again. */
-const pollBeforeOtherType = new Map<string, Partial<XPoll>>();
-/** Picking Poll starts an empty poll, or the one this card had; any other type drops it, as the server does. */
-const setGroupContentType = (group: NetworkGroup, contentType: string): void => {
-    const current = groupDestination(group).meta ?? {};
-    const { poll, ...meta } = current;
-    composition.setGroupOverride(group.key, 'content_type', contentType);
-
-    if (contentType === ContentType.XPoll) {
-        if (poll === undefined) {
-            metaBeforePoll.set(group.key, current);
-        }
-        composition.setGroupOverride(group.key, 'meta', {
-            ...meta,
-            poll: poll ?? pollBeforeOtherType.get(group.key) ?? newPoll(),
-        });
-        pollBeforeOtherType.delete(group.key);
-    } else if (poll !== undefined) {
-        pollBeforeOtherType.set(group.key, poll);
-        const before = metaBeforePoll.get(group.key);
-        metaBeforePoll.delete(group.key);
-        composition.setGroupOverride(
-            group.key,
-            'meta',
-            before !== undefined &&
-                JSON.stringify({ ...before }) === JSON.stringify(meta)
-                ? before
-                : meta,
-        );
-    }
-};
-const removeGroupPoll = (group: NetworkGroup): void => {
-    setGroupContentType(group, ContentType.XPost);
-    pollBeforeOtherType.delete(group.key);
-};
-const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
-    isPollGroup(group) && activeReply(group) === undefined
-        ? 'posts.form.x.poll.attachments'
-        : 'posts.composer.media_not_supported';
+const {
+    isPollGroup,
+    groupPoll,
+    setGroupPoll,
+    setGroupContentType,
+    removeGroupPoll,
+    groupMediaDisabledReasonKey,
+} = useComposerPoll(
+    composition,
+    (group) => activeReply(group) !== undefined,
+);
 const openNetwork = (
     groupKey: string,
     accountId: string | null = null,
