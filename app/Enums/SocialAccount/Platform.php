@@ -8,6 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -592,6 +593,9 @@ enum Platform: string
             self::YouTube => [
                 'categoryOptions' => Category::options(),
                 'defaultCategoryId' => Category::DEFAULT->value,
+            ],
+            self::X => [
+                'poll' => XPoll::limits(),
             ],
             default => [],
         };

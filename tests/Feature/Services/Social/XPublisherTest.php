@@ -1986,7 +1986,8 @@ test('x publisher refuses to publish an x poll with media', function () {
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(fn (XPublishException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy));
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.errors.media_not_accepted'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
 
@@ -1995,7 +1996,8 @@ test('x publisher refuses to publish an x poll without two choices', function ()
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(fn (XPublishException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy));
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.options_required'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
 

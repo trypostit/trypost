@@ -22,6 +22,7 @@ class AppendPostMedia
      * again from the new media. Changing an approved, scheduled post goes back
      * through UpdatePost, so a member who needs approval sends it back for
      * approval like any other edit, even when the approval landed just before.
+     * A post whose type takes no media (an X poll, a Threads ghost post) is refused.
      *
      * @param  list<array<string, mixed>>  $items
      *
@@ -30,6 +31,8 @@ class AppendPostMedia
     public static function execute(Post $post, array $items, ?User $actor): void
     {
         PostApproval::locked($post, fn () => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $items, $actor): void {
+            self::ensureAcceptsMedia($post);
+
             $post->appendMedia($items, $batch);
 
             if (PostStatusRules::blocksEditing($post)) {
@@ -44,5 +47,18 @@ class AppendPostMedia
                 UpdatePost::execute($post->workspace, $post, ['status' => $post->status->value], $actor);
             }
         }));
+    }
+
+    /**
+     * Refuses a post whose type takes no media. `execute()` always checks it; an
+     * entry point that stores or downloads a file first calls it before doing so.
+     *
+     * @throws ValidationException
+     */
+    public static function ensureAcceptsMedia(Post $post, string $field = 'media'): void
+    {
+        if ($post->content_type?->acceptsMedia() === false) {
+            throw ValidationException::withMessages([$field => trans('posts.errors.media_not_accepted')]);
+        }
     }
 }

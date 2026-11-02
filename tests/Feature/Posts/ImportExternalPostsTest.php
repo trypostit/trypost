@@ -806,7 +806,7 @@ test('imports an x poll made on x as a poll', function () {
     externalPublication($account, [
         'remote_id' => 'x-poll-1',
         'excerpt' => 'Should we refund?',
-        'content_type' => PublicationContentType::Text,
+        'content_type' => PublicationContentType::Poll,
         'provider_metadata' => ['poll' => [
             'options' => [['label' => '✅ Refund', 'votes' => 3], ['label' => '❌ No refund', 'votes' => 1]],
             'voting_status' => 'open',
@@ -832,7 +832,7 @@ test('an imported x poll without a length gets the default one', function () {
     externalPublication($account, [
         'remote_id' => 'x-poll-3',
         'excerpt' => 'Tabs or spaces?',
-        'content_type' => PublicationContentType::Text,
+        'content_type' => PublicationContentType::Poll,
         'provider_metadata' => ['poll' => [
             'options' => [['label' => 'Tabs', 'votes' => 0], ['label' => 'Spaces', 'votes' => 0]],
             'voting_status' => 'open',

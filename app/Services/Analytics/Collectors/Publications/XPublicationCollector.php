@@ -85,7 +85,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,
                 publishedAt: $publishedAt,
-                contentType: $this->contentType($types->all(), $attachedMedia->count()),
+                contentType: $this->contentType($types->all(), $attachedMedia->count(), is_array($poll)),
                 providerContentType: $types->implode(','),
                 permalink: filled($account->username) ? "https://x.com/{$account->username}/status/{$postId}" : null,
                 excerpt: data_get($row, 'note_tweet.text') ?: data_get($row, 'text'),
@@ -109,8 +109,12 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
     }
 
     /** @param list<mixed> $types */
-    private function contentType(array $types, int $mediaCount): PublicationContentType
+    private function contentType(array $types, int $mediaCount, bool $hasPoll): PublicationContentType
     {
+        if ($hasPoll) {
+            return PublicationContentType::Poll;
+        }
+
         if (in_array('video', $types, true) || in_array('animated_gif', $types, true)) {
             return PublicationContentType::Video;
         }

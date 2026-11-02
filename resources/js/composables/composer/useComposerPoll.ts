@@ -2,7 +2,7 @@ import type {
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
-import { newPoll, type XPoll } from '@/lib/xPoll';
+import { newPoll, type XPoll, type XPollLimits } from '@/lib/xPoll';
 import { ContentType } from '@/types/content-type';
 
 type Composition = Pick<
@@ -16,7 +16,7 @@ type Composition = Pick<
  */
 export const useComposerPoll = (
     composition: Composition,
-    isEditingReply: (group: NetworkGroup) => boolean,
+    pollLimits: (group: NetworkGroup) => XPollLimits | null,
 ) => {
     const destination = (group: NetworkGroup) =>
         composition.resolvedDestination(group.anchor);
@@ -44,54 +44,56 @@ export const useComposerPoll = (
         });
     };
 
-    const setGroupContentType = (
+    /**
+     * The meta a card takes when its type becomes `contentType`: Poll starts
+     * a poll (or brings the last one back), any other type drops it. Null
+     * when the meta stays as it is.
+     */
+    const pollMetaForContentType = (
         group: NetworkGroup,
         contentType: string,
-    ): void => {
+    ): Record<string, any> | null => {
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
-        composition.setGroupOverride(group.key, 'content_type', contentType);
 
         if (contentType === ContentType.XPoll) {
             if (poll === undefined) {
                 metaBeforePoll.set(group.key, current);
             }
-            composition.setGroupOverride(group.key, 'meta', {
-                ...meta,
-                poll: poll ?? pollBeforeOtherType.get(group.key) ?? newPoll(),
-            });
+            const limits = pollLimits(group);
+            const restored =
+                poll ??
+                pollBeforeOtherType.get(group.key) ??
+                (limits ? newPoll(limits) : {});
             pollBeforeOtherType.delete(group.key);
-        } else if (poll !== undefined) {
-            pollBeforeOtherType.set(group.key, poll);
-            const before = metaBeforePoll.get(group.key);
-            metaBeforePoll.delete(group.key);
-            composition.setGroupOverride(
-                group.key,
-                'meta',
-                before !== undefined &&
-                    JSON.stringify({ ...before }) === JSON.stringify(meta)
-                    ? before
-                    : meta,
-            );
+
+            return { ...meta, poll: restored };
         }
+
+        if (poll === undefined) {
+            return null;
+        }
+
+        pollBeforeOtherType.set(group.key, poll);
+        const before = metaBeforePoll.get(group.key);
+        metaBeforePoll.delete(group.key);
+
+        return before !== undefined &&
+            JSON.stringify({ ...before }) === JSON.stringify(meta)
+            ? before
+            : meta;
     };
 
-    const removeGroupPoll = (group: NetworkGroup): void => {
-        setGroupContentType(group, ContentType.XPost);
+    /** Forgets the card's last poll, so picking Poll again starts a new one. */
+    const forgetGroupPoll = (group: NetworkGroup): void => {
         pollBeforeOtherType.delete(group.key);
     };
-
-    const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
-        isPollGroup(group) && !isEditingReply(group)
-            ? 'posts.form.x.poll.attachments'
-            : 'posts.composer.media_not_supported';
 
     return {
         isPollGroup,
         groupPoll,
         setGroupPoll,
-        setGroupContentType,
-        removeGroupPoll,
-        groupMediaDisabledReasonKey,
+        pollMetaForContentType,
+        forgetGroupPoll,
     };
 };

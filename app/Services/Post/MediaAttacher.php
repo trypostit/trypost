@@ -42,9 +42,7 @@ class MediaAttacher
      */
     public function attachFromUrls(Post $post, array $urls, ?User $actor = null): array
     {
-        if ($post->content_type?->acceptsMedia() === false) {
-            throw ValidationException::withMessages(['urls' => __('posts.errors.media_not_accepted')]);
-        }
+        AppendPostMedia::ensureAcceptsMedia($post, 'urls');
 
         $attached = [];
         $failed = [];

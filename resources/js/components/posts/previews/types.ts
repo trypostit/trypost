@@ -21,6 +21,8 @@ export interface PreviewProps {
     contentType?: string;
     meta?: Record<string, any>;
     postedAt?: string | null;
+    /** The account's `publishConfig` (`Platform::publishConfig()`), e.g. X's poll limits. */
+    publishConfig?: Record<string, any> | null;
 }
 
 export interface PreviewAction {

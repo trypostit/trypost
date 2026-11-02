@@ -15,6 +15,7 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -215,10 +216,11 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                if (blank($destination['content']) && $destination['media'] === []) {
-                    $validator->errors()->add("{$key}.content", $contentType === ContentType::XPoll
-                        ? trans('posts.form.x.poll.question_required')
-                        : trans('posts.edit.compliance.requires_content_or_media'));
+                $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation($destination['content']) : null;
+                if ($questionViolation !== null) {
+                    $validator->errors()->add("{$key}.content", $questionViolation);
+                } elseif (blank($destination['content']) && $destination['media'] === []) {
+                    $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)

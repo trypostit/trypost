@@ -950,6 +950,10 @@ enum ContentType: string
                 PublicationContentType::Carousel => self::PinterestCarousel,
                 default => self::PinterestPin,
             },
+            SocialPlatform::X => match ($type) {
+                PublicationContentType::Poll => self::XPoll,
+                default => self::XPost,
+            },
             default => self::defaultFor($platform),
         };
     }

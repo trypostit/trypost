@@ -282,6 +282,7 @@ test('a network that does not report the type keeps the type TryPost published',
 })->with([
     'TikTok photo' => [Platform::TikTok, ContentType::TikTokPhoto, PublicationContentType::Carousel],
     'YouTube Short' => [Platform::YouTube, ContentType::YouTubeShort, PublicationContentType::Short],
+    'X poll' => [Platform::X, ContentType::XPoll, PublicationContentType::Poll],
 ]);
 
 test('a network that does not report the type stores its default on a new publication', function () {

@@ -127,24 +127,12 @@ class XPublisher
      */
     private function pollPayload(Post $post, ?string $content): array
     {
-        if (blank($content)) {
-            throw new XPublishException(
-                userMessage: trans('posts.form.x.poll.question_required'),
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
-
-        if ($post->mediaItems->isNotEmpty()) {
-            throw new XPublishException(
-                userMessage: 'An X poll cannot include media. Remove the media or change the post type.',
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
-
-        $violation = XPoll::requiredViolation($post->meta);
+        $violation = XPoll::questionViolation($content)
+            ?? ($post->mediaItems->isNotEmpty() ? trans('posts.errors.media_not_accepted') : null)
+            ?? data_get(XPoll::requiredViolation($post->meta), 1);
 
         if (filled($violation)) {
-            throw new XPublishException(userMessage: $violation[1], category: ErrorCategory::ContentPolicy);
+            throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
         }
 
         return XPoll::payload($post->meta);

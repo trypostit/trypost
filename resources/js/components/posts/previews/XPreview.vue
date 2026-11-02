@@ -14,11 +14,13 @@ import type { PreviewProps } from '@/components/posts/previews/types';
 import {
     editablePollOptions,
     formatPollLength,
-    X_POLL_DEFAULT_DURATION,
+    pollLimitsOf,
 } from '@/lib/xPoll';
 import { ContentType } from '@/types/content-type';
 
 const props = defineProps<PreviewProps>();
+
+const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
 
 const poll = computed(() =>
     props.contentType === ContentType.XPoll && props.meta?.poll
@@ -27,12 +29,17 @@ const poll = computed(() =>
 );
 
 const pollOptions = computed((): string[] =>
-    poll.value ? editablePollOptions(poll.value.options) : [],
+    poll.value && pollLimits.value
+        ? editablePollOptions(poll.value.options, pollLimits.value.minOptions)
+        : [],
 );
 
-const pollLength = computed((): string =>
-    formatPollLength(poll.value?.duration_minutes ?? X_POLL_DEFAULT_DURATION),
-);
+const pollLength = computed((): string => {
+    const minutes =
+        poll.value?.duration_minutes ?? pollLimits.value?.defaultDuration;
+
+    return minutes === undefined ? '' : formatPollLength(minutes);
+});
 </script>
 
 <template>

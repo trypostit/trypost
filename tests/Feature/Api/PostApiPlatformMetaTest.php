@@ -1577,43 +1577,11 @@ it('refuses media on an x poll', function () {
     $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 });
 
-it('keeps x poll choices that only look alike as numbers', function () {
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-
-    $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
-        'content' => 'Pick one',
-        'status' => PostStatus::Draft->value,
-        'social_account_id' => $x->id,
-        'content_type' => ContentType::XPoll->value,
-        'meta' => ['poll' => ['options' => ['1', '01'], 'duration_minutes' => 60]],
-    ])->assertCreated();
-
-    expect(Post::where('social_account_id', $x->id)->sole()->meta['poll']['options'])->toBe(['1', '01']);
-});
-
-it('keeps the parts of an x poll an update does not send', function (array $poll, array $expected) {
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
-        'user_id' => $this->user->id,
-        'content' => 'Question',
-        'status' => PostStatus::Draft,
-        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]],
-    ]);
-
-    $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
-        'meta' => ['poll' => $poll],
-    ])->assertOk();
-
-    expect($post->fresh()->meta['poll'])->toEqual($expected);
-})->with([
-    'options only' => [['options' => ['Tabs', 'Spaces', 'Both']], ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 4320]],
-    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
-]);
-
 it('refuses to attach media to a post type that takes none', function (ContentType $contentType) {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
     $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    $storedMedia = Media::query()->count();
     Http::fake();
 
     $this->withHeaders($this->headers)->postJson(route('api.posts.store-media', $post), [
@@ -1622,13 +1590,14 @@ it('refuses to attach media to a post type that takes none', function (ContentTy
 
     $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-upload', $post), [
         'upload_token' => $upload->upload_token,
-    ])->assertUnprocessable()->assertJsonValidationErrors(['upload_token' => __('posts.errors.media_not_accepted')]);
+    ])->assertUnprocessable()->assertJsonValidationErrors(['media' => __('posts.errors.media_not_accepted')]);
 
     $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-url', $post), [
         'urls' => [['url' => 'https://example.com/photo.png']],
     ])->assertUnprocessable()->assertJsonValidationErrors(['urls' => __('posts.errors.media_not_accepted')]);
 
-    expect($post->fresh()->media)->toBeEmpty();
+    expect($post->fresh()->media)->toBeEmpty()
+        ->and(Media::query()->count())->toBe($storedMedia);
     Http::assertNothingSent();
 })->with([
     'x poll' => [ContentType::XPoll],

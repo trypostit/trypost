@@ -75,7 +75,8 @@ test('picking poll shows two choices and turns media off', function () {
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
     waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'));
-    $page->assertNoJavaScriptErrors();
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'))
+        ->assertNoJavaScriptErrors();
 });
 
 test('adds choices up to four and removes one', function () {

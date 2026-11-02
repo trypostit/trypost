@@ -21,20 +21,18 @@ import {
     HOURS_PER_DAY,
     joinPollDuration,
     MINUTES_PER_HOUR,
+    pollMaxDays,
     splitPollDuration,
-    X_POLL_DEFAULT_DURATION,
-    X_POLL_MAX_DAYS,
-    X_POLL_MAX_DURATION,
-    X_POLL_MAX_OPTIONS,
-    X_POLL_MIN_OPTIONS,
-    X_POLL_OPTION_MAX_LENGTH,
     type XPoll,
     type XPollDuration,
+    type XPollLimits,
 } from '@/lib/xPoll';
 
 const props = withDefaults(
     defineProps<{
         modelValue: Partial<XPoll>;
+        /** The account's poll limits, from its `publishConfig`. */
+        limits: XPollLimits;
         /** This card's position in the submitted `destinations`; see useMetaErrors. */
         platformIndex: number;
         disabled?: boolean;
@@ -52,23 +50,25 @@ const id = useId();
 const metaError = useMetaErrors(() => props.platformIndex);
 const optionsError = metaError('poll.options');
 const durationError = metaError('poll.duration_minutes');
-const choiceErrors = Array.from({ length: X_POLL_MAX_OPTIONS }, (_, index) =>
-    metaError(`poll.options.${index}`),
+const choiceErrors = Array.from(
+    { length: props.limits.maxOptions },
+    (_, index) => metaError(`poll.options.${index}`),
 );
 
 const choiceId = (index: number): string => `${id}-choice-${index}`;
 
 const options = computed((): string[] =>
-    editablePollOptions(props.modelValue.options),
+    editablePollOptions(props.modelValue.options, props.limits.minOptions),
 );
 const durationMinutes = computed(
-    (): number => props.modelValue.duration_minutes ?? X_POLL_DEFAULT_DURATION,
+    (): number =>
+        props.modelValue.duration_minutes ?? props.limits.defaultDuration,
 );
 const duration = computed(
     (): XPollDuration => splitPollDuration(durationMinutes.value),
 );
 const atLongestLength = computed(
-    (): boolean => durationMinutes.value >= X_POLL_MAX_DURATION,
+    (): boolean => durationMinutes.value >= props.limits.maxDuration,
 );
 
 const lengthParts: {
@@ -79,7 +79,10 @@ const lengthParts: {
     {
         part: 'days',
         labelKey: 'posts.form.x.poll.days',
-        values: Array.from({ length: X_POLL_MAX_DAYS + 1 }, (_, value) => value),
+        values: Array.from(
+            { length: pollMaxDays(props.limits) + 1 },
+            (_, value) => value,
+        ),
     },
     {
         part: 'hours',
@@ -110,7 +113,7 @@ const choiceNumber = (index: number): { number: string } => ({
 });
 
 const choiceLabelKey = (index: number): string =>
-    index < X_POLL_MIN_OPTIONS
+    index < props.limits.minOptions
         ? 'posts.form.x.poll.choice'
         : 'posts.form.x.poll.choice_optional';
 
@@ -123,7 +126,7 @@ const setChoice = (index: number, value: string | number): void => {
 };
 
 const addChoice = async (): Promise<void> => {
-    if (options.value.length >= X_POLL_MAX_OPTIONS) return;
+    if (options.value.length >= props.limits.maxOptions) return;
 
     const added = options.value.length;
     update({ options: [...options.value, ''] });
@@ -142,10 +145,10 @@ const setLengthPart = (
     value: AcceptableValue,
 ): void => {
     update({
-        duration_minutes: joinPollDuration({
-            ...duration.value,
-            [part]: Number(value),
-        }),
+        duration_minutes: joinPollDuration(
+            { ...duration.value, [part]: Number(value) },
+            props.limits,
+        ),
     });
 };
 
@@ -184,16 +187,16 @@ const removePoll = (): void => {
                     <span
                         class="w-11 shrink-0 text-end text-xs tabular-nums"
                         :class="
-                            choiceLength(option) > X_POLL_OPTION_MAX_LENGTH
+                            choiceLength(option) > limits.optionMaxLength
                                 ? 'text-destructive-text'
                                 : 'text-muted-foreground'
                         "
                         :data-testid="`x-poll-choice-${index}-count`"
                         >{{ choiceLength(option) }} /
-                        {{ X_POLL_OPTION_MAX_LENGTH }}</span
+                        {{ limits.optionMaxLength }}</span
                     >
                     <Button
-                        v-if="index >= X_POLL_MIN_OPTIONS"
+                        v-if="index >= limits.minOptions"
                         type="button"
                         variant="ghost"
                         size="icon-sm"
@@ -222,7 +225,7 @@ const removePoll = (): void => {
                 data-testid="x-poll-options-error"
             />
             <Button
-                v-if="options.length < X_POLL_MAX_OPTIONS"
+                v-if="options.length < limits.maxOptions"
                 type="button"
                 variant="outline"
                 size="sm"

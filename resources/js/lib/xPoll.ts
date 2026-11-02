@@ -1,19 +1,19 @@
 import { activeLocale } from '@/language';
 
-export const X_POLL_MIN_OPTIONS = 2;
-export const X_POLL_MAX_OPTIONS = 4;
-export const X_POLL_OPTION_MAX_LENGTH = 25;
-export const X_POLL_MIN_DURATION = 5;
-export const X_POLL_MAX_DURATION = 10080;
-export const X_POLL_DEFAULT_DURATION = 1440;
-/** X caps a poll's question at 280 characters, even for an account with long posts. */
-export const X_POLL_QUESTION_MAX_LENGTH = 280;
-
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
 const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
-/** The longest a poll runs, in days (7). */
-export const X_POLL_MAX_DAYS = X_POLL_MAX_DURATION / MINUTES_PER_DAY;
+
+/** The poll limits X sets, served by `Platform::publishConfig()` (`publishConfig.poll`). */
+export interface XPollLimits {
+    minOptions: number;
+    maxOptions: number;
+    optionMaxLength: number;
+    minDuration: number;
+    maxDuration: number;
+    defaultDuration: number;
+    questionMaxLength: number;
+}
 
 export interface XPollDuration {
     days: number;
@@ -26,15 +26,27 @@ export interface XPoll {
     duration_minutes: number;
 }
 
+/** The poll limits in an account's `publishConfig`, or null on a network without polls. */
+export const pollLimitsOf = (
+    publishConfig: Record<string, any> | null | undefined,
+): XPollLimits | null => publishConfig?.poll ?? null;
+
+/** The longest a poll runs, in whole days. */
+export const pollMaxDays = (limits: XPollLimits): number =>
+    Math.floor(limits.maxDuration / MINUTES_PER_DAY);
+
 export const splitPollDuration = (minutes: number): XPollDuration => ({
     days: Math.floor(minutes / MINUTES_PER_DAY),
     hours: Math.floor((minutes % MINUTES_PER_DAY) / MINUTES_PER_HOUR),
     minutes: minutes % MINUTES_PER_HOUR,
 });
 
-/** Minutes for the picked parts, within X's 5 minutes to 7 days; 7 days takes no hours or minutes. */
-export const joinPollDuration = (parts: XPollDuration): number => {
-    if (parts.days >= X_POLL_MAX_DAYS) return X_POLL_MAX_DURATION;
+/** Minutes for the picked parts, within the poll's shortest and longest length; the longest takes no hours or minutes. */
+export const joinPollDuration = (
+    parts: XPollDuration,
+    limits: XPollLimits,
+): number => {
+    if (parts.days >= pollMaxDays(limits)) return limits.maxDuration;
 
     const total =
         parts.days * MINUTES_PER_DAY +
@@ -42,24 +54,27 @@ export const joinPollDuration = (parts: XPollDuration): number => {
         parts.minutes;
 
     return Math.min(
-        Math.max(total, X_POLL_MIN_DURATION),
-        X_POLL_MAX_DURATION,
+        Math.max(total, limits.minDuration),
+        limits.maxDuration,
     );
 };
 
-export const newPoll = (): XPoll => ({
-    options: Array.from({ length: X_POLL_MIN_OPTIONS }, () => ''),
-    duration_minutes: X_POLL_DEFAULT_DURATION,
+export const newPoll = (limits: XPollLimits): XPoll => ({
+    options: Array.from({ length: limits.minOptions }, () => ''),
+    duration_minutes: limits.defaultDuration,
 });
 
-/** The choices the editor shows: the stored ones, padded to the two a poll starts with. */
-export const editablePollOptions = (options: string[] | undefined): string[] => {
+/** The choices the editor shows: the stored ones, padded to the number a poll starts with. */
+export const editablePollOptions = (
+    options: string[] | undefined,
+    minOptions: number,
+): string[] => {
     const stored = Array.isArray(options) ? options.map(String) : [];
 
     return [
         ...stored,
         ...Array.from(
-            { length: Math.max(X_POLL_MIN_OPTIONS - stored.length, 0) },
+            { length: Math.max(minOptions - stored.length, 0) },
             () => '',
         ),
     ];

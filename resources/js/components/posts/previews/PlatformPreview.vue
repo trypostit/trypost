@@ -33,6 +33,8 @@ interface Props {
     postedAt?: string | null;
     /** The thread post being edited: -1 is the first post, otherwise the reply index. */
     activePost?: number;
+    /** The account's `publishConfig` (`Platform::publishConfig()`). */
+    publishConfig?: Record<string, any> | null;
 }
 
 const props = defineProps<Props>();
@@ -146,6 +148,7 @@ const previewComponent = computed(() => {
                 :content-type="contentType"
                 :meta="meta"
                 :posted-at="postedAt"
+                :publish-config="publishConfig"
                 :thread-position="threadReplies.length ? 'first' : undefined"
             />
             </div>

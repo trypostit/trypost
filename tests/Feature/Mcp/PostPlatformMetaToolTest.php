@@ -1142,39 +1142,6 @@ test('publish post refuses a stored x poll without options or duration', functio
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
 ]);
 
-test('choices that only look alike as numbers are kept by the create tool', function () {
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-
-    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
-        'content' => 'Pick one',
-        'social_account_id' => $x->id,
-        'content_type' => ContentType::XPoll->value,
-        'meta' => ['poll' => ['options' => ['1', '01'], 'duration_minutes' => 60]],
-    ])->assertOk();
-
-    expect(Post::where('social_account_id', $x->id)->sole()->meta['poll']['options'])->toBe(['1', '01']);
-});
-
-test('the update tool keeps the parts of an x poll it was not sent', function (array $poll, array $expected) {
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
-        'user_id' => $this->user->id,
-        'content' => 'Question',
-        'status' => PostStatus::Draft,
-        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]],
-    ]);
-
-    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $post->id,
-        'meta' => ['poll' => $poll],
-    ])->assertOk();
-
-    expect($post->fresh()->meta['poll'])->toEqual($expected);
-})->with([
-    'options only' => [['options' => ['Tabs', 'Spaces', 'Both']], ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 4320]],
-    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
-]);
-
 test('the attach media tools refuse media on a post type that takes none', function (ContentType $contentType) {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
     $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);

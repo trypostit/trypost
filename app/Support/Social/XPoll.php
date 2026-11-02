@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
-use App\Enums\SocialAccount\Platform;
+use App\Enums\X\PollVotingStatus;
 use App\Models\AnalyticsPublication;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -37,11 +37,22 @@ final class XPoll
     public const string LOOKUP_FIELDS = 'options,duration_minutes,end_datetime,voting_status';
 
     /**
-     * The voting states X reports; anything else is stored as unknown (null).
+     * The limits the composer reads from `Platform::publishConfig()`, so they are never copied into TypeScript.
      *
-     * @var list<string>
+     * @return array{minOptions: int, maxOptions: int, optionMaxLength: int, minDuration: int, maxDuration: int, defaultDuration: int, questionMaxLength: int}
      */
-    private const array VOTING_STATUSES = ['open', 'closed'];
+    public static function limits(): array
+    {
+        return [
+            'minOptions' => self::MIN_OPTIONS,
+            'maxOptions' => self::MAX_OPTIONS,
+            'optionMaxLength' => self::OPTION_MAX_LENGTH,
+            'minDuration' => self::MIN_DURATION,
+            'maxDuration' => self::MAX_DURATION,
+            'defaultDuration' => self::DEFAULT_DURATION,
+            'questionMaxLength' => self::QUESTION_MAX_LENGTH,
+        ];
+    }
 
     /**
      * The poll's choices, trimmed, without blanks.
@@ -113,6 +124,14 @@ final class XPoll
     }
 
     /**
+     * A poll's question is the post text: it cannot be scheduled or published without one.
+     */
+    public static function questionViolation(?string $content): ?string
+    {
+        return blank($content) ? trans('posts.form.x.poll.question_required') : null;
+    }
+
+    /**
      * One X poll object as the tweet lookup returns it, reduced to what is stored.
      *
      * @param  array<string, mixed>  $poll
@@ -129,24 +148,20 @@ final class XPoll
                 ])
                 ->values()
                 ->all(),
-            'voting_status' => in_array(data_get($poll, 'voting_status'), self::VOTING_STATUSES, true) ? data_get($poll, 'voting_status') : null,
+            'voting_status' => PollVotingStatus::tryFrom((string) data_get($poll, 'voting_status'))?->value,
             'end_datetime' => data_get($poll, 'end_datetime'),
             'duration_minutes' => self::minutes(data_get($poll, 'duration_minutes')),
         ];
     }
 
     /**
-     * The poll meta of an X post found on the network, or null when it carries no poll.
+     * The poll meta of an X poll found on the network, read from what discovery stored.
      *
-     * @return array{options: list<string>, duration_minutes: int}|null
+     * @return array{options: list<string>, duration_minutes: int}
      */
-    public static function fromPublication(AnalyticsPublication $publication): ?array
+    public static function fromPublication(AnalyticsPublication $publication): array
     {
         $poll = data_get($publication->provider_metadata, 'poll');
-
-        if ($publication->platform !== Platform::X || ! is_array($poll) || blank($poll)) {
-            return null;
-        }
 
         return [
             'options' => Collection::wrap(data_get($poll, 'options'))->pluck('label')->all(),

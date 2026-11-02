@@ -232,7 +232,7 @@ test('the channel export is not available for another workspace channel', functi
 
 test('the poll type counts polls made on x that were never imported', function (string $type, array $expected) {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $publish = function (string $key, int $daysAgo, ?ContentType $contentType = null, ?array $providerMetadata = null) use ($x): array {
+    $publish = function (string $key, int $daysAgo, ?ContentType $contentType = null, PublicationContentType $publicationType = PublicationContentType::Text) use ($x): array {
         $post = filled($contentType)
             ? Post::factory()->forAccount($x, $contentType)->published()->create(['user_id' => $this->user->id])
             : null;
@@ -244,19 +244,17 @@ test('the poll type counts polls made on x that were never imported', function (
             'platform_user_id' => $x->platform_user_id,
             'platform' => Platform::X,
             'post_id' => $post?->id,
-            'content_type' => PublicationContentType::Text,
-            'provider_metadata' => $providerMetadata,
+            'content_type' => $publicationType,
             'provider_published_at' => now('UTC')->subDays($daysAgo),
         ]);
 
         return [$key => $publication->id];
     };
-    $poll = ['poll' => ['options' => [['label' => 'Yes', 'votes' => 3], ['label' => 'No', 'votes' => 1]], 'voting_status' => 'closed', 'end_datetime' => null, 'duration_minutes' => 1440]];
     $ids = [
         ...$publish('post', 2, ContentType::XPost),
         ...$publish('poll', 3, ContentType::XPoll),
         ...$publish('external_post', 4),
-        ...$publish('external_poll', 5, providerMetadata: $poll),
+        ...$publish('external_poll', 5, publicationType: PublicationContentType::Poll),
     ];
 
     $this->actingAs($this->user)

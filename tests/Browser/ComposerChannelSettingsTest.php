@@ -908,8 +908,9 @@ test('the threads card offers a topic and a ghost post drops the topic and the m
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForText($page, '[data-slot="tooltip-content"]', __('posts.composer.media_not_supported'));
-    $page->click("@composer-type-{$id}-threads_post");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'));
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'))
+        ->click("@composer-type-{$id}-threads_post");
     waitFor($page, '@threads-topic-tag');
     $page->assertVisible("@composer-{$id}-media-source-menu")
         ->assertMissing("@composer-{$id}-media-source-disabled")

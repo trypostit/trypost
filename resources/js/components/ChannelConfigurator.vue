@@ -17,8 +17,8 @@ import {
     getContentTypeOptions,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
+import { MEDIALESS_CONTENT_TYPES } from '@/lib/medialessContentTypes';
 import type { Channel } from '@/types/channel';
-import { MEDIALESS_CONTENT_TYPES } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
 

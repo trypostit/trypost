@@ -168,6 +168,7 @@ import {
     type EditorTab,
     rulesFor,
 } from '@/lib/mediaEditor';
+import { MEDIALESS_CONTENT_TYPE_REASONS } from '@/lib/medialessContentTypes';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -177,7 +178,7 @@ import {
     threadRepliesOf,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { X_POLL_QUESTION_MAX_LENGTH } from '@/lib/xPoll';
+import { pollLimitsOf, type XPollLimits } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -190,7 +191,6 @@ import type {
 import {
     CAPTIONLESS_CONTENT_TYPES,
     ContentType,
-    MEDIALESS_CONTENT_TYPE_REASONS,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
@@ -466,17 +466,36 @@ const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
             : option,
     );
 };
+/** The account's poll limits, served in its `publishConfig`; null off X. */
+const accountPollLimits = (account: ComposerAccount): XPollLimits | null =>
+    pollLimitsOf(props.platformConfigs[account.id]?.publishConfig);
 const {
     isPollGroup,
     groupPoll,
     setGroupPoll,
-    setGroupContentType,
-    removeGroupPoll,
-    groupMediaDisabledReasonKey,
-} = useComposerPoll(
-    composition,
-    (group) => activeReply(group) !== undefined,
-);
+    pollMetaForContentType,
+    forgetGroupPoll,
+} = useComposerPoll(composition, (group) => accountPollLimits(group.anchor));
+const setGroupContentType = (
+    group: NetworkGroup,
+    contentType: string,
+): void => {
+    const meta = pollMetaForContentType(group, contentType);
+    composition.setGroupOverride(group.key, 'content_type', contentType);
+
+    if (meta !== null) {
+        composition.setGroupOverride(group.key, 'meta', meta);
+    }
+};
+const removeGroupPoll = (group: NetworkGroup): void => {
+    setGroupContentType(group, ContentType.XPost);
+    forgetGroupPoll(group);
+};
+/** Why the media button is off: a type that takes no media says so, except while a reply is edited. */
+const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
+    (activeReply(group) === undefined &&
+        MEDIALESS_CONTENT_TYPE_REASONS[groupDestination(group).content_type]) ||
+    'posts.composer.media_not_supported';
 const openNetwork = (
     groupKey: string,
     accountId: string | null = null,
@@ -1005,14 +1024,16 @@ const writeContent = (groupKey: string | null, next: string): void => {
 const assistantContent = computed(() =>
     contentOf(sharedStep.value ? null : openGroupKey.value),
 );
-/** The account's text limit for its current post type: a poll's question stays within 280 even with long posts. */
+/** The account's text limit for its current post type: a poll's question keeps the poll's cap even with long posts. */
 const contentLimit = (account: ComposerAccount): number | undefined => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
+    const questionCap = accountPollLimits(account)?.questionMaxLength;
 
     return typeof limit === 'number' &&
+        questionCap !== undefined &&
         composition.resolvedDestination(account).content_type ===
             ContentType.XPoll
-        ? Math.min(limit, X_POLL_QUESTION_MAX_LENGTH)
+        ? Math.min(limit, questionCap)
         : limit;
 };
 const accountLimit = (account: ComposerAccount): number =>
@@ -2853,11 +2874,15 @@ const onDialogOpenChange = (value: boolean): void => {
                                     </p>
                                 </template>
                                 <template
-                                    v-if="isPollGroup(group)"
+                                    v-if="
+                                        isPollGroup(group) &&
+                                        accountPollLimits(group.anchor)
+                                    "
                                     #attachment
                                 >
                                     <XPollField
                                         :model-value="groupPoll(group)"
+                                        :limits="accountPollLimits(group.anchor)!"
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
@@ -3248,6 +3273,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                             groupDestination(group).content_type
                                         "
                                         :meta="groupDestination(group).meta"
+                                        :publish-config="
+                                            platformConfigs[group.anchor.id]
+                                                ?.publishConfig
+                                        "
                                         :active-post="threadActive"
                                     />
                                 </section>
@@ -3271,6 +3300,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                         previewDestination.content_type
                                     "
                                     :meta="previewDestination.meta"
+                                    :publish-config="
+                                        platformConfigs[previewAccount.id]
+                                            ?.publishConfig
+                                    "
                                     :active-post="threadActive"
                                 />
                             </div>
