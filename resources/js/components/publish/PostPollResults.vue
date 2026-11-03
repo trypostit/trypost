@@ -80,7 +80,7 @@ const status = computed((): PollStatus | null => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-1.5 px-4 pb-3" :data-testid="testId">
+    <div class="flex flex-col gap-1.5" :data-testid="testId">
         <p
             v-if="caption"
             class="text-xs font-medium text-muted-foreground"

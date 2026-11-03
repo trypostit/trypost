@@ -21,7 +21,7 @@ const hasPolls = computed(
 </script>
 
 <template>
-    <div v-if="hasPolls" class="flex flex-col">
+    <div v-if="hasPolls" class="flex flex-col gap-3 px-4 pb-3">
         <PostPollResults v-if="poll" :poll="poll" :test-id="testId" />
         <PostPollResults
             v-for="threadPoll in threadPolls"

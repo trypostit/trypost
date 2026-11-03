@@ -33,7 +33,7 @@ import AddToQueueButton from '@/components/publish/AddToQueueButton.vue';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
-import PostCardThreadReplies from '@/components/publish/PostCardThreadReplies.vue';
+import PostCardThread from '@/components/publish/PostCardThread.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
@@ -71,15 +71,11 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
-import {
-    isBlankThreadReply,
-    type ThreadReply,
-    threadRepliesOf,
-} from '@/lib/threadReplies';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
@@ -312,12 +308,8 @@ const sentDetail = computed(() => {
     return metricsDetail.value;
 });
 
-/** The replies of the post's thread, without the empty ones. */
-const threadReplies = computed((): ThreadReply[] =>
-    threadRepliesOf(props.post.meta).filter(
-        (reply) => !isBlankThreadReply(reply),
-    ),
-);
+/** The post's thread, each post with its own text, media and poll. */
+const thread = computed(() => postThreadOf(props.post));
 
 /** The post's polls in every tab, with no votes until X has been read for them. */
 const polls = computed(() => postPollResults(props.post));
@@ -648,7 +640,16 @@ defineExpose({ openDetails });
                                 {{ $t(contentTypeKey) }}
                             </Badge>
                         </div>
+                        <PostCardThread
+                            v-if="filled(thread) && account"
+                            :account="account"
+                            :name="account.display_label"
+                            :posts="thread"
+                            :poll-test-id="`post-poll-${post.id}`"
+                            :test-key="post.id"
+                        />
                         <p
+                            v-else
                             class="line-clamp-4 text-sm whitespace-pre-line text-foreground"
                             :class="{
                                 'text-muted-foreground': !preview,
@@ -656,14 +657,9 @@ defineExpose({ openDetails });
                         >
                             {{ preview || $t('calendar.no_content') }}
                         </p>
-                        <PostCardThreadReplies
-                            v-if="filled(threadReplies)"
-                            :replies="threadReplies"
-                            :test-key="post.id"
-                        />
                     </div>
                     <div
-                        v-if="thumbnails.length"
+                        v-if="thumbnails.length && blank(thread)"
                         class="relative z-10 grid w-24 shrink-0 content-start gap-2"
                         :class="[
                             thumbnails.length > 1 ? 'grid-cols-2' : '',
@@ -740,6 +736,7 @@ defineExpose({ openDetails });
                 />
 
                 <PostPollResultsList
+                    v-if="blank(thread)"
                     :poll="polls.poll"
                     :thread-polls="polls.threadPolls"
                     :test-id="`post-poll-${post.id}`"

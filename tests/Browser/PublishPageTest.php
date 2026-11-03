@@ -686,7 +686,7 @@ test('on a phone the channel filter opens as a sheet on the publish page and the
         ->assertNoJavaScriptErrors();
 })->with(['app.posts.index', 'app.calendar']);
 
-test('a thread in the queue shows its replies under the post, with their media', function () {
+test('a thread in the queue shows each post with its own text and media, as the composer previews it', function () {
     [$user, $workspace] = publishPageSetup();
     connectAiTo($user);
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
@@ -695,17 +695,10 @@ test('a thread in the queue shows its replies under the post, with their media',
         'status' => PostStatus::Scheduled,
         'scheduled_at' => now()->addDay(),
         'content' => 'First post of the thread',
+        'media' => [threadCardImage('root')],
         'meta' => ['thread_replies' => [
             ['text' => 'Second post of the thread', 'media' => []],
-            ['text' => 'Third post, with a photo', 'media' => [[
-                'id' => (string) Str::uuid(),
-                'path' => 'medias/reply.jpg',
-                'url' => 'https://cdn.example.test/reply.jpg',
-                'type' => 'image',
-                'mime_type' => 'image/jpeg',
-                'original_filename' => 'reply.jpg',
-                'size' => 1024,
-            ]]],
+            ['text' => 'Third post, with a photo', 'media' => [threadCardImage('reply')]],
         ]],
     ]);
     $this->actingAs($user);
@@ -713,8 +706,68 @@ test('a thread in the queue shows its replies under the post, with their media',
     $page = visit(route('app.channels.publish', $x));
     waitFor($page, "@post-thread-{$post->id}");
 
-    $page->assertSeeIn("@post-thread-reply-{$post->id}-0", 'Second post of the thread')
-        ->assertSeeIn("@post-thread-reply-{$post->id}-1", 'Third post, with a photo')
-        ->assertPresent("[data-testid=\"post-thread-reply-{$post->id}-1\"] img")
+    $page->assertSeeIn("@post-thread-{$post->id}-0", 'First post of the thread')
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-0\"] img[src=\"https://cdn.example.test/root.jpg\"]")
+        ->assertSeeIn("@post-thread-{$post->id}-1", 'Second post of the thread')
+        ->assertMissing("[data-testid=\"post-thread-{$post->id}-1\"] img[src^=\"https://cdn.example.test\"]")
+        ->assertSeeIn("@post-thread-{$post->id}-2", 'Third post, with a photo')
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-2\"] img[src=\"https://cdn.example.test/reply.jpg\"]")
+        ->assertMissing("@post-thumbnail-{$post->id}-0")
         ->assertNoJavaScriptErrors();
 });
+
+test('a thread of polls in the queue shows each poll under its own post', function () {
+    [$user, $workspace] = publishPageSetup();
+    connectAiTo($user);
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x)->create([
+        'user_id' => $user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'content_type' => ContentType::XPoll,
+        'content' => 'Which desktop?',
+        'meta' => [
+            'poll' => ['options' => ['Linux', 'macOS'], 'duration_minutes' => 1440],
+            'thread_replies' => [
+                ['text' => 'And on the server?', 'media' => [], 'poll' => ['options' => ['Linux', 'Windows Server'], 'duration_minutes' => 1440]],
+                ['text' => 'Thanks for voting', 'media' => [threadCardImage('reply')]],
+            ],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $x));
+    waitFor($page, "@post-thread-{$post->id}");
+
+    $page->assertSeeIn("[data-testid=\"post-thread-{$post->id}-0\"] [data-testid=\"post-poll-{$post->id}\"]", 'macOS')
+        ->assertSeeIn("[data-testid=\"post-thread-{$post->id}-1\"] [data-testid=\"post-poll-{$post->id}-reply-0\"]", 'Windows Server')
+        ->assertMissing("[data-testid=\"post-thread-{$post->id}-2\"] [data-testid^=\"post-poll-\"]")
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-2\"] img[src=\"https://cdn.example.test/reply.jpg\"]")
+        ->assertMissing("@post-poll-{$post->id}-reply-0-caption");
+
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
+    $page->click("@post-details-open-{$post->id}");
+    waitFor($page, "@thread-view-{$post->id}");
+
+    $page->assertSeeIn("[data-testid=\"thread-view-post-{$post->id}-0\"] [data-testid=\"post-details-poll\"]", 'macOS')
+        ->assertSeeIn("[data-testid=\"thread-view-post-{$post->id}-1\"] [data-testid=\"post-details-poll-reply-0\"]", 'Windows Server')
+        ->assertMissing('@post-details-poll-reply-0-caption')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * @return array<string, int|string>
+ */
+function threadCardImage(string $name): array
+{
+    return [
+        'id' => (string) Str::uuid(),
+        'path' => "medias/{$name}.jpg",
+        'url' => "https://cdn.example.test/{$name}.jpg",
+        'type' => 'image',
+        'mime_type' => 'image/jpeg',
+        'original_filename' => "{$name}.jpg",
+        'size' => 1024,
+    ];
+}

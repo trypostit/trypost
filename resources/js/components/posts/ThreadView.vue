@@ -77,6 +77,7 @@ const openMedia = (items: MediaItem[], index: number): void => {
                     :test-key="`${testKey}-${index}`"
                     @open="openMedia(post.media, $event)"
                 />
+                <slot name="post-end" :index="index" />
             </div>
         </li>
     </ol>
