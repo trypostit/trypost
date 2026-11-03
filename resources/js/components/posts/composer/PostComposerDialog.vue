@@ -1373,7 +1373,7 @@ const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
         return;
     }
     const files = Array.from(event.dataTransfer?.files ?? []);
-    if (files.length && !cropUploading.value && groupAcceptsMedia(group)) {
+    if (filled(files) && !cropUploading.value && groupAcceptsMedia(group)) {
         groupMediaUploader(group).add(files);
     }
 };

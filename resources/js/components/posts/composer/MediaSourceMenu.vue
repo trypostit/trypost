@@ -29,6 +29,7 @@ import {
     type MediaImportPayload,
     useMediaImport,
 } from '@/composables/useMediaImport';
+import { filled } from '@/lib/helpers';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
 import {
     type GoogleDrivePick,
@@ -256,7 +257,7 @@ const pickCanvaPreset = (
                                 <IconUpload class="text-foreground" />
                                 {{ $t('posts.composer.media_sources.upload') }}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator v-if="sources.length" />
+                            <DropdownMenuSeparator v-if="filled(sources)" />
                                 <template v-for="option in sources" :key="option.source">
                                     <DropdownMenuSub v-if="option.source === 'canva'">
                                         <DropdownMenuSubTrigger
