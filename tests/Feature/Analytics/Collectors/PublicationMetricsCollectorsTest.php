@@ -926,3 +926,75 @@ test('TikTok classifies an invalid access token as an authentication failure', f
     expect(fn () => app(TikTokPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
 });
+
+function metaMissingObject(string $id): array
+{
+    return ['error' => [
+        'message' => "Unsupported get request. Object with ID '{$id}' does not exist, cannot be loaded due to missing permissions, or does not support this operation.",
+        'type' => 'GraphMethodException',
+        'code' => 100,
+        'error_subcode' => 33,
+    ]];
+}
+
+function metaMetricsPublication(Platform $platform, string $remoteId): AnalyticsPublication
+{
+    $account = SocialAccount::factory()->create(['platform' => $platform, 'platform_user_id' => '17841400000000001']);
+
+    return AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => $platform,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => $remoteId,
+        'content_type' => PublicationContentType::Reel,
+    ]);
+}
+
+test('a Meta post the network no longer returns is reported as gone while the account still reads', function (Platform $platform, string $collector) {
+    $publication = metaMetricsPublication($platform, '17897891718416700');
+    Http::fake(function (Request $request) {
+        return str_contains($request->url(), '/17841400000000001')
+            ? Http::response(['id' => '17841400000000001'])
+            : Http::response(metaMissingObject('17897891718416700'), 400);
+    });
+
+    try {
+        app($collector)->collect($publication, CarbonImmutable::today('UTC'));
+        $this->fail('Expected the collector to report the post as gone.');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->gone)->toBeTrue();
+    }
+})->with([
+    'instagram via facebook login' => [Platform::InstagramFacebook, InstagramPublicationMetricsCollector::class],
+    'instagram login' => [Platform::Instagram, InstagramPublicationMetricsCollector::class],
+    'facebook page' => [Platform::Facebook, FacebookPublicationMetricsCollector::class],
+]);
+
+test('a Meta post that cannot be read is not reported as gone when the account cannot be read either', function () {
+    $publication = metaMetricsPublication(Platform::InstagramFacebook, '17897891718416700');
+    Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
+
+    try {
+        app(InstagramPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+        $this->fail('Expected a collection exception.');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->gone)->toBeFalse();
+    }
+});
+
+test('a Meta post that still reads is not reported as gone when only its insights fail', function () {
+    $publication = metaMetricsPublication(Platform::InstagramFacebook, '17897891718416700');
+    Http::fake(function (Request $request) {
+        return str_contains($request->url(), '/insights')
+            ? Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400)
+            : Http::response(['id' => '17897891718416700']);
+    });
+
+    try {
+        app(InstagramPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+        $this->fail('Expected a collection exception.');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->gone)->toBeFalse();
+    }
+});

@@ -25,6 +25,13 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
 
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
+        $account = $this->account($publication);
+
+        return $this->detectingDeletion($publication, $account->platform->instagramGraphBaseUrl(), fn (): PublicationMetricObservation => $this->read($publication, $date));
+    }
+
+    private function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    {
         $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, ...$account->platform === Platform::InstagramFacebook

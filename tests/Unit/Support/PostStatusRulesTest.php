@@ -27,6 +27,7 @@ test('allows editing for non terminal statuses', function (PostStatus $status) {
 
 test('blocks deletion for sent and failed statuses', function (PostStatus $status) {
     $post = Post::factory()->make(['status' => $status]);
+    $post->setRelation('analyticsPublication', null);
 
     expect(PostStatusRules::blocksDeletion($post))->toBeTrue();
 })->with([

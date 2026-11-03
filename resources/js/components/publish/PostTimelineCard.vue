@@ -16,6 +16,8 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
+    IconTrash,
+    IconTrashX,
     IconX,
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
@@ -265,7 +267,16 @@ const contentTypeKey = computed(() =>
         : null,
 );
 
-const permalink = computed(() => props.post.platform_url ?? null);
+const deletedOnNetwork = computed(
+    () =>
+        props.post.status === PostStatus.Published &&
+        props.post.metrics?.available === false &&
+        props.post.metrics.reason === 'deleted_on_network',
+);
+
+const permalink = computed(() =>
+    deletedOnNetwork.value ? null : (props.post.platform_url ?? null),
+);
 
 const metricsDetail = computed(() => {
     const detail = props.post.metrics ?? null;
@@ -449,6 +460,20 @@ defineExpose({ openDetails });
                 :mode="scheduleMode"
                 plain
             />
+            <Badge
+                v-if="deletedOnNetwork"
+                variant="destructive"
+                class="h-6 gap-1 px-2 [&>svg]:size-4"
+                :data-testid="`post-deleted-on-network-${post.id}`"
+                :title="
+                    $t('posts.publish.actions.deleted_on_network', {
+                        network: platform ? getPlatformLabel(platform) : '',
+                    })
+                "
+            >
+                <IconTrashX />
+                {{ $t('posts.publish.actions.deleted') }}
+            </Badge>
             <PostFailurePopover
                 v-if="showStatus && hasFailure"
                 :post="post"
@@ -689,6 +714,18 @@ defineExpose({ openDetails });
                     :insights-test-id="`post-insights-${post.id}`"
                 />
 
+                <p
+                    v-if="deletedOnNetwork"
+                    class="mx-4 mb-1 text-sm text-destructive-text"
+                    :data-testid="`post-deleted-on-network-hint-${post.id}`"
+                >
+                    {{
+                        $t('posts.publish.actions.deleted_on_network_hint', {
+                            network: platform ? getPlatformLabel(platform) : '',
+                        })
+                    }}
+                </p>
+
                 <div
                     class="m-2 flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-muted p-3 [&_[data-variant=ghost]:hover]:bg-secondary"
                     :data-testid="`post-footer-${post.id}`"
@@ -804,6 +841,27 @@ defineExpose({ openDetails });
                             :post="post"
                             :account="account"
                         />
+                        <template v-if="deletedOnNetwork">
+                            <Button
+                                v-if="post.can_delete"
+                                variant="outline"
+                                class="text-destructive-text"
+                                :data-testid="`post-deleted-delete-${post.id}`"
+                                @click="deletePost(post)"
+                            >
+                                <IconTrash class="size-4" />
+                                {{ $t('posts.publish.actions.delete') }}
+                            </Button>
+                            <Button
+                                v-if="canCreatePost"
+                                variant="outline"
+                                :data-testid="`post-deleted-repost-${post.id}`"
+                                @click="duplicatePostCard(post)"
+                            >
+                                <IconRepeat class="size-4" />
+                                {{ $t('posts.publish.actions.repost') }}
+                            </Button>
+                        </template>
                         <Tooltip v-if="permalink && platform">
                             <TooltipTrigger as-child>
                                 <Button

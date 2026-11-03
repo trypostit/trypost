@@ -388,6 +388,8 @@ class BuildPublishPageProps
     {
         $hasSchedule = [];
 
+        (new \Illuminate\Database\Eloquent\Collection($posts->all()))->loadMissing('analyticsPublication');
+
         $viewer = Auth::user();
         $deletable = [];
 

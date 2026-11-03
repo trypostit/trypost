@@ -17,6 +17,7 @@ class AnalyticsCollectionException extends Exception
         string $message,
         public readonly ?CarbonImmutable $retryAt = null,
         public readonly bool $gone = false,
+        public readonly bool $missing = false,
     ) {
         parent::__construct($message);
     }

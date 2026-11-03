@@ -22,6 +22,11 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
 {
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
+        return $this->detectingDeletion($publication, rtrim((string) config('trypost.platforms.facebook.graph_api'), '/'), fn (): PublicationMetricObservation => $this->read($publication, $date));
+    }
+
+    private function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    {
         $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Analytics\SyncTryPostPublication;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
@@ -23,7 +25,9 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
 use App\Support\Analytics\SyncCadence;
+use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -539,3 +543,39 @@ test('the daily run leaves a fresh post to its first read an hour after publishi
     Bus::assertNotDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $fresh->id);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
 })->with([Platform::X, Platform::Instagram]);
+
+test('an instagram post deleted on the network is marked deleted and shown as deleted on its card', function () {
+    CarbonImmutable::setTestNow('2026-11-03 06:00:00 UTC');
+    $account = SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook, 'platform_user_id' => '17841400000000001']);
+    $post = Post::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::InstagramFacebook,
+        'status' => App\Enums\Post\Status::Published,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => '17897891718416700',
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::InstagramFacebook,
+        'network' => Platform::InstagramFacebook->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '17897891718416700',
+        'provider_published_at' => CarbonImmutable::now('UTC')->subHours(2),
+    ]);
+    Http::fake(function (Request $request) {
+        return str_contains($request->url(), '/17841400000000001')
+            ? Http::response(['id' => '17841400000000001'])
+            : Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'type' => 'GraphMethodException']], 400);
+    });
+
+    app()->call([new CollectPublicationMetrics($publication->id, '2026-11-03'), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and(app(ReadPublicationAnalytics::class)->metricsFor($post->fresh()))
+        ->toMatchArray(['reason' => 'deleted_on_network'])
+        ->and(PostStatusRules::blocksDeletion($post->fresh()))->toBeFalse();
+});
