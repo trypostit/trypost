@@ -59,6 +59,33 @@ export const withReplyPoll = (
     return { key, text, media: [], poll };
 };
 
+/**
+ * The error each reply of a thread shows under its text, from the page's
+ * validation errors under `prefix` (`meta.thread_replies`, or
+ * `destinations.{n}.meta.thread_replies` in a batch): the first error of the
+ * reply or of a field in it, except its poll's, which show under the poll.
+ */
+export const replyErrorsOf = (
+    errors: Record<string, string>,
+    prefix: string,
+): Record<number, string> => {
+    const replyKey = new RegExp(
+        `^${prefix.replaceAll('.', '\\.')}\\.(\\d+)(?:\\.(\\w+))?`,
+    );
+    const found: Record<number, string> = {};
+
+    for (const [key, message] of Object.entries(errors)) {
+        const [, index, field] = key.match(replyKey) ?? [];
+        const showsUnderReply = filled(index) && field !== 'poll';
+
+        if (showsUnderReply) {
+            found[Number(index)] ??= message;
+        }
+    }
+
+    return found;
+};
+
 /** The post type a reply publishes as: a poll, or its network's reply type. */
 export const threadReplyContentType = (
     platform: string,

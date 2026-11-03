@@ -174,6 +174,7 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
+    replyErrorsOf,
     type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
@@ -1201,27 +1202,23 @@ const activeRemaining = (group: NetworkGroup): number | null => {
 
     return groupRemaining(group);
 };
-const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
-    const found: Record<number, string> = {};
-    for (const account of group.accounts) {
-        const prefix = props.initialPost
-            ? 'meta.thread_replies'
-            : `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
-        for (const [key, message] of Object.entries(errors.value)) {
-            if (!key.startsWith(`${prefix}.`)) continue;
-
-            const [index, field] = key.slice(prefix.length + 1).split('.');
-            const showsUnderPollChoices = field === 'poll';
-
-            if (showsUnderPollChoices) continue;
-
-            const match = Number(index);
-            if (Number.isInteger(match)) found[match] ??= message;
-        }
+/** Where the server reports an account's thread replies: one post on an edit, a batch on create. */
+const threadRepliesErrorPrefix = (account: ComposerAccount): string => {
+    if (props.initialPost) {
+        return 'meta.thread_replies';
     }
 
-    return found;
+    return `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
 };
+/** Each reply's error for the card, the first account's winning. */
+const threadReplyErrors = (group: NetworkGroup): Record<number, string> =>
+    group.accounts.reduce<Record<number, string>>(
+        (found, account) => ({
+            ...replyErrorsOf(errors.value, threadRepliesErrorPrefix(account)),
+            ...found,
+        }),
+        {},
+    );
 const replyUploaderKey = (groupKey: string, replyKey: string): string =>
     `${groupKey}::${replyKey}`;
 const replyUploaderFor = (
