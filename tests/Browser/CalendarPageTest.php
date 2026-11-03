@@ -384,6 +384,38 @@ test('show posting times renders empty slots in the week and month views', funct
     $month->assertNoJavaScriptErrors();
 });
 
+test('a calendar opened by its link asks for its posting times only once its page is in the browser history, so Back still returns to it', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $post = calendarPagePost($linkedin, now('UTC')->startOfWeek()->addWeek()->addDays(2)->setTime(10, 0));
+    $this->actingAs($user);
+
+    $page = visit(route('app.settings.preferences'));
+    $page->page()->context()->addInitScript(<<<'JS'
+        window.__slotsAskedWith = [];
+        const setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+        XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+            if (name.toLowerCase() === 'x-inertia-partial-data' && String(value).split(',').includes('slots')) {
+                window.__slotsAskedWith.push(window.history.state?.page ? 'page' : 'nothing');
+            }
+
+            return setRequestHeader.call(this, name, value);
+        };
+    JS);
+    $page->navigate(route('app.calendar', ['view' => 'week']));
+    waitForCondition($page, 'window.__slotsAskedWith.length === 1');
+
+    expect($page->script('window.__slotsAskedWith'))->toBe(['page']);
+
+    $page->click('@calendar-next');
+    waitFor($page, "@calendar-post-{$post->id}");
+    $page->back();
+    waitForGone($page, "@calendar-post-{$post->id}");
+
+    $page->assertPathIs((string) parse_url(route('app.calendar', ['view' => 'week']), PHP_URL_PATH))
+        ->assertScript("new URLSearchParams(location.search).has('week')", false)
+        ->assertNoJavaScriptErrors();
+});
+
 test('in the month a post shows its network in color and a status icon with a tooltip, and a free posting time reads as a hatched empty slot', function () {
     [$user, $linkedin] = calendarPageSetup();
     $schedule = PostingSchedule::empty();
