@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Validator;
 
 test('custom meta messages cover pinterest, instagram collaborators, google business and x polls', function () {
@@ -22,13 +23,13 @@ test('custom meta messages cover pinterest, instagram collaborators, google busi
         'meta.poll.array' => __('posts.form.x.poll.poll_object'),
         'meta.poll.options.array' => __('posts.form.x.poll.options_list'),
         'meta.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
-        'meta.poll.duration_minutes.integer' => __('posts.form.x.poll.duration_range'),
-        'meta.poll.duration_minutes.between' => __('posts.form.x.poll.duration_range'),
+        'meta.poll.duration_minutes.integer' => XPoll::durationRangeMessage(),
+        'meta.poll.duration_minutes.between' => XPoll::durationRangeMessage(),
         'meta.thread_replies.*.poll.array' => __('posts.form.x.poll.poll_object'),
         'meta.thread_replies.*.poll.options.array' => __('posts.form.x.poll.options_list'),
         'meta.thread_replies.*.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
-        'meta.thread_replies.*.poll.duration_minutes.integer' => __('posts.form.x.poll.duration_range'),
-        'meta.thread_replies.*.poll.duration_minutes.between' => __('posts.form.x.poll.duration_range'),
+        'meta.thread_replies.*.poll.duration_minutes.integer' => XPoll::durationRangeMessage(),
+        'meta.thread_replies.*.poll.duration_minutes.between' => XPoll::durationRangeMessage(),
     ]);
 });
 

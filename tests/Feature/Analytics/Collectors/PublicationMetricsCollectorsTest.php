@@ -1071,3 +1071,59 @@ test('the x collector reads the polls of the thread replies in the same request 
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
     expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
 });
+
+test('the x collector reads the post alone when the reply with a poll never went live', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'meta' => ['poll' => ['options' => ['✅ Refund', '❌ No refund'], 'duration_minutes' => 1440], 'thread_replies' => [
+            ['text' => 'Why?', 'media' => []],
+            ['text' => 'And next time?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+        ]],
+    ]);
+    $post->forceFill(['thread_reply_ids' => ['2117330256323379667']])->save();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '2117330256323379666',
+    ]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets/2117330256323379666*' => Http::response(xPollResponse(now('UTC')->addDay()->toIso8601ZuluString('millisecond')))]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => str_starts_with($request->url(), config('trypost.platforms.x.api').'/tweets/2117330256323379666'));
+    expect($observation->providerMetadata)->toHaveKey('poll')->not->toHaveKey('thread_polls');
+});
+
+test('the x collector leaves out a reply poll whose tweet is gone and still reads the post', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'meta' => ['poll' => ['options' => ['✅ Refund', '❌ No refund'], 'duration_minutes' => 1440], 'thread_replies' => [
+            ['text' => 'And next time?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+        ]],
+    ]);
+    $post->forceFill(['thread_reply_ids' => ['2117330256323379668']])->save();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '2117330256323379666',
+    ]);
+    $root = xPollResponse(now('UTC')->addDay()->toIso8601ZuluString('millisecond'));
+    Http::fake([config('trypost.platforms.x.api').'/tweets*' => Http::response([
+        'data' => [['id' => '2117330256323379666', ...$root['data']]],
+        'includes' => $root['includes'],
+        'errors' => [['resource_id' => '2117330256323379668', 'title' => 'Not Found Error']],
+    ])]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toHaveKey('poll')->not->toHaveKey('thread_polls');
+    $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
+    expect($metrics->all())->toMatchArray(['impressions' => 200]);
+});

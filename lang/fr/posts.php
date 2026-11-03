@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Ajoutez au moins 2 choix à votre sondage.',
+                'options_required' => 'Ajoutez au moins :min choix à votre sondage.',
                 'options_distinct' => 'Chaque choix du sondage doit être différent. Modifiez celui qui se répète.',
                 'duration_required' => 'Choisissez la durée de votre sondage.',
                 'question_required' => 'Écrivez la question de votre sondage dans le texte du post.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Envoyez les choix du sondage sous forme de liste de textes.',
                 'choice_text' => 'Chaque choix du sondage doit être du texte.',
                 'choice_max' => 'Chaque choix du sondage peut contenir jusqu\'à :max caractères. Raccourcissez le plus long.',
-                'duration_range' => 'Un sondage peut rester ouvert de 5 minutes à 7 jours. Choisissez une durée dans cet intervalle.',
+                'duration_range' => 'Un sondage peut rester ouvert de :min minutes à :max jours. Choisissez une durée dans cet intervalle.',
                 'choices' => 'Choix',
                 'choice' => 'Choix :number',
                 'choice_optional' => 'Choix :number (facultatif)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Sondage',
-            'description' => 'Question avec 2 à 4 choix',
+            'description' => 'Question avec :min à :max choix',
         ],
         'threads_post' => [
             'label' => 'Fil',

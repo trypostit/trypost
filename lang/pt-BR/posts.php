@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Adicione pelo menos 2 opções à sua enquete.',
+                'options_required' => 'Adicione pelo menos :min opções à sua enquete.',
                 'options_distinct' => 'Cada opção da enquete precisa ser diferente. Altere a repetida.',
                 'duration_required' => 'Escolha por quanto tempo sua enquete fica aberta.',
                 'question_required' => 'Escreva a pergunta da sua enquete no texto do post.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Envie as opções da enquete como uma lista de textos.',
                 'choice_text' => 'Cada opção da enquete precisa ser um texto.',
                 'choice_max' => 'Cada opção da enquete pode ter até :max caracteres. Encurte a mais longa.',
-                'duration_range' => 'Uma enquete pode ficar aberta de 5 minutos a 7 dias. Escolha uma duração nesse intervalo.',
+                'duration_range' => 'Uma enquete pode ficar aberta de :min minutos a :max dias. Escolha uma duração nesse intervalo.',
                 'choices' => 'Opções',
                 'choice' => 'Opção :number',
                 'choice_optional' => 'Opção :number (opcional)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Enquete',
-            'description' => 'Pergunta com 2 a 4 opções',
+            'description' => 'Pergunta com :min a :max opções',
         ],
         'threads_post' => [
             'label' => 'Thread',

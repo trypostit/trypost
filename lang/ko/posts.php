@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => '투표에 선택지를 2개 이상 추가하세요.',
+                'options_required' => '투표에 선택지를 :min개 이상 추가하세요.',
                 'options_distinct' => '투표 선택지는 서로 달라야 합니다. 중복된 선택지를 바꿔 주세요.',
                 'duration_required' => '투표를 얼마나 열어 둘지 선택하세요.',
                 'question_required' => '게시물 텍스트에 투표 질문을 작성해 주세요.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => '투표 선택지를 텍스트 목록으로 보내 주세요.',
                 'choice_text' => '투표 선택지는 텍스트여야 합니다.',
                 'choice_max' => '투표 선택지는 각각 최대 :max자까지 입력할 수 있습니다. 긴 선택지를 줄여 주세요.',
-                'duration_range' => '투표는 5분에서 7일까지 열어 둘 수 있습니다. 이 범위 안에서 기간을 선택하세요.',
+                'duration_range' => '투표는 :min분에서 :max일까지 열어 둘 수 있습니다. 이 범위 안에서 기간을 선택하세요.',
                 'choices' => '선택지',
                 'choice' => '선택지 :number',
                 'choice_optional' => '선택지 :number (선택 사항)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => '투표',
-            'description' => '선택지 2~4개가 있는 질문',
+            'description' => '선택지 :min~:max개가 있는 질문',
         ],
         'threads_post' => [
             'label' => '스레드',

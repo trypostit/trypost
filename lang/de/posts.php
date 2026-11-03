@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Füge deiner Umfrage mindestens 2 Antworten hinzu.',
+                'options_required' => 'Füge deiner Umfrage mindestens :min Antworten hinzu.',
                 'options_distinct' => 'Jede Antwort muss anders sein. Ändere die doppelte.',
                 'duration_required' => 'Wähle, wie lange deine Umfrage läuft.',
                 'question_required' => 'Schreib die Frage deiner Umfrage in den Text des Beitrags.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Sende die Antworten der Umfrage als Liste von Texten.',
                 'choice_text' => 'Jede Antwort der Umfrage muss Text sein.',
                 'choice_max' => 'Jede Antwort kann bis zu :max Zeichen haben. Kürze die längere.',
-                'duration_range' => 'Eine Umfrage kann 5 Minuten bis 7 Tage laufen. Wähle eine Dauer in diesem Bereich.',
+                'duration_range' => 'Eine Umfrage kann :min Minuten bis :max Tage laufen. Wähle eine Dauer in diesem Bereich.',
                 'choices' => 'Antworten',
                 'choice' => 'Antwort :number',
                 'choice_optional' => 'Antwort :number (optional)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Umfrage',
-            'description' => 'Frage mit 2 bis 4 Antworten',
+            'description' => 'Frage mit :min bis :max Antworten',
         ],
         'threads_post' => [
             'label' => 'Thread',

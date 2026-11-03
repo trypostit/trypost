@@ -112,7 +112,12 @@ enum ContentType: string
 
     public function description(): string
     {
-        return (string) trans("posts.content_types.{$this->value}.description");
+        $replacements = match ($this) {
+            self::XPoll => ['min' => XPoll::MIN_OPTIONS, 'max' => XPoll::MAX_OPTIONS],
+            default => [],
+        };
+
+        return (string) trans("posts.content_types.{$this->value}.description", $replacements);
     }
 
     public function platform(): SocialPlatform

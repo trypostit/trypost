@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Aggiungi almeno 2 opzioni al sondaggio.',
+                'options_required' => 'Aggiungi almeno :min opzioni al sondaggio.',
                 'options_distinct' => 'Ogni opzione del sondaggio deve essere diversa. Modifica quella ripetuta.',
                 'duration_required' => 'Scegli per quanto tempo resta aperto il sondaggio.',
                 'question_required' => 'Scrivi la domanda del sondaggio nel testo del post.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Invia le opzioni del sondaggio come elenco di testi.',
                 'choice_text' => 'Ogni opzione del sondaggio deve essere un testo.',
                 'choice_max' => 'Ogni opzione del sondaggio può avere fino a :max caratteri. Accorcia quella più lunga.',
-                'duration_range' => 'Un sondaggio può restare aperto da 5 minuti a 7 giorni. Scegli una durata in questo intervallo.',
+                'duration_range' => 'Un sondaggio può restare aperto da :min minuti a :max giorni. Scegli una durata in questo intervallo.',
                 'choices' => 'Opzioni',
                 'choice' => 'Opzione :number',
                 'choice_optional' => 'Opzione :number (facoltativa)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Sondaggio',
-            'description' => 'Domanda con 2-4 opzioni',
+            'description' => 'Domanda con :min-:max opzioni',
         ],
         'threads_post' => [
             'label' => 'Thread',

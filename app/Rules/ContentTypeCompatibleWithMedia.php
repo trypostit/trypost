@@ -144,6 +144,14 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
 
         $media = $this->media();
 
+        if ($contentType === ContentType::XPoll) {
+            if ($media !== []) {
+                $fail(trans('posts.errors.media_not_accepted'));
+            }
+
+            return;
+        }
+
         if ($contentType->maxMediaCount() === 0) {
             if ($media !== []) {
                 $fail(trans('posts.form.warnings.text_only'));

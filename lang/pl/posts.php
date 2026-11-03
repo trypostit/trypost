@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Dodaj do ankiety co najmniej 2 opcje.',
+                'options_required' => 'Dodaj do ankiety co najmniej :min opcje.',
                 'options_distinct' => 'Każda opcja ankiety musi być inna. Zmień powtórzoną.',
                 'duration_required' => 'Wybierz, jak długo ankieta ma być otwarta.',
                 'question_required' => 'Wpisz pytanie ankiety w treści posta.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Wyślij opcje ankiety jako listę tekstów.',
                 'choice_text' => 'Każda opcja ankiety musi być tekstem.',
                 'choice_max' => 'Każda opcja ankiety może mieć maksymalnie :max znaków. Skróć dłuższą.',
-                'duration_range' => 'Ankieta może być otwarta od 5 minut do 7 dni. Wybierz czas trwania w tym zakresie.',
+                'duration_range' => 'Ankieta może być otwarta od :min minut do :max dni. Wybierz czas trwania w tym zakresie.',
                 'choices' => 'Opcje',
                 'choice' => 'Opcja :number',
                 'choice_optional' => 'Opcja :number (opcjonalna)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Ankieta',
-            'description' => 'Pytanie z 2 do 4 opcjami',
+            'description' => 'Pytanie z :min do :max opcjami',
         ],
         'threads_post' => [
             'label' => 'Wątek',

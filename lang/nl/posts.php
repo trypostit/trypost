@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Voeg minstens 2 keuzes toe aan je poll.',
+                'options_required' => 'Voeg minstens :min keuzes toe aan je poll.',
                 'options_distinct' => 'Elke keuze in de poll moet anders zijn. Pas de dubbele aan.',
                 'duration_required' => 'Kies hoe lang je poll openstaat.',
                 'question_required' => 'Schrijf de vraag van je poll in de tekst van het bericht.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Stuur de keuzes van de poll als een lijst met tekst.',
                 'choice_text' => 'Elke keuze in de poll moet tekst zijn.',
                 'choice_max' => 'Elke keuze in de poll mag maximaal :max tekens hebben. Maak de langere korter.',
-                'duration_range' => 'Een poll kan van 5 minuten tot 7 dagen openstaan. Kies een duur binnen dat bereik.',
+                'duration_range' => 'Een poll kan van :min minuten tot :max dagen openstaan. Kies een duur binnen dat bereik.',
                 'choices' => 'Keuzes',
                 'choice' => 'Keuze :number',
                 'choice_optional' => 'Keuze :number (optioneel)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Poll',
-            'description' => 'Vraag met 2 tot 4 keuzes',
+            'description' => 'Vraag met :min tot :max keuzes',
         ],
         'threads_post' => [
             'label' => 'Thread',

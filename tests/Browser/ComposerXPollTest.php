@@ -342,6 +342,21 @@ test('a saved poll switched to post and back has no unsaved change', function ()
         ->assertNoJavaScriptErrors();
 });
 
+test('a saved draft with a poll on a thread reply closes without an unsaved change', function () {
+    $post = seedXPollPost(attributes: ['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ]]]);
+    $page = openXPollComposer($post);
+    waitFor($page, '@thread-reply-collapsed-0');
+
+    $page->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a saved poll with other settings switched to post and back has no unsaved change', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'is_ai_generated' => true]]);
     $id = $post->social_account_id;

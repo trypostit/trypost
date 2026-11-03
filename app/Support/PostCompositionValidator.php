@@ -204,7 +204,9 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                if ($contentType === ContentType::XPoll && filled(data_get($destination, 'media'))) {
+                $pollWithMedia = $contentType === ContentType::XPoll && filled(data_get($destination, 'media'));
+
+                if ($pollWithMedia) {
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
                 }
 
@@ -238,11 +240,13 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                foreach (ContentTypeCompatibleWithMedia::errorsFor([[
-                    'key' => "{$key}.content_type",
-                    'content_type' => $destination['content_type'],
-                ]], $destination['media'], $workspace) as $field => $message) {
-                    $validator->errors()->add($field, $message);
+                if (! $pollWithMedia) {
+                    foreach (ContentTypeCompatibleWithMedia::errorsFor([[
+                        'key' => "{$key}.content_type",
+                        'content_type' => $destination['content_type'],
+                    ]], $destination['media'], $workspace) as $field => $message) {
+                        $validator->errors()->add($field, $message);
+                    }
                 }
 
                 foreach (ThreadReplies::mediaErrors($account->platform, $destination['meta'] ?? [], $workspace) as $field => $message) {

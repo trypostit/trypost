@@ -1119,7 +1119,7 @@ test('an incomplete x poll cannot be scheduled through the create tool', functio
         'meta' => blank($poll) ? [] : ['poll' => $poll],
     ])->assertHasErrors([__($message)]);
 })->with([
-    'no options' => [null, 'posts.form.x.poll.options_required'],
+    'no options' => [null, fn (): string => XPoll::optionsRequiredMessage()],
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
 ]);
 
@@ -1138,7 +1138,7 @@ test('publish post refuses a stored x poll without options or duration', functio
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft);
 })->with([
-    'no options' => [[], 'posts.form.x.poll.options_required'],
+    'no options' => [[], fn (): string => XPoll::optionsRequiredMessage()],
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
 ]);
 

@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Add at least 2 choices to your poll.',
+                'options_required' => 'Add at least :min choices to your poll.',
                 'options_distinct' => 'Each poll choice must be different. Change the repeated one.',
                 'duration_required' => 'Choose how long your poll stays open.',
                 'question_required' => 'Write your poll question in the post text.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Send the poll choices as a list of text.',
                 'choice_text' => 'Each poll choice must be text.',
                 'choice_max' => 'Each poll choice can have up to :max characters. Shorten the longer one.',
-                'duration_range' => 'A poll can stay open from 5 minutes to 7 days. Choose a length in that range.',
+                'duration_range' => 'A poll can stay open from :min minutes to :max days. Choose a length in that range.',
                 'choices' => 'Choices',
                 'choice' => 'Choice :number',
                 'choice_optional' => 'Choice :number (optional)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Poll',
-            'description' => 'Question with 2 to 4 choices',
+            'description' => 'Question with :min to :max choices',
         ],
         'threads_post' => [
             'label' => 'Thread',

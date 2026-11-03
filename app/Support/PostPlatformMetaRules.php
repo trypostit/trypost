@@ -198,13 +198,13 @@ class PostPlatformMetaRules
             "{$prefix}.poll.array" => __('posts.form.x.poll.poll_object'),
             "{$prefix}.poll.options.array" => __('posts.form.x.poll.options_list'),
             "{$prefix}.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
-            "{$prefix}.poll.duration_minutes.integer" => __('posts.form.x.poll.duration_range'),
-            "{$prefix}.poll.duration_minutes.between" => __('posts.form.x.poll.duration_range'),
+            "{$prefix}.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
+            "{$prefix}.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
             "{$prefix}.thread_replies.*.poll.array" => __('posts.form.x.poll.poll_object'),
             "{$prefix}.thread_replies.*.poll.options.array" => __('posts.form.x.poll.options_list'),
             "{$prefix}.thread_replies.*.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
-            "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => __('posts.form.x.poll.duration_range'),
-            "{$prefix}.thread_replies.*.poll.duration_minutes.between" => __('posts.form.x.poll.duration_range'),
+            "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
+            "{$prefix}.thread_replies.*.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
         ];
     }
 

@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Anketine en az 2 seçenek ekle.',
+                'options_required' => 'Anketine en az :min seçenek ekle.',
                 'options_distinct' => 'Anket seçeneklerinin her biri farklı olmalı. Tekrar eden seçeneği değiştir.',
                 'duration_required' => 'Anketinin ne kadar açık kalacağını seç.',
                 'question_required' => 'Anket sorunu gönderi metnine yaz.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Anket seçeneklerini metin listesi olarak gönder.',
                 'choice_text' => 'Her anket seçeneği metin olmalı.',
                 'choice_max' => 'Her anket seçeneği en fazla :max karakter olabilir. Uzun olanı kısalt.',
-                'duration_range' => 'Bir anket 5 dakikadan 7 güne kadar açık kalabilir. Bu aralıkta bir süre seç.',
+                'duration_range' => 'Bir anket :min dakikadan :max güne kadar açık kalabilir. Bu aralıkta bir süre seç.',
                 'choices' => 'Seçenekler',
                 'choice' => 'Seçenek :number',
                 'choice_optional' => 'Seçenek :number (isteğe bağlı)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Anket',
-            'description' => '2 ila 4 seçenekli soru',
+            'description' => ':min ila :max seçenekli soru',
         ],
         'threads_post' => [
             'label' => 'Flood',

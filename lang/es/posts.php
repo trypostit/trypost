@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => 'Añade al menos 2 opciones a tu encuesta.',
+                'options_required' => 'Añade al menos :min opciones a tu encuesta.',
                 'options_distinct' => 'Cada opción de la encuesta debe ser distinta. Cambia la repetida.',
                 'duration_required' => 'Elige cuánto tiempo estará abierta tu encuesta.',
                 'question_required' => 'Escribe la pregunta de tu encuesta en el texto de la publicación.',
@@ -419,7 +419,7 @@ return [
                 'options_list' => 'Envía las opciones de la encuesta como una lista de textos.',
                 'choice_text' => 'Cada opción de la encuesta debe ser texto.',
                 'choice_max' => 'Cada opción de la encuesta puede tener hasta :max caracteres. Acorta la más larga.',
-                'duration_range' => 'Una encuesta puede estar abierta de 5 minutos a 7 días. Elige una duración dentro de ese rango.',
+                'duration_range' => 'Una encuesta puede estar abierta de :min minutos a :max días. Elige una duración dentro de ese rango.',
                 'choices' => 'Opciones',
                 'choice' => 'Opción :number',
                 'choice_optional' => 'Opción :number (opcional)',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => 'Encuesta',
-            'description' => 'Pregunta con 2 a 4 opciones',
+            'description' => 'Pregunta con :min a :max opciones',
         ],
         'threads_post' => [
             'label' => 'Hilo',

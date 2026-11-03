@@ -490,7 +490,7 @@ test('x discovery keeps the poll of a post made on x', function () {
     $page = app(XPublicationCollector::class)->page($account, null, now()->subYear()->toImmutable());
 
     expect($page->publications[0]->contentType)->toBe(PublicationContentType::Poll)
-        ->and($page->publications[1]->contentType)->not->toBe(PublicationContentType::Poll)
+        ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Image)
         ->and($page->publications[2]->contentType)->toBe(PublicationContentType::Text)
         ->and($page->publications[0]->providerMetadata['poll'])->toEqual([
             'options' => [['label' => '✅ Refund', 'votes' => 3], ['label' => '❌ No refund', 'votes' => 1]],

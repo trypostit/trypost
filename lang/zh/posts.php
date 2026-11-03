@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => '请为投票至少添加 2 个选项。',
+                'options_required' => '请为投票至少添加 :min 个选项。',
                 'options_distinct' => '每个投票选项必须不同，请修改重复的选项。',
                 'duration_required' => '请选择投票的开放时长。',
                 'question_required' => '请在帖子正文中写下投票问题。',
@@ -419,7 +419,7 @@ return [
                 'options_list' => '请以文本列表的形式发送投票选项。',
                 'choice_text' => '每个投票选项都必须是文本。',
                 'choice_max' => '每个投票选项最多 :max 个字符。请缩短较长的选项。',
-                'duration_range' => '投票可开放 5 分钟到 7 天。请在此范围内选择时长。',
+                'duration_range' => '投票可开放 :min 分钟到 :max 天。请在此范围内选择时长。',
                 'choices' => '选项',
                 'choice' => '选项 :number',
                 'choice_optional' => '选项 :number（可选）',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => '投票',
-            'description' => '带 2 到 4 个选项的问题',
+            'description' => '带 :min 到 :max 个选项的问题',
         ],
         'threads_post' => [
             'label' => '串文',

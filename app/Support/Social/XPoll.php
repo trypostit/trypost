@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\X\PollVotingStatus;
 use App\Models\AnalyticsPublication;
 use App\Services\Social\ContentSanitizer;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -129,6 +130,24 @@ final class XPoll
     }
 
     /**
+     * "Add at least 2 choices", with the minimum from X's rules.
+     */
+    public static function optionsRequiredMessage(): string
+    {
+        return trans('posts.form.x.poll.options_required', ['min' => self::MIN_OPTIONS]);
+    }
+
+    /**
+     * "From 5 minutes to 7 days", with the range from X's rules.
+     */
+    public static function durationRangeMessage(): string
+    {
+        $maxDays = intdiv(self::MAX_DURATION, CarbonInterface::MINUTES_PER_HOUR * CarbonInterface::HOURS_PER_DAY);
+
+        return trans('posts.form.x.poll.duration_range', ['min' => self::MIN_DURATION, 'max' => $maxDays]);
+    }
+
+    /**
      * What a poll needs before its post is scheduled or published.
      *
      * @return array{0: string, 1: string}|null [field, message]
@@ -136,7 +155,7 @@ final class XPoll
     public static function requiredViolation(mixed $meta): ?array
     {
         if (count(self::options($meta)) < self::MIN_OPTIONS) {
-            return ['poll.options', trans('posts.form.x.poll.options_required')];
+            return ['poll.options', self::optionsRequiredMessage()];
         }
 
         if (blank(data_get($meta, 'poll.duration_minutes'))) {

@@ -850,10 +850,15 @@ test('an imported x poll without a length gets the default one', function () {
 test('a poll published through trypost is linked, not imported again', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);
     $tryPost = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'x-poll-2']);
-    $publication = externalPublication($account, ['remote_id' => 'x-poll-2']);
+    $publication = externalPublication($account, [
+        'remote_id' => 'x-poll-2',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['poll' => ['options' => [['label' => 'Yes', 'votes' => 3], ['label' => 'No', 'votes' => 1]], 'voting_status' => 'open', 'duration_minutes' => 1440]],
+    ]);
     $count = Post::query()->count();
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->count())->toBe($count)
+        ->and(Post::query()->where('content_type', ContentType::XPoll)->sole()->id)->toBe($tryPost->id)
         ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });

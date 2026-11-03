@@ -410,7 +410,7 @@ return [
         ],
         'x' => [
             'poll' => [
-                'options_required' => '投票に選択肢を2つ以上追加してください。',
+                'options_required' => '投票に選択肢を:minつ以上追加してください。',
                 'options_distinct' => '投票の選択肢はそれぞれ異なる内容にしてください。重複しているものを変更してください。',
                 'duration_required' => '投票を受け付ける期間を選んでください。',
                 'question_required' => '投稿のテキストに投票の質問を書いてください。',
@@ -419,7 +419,7 @@ return [
                 'options_list' => '投票の選択肢はテキストのリストで送信してください。',
                 'choice_text' => '投票の選択肢はテキストで入力してください。',
                 'choice_max' => '投票の選択肢はそれぞれ最大:max文字までです。長い選択肢を短くしてください。',
-                'duration_range' => '投票の期間は5分から7日までです。この範囲で期間を選んでください。',
+                'duration_range' => '投票の期間は:min分から:max日までです。この範囲で期間を選んでください。',
                 'choices' => '選択肢',
                 'choice' => '選択肢:number',
                 'choice_optional' => '選択肢:number（任意）',
@@ -815,7 +815,7 @@ return [
         ],
         'x_poll' => [
             'label' => '投票',
-            'description' => '2〜4個の選択肢がある質問',
+            'description' => ':min〜:max個の選択肢がある質問',
         ],
         'threads_post' => [
             'label' => 'スレッド',
