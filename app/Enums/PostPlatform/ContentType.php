@@ -477,6 +477,14 @@ enum ContentType: string
     }
 
     /**
+     * Whether the editor offers the Alt Text tab for videos of this type.
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return $this->platform()->supportsVideoAltText();
+    }
+
+    /**
      * Whether the editor offers Tag People (Instagram posts only, not stories or reels).
      */
     public function supportsUserTags(): bool
@@ -562,6 +570,7 @@ enum ContentType: string
             'auto_fits_image' => $this->autoFitsImage(),
             'crop_presets' => $this->cropPresets(),
             'supports_alt_text' => $this->supportsAltText(),
+            'supports_video_alt_text' => $this->supportsVideoAltText(),
             'supports_user_tags' => $this->supportsUserTags(),
             'supports_video_cover' => $this->supportsVideoCover(),
             'platform_label' => $this->platform()->label(),
@@ -643,6 +652,7 @@ enum ContentType: string
                 'image_max_width',
                 'image_max_height',
                 'supports_alt_text',
+                'supports_video_alt_text',
                 'supports_user_tags',
                 'supports_video_cover',
             ])),

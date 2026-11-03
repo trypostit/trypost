@@ -205,6 +205,19 @@ enum Platform: string
     }
 
     /**
+     * Whether the platform's API accepts an accessibility description on
+     * published VIDEO media too — Mastodon takes it as the media
+     * `description`, Bluesky as the video embed's `alt`.
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return match ($this) {
+            self::Bluesky, self::Mastodon => true,
+            default => false,
+        };
+    }
+
+    /**
      * Hard cap (in characters) the platform's API will accept. Going over this
      * means the post can't be published. Values are the documented API maxes:
      *

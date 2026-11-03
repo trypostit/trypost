@@ -456,6 +456,13 @@ test('media rules carry crop presets and editor tab availability', function () {
     ]);
 
     expect(ContentType::GoogleBusinessPost->mediaRules()['supports_alt_text'])->toBeFalse();
+
+    // Video alt text reaches only the APIs that accept it: Mastodon takes a
+    // media `description` on video, Bluesky an `alt` on the video embed.
+    expect(ContentType::MastodonPost->mediaRules()['supports_video_alt_text'])->toBeTrue();
+    expect(ContentType::BlueskyPost->mediaRules()['supports_video_alt_text'])->toBeTrue();
+    expect(ContentType::InstagramReel->mediaRules()['supports_video_alt_text'])->toBeFalse();
+    expect(ContentType::XPost->mediaRules()['supports_video_alt_text'])->toBeFalse();
     expect(ContentType::defaultCropPresets())->toBe(['1:1', '9:16']);
 });
 

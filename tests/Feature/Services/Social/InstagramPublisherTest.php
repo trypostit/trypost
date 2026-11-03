@@ -2759,3 +2759,32 @@ test('a feed video on an account connected through Facebook sends no trial or mu
         && ! array_key_exists('trial_params', $request->data())
         && ! array_key_exists('audio_configuration', $request->data()));
 });
+
+test('instagram publisher tags the container with the meta location', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+    $this->post->update(['meta' => ['location_id' => '106190712750250']]);
+
+    $graph = config('trypost.platforms.instagram.graph_api');
+
+    Http::fake([
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123'], 200),
+        "{$graph}/container-123*" => Http::response(['status_code' => 'FINISHED'], 200),
+        "{$graph}/ig_123456789/media_publish" => Http::response(['id' => 'media-789'], 200),
+        "{$graph}/media-789*" => Http::response(['permalink' => 'https://instagram.com/p/x'], 200),
+    ]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(function (Request $request): bool {
+        return str_ends_with(parse_url($request->url(), PHP_URL_PATH), '/ig_123456789/media')
+            && ($request['location_id'] ?? null) === '106190712750250';
+    });
+});

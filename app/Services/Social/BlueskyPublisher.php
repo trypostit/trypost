@@ -203,10 +203,20 @@ class BlueskyPublisher
             );
         }
 
-        return $videoBlob ? [
+        if (! $videoBlob) {
+            return null;
+        }
+
+        $embed = [
             '$type' => BlueskyLexicon::EMBED_VIDEO,
             'video' => $videoBlob,
-        ] : null;
+        ];
+
+        if (($alt = $video->altTextFor(Platform::Bluesky)) !== null) {
+            $embed['alt'] = $alt;
+        }
+
+        return $embed;
     }
 
     /**
