@@ -818,7 +818,7 @@ test('a thread reply with media cannot turn into a poll and says why', function 
 
 test('a thread reply poll question on a long post account counts against 280', function () {
     $post = seedXPollPost(attributes: ['meta' => ['thread_replies' => [
-        ['text' => Str::repeat('a', 290), 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+        ['text' => Str::repeat('a', 290), 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
     ]]], accountMeta: ['x_subscription_type' => 'Premium']);
     $id = $post->social_account_id;
     $page = openXPollComposer($post);

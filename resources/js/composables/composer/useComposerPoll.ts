@@ -2,6 +2,7 @@ import type {
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
+import { filled } from '@/lib/helpers';
 import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
 import { newPoll } from '@/lib/xPoll';
 import {
@@ -169,9 +170,9 @@ export const useComposerPoll = (
         const reply = thread.activeReply(group);
 
         return (
-            reply !== undefined &&
+            filled(reply) &&
             reply.poll === undefined &&
-            pollLimits(group) !== null
+            filled(pollLimits(group))
         );
     };
 
@@ -179,8 +180,8 @@ export const useComposerPoll = (
     const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
         const reply = thread.activeReply(group);
 
-        return reply !== undefined &&
-            (reply.media.length > 0 || thread.uploading(group, reply))
+        return filled(reply) &&
+            (filled(reply.media) || thread.uploading(group, reply))
             ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
             : null;
     };
@@ -189,9 +190,9 @@ export const useComposerPoll = (
         const reply = thread.activeReply(group);
         const limits = pollLimits(group);
 
-        if (reply === undefined || limits === null) return;
-
-        setReplyPoll(group, reply.key, newPoll(limits));
+        if (filled(reply) && filled(limits)) {
+            setReplyPoll(group, reply.key, newPoll(limits));
+        }
     };
 
     return {

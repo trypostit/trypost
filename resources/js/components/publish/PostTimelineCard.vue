@@ -70,6 +70,7 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
@@ -291,8 +292,8 @@ const metricsDetail = computed(() => {
 
 const hasMetrics = computed(
     (): boolean =>
-        metricsDetail.value !== null &&
-        compactPublicationMetrics(metricsDetail.value).length > 0,
+        filled(metricsDetail.value) &&
+        filled(compactPublicationMetrics(metricsDetail.value)),
 );
 
 /** The publication's results (votes and metrics) show on the Sent tab only. */

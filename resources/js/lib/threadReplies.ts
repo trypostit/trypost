@@ -1,3 +1,4 @@
+import { blank } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -29,32 +30,19 @@ export const isBlankThreadReply = ({
     media,
     poll,
 }: ThreadReply): boolean =>
-    text === '' && media.length === 0 && poll === undefined;
+    text === '' && blank(media) && poll === undefined;
 
-const isObject = (value: unknown): value is Record<string, any> =>
-    value !== null && typeof value === 'object';
-
-/** One stored reply as the composer edits it. */
-const storedReply = (stored: unknown, index: number): ThreadReply => {
-    const reply: Record<string, any> = isObject(stored) ? stored : {};
-
-    return withReplyPoll(
-        {
-            key: typeof reply.key === 'string' ? reply.key : `stored-${index}`,
-            text: typeof reply.text === 'string' ? reply.text : '',
-            media: Array.isArray(reply.media) ? reply.media : [],
-        },
-        isObject(reply.poll) ? reply.poll : undefined,
-    );
-};
+/** A reply as the server stores it; `key` only exists in a draft the composer saved. */
+type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
 
 /** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
 ): ThreadReply[] =>
-    Array.isArray(meta?.thread_replies)
-        ? meta.thread_replies.map(storedReply)
-        : [];
+    (meta?.thread_replies ?? []).map(
+        ({ key, text, media, poll }: StoredThreadReply, index: number) =>
+            withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll),
+    );
 
 /** The reply with `poll`, or as a plain post of the thread when `poll` is undefined. */
 export const withReplyPoll = (

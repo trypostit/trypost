@@ -160,6 +160,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
+import { filled } from '@/lib/helpers';
 import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
@@ -458,7 +459,7 @@ const groupDestination = (
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
     const attached =
-        groupDestination(group).media.length > 0 ||
+        filled(groupDestination(group).media) ||
         uploaderFor(group.key).busy.value;
 
     return options.map((option) =>
@@ -532,7 +533,7 @@ watch(sharedStep, (shared) => {
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
     const reply = activeReply(group);
 
-    if (reply !== undefined) {
+    if (filled(reply)) {
         return reply.poll !== undefined
             ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
             : 'posts.composer.media_not_supported';
@@ -1076,12 +1077,15 @@ const contentLimit = (account: ComposerAccount): number | undefined => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
     const questionCap = accountPollLimits(account)?.questionMaxLength;
 
-    return typeof limit === 'number' &&
-        questionCap !== undefined &&
+    const isPoll =
         composition.resolvedDestination(account).content_type ===
-            ContentType.XPoll
-        ? Math.min(limit, questionCap)
-        : limit;
+        ContentType.XPoll;
+
+    if (isPoll && filled(limit) && filled(questionCap)) {
+        return Math.min(limit, questionCap);
+    }
+
+    return limit;
 };
 const accountLimit = (account: ComposerAccount): number =>
     contentLimit(account) ?? Infinity;
@@ -1350,7 +1354,11 @@ const onMediaFilesSelected = (event: Event): void => {
 const groupAcceptsMedia = (group: NetworkGroup): boolean => {
     const reply = activeReply(group);
 
-    return reply !== undefined ? reply.poll === undefined : acceptsMedia(group.key);
+    if (filled(reply)) {
+        return reply.poll === undefined;
+    }
+
+    return acceptsMedia(group.key);
 };
 const onGroupImportStarted = (
     started: MediaImportStarted,

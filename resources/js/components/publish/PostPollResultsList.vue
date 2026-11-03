@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import PostPollResults from '@/components/publish/PostPollResults.vue';
+import { filled } from '@/lib/helpers';
 import type {
     PublicationPoll,
     PublicationThreadPoll,
@@ -15,7 +16,7 @@ const props = defineProps<{
 }>();
 
 const hasPolls = computed(
-    (): boolean => props.poll !== null || props.threadPolls.length > 0,
+    (): boolean => filled(props.poll) || filled(props.threadPolls),
 );
 </script>
 

@@ -1185,7 +1185,11 @@ test('the preview scrolls to the thread post being edited', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => str_repeat('Root post text. ', 40)]);
-    $post->update(['meta' => ['thread_replies' => [str_repeat('First reply text. ', 40), str_repeat('Second reply text. ', 40), 'Last reply']]]);
+    $post->update(['meta' => ['thread_replies' => [
+        ['text' => str_repeat('First reply text. ', 40), 'media' => []],
+        ['text' => str_repeat('Second reply text. ', 40), 'media' => []],
+        ['text' => 'Last reply', 'media' => []],
+    ]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 700);
