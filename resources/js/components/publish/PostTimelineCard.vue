@@ -289,10 +289,24 @@ const metricsDetail = computed(() => {
     return detail && detail.available ? detail : null;
 });
 
-const hasMetrics = computed(() =>
-    metricsDetail.value
-        ? compactPublicationMetrics(metricsDetail.value).length > 0
-        : false,
+const hasMetrics = computed(
+    (): boolean =>
+        metricsDetail.value !== null &&
+        compactPublicationMetrics(metricsDetail.value).length > 0,
+);
+
+/** The publication's results (votes and metrics) show on the Sent tab only. */
+const sentDetail = computed(() => {
+    if (props.tab !== 'sent') {
+        return null;
+    }
+
+    return metricsDetail.value;
+});
+
+/** On the Approvals tab every card is a request, so the badge would say nothing. */
+const showsApprovalBadge = computed(
+    (): boolean => isPending.value && props.tab !== 'approvals',
 );
 
 const showStatus = computed(
@@ -441,7 +455,7 @@ defineExpose({ openDetails });
                 </span>
             </span>
             <Badge
-                v-if="isPending && tab !== 'approvals'"
+                v-if="showsApprovalBadge"
                 variant="warning"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                 :data-testid="`post-approval-badge-${post.id}`"
@@ -703,15 +717,15 @@ defineExpose({ openDetails });
                 />
 
                 <PostPollResultsList
-                    v-if="tab === 'sent' && metricsDetail"
-                    :poll="metricsDetail.publication.poll"
-                    :thread-polls="metricsDetail.publication.thread_polls ?? []"
+                    v-if="sentDetail"
+                    :poll="sentDetail.publication.poll"
+                    :thread-polls="sentDetail.publication.thread_polls ?? []"
                     :test-id="`post-poll-${post.id}`"
                 />
 
                 <PostMetricsBand
-                    v-if="tab === 'sent' && metricsDetail && hasMetrics"
-                    :detail="metricsDetail"
+                    v-if="sentDetail && hasMetrics"
+                    :detail="sentDetail"
                     :channel-id="account?.id ?? null"
                     :metrics-test-id="`post-metrics-${post.id}`"
                     :insights-test-id="`post-insights-${post.id}`"

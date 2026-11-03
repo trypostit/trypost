@@ -65,9 +65,59 @@ export const useComposerPoll = (
     };
 
     /**
-     * The meta a card takes when its type becomes `contentType`: Poll starts
-     * a poll (or brings the last one back), any other type drops it. Null
-     * when the meta stays as it is.
+     * Whether two metas hold the same values in the same key order. A meta
+     * stored empty arrives as `[]` (PHP's empty array) and counts as `{}`.
+     */
+    const sameMeta = (
+        first: Record<string, any>,
+        second: Record<string, any>,
+    ): boolean => JSON.stringify({ ...first }) === JSON.stringify({ ...second });
+
+    /** Takes a card's saved meta out of `saved`, so it is used once. */
+    const takeSaved = (
+        saved: Map<string, Record<string, any>>,
+        group: NetworkGroup,
+    ): Record<string, any> | undefined => {
+        const meta = saved.get(group.key);
+        saved.delete(group.key);
+
+        return meta;
+    };
+
+    /** Picking Poll: the card's last poll comes back, else a new one starts. */
+    const metaWithPoll = (
+        group: NetworkGroup,
+        current: Record<string, any>,
+    ): Record<string, any> => {
+        metaBeforePoll.set(group.key, current);
+        const previous = takeSaved(metaBeforeOtherType, group);
+
+        if (previous === undefined) {
+            const limits = pollLimits(group);
+
+            return { ...current, poll: limits ? newPoll(limits) : {} };
+        }
+
+        const { poll, ...previousMeta } = previous;
+
+        return sameMeta(previousMeta, current) ? previous : { ...current, poll };
+    };
+
+    /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
+    const metaWithoutPoll = (
+        group: NetworkGroup,
+        current: Record<string, any>,
+        meta: Record<string, any>,
+    ): Record<string, any> => {
+        metaBeforeOtherType.set(group.key, current);
+        const before = takeSaved(metaBeforePoll, group);
+
+        return before !== undefined && sameMeta(before, meta) ? before : meta;
+    };
+
+    /**
+     * The meta a card takes when its type becomes `contentType`: Poll adds a
+     * poll, any other type drops it. Null when the meta stays as it is.
      */
     const pollMetaForContentType = (
         group: NetworkGroup,
@@ -75,41 +125,13 @@ export const useComposerPoll = (
     ): Record<string, any> | null => {
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
+        const hasPoll = poll !== undefined;
 
         if (contentType === ContentType.XPoll) {
-            if (poll !== undefined) {
-                return null;
-            }
-
-            metaBeforePoll.set(group.key, current);
-            const previous = metaBeforeOtherType.get(group.key);
-            metaBeforeOtherType.delete(group.key);
-
-            if (previous !== undefined) {
-                const { poll: previousPoll, ...previousMeta } = previous;
-
-                return JSON.stringify(previousMeta) === JSON.stringify(meta)
-                    ? previous
-                    : { ...meta, poll: previousPoll };
-            }
-
-            const limits = pollLimits(group);
-
-            return { ...meta, poll: limits ? newPoll(limits) : {} };
+            return hasPoll ? null : metaWithPoll(group, current);
         }
 
-        if (poll === undefined) {
-            return null;
-        }
-
-        metaBeforeOtherType.set(group.key, current);
-        const before = metaBeforePoll.get(group.key);
-        metaBeforePoll.delete(group.key);
-
-        return before !== undefined &&
-            JSON.stringify({ ...before }) === JSON.stringify(meta)
-            ? before
-            : meta;
+        return hasPoll ? metaWithoutPoll(group, current, meta) : null;
     };
 
     /** Forgets the card's last poll, so picking Poll again starts a new one. */

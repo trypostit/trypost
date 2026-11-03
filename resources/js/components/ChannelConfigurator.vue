@@ -63,20 +63,16 @@ const hasDocument = computed(() =>
 );
 
 /** A repurpose publishes the source's media, so it never offers a type that takes none (X poll, Threads ghost post). */
-const contentTypeOptions = computed(
-    (): Record<string, ContentTypeOption[]> =>
-        Object.fromEntries(
-            props.channels.map((channel) => [
-                channel.platform,
-                getContentTypeOptions(channel.platform).filter(
-                    (option) => !MEDIALESS_CONTENT_TYPES.has(option.value),
-                ),
-            ]),
-        ),
-);
+const repurposeContentTypes = (platform: string): ContentTypeOption[] =>
+    getContentTypeOptions(platform).filter(
+        (option) => !MEDIALESS_CONTENT_TYPES.has(option.value),
+    );
+
+const offersContentTypeChoice = (channel: Channel): boolean =>
+    repurposeContentTypes(channel.platform).length > 1;
 
 const hasSettingsCard = (channel: Channel): boolean =>
-    contentTypeOptions.value[channel.platform].length > 1 ||
+    offersContentTypeChoice(channel) ||
     channel.platform === Platform.Instagram ||
     channel.platform === Platform.InstagramFacebook ||
     SETTINGS_PLATFORMS.includes(channel.platform) ||
@@ -167,8 +163,8 @@ const settingsIndex = (channel: Channel): number =>
                     :data-testid="`channel-settings-${channel.id}`"
                 >
                     <ContentTypeRadioGroup
-                        v-if="contentTypeOptions[channel.platform].length > 1"
-                        :options="contentTypeOptions[channel.platform]"
+                        v-if="offersContentTypeChoice(channel)"
+                        :options="repurposeContentTypes(channel.platform)"
                         :model-value="channel.contentType"
                         :test-id-prefix="`channel-type-${channel.id}`"
                         :disabled="disabled"
