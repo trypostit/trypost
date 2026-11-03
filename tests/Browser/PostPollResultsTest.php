@@ -231,6 +231,7 @@ test('the leading choice stays readable in both themes', function (string $theme
 
     expect($contrast)->toBeGreaterThanOrEqual(4.5);
     expect($page->script("document.documentElement.classList.contains('dark')"))->toBe($theme === 'dark');
+    $page->assertNoJavaScriptErrors();
 })->with(['light', 'dark']);
 
 test('the polls of thread replies show under the post on the sent card and in the details, each naming its post', function () {

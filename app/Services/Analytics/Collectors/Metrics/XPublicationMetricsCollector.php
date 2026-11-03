@@ -134,7 +134,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             return [];
         }
 
-        $post = $publication->post;
+        $post = $publication->post()->first(['id', 'meta', 'thread_reply_ids']);
         $replyIds = (array) $post?->thread_reply_ids;
 
         return collect(ThreadReplies::of($post?->meta))

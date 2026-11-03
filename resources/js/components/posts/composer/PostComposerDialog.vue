@@ -160,7 +160,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
-import { filled, transform } from '@/lib/helpers';
+import { blank, filled, transform } from '@/lib/helpers';
 import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
@@ -1208,9 +1208,14 @@ const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
             ? 'meta.thread_replies'
             : `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
         for (const [key, message] of Object.entries(errors.value)) {
-            const match = key.startsWith(`${prefix}.`)
-                ? Number(key.slice(prefix.length + 1).split('.')[0])
-                : NaN;
+            if (!key.startsWith(`${prefix}.`)) continue;
+
+            const [index, field] = key.slice(prefix.length + 1).split('.');
+            const showsUnderPollChoices = field === 'poll';
+
+            if (showsUnderPollChoices) continue;
+
+            const match = Number(index);
             if (Number.isInteger(match)) found[match] ??= message;
         }
     }
@@ -1368,8 +1373,8 @@ const onReplyMediaPasted = (
 ): void => {
     const files = Array.from(event.clipboardData?.files ?? []);
     if (
-        !files.length ||
-        event.clipboardData?.getData('text/plain').trim() ||
+        blank(files) ||
+        filled(event.clipboardData?.getData('text/plain')) ||
         cropUploading.value ||
         !groupAcceptsMedia(group)
     ) {
@@ -2945,7 +2950,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         v-if="
                                             (threadActive === -1 &&
                                                 !isPollGroup(group)) ||
-                                            groupDestination(group).media.length ||
+                                            filled(groupDestination(group).media) ||
                                             trayHasActivity(group.key)
                                         "
                                         class="px-[9px] pt-1"

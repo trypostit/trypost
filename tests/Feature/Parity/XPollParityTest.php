@@ -230,6 +230,7 @@ test('scheduling a thread reply poll without its question or with one choice is 
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp'])->with([
     'no question' => [['text' => '', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.x.poll.question_required'],
+    'a question of empty markup' => [['text' => '<p></p>', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.x.poll.question_required'],
     'one choice' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes'], 'duration_minutes' => 60]], 'meta.thread_replies.0.poll.options', 'posts.form.x.poll.options_required'],
 ]);
 

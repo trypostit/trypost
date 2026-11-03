@@ -18,6 +18,7 @@ import XPreview from '@/components/posts/previews/XPreview.vue';
 import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
+import { filled } from '@/lib/helpers';
 import {
     type ThreadReply,
     threadRepliesOf,
@@ -59,7 +60,9 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
               .map((reply, index) => ({ reply, index }))
               .filter(
                   ({ reply }) =>
-                      reply.text.trim() !== '' || reply.media.length > 0,
+                      filled(reply.text) ||
+                      filled(reply.media) ||
+                      filled(reply.poll),
               )
         : [],
 );

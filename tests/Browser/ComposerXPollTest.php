@@ -123,7 +123,7 @@ test('a new choice takes focus after one was removed', function () {
     $page->click('@x-poll-add-choice');
     waitFor($page, '@x-poll-choice-3');
 
-    waitForCondition($page, "document.activeElement?.dataset.testid === 'x-poll-choice-3'");
+    waitForState($page, '@x-poll-choice-3', 'element === document.activeElement');
     expect($page->script('document.activeElement?.dataset.testid'))->toBe('x-poll-choice-3')
         ->and($page->script('document.activeElement.value'))->toBe('')
         ->and($page->script("document.querySelector('[data-testid=\"x-poll-choice-2\"]').value"))->toBe('');
@@ -810,6 +810,30 @@ test('a thread reply turns into a poll from its toolbar, turns its media off and
     $page->assertNoJavaScriptErrors();
 });
 
+test('a thread reply poll shows in the preview before its question, and its choice errors only under the choices', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-choice-0');
+    $page->fill('@thread-reply-0-poll-choice-0', 'Tabs')
+        ->fill('@thread-reply-0-poll-choice-1', 'Tabs');
+    waitForText($page, '@preview-thread-reply-0 [data-testid="x-preview-poll"]', 'Tabs');
+    $page->assertVisible('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]')
+        ->click('@composer-save-draft');
+    waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'));
+
+    $page->assertSeeIn('@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'))
+        ->assertMissing('@thread-reply-error-0')
+        ->assertAttributeMissing('@thread-reply-0', 'aria-invalid')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('removing a thread reply poll gives the reply its media back', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
@@ -924,7 +948,7 @@ test('every toolbar button names itself in a tooltip and the ai-generated hint o
     waitForGone($page, '@thread-add-reply-tooltip');
 
     $page->hover('@x-ai-generated-info');
-    waitForState($page, '@x-ai-generated-tooltip', "element.getAttribute('data-state') === 'delayed-open' && element.getBoundingClientRect().bottom <= document.querySelector('[data-testid=\"x-ai-generated-info\"]').getBoundingClientRect().top");
+    waitForState($page, '@x-ai-generated-tooltip', "element.getAttribute('data-state') === 'delayed-open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
 
     expect($page->script("document.querySelector('[data-testid=\"x-ai-generated-tooltip\"]').getBoundingClientRect().bottom <= document.querySelector('[data-testid=\"x-ai-generated-info\"]').getBoundingClientRect().top"))->toBeTrue();
     $page->assertNoJavaScriptErrors();

@@ -240,8 +240,10 @@ class ThreadReplies
      */
     private static function pollReplyViolation(array $reply, ?SocialAccount $account, int $reserved): ?array
     {
-        if (blank(Str::trim($reply['text']))) {
-            return [null, XPoll::questionViolation($reply['text'])];
+        $questionViolation = XPoll::questionViolation($reply['text']);
+
+        if (filled($questionViolation)) {
+            return [null, $questionViolation];
         }
 
         return self::lengthViolation($reply['text'], Platform::X, $account, ContentType::XPoll, $reserved)

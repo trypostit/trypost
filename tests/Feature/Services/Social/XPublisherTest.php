@@ -1943,6 +1943,15 @@ test('x publisher publishes an x poll with its choices and length', function () 
     Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]);
 });
 
+test('x publisher publishes an x post whose text is 0', function () {
+    $this->post->update(['content' => '0']);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => '0']);
+});
+
 test('x publisher sends no poll for an x post carrying a stale poll', function () {
     $this->post->update(['meta' => xPollMeta()]);
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);

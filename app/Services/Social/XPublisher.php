@@ -96,7 +96,7 @@ class XPublisher
             $data['made_with_ai'] = true;
         }
 
-        if (empty($content) && ! isset($data['media'])) {
+        if (blank($content) && ! isset($data['media'])) {
             throw new XPublishException(
                 userMessage: 'X posts require either text or media. Please add content to your post.',
                 category: ErrorCategory::MediaFormat,

@@ -48,6 +48,8 @@ const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
         ]"
         :trailing-actions="[{ icon: IconBookmark }, { icon: IconUpload }]"
     >
-        <XPreviewPoll v-if="poll && pollLimits" :poll="poll" :limits="pollLimits" />
+        <template v-if="poll && pollLimits" #default>
+            <XPreviewPoll :poll="poll" :limits="pollLimits" />
+        </template>
     </PreviewTextPost>
 </template>
