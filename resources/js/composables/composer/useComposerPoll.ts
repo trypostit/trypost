@@ -1,4 +1,5 @@
 import type {
+    ComposerAccount,
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
@@ -32,11 +33,32 @@ export interface ComposerThread {
  */
 export const useComposerPoll = (
     composition: Composition,
-    pollLimits: (group: NetworkGroup) => XPollLimits | null,
+    pollLimits: (account: ComposerAccount) => XPollLimits | null,
     thread: ComposerThread,
 ) => {
     const destination = (group: NetworkGroup) =>
         composition.resolvedDestination(group.anchor);
+
+    /** The card's poll limits, or null on a network without polls. */
+    const groupPollLimits = (group: NetworkGroup): XPollLimits | null =>
+        pollLimits(group.anchor);
+
+    /** An account's text limit for its post type: a poll's question keeps the poll's cap, even with long posts. */
+    const accountTextLimit = (
+        account: ComposerAccount,
+        limit: number | undefined,
+    ): number | undefined => {
+        const questionCap = pollLimits(account)?.questionMaxLength;
+        const isPoll =
+            composition.resolvedDestination(account).content_type ===
+            ContentType.XPoll;
+
+        if (isPoll && filled(limit) && filled(questionCap)) {
+            return Math.min(limit, questionCap);
+        }
+
+        return limit;
+    };
 
     /**
      * Each card's meta from before a poll was added, put back as it was when
@@ -112,7 +134,7 @@ export const useComposerPoll = (
             return restorePoll(previous, current);
         }
 
-        return { ...current, poll: transform(pollLimits(group), newPoll, {}) };
+        return { ...current, poll: transform(groupPollLimits(group), newPoll, {}) };
     };
 
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
@@ -187,7 +209,7 @@ export const useComposerPoll = (
 
     /** A reply poll's question keeps the poll's cap, even on an account with long posts. */
     const replyPollLimit = (group: NetworkGroup): number =>
-        pollLimits(group)?.questionMaxLength ?? Infinity;
+        groupPollLimits(group)?.questionMaxLength ?? Infinity;
 
     /** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
     const replyTextLimit = (
@@ -224,7 +246,7 @@ export const useComposerPoll = (
         const reply = thread.activeReply(group);
 
         return (
-            filled(reply) && blank(reply.poll) && filled(pollLimits(group))
+            filled(reply) && blank(reply.poll) && filled(groupPollLimits(group))
         );
     };
 
@@ -244,7 +266,7 @@ export const useComposerPoll = (
 
     const addReplyPoll = (group: NetworkGroup): void => {
         const reply = thread.activeReply(group);
-        const limits = pollLimits(group);
+        const limits = groupPollLimits(group);
 
         if (filled(reply) && filled(limits)) {
             setReplyPoll(group, reply.key, newPoll(limits));
@@ -252,6 +274,8 @@ export const useComposerPoll = (
     };
 
     return {
+        groupPollLimits,
+        accountTextLimit,
         isPollGroup,
         groupPoll,
         setGroupPoll,

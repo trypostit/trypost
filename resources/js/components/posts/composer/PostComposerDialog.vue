@@ -207,7 +207,6 @@ import {
     type QueuePositionValue,
 } from '@/types/post';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
-import type { XPollLimits } from '@/types/x';
 
 const props = withDefaults(
     defineProps<{
@@ -472,9 +471,9 @@ const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     );
 };
 /** The account's poll limits, served in its `publishConfig`; null off X. */
-const accountPollLimits = (account: ComposerAccount): XPollLimits | null =>
-    pollLimitsOf(props.platformConfigs[account.id]?.publishConfig);
 const {
+    groupPollLimits,
+    accountTextLimit,
     isPollGroup,
     groupPoll,
     setGroupPoll,
@@ -488,14 +487,18 @@ const {
     replyPollAvailable,
     replyPollDisabledReasonKey,
     addReplyPoll,
-} = useComposerPoll(composition, (group) => accountPollLimits(group.anchor), {
+} = useComposerPoll(
+    composition,
+    (account) => pollLimitsOf(props.platformConfigs[account.id]?.publishConfig),
+    {
     activeReply: (group) => activeReply(group),
     replies: (group) => threadReplies(group),
     setReplies: (group, replies) => setThreadReplies(group, replies),
     replyLimit: (group) => threadReplyLimit(group),
     uploading: (group, reply) =>
         Boolean(replyUploaderFor(group, reply)?.busy.value),
-});
+    },
+);
 /**
  * Step 1 shows no post type, so a card whose type takes no media (an X poll,
  * a Threads ghost post) would quietly refuse the shared media there. Entering
@@ -1062,21 +1065,12 @@ const writeContent = (groupKey: string | null, next: string): void => {
 const assistantContent = computed(() =>
     contentOf(sharedStep.value ? null : openGroupKey.value),
 );
-/** The account's text limit for its current post type: a poll's question keeps the poll's cap even with long posts. */
-const contentLimit = (account: ComposerAccount): number | undefined => {
-    const limit = props.platformConfigs[account.id]?.maxContentLength;
-    const questionCap = accountPollLimits(account)?.questionMaxLength;
-
-    const isPoll =
-        composition.resolvedDestination(account).content_type ===
-        ContentType.XPoll;
-
-    if (isPoll && filled(limit) && filled(questionCap)) {
-        return Math.min(limit, questionCap);
-    }
-
-    return limit;
-};
+/** The account's text limit for its current post type. */
+const contentLimit = (account: ComposerAccount): number | undefined =>
+    accountTextLimit(
+        account,
+        props.platformConfigs[account.id]?.maxContentLength,
+    );
 const accountLimit = (account: ComposerAccount): number =>
     contentLimit(account) ?? Infinity;
 const assistantChannel = computed<AssistantChannel | null>(() => {
@@ -2929,13 +2923,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                 <template
                                     v-if="
                                         isPollGroup(group) &&
-                                        accountPollLimits(group.anchor)
+                                        groupPollLimits(group)
                                     "
                                     #attachment
                                 >
                                     <XPollField
                                         :model-value="groupPoll(group)"
-                                        :limits="accountPollLimits(group.anchor)!"
+                                        :limits="groupPollLimits(group)!"
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
@@ -3004,12 +2998,12 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 v-if="
                                                     filled(reply.poll) &&
                                                     threadActive === index &&
-                                                    accountPollLimits(group.anchor)
+                                                    groupPollLimits(group)
                                                 "
                                                 :key="`reply-poll-${index}`"
                                                 class="px-[9px]"
                                                 :model-value="reply.poll"
-                                                :limits="accountPollLimits(group.anchor)!"
+                                                :limits="groupPollLimits(group)!"
                                                 :platform-index="
                                                     selectedAccounts.indexOf(group.anchor)
                                                 "
