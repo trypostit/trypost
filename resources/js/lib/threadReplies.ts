@@ -1,6 +1,6 @@
 import { uuid } from '@/lib/uuid';
-import type { XPoll } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
+import type { XPoll } from '@/types/x';
 
 /**
  * One post of a thread after the first. `key` only lives in the composer: it

@@ -108,6 +108,26 @@ final class XPoll
     }
 
     /**
+     * Too many choices once blanks are dropped, refused at every save.
+     */
+    public static function optionsCountViolation(mixed $options): ?string
+    {
+        return count(self::choices($options)) > self::MAX_OPTIONS
+            ? trans('posts.form.x.poll.options_max', ['max' => self::MAX_OPTIONS])
+            : null;
+    }
+
+    /**
+     * A choice longer than X allows once trimmed, refused at every save.
+     */
+    public static function choiceLengthViolation(mixed $choice): ?string
+    {
+        return is_string($choice) && mb_strlen(Str::trim($choice)) > self::OPTION_MAX_LENGTH
+            ? trans('posts.form.x.poll.choice_max', ['max' => self::OPTION_MAX_LENGTH])
+            : null;
+    }
+
+    /**
      * What a poll needs before its post is scheduled or published.
      *
      * @return array{0: string, 1: string}|null [field, message]

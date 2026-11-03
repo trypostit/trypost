@@ -2,8 +2,9 @@ import type {
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
-import { newPoll, type XPoll, type XPollLimits } from '@/lib/xPoll';
+import { newPoll } from '@/lib/xPoll';
 import { ContentType } from '@/types/content-type';
+import type { XPoll, XPollLimits } from '@/types/x';
 
 type Composition = Pick<
     ReturnType<typeof usePostComposition>,

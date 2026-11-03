@@ -1,30 +1,9 @@
 import { activeLocale } from '@/language';
+import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
 const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
-
-/** The poll limits X sets, served by `Platform::publishConfig()` (`publishConfig.poll`). */
-export interface XPollLimits {
-    minOptions: number;
-    maxOptions: number;
-    optionMaxLength: number;
-    minDuration: number;
-    maxDuration: number;
-    defaultDuration: number;
-    questionMaxLength: number;
-}
-
-export interface XPollDuration {
-    days: number;
-    hours: number;
-    minutes: number;
-}
-
-export interface XPoll {
-    options: string[];
-    duration_minutes: number;
-}
 
 /** The poll limits in an account's `publishConfig`, or null on a network without polls. */
 export const pollLimitsOf = (

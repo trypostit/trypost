@@ -23,10 +23,8 @@ import {
     MINUTES_PER_HOUR,
     pollMaxDays,
     splitPollDuration,
-    type XPoll,
-    type XPollDuration,
-    type XPollLimits,
 } from '@/lib/xPoll';
+import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
 const props = withDefaults(
     defineProps<{

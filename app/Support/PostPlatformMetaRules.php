@@ -209,23 +209,19 @@ class PostPlatformMetaRules
     }
 
     /**
-     * A poll has at most `XPoll::MAX_OPTIONS` choices once blanks are dropped.
+     * A poll's choices, checked by `XPoll` (the post's poll and each reply's).
      */
     private static function pollOptionsCount(string $attribute, mixed $value, Closure $fail): void
     {
-        if (count(XPoll::choices($value)) > XPoll::MAX_OPTIONS) {
-            $fail(__('posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]));
-        }
+        transform(XPoll::optionsCountViolation($value), $fail);
     }
 
     /**
-     * A poll choice fits `XPoll::OPTION_MAX_LENGTH` once trimmed.
+     * One poll choice, checked by `XPoll`.
      */
     private static function pollChoiceLength(string $attribute, mixed $value, Closure $fail): void
     {
-        if (is_string($value) && mb_strlen(Str::trim($value)) > XPoll::OPTION_MAX_LENGTH) {
-            $fail(__('posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]));
-        }
+        transform(XPoll::choiceLengthViolation($value), $fail);
     }
 
     /**

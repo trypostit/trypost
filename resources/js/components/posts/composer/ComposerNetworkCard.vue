@@ -5,8 +5,10 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import ContentTypeRadioGroup from '@/components/posts/editor/ContentTypeRadioGroup.vue';
 import type { ContentTypeOption } from '@/composables/usePlatformLogo';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
-import { MEDIALESS_CONTENT_TYPES } from '@/lib/medialessContentTypes';
-import { CAPTIONLESS_CONTENT_TYPES } from '@/types/content-type';
+import {
+    CAPTIONLESS_CONTENT_TYPES,
+    MEDIALESS_CONTENT_TYPES,
+} from '@/types/content-type';
 
 const props = withDefaults(
     defineProps<{

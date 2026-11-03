@@ -168,10 +168,6 @@ import {
     type EditorTab,
     rulesFor,
 } from '@/lib/mediaEditor';
-import {
-    MEDIALESS_CONTENT_TYPE_REASONS,
-    MEDIALESS_CONTENT_TYPES,
-} from '@/lib/medialessContentTypes';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -182,7 +178,7 @@ import {
     withReplyPoll,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { newPoll, pollLimitsOf, type XPoll, type XPollLimits } from '@/lib/xPoll';
+import { newPoll, pollLimitsOf } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -195,6 +191,8 @@ import type {
 import {
     CAPTIONLESS_CONTENT_TYPES,
     ContentType,
+    MEDIALESS_CONTENT_TYPE_REASONS,
+    MEDIALESS_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
@@ -209,6 +207,7 @@ import {
     type QueuePositionValue,
 } from '@/types/post';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
+import type { XPoll, XPollLimits } from '@/types/x';
 
 const props = withDefaults(
     defineProps<{
