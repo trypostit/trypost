@@ -51,8 +51,16 @@ export const newPoll = (limits: XPollLimits): XPoll => ({
 });
 
 /**
- * A choice cut to the longest X accepts, counted as the server counts it: by
- * characters (an emoji is one), without the spaces before it.
+ * A choice's length as X counts it, without the spaces around it: in UTF-16
+ * units (a string's `length`), so an emoji like 🐧 counts two, as on the server
+ * (`XPoll::choiceLength()`).
+ */
+export const pollChoiceLength = (choice: string): number => choice.trim().length;
+
+/**
+ * A choice cut to the longest X accepts, counted as X counts it
+ * (`pollChoiceLength`), keeping the spaces before it and never splitting a
+ * character.
  */
 export const fitPollChoice = (choice: string, maxLength: number): string => {
     const characters = Array.from(choice);
@@ -64,7 +72,19 @@ export const fitPollChoice = (choice: string, maxLength: number): string => {
         return choice;
     }
 
-    return characters.slice(0, firstCharacter + maxLength).join('');
+    const kept = characters.slice(0, firstCharacter);
+    let length = 0;
+
+    for (const character of characters.slice(firstCharacter)) {
+        if (length + character.length > maxLength) {
+            break;
+        }
+
+        length += character.length;
+        kept.push(character);
+    }
+
+    return kept.join('');
 };
 
 /** The choices the editor shows: the stored ones, padded to the number a poll starts with. */

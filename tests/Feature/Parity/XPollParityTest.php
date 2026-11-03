@@ -373,3 +373,21 @@ test('a thread reply poll question over 280 characters is refused on a long post
     $surface === 'mcp' ? $passed->assertOk() : $passed->assertSessionHasNoErrors();
     expect($post->fresh()->status)->toBe(Status::Scheduled);
 })->with(['web', 'api', 'mcp']);
+
+test('a choice is measured as x counts it, an emoji like a penguin counting two, on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost();
+    $tooLong = '🐧 '.Str::repeat('a', 23);
+    $fits = '🐧 '.Str::repeat('a', 22);
+    $message = __('posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]);
+
+    $refused = xPollParityUpdate($surface, $post, ['meta' => ['poll' => ['options' => [$tooLong, 'No'], 'duration_minutes' => 60]]]);
+
+    $surface === 'mcp'
+        ? $refused->assertHasErrors([$message])
+        : $refused->assertUnprocessable()->assertJsonValidationErrors(['meta.poll.options.0' => $message]);
+
+    $accepted = xPollParityUpdate($surface, $post, ['meta' => ['poll' => ['options' => [$fits, 'No'], 'duration_minutes' => 60]]]);
+
+    $surface === 'mcp' ? $accepted->assertOk() : $accepted->assertSessionHasNoErrors();
+    expect($post->fresh()->meta['poll']['options'])->toBe([$fits, 'No']);
+})->with(['web', 'api', 'mcp']);

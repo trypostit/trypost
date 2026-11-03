@@ -120,11 +120,22 @@ final class XPoll
     }
 
     /**
+     * A choice's length as X counts it, without the spaces around it: in
+     * UTF-16 units, so an emoji outside the basic plane (🐧) counts two. X
+     * refused a 25-character choice holding one with "is not 1 to 25
+     * characters long".
+     */
+    public static function choiceLength(string $choice): int
+    {
+        return intdiv(strlen(mb_convert_encoding(Str::trim($choice), 'UTF-16LE', 'UTF-8')), 2);
+    }
+
+    /**
      * A choice longer than X allows once trimmed, refused at every save.
      */
     public static function choiceLengthViolation(mixed $choice): ?string
     {
-        $tooLong = is_string($choice) && Str::length(Str::trim($choice)) > self::OPTION_MAX_LENGTH;
+        $tooLong = is_string($choice) && self::choiceLength($choice) > self::OPTION_MAX_LENGTH;
 
         return when($tooLong, fn (): string => trans('posts.form.x.poll.choice_max', ['max' => self::OPTION_MAX_LENGTH]));
     }

@@ -552,7 +552,7 @@ test('a choice counter does not count the spaces around it', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('a choice stops at 25 characters while typing, counting an emoji as one and leaving out the spaces before it', function () {
+test('a choice stops at 25 characters while typing, counted as x counts them (a penguin emoji is two) and leaving out the spaces before it', function () {
     $post = seedXPollPost();
     $page = openXPollComposer($post);
     pickXPoll($page, $post);
@@ -560,11 +560,11 @@ test('a choice stops at 25 characters while typing, counting an emoji as one and
     $page->fill('@x-poll-choice-0', Str::repeat('a', 30));
     waitForText($page, '@x-poll-choice-0-count', '25 / 25');
     $page->append('@x-poll-choice-0', 'xyz')
-        ->fill('@x-poll-choice-1', '  ✅'.Str::repeat('b', 30));
+        ->fill('@x-poll-choice-1', '  🐧'.Str::repeat('b', 30));
     waitForText($page, '@x-poll-choice-1-count', '25 / 25');
 
     expect($page->script("document.querySelector('[data-testid=\"x-poll-choice-0\"]').value"))->toBe(Str::repeat('a', 25))
-        ->and($page->script("document.querySelector('[data-testid=\"x-poll-choice-1\"]').value"))->toBe('  ✅'.Str::repeat('b', 24));
+        ->and($page->script("document.querySelector('[data-testid=\"x-poll-choice-1\"]').value"))->toBe('  🐧'.Str::repeat('b', 23));
     $page->assertNoJavaScriptErrors();
 });
 

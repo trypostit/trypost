@@ -15,10 +15,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useMetaErrors } from '@/composables/useMetaErrors';
-import { characterCount } from '@/lib/characters';
 import {
     editablePollOptions,
     fitPollChoice,
+    pollChoiceLength,
     HOURS_PER_DAY,
     joinPollDuration,
     MINUTES_PER_HOUR,
@@ -108,7 +108,6 @@ const update = (patch: Partial<XPoll>): void => {
 };
 
 /** A choice's length as the server measures it, without the spaces around it. */
-const choiceLength = (option: string): number => characterCount(option.trim());
 
 /** The `:number` a choice's labels show, counted from one. */
 const choiceNumber = (index: number): { number: string } => ({
@@ -210,12 +209,12 @@ const removePoll = (): void => {
                     <span
                         class="w-11 shrink-0 text-end text-xs tabular-nums"
                         :class="
-                            choiceLength(option) > limits.optionMaxLength
+                            pollChoiceLength(option) > limits.optionMaxLength
                                 ? 'text-destructive-text'
                                 : 'text-muted-foreground'
                         "
                         :data-testid="`${testIdPrefix}-choice-${index}-count`"
-                        >{{ choiceLength(option) }} /
+                        >{{ pollChoiceLength(option) }} /
                         {{ limits.optionMaxLength }}</span
                     >
                     <Button
