@@ -26,10 +26,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $fields[] = 'non_public_metrics';
         }
 
-        $replyPolls = $this->replyPollTweetIds($publication);
-        [$tweet, $poll, $threadPolls] = blank($replyPolls)
-            ? $this->readPost($account, $publication->remote_id, $fields)
-            : $this->readThread($account, $publication->remote_id, $replyPolls, $fields);
+        [$tweet, $poll, $threadPolls] = $this->read($account, $publication, $fields);
 
         if (! is_array($tweet)) {
             throw AnalyticsCollectionException::malformed('X post response lacks data.');
@@ -50,6 +47,24 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             'poll' => is_array($poll) ? XPoll::result($poll) : null,
             'thread_polls' => filled($threadPolls) ? $threadPolls : null,
         ]) ?: null);
+    }
+
+    /**
+     * The post's tweet, its poll and its reply polls: a post whose thread has
+     * no poll is read alone, otherwise with its reply polls in one lookup.
+     *
+     * @param  list<string>  $fields
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     */
+    private function read(SocialAccount $account, AnalyticsPublication $publication, array $fields): array
+    {
+        $replyPolls = $this->replyPollTweetIds($publication);
+
+        if (blank($replyPolls)) {
+            return $this->readPost($account, $publication->remote_id, $fields);
+        }
+
+        return $this->readThread($account, $publication->remote_id, $replyPolls, $fields);
     }
 
     /**

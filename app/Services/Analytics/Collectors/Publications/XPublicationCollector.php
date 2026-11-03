@@ -112,10 +112,12 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
      */
     private function providerMetadata(Collection $media, ?array $poll): ?array
     {
-        return Arr::whereNotNull([
-            'media' => $media->map(fn (array $item): array => Arr::whereNotNull(Arr::only($item, ['type', 'url', 'variants'])))->all() ?: null,
+        $metadata = collect([
+            'media' => $media->map(fn (array $item): array => Arr::whereNotNull(Arr::only($item, ['type', 'url', 'variants'])))->all(),
             'poll' => $poll,
-        ]) ?: null;
+        ])->filter(fn (mixed $value): bool => filled($value));
+
+        return $metadata->isNotEmpty() ? $metadata->all() : null;
     }
 
     /** @param list<mixed> $types */
