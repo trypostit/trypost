@@ -80,11 +80,7 @@ class XPublisher
             $post,
             $rootHash,
             fn (): array => $this->publishRoot($post, $content),
-            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createTweet([
-                ...($text !== '' ? ['text' => $text] : []),
-                ...(blank($poll) ? $this->mediaPayload($media) : ['poll' => $this->pollPayload($text, $media, ['poll' => $poll])]),
-                'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
-            ], $account->username),
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->publishReply($text, $media, $parent, $poll, $account->username),
         );
     }
 
@@ -93,17 +89,8 @@ class XPublisher
      */
     private function publishRoot(Post $post, ?string $content): array
     {
-        $data = [];
-
-        if (! empty($content)) {
-            $data['text'] = $content;
-        }
-
-        if ($post->content_type === ContentType::XPoll) {
-            $data['poll'] = $this->pollPayload($content, $post->mediaItems, $post->meta);
-        } else {
-            $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
-        }
+        $isPoll = $post->content_type === ContentType::XPoll;
+        $data = $this->withText($content, $this->attachments($content, $post->mediaItems, $isPoll, $post->meta));
 
         if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
@@ -117,6 +104,54 @@ class XPublisher
         }
 
         return $this->createTweet($data, $post->socialAccount->username);
+    }
+
+    /**
+     * A reply of the thread, under the post before it.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $parent
+     * @param  array<string, mixed>|null  $poll
+     * @return array{id: string, url: ?string}
+     */
+    private function publishReply(string $text, Collection $media, array $parent, ?array $poll, string $username): array
+    {
+        $data = $this->withText($text, [
+            ...$this->attachments($text, $media, filled($poll), ['poll' => $poll]),
+            'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
+        ]);
+
+        return $this->createTweet($data, $username);
+    }
+
+    /**
+     * The tweet's fields, led by its text when it has any.
+     *
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function withText(?string $text, array $fields): array
+    {
+        if (blank($text)) {
+            return $fields;
+        }
+
+        return ['text' => $text, ...$fields];
+    }
+
+    /**
+     * What a post of the thread attaches: its poll, or its media.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @return array<string, mixed>
+     */
+    private function attachments(?string $text, Collection $media, bool $isPoll, mixed $meta): array
+    {
+        if ($isPoll) {
+            return ['poll' => $this->pollPayload($text, $media, $meta)];
+        }
+
+        return $this->mediaPayload($media);
     }
 
     /**

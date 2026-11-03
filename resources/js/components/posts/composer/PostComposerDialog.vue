@@ -160,7 +160,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
-import { filled } from '@/lib/helpers';
+import { filled, transform } from '@/lib/helpers';
 import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
@@ -533,10 +533,12 @@ watch(sharedStep, (shared) => {
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
     const reply = activeReply(group);
 
+    if (filled(reply) && filled(reply.poll)) {
+        return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
+    }
+
     if (filled(reply)) {
-        return reply.poll !== undefined
-            ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
-            : 'posts.composer.media_not_supported';
+        return 'posts.composer.media_not_supported';
     }
 
     return (
@@ -1205,16 +1207,30 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
-const activeRemaining = (group: NetworkGroup): number | null => {
-    const reply = activeReply(group);
-    if (reply === undefined) return groupRemaining(group);
+/** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
+const replyTextLimit = (
+    group: NetworkGroup,
+    reply: ThreadReply,
+): number | null => {
     const limit = threadReplyLimit(group);
 
-    return limit === null
-        ? null
-        : (reply.poll !== undefined
-              ? Math.min(limit, replyPollLimit(group))
-              : limit) - displayLength(contentFor(reply.text, group.platform));
+    if (filled(limit) && filled(reply.poll)) {
+        return Math.min(limit, replyPollLimit(group));
+    }
+
+    return limit;
+};
+const activeRemaining = (group: NetworkGroup): number | null => {
+    const reply = activeReply(group);
+
+    if (filled(reply)) {
+        return transform(
+            replyTextLimit(group, reply),
+            (limit) => limit - displayLength(contentFor(reply.text, group.platform)),
+        );
+    }
+
+    return groupRemaining(group);
 };
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
@@ -3011,7 +3027,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         <template #media="{ reply, index }">
                                             <XPollField
                                                 v-if="
-                                                    reply.poll !== undefined &&
+                                                    filled(reply.poll) &&
                                                     threadActive === index &&
                                                     accountPollLimits(group.anchor)
                                                 "

@@ -181,32 +181,78 @@ class ThreadReplies
         $account = $target instanceof SocialAccount ? $target : null;
 
         foreach ($replies as $index => $reply) {
-            $blank = blank(Str::trim($reply['text']));
-            $poll = $platform === Platform::X && self::hasPoll($reply);
+            $violation = self::replyViolation($reply, $platform, $account, $reserved);
 
-            if ($poll && $blank) {
-                return ["thread_replies.{$index}", XPoll::questionViolation($reply['text'])];
-            }
+            if (filled($violation)) {
+                [$field, $message] = $violation;
 
-            if ($blank && $reply['media'] === []) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_empty')];
-            }
-
-            $type = $poll ? ContentType::XPoll : self::replyContentType($platform);
-            $over = $blank ? 0 : ContentType::overflowFor($account, $platform, $type, app(ContentSanitizer::class)->displayText($reply['text'], $platform), $reserved);
-
-            if ($over > 0) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => ContentType::maxContentLengthFor($account, $platform, $type) - $reserved, 'over' => $over])];
-            }
-
-            $pollViolation = $poll ? XPoll::violation($reply) ?? XPoll::requiredViolation($reply) : null;
-
-            if (filled($pollViolation)) {
-                return ["thread_replies.{$index}.{$pollViolation[0]}", $pollViolation[1]];
+                return [Arr::join(Arr::whereNotNull(['thread_replies', $index, $field]), '.'), $message];
             }
         }
 
         return null;
+    }
+
+    /**
+     * Why one reply cannot go: a poll is checked as a poll, any other reply
+     * needs text or media and must fit the account's limit. The field is
+     * relative to the reply (null for the reply itself).
+     *
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function replyViolation(array $reply, Platform $platform, ?SocialAccount $account, int $reserved): ?array
+    {
+        if ($platform === Platform::X && self::hasPoll($reply)) {
+            return self::pollReplyViolation($reply, $account, $reserved);
+        }
+
+        if (filled(Str::trim($reply['text']))) {
+            return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
+        }
+
+        if (blank($reply['media'])) {
+            return [null, __('posts.form.thread.reply_empty')];
+        }
+
+        return null;
+    }
+
+    /**
+     * A reply poll needs its question (the reply's text) within the poll's cap,
+     * and choices and a length X accepts.
+     *
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function pollReplyViolation(array $reply, ?SocialAccount $account, int $reserved): ?array
+    {
+        if (blank(Str::trim($reply['text']))) {
+            return [null, XPoll::questionViolation($reply['text'])];
+        }
+
+        return self::lengthViolation($reply['text'], Platform::X, $account, ContentType::XPoll, $reserved)
+            ?? XPoll::violation($reply)
+            ?? XPoll::requiredViolation($reply);
+    }
+
+    /**
+     * A reply's text over its limit, measured as the network counts it.
+     *
+     * @return array{0: null, 1: string}|null
+     */
+    private static function lengthViolation(string $text, Platform $platform, ?SocialAccount $account, ?ContentType $type, int $reserved): ?array
+    {
+        $display = app(ContentSanitizer::class)->displayText($text, $platform);
+        $over = ContentType::overflowFor($account, $platform, $type, $display, $reserved);
+
+        if ($over === 0) {
+            return null;
+        }
+
+        $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
+
+        return [null, __('posts.form.thread.reply_too_long', ['limit' => $limit, 'over' => $over])];
     }
 
     /**
