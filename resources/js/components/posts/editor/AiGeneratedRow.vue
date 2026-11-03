@@ -40,7 +40,10 @@ const checked = defineModel<boolean>({ required: true });
                                     <IconInfoCircle class="size-4" />
                                 </button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom">
+                            <TooltipContent
+                                side="top"
+                                :data-testid="`${testId}-tooltip`"
+                            >
                                 {{ $t('posts.form.ai_generated.hint') }}
                             </TooltipContent>
                         </Tooltip>

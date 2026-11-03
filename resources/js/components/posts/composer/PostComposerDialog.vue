@@ -3176,24 +3176,36 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     $t('posts.form.thread.start')
                                                 }}</span>
                                             </Button>
-                                            <Button
+                                            <Tooltip
                                                 v-else-if="
                                                     threadReplies(group).length <
                                                     THREAD_MAX_REPLIES
                                                 "
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                class="ms-1 size-7 text-primary-text"
-                                                data-testid="thread-add-reply"
-                                                :aria-label="
-                                                    $t('posts.form.thread.add')
-                                                "
-                                                :disabled="cropUploading"
-                                                @click="addThreadReply(group)"
                                             >
-                                                <IconCirclePlus class="size-4" />
-                                            </Button>
+                                                <TooltipTrigger as-child>
+                                                    <span class="inline-flex">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            class="ms-1 size-7 text-primary-text"
+                                                            data-testid="thread-add-reply"
+                                                            :aria-label="
+                                                                $t('posts.form.thread.add')
+                                                            "
+                                                            :disabled="cropUploading"
+                                                            @click="addThreadReply(group)"
+                                                        >
+                                                            <IconCirclePlus class="size-4" />
+                                                        </Button>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent
+                                                    data-testid="thread-add-reply-tooltip"
+                                                >
+                                                    {{ $t('posts.form.thread.add') }}
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </template>
                                         <CharacterCounter
                                             v-if="(groupHashtagsRemaining(group) ?? -1) >= 0"

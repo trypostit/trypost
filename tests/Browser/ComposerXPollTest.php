@@ -859,3 +859,44 @@ test('pasting an image into a thread reply poll adds no media to it', function (
         ->assertVisible('@thread-reply-0-poll-choice-0')
         ->assertNoJavaScriptErrors();
 });
+
+test('every toolbar button names itself in a tooltip and the ai-generated hint opens above its icon', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+
+    foreach ([
+        "composer-{$id}-media-source" => __('posts.edit.add_media'),
+        "composer-{$id}-emoji" => __('posts.edit.emoji_picker.search'),
+        "composer-{$id}-signature" => __('posts.edit.signatures'),
+    ] as $button => $label) {
+        $trigger = $button === "composer-{$id}-media-source" ? "@{$button}-menu" : "@{$button}";
+        waitFor($page, $trigger);
+        $page->hover($trigger);
+        waitFor($page, "@{$button}-tooltip");
+        $page->assertSeeIn("@{$button}-tooltip", $label);
+        $page->hover('@composer-header');
+        waitForGone($page, "@{$button}-tooltip");
+    }
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->hover("@composer-{$id}-poll");
+    waitFor($page, "@composer-{$id}-poll-tooltip");
+    $page->assertSeeIn("@composer-{$id}-poll-tooltip", __('posts.form.x.poll.add'))
+        ->hover('@composer-header');
+    waitForGone($page, "@composer-{$id}-poll-tooltip");
+
+    $page->hover('@thread-add-reply');
+    waitFor($page, '@thread-add-reply-tooltip');
+    $page->assertSeeIn('@thread-add-reply-tooltip', __('posts.form.thread.add'))
+        ->hover('@composer-header');
+    waitForGone($page, '@thread-add-reply-tooltip');
+
+    $page->hover('@x-ai-generated-info');
+    waitForState($page, '@x-ai-generated-tooltip', "element.getAttribute('data-state') === 'delayed-open' && element.getBoundingClientRect().bottom <= document.querySelector('[data-testid=\"x-ai-generated-info\"]').getBoundingClientRect().top");
+
+    expect($page->script("document.querySelector('[data-testid=\"x-ai-generated-tooltip\"]').getBoundingClientRect().bottom <= document.querySelector('[data-testid=\"x-ai-generated-info\"]').getBoundingClientRect().top"))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
