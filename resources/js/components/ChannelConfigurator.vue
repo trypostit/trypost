@@ -18,7 +18,7 @@ import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
 import type { Channel } from '@/types/channel';
-import { MEDIALESS_CONTENT_TYPES } from '@/types/content-type';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
 
@@ -62,10 +62,10 @@ const hasDocument = computed(() =>
     props.media.some((item) => isDocumentMedia(item)),
 );
 
-/** A repurpose publishes the source's media, so it never offers a type that takes none (X poll, Threads ghost post). */
+/** A repurpose publishes the source's media, so it never offers an X poll, which takes none. */
 const repurposeContentTypes = (platform: string): ContentTypeOption[] =>
     getContentTypeOptions(platform).filter(
-        (option) => !MEDIALESS_CONTENT_TYPES.has(option.value),
+        (option) => option.value !== ContentType.XPoll,
     );
 
 const offersContentTypeChoice = (channel: Channel): boolean =>

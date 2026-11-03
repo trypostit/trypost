@@ -192,7 +192,6 @@ import {
     CAPTIONLESS_CONTENT_TYPES,
     ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
-    MEDIALESS_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
@@ -500,17 +499,18 @@ const {
     },
 );
 /**
- * Step 1 shows no post type, so a card whose type takes no media (an X poll,
- * a Threads ghost post) would quietly refuse the shared media there. Entering
- * it (a second network added) puts such a card back on its network's first
- * type and forgets its poll, as going back to step 1 does.
+ * Step 1 shows no post type, so an X poll, which takes no media, would quietly
+ * refuse the shared media there. Entering it (a second network added) puts
+ * the poll card back on X's first type and forgets its poll, as going back to
+ * step 1 does.
  */
 watch(sharedStep, (shared) => {
     if (!shared) return;
 
     networkGroups.value
-        .filter((group) =>
-            MEDIALESS_CONTENT_TYPES.has(groupDestination(group).content_type),
+        .filter(
+            (group) =>
+                groupDestination(group).content_type === ContentType.XPoll,
         )
         .forEach((group) => {
             const [firstType] = getPickableContentTypeOptions(group.platform);

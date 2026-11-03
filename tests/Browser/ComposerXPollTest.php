@@ -463,6 +463,35 @@ test('a poll picked while x was the only network turns back into a post when ano
     $page->assertNoJavaScriptErrors();
 });
 
+test('a threads ghost post stays a ghost post when another network joins, since only a poll goes back to a post', function () {
+    $post = seedXPollPost();
+    $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $post->workspace_id]);
+    $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
+
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$threads->id}");
+    $page->click("@composer-account-option-{$threads->id}")
+        ->click('@composer-header');
+    waitForGone($page, "@composer-account-option-{$threads->id}");
+    waitFor($page, "@composer-type-{$threads->id}-threads_ghost_post");
+    $page->click("@composer-type-{$threads->id}-threads_ghost_post");
+    waitForState($page, "@composer-type-{$threads->id}-threads_ghost_post", "element.getAttribute('aria-checked') === 'true'");
+
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$linkedIn->id}");
+    $page->click("@composer-account-option-{$linkedIn->id}")
+        ->click('@composer-header');
+    waitForGone($page, "@composer-account-option-{$linkedIn->id}");
+    $page->fill('@composer-base-content', 'Boo')
+        ->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect(Post::query()->where('social_account_id', $threads->id)->sole()->content_type)->toBe(ContentType::ThreadsGhostPost);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('poll is disabled while a file is still uploading to the card', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;

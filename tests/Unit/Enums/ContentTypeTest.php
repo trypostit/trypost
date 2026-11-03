@@ -523,15 +523,6 @@ test('a post type that takes no media advertises no media capability', function 
     'threads ghost post' => [ContentType::ThreadsGhostPost],
 ]);
 
-test('only post types that carry media accept it', function (ContentType $type, bool $accepts) {
-    expect($type->acceptsMedia())->toBe($accepts);
-})->with([
-    'x poll' => [ContentType::XPoll, false],
-    'threads ghost post' => [ContentType::ThreadsGhostPost, false],
-    'x post' => [ContentType::XPost, true],
-    'instagram story' => [ContentType::InstagramStory, true],
-]);
-
 test('a post type is compatible with the platforms it can go to', function () {
     expect(ContentType::InstagramReel->isCompatibleWith(Platform::Instagram))->toBeTrue()
         ->and(ContentType::InstagramReel->isCompatibleWith(Platform::InstagramFacebook))->toBeTrue()

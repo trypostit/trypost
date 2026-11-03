@@ -204,7 +204,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                if ($contentType?->acceptsMedia() === false && filled(data_get($destination, 'media'))) {
+                if ($contentType === ContentType::XPoll && filled(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
                 }
 

@@ -1579,9 +1579,9 @@ it('refuses media on an x poll', function () {
     $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 });
 
-it('refuses to attach media to a post type that takes none', function (ContentType $contentType) {
-    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
-    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+it('refuses to attach media to an x poll', function () {
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
     $storedMedia = Media::query()->count();
     Http::fake();
@@ -1601,10 +1601,28 @@ it('refuses to attach media to a post type that takes none', function (ContentTy
     expect($post->fresh()->media)->toBeEmpty()
         ->and(Media::query()->count())->toBe($storedMedia);
     Http::assertNothingSent();
-})->with([
-    'x poll' => [ContentType::XPoll],
-    'threads ghost post' => [ContentType::ThreadsGhostPost],
-]);
+});
+
+it('still saves a threads ghost post draft with media and attaches media to it, the poll rules being x only', function () {
+    $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $this->workspace->id]);
+    $draft = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    $attached = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Boo',
+        'status' => PostStatus::Draft->value,
+        'social_account_id' => $threads->id,
+        'content_type' => ContentType::ThreadsGhostPost->value,
+        'media' => [['upload_token' => $draft->upload_token]],
+    ])->assertCreated();
+    $post = Post::where('social_account_id', $threads->id)->sole();
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-upload', $post), [
+        'upload_token' => $attached->upload_token,
+    ])->assertOk();
+
+    expect($post->fresh()->media)->toHaveCount(2);
+});
 
 it('returns the poll of an x poll it creates and updates', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);

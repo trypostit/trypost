@@ -1142,9 +1142,9 @@ test('publish post refuses a stored x poll without options or duration', functio
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
 ]);
 
-test('the attach media tools refuse media on a post type that takes none', function (ContentType $contentType) {
-    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $contentType->platform()]);
-    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+test('the attach media tools refuse media on an x poll', function () {
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
     Http::fake();
 
@@ -1160,10 +1160,7 @@ test('the attach media tools refuse media on a post type that takes none', funct
 
     expect($post->fresh()->media)->toBeEmpty();
     Http::assertNothingSent();
-})->with([
-    'x poll' => [ContentType::XPoll],
-    'threads ghost post' => [ContentType::ThreadsGhostPost],
-]);
+});
 
 test('the get post tool returns the poll of an x poll', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);

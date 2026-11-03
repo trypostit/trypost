@@ -50,14 +50,15 @@ class AppendPostMedia
     }
 
     /**
-     * Refuses a post whose type takes no media. `execute()` always checks it; an
-     * entry point that stores or downloads a file first calls it before doing so.
+     * Refuses media on an X poll, which carries none. `execute()` always checks
+     * it; an entry point that stores or downloads a file first calls it before
+     * doing so.
      *
      * @throws ValidationException
      */
     public static function ensureAcceptsMedia(Post $post, string $field = 'media'): void
     {
-        if ($post->content_type?->acceptsMedia() === false) {
+        if ($post->content_type === ContentType::XPoll) {
             throw ValidationException::withMessages([$field => trans('posts.errors.media_not_accepted')]);
         }
     }

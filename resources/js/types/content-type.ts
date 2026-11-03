@@ -32,7 +32,7 @@ export const CAPTIONLESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
     ContentType.InstagramStory,
 ]);
 
-/** Content types that carry no media, with why a card holding media cannot switch to one (mirrors `ContentType::acceptsMedia()`). */
+/** Content types that carry no media, with why a card holding media cannot switch to one (`maxMediaCount()` 0 on the server). */
 export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Record<string, string>> = {
     [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
     [ContentType.XPoll]: 'posts.form.x.poll.attachments',

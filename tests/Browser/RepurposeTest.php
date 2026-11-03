@@ -515,7 +515,7 @@ test('the destination post types sit centered in their settings panel', function
     $page->assertNoJavaScriptErrors();
 });
 
-test('an x destination offers no poll and a threads destination no ghost post', function () {
+test('an x destination offers no poll, while a threads destination still offers a ghost post', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
     $x = SocialAccount::factory()->for($workspace)->x()->create();
     $threads = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
@@ -539,9 +539,7 @@ test('an x destination offers no poll and a threads destination no ghost post', 
         ->assertMissing("@channel-type-{$x->id}-x_poll")
         ->assertMissing("@channel-type-{$x->id}")
         ->assertMissing("@channel-settings-{$x->id}")
-        ->assertMissing("@channel-type-{$threads->id}-threads_ghost_post")
-        ->assertMissing("@channel-type-{$threads->id}")
-        ->assertMissing("@channel-settings-{$threads->id}")
+        ->assertPresent("@channel-type-{$threads->id}-threads_ghost_post")
         ->assertNoJavaScriptErrors();
 });
 
