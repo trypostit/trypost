@@ -80,10 +80,10 @@ class XPublisher
             $post,
             $rootHash,
             fn (): array => $this->publishRoot($post, $content),
-            fn (string $text, Collection $media, array $parent): array => $this->createTweet([
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createTweet([
                 ...($text !== '' ? ['text' => $text] : []),
-                ...$this->mediaPayload($media),
-                'reply' => ['in_reply_to_tweet_id' => (string) $parent['id']],
+                ...($poll === null ? $this->mediaPayload($media) : ['poll' => $this->replyPollPayload($text, $media, $poll)]),
+                'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
             ], $account->username),
         );
     }
@@ -136,6 +136,28 @@ class XPublisher
         }
 
         return XPoll::payload($post->meta);
+    }
+
+    /**
+     * A reply poll follows the root poll's rules: its question is the reply
+     * text, and it carries no media.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $poll
+     * @return array{options: list<string>, duration_minutes: int}
+     */
+    private function replyPollPayload(string $text, Collection $media, array $poll): array
+    {
+        $reply = ['poll' => $poll];
+        $violation = XPoll::questionViolation($text)
+            ?? ($media->isNotEmpty() ? trans('posts.errors.media_not_accepted') : null)
+            ?? data_get(XPoll::requiredViolation($reply), 1);
+
+        if (filled($violation)) {
+            throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+
+        return XPoll::payload($reply);
     }
 
     /**

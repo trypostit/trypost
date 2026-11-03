@@ -8,6 +8,8 @@ import type { PublicationPoll } from '@/types/analytics';
 const props = defineProps<{
     poll: PublicationPoll;
     testId: string;
+    /** Names the thread post a reply poll sits on. */
+    caption?: string;
 }>();
 
 const totalVotes = computed(() =>
@@ -53,6 +55,13 @@ const status = computed((): { key: string; time?: string } | null => {
 
 <template>
     <div class="flex flex-col gap-1.5 px-4 pb-3" :data-testid="testId">
+        <p
+            v-if="caption"
+            class="text-xs font-medium text-muted-foreground"
+            :data-testid="`${testId}-caption`"
+        >
+            {{ caption }}
+        </p>
         <div
             v-for="(row, index) in rows"
             :key="index"

@@ -232,3 +232,30 @@ test('the leading choice stays readable in both themes', function (string $theme
     expect($contrast)->toBeGreaterThanOrEqual(4.5);
     expect($page->script("document.documentElement.classList.contains('dark')"))->toBe($theme === 'dark');
 })->with(['light', 'dark']);
+
+test('the polls of thread replies show under the post on the sent card and in the details, each naming its post', function () {
+    [$user, $account, $post] = pollResultsSetup(refundPoll());
+    $publication = AnalyticsPublication::query()->where('post_id', $post->id)->sole();
+    $publication->forceFill(['provider_metadata' => [...$publication->provider_metadata, 'thread_polls' => [
+        ['reply' => 1, ...refundPoll(), 'options' => [['label' => 'Tabs', 'votes' => 3], ['label' => 'Spaces', 'votes' => 1]]],
+    ]]])->save();
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}-reply-1");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-reply-1-caption", __('posts.poll_results.thread_post', ['number' => '3']))
+        ->assertSeeIn("@post-poll-{$post->id}-reply-1-option-0", 'Tabs')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-1-option-0", '75%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", '66.7%')
+        ->assertMissing("@post-poll-{$post->id}-caption");
+
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
+    $page->click("@post-details-open-{$post->id}");
+    waitFor($page, '@post-details-poll-reply-1');
+
+    $page->assertSeeIn('@post-details-poll-reply-1-caption', __('posts.poll_results.thread_post', ['number' => '3']))
+        ->assertSeeIn('@post-details-poll-reply-1', '25%')
+        ->assertNoJavaScriptErrors();
+});

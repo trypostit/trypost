@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minutos',
                 'remove' => 'Quitar encuesta',
                 'attachments' => 'Las encuestas no admiten contenido multimedia',
+                'add' => 'Añadir encuesta',
             ],
         ],
         'linkedin' => [
@@ -957,6 +958,7 @@ return [
         'final' => 'Resultados finales',
         'ended' => 'Votación cerrada',
         'ends' => 'Termina :time',
+        'thread_post' => 'Publicación :number del hilo',
     ],
 
     'publish' => [

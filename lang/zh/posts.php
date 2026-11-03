@@ -431,6 +431,7 @@ return [
                 'minutes' => '分钟',
                 'remove' => '删除投票',
                 'attachments' => '投票不支持媒体',
+                'add' => '添加投票',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => '最终结果',
         'ended' => '投票已结束',
         'ends' => ':time结束',
+        'thread_post' => '帖子串中的第 :number 条',
     ],
 
     'publish' => [

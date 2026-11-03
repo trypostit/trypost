@@ -1019,3 +1019,55 @@ test('a post without a poll stores no poll result', function () {
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
     expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
 });
+
+test('the x collector reads the polls of the thread replies in the same request as the post', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'meta' => ['poll' => ['options' => ['✅ Refund', '❌ No refund'], 'duration_minutes' => 1440], 'thread_replies' => [
+            ['text' => 'Why?', 'media' => []],
+            ['text' => 'And next time?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+        ]],
+    ]);
+    $post->forceFill(['thread_reply_ids' => ['2117330256323379667', '2117330256323379668']])->save();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::X,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '2117330256323379666',
+    ]);
+    $endsAt = now('UTC')->addDay()->toIso8601ZuluString('millisecond');
+    $root = xPollResponse($endsAt);
+    Http::fake([config('trypost.platforms.x.api').'/tweets*' => Http::response([
+        'data' => [
+            ['id' => '2117330256323379666', ...$root['data']],
+            ['id' => '2117330256323379668', 'attachments' => ['poll_ids' => ['2117330255450890241']], 'public_metrics' => ['impression_count' => 9]],
+        ],
+        'includes' => ['polls' => [...$root['includes']['polls'], [
+            'id' => '2117330255450890241',
+            'duration_minutes' => 60,
+            'end_datetime' => $endsAt,
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 5], ['position' => 2, 'label' => 'No', 'votes' => 3]],
+        ]]],
+    ])]);
+
+    $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => str_starts_with($request->url(), config('trypost.platforms.x.api').'/tweets?')
+        && $request['ids'] === '2117330256323379666,2117330256323379668');
+    expect($observation->providerMetadata['poll']['options'])->toEqual([
+        ['label' => '✅ Refund', 'votes' => 1],
+        ['label' => '❌ No refund', 'votes' => 2],
+    ])->and($observation->providerMetadata['thread_polls'])->toEqual([[
+        'reply' => 1,
+        'options' => [['label' => 'Yes', 'votes' => 5], ['label' => 'No', 'votes' => 3]],
+        'voting_status' => 'open',
+        'end_datetime' => $endsAt,
+        'duration_minutes' => 60,
+    ]]);
+    $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
+    expect($metrics->all())->toMatchArray(['impressions' => 200, 'reactions' => 4]);
+});

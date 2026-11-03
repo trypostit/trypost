@@ -431,6 +431,7 @@ return [
                 'minutes' => '분',
                 'remove' => '투표 삭제',
                 'attachments' => '투표는 미디어를 지원하지 않습니다',
+                'add' => '투표 추가',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => '최종 결과',
         'ended' => '투표 종료',
         'ends' => '종료 :time',
+        'thread_post' => '스레드의 게시물 :number',
     ],
 
     'publish' => [

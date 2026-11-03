@@ -282,6 +282,11 @@ export interface PublicationPoll {
     duration_minutes: number | null;
 }
 
+/** The poll of one thread reply; `reply` is its position among the replies, from 0. */
+export interface PublicationThreadPoll extends PublicationPoll {
+    reply: number;
+}
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;
@@ -298,6 +303,7 @@ export interface PublicationAnalyticsDetail {
         excerpt: string | null;
         preview_metadata: Record<string, unknown> | null;
         poll: PublicationPoll | null;
+        thread_polls: PublicationThreadPoll[];
         account_display_name: string | null;
         account_username: string | null;
         account_avatar_url: string | null;

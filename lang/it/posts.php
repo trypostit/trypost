@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minuti',
                 'remove' => 'Rimuovi sondaggio',
                 'attachments' => 'I sondaggi non supportano i media',
+                'add' => 'Aggiungi sondaggio',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Risultati finali',
         'ended' => 'Votazione chiusa',
         'ends' => 'Termina :time',
+        'thread_post' => 'Post :number del thread',
     ],
 
     'publish' => [

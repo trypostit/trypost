@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minuty',
                 'remove' => 'Usuń ankietę',
                 'attachments' => 'Ankieta nie obsługuje multimediów',
+                'add' => 'Dodaj ankietę',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Wyniki końcowe',
         'ended' => 'Głosowanie zakończone',
         'ends' => 'Kończy się :time',
+        'thread_post' => 'Post :number w wątku',
     ],
 
     'publish' => [

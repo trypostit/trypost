@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
@@ -182,4 +183,103 @@ test('scheduling an x poll without a question asks only for the question on the 
             ->assertDontSee(__('posts.edit.compliance.requires_content_or_media'));
     }
     expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('a poll on a thread reply is stored normalized on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(ContentType::XPost);
+
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => [' Tabs ', '', 'Spaces'], 'duration_minutes' => 60]],
+    ]]]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh()->meta['thread_replies'])->toEqual([
+        ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ]);
+})->with(['web', 'api', 'mcp']);
+
+test('repeated choices on a thread reply poll are refused on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(ContentType::XPost);
+
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes', ' yes'], 'duration_minutes' => 60]],
+    ]]]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors([__('posts.form.x.poll.options_distinct')])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies.0.poll.options' => __('posts.form.x.poll.options_distinct')]);
+    expect($post->fresh()->meta)->toBe([]);
+})->with(['web', 'api', 'mcp']);
+
+test('scheduling a thread reply poll without its question or with one choice is refused on the web, api and mcp', function (string $surface, array $reply, string $field, string $message) {
+    $post = xPollParityPost(ContentType::XPost);
+
+    $response = xPollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => [$reply]],
+    ]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors([__($message)])
+        : $response->assertUnprocessable()->assertJsonValidationErrors([$field => __($message)]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp'])->with([
+    'no question' => [['text' => '', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.x.poll.question_required'],
+    'one choice' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes'], 'duration_minutes' => 60]], 'meta.thread_replies.0.poll.options', 'posts.form.x.poll.options_required'],
+]);
+
+test('a thread reply poll with media is refused even as a draft on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(ContentType::XPost);
+    $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
+
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        [
+            'text' => 'Tabs or spaces?',
+            'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+            'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+        ],
+    ]]]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors([__('posts.errors.media_not_accepted')])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies.0.media' => __('posts.errors.media_not_accepted')]);
+    expect($post->fresh()->meta)->toBe([]);
+})->with(['web', 'api', 'mcp']);
+
+test('a thread with polls on the post and on its replies is scheduled on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
+
+    $response = xPollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60], 'thread_replies' => [
+            ['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]],
+            ['text' => 'Thanks for voting!'],
+        ]],
+    ]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh())
+        ->status->toBe(Status::Scheduled)
+        ->and($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual(['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]);
+})->with(['web', 'api', 'mcp']);
+
+test('a thread reply poll is dropped off x on the web, api and mcp', function (string $surface) {
+    $account = SocialAccount::factory()->create(['workspace_id' => test()->workspace->id, 'platform' => Platform::Bluesky]);
+    $post = Post::factory()->forAccount($account, ContentType::BlueskyPost)->create([
+        'user_id' => test()->user->id,
+        'content' => 'Thread',
+        'status' => Status::Draft,
+        'media' => [],
+        'meta' => [],
+    ]);
+
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ]]]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Tabs or spaces?', 'media' => []]]);
 })->with(['web', 'api', 'mcp']);

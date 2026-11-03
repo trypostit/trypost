@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minuten',
                 'remove' => 'Umfrage entfernen',
                 'attachments' => 'Umfragen können keine Medien enthalten',
+                'add' => 'Umfrage hinzufügen',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Endergebnis',
         'ended' => 'Abstimmung beendet',
         'ends' => 'Endet :time',
+        'thread_post' => 'Beitrag :number im Thread',
     ],
 
     'publish' => [

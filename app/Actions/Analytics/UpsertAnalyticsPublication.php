@@ -125,7 +125,7 @@ class UpsertAnalyticsPublication
                 $current->fill([
                     'permalink' => $discovered->permalink ?? $current->permalink,
                     'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
-                    'provider_metadata' => $discovered->provider_metadata ?? $current->provider_metadata,
+                    'provider_metadata' => filled($discovered->provider_metadata) ? [...($current->provider_metadata ?? []), ...$discovered->provider_metadata] : $current->provider_metadata,
                     'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
                     'excerpt' => $discovered->excerpt ?? $current->excerpt,
                     'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
@@ -297,7 +297,7 @@ class UpsertAnalyticsPublication
                 'permalink' => $permalink,
                 'excerpt' => $excerpt,
                 'preview_metadata' => $previewMetadata,
-                'provider_metadata' => $providerMetadata,
+                'provider_metadata' => transform($providerMetadata, fn (array $metadata): array => [...($publication->provider_metadata ?? []), ...$metadata]),
                 'account_display_name' => $identity->accountDisplayName,
                 'account_username' => $identity->accountUsername,
                 'account_avatar_url' => $identity->accountAvatarUrl,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconMoodSmile, IconSignature } from '@tabler/icons-vue';
+import { IconListDetails, IconMoodSmile, IconSignature } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import MediaSourceMenu from '@/components/posts/composer/MediaSourceMenu.vue';
@@ -10,6 +10,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 withDefaults(
     defineProps<{
@@ -18,10 +24,16 @@ withDefaults(
         mediaDisabled?: boolean;
         /** Why the media button is off, shown in its tooltip. */
         mediaDisabledReasonKey?: string;
+        /** Shows the poll button: an X reply can turn into a poll. */
+        pollAvailable?: boolean;
+        /** Why the poll button is off (the reply has media), or null when it is on. */
+        pollDisabledReasonKey?: string | null;
     }>(),
     {
         mediaDisabled: false,
         mediaDisabledReasonKey: 'posts.composer.media_not_supported',
+        pollAvailable: false,
+        pollDisabledReasonKey: null,
     },
 );
 
@@ -29,6 +41,7 @@ const emit = defineEmits<{
     (event: 'import-started', payload: { importId: string; label: string }): void;
     (event: 'open-unsplash'): void;
     (event: 'upload'): void;
+    (event: 'add-poll'): void;
     (event: 'select-emoji', emoji: string): void;
     (
         event: 'select-signature',
@@ -56,6 +69,10 @@ const requestUpload = (): void => {
     emit('upload');
 };
 
+const addPoll = (): void => {
+    emit('add-poll');
+};
+
 const selectEmoji = (emoji: string): void => {
     emit('select-emoji', emoji);
     emojiOpen.value = false;
@@ -75,6 +92,33 @@ const selectEmoji = (emoji: string): void => {
             @open-unsplash="emit('open-unsplash')"
             @upload="requestUpload"
         />
+        <template v-if="pollAvailable">
+            <TooltipProvider v-if="pollDisabledReasonKey" :delay-duration="200">
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span
+                            class="flex size-8 cursor-not-allowed items-center justify-center text-subtle-foreground"
+                            :aria-label="$t(pollDisabledReasonKey)"
+                            :data-testid="`${testIdPrefix}-poll-disabled`"
+                        >
+                            <IconListDetails class="size-4" />
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ $t(pollDisabledReasonKey) }}</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+            <button
+                v-else
+                type="button"
+                :data-testid="`${testIdPrefix}-poll`"
+                :aria-label="$t('posts.form.x.poll.add')"
+                :title="$t('posts.form.x.poll.add')"
+                class="flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                @click="addPoll"
+            >
+                <IconListDetails class="size-4" />
+            </button>
+        </template>
         <span class="mx-1.5 h-6 w-px bg-border" aria-hidden="true" />
         <Popover v-model:open="emojiOpen">
             <PopoverTrigger as-child>

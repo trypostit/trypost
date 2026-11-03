@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
@@ -38,7 +39,8 @@ class PostPreviewer
      *     title?: string,
      *     description?: string,
      *     description_length_bytes?: int,
-     *     thread_replies?: list<array{text: string, media: list<array<string, mixed>>}>
+     *     poll?: array{options: list<string>, duration_minutes: int},
+     *     thread_replies?: list<array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes: int}}>
      * }
      */
     public function forPost(Post $post): array
@@ -84,10 +86,15 @@ class PostPreviewer
 
         $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($post->meta) : [];
 
+        if ($post->content_type === ContentType::XPoll) {
+            $preview['poll'] = XPoll::payload($post->meta);
+        }
+
         if ($replies !== []) {
             $preview['thread_replies'] = array_map(fn (array $reply): array => [
                 'text' => $this->sanitizer->sanitize($reply['text'], $platform),
                 'media' => $reply['media'],
+                ...(isset($reply['poll']) ? ['poll' => XPoll::payload($reply)] : []),
             ], $replies);
         }
 

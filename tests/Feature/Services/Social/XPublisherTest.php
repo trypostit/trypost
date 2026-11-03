@@ -2051,3 +2051,60 @@ test('x publisher discloses an ai-generated x poll', function () {
 
     Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'made_with_ai' => true]);
 });
+
+test('a thread reply poll is sent on its reply with its choices and length', function () {
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Hello from X!']);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60], 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    expect($result['thread_reply_ids'])->toBe(['101']);
+});
+
+test('a poll on the post and polls on its replies are each sent on their own tweet', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => [
+        ['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]],
+        ['text' => 'Thanks for voting!'],
+    ]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)
+        ->push(['data' => ['id' => '102']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120], 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Thanks for voting!', 'reply' => ['in_reply_to_tweet_id' => '101']]);
+});
+
+test('a retry after a thread reply poll went live does not post it again', function () {
+    $this->post->update(['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+        ['text' => 'Last one'],
+    ]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)
+        ->push(['title' => 'Forbidden', 'detail' => 'Not allowed', 'status' => 403], 403)
+        ->push(['data' => ['id' => '102']], 201)]);
+
+    rescue(fn () => $this->publisher->publish($this->post->fresh()), report: false);
+    $result = (new XPublisher)->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['101', '102']);
+    expect(Http::recorded(fn (Request $request): bool => Arr::has($request->data(), 'poll')))->toHaveCount(1);
+});
+
+test('x publisher refuses a thread reply poll without its question before posting anything', function () {
+    $this->post->update(['meta' => ['thread_replies' => [['text' => '', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.x.poll.question_required'));
+    Http::assertNothingSent();
+});

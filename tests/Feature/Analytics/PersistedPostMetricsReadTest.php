@@ -297,3 +297,51 @@ test('post metrics carry the poll result on the publication in REST and MCP', fu
             ->where('metrics.publication.poll.options.1.votes', 2)
             ->etc());
 });
+
+test('post metrics carry the poll results of the post and of its thread replies in REST and MCP', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $access = createApiTestToken();
+    $user = $access['user'];
+    $account = SocialAccount::factory()->create(['workspace_id' => $access['workspace']->id, 'platform' => Platform::X]);
+    $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $user->id, 'platform_post_id' => '123']);
+    $poll = [
+        'options' => [['label' => 'Yes', 'votes' => 1], ['label' => 'No', 'votes' => 2]],
+        'voting_status' => 'closed',
+        'end_datetime' => now()->subHour()->toIso8601ZuluString('millisecond'),
+        'duration_minutes' => 1440,
+    ];
+    $threadPolls = [['reply' => 1, ...$poll, 'options' => [['label' => 'Tabs', 'votes' => 5], ['label' => 'Spaces', 'votes' => 3]]]];
+    $publication = AnalyticsPublication::factory()->create([
+        'provider_metadata' => ['poll' => $poll, 'thread_polls' => $threadPolls],
+        'workspace_id' => $access['workspace']->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::X,
+        'content_type' => PublicationContentType::Text,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $publication->id,
+        'date' => now()->subDay()->toDateString(),
+        'metrics' => ['reactions' => ['value' => 7, 'unit' => 'count', 'availability' => 'available']],
+    ]);
+
+    expect(data_get(app(ReadPublicationAnalytics::class)->forPost($post), 'metrics.publication.poll'))->toEqual($poll)
+        ->and(data_get(app(ReadPublicationAnalytics::class)->forPost($post), 'metrics.publication.thread_polls'))->toEqual($threadPolls);
+
+    $this->withToken($access['plain_token'])
+        ->getJson(route('api.posts.metrics', $post))
+        ->assertOk()
+        ->assertJsonPath('metrics.publication.poll.options.1.votes', 2)
+        ->assertJsonPath('metrics.publication.thread_polls.0.reply', 1)
+        ->assertJsonPath('metrics.publication.thread_polls.0.options.0.votes', 5);
+
+    TryPostServer::actingAs($user)
+        ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('metrics.publication.poll.options.1.votes', 2)
+            ->where('metrics.publication.thread_polls.0.reply', 1)
+            ->where('metrics.publication.thread_polls.0.options.0.votes', 5)
+            ->etc());
+});

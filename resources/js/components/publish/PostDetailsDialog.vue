@@ -163,6 +163,12 @@ const poll = computed(() => {
     return detail?.available ? detail.publication.poll : null;
 });
 
+const threadPolls = computed(() => {
+    const detail = current.value.metrics;
+
+    return detail?.available ? (detail.publication.thread_polls ?? []) : [];
+});
+
 const moment = computed(() => {
     if (current.value.published_at) {
         return {
@@ -473,6 +479,19 @@ const siblingMoment = (sibling: PostCard): string | null => {
                         class="-mx-6"
                         :poll="poll"
                         test-id="post-details-poll"
+                    />
+
+                    <PostPollResults
+                        v-for="threadPoll in threadPolls"
+                        :key="threadPoll.reply"
+                        class="-mx-6"
+                        :poll="threadPoll"
+                        :caption="
+                            $t('posts.poll_results.thread_post', {
+                                number: String(threadPoll.reply + 2),
+                            })
+                        "
+                        :test-id="`post-details-poll-reply-${threadPoll.reply}`"
                     />
 
                     <PostMetricsBand

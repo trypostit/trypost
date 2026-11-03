@@ -208,6 +208,10 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
                 }
 
+                foreach (ThreadReplies::pollMediaErrors(data_get($destination, 'meta', [])) as $field => $message) {
+                    $validator->errors()->add("{$key}.meta.{$field}", $message);
+                }
+
                 if ($composition['status'] === 'draft') {
                     continue;
                 }

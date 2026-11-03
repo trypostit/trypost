@@ -748,3 +748,86 @@ test('the preview shows the poll length in its largest unit and the user languag
     'minutes' => [30, 'en', '30 minutes left'],
     'days in portuguese' => [1440, 'pt-BR', 'termina em 1 dia'],
 ]);
+
+test('a thread reply turns into a poll from its toolbar, turns its media off and saves the poll on the reply', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Tabs or spaces?');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-choice-0');
+
+    $page->fill('@thread-reply-0-poll-choice-0', 'Tabs')
+        ->fill('@thread-reply-0-poll-choice-1', 'Spaces');
+    waitFor($page, "@composer-{$id}-media-source-disabled");
+    waitForText($page, '@preview-thread-reply-0 [data-testid="x-preview-poll"]', 'Spaces');
+
+    $page->assertMissing("@composer-{$id}-poll")
+        ->assertMissing('@x-poll')
+        ->assertAttribute("@composer-{$id}-media-source-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertSeeIn('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]', 'Tabs');
+
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta['thread_replies'])->toEqual([
+        ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => XPoll::DEFAULT_DURATION]],
+    ])->and($post->fresh()->content_type)->toBe(ContentType::XPost);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('removing a thread reply poll gives the reply its media back', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-remove');
+    $page->click('@thread-reply-0-poll-remove');
+    waitFor($page, "@composer-{$id}-media-source-menu");
+
+    $page->assertMissing('@thread-reply-0-poll')
+        ->assertPresent("@composer-{$id}-poll")
+        ->assertMissing("@composer-{$id}-media-source-disabled")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a thread reply with media cannot turn into a poll and says why', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]]]]);
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-reply-collapsed-0');
+    $page->click('@thread-reply-collapsed-0');
+    waitFor($page, "@composer-{$id}-poll-disabled");
+
+    $page->assertMissing("@composer-{$id}-poll")
+        ->assertAttribute("@composer-{$id}-poll-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a thread reply poll question on a long post account counts against 280', function () {
+    $post = seedXPollPost(attributes: ['meta' => ['thread_replies' => [
+        ['text' => Str::repeat('a', 290), 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+    ]]], accountMeta: ['x_subscription_type' => 'Premium']);
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-reply-collapsed-0');
+    $page->click('@thread-reply-collapsed-0');
+    waitForText($page, "@composer-char-count-{$id}", '-10');
+
+    $page->assertSeeIn("@composer-char-count-{$id}", '-10')
+        ->assertValue('@thread-reply-0-poll-choice-1', 'No')
+        ->assertNoJavaScriptErrors();
+});

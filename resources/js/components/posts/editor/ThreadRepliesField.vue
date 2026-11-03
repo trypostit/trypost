@@ -12,13 +12,15 @@ const props = withDefaults(
     defineProps<{
         platform: string;
         limit: number;
+        /** A reply poll's question cap, kept even on an account with long posts. */
+        pollLimit?: number;
         max?: number;
         disabled?: boolean;
         errors?: Record<number, string>;
         /** Id of the element the active post's toolbar is teleported into. */
         toolbarTarget?: string;
     }>(),
-    { max: Infinity, disabled: false, errors: () => ({}) },
+    { pollLimit: Infinity, max: Infinity, disabled: false, errors: () => ({}) },
 );
 
 const replies = defineModel<ThreadReply[]>({ required: true });
@@ -36,11 +38,16 @@ const { contentFor } = useXLinkDefuser();
 const editor = ref<HTMLTextAreaElement[]>([]);
 
 const remaining = (reply: ThreadReply): number =>
-    props.limit -
+    (reply.poll !== undefined
+        ? Math.min(props.limit, props.pollLimit)
+        : props.limit) -
     displayLength(contentFor(reply.text, props.platform));
 
 const isEmpty = (reply: ThreadReply | undefined): boolean =>
-    reply !== undefined && reply.text === '' && reply.media.length === 0;
+    reply !== undefined &&
+    reply.text === '' &&
+    reply.media.length === 0 &&
+    reply.poll === undefined;
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>

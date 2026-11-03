@@ -12,6 +12,8 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\XPoll;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -20,7 +22,9 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post with the scopes we hold.
  * Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply.
+ * string is a text-only reply. On X a reply may carry a poll instead of media
+ * (`{text, media, poll}`), following `XPoll`'s rules with the reply text as
+ * its question.
  */
 class ThreadReplies
 {
@@ -46,7 +50,7 @@ class ThreadReplies
     }
 
     /**
-     * @return list<array{text: string, media: list<array<string, mixed>>}>
+     * @return list<array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}>
      */
     public static function of(mixed $meta): array
     {
@@ -57,7 +61,7 @@ class ThreadReplies
     }
 
     /**
-     * @return array{text: string, media: list<array<string, mixed>>}
+     * @return array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}
      */
     public static function reply(mixed $reply): array
     {
@@ -66,11 +70,61 @@ class ThreadReplies
         }
 
         $text = data_get($reply, 'text');
+        $poll = data_get($reply, 'poll');
 
         return [
             'text' => is_string($text) ? $text : '',
             'media' => array_values(array_filter((array) data_get($reply, 'media', []), is_array(...))),
+            ...(is_array($poll) ? ['poll' => XPoll::normalize($poll)] : []),
         ];
+    }
+
+    /**
+     * Replies without their polls, for a network other than X.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    public static function withoutPolls(array $meta): array
+    {
+        if (! is_array(data_get($meta, 'thread_replies'))) {
+            return $meta;
+        }
+
+        $meta['thread_replies'] = array_map(fn (array $reply): array => Arr::except($reply, 'poll'), self::of($meta));
+
+        return $meta;
+    }
+
+    /**
+     * A reply poll no post may store, even as a draft: repeated choices.
+     *
+     * @return array{0: string, 1: string}|null [field, message]
+     */
+    public static function pollFormatViolation(mixed $meta): ?array
+    {
+        foreach (self::of($meta) as $index => $reply) {
+            $violation = isset($reply['poll']) ? XPoll::violation($reply) : null;
+
+            if ($violation !== null) {
+                return ["thread_replies.{$index}.{$violation[0]}", $violation[1]];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A reply poll carries no media, drafts included.
+     *
+     * @return array<string, string>
+     */
+    public static function pollMediaErrors(mixed $meta): array
+    {
+        return collect(self::of($meta))
+            ->filter(fn (array $reply): bool => isset($reply['poll']) && $reply['media'] !== [])
+            ->mapWithKeys(fn (array $reply, int $index): array => ["thread_replies.{$index}.media" => __('posts.errors.media_not_accepted')])
+            ->all();
     }
 
     /**
@@ -108,15 +162,27 @@ class ThreadReplies
 
         foreach ($replies as $index => $reply) {
             $blank = blank(Str::trim($reply['text']));
+            $poll = isset($reply['poll']);
+
+            if ($poll && $blank) {
+                return ["thread_replies.{$index}", XPoll::questionViolation($reply['text'])];
+            }
 
             if ($blank && $reply['media'] === []) {
                 return ["thread_replies.{$index}", __('posts.form.thread.reply_empty')];
             }
 
-            $over = $blank ? 0 : max(0, mb_strlen(app(ContentSanitizer::class)->displayText($reply['text'], $platform)) + $reserved - $limit);
+            $replyLimit = $poll ? min($limit, XPoll::QUESTION_MAX_LENGTH) : $limit;
+            $over = $blank ? 0 : max(0, mb_strlen(app(ContentSanitizer::class)->displayText($reply['text'], $platform)) + $reserved - $replyLimit);
 
             if ($over > 0) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => $limit - $reserved, 'over' => $over])];
+                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => $replyLimit - $reserved, 'over' => $over])];
+            }
+
+            $pollViolation = $poll ? XPoll::violation($reply) ?? XPoll::requiredViolation($reply) : null;
+
+            if ($pollViolation !== null) {
+                return ["thread_replies.{$index}.{$pollViolation[0]}", $pollViolation[1]];
             }
         }
 

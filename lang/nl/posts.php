@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minuten',
                 'remove' => 'Poll verwijderen',
                 'attachments' => 'Een poll ondersteunt geen media',
+                'add' => 'Poll toevoegen',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Eindresultaat',
         'ended' => 'Stemmen gesloten',
         'ends' => 'Eindigt :time',
+        'thread_post' => 'Bericht :number van de thread',
     ],
 
     'publish' => [

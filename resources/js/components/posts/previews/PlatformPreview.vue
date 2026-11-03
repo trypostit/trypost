@@ -19,6 +19,7 @@ import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 
@@ -163,9 +164,10 @@ const previewComponent = computed(() => {
                     :social-account="resolvedSocialAccount"
                     :content="contentFor(reply.text, platform)"
                     :media="reply.media"
-                    :content-type="contentType"
-                    :meta="{ spoiler_text: meta?.spoiler_text }"
+                    :content-type="reply.poll ? ContentType.XPoll : contentType"
+                    :meta="{ spoiler_text: meta?.spoiler_text, poll: reply.poll }"
                     :posted-at="postedAt"
+                    :publish-config="publishConfig"
                     :thread-position="
                         index === threadReplies.length - 1 ? 'last' : 'middle'
                     "

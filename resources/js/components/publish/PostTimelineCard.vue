@@ -703,6 +703,20 @@ defineExpose({ openDetails });
                     :test-id="`post-poll-${post.id}`"
                 />
 
+                <template v-if="tab === 'sent' && metricsDetail">
+                    <PostPollResults
+                        v-for="threadPoll in metricsDetail.publication.thread_polls ?? []"
+                        :key="threadPoll.reply"
+                        :poll="threadPoll"
+                        :caption="
+                            $t('posts.poll_results.thread_post', {
+                                number: String(threadPoll.reply + 2),
+                            })
+                        "
+                        :test-id="`post-poll-${post.id}-reply-${threadPoll.reply}`"
+                    />
+                </template>
+
                 <PostMetricsBand
                     v-if="tab === 'sent' && metricsDetail && hasMetrics"
                     :detail="metricsDetail"

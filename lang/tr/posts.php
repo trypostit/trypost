@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Dakika',
                 'remove' => 'Anketi kaldır',
                 'attachments' => 'Anketler medya desteklemiyor',
+                'add' => 'Anket ekle',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Nihai sonuçlar',
         'ended' => 'Oylama sona erdi',
         'ends' => 'Bitiş: :time',
+        'thread_post' => 'Zincirin :number. gönderisi',
     ],
 
     'publish' => [

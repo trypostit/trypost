@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minutos',
                 'remove' => 'Remover enquete',
                 'attachments' => 'Enquetes não aceitam mídia',
+                'add' => 'Adicionar enquete',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Resultado final',
         'ended' => 'Votação encerrada',
         'ends' => 'Termina :time',
+        'thread_post' => 'Post :number da sequência',
     ],
 
     'publish' => [

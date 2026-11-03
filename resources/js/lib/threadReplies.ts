@@ -1,15 +1,18 @@
 import { uuid } from '@/lib/uuid';
+import type { XPoll } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
 
 /**
  * One post of a thread after the first. `key` only lives in the composer: it
  * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it.
+ * above it, and the server drops it. On X a reply may carry a poll instead of
+ * media, its text being the question.
  */
 export type ThreadReply = {
     key: string;
     text: string;
     media: MediaItem[];
+    poll?: Partial<XPoll>;
 };
 
 export const newThreadReply = (): ThreadReply => ({
@@ -42,6 +45,9 @@ export const threadRepliesOf = (
                                 ? stored.text
                                 : '',
                       media: Array.isArray(stored.media) ? stored.media : [],
+                      ...(stored.poll !== null && typeof stored.poll === 'object'
+                          ? { poll: stored.poll }
+                          : {}),
                   };
               },
           )

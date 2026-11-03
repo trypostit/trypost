@@ -24,6 +24,11 @@ test('custom meta messages cover pinterest, instagram collaborators, google busi
         'meta.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
         'meta.poll.duration_minutes.integer' => __('posts.form.x.poll.duration_range'),
         'meta.poll.duration_minutes.between' => __('posts.form.x.poll.duration_range'),
+        'meta.thread_replies.*.poll.array' => __('posts.form.x.poll.poll_object'),
+        'meta.thread_replies.*.poll.options.array' => __('posts.form.x.poll.options_list'),
+        'meta.thread_replies.*.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
+        'meta.thread_replies.*.poll.duration_minutes.integer' => __('posts.form.x.poll.duration_range'),
+        'meta.thread_replies.*.poll.duration_minutes.between' => __('posts.form.x.poll.duration_range'),
     ]);
 });
 

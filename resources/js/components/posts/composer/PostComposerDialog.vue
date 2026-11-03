@@ -181,7 +181,7 @@ import {
     threadRepliesOf,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { pollLimitsOf, type XPollLimits } from '@/lib/xPoll';
+import { newPoll, pollLimitsOf, type XPoll, type XPollLimits } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -518,11 +518,21 @@ watch(sharedStep, (shared) => {
             forgetGroupPoll(group);
         });
 });
-/** Why the media button is off: a type that takes no media says so, except while a reply is edited. */
-const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
-    (activeReply(group) === undefined &&
-        MEDIALESS_CONTENT_TYPE_REASONS[groupDestination(group).content_type]) ||
-    'posts.composer.media_not_supported';
+/** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
+const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
+    const reply = activeReply(group);
+
+    if (reply !== undefined) {
+        return reply.poll !== undefined
+            ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
+            : 'posts.composer.media_not_supported';
+    }
+
+    return (
+        MEDIALESS_CONTENT_TYPE_REASONS[groupDestination(group).content_type] ??
+        'posts.composer.media_not_supported'
+    );
+};
 const openNetwork = (
     groupKey: string,
     accountId: string | null = null,
@@ -1181,6 +1191,9 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
+/** A reply poll's question keeps the poll's cap, even on an account with long posts. */
+const replyPollLimit = (group: NetworkGroup): number =>
+    accountPollLimits(group.anchor)?.questionMaxLength ?? Infinity;
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);
     if (reply === undefined) return groupRemaining(group);
@@ -1188,8 +1201,44 @@ const activeRemaining = (group: NetworkGroup): number | null => {
 
     return limit === null
         ? null
-        : limit -
-          displayLength(contentFor(reply.text, group.platform));
+        : (reply.poll !== undefined
+              ? Math.min(limit, replyPollLimit(group))
+              : limit) - displayLength(contentFor(reply.text, group.platform));
+};
+const setReplyPoll = (
+    group: NetworkGroup,
+    replyKey: string,
+    poll: XPoll | undefined,
+): void => {
+    setThreadReplies(
+        group,
+        threadReplies(group).map((reply) => {
+            if (reply.key !== replyKey) return reply;
+            const next: ThreadReply = { ...reply, poll };
+            if (poll === undefined) delete next.poll;
+
+            return next;
+        }),
+    );
+};
+/** The poll button shows on an X reply without a poll; media in it keeps the button off. */
+const replyPollAvailable = (group: NetworkGroup): boolean =>
+    accountPollLimits(group.anchor) !== null &&
+    activeReply(group)?.poll === undefined &&
+    activeReply(group) !== undefined;
+const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
+    const reply = activeReply(group);
+
+    return reply !== undefined &&
+        (reply.media.length > 0 || replyUploaderFor(group, reply)?.busy.value)
+        ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
+        : null;
+};
+const addReplyPoll = (group: NetworkGroup): void => {
+    const reply = activeReply(group);
+    const limits = accountPollLimits(group.anchor);
+    if (reply === undefined || limits === null) return;
+    setReplyPoll(group, reply.key, newPoll(limits));
 };
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
@@ -1326,8 +1375,11 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
-const groupAcceptsMedia = (group: NetworkGroup): boolean =>
-    activeReply(group) !== undefined || acceptsMedia(group.key);
+const groupAcceptsMedia = (group: NetworkGroup): boolean => {
+    const reply = activeReply(group);
+
+    return reply !== undefined ? reply.poll === undefined : acceptsMedia(group.key);
+};
 const onGroupImportStarted = (
     started: MediaImportStarted,
     group: NetworkGroup,
@@ -2967,6 +3019,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
                                         :limit="threadReplyLimit(group) ?? Infinity"
+                                        :poll-limit="replyPollLimit(group)"
                                         :errors="threadReplyErrors(group)"
                                         :disabled="cropUploading"
                                         @update:model-value="
@@ -2975,8 +3028,30 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @paste="onReplyMediaPasted($event, group)"
                                     >
                                         <template #media="{ reply, index }">
-                                            <div
+                                            <XPollField
                                                 v-if="
+                                                    reply.poll !== undefined &&
+                                                    threadActive === index &&
+                                                    accountPollLimits(group.anchor)
+                                                "
+                                                class="px-[9px]"
+                                                :model-value="reply.poll"
+                                                :limits="accountPollLimits(group.anchor)!"
+                                                :platform-index="
+                                                    selectedAccounts.indexOf(group.anchor)
+                                                "
+                                                :field-prefix="`thread_replies.${index}.`"
+                                                :test-id-prefix="`thread-reply-${index}-poll`"
+                                                :disabled="cropUploading"
+                                                @update:model-value="
+                                                    setReplyPoll(group, reply.key, $event)
+                                                "
+                                                @remove="
+                                                    setReplyPoll(group, reply.key, undefined)
+                                                "
+                                            />
+                                            <div
+                                                v-else-if="
                                                     threadActive === index ||
                                                     reply.media.length ||
                                                     replyHasActivity(group, reply)
@@ -3056,6 +3131,11 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :media-disabled-reason-key="
                                             groupMediaDisabledReasonKey(group)
                                         "
+                                        :poll-available="replyPollAvailable(group)"
+                                        :poll-disabled-reason-key="
+                                            replyPollDisabledReasonKey(group)
+                                        "
+                                        @add-poll="addReplyPoll(group)"
                                         @import-started="
                                             onGroupImportStarted($event, group)
                                         "

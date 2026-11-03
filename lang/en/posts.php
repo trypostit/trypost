@@ -431,6 +431,7 @@ return [
                 'minutes' => 'Minutes',
                 'remove' => 'Remove poll',
                 'attachments' => 'Polls can\'t have media',
+                'add' => 'Add a poll',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => 'Final results',
         'ended' => 'Voting ended',
         'ends' => 'Ends :time',
+        'thread_post' => 'Post :number of the thread',
     ],
 
     'publish' => [

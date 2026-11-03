@@ -35,9 +35,13 @@ const props = withDefaults(
         limits: XPollLimits;
         /** This card's position in the submitted `destinations`; see useMetaErrors. */
         platformIndex: number;
+        /** Where the poll sits in the meta: '' for the post, `thread_replies.{n}.` for a reply. */
+        fieldPrefix?: string;
+        /** Prefix of every test id, so a post and its replies can each show a poll. */
+        testIdPrefix?: string;
         disabled?: boolean;
     }>(),
-    { disabled: false },
+    { fieldPrefix: '', testIdPrefix: 'x-poll', disabled: false },
 );
 
 const emit = defineEmits<{
@@ -48,11 +52,11 @@ const emit = defineEmits<{
 const id = useId();
 
 const metaError = useMetaErrors(() => props.platformIndex);
-const optionsError = metaError('poll.options');
-const durationError = metaError('poll.duration_minutes');
+const optionsError = metaError(`${props.fieldPrefix}poll.options`);
+const durationError = metaError(`${props.fieldPrefix}poll.duration_minutes`);
 const choiceErrors = Array.from(
     { length: props.limits.maxOptions },
-    (_, index) => metaError(`poll.options.${index}`),
+    (_, index) => metaError(`${props.fieldPrefix}poll.options.${index}`),
 );
 
 const choiceId = (index: number): string => `${id}-choice-${index}`;
@@ -158,7 +162,7 @@ const removePoll = (): void => {
 </script>
 
 <template>
-    <div class="mt-3 space-y-4" data-testid="x-poll">
+    <div class="mt-3 space-y-4" :data-testid="testIdPrefix">
         <SettingsRow align-top>
             <template #label>
                 <span data-single-line>{{
@@ -181,7 +185,7 @@ const removePoll = (): void => {
                             choiceErrors[index]?.value ? true : undefined
                         "
                         :disabled="disabled"
-                        :data-testid="`x-poll-choice-${index}`"
+                        :data-testid="`${testIdPrefix}-choice-${index}`"
                         @update:model-value="setChoice(index, $event)"
                     />
                     <span
@@ -191,7 +195,7 @@ const removePoll = (): void => {
                                 ? 'text-destructive-text'
                                 : 'text-muted-foreground'
                         "
-                        :data-testid="`x-poll-choice-${index}-count`"
+                        :data-testid="`${testIdPrefix}-choice-${index}-count`"
                         >{{ choiceLength(option) }} /
                         {{ limits.optionMaxLength }}</span
                     >
@@ -208,7 +212,7 @@ const removePoll = (): void => {
                             )
                         "
                         :disabled="disabled"
-                        :data-testid="`x-poll-remove-choice-${index}`"
+                        :data-testid="`${testIdPrefix}-remove-choice-${index}`"
                         @click="removeChoice(index)"
                     >
                         <IconX class="size-4" />
@@ -217,12 +221,12 @@ const removePoll = (): void => {
                 </div>
                 <InputError
                     :message="choiceErrors[index]?.value"
-                    :data-testid="`x-poll-choice-${index}-error`"
+                    :data-testid="`${testIdPrefix}-choice-${index}-error`"
                 />
             </template>
             <InputError
                 :message="optionsError"
-                data-testid="x-poll-options-error"
+                :data-testid="`${testIdPrefix}-options-error`"
             />
             <Button
                 v-if="options.length < limits.maxOptions"
@@ -230,7 +234,7 @@ const removePoll = (): void => {
                 variant="outline"
                 size="sm"
                 :disabled="disabled"
-                data-testid="x-poll-add-choice"
+                :data-testid="`${testIdPrefix}-add-choice`"
                 @click="addChoice"
             >
                 <IconPlus class="size-4" />
@@ -264,7 +268,7 @@ const removePoll = (): void => {
                         <SelectTrigger
                             :id="`${id}-${lengthPart.part}`"
                             class="w-16"
-                            :data-testid="`x-poll-${lengthPart.part}`"
+                            :data-testid="`${testIdPrefix}-${lengthPart.part}`"
                         >
                             <SelectValue>{{
                                 duration[lengthPart.part]
@@ -275,7 +279,7 @@ const removePoll = (): void => {
                                 v-for="value in lengthPart.values"
                                 :key="value"
                                 :value="String(value)"
-                                :data-testid="`x-poll-${lengthPart.part}-${value}`"
+                                :data-testid="`${testIdPrefix}-${lengthPart.part}-${value}`"
                                 >{{ value }}</SelectItem
                             >
                         </SelectContent>
@@ -290,7 +294,7 @@ const removePoll = (): void => {
             </div>
             <InputError
                 :message="durationError"
-                data-testid="x-poll-duration-error"
+                :data-testid="`${testIdPrefix}-duration-error`"
             />
         </SettingsRow>
         <SettingsRow>
@@ -301,7 +305,7 @@ const removePoll = (): void => {
                     size="sm"
                     class="text-destructive-text hover:text-destructive-text"
                     :disabled="disabled"
-                    data-testid="x-poll-remove"
+                    :data-testid="`${testIdPrefix}-remove`"
                     @click="removePoll"
                 >
                     <IconTrash class="size-4" />

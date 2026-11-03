@@ -38,6 +38,10 @@ class PostMeta
             $meta = Arr::except($meta, 'poll');
         }
 
+        if ($account->platform !== Platform::X) {
+            $meta = ThreadReplies::withoutPolls($meta);
+        }
+
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
             default => $meta,

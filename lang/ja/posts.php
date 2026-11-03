@@ -431,6 +431,7 @@ return [
                 'minutes' => '分',
                 'remove' => '投票を削除',
                 'attachments' => '投票はメディアに対応していません',
+                'add' => '投票を追加',
             ],
         ],
         'linkedin' => [
@@ -956,6 +957,7 @@ return [
         'final' => '最終結果',
         'ended' => '投票は終了しました',
         'ends' => '終了:time',
+        'thread_post' => 'スレッドの投稿 :number',
     ],
 
     'publish' => [
