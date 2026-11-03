@@ -6,11 +6,13 @@ import {
     IconCirclePlay,
     IconEdit,
     IconExternalLink,
+    IconGhost2,
     IconMessageCircle,
     IconMessageCircleFilled,
     IconGripVertical,
     IconClockPause,
     IconHourglass,
+    IconListDetails,
     IconLoader2,
     IconPencil,
     IconPlayerPlayFilled,
@@ -260,6 +262,8 @@ const CONTENT_TYPE_ICONS: Record<string, Component> = {
     facebook_story: IconCircleDashedPlus,
     instagram_reel: IconCirclePlay,
     facebook_reel: IconCirclePlay,
+    threads_ghost_post: IconGhost2,
+    x_poll: IconListDetails,
 };
 
 const contentTypeIcon = computed(() =>

@@ -635,10 +635,10 @@ test('on a phone the view switch and the new post button fit inside the card, on
     'a channel' => [false],
 ])->with(['approvals', 'sent']);
 
-test('the reel and story badges on a post card show a 16px icon', function (ContentType $contentType) {
+test('the reel, story, ghost post and poll badges on a post card show a 16px icon', function (Platform $platform, ContentType $contentType) {
     [$user, $workspace] = publishPageSetup();
-    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->forAccount($instagram, $contentType)->create(['user_id' => $user->id, 'content' => 'Badge']);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $user->id, 'content' => 'Badge']);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
@@ -646,7 +646,12 @@ test('the reel and story badges on a post card show a 16px icon', function (Cont
 
     expect($page->script("(() => { const box = document.querySelector('[data-testid=\"post-content-type-icon-{$post->id}\"]').getBoundingClientRect(); return [Math.round(box.width), Math.round(box.height)]; })()"))->toBe([16, 16]);
     $page->assertNoJavaScriptErrors();
-})->with([ContentType::InstagramReel, ContentType::InstagramStory]);
+})->with([
+    'instagram reel' => [Platform::Instagram, ContentType::InstagramReel],
+    'instagram story' => [Platform::Instagram, ContentType::InstagramStory],
+    'threads ghost post' => [Platform::Threads, ContentType::ThreadsGhostPost],
+    'x poll' => [Platform::X, ContentType::XPoll],
+]);
 
 test('a post card names an x poll and leaves a regular x post unmarked', function (ContentType $contentType, bool $badged) {
     [$user, $workspace] = publishPageSetup();
