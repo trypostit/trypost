@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Arr;
 
 class AnalyticsPublication extends Model
 {
@@ -23,12 +24,11 @@ class AnalyticsPublication extends Model
 
     /**
      * `provider_metadata` keys only the metrics read writes (the polls of X
-     * thread replies, which discovery never sees), so a discovery keeps them
-     * while it replaces everything else it reports.
+     * thread replies, which discovery never sees).
      *
      * @var list<string>
      */
-    public const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
+    private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
     protected $fillable = [
         'workspace_id',
@@ -84,6 +84,23 @@ class AnalyticsPublication extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    /**
+     * The `provider_metadata` after a discovery reported `$discovered`: what it
+     * reports replaces what was stored, so a key it no longer reports goes, while
+     * the keys only the metrics read writes stay. Nothing reported keeps it all.
+     *
+     * @param  array<string, mixed>|null  $discovered
+     * @return array<string, mixed>|null
+     */
+    public function providerMetadataAfterDiscovery(?array $discovered): ?array
+    {
+        if (blank($discovered)) {
+            return $this->provider_metadata;
+        }
+
+        return [...$discovered, ...Arr::only($this->provider_metadata ?? [], self::METRICS_ONLY_PROVIDER_METADATA)];
     }
 
     public function post(): BelongsTo
