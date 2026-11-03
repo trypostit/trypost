@@ -1,4 +1,4 @@
-import { blank, filled } from '@/lib/helpers';
+import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -30,7 +30,7 @@ export const isBlankThreadReply = ({
     media,
     poll,
 }: ThreadReply): boolean =>
-    text === '' && blank(media) && blank(poll);
+    isEmpty(text) && blank(media) && blank(poll);
 
 /** A reply as the server stores it; `key` only exists in a draft the composer saved. */
 type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };

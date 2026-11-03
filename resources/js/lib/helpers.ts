@@ -28,6 +28,13 @@ export const blank = (value: unknown): boolean => {
 /** The opposite of `blank()`; a filled value is never null or undefined. */
 export const filled = <T>(value: T): value is NonNullable<T> => !blank(value);
 
+/**
+ * Laravel's `isEmpty()` on a string (`Str::of()`) or a list (`collect()`): no
+ * characters or no items. Unlike `blank()`, a string of spaces is not empty.
+ */
+export const isEmpty = (value: string | unknown[]): boolean =>
+    value.length === 0;
+
 /** Whether a value is a string, like PHP's `is_string()`. */
 export const isString = (value: unknown): value is string =>
     typeof value === 'string';

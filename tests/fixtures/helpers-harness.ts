@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 
 const [helpersFile, corpusFile] = process.argv.slice(2);
 
-const { blank, filled, isString, isNumber, transform, clamp } = await import(pathToFileURL(path.resolve(helpersFile)).href);
+const { blank, filled, isEmpty, isString, isNumber, transform, clamp } = await import(pathToFileURL(path.resolve(helpersFile)).href);
 
 const values = (JSON.parse(fs.readFileSync(corpusFile, 'utf8')) as unknown[]).map((value) => ({
     blank: blank(value),
@@ -23,4 +23,6 @@ const values = (JSON.parse(fs.readFileSync(corpusFile, 'utf8')) as unknown[]).ma
 
 const clamped = [[5, 1, 10], [-3, 1, 10], [42, 1, 10], [1, 1, 10], [10, 1, 10], [2.5, 0, 1]].map(([value, min, max]) => clamp(value, min, max));
 
-console.log(JSON.stringify({ values, clamped }));
+const empties = ['', ' ', 'a', '0', [], [null], ['']].map((value) => isEmpty(value));
+
+console.log(JSON.stringify({ values, clamped, empties }));
