@@ -552,6 +552,21 @@ test('a choice counter does not count the spaces around it', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a choice stops at 25 characters while typing, counting an emoji as one and leaving out the spaces before it', function () {
+    $post = seedXPollPost();
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->type('@x-poll-choice-0', Str::repeat('a', 30));
+    waitForText($page, '@x-poll-choice-0-count', '25 / 25');
+    $page->type('@x-poll-choice-1', '  ✅'.Str::repeat('b', 30));
+    waitForText($page, '@x-poll-choice-1-count', '25 / 25');
+
+    expect($page->script("document.querySelector('[data-testid=\"x-poll-choice-0\"]').value"))->toBe(Str::repeat('a', 25))
+        ->and($page->script("document.querySelector('[data-testid=\"x-poll-choice-1\"]').value"))->toBe('  ✅'.Str::repeat('b', 24));
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a thread reply under a poll can still take media while the poll root cannot', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
@@ -644,7 +659,6 @@ test('a server error on the poll shows on the x card when x is not the first cha
     expect(Post::query()->where('workspace_id', $post->workspace_id)->count())->toBe(1);
 })->with([
     'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.x.poll.options_distinct')],
-    'a choice over 25 characters' => fn () => [[Str::repeat('a', 26), 'No'], 'x-poll-choice-0-error', __('posts.form.x.poll.choice_max', ['max' => 25])],
 ]);
 
 test('the ai-generated switch survives a switch from poll to post', function () {

@@ -18,6 +18,7 @@ import { useMetaErrors } from '@/composables/useMetaErrors';
 import { characterCount } from '@/lib/characters';
 import {
     editablePollOptions,
+    fitPollChoice,
     HOURS_PER_DAY,
     joinPollDuration,
     MINUTES_PER_HOUR,
@@ -119,12 +120,28 @@ const choiceLabelKey = (index: number): string =>
         ? 'posts.form.x.poll.choice'
         : 'posts.form.x.poll.choice_optional';
 
+/** Puts the cut choice back in its input: when the stored choice did not change, Vue leaves the typed text there. */
+const showChoice = (index: number, choice: string): void => {
+    const input = document.getElementById(choiceId(index));
+
+    if (input instanceof HTMLInputElement) {
+        input.value = choice;
+    }
+};
+
 const setChoice = (index: number, value: string | number): void => {
+    const typed = String(value);
+    const choice = fitPollChoice(typed, props.limits.optionMaxLength);
+
     update({
         options: options.value.map((option, position) =>
-            position === index ? String(value) : option,
+            position === index ? choice : option,
         ),
     });
+
+    if (choice !== typed) {
+        showChoice(index, choice);
+    }
 };
 
 const addChoice = async (): Promise<void> => {

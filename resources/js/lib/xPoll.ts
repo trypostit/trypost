@@ -1,5 +1,5 @@
 import { activeLocale } from '@/language';
-import { clamp } from '@/lib/helpers';
+import { clamp, filled } from '@/lib/helpers';
 import type { PublishConfig } from '@/types/platform';
 import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
@@ -41,6 +41,23 @@ export const newPoll = (limits: XPollLimits): XPoll => ({
     options: Array.from({ length: limits.minOptions }, () => ''),
     duration_minutes: limits.defaultDuration,
 });
+
+/**
+ * A choice cut to the longest X accepts, counted as the server counts it: by
+ * characters (an emoji is one), without the spaces before it.
+ */
+export const fitPollChoice = (choice: string, maxLength: number): string => {
+    const characters = Array.from(choice);
+    const firstCharacter = characters.findIndex((character) =>
+        filled(character),
+    );
+
+    if (firstCharacter === -1) {
+        return choice;
+    }
+
+    return characters.slice(0, firstCharacter + maxLength).join('');
+};
 
 /** The choices the editor shows: the stored ones, padded to the number a poll starts with. */
 export const editablePollOptions = (
