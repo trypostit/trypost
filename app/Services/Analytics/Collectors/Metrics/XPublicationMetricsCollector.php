@@ -130,6 +130,10 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     private function replyPollTweetIds(AnalyticsPublication $publication): array
     {
+        if (blank($publication->post_id)) {
+            return [];
+        }
+
         $post = $publication->post;
         $replyIds = (array) $post?->thread_reply_ids;
 
