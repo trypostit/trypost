@@ -6,6 +6,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
+import { filled } from '@/lib/helpers';
 import {
     isBlankThreadReply,
     newThreadReply,
@@ -41,11 +42,17 @@ const activateReply = (index: number): void => {
 const { contentFor } = useXLinkDefuser();
 const editor = ref<HTMLTextAreaElement[]>([]);
 
+/** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
+const limitFor = (reply: ThreadReply): number => {
+    if (filled(reply.poll)) {
+        return Math.min(props.limit, props.pollLimit);
+    }
+
+    return props.limit;
+};
+
 const remaining = (reply: ThreadReply): number =>
-    (reply.poll !== undefined
-        ? Math.min(props.limit, props.pollLimit)
-        : props.limit) -
-    displayLength(contentFor(reply.text, props.platform));
+    limitFor(reply) - displayLength(contentFor(reply.text, props.platform));
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>

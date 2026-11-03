@@ -85,6 +85,20 @@ export const useComposerPoll = (
         return meta;
     };
 
+    /** The card's last poll back on its meta: the very same object when nothing else changed. */
+    const restorePoll = (
+        previous: Record<string, any>,
+        current: Record<string, any>,
+    ): Record<string, any> => {
+        const { poll, ...previousMeta } = previous;
+
+        if (sameMeta(previousMeta, current)) {
+            return previous;
+        }
+
+        return { ...current, poll };
+    };
+
     /** Picking Poll: the card's last poll comes back, else a new one starts. */
     const metaWithPoll = (
         group: NetworkGroup,
@@ -93,17 +107,11 @@ export const useComposerPoll = (
         metaBeforePoll.set(group.key, current);
         const previous = takeSaved(metaBeforeOtherType, group);
 
-        if (previous === undefined) {
-            return { ...current, poll: transform(pollLimits(group), newPoll, {}) };
+        if (filled(previous)) {
+            return restorePoll(previous, current);
         }
 
-        const { poll, ...previousMeta } = previous;
-
-        if (sameMeta(previousMeta, current)) {
-            return previous;
-        }
-
-        return { ...current, poll };
+        return { ...current, poll: transform(pollLimits(group), newPoll, {}) };
     };
 
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */

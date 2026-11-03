@@ -1,4 +1,4 @@
-import { blank } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -35,21 +35,24 @@ export const isBlankThreadReply = ({
 /** A reply as the server stores it; `key` only exists in a draft the composer saved. */
 type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
 
+/** A stored reply as the composer edits it, keyed by its position when it has no key yet. */
+const fromStored = (
+    { key, text, media, poll }: StoredThreadReply,
+    index: number,
+): ThreadReply =>
+    withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll);
+
 /** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
-): ThreadReply[] =>
-    (meta?.thread_replies ?? []).map(
-        ({ key, text, media, poll }: StoredThreadReply, index: number) =>
-            withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll),
-    );
+): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
 
-/** The reply as a poll, which carries no media, or as a plain post when `poll` is undefined. */
+/** The reply as a poll, which carries no media, or as a plain post without one. */
 export const withReplyPoll = (
     { key, text, media }: ThreadReply,
     poll: Partial<XPoll> | undefined,
 ): ThreadReply => {
-    if (poll === undefined) {
+    if (blank(poll)) {
         return { key, text, media };
     }
 
@@ -60,5 +63,10 @@ export const withReplyPoll = (
 export const threadReplyContentType = (
     platform: string,
     reply: ThreadReply,
-): string | undefined =>
-    reply.poll ? ContentType.XPoll : THREAD_REPLY_CONTENT_TYPES[platform];
+): string | undefined => {
+    if (filled(reply.poll)) {
+        return ContentType.XPoll;
+    }
+
+    return THREAD_REPLY_CONTENT_TYPES[platform];
+};
