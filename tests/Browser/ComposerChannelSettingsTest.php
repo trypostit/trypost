@@ -1019,6 +1019,33 @@ test('a server error on a thread reply shows under that reply', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a Mastodon reply keeps its media inside the preview, in line with its text', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
+    $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@preview-thread-reply-0 img');
+
+    $edges = $page->script(<<<'JS'
+        (() => {
+            const reply = document.querySelector('[data-testid="preview-thread-reply-0"]');
+            const walker = document.createTreeWalker(reply, NodeFilter.SHOW_TEXT, (node) => node.textContent.includes('With a photo') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP);
+            const text = document.createRange();
+            text.selectNodeContents(walker.nextNode());
+            const image = reply.querySelector('img').getBoundingClientRect();
+            const box = reply.getBoundingClientRect();
+
+            return { gap: box.right - image.right, offset: Math.abs(Math.round(image.left - text.getBoundingClientRect().left)) };
+        })()
+        JS);
+
+    expect($edges['gap'])->toBeGreaterThanOrEqual(16)
+        ->and($edges['offset'])->toBeLessThanOrEqual(1);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a thread reply shows its own media under it and keeps it on save', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
