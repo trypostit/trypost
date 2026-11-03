@@ -177,6 +177,33 @@ test('a partial same-day read never lowers a lifetime count from a fuller one', 
         ->and(data_get($snapshot->metrics, 'engagements.value'))->toBe(7);
 });
 
+test('a provider metadata write keeps what changed on the publication since it was loaded', function () {
+    $publication = AnalyticsPublication::factory()->create([
+        'platform' => Platform::X,
+        'provider_metadata' => ['poll' => ['options' => [['label' => 'Yes', 'votes' => 1]]]],
+    ]);
+    $updatedAt = $publication->updated_at;
+    $media = [['type' => 'photo', 'url' => 'https://pbs.twimg.com/media/a.jpg']];
+    AnalyticsPublication::withoutTimestamps(fn (): bool => AnalyticsPublication::query()->findOrFail($publication->id)->forceFill([
+        'provider_metadata' => ['poll' => ['options' => [['label' => 'Yes', 'votes' => 1]]], 'media' => $media],
+    ])->save());
+    $this->travel(1)->hours();
+    $poll = ['options' => [['label' => 'Yes', 'votes' => 5]], 'voting_status' => 'open', 'end_datetime' => null, 'duration_minutes' => 60];
+    $date = now('UTC')->toDateString();
+
+    app(WritePublicationDailySnapshot::class)->handle($publication, new PublicationMetricObservation(
+        date: CarbonImmutable::parse($date, 'UTC'),
+        metrics: [metric(MetricKey::Impressions, 10)],
+        providerMetadata: ['poll' => $poll],
+    ));
+    app(WritePublicationDailySnapshot::class)->handle($publication, publicationObservation($date, [metric(MetricKey::Impressions, 12)]));
+
+    $fresh = $publication->fresh();
+
+    expect($fresh->provider_metadata)->toEqual(['poll' => $poll, 'media' => $media])
+        ->and($fresh->updated_at->equalTo($updatedAt))->toBeTrue();
+});
+
 function accountObservation(string $date, ?int $followers): AccountDailyObservation
 {
     return new AccountDailyObservation(

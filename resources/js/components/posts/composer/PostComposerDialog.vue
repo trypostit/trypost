@@ -168,7 +168,10 @@ import {
     type EditorTab,
     rulesFor,
 } from '@/lib/mediaEditor';
-import { MEDIALESS_CONTENT_TYPE_REASONS } from '@/lib/medialessContentTypes';
+import {
+    MEDIALESS_CONTENT_TYPE_REASONS,
+    MEDIALESS_CONTENT_TYPES,
+} from '@/lib/medialessContentTypes';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -455,7 +458,9 @@ const groupDestination = (
     composition.resolvedDestination(group.anchor);
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
-    const attached = groupDestination(group).media.length > 0;
+    const attached =
+        groupDestination(group).media.length > 0 ||
+        uploaderFor(group.key).busy.value;
 
     return options.map((option) =>
         attached && MEDIALESS_CONTENT_TYPE_REASONS[option.value]
@@ -475,6 +480,7 @@ const {
     setGroupPoll,
     pollMetaForContentType,
     forgetGroupPoll,
+    forgetPolls,
 } = useComposerPoll(composition, (group) => accountPollLimits(group.anchor));
 const setGroupContentType = (
     group: NetworkGroup,
@@ -491,6 +497,27 @@ const removeGroupPoll = (group: NetworkGroup): void => {
     setGroupContentType(group, ContentType.XPost);
     forgetGroupPoll(group);
 };
+/**
+ * Step 1 shows no post type, so a card whose type takes no media (an X poll,
+ * a Threads ghost post) would quietly refuse the shared media there. Entering
+ * it (a second network added) puts such a card back on its network's first
+ * type and forgets its poll, as going back to step 1 does.
+ */
+watch(sharedStep, (shared) => {
+    if (!shared) return;
+
+    networkGroups.value
+        .filter((group) =>
+            MEDIALESS_CONTENT_TYPES.has(groupDestination(group).content_type),
+        )
+        .forEach((group) => {
+            const [firstType] = getPickableContentTypeOptions(group.platform);
+            if (!firstType) return;
+
+            setGroupContentType(group, firstType.value);
+            forgetGroupPoll(group);
+        });
+});
 /** Why the media button is off: a type that takes no media says so, except while a reply is edited. */
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string =>
     (activeReply(group) === undefined &&
@@ -1650,6 +1677,7 @@ const customizeNetworks = (): void => {
 
 const goBackToSharedStep = (): void => {
     composition.discardCustomization();
+    forgetPolls();
     confirmingBack.value = false;
 };
 
@@ -1953,6 +1981,7 @@ const resumeUnfinishedPost = (): void => {
             ]),
     );
     composition.normalizeGroups();
+    forgetPolls();
     const [firstGroup] = composition.networkGroups.value;
     if (firstGroup) openNetwork(firstGroup.key);
     const mode = snapshot.scheduleMode;

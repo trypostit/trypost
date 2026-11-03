@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Concerns;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
@@ -39,8 +40,7 @@ trait HasSocialHttpClient
             throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
-        $accountLimit = $post->socialAccount?->maxContentLength() ?? $post->platform->maxContentLength();
-        $maxLength = $post->content_type?->maxContentLength($accountLimit) ?? $accountLimit;
+        $maxLength = ContentType::maxContentLengthFor($post->socialAccount, $post->platform, $post->content_type);
         $contentLength = mb_strlen($content) + $post->platform->reservedLength($post->meta);
 
         if ($contentLength <= $maxLength) {

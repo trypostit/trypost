@@ -67,13 +67,32 @@ class WritePublicationDailySnapshot
             $snapshot->save();
 
             if (filled($observation->providerMetadata)) {
-                $publication->withoutTimestamps(fn (): bool => $publication->forceFill(
-                    collect($observation->providerMetadata)->mapWithKeys(fn (mixed $value, string $key): array => ["provider_metadata->{$key}" => $value])->all(),
-                )->saveQuietly());
+                $this->mergeProviderMetadata($publication, $observation->providerMetadata);
             }
 
             return $snapshot->refresh();
         });
+    }
+
+    /**
+     * Writes the keys the network reported over the publication's stored
+     * `provider_metadata`, read again under a row lock: the model was loaded
+     * before the network call, and a discovery may have written meanwhile. A
+     * key the observation does not carry is kept, and `updated_at` does not move.
+     *
+     * @param  array<string, mixed>  $providerMetadata
+     */
+    private function mergeProviderMetadata(AnalyticsPublication $publication, array $providerMetadata): void
+    {
+        $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
+
+        if (! $current) {
+            return;
+        }
+
+        $current->withoutTimestamps(fn (): bool => $current->forceFill([
+            'provider_metadata' => [...($current->provider_metadata ?? []), ...$providerMetadata],
+        ])->saveQuietly());
     }
 
     /**

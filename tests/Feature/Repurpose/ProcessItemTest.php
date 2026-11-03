@@ -144,6 +144,26 @@ test('destination meta is carried onto the post', function () {
     expect($tiktokPost->meta)->toEqual(['privacy_level' => PrivacyLevel::PublicToEveryone->value]);
 });
 
+test('a destination stored with null meta creates its post with empty meta', function () {
+    Bus::fake([PublishPost::class]);
+    fakeVideoDownload();
+
+    $item = repurposeWithTwoDestinations();
+    $destinations = $item->repurpose->destinations;
+    data_set($destinations, '1.meta', null);
+    $item->repurpose->update(['destinations' => $destinations]);
+
+    processItem($item->fresh());
+
+    $youtubePost = Post::query()
+        ->where('repurpose_item_id', $item->id)
+        ->where('platform', Platform::YouTube)
+        ->sole();
+
+    expect($item->fresh()->status)->toBe(ItemStatus::Published)
+        ->and($youtubePost->meta)->toBe([]);
+});
+
 test('a caption over a destination limit is shortened for that post only', function () {
     Bus::fake([PublishPost::class]);
     fakeVideoDownload();

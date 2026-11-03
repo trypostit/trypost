@@ -342,6 +342,160 @@ test('a saved poll switched to post and back has no unsaved change', function ()
         ->assertNoJavaScriptErrors();
 });
 
+test('a saved poll with other settings switched to post and back has no unsaved change', function () {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'is_ai_generated' => true]]);
+    $id = $post->social_account_id;
+    expect(array_keys($post->fresh()->meta))->toBe(['poll', 'is_ai_generated']);
+    $page = openXPollComposer($post);
+    waitFor($page, '@x-poll-choice-1');
+
+    $page->click("@composer-type-{$id}-x_post");
+    waitForGone($page, '@x-poll-choice-0');
+    pickXPoll($page, $post);
+
+    $page->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * Opens a new post's composer on the X account of `$post` and LinkedIn, past
+ * step 1, with the X card open.
+ *
+ * @return array{0: mixed, 1: SocialAccount, 2: SocialAccount}
+ */
+function openCustomizedXPollComposer(Post $post): array
+{
+    $x = $post->socialAccount;
+    $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
+
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$linkedIn->id}");
+    $page->click("@composer-account-option-{$linkedIn->id}");
+    waitFor($page, "@composer-account-option-{$x->id}");
+    $page->click("@composer-account-option-{$x->id}");
+    waitFor($page, '@composer-base-content');
+    $page->fill('@composer-base-content', 'Tabs or spaces?')
+        ->click('@composer-next');
+    waitFor($page, "@composer-account-{$x->id}");
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-type-{$x->id}-x_poll");
+
+    return [$page, $x, $linkedIn];
+}
+
+test('going back to step 1 forgets the poll, so picking poll again starts empty', function () {
+    $post = seedXPollPost();
+    [$page, $x] = openCustomizedXPollComposer($post);
+    $page->click("@composer-type-{$x->id}-x_poll");
+    waitFor($page, '@x-poll-choice-1');
+    $page->fill('@x-poll-choice-0', 'Tabs')
+        ->fill('@x-poll-choice-1', 'Spaces')
+        ->click("@composer-type-{$x->id}-x_post");
+    waitForGone($page, '@x-poll');
+
+    $page->click('@composer-back');
+    waitFor($page, '@composer-back-confirm-go');
+    $page->click('@composer-back-confirm-go');
+    waitFor($page, '@composer-next');
+    $page->click('@composer-next');
+    waitFor($page, "@composer-account-{$x->id}");
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-type-{$x->id}-x_poll");
+    $page->click("@composer-type-{$x->id}-x_poll");
+    waitFor($page, '@x-poll-choice-1');
+
+    $page->assertValue('@x-poll-choice-0', '')
+        ->assertValue('@x-poll-choice-1', '')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a poll picked while x was the only network turns back into a post when another network joins, so shared media saves', function () {
+    $post = seedXPollPost();
+    $x = $post->socialAccount;
+    $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$x->id}");
+    $page->click("@composer-account-option-{$x->id}")
+        ->click('@composer-header');
+    waitForGone($page, "@composer-account-option-{$x->id}");
+    waitFor($page, "@composer-type-{$x->id}-x_poll");
+    $page->click("@composer-type-{$x->id}-x_poll");
+    waitFor($page, '@x-poll-choice-1');
+    $page->fill('@x-poll-choice-0', 'Tabs')
+        ->fill('@x-poll-choice-1', 'Spaces');
+
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$linkedIn->id}");
+    $page->click("@composer-account-option-{$linkedIn->id}")
+        ->click('@composer-header');
+    waitForGone($page, "@composer-account-option-{$linkedIn->id}");
+    waitFor($page, '@composer-file-input');
+    $page->fill('@composer-base-content', 'Tabs or spaces?');
+    $page->script(<<<JS
+        (() => {
+            const input = document.querySelector('[data-testid="composer-file-input"]');
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([Uint8Array.from(atob('{$png}'), (character) => character.charCodeAt(0))], 'shared.png', { type: 'image/png' }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })();
+    JS);
+    waitFor($page, '@composer-media-item');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $posts = Post::query()->where('workspace_id', $post->workspace_id)->whereKeyNot($post->id)->get()->keyBy('social_account_id');
+    expect($posts)->toHaveCount(2)
+        ->and($posts[$x->id]->content_type)->toBe(ContentType::XPost)
+        ->and($posts[$x->id]->meta)->not->toHaveKey('poll')
+        ->and($posts[$x->id]->media)->toHaveCount(1)
+        ->and($posts[$linkedIn->id]->media)->toHaveCount(1);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('poll is disabled while a file is still uploading to the card', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $uploadUrl = route('app.media.store-chunked', absolute: false);
+    $page = openXPollComposer($post);
+    waitFor($page, "@composer-{$id}-file-input");
+
+    $page->script(<<<JS
+        (() => {
+            const { open, send } = XMLHttpRequest.prototype;
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__url = url;
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (String(this.__url ?? '').includes('{$uploadUrl}')) return;
+                return send.call(this, body);
+            };
+            const input = document.querySelector('[data-testid="composer-{$id}-file-input"]');
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([Uint8Array.from(atob('{$png}'), (character) => character.charCodeAt(0))], 'held.png', { type: 'image/png' }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })();
+    JS);
+    waitFor($page, "@composer-{$id}-upload-item");
+
+    $page->assertMissing("@composer-{$id}-media-item");
+    expect($page->script("document.querySelector('[data-testid=\"composer-type-{$id}-x_poll\"]').disabled"))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a choice counter does not count the spaces around it', function () {
     $post = seedXPollPost();
     $page = openXPollComposer($post);

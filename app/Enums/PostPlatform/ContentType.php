@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 
@@ -180,15 +181,24 @@ enum ContentType: string
     }
 
     /**
-     * The character cap of a post of this type on an account whose own limit is
-     * `$accountLimit` (`SocialAccount::maxContentLength()`): an X poll's question
-     * stays at the poll's cap even on an account with long posts.
+     * The character cap of a post: the account's own limit
+     * (`SocialAccount::maxContentLength()`, an X account with long posts), else
+     * the platform's, capped by the post type when the type belongs to that
+     * platform (an X poll's question stays at the poll's cap even on an account
+     * with long posts). The one formula save, publish, preview and the AI
+     * assistant measure against.
      */
-    public function maxContentLength(int $accountLimit): int
+    public static function maxContentLengthFor(?SocialAccount $account, SocialPlatform $platform, ?self $type = null): int
     {
-        return match ($this) {
-            self::XPoll => min($accountLimit, XPoll::QUESTION_MAX_LENGTH),
-            default => $accountLimit,
+        $limit = $account?->maxContentLength() ?? $platform->maxContentLength();
+
+        if ($type === null || ! in_array($platform, $type->compatiblePlatforms(), true)) {
+            return $limit;
+        }
+
+        return match ($type) {
+            self::XPoll => min($limit, XPoll::QUESTION_MAX_LENGTH),
+            default => $limit,
         };
     }
 

@@ -217,6 +217,21 @@ test('the assistant writes a poll question within 280 characters even on an acco
     PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
 });
 
+test('the assistant ignores a post type of another network when picking the limit', function () {
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::LinkedIn->value,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.Platform::LinkedIn->maxContentLength().' characters'));
+});
+
 test('the assistant rewrites a post as long as the longest post', function () {
     PostWritingAssistant::fake(['Shorter']);
 

@@ -113,6 +113,24 @@ test('an x poll update keeps the parts it does not send on the web, api and mcp'
     'choices that only look alike as numbers' => [['options' => ['1', '01']], ['options' => ['1', '01'], 'duration_minutes' => 4320]],
 ]);
 
+test('scheduling an x poll that sends only part of its poll keeps the rest on the web, api and mcp', function (string $surface, array $poll, array $expected) {
+    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 4320]]);
+
+    $response = xPollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['poll' => $poll],
+    ]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh())
+        ->status->toBe(Status::Scheduled)
+        ->and($post->fresh()->meta['poll'])->toEqual($expected);
+})->with(['web', 'api', 'mcp'])->with([
+    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 60]],
+    'options only' => [['options' => ['Tabs', 'Spaces']], ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 4320]],
+]);
+
 test('scheduling an x poll with media is refused on the web, api and mcp', function (string $surface) {
     $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
     $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();

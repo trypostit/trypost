@@ -28,8 +28,13 @@ export const useComposerPoll = (
      * count as an unsaved change.
      */
     const metaBeforePoll = new Map<string, Record<string, any>>();
-    /** Each card's poll from before another type was picked, brought back when Poll is picked again. */
-    const pollBeforeOtherType = new Map<string, Partial<XPoll>>();
+    /**
+     * Each card's meta, poll included, from before another type was picked:
+     * picking Poll again brings the poll back, and the very same object when
+     * nothing else changed, so its keys keep their order and the switch counts
+     * as no change.
+     */
+    const metaBeforeOtherType = new Map<string, Record<string, any>>();
 
     const isPollGroup = (group: NetworkGroup): boolean =>
         destination(group).content_type === ContentType.XPoll;
@@ -57,24 +62,32 @@ export const useComposerPoll = (
         const { poll, ...meta } = current;
 
         if (contentType === ContentType.XPoll) {
-            if (poll === undefined) {
-                metaBeforePoll.set(group.key, current);
+            if (poll !== undefined) {
+                return null;
             }
-            const limits = pollLimits(group);
-            const restored =
-                poll ??
-                pollBeforeOtherType.get(group.key) ??
-                (limits ? newPoll(limits) : {});
-            pollBeforeOtherType.delete(group.key);
 
-            return { ...meta, poll: restored };
+            metaBeforePoll.set(group.key, current);
+            const previous = metaBeforeOtherType.get(group.key);
+            metaBeforeOtherType.delete(group.key);
+
+            if (previous !== undefined) {
+                const { poll: previousPoll, ...previousMeta } = previous;
+
+                return JSON.stringify(previousMeta) === JSON.stringify(meta)
+                    ? previous
+                    : { ...meta, poll: previousPoll };
+            }
+
+            const limits = pollLimits(group);
+
+            return { ...meta, poll: limits ? newPoll(limits) : {} };
         }
 
         if (poll === undefined) {
             return null;
         }
 
-        pollBeforeOtherType.set(group.key, poll);
+        metaBeforeOtherType.set(group.key, current);
         const before = metaBeforePoll.get(group.key);
         metaBeforePoll.delete(group.key);
 
@@ -86,7 +99,13 @@ export const useComposerPoll = (
 
     /** Forgets the card's last poll, so picking Poll again starts a new one. */
     const forgetGroupPoll = (group: NetworkGroup): void => {
-        pollBeforeOtherType.delete(group.key);
+        metaBeforeOtherType.delete(group.key);
+    };
+
+    /** Forgets every card's last poll and earlier meta: the per-network edits were discarded. */
+    const forgetPolls = (): void => {
+        metaBeforePoll.clear();
+        metaBeforeOtherType.clear();
     };
 
     return {
@@ -95,5 +114,6 @@ export const useComposerPoll = (
         setGroupPoll,
         pollMetaForContentType,
         forgetGroupPoll,
+        forgetPolls,
     };
 };

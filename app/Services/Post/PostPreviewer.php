@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Post;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
@@ -64,14 +65,13 @@ class PostPreviewer
         }
 
         $sanitized = $this->sanitizer->sanitize($original, $platform);
-        $accountLimit = $post->socialAccount?->maxContentLength() ?? $platform->maxContentLength();
 
         $preview = [
             'platform' => $platform->value,
             'content_type' => $post->content_type?->value,
             'sanitized_content' => $sanitized,
             'sanitized_length' => mb_strlen($sanitized),
-            'max_content_length' => $post->content_type?->maxContentLength($accountLimit) ?? $accountLimit,
+            'max_content_length' => ContentType::maxContentLengthFor($post->socialAccount, $platform, $post->content_type),
             'truncated' => mb_strlen($sanitized) < mb_strlen($original),
         ];
 

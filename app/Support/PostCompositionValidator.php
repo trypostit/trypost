@@ -174,7 +174,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.social_account_id", __('posts.errors.queue_requires_schedule'));
                 }
 
-                $contentType = ContentType::tryFrom((string) $destination['content_type']);
+                $contentType = ContentType::resolve($destination['content_type']);
                 if ($contentType && ! in_array($account->platform, $contentType->compatiblePlatforms(), true)) {
                     $validator->errors()->add("{$key}.content_type", trans('validation.in', ['attribute' => 'content type']));
                 }
