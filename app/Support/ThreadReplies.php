@@ -101,7 +101,7 @@ class ThreadReplies
             return $meta;
         }
 
-        $meta['thread_replies'] = array_map(fn (array $reply): array => Arr::except($reply, 'poll'), self::of($meta));
+        $meta['thread_replies'] = collect(self::of($meta))->map(fn (array $reply): array => Arr::except($reply, 'poll'))->all();
 
         return $meta;
     }

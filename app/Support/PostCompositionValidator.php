@@ -175,7 +175,7 @@ class PostCompositionValidator
                 }
 
                 $contentType = ContentType::resolve($destination['content_type']);
-                if ($contentType && ! in_array($account->platform, $contentType->compatiblePlatforms(), true)) {
+                if (filled($contentType) && ! $contentType->isCompatibleWith($account->platform)) {
                     $validator->errors()->add("{$key}.content_type", trans('validation.in', ['attribute' => 'content type']));
                 }
 
@@ -227,7 +227,7 @@ class PostCompositionValidator
                 $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation(data_get($destination, 'content')) : null;
                 if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
-                } elseif (blank(data_get($destination, 'content')) && data_get($destination, 'media') === []) {
+                } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 

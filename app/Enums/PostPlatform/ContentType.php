@@ -192,7 +192,7 @@ enum ContentType: string
     {
         $limit = $account?->maxContentLength() ?? $platform->maxContentLength();
 
-        if ($type === null || ! in_array($platform, $type->compatiblePlatforms(), true)) {
+        if (blank($type) || ! $type->isCompatibleWith($platform)) {
             return $limit;
         }
 
@@ -843,6 +843,14 @@ enum ContentType: string
             SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
             default => [$primary],
         };
+    }
+
+    /**
+     * Whether a post of this type can go to `$platform` (`compatiblePlatforms()`).
+     */
+    public function isCompatibleWith(SocialPlatform $platform): bool
+    {
+        return collect($this->compatiblePlatforms())->contains($platform);
     }
 
     /**

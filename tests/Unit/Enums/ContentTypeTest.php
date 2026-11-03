@@ -531,3 +531,11 @@ test('only post types that carry media accept it', function (ContentType $type, 
     'x post' => [ContentType::XPost, true],
     'instagram story' => [ContentType::InstagramStory, true],
 ]);
+
+test('a post type is compatible with the platforms it can go to', function () {
+    expect(ContentType::InstagramReel->isCompatibleWith(Platform::Instagram))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::InstagramFacebook))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::Facebook))->toBeFalse()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::X))->toBeTrue()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
+});
