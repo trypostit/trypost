@@ -353,7 +353,7 @@ export default {
 
     /** Whether a UTC instant is behind now, compared as instants (the zone does not matter). */
     hasPassed(date: string) {
-        return dayjs.utc(date).isBefore(userNow());
+        return dayjs.utc(date).isBefore(dayjs());
     },
 
     diffForHumans(date: string) {

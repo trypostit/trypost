@@ -708,7 +708,7 @@ rolls the switch back and toasts.
   today's snapshot dated by the next UTC day still count).
 - **Frontend zone.** `@/date`'s `getUserTimezone()` returns `auth.user.timezone`
   (the `userTimezone` ref in `resources/js/preferences.ts`); "now" comes from
-  `userNow()`, never the browser clock. Times shown next to display-zone cards go
+  `userNow()`, never the browser clock. `userNow()` is a wall clock in the user's zone, not an instant: to ask whether a UTC instant has passed (`date.hasPassed()`), compare instants with `dayjs()`, or a browser in another zone than the user's is off by the difference. Times shown next to display-zone cards go
   through `useViewTimezone()`: the page's display zone where a picker exists
   (publish list and calendar call `provideViewTimezone()`), the user zone
   elsewhere.

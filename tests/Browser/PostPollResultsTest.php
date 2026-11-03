@@ -103,6 +103,22 @@ test('the summary says where voting stands', function (Closure $overrides, strin
     'unknown state, end passed: never final' => [fn (): array => ['voting_status' => null, 'end_datetime' => now()->subHours(2)->toIso8601String()], 'Voting ended', ['Final results']],
 ]);
 
+test('where voting stands is read from the instant, whatever zone the browser is in', function (string $browserZone, Closure $endsAt, string $shown, string $hidden) {
+    [$user, $account, $post] = pollResultsSetup([...refundPoll(), 'end_datetime' => $endsAt()]);
+    $user->update(['timezone' => 'UTC']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']))->withTimezone($browserZone);
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", $shown)
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", $hidden)
+        ->assertNoJavaScriptErrors();
+})->with([
+    'still open, browser behind the user' => ['America/Sao_Paulo', fn (): string => now()->addMinutes(30)->toIso8601String(), 'Ends', 'Voting ended'],
+    'just ended, browser ahead of the user' => ['Asia/Tokyo', fn (): string => now()->subMinutes(30)->toIso8601String(), 'Voting ended', 'Ends'],
+]);
+
 test('a post without a poll shows no results', function () {
     [$user, $account, $post] = pollResultsSetup(null);
     $this->actingAs($user);
