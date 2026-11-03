@@ -557,9 +557,10 @@ test('a choice stops at 25 characters while typing, counting an emoji as one and
     $page = openXPollComposer($post);
     pickXPoll($page, $post);
 
-    $page->type('@x-poll-choice-0', Str::repeat('a', 30));
+    $page->fill('@x-poll-choice-0', Str::repeat('a', 30));
     waitForText($page, '@x-poll-choice-0-count', '25 / 25');
-    $page->type('@x-poll-choice-1', '  ✅'.Str::repeat('b', 30));
+    $page->append('@x-poll-choice-0', 'xyz')
+        ->fill('@x-poll-choice-1', '  ✅'.Str::repeat('b', 30));
     waitForText($page, '@x-poll-choice-1-count', '25 / 25');
 
     expect($page->script("document.querySelector('[data-testid=\"x-poll-choice-0\"]').value"))->toBe(Str::repeat('a', 25))

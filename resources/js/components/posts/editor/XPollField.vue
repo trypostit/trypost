@@ -120,28 +120,32 @@ const choiceLabelKey = (index: number): string =>
         ? 'posts.form.x.poll.choice'
         : 'posts.form.x.poll.choice_optional';
 
-/** Puts the cut choice back in its input: when the stored choice did not change, Vue leaves the typed text there. */
-const showChoice = (index: number, choice: string): void => {
-    const input = document.getElementById(choiceId(index));
-
-    if (input instanceof HTMLInputElement) {
-        input.value = choice;
-    }
-};
-
-const setChoice = (index: number, value: string | number): void => {
-    const typed = String(value);
-    const choice = fitPollChoice(typed, props.limits.optionMaxLength);
-
+const writeChoice = (index: number, choice: string): void => {
     update({
         options: options.value.map((option, position) =>
             position === index ? choice : option,
         ),
     });
+};
 
-    if (choice !== typed) {
-        showChoice(index, choice);
+/**
+ * Keeps a choice within its limit while typing. When the cut choice is the one
+ * already stored, the input (which keeps its own copy) would hold on to the
+ * typed text, so the typed text goes in first and the cut one right after.
+ */
+const setChoice = async (
+    index: number,
+    value: string | number,
+): Promise<void> => {
+    const typed = String(value);
+    const choice = fitPollChoice(typed, props.limits.optionMaxLength);
+
+    if (choice !== typed && choice === options.value[index]) {
+        writeChoice(index, typed);
+        await nextTick();
     }
+
+    writeChoice(index, choice);
 };
 
 const addChoice = async (): Promise<void> => {
