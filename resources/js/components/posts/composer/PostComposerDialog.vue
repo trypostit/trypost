@@ -478,10 +478,12 @@ const {
     isPollGroup,
     groupPoll,
     setGroupPoll,
-    pollMetaForContentType,
+    setGroupContentType,
+    removeGroupPoll,
     forgetGroupPoll,
     forgetPolls,
     replyPollLimit,
+    replyTextLimit,
     setReplyPoll,
     replyPollAvailable,
     replyPollDisabledReasonKey,
@@ -490,24 +492,10 @@ const {
     activeReply: (group) => activeReply(group),
     replies: (group) => threadReplies(group),
     setReplies: (group, replies) => setThreadReplies(group, replies),
+    replyLimit: (group) => threadReplyLimit(group),
     uploading: (group, reply) =>
         Boolean(replyUploaderFor(group, reply)?.busy.value),
 });
-const setGroupContentType = (
-    group: NetworkGroup,
-    contentType: string,
-): void => {
-    const meta = pollMetaForContentType(group, contentType);
-    composition.setGroupOverride(group.key, 'content_type', contentType);
-
-    if (meta !== null) {
-        composition.setGroupOverride(group.key, 'meta', meta);
-    }
-};
-const removeGroupPoll = (group: NetworkGroup): void => {
-    setGroupContentType(group, ContentType.XPost);
-    forgetGroupPoll(group);
-};
 /**
  * Step 1 shows no post type, so a card whose type takes no media (an X poll,
  * a Threads ghost post) would quietly refuse the shared media there. Entering
@@ -1206,19 +1194,6 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     if (replies.length >= THREAD_MAX_REPLIES) return;
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
-};
-/** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
-const replyTextLimit = (
-    group: NetworkGroup,
-    reply: ThreadReply,
-): number | null => {
-    const limit = threadReplyLimit(group);
-
-    if (filled(limit) && filled(reply.poll)) {
-        return Math.min(limit, replyPollLimit(group));
-    }
-
-    return limit;
 };
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);

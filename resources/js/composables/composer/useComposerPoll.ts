@@ -16,11 +16,12 @@ type Composition = Pick<
     'resolvedDestination' | 'setGroupOverride'
 >;
 
-/** What the composer's thread gives the reply polls: the reply being edited, the replies, and whether a reply's file is still uploading. */
+/** What the composer's thread gives the reply polls: the reply being edited, the replies, a reply's text limit, and whether a reply's file is still uploading. */
 export interface ComposerThread {
     activeReply: (group: NetworkGroup) => ThreadReply | undefined;
     replies: (group: NetworkGroup) => ThreadReply[];
     setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
+    replyLimit: (group: NetworkGroup) => number | null;
     uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
 }
 
@@ -159,6 +160,25 @@ export const useComposerPoll = (
         metaBeforeOtherType.delete(group.key);
     };
 
+    /** Picks the card's post type, adding or dropping its poll with it. */
+    const setGroupContentType = (
+        group: NetworkGroup,
+        contentType: string,
+    ): void => {
+        const meta = pollMetaForContentType(group, contentType);
+        composition.setGroupOverride(group.key, 'content_type', contentType);
+
+        if (meta !== null) {
+            composition.setGroupOverride(group.key, 'meta', meta);
+        }
+    };
+
+    /** The card's Remove poll: back to a plain post, and picking Poll again starts a new one. */
+    const removeGroupPoll = (group: NetworkGroup): void => {
+        setGroupContentType(group, ContentType.XPost);
+        forgetGroupPoll(group);
+    };
+
     /** Forgets every card's last poll and earlier meta: the per-network edits were discarded. */
     const forgetPolls = (): void => {
         metaBeforePoll.clear();
@@ -168,6 +188,20 @@ export const useComposerPoll = (
     /** A reply poll's question keeps the poll's cap, even on an account with long posts. */
     const replyPollLimit = (group: NetworkGroup): number =>
         pollLimits(group)?.questionMaxLength ?? Infinity;
+
+    /** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
+    const replyTextLimit = (
+        group: NetworkGroup,
+        reply: ThreadReply,
+    ): number | null => {
+        const limit = thread.replyLimit(group);
+
+        if (filled(limit) && filled(reply.poll)) {
+            return Math.min(limit, replyPollLimit(group));
+        }
+
+        return limit;
+    };
 
     const setReplyPoll = (
         group: NetworkGroup,
@@ -221,10 +255,12 @@ export const useComposerPoll = (
         isPollGroup,
         groupPoll,
         setGroupPoll,
-        pollMetaForContentType,
+        setGroupContentType,
+        removeGroupPoll,
         forgetGroupPoll,
         forgetPolls,
         replyPollLimit,
+        replyTextLimit,
         setReplyPoll,
         replyPollAvailable,
         replyPollDisabledReasonKey,
