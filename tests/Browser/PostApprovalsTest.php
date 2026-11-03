@@ -214,3 +214,15 @@ test('a new time for a late request is typed in the channel zone', function () {
         ->toBe(CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo')->utc()->toIso8601String());
     $page->assertNoJavaScriptErrors();
 });
+
+test('a request for the top of the queue says so where the time goes', function () {
+    [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
+    $top = approvalsBrowserRequest($workspace, $requester, $channel, ['queue' => 'top']);
+    $this->actingAs($owner);
+
+    $page = visit(route('app.posts.index', ['tab' => 'approvals']));
+    waitFor($page, "@post-no-time-{$top->id}");
+
+    $page->assertSeeIn("@post-no-time-{$top->id}", __('posts.publish.pending_slot.top'))
+        ->assertNoJavaScriptErrors();
+});

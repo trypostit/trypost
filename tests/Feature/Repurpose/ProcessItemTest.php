@@ -158,8 +158,8 @@ test('a caption over a destination limit is shortened for that post only', funct
         ->get()
         ->mapWithKeys(fn (Post $post) => [$post->platform->value => $post->content]);
 
-    expect(Platform::TikTok->contentOverflow($captions[Platform::TikTok->value]))->toBe(0)
-        ->and(Platform::YouTube->contentOverflow($captions[Platform::YouTube->value]))->toBe(0)
+    expect(mb_strlen($captions[Platform::TikTok->value]))->toBeLessThanOrEqual(Platform::TikTok->maxContentLength())
+        ->and(mb_strlen($captions[Platform::YouTube->value]))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength())
         ->and(mb_strlen($captions[Platform::YouTube->value]))
         ->toBeGreaterThan(mb_strlen($captions[Platform::TikTok->value]));
 });
@@ -212,7 +212,7 @@ test('a mastodon caption leaves room for the content warning', function () {
     $caption = repurposedCaption($item);
 
     expect(mb_strlen($caption))->toBeGreaterThan(300)
-        ->and($account->contentOverflow($caption, Platform::Mastodon->reservedLength(['spoiler_text' => $warning])))->toBe(0);
+        ->and(mb_strlen($caption) + Platform::Mastodon->reservedLength(['spoiler_text' => $warning]))->toBeLessThanOrEqual($account->maxContentLength());
 });
 
 test('a discord destination stores the channel name from the cached list, not the one it was saved with', function () {

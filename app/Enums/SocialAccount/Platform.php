@@ -247,17 +247,6 @@ enum Platform: string
     }
 
     /**
-     * Number of characters by which the given content exceeds this platform's
-     * hard cap. Returns 0 when it fits. Single source of truth for content-
-     * length checks — used both at schedule-validation time and at publish
-     * time itself so the two paths can never drift apart.
-     */
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
-    }
-
-    /**
      * Characters a network counts against the post limit besides its text:
      * Mastodon counts the content warning.
      *

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Ai\Agents\PostWritingAssistant;
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
@@ -11,17 +12,21 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Laravel\Ai\Prompts\AgentPrompt;
 
 /**
  * @param  array<string, mixed>  $attributes
+ * @param  array<string, mixed>  $accountMeta
+ * @param  array<string, mixed>  $userAttributes
  */
-function seedXPollPost(ContentType $contentType = ContentType::XPost, array $attributes = []): Post
+function seedXPollPost(ContentType $contentType = ContentType::XPost, array $attributes = [], array $accountMeta = [], array $userAttributes = []): Post
 {
     Http::fake(['*' => Http::response([], 200)]);
 
-    $user = User::factory()->create();
+    $user = User::factory()->create($userAttributes);
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -33,6 +38,7 @@ function seedXPollPost(ContentType $contentType = ContentType::XPost, array $att
         'username' => 'trypostit',
         'access_token' => 'x-token',
         'token_expires_at' => now()->addDays(20),
+        'meta' => $accountMeta,
     ]);
 
     $post = Post::factory()->forAccount($account, $contentType)->create([
@@ -369,3 +375,222 @@ test('a thread reply under a poll can still take media while the poll root canno
         ->assertMissing("@composer-{$id}-dropzone")
         ->assertNoJavaScriptErrors();
 });
+
+test('in a thread the poll shows on the root and hides while a reply is edited', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitForGone($page, '@x-poll');
+    $page->assertMissing('@x-poll-choice-0');
+
+    $page->click("@composer-{$id}-caption-collapsed");
+    waitFor($page, '@x-poll-choice-0');
+    $page->fill('@x-poll-choice-0', 'Tabs')
+        ->assertValue('@x-poll-choice-0', 'Tabs')
+        ->click('@thread-reply-collapsed-0');
+    waitForGone($page, '@x-poll');
+
+    $page->assertMissing('@x-poll-choice-0')->assertNoJavaScriptErrors();
+});
+
+test('a poll question on a long post account counts against 280', function () {
+    $post = seedXPollPost(ContentType::XPoll, [
+        'content' => Str::repeat('a', 290),
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+    ], ['x_subscription_type' => 'Premium']);
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+    waitForText($page, "@composer-char-count-{$id}", '-10');
+
+    $page->assertSeeIn("@composer-char-count-{$id}", '-10')
+        ->hover('@composer-submit');
+    waitForText($page, '@composer-blocked-tooltip', 'max 280');
+
+    $page->assertSeeIn('@composer-blocked-tooltip', __('posts.form.content_exceeds_platform', ['platform' => 'X', 'over' => '10', 'limit' => '280']))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a server error on the poll shows on the x card when x is not the first channel', function (array $choices, string $errorTestId, string $message) {
+    $post = seedXPollPost();
+    $x = $post->socialAccount;
+    $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
+
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$linkedIn->id}");
+    $page->click("@composer-account-option-{$linkedIn->id}");
+    waitFor($page, "@composer-account-option-{$x->id}");
+    $page->click("@composer-account-option-{$x->id}");
+    waitFor($page, '@composer-base-content');
+    $page->fill('@composer-base-content', 'Tabs or spaces?')
+        ->click('@composer-next');
+    waitFor($page, "@composer-account-{$x->id}");
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-type-{$x->id}-x_poll");
+    $page->click("@composer-type-{$x->id}-x_poll");
+    waitFor($page, '@x-poll-choice-1');
+
+    $page->fill('@x-poll-choice-0', $choices[0])
+        ->fill('@x-poll-choice-1', $choices[1])
+        ->click('@composer-save-draft');
+    waitForText($page, "@{$errorTestId}", $message);
+
+    $page->assertSeeIn("@{$errorTestId}", $message)
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+    expect(Post::query()->where('workspace_id', $post->workspace_id)->count())->toBe(1);
+})->with([
+    'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.x.poll.options_distinct')],
+    'a choice over 25 characters' => fn () => [[Str::repeat('a', 26), 'No'], 'x-poll-choice-0-error', __('posts.form.x.poll.choice_max', ['max' => 25])],
+]);
+
+test('the ai-generated switch survives a switch from poll to post', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    waitFor($page, '@x-ai-generated');
+    $page->click('@x-ai-generated');
+    waitForState($page, '@x-ai-generated', "element.getAttribute('aria-checked') === 'true'");
+    $page->click("@composer-type-{$id}-x_post");
+    waitForGone($page, '@x-poll');
+
+    $page->assertAttribute('@x-ai-generated', 'aria-checked', 'true')
+        ->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh())
+        ->content_type->toBe(ContentType::XPost)
+        ->meta->toEqual(['is_ai_generated' => true]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('removing the poll forgets it, so picking poll again starts empty', function () {
+    $post = seedXPollPost();
+    $page = openXPollComposer($post);
+    pickXPoll($page, $post);
+
+    $page->fill('@x-poll-choice-0', 'Yes')
+        ->fill('@x-poll-choice-1', 'No')
+        ->click('@x-poll-days');
+    waitFor($page, '@x-poll-days-3');
+    $page->click('@x-poll-days-3');
+    waitForText($page, '@x-poll-days', '3');
+
+    $page->click('@x-poll-remove');
+    waitForGone($page, '@x-poll');
+    pickXPoll($page, $post);
+
+    $page->assertValue('@x-poll-choice-0', '')
+        ->assertValue('@x-poll-choice-1', '')
+        ->assertSeeIn('@x-poll-days', '1')
+        ->assertSeeIn('@x-poll-hours', '0')
+        ->assertSeeIn('@x-poll-minutes', '0')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a length of zero saves the shortest poll and seven days locks hours and minutes', function () {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
+    $page = openXPollComposer($post);
+    waitFor($page, '@x-poll-days');
+
+    $page->click('@x-poll-days');
+    waitFor($page, '@x-poll-days-0');
+    $page->click('@x-poll-days-0');
+    waitForText($page, '@x-poll-minutes', '5');
+
+    $page->assertSeeIn('@x-poll-days', '0')
+        ->assertSeeIn('@x-poll-hours', '0')
+        ->assertSeeIn('@x-poll-minutes', '5')
+        ->click('@x-poll-days');
+    waitFor($page, '@x-poll-days-7');
+    $page->click('@x-poll-days-7');
+    waitForState($page, '@x-poll-hours', 'element.disabled');
+
+    expect($page->script("['days', 'hours', 'minutes'].map((part) => document.querySelector(`[data-testid=\"x-poll-\${part}\"]`).disabled)"))->toBe([false, true, true]);
+
+    $page->click('@x-poll-days');
+    waitFor($page, '@x-poll-days-0');
+    $page->click('@x-poll-days-0');
+    waitForState($page, '@x-poll-hours', '! element.disabled');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect(data_get($post->fresh()->meta, 'poll.duration_minutes'))->toBe(5);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on a phone the poll editor fits the screen', function () {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
+    $page = visit(route('app.posts.edit', $post))->resize(390, 844);
+    waitFor($page, '@x-poll-minutes');
+
+    expect($page->script("(() => { const poll = document.querySelector('[data-testid=\"x-poll\"]'); return poll.scrollWidth <= poll.clientWidth; })()"))->toBeTrue()
+        ->and($page->script("['days', 'hours', 'minutes'].every((part) => { const box = document.querySelector(`[data-testid=\"x-poll-\${part}\"]`).getBoundingClientRect(); return box.left >= 0 && box.right <= window.innerWidth; })"))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the length selects are labelled and a choice is added with the keyboard', function () {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
+    $page = openXPollComposer($post);
+    waitFor($page, '@x-poll-add-choice');
+
+    expect($page->script("['days', 'hours', 'minutes'].map((part) => document.querySelector(`[data-testid=\"x-poll-\${part}\"]`).labels[0]?.textContent.trim())"))
+        ->toBe([__('posts.form.x.poll.days'), __('posts.form.x.poll.hours'), __('posts.form.x.poll.minutes')]);
+
+    $page->keys('@x-poll-add-choice', 'Enter');
+    waitFor($page, '@x-poll-choice-2');
+
+    $page->assertVisible('@x-poll-choice-2')->assertNoJavaScriptErrors();
+});
+
+test('the writing assistant writes a poll question for 280 characters on a long post account', function () {
+    config()->set('trypost.self_hosted', true);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 1440]]], ['x_subscription_type' => 'Premium']);
+    $page = openXPollComposer($post);
+
+    $page->click('@composer-ai-assistant');
+    waitFor($page, '@writing-assistant-channel');
+    $page->assertSeeIn('@writing-assistant-channel', '280')
+        ->click('@writing-assistant-mode-generate')
+        ->fill('@writing-assistant-prompt', 'ask our followers about tabs or spaces')
+        ->click('@writing-assistant-generate');
+    waitForText($page, '@writing-assistant-suggestion', 'Tabs or spaces?');
+
+    $page->assertSeeIn('@writing-assistant-suggestion', 'Tabs or spaces?')->assertNoJavaScriptErrors();
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+});
+
+test('a link in a poll question shows no link card in the preview', function () {
+    Http::fake(['https://93.184.216.34/*' => Http::response('<meta property="og:title" content="Article card">')]);
+    $post = seedXPollPost(ContentType::XPost, ['content' => 'Read https://93.184.216.34/article']);
+    $page = openXPollComposer($post);
+    waitForText($page, '@link-card-title', 'Article card');
+    $page->assertPresent('@link-card');
+
+    pickXPoll($page, $post);
+    waitForGone($page, '@link-card');
+
+    $page->assertMissing('@link-card')
+        ->assertVisible('@x-preview-poll')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the preview shows the poll length in its largest unit and the user language', function (int $minutes, string $locale, string $expected) {
+    $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => $minutes]]], userAttributes: ['locale' => $locale]);
+    $page = openXPollComposer($post);
+    waitForText($page, '@x-preview-poll', $expected);
+
+    $page->assertSeeIn('@x-preview-poll', $expected)->assertNoJavaScriptErrors();
+})->with([
+    'hours' => [120, 'en', '2 hours left'],
+    'minutes' => [30, 'en', '30 minutes left'],
+    'days in portuguese' => [1440, 'pt-BR', 'termina em 1 dia'],
+]);

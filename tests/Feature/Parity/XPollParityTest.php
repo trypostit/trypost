@@ -100,7 +100,7 @@ test('switching an x poll to an x post drops the poll on the web, api and mcp', 
 })->with(['web', 'api', 'mcp']);
 
 test('an x poll update keeps the parts it does not send on the web, api and mcp', function (string $surface, array $poll, array $expected) {
-    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]]);
+    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 4320]]);
 
     $response = xPollParityUpdate($surface, $post, ['meta' => ['poll' => $poll]]);
 
@@ -108,7 +108,8 @@ test('an x poll update keeps the parts it does not send on the web, api and mcp'
     expect($post->fresh()->meta['poll'])->toEqual($expected);
 })->with(['web', 'api', 'mcp'])->with([
     'options only' => [['options' => ['Tabs', 'Spaces', 'Both']], ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 4320]],
-    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+    'length only' => [['duration_minutes' => 60], ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 60]],
+    'fewer options' => [['options' => ['Yes', 'No']], ['options' => ['Yes', 'No'], 'duration_minutes' => 4320]],
     'choices that only look alike as numbers' => [['options' => ['1', '01']], ['options' => ['1', '01'], 'duration_minutes' => 4320]],
 ]);
 

@@ -1164,3 +1164,20 @@ test('the attach media tools refuse media on a post type that takes none', funct
     'x poll' => [ContentType::XPoll],
     'threads ghost post' => [ContentType::ThreadsGhostPost],
 ]);
+
+test('the get post tool returns the poll of an x poll', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($x, ContentType::XPoll)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Tabs or spaces?',
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ]);
+
+    TryPostServer::actingAs($this->user)->tool(GetPostTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('content_type', ContentType::XPoll->value)
+            ->where('meta.poll.options', ['Tabs', 'Spaces'])
+            ->where('meta.poll.duration_minutes', 60)
+            ->etc());
+});

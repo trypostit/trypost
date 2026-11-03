@@ -131,11 +131,6 @@ class SocialAccount extends Model
         return $this->hasXLongPosts() ? self::X_LONG_POST_LENGTH : $this->platform->maxContentLength();
     }
 
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
-    }
-
     /**
      * Persist a freshly authorized identity.
      *

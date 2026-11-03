@@ -648,6 +648,24 @@ test('the reel and story badges on a post card show a 16px icon', function (Cont
     $page->assertNoJavaScriptErrors();
 })->with([ContentType::InstagramReel, ContentType::InstagramStory]);
 
+test('a post card names an x poll and leaves a regular x post unmarked', function (ContentType $contentType, bool $badged) {
+    [$user, $workspace] = publishPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x, $contentType)->create(['user_id' => $user->id, 'content' => 'Tabs or spaces?']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-card-{$post->id}");
+
+    $badged
+        ? $page->assertSeeIn("@post-content-type-{$post->id}", __('posts.content_types.x_poll.label'))
+        : $page->assertMissing("@post-content-type-{$post->id}");
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'poll' => [ContentType::XPoll, true],
+    'post' => [ContentType::XPost, false],
+]);
+
 test('on a phone the channel filter opens as a sheet on the publish page and the calendar', function (string $route) {
     [$user, $workspace] = publishPageSetup();
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);

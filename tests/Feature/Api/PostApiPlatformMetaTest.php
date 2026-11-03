@@ -1454,6 +1454,8 @@ it('explains what is wrong with an x poll in plain words', function (mixed $poll
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'meta.poll.options', 'A poll can have up to 4 choices. Remove the extra ones.'],
     'duration above 10080' => [['options' => ['a', 'b'], 'duration_minutes' => 10081], 'meta.poll.duration_minutes', 'A poll can stay open from 5 minutes to 7 days. Choose a length in that range.'],
     'poll that is not an object' => ['Yes or no', 'meta.poll', 'Send the poll with its choices (options) and length (duration_minutes).'],
+    'choices sent as text' => [['options' => 'Yes, No', 'duration_minutes' => 60], 'meta.poll.options', 'Send the poll choices as a list of text.'],
+    'a choice that is not text' => [['options' => ['Yes', ['No']], 'duration_minutes' => 60], 'meta.poll.options.1', 'Each poll choice must be text.'],
 ]);
 
 it('cannot schedule an incomplete x poll', function (string $content, ?array $poll, string $error) {
@@ -1603,3 +1605,59 @@ it('refuses to attach media to a post type that takes none', function (ContentTy
     'x poll' => [ContentType::XPoll],
     'threads ghost post' => [ContentType::ThreadsGhostPost],
 ]);
+
+it('returns the poll of an x poll it creates and updates', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+
+    $response = $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
+        'content' => 'Tabs or spaces?',
+        'status' => PostStatus::Draft->value,
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPoll->value,
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ])->assertCreated()
+        ->assertJsonPath('content_type', ContentType::XPoll->value)
+        ->assertJsonPath('meta.poll.options', ['Tabs', 'Spaces'])
+        ->assertJsonPath('meta.poll.duration_minutes', 60);
+
+    $this->withHeaders($this->headers)->putJson(route('api.posts.update', $response->json('id')), [
+        'meta' => ['poll' => ['duration_minutes' => 4320]],
+    ])->assertOk()
+        ->assertJsonPath('content_type', ContentType::XPoll->value)
+        ->assertJsonPath('meta.poll.options', ['Tabs', 'Spaces'])
+        ->assertJsonPath('meta.poll.duration_minutes', 4320);
+
+    $this->withHeaders($this->headers)->getJson(route('api.posts.show', $response->json('id')))
+        ->assertOk()
+        ->assertJsonPath('meta.poll.duration_minutes', 4320);
+});
+
+it('keeps a scheduled x poll scheduled with its choices when only its length changes', function () {
+    Queue::fake();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($x, ContentType::XPoll)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'content' => 'Tabs or spaces?',
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 1440]],
+    ]);
+
+    $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
+        'meta' => ['poll' => ['duration_minutes' => 60]],
+    ])->assertOk();
+
+    expect($post->fresh())
+        ->status->toBe(PostStatus::Scheduled)
+        ->content_type->toBe(ContentType::XPoll)
+        ->meta->toEqual(['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]);
+});
+
+it('still attaches media to a draft without a channel', function () {
+    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-upload', $post), [
+        'upload_token' => $upload->upload_token,
+    ])->assertSuccessful();
+
+    expect($post->fresh())->content_type->toBeNull()->media->toHaveCount(1);
+});

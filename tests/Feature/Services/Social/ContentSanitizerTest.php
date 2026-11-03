@@ -330,8 +330,8 @@ test('it measures a platform limit against the rendered text, not the markup', f
     $content = implode(' & ', array_fill(0, 900, 'a'));
 
     expect($sanitizer->displayText($content, Platform::Telegram))->toBe($content)
-        ->and(Platform::Telegram->contentOverflow($sanitizer->displayText($content, Platform::Telegram)))
-        ->toBe(0);
+        ->and(mb_strlen($sanitizer->displayText($content, Platform::Telegram)))
+        ->toBeLessThanOrEqual(Platform::Telegram->maxContentLength());
 });
 
 test('it counts the defused form for x because those characters are visible', function () {

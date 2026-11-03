@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus;
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -2009,4 +2011,43 @@ test('x publisher asks for the question of an x poll without text', function () 
         ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.question_required'))
             ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
+});
+
+test('x publisher refuses to publish an x poll without a length', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => ['poll' => ['options' => ['Yes', 'No']]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.duration_required'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
+    Http::assertNothingSent();
+});
+
+test('publishing a scheduled x poll sends its poll and ends published', function () {
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->post->update([
+        'content' => 'Pick one',
+        'content_type' => ContentType::XPoll,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->subMinute(),
+        'meta' => xPollMeta(['duration_minutes' => 60]),
+    ]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    (new PublishPost($this->post->fresh()))->handle();
+
+    Http::assertSent(fn (Request $request): bool => data_get($request->data(), 'poll') === ['options' => ['Yes', 'No'], 'duration_minutes' => 60]);
+    expect($this->post->fresh())
+        ->status->toBe(PostStatus::Published)
+        ->publish_status->toBe(PublishStatus::Published)
+        ->platform_post_id->toBe('100');
+});
+
+test('x publisher discloses an ai-generated x poll', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'is_ai_generated' => true]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'made_with_ai' => true]);
 });

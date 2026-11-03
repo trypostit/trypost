@@ -76,6 +76,7 @@ test('assistant validates the prompt, content and platform', function (array $pa
     'generate without prompt' => [['mode' => 'generate'], 'prompt'],
     'rephrase without content' => [['mode' => 'rephrase'], 'current_content'],
     'unknown platform' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'platform' => 'myspace'], 'platform'],
+    'unknown content type' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'content_type' => 'x_story'], 'content_type'],
     'prompt under four words' => [['mode' => 'generate', 'prompt' => 'make it pop'], 'prompt'],
     'prompt over the length limit' => [['mode' => 'generate', 'prompt' => str_repeat('word ', 2000).'x'], 'prompt'],
 ]);
@@ -151,7 +152,7 @@ test('a suggestion for X is shortened to fit what X counts', function () {
         ->json('content');
 
     expect($content)->toBe('Great news, short and sweet.')
-        ->and(Platform::X->contentOverflow(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBe(0);
+        ->and(mb_strlen(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBeLessThanOrEqual(Platform::X->maxContentLength());
 
     PostContentShortener::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Great news for everyone.'));
 });
