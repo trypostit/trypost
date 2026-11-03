@@ -33,6 +33,7 @@ import AddToQueueButton from '@/components/publish/AddToQueueButton.vue';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
+import PostCardThreadReplies from '@/components/publish/PostCardThreadReplies.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
@@ -74,6 +75,11 @@ import { filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
+import {
+    isBlankThreadReply,
+    type ThreadReply,
+    threadRepliesOf,
+} from '@/lib/threadReplies';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
@@ -305,6 +311,13 @@ const sentDetail = computed(() => {
 
     return metricsDetail.value;
 });
+
+/** The replies of the post's thread, without the empty ones. */
+const threadReplies = computed((): ThreadReply[] =>
+    threadRepliesOf(props.post.meta).filter(
+        (reply) => !isBlankThreadReply(reply),
+    ),
+);
 
 /** The post's polls in every tab, with no votes until X has been read for them. */
 const polls = computed(() => postPollResults(props.post));
@@ -643,6 +656,11 @@ defineExpose({ openDetails });
                         >
                             {{ preview || $t('calendar.no_content') }}
                         </p>
+                        <PostCardThreadReplies
+                            v-if="filled(threadReplies)"
+                            :replies="threadReplies"
+                            :test-key="post.id"
+                        />
                     </div>
                     <div
                         v-if="thumbnails.length"

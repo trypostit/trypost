@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PostingSchedule;
+use Illuminate\Support\Str;
 
 /**
  * @return array{0: User, 1: Workspace, 2: SocialAccount}
@@ -684,3 +685,36 @@ test('on a phone the channel filter opens as a sheet on the publish page and the
     $page->assertVisible('@posts-channel-sheet')
         ->assertNoJavaScriptErrors();
 })->with(['app.posts.index', 'app.calendar']);
+
+test('a thread in the queue shows its replies under the post, with their media', function () {
+    [$user, $workspace] = publishPageSetup();
+    connectAiTo($user);
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x)->create([
+        'user_id' => $user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'content' => 'First post of the thread',
+        'meta' => ['thread_replies' => [
+            ['text' => 'Second post of the thread', 'media' => []],
+            ['text' => 'Third post, with a photo', 'media' => [[
+                'id' => (string) Str::uuid(),
+                'path' => 'medias/reply.jpg',
+                'url' => 'https://cdn.example.test/reply.jpg',
+                'type' => 'image',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'reply.jpg',
+                'size' => 1024,
+            ]]],
+        ]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $x));
+    waitFor($page, "@post-thread-{$post->id}");
+
+    $page->assertSeeIn("@post-thread-reply-{$post->id}-0", 'Second post of the thread')
+        ->assertSeeIn("@post-thread-reply-{$post->id}-1", 'Third post, with a photo')
+        ->assertPresent("[data-testid=\"post-thread-reply-{$post->id}-1\"] img")
+        ->assertNoJavaScriptErrors();
+});
