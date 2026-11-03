@@ -174,7 +174,7 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
-    replyErrorsOf,
+    replyErrorOf,
     type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
@@ -1211,14 +1211,27 @@ const threadRepliesErrorPrefix = (account: ComposerAccount): string => {
     return `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
 };
 /** Each reply's error for the card, the first account's winning. */
-const threadReplyErrors = (group: NetworkGroup): Record<number, string> =>
-    group.accounts.reduce<Record<number, string>>(
-        (found, account) => ({
-            ...replyErrorsOf(errors.value, threadRepliesErrorPrefix(account)),
-            ...found,
-        }),
-        {},
-    );
+const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
+    const found: Record<number, string> = {};
+
+    threadReplies(group).forEach((_, index) => {
+        const message = group.accounts
+            .map((account) =>
+                replyErrorOf(
+                    errors.value,
+                    threadRepliesErrorPrefix(account),
+                    index,
+                ),
+            )
+            .find(filled);
+
+        if (filled(message)) {
+            found[index] = message;
+        }
+    });
+
+    return found;
+};
 const replyUploaderKey = (groupKey: string, replyKey: string): string =>
     `${groupKey}::${replyKey}`;
 const replyUploaderFor = (
