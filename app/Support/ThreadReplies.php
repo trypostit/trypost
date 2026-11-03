@@ -186,11 +186,24 @@ class ThreadReplies
             if (filled($violation)) {
                 [$field, $message] = $violation;
 
-                return [Arr::join(Arr::whereNotNull(['thread_replies', $index, $field]), '.'), $message];
+                return [self::replyKey($index, $field), $message];
             }
         }
 
         return null;
+    }
+
+    /**
+     * The validation key of a reply (`thread_replies.0`), or of one of its
+     * fields (`thread_replies.0.poll.options`).
+     */
+    private static function replyKey(int $index, ?string $field): string
+    {
+        if (blank($field)) {
+            return "thread_replies.{$index}";
+        }
+
+        return "thread_replies.{$index}.{$field}";
     }
 
     /**
