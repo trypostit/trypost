@@ -82,7 +82,7 @@ class XPublisher
             fn (): array => $this->publishRoot($post, $content),
             fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createTweet([
                 ...($text !== '' ? ['text' => $text] : []),
-                ...(blank($poll) ? $this->mediaPayload($media) : ['poll' => $this->replyPollPayload($text, $media, $poll)]),
+                ...(blank($poll) ? $this->mediaPayload($media) : ['poll' => $this->pollPayload($text, $media, ['poll' => $poll])]),
                 'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
             ], $account->username),
         );
@@ -100,7 +100,7 @@ class XPublisher
         }
 
         if ($post->content_type === ContentType::XPoll) {
-            $data['poll'] = $this->pollPayload($post, $content);
+            $data['poll'] = $this->pollPayload($content, $post->mediaItems, $post->meta);
         } else {
             $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
         }
@@ -120,44 +120,24 @@ class XPublisher
     }
 
     /**
-     * A poll needs its question (the post text), its choices and length, and
-     * cannot carry media.
-     *
-     * @return array{options: list<string>, duration_minutes: int}
-     */
-    private function pollPayload(Post $post, ?string $content): array
-    {
-        $violation = XPoll::questionViolation($content)
-            ?? ($post->mediaItems->isNotEmpty() ? trans('posts.errors.media_not_accepted') : null)
-            ?? data_get(XPoll::requiredViolation($post->meta), 1);
-
-        if (filled($violation)) {
-            throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
-        }
-
-        return XPoll::payload($post->meta);
-    }
-
-    /**
-     * A reply poll follows the root poll's rules: its question is the reply
-     * text, and it carries no media.
+     * A poll, on the post or on a reply, needs its question (that post's text),
+     * distinct choices and a length, and cannot carry media. `$meta` holds the
+     * poll under `poll`: the post's meta, or the reply itself.
      *
      * @param  Collection<int, MediaItem>  $media
-     * @param  array<string, mixed>  $poll
      * @return array{options: list<string>, duration_minutes: int}
      */
-    private function replyPollPayload(string $text, Collection $media, array $poll): array
+    private function pollPayload(?string $question, Collection $media, mixed $meta): array
     {
-        $reply = ['poll' => $poll];
-        $violation = XPoll::questionViolation($text)
+        $violation = XPoll::questionViolation($question)
             ?? ($media->isNotEmpty() ? trans('posts.errors.media_not_accepted') : null)
-            ?? data_get(XPoll::requiredViolation($reply), 1);
+            ?? data_get(XPoll::violation($meta) ?? XPoll::requiredViolation($meta), 1);
 
         if (filled($violation)) {
             throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
         }
 
-        return XPoll::payload($reply);
+        return XPoll::payload($meta);
     }
 
     /**

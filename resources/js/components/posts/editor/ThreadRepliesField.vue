@@ -156,7 +156,7 @@ watch(
             <span
                 v-if="index < replies.length - 1"
                 aria-hidden="true"
-                class="absolute start-[11px] top-7 -bottom-3 w-0.5 rounded-full bg-border"
+                class="absolute start-[11px] top-[26px] -bottom-[14px] w-0.5 rounded-full bg-border"
                 :data-testid="`thread-connector-${index}`"
             />
             <PlatformLogo :platform="platform" :size="24" class="shrink-0" />

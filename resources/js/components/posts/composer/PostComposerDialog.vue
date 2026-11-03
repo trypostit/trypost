@@ -179,6 +179,7 @@ import {
     newThreadReply,
     type ThreadReply,
     threadRepliesOf,
+    withReplyPoll,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { newPoll, pollLimitsOf, type XPoll, type XPollLimits } from '@/lib/xPoll';
@@ -1212,20 +1213,21 @@ const setReplyPoll = (
 ): void => {
     setThreadReplies(
         group,
-        threadReplies(group).map((reply) => {
-            if (reply.key !== replyKey) return reply;
-            const next: ThreadReply = { ...reply, poll };
-            if (poll === undefined) delete next.poll;
-
-            return next;
-        }),
+        threadReplies(group).map((reply) =>
+            reply.key === replyKey ? withReplyPoll(reply, poll) : reply,
+        ),
     );
 };
 /** The poll button shows on an X reply without a poll; media in it keeps the button off. */
-const replyPollAvailable = (group: NetworkGroup): boolean =>
-    accountPollLimits(group.anchor) !== null &&
-    activeReply(group)?.poll === undefined &&
-    activeReply(group) !== undefined;
+const replyPollAvailable = (group: NetworkGroup): boolean => {
+    const reply = activeReply(group);
+
+    return (
+        reply !== undefined &&
+        reply.poll === undefined &&
+        accountPollLimits(group.anchor) !== null
+    );
+};
 const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
     const reply = activeReply(group);
 

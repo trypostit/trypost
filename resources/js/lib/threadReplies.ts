@@ -52,3 +52,17 @@ export const threadRepliesOf = (
               },
           )
         : [];
+
+/** The reply with `poll`, or as a plain post of the thread when `poll` is undefined. */
+export const withReplyPoll = (
+    reply: ThreadReply,
+    poll: Partial<XPoll> | undefined,
+): ThreadReply => {
+    const next: ThreadReply = { ...reply, poll };
+
+    if (poll === undefined) {
+        delete next.poll;
+    }
+
+    return next;
+};

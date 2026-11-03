@@ -310,6 +310,12 @@ class PostPlatformMetaRules
 
             throw ValidationException::withMessages(["meta.{$field}" => $message]);
         }
+
+        $question = $post->content_type === ContentType::XPoll ? XPoll::questionViolation($post->content) : null;
+
+        if (filled($question)) {
+            throw ValidationException::withMessages(['content' => $question]);
+        }
     }
 
     /**

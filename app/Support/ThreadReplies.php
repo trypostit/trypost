@@ -75,8 +75,18 @@ class ThreadReplies
         return [
             'text' => is_string($text) ? $text : '',
             'media' => array_values(array_filter((array) data_get($reply, 'media', []), is_array(...))),
-            ...(is_array($poll) ? ['poll' => XPoll::normalize($poll)] : []),
+            ...(is_array($poll) && filled($poll) ? ['poll' => XPoll::normalize($poll)] : []),
         ];
+    }
+
+    /**
+     * Whether a reply is a poll (an X reply only; `of()` drops an empty one).
+     *
+     * @param  array<string, mixed>  $reply
+     */
+    public static function hasPoll(array $reply): bool
+    {
+        return filled(data_get($reply, 'poll'));
     }
 
     /**
@@ -104,7 +114,7 @@ class ThreadReplies
     public static function pollFormatViolation(mixed $meta): ?array
     {
         foreach (self::of($meta) as $index => $reply) {
-            $violation = filled(data_get($reply, 'poll')) ? XPoll::violation($reply) : null;
+            $violation = self::hasPoll($reply) ? XPoll::violation($reply) : null;
 
             if (filled($violation)) {
                 return ["thread_replies.{$index}.{$violation[0]}", $violation[1]];
@@ -127,7 +137,7 @@ class ThreadReplies
         }
 
         return collect(self::of($meta))
-            ->filter(fn (array $reply): bool => filled(data_get($reply, 'poll')) && filled($reply['media']))
+            ->filter(fn (array $reply): bool => self::hasPoll($reply) && filled($reply['media']))
             ->mapWithKeys(fn (array $reply, int $index): array => ["thread_replies.{$index}.media" => __('posts.errors.media_not_accepted')])
             ->all();
     }
@@ -167,7 +177,7 @@ class ThreadReplies
 
         foreach ($replies as $index => $reply) {
             $blank = blank(Str::trim($reply['text']));
-            $poll = $platform === Platform::X && filled(data_get($reply, 'poll'));
+            $poll = $platform === Platform::X && self::hasPoll($reply);
 
             if ($poll && $blank) {
                 return ["thread_replies.{$index}", XPoll::questionViolation($reply['text'])];

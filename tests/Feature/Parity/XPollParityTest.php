@@ -7,6 +7,7 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
@@ -165,11 +166,11 @@ test('an x poll draft with media is refused on the web, api and mcp', function (
     expect($post->fresh()->media)->toBeEmpty();
 })->with(['web', 'api', 'mcp']);
 
-test('scheduling an x poll without a question asks only for the question on the web, api and mcp', function (string $surface) {
+test('scheduling an x poll without a question asks only for the question on the web, api and mcp', function (string $surface, string $content) {
     $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
 
     $response = xPollParityUpdate($surface, $post, [
-        'content' => '',
+        'content' => $content,
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
     ]);
@@ -183,7 +184,10 @@ test('scheduling an x poll without a question asks only for the question on the 
             ->assertDontSee(__('posts.edit.compliance.requires_content_or_media'));
     }
     expect($post->fresh()->status)->toBe(Status::Draft);
-})->with(['web', 'api', 'mcp']);
+})->with(['web', 'api', 'mcp'])->with([
+    'no text' => [''],
+    'editor markup without words' => ['<p> </p>'],
+]);
 
 test('a poll on a thread reply is stored normalized on the web, api and mcp', function (string $surface) {
     $post = xPollParityPost(ContentType::XPost);
@@ -289,3 +293,29 @@ test('a thread reply poll off x is dropped, never checked, on the web, api and m
         ->and($post->fresh()->meta['thread_replies'][0]['media'])->toHaveCount(1);
 })->with(['web', 'api', 'mcp']);
 
+test('an empty poll on a thread reply is no poll on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(ContentType::XPost);
+    $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
+
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [[
+        'text' => 'Just a photo',
+        'poll' => [],
+        'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+    ]]]]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh()->meta['thread_replies'][0])->not->toHaveKey('poll')
+        ->and($post->fresh()->meta['thread_replies'][0]['media'])->toHaveCount(1);
+})->with(['web', 'api', 'mcp']);
+
+test('publishing a stored x poll without a question is refused before it reaches x on mcp', function () {
+    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
+    $post->update(['content' => '<p></p>']);
+
+    TryPostServer::actingAs(test()->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('posts.form.x.poll.question_required')]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+});

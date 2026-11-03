@@ -36,7 +36,7 @@ import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
-import PostPollResults from '@/components/publish/PostPollResults.vue';
+import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
 import { Badge } from '@/components/ui/badge';
@@ -697,25 +697,12 @@ defineExpose({ openDetails });
                     :test-key="post.id"
                 />
 
-                <PostPollResults
-                    v-if="tab === 'sent' && metricsDetail?.publication.poll"
+                <PostPollResultsList
+                    v-if="tab === 'sent' && metricsDetail"
                     :poll="metricsDetail.publication.poll"
+                    :thread-polls="metricsDetail.publication.thread_polls ?? []"
                     :test-id="`post-poll-${post.id}`"
                 />
-
-                <template v-if="tab === 'sent' && metricsDetail">
-                    <PostPollResults
-                        v-for="threadPoll in metricsDetail.publication.thread_polls ?? []"
-                        :key="threadPoll.reply"
-                        :poll="threadPoll"
-                        :caption="
-                            $t('posts.poll_results.thread_post', {
-                                number: String(threadPoll.reply + 2),
-                            })
-                        "
-                        :test-id="`post-poll-${post.id}-reply-${threadPoll.reply}`"
-                    />
-                </template>
 
                 <PostMetricsBand
                     v-if="tab === 'sent' && metricsDetail && hasMetrics"

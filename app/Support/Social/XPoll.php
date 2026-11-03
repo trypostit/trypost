@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Enums\X\PollVotingStatus;
 use App\Models\AnalyticsPublication;
+use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -124,11 +126,15 @@ final class XPoll
     }
 
     /**
-     * A poll's question is the post text: it cannot be scheduled or published without one.
+     * A poll's question is the post text: it cannot be scheduled or published
+     * without one. It is measured as X receives it, so editor markup with no
+     * words (`<p></p>`) counts as no question.
      */
     public static function questionViolation(?string $content): ?string
     {
-        return blank($content) ? trans('posts.form.x.poll.question_required') : null;
+        $question = app(ContentSanitizer::class)->displayText((string) $content, Platform::X);
+
+        return blank($question) ? trans('posts.form.x.poll.question_required') : null;
     }
 
     /**

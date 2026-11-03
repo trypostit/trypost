@@ -2108,3 +2108,15 @@ test('x publisher refuses a thread reply poll without its question before postin
         ->toThrow(ContentLimitException::class, __('posts.form.x.poll.question_required'));
     Http::assertNothingSent();
 });
+
+test('x publisher refuses a poll with repeated choices before calling x', function (array $meta) {
+    $this->post->update(['content' => 'Pick one', ...$meta]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(Exception::class, __('posts.form.x.poll.options_distinct'));
+    Http::assertNotSent(fn (Request $request): bool => Arr::has($request->data(), 'poll'));
+})->with([
+    'on the post' => [['content_type' => ContentType::XPoll, 'meta' => ['poll' => ['options' => ['Yes', 'yes'], 'duration_minutes' => 60]]]],
+    'on a reply' => [['meta' => ['thread_replies' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'tabs'], 'duration_minutes' => 60]]]]]],
+]);

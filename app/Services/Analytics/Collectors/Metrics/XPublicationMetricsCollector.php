@@ -8,6 +8,7 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
@@ -26,35 +27,9 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         }
 
         $replyPolls = $this->replyPollTweetIds($publication);
-        $parameters = [
-            'tweet.fields' => Arr::join($fields, ','),
-            'expansions' => 'attachments.poll_ids',
-            'poll.fields' => XPoll::LOOKUP_FIELDS,
-        ];
-        $api = rtrim((string) config('trypost.platforms.x.api'), '/');
-
-        if ($replyPolls === []) {
-            $response = $this->get($account, "{$api}/tweets/{$publication->remote_id}", $parameters);
-            $tweet = $response->json('data');
-            $poll = $response->json('includes.polls.0');
-            $threadPolls = [];
-        } else {
-            $response = $this->get($account, "{$api}/tweets", [
-                ...$parameters,
-                'ids' => Arr::join([$publication->remote_id, ...$replyPolls], ','),
-                'tweet.fields' => Arr::join([...$fields, 'attachments'], ','),
-            ]);
-            $tweets = $response->collect('data')->keyBy('id');
-            $polls = $response->collect('includes.polls')->keyBy('id');
-            $pollOf = fn (mixed $tweet): mixed => $polls->get((string) data_get($tweet, 'attachments.poll_ids.0'));
-            $tweet = $tweets->get($publication->remote_id);
-            $poll = $pollOf($tweet);
-            $threadPolls = collect($replyPolls)
-                ->map(fn (string $id, int $reply): ?array => transform($pollOf($tweets->get($id)), fn (array $found): array => ['reply' => $reply, ...XPoll::result($found)]))
-                ->filter()
-                ->values()
-                ->all();
-        }
+        [$tweet, $poll, $threadPolls] = blank($replyPolls)
+            ? $this->readPost($account, $publication->remote_id, $fields)
+            : $this->readThread($account, $publication->remote_id, $replyPolls, $fields);
 
         if (! is_array($tweet)) {
             throw AnalyticsCollectionException::malformed('X post response lacks data.');
@@ -78,6 +53,65 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     }
 
     /**
+     * One post: its tweet and its poll.
+     *
+     * @param  list<string>  $fields
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     */
+    private function readPost(SocialAccount $account, string $id, array $fields): array
+    {
+        $response = $this->get($account, "{$this->api()}/tweets/{$id}", $this->lookupParameters($fields));
+
+        return [$response->json('data'), $response->json('includes.polls.0'), []];
+    }
+
+    /**
+     * The post and its reply polls in one lookup: the post's tweet and poll,
+     * and each reply poll's result with its reply position.
+     *
+     * @param  array<int, string>  $replyPolls  tweet ids keyed by reply position
+     * @param  list<string>  $fields
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     */
+    private function readThread(SocialAccount $account, string $id, array $replyPolls, array $fields): array
+    {
+        $response = $this->get($account, "{$this->api()}/tweets", [
+            ...$this->lookupParameters([...$fields, 'attachments']),
+            'ids' => Arr::join([$id, ...$replyPolls], ','),
+        ]);
+        $tweets = $response->collect('data')->keyBy('id');
+        $polls = $response->collect('includes.polls')->keyBy('id');
+        $pollOf = fn (mixed $tweet): mixed => $polls->get((string) data_get($tweet, 'attachments.poll_ids.0'));
+        $threadPolls = collect($replyPolls)
+            ->map(fn (string $replyId, int $reply): ?array => is_array($found = $pollOf($tweets->get($replyId)))
+                ? ['reply' => $reply, ...XPoll::result($found)]
+                : null)
+            ->filter()
+            ->values()
+            ->all();
+
+        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls];
+    }
+
+    /**
+     * @param  list<string>  $fields
+     * @return array<string, string>
+     */
+    private function lookupParameters(array $fields): array
+    {
+        return [
+            'tweet.fields' => Arr::join($fields, ','),
+            'expansions' => 'attachments.poll_ids',
+            'poll.fields' => XPoll::LOOKUP_FIELDS,
+        ];
+    }
+
+    private function api(): string
+    {
+        return rtrim((string) config('trypost.platforms.x.api'), '/');
+    }
+
+    /**
      * The tweet ids of the thread replies TryPost published with a poll, keyed by
      * reply position, so their votes come in the same lookup as the post's.
      *
@@ -89,7 +123,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $replyIds = (array) $post?->thread_reply_ids;
 
         return collect(ThreadReplies::of($post?->meta))
-            ->filter(fn (array $reply, int $index): bool => filled(data_get($reply, 'poll')) && is_string(data_get($replyIds, $index)))
+            ->filter(fn (array $reply, int $index): bool => ThreadReplies::hasPoll($reply) && is_string(data_get($replyIds, $index)))
             ->map(fn (array $reply, int $index): string => (string) data_get($replyIds, $index))
             ->all();
     }
