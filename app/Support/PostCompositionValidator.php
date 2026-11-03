@@ -223,7 +223,7 @@ class PostCompositionValidator
                 $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation(data_get($destination, 'content')) : null;
                 if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
-                } elseif (blank($destination['content']) && $destination['media'] === []) {
+                } elseif (blank(data_get($destination, 'content')) && data_get($destination, 'media') === []) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 

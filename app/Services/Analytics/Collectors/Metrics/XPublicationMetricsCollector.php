@@ -10,6 +10,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -26,7 +27,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $response = $this->get($account,
             rtrim((string) config('trypost.platforms.x.api'), '/')."/tweets/{$publication->remote_id}",
             [
-                'tweet.fields' => implode(',', $fields),
+                'tweet.fields' => Arr::join($fields, ','),
                 'expansions' => 'attachments.poll_ids',
                 'poll.fields' => XPoll::LOOKUP_FIELDS,
             ],
