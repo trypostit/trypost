@@ -12,7 +12,8 @@ import {
 } from '@/types/content-type';
 import type { XPoll, XPollLimits } from '@/types/x';
 
-type Composition = Pick<
+/** What the composer gives the card polls: each card's destination and the override that changes it. */
+type ComposerCards = Pick<
     ReturnType<typeof usePostComposition>,
     'resolvedDestination' | 'setGroupOverride'
 >;
@@ -32,7 +33,7 @@ export interface ComposerThread {
  * server does) and each thread reply's (the toolbar's poll button).
  */
 export const useComposerPoll = (
-    composition: Composition,
+    composition: ComposerCards,
     pollLimits: (account: ComposerAccount) => XPollLimits | null,
     thread: ComposerThread,
 ) => {
