@@ -122,26 +122,11 @@ const ownPollOf = (post: PostCard): Partial<XPoll> | undefined => {
     return post.meta?.poll;
 };
 
-/**
- * The polls a sent post shows: what X returned at its last read, or, before
- * the first read (about an hour after publishing), its own polls with no
- * votes yet.
- */
-export const sentPollResults = (
+/** A published post's own polls with no votes yet, as they show before X is read. */
+const unreadPollsOf = (
     post: PostCard,
-): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
-    const detail = post.metrics;
-
-    if (detail?.available) {
-        return {
-            poll: detail.publication.poll,
-            threadPolls: detail.publication.thread_polls ?? [],
-        };
-    }
-
-    const notPublished = { poll: null, threadPolls: [] };
-
-    return transform(
+): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } =>
+    transform(
         post.published_at,
         (publishedAt) => ({
             poll: transform(ownPollOf(post), (poll) =>
@@ -150,13 +135,39 @@ export const sentPollResults = (
             threadPolls: threadRepliesOf(post.meta).flatMap((reply, index) => {
                 if (filled(reply.poll)) {
                     return [
-                        { reply: index, ...unreadPollResult(reply.poll, publishedAt) },
+                        {
+                            reply: index,
+                            ...unreadPollResult(reply.poll, publishedAt),
+                        },
                     ];
                 }
 
                 return [];
             }),
         }),
-        notPublished,
+        { poll: null, threadPolls: [] },
     );
+
+/**
+ * The polls a sent post shows: each one as X returned it at the last read,
+ * or, until X has been read for it (about an hour after publishing), with
+ * its choices and no votes.
+ */
+export const sentPollResults = (
+    post: PostCard,
+): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
+    const read = post.metrics?.available ? post.metrics.publication : null;
+    const readReplies = read?.thread_polls ?? [];
+    const unread = unreadPollsOf(post);
+    const unreadReplies = unread.threadPolls.filter(
+        (unreadReply) =>
+            !readReplies.some((readReply) => readReply.reply === unreadReply.reply),
+    );
+
+    return {
+        poll: read?.poll ?? unread.poll,
+        threadPolls: [...readReplies, ...unreadReplies].sort(
+            (first, second) => first.reply - second.reply,
+        ),
+    };
 };

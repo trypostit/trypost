@@ -119,7 +119,7 @@ test('where voting stands is read from the instant, whatever zone the browser is
     'just ended, browser ahead of the user' => ['Asia/Tokyo', fn (): string => now()->subMinutes(30)->toIso8601String(), 'Voting ended', 'Ends'],
 ]);
 
-test('a poll published before its first read from x shows its choices with no votes and when it ends', function () {
+test('a poll whose publication x has not read yet shows its choices with no votes and when it ends', function () {
     $user = User::factory()->create(['timezone' => 'UTC']);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -135,6 +135,20 @@ test('a poll published before its first read from x shows its choices with no vo
             'poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440],
             'thread_replies' => [['text' => 'And at work?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]],
         ],
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::X,
+        'network' => Platform::X->network(),
+        'remote_id' => $post->platform_post_id,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $publication->id,
+        'date' => now()->toDateString(),
+        'collected_at' => now(),
     ]);
     $this->actingAs($user);
 
