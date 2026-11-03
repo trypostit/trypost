@@ -204,6 +204,10 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
+                if ($contentType?->acceptsMedia() === false && filled($destination['media'])) {
+                    $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
+                }
+
                 if ($composition['status'] === 'draft') {
                     continue;
                 }

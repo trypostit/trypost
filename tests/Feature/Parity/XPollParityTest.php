@@ -129,6 +129,22 @@ test('scheduling an x poll with media is refused on the web, api and mcp', funct
     expect($post->fresh())->status->toBe(Status::Draft)->media->toBeEmpty();
 })->with(['web', 'api', 'mcp']);
 
+test('an x poll draft with media is refused on the web, api and mcp', function (string $surface) {
+    $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
+    $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
+
+    $response = xPollParityUpdate($surface, $post, [
+        'status' => Status::Draft->value,
+        'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+    ]);
+
+    $surface === 'mcp'
+        ? $response->assertHasErrors([__('posts.errors.media_not_accepted')])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['media' => __('posts.errors.media_not_accepted')]);
+    expect($post->fresh()->media)->toBeEmpty();
+})->with(['web', 'api', 'mcp']);
+
 test('scheduling an x poll without a question asks only for the question on the web, api and mcp', function (string $surface) {
     $post = xPollParityPost(meta: ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
 
