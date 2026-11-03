@@ -1,7 +1,14 @@
-import { blank, filled } from '@/lib/helpers';
-import { isBlankThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { blank } from '@/lib/helpers';
+import {
+    isBlankThreadReply,
+    type ThreadReply,
+    threadRepliesOf,
+} from '@/lib/threadReplies';
 import { postPollResults } from '@/lib/xPoll';
-import type { PublicationPoll } from '@/types/analytics';
+import type {
+    PublicationPoll,
+    PublicationThreadPoll,
+} from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 import type { PostCard } from '@/types/publish';
@@ -15,45 +22,46 @@ export type ThreadPost = {
     pollTestSuffix: string;
 };
 
+const replyPostOf = (
+    reply: ThreadReply,
+    index: number,
+    polls: PublicationThreadPoll[],
+): ThreadPost => ({
+    text: reply.text,
+    media: reply.media,
+    poll: polls.find((poll) => poll.reply === index) ?? null,
+    pollTestSuffix: `-reply-${index}`,
+});
+
 /**
  * Every post of a post's thread in publishing order, the first one included,
  * each with its text, media and poll, as the composer previews them. Empty
  * when the post has no reply to show.
  */
 export const postThreadOf = (post: PostCard): ThreadPost[] => {
-    if (!filled(post.platform) || !THREAD_PLATFORMS.includes(post.platform)) {
+    if (!THREAD_PLATFORMS.includes(post.platform ?? '')) {
         return [];
     }
 
-    const polls = postPollResults(post);
+    const { poll, threadPolls } = postPollResults(post);
     const replies = threadRepliesOf(post.meta).flatMap((reply, index) => {
         if (isBlankThreadReply(reply)) {
             return [];
         }
 
-        return [
-            {
-                text: reply.text,
-                media: reply.media,
-                poll:
-                    polls.threadPolls.find((poll) => poll.reply === index) ??
-                    null,
-                pollTestSuffix: `-reply-${index}`,
-            },
-        ];
+        return [replyPostOf(reply, index, threadPolls)];
     });
 
     if (blank(replies)) {
         return [];
     }
 
-    return [
-        {
-            text: post.content?.trim() ?? '',
-            media: post.media ?? [],
-            poll: polls.poll,
-            pollTestSuffix: '',
-        },
-        ...replies,
-    ];
+    const first: ThreadPost = {
+        text: post.content?.trim() ?? '',
+        media: post.media ?? [],
+        poll,
+        pollTestSuffix: '',
+    };
+
+    return [first, ...replies];
 };

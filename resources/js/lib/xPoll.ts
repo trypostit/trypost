@@ -59,32 +59,17 @@ export const pollChoiceLength = (choice: string): number => choice.trim().length
 
 /**
  * A choice cut to the longest X accepts, counted as X counts it
- * (`pollChoiceLength`), keeping the spaces before it and never splitting a
- * character.
+ * (`pollChoiceLength`): the last character goes until it fits, so a character
+ * is never split and the spaces before the choice stay.
  */
 export const fitPollChoice = (choice: string, maxLength: number): string => {
-    const characters = Array.from(choice);
-    const firstCharacter = characters.findIndex((character) =>
-        filled(character),
-    );
+    let characters = Array.from(choice);
 
-    if (firstCharacter === -1) {
-        return choice;
+    while (pollChoiceLength(characters.join('')) > maxLength) {
+        characters = characters.slice(0, -1);
     }
 
-    const kept = characters.slice(0, firstCharacter);
-    let length = 0;
-
-    for (const character of characters.slice(firstCharacter)) {
-        if (length + character.length > maxLength) {
-            break;
-        }
-
-        length += character.length;
-        kept.push(character);
-    }
-
-    return kept.join('');
+    return characters.join('');
 };
 
 /** The choices the editor shows: the stored ones, padded to the number a poll starts with. */
