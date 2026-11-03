@@ -633,7 +633,7 @@ test('an x poll published by TryPost keeps its result from the metrics read thro
     expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4)]);
 });
 
-test('a rediscovery keeps the poll results of the thread replies, which only the metrics read sees', function () {
+test('a rediscovery keeps the poll results of the thread replies, which only the metrics read sees, and drops what it no longer reports', function () {
     $date = CarbonImmutable::now('UTC');
     $publication = metricJobPublication(Platform::X, $date->subDay());
     $poll = fn (int $votes): array => [
@@ -643,7 +643,7 @@ test('a rediscovery keeps the poll results of the thread replies, which only the
         'duration_minutes' => 1440,
     ];
     $threadPolls = [['reply' => 0, ...$poll(7)]];
-    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => ['poll' => $poll(1), 'thread_polls' => $threadPolls]])->save();
+    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => ['poll' => $poll(1), 'thread_polls' => $threadPolls, 'media' => [['type' => 'photo', 'url' => 'https://pbs.twimg.com/media/old.jpg']]]])->save();
 
     app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, new DiscoveredPublication(
         providerPostId: $publication->remote_id,

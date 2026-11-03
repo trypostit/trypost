@@ -82,7 +82,7 @@ class XPublisher
             fn (): array => $this->publishRoot($post, $content),
             fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createTweet([
                 ...($text !== '' ? ['text' => $text] : []),
-                ...($poll === null ? $this->mediaPayload($media) : ['poll' => $this->replyPollPayload($text, $media, $poll)]),
+                ...(blank($poll) ? $this->mediaPayload($media) : ['poll' => $this->replyPollPayload($text, $media, $poll)]),
                 'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
             ], $account->username),
         );

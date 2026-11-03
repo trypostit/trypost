@@ -24,7 +24,7 @@ final class ThreadProgress
      */
     public static function hash(string $text, array $mediaIds = [], ?array $poll = null): string
     {
-        return sha1((string) json_encode($poll === null ? [$text, $mediaIds] : [$text, $mediaIds, $poll]));
+        return sha1((string) json_encode(blank($poll) ? [$text, $mediaIds] : [$text, $mediaIds, $poll]));
     }
 
     /**

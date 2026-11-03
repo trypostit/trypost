@@ -89,7 +89,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $replyIds = (array) $post?->thread_reply_ids;
 
         return collect(ThreadReplies::of($post?->meta))
-            ->filter(fn (array $reply, int $index): bool => isset($reply['poll']) && is_string(data_get($replyIds, $index)))
+            ->filter(fn (array $reply, int $index): bool => filled(data_get($reply, 'poll')) && is_string(data_get($replyIds, $index)))
             ->map(fn (array $reply, int $index): string => (string) data_get($replyIds, $index))
             ->all();
     }

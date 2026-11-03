@@ -831,3 +831,31 @@ test('a thread reply poll question on a long post account counts against 280', f
         ->assertValue('@thread-reply-0-poll-choice-1', 'No')
         ->assertNoJavaScriptErrors();
 });
+
+test('pasting an image into a thread reply poll adds no media to it', function () {
+    $post = seedXPollPost();
+    $id = $post->social_account_id;
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $page = openXPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-choice-0');
+
+    $prevented = $page->script(<<<JS
+        (() => {
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([Uint8Array.from(atob('{$png}'), (character) => character.charCodeAt(0))], 'pasted.png', { type: 'image/png' }));
+            return !document.querySelector('[data-testid="thread-reply-0"]').dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }));
+        })()
+    JS);
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    expect($prevented)->toBeFalse();
+    $page->assertMissing("@composer-{$id}-reply-0-upload-item")
+        ->assertMissing("@composer-{$id}-reply-0-media-item")
+        ->assertVisible('@thread-reply-0-poll-choice-0')
+        ->assertNoJavaScriptErrors();
+});

@@ -94,7 +94,7 @@ class PostPreviewer
             $preview['thread_replies'] = array_map(fn (array $reply): array => [
                 'text' => $this->sanitizer->sanitize($reply['text'], $platform),
                 'media' => $reply['media'],
-                ...(isset($reply['poll']) ? ['poll' => XPoll::payload($reply)] : []),
+                ...(filled(data_get($reply, 'poll')) ? ['poll' => XPoll::payload($reply)] : []),
             ], $replies);
         }
 

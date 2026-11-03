@@ -16,6 +16,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use DateTimeInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -125,7 +126,9 @@ class UpsertAnalyticsPublication
                 $current->fill([
                     'permalink' => $discovered->permalink ?? $current->permalink,
                     'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
-                    'provider_metadata' => filled($discovered->provider_metadata) ? [...($current->provider_metadata ?? []), ...$discovered->provider_metadata] : $current->provider_metadata,
+                    'provider_metadata' => filled($discovered->provider_metadata)
+                        ? [...$discovered->provider_metadata, ...Arr::only($current->provider_metadata ?? [], AnalyticsPublication::METRICS_ONLY_PROVIDER_METADATA)]
+                        : $current->provider_metadata,
                     'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
                     'excerpt' => $discovered->excerpt ?? $current->excerpt,
                     'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
@@ -297,7 +300,7 @@ class UpsertAnalyticsPublication
                 'permalink' => $permalink,
                 'excerpt' => $excerpt,
                 'preview_metadata' => $previewMetadata,
-                'provider_metadata' => transform($providerMetadata, fn (array $metadata): array => [...($publication->provider_metadata ?? []), ...$metadata]),
+                'provider_metadata' => transform($providerMetadata, fn (array $metadata): array => [...$metadata, ...Arr::only($publication->provider_metadata ?? [], AnalyticsPublication::METRICS_ONLY_PROVIDER_METADATA)]),
                 'account_display_name' => $identity->accountDisplayName,
                 'account_username' => $identity->accountUsername,
                 'account_avatar_url' => $identity->accountAvatarUrl,

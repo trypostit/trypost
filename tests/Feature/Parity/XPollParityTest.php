@@ -266,7 +266,7 @@ test('a thread with polls on the post and on its replies is scheduled on the web
         ->and($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual(['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]);
 })->with(['web', 'api', 'mcp']);
 
-test('a thread reply poll is dropped off x on the web, api and mcp', function (string $surface) {
+test('a thread reply poll off x is dropped, never checked, on the web, api and mcp', function (string $surface) {
     $account = SocialAccount::factory()->create(['workspace_id' => test()->workspace->id, 'platform' => Platform::Bluesky]);
     $post = Post::factory()->forAccount($account, ContentType::BlueskyPost)->create([
         'user_id' => test()->user->id,
@@ -275,11 +275,17 @@ test('a thread reply poll is dropped off x on the web, api and mcp', function (s
         'media' => [],
         'meta' => [],
     ]);
+    $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
 
-    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
-        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
-    ]]]);
+    $response = xPollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [[
+        'text' => 'Tabs or spaces?',
+        'poll' => ['options' => ['Tabs'], 'duration_minutes' => 60],
+        'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+    ]]]]);
 
     $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
-    expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Tabs or spaces?', 'media' => []]]);
+    expect($post->fresh()->meta['thread_replies'][0])->not->toHaveKey('poll')
+        ->and($post->fresh()->meta['thread_replies'][0]['media'])->toHaveCount(1);
 })->with(['web', 'api', 'mcp']);
+

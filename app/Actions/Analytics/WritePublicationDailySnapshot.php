@@ -35,6 +35,9 @@ class WritePublicationDailySnapshot
         bool $mayCreate,
     ): AnalyticsPublicationDailySnapshot {
         return DB::transaction(function () use ($publication, $observation, $mayCreate): AnalyticsPublicationDailySnapshot {
+            $locked = filled($observation->providerMetadata)
+                ? AnalyticsPublication::query()->lockForUpdate()->find($publication->id)
+                : null;
             $snapshot = AnalyticsPublicationDailySnapshot::query()
                 ->where('publication_id', $publication->id)
                 ->where('date', $observation->date->toDateString())
@@ -66,8 +69,8 @@ class WritePublicationDailySnapshot
             ]);
             $snapshot->save();
 
-            if (filled($observation->providerMetadata)) {
-                $this->mergeProviderMetadata($publication, $observation->providerMetadata);
+            if (filled($locked)) {
+                $this->mergeProviderMetadata($locked, $observation->providerMetadata);
             }
 
             return $snapshot->refresh();
@@ -76,20 +79,16 @@ class WritePublicationDailySnapshot
 
     /**
      * Writes the keys the network reported over the publication's stored
-     * `provider_metadata`, read again under a row lock: the model was loaded
-     * before the network call, and a discovery may have written meanwhile. A
-     * key the observation does not carry is kept, and `updated_at` does not move.
+     * `provider_metadata`, on the row read again under the lock the transaction
+     * took first (before the snapshot, the order discovery locks in): the model
+     * was loaded before the network call, and a discovery may have written
+     * meanwhile. A key the observation does not carry is kept, and `updated_at`
+     * does not move.
      *
      * @param  array<string, mixed>  $providerMetadata
      */
-    private function mergeProviderMetadata(AnalyticsPublication $publication, array $providerMetadata): void
+    private function mergeProviderMetadata(AnalyticsPublication $current, array $providerMetadata): void
     {
-        $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
-
-        if (! $current) {
-            return;
-        }
-
         $current->withoutTimestamps(fn (): bool => $current->forceFill([
             'provider_metadata' => [...($current->provider_metadata ?? []), ...$providerMetadata],
         ])->saveQuietly());

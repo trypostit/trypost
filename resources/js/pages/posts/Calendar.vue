@@ -145,9 +145,11 @@ provide(
 
 const now = ref(dayjs());
 let clock: ReturnType<typeof setInterval> | undefined;
+let cancelSlotsReload = (): void => {};
 
 onUnmounted(() => {
     clearInterval(clock);
+    cancelSlotsReload();
 });
 
 const userTimezone = computed(
@@ -332,7 +334,9 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        afterPageInHistory(() => reload(['slots'], [], true));
+        cancelSlotsReload = afterPageInHistory(() =>
+            reload(['slots'], [], true),
+        );
     }
 });
 

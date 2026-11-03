@@ -411,7 +411,7 @@ test('a calendar opened by its link asks for its posting times only once its pag
     $page->back();
     waitForGone($page, "@calendar-post-{$post->id}");
 
-    $page->assertPathIs((string) parse_url(route('app.calendar', ['view' => 'week']), PHP_URL_PATH))
+    $page->assertPathIs(route('app.calendar', ['view' => 'week'], false))
         ->assertScript("new URLSearchParams(location.search).has('week')", false)
         ->assertNoJavaScriptErrors();
 });

@@ -104,9 +104,9 @@ class ThreadReplies
     public static function pollFormatViolation(mixed $meta): ?array
     {
         foreach (self::of($meta) as $index => $reply) {
-            $violation = isset($reply['poll']) ? XPoll::violation($reply) : null;
+            $violation = filled(data_get($reply, 'poll')) ? XPoll::violation($reply) : null;
 
-            if ($violation !== null) {
+            if (filled($violation)) {
                 return ["thread_replies.{$index}.{$violation[0]}", $violation[1]];
             }
         }
@@ -115,14 +115,19 @@ class ThreadReplies
     }
 
     /**
-     * A reply poll carries no media, drafts included.
+     * A reply poll carries no media, drafts included. Only X has reply polls;
+     * any other network drops them on save.
      *
      * @return array<string, string>
      */
-    public static function pollMediaErrors(mixed $meta): array
+    public static function pollMediaErrors(?Platform $platform, mixed $meta): array
     {
+        if ($platform !== Platform::X) {
+            return [];
+        }
+
         return collect(self::of($meta))
-            ->filter(fn (array $reply): bool => isset($reply['poll']) && $reply['media'] !== [])
+            ->filter(fn (array $reply): bool => filled(data_get($reply, 'poll')) && filled($reply['media']))
             ->mapWithKeys(fn (array $reply, int $index): array => ["thread_replies.{$index}.media" => __('posts.errors.media_not_accepted')])
             ->all();
     }
@@ -162,7 +167,7 @@ class ThreadReplies
 
         foreach ($replies as $index => $reply) {
             $blank = blank(Str::trim($reply['text']));
-            $poll = isset($reply['poll']);
+            $poll = $platform === Platform::X && filled(data_get($reply, 'poll'));
 
             if ($poll && $blank) {
                 return ["thread_replies.{$index}", XPoll::questionViolation($reply['text'])];
@@ -181,7 +186,7 @@ class ThreadReplies
 
             $pollViolation = $poll ? XPoll::violation($reply) ?? XPoll::requiredViolation($reply) : null;
 
-            if ($pollViolation !== null) {
+            if (filled($pollViolation)) {
                 return ["thread_replies.{$index}.{$pollViolation[0]}", $pollViolation[1]];
             }
         }

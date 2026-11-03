@@ -51,19 +51,22 @@ export const cameFromAppPage = (): boolean => {
  * Runs `then` once Inertia has written the current page into its history
  * entry. On a full page load it writes it only after the page has mounted,
  * and a `preserveUrl` visit answered meanwhile makes it skip that write, which
- * leaves an entry the browser's Back can never bring back.
+ * leaves an entry the browser's Back can never bring back. Returns a cancel,
+ * for a page that unmounts before the write.
  */
-export const afterPageInHistory = (then: () => void): void => {
+export const afterPageInHistory = (then: () => void): (() => void) => {
     if (window.history.state?.page) {
         then();
 
-        return;
+        return () => {};
     }
 
     const stop = router.on('navigate', () => {
         stop();
         then();
     });
+
+    return stop;
 };
 
 let settling: Promise<void> | null = null;

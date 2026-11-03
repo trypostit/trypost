@@ -1393,7 +1393,7 @@ const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
         return;
     }
     const files = Array.from(event.dataTransfer?.files ?? []);
-    if (files.length && !cropUploading.value) {
+    if (files.length && !cropUploading.value && groupAcceptsMedia(group)) {
         groupMediaUploader(group).add(files);
     }
 };
@@ -1405,7 +1405,8 @@ const onReplyMediaPasted = (
     if (
         !files.length ||
         event.clipboardData?.getData('text/plain').trim() ||
-        cropUploading.value
+        cropUploading.value ||
+        !groupAcceptsMedia(group)
     ) {
         return;
     }
@@ -3034,6 +3035,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     threadActive === index &&
                                                     accountPollLimits(group.anchor)
                                                 "
+                                                :key="`reply-poll-${index}`"
                                                 class="px-[9px]"
                                                 :model-value="reply.poll"
                                                 :limits="accountPollLimits(group.anchor)!"

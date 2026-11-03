@@ -21,6 +21,15 @@ class AnalyticsPublication extends Model
     /** @use HasFactory<AnalyticsPublicationFactory> */
     use HasFactory, HasUuids;
 
+    /**
+     * `provider_metadata` keys only the metrics read writes (the polls of X
+     * thread replies, which discovery never sees), so a discovery keeps them
+     * while it replaces everything else it reports.
+     *
+     * @var list<string>
+     */
+    public const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
+
     protected $fillable = [
         'workspace_id',
         'social_account_id',
