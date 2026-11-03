@@ -325,14 +325,15 @@ class UpsertAnalyticsPublication
     /**
      * The `provider_metadata` after a discovery reported `$discovered`: what it
      * reports replaces what was stored, so a key it no longer reports goes, while
-     * the keys only the metrics read writes stay. Nothing reported keeps it all.
+     * the keys only the metrics read writes stay. A discovery that reported
+     * nothing (`null`, not an empty list) keeps it all.
      *
      * @param  array<string, mixed>|null  $discovered
      * @return array<string, mixed>|null
      */
     private static function providerMetadataAfterDiscovery(AnalyticsPublication $publication, ?array $discovered): ?array
     {
-        if (blank($discovered)) {
+        if (is_null($discovered)) {
             return $publication->provider_metadata;
         }
 

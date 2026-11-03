@@ -12,6 +12,7 @@ use App\Services\Social\TokenRedactor;
 use App\Support\ThreadReplies;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 trait HasSocialHttpClient
 {
@@ -41,7 +42,7 @@ trait HasSocialHttpClient
         }
 
         $maxLength = ContentType::maxContentLengthFor($post->socialAccount, $post->platform, $post->content_type);
-        $contentLength = mb_strlen($content) + $post->platform->reservedLength($post->meta);
+        $contentLength = Str::length($content) + $post->platform->reservedLength($post->meta);
 
         if ($contentLength <= $maxLength) {
             return;

@@ -1,4 +1,5 @@
 import { activeLocale } from '@/language';
+import type { PublishConfig } from '@/types/platform';
 import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
 export const MINUTES_PER_HOUR = 60;
@@ -7,7 +8,7 @@ const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
 
 /** The poll limits in an account's `publishConfig`, or null on a network without polls. */
 export const pollLimitsOf = (
-    publishConfig: Record<string, any> | null | undefined,
+    publishConfig: PublishConfig | null | undefined,
 ): XPollLimits | null => publishConfig?.poll ?? null;
 
 /** The longest a poll runs, in whole days. */
@@ -32,10 +33,7 @@ export const joinPollDuration = (
         parts.hours * MINUTES_PER_HOUR +
         parts.minutes;
 
-    return Math.min(
-        Math.max(total, limits.minDuration),
-        limits.maxDuration,
-    );
+    return Math.min(Math.max(total, limits.minDuration), limits.maxDuration);
 };
 
 export const newPoll = (limits: XPollLimits): XPoll => ({
@@ -50,28 +48,28 @@ export const editablePollOptions = (
 ): string[] => {
     const stored = Array.isArray(options) ? options.map(String) : [];
 
-    return [
-        ...stored,
-        ...Array.from(
-            { length: Math.max(minOptions - stored.length, 0) },
-            () => '',
-        ),
-    ];
+    return Array.from(
+        { length: Math.max(minOptions, stored.length) },
+        (_, index) => stored[index] ?? '',
+    );
 };
 
-/** The poll's length in its largest unit, as X shows it ("1 day", "23 hours", "5 minutes"). */
+/** The units a poll's length is shown in, largest first, with their minutes. */
+const POLL_LENGTH_UNITS = [
+    ['day', MINUTES_PER_DAY],
+    ['hour', MINUTES_PER_HOUR],
+    ['minute', 1],
+] as const;
+
+/** The poll's length in its largest whole unit, as X shows it ("1 day", "23 hours", "5 minutes"). */
 export const formatPollLength = (minutes: number): string => {
-    const { days, hours } = splitPollDuration(minutes);
-    const [value, unit] =
-        days > 0
-            ? [days, 'day']
-            : hours > 0
-              ? [hours, 'hour']
-              : [minutes, 'minute'];
+    const [unit, size] =
+        POLL_LENGTH_UNITS.find(([, size]) => minutes >= size) ??
+        POLL_LENGTH_UNITS[POLL_LENGTH_UNITS.length - 1];
 
     return new Intl.NumberFormat(activeLocale.value, {
         style: 'unit',
         unit,
         unitDisplay: 'long',
-    }).format(value);
+    }).format(Math.floor(minutes / size));
 };

@@ -1,5 +1,7 @@
 import { uuid } from '@/lib/uuid';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import { THREAD_REPLY_CONTENT_TYPES } from '@/types/network-options';
 import type { XPoll } from '@/types/x';
 
 /**
@@ -21,6 +23,9 @@ export const newThreadReply = (): ThreadReply => ({
     media: [],
 });
 
+const isObject = (value: unknown): value is Record<string, any> =>
+    value !== null && typeof value === 'object';
+
 /** Replies stored as plain strings are text-only replies. */
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
@@ -28,41 +33,42 @@ export const threadRepliesOf = (
     Array.isArray(meta?.thread_replies)
         ? meta.thread_replies.map(
               (reply: unknown, index: number): ThreadReply => {
-                  const stored =
-                      reply !== null && typeof reply === 'object'
-                          ? (reply as Partial<ThreadReply>)
-                          : {};
+                  const stored: Partial<ThreadReply> = isObject(reply)
+                      ? reply
+                      : {};
 
-                  return {
-                      key:
-                          typeof stored.key === 'string'
-                              ? stored.key
-                              : `stored-${index}`,
-                      text:
-                          typeof reply === 'string'
-                              ? reply
-                              : typeof stored.text === 'string'
-                                ? stored.text
-                                : '',
-                      media: Array.isArray(stored.media) ? stored.media : [],
-                      ...(stored.poll !== null && typeof stored.poll === 'object'
-                          ? { poll: stored.poll }
-                          : {}),
-                  };
+                  return withReplyPoll(
+                      {
+                          key:
+                              typeof stored.key === 'string'
+                                  ? stored.key
+                                  : `stored-${index}`,
+                          text:
+                              typeof reply === 'string'
+                                  ? reply
+                                  : typeof stored.text === 'string'
+                                    ? stored.text
+                                    : '',
+                          media: Array.isArray(stored.media)
+                              ? stored.media
+                              : [],
+                      },
+                      isObject(stored.poll) ? stored.poll : undefined,
+                  );
               },
           )
         : [];
 
 /** The reply with `poll`, or as a plain post of the thread when `poll` is undefined. */
 export const withReplyPoll = (
-    reply: ThreadReply,
+    { key, text, media }: ThreadReply,
     poll: Partial<XPoll> | undefined,
-): ThreadReply => {
-    const next: ThreadReply = { ...reply, poll };
+): ThreadReply =>
+    poll === undefined ? { key, text, media } : { key, text, media, poll };
 
-    if (poll === undefined) {
-        delete next.poll;
-    }
-
-    return next;
-};
+/** The post type a reply publishes as: a poll, or its network's reply type. */
+export const threadReplyContentType = (
+    platform: string,
+    reply: ThreadReply,
+): string | undefined =>
+    reply.poll ? ContentType.XPoll : THREAD_REPLY_CONTENT_TYPES[platform];

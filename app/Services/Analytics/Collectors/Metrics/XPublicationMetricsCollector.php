@@ -60,7 +60,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     private function readPost(SocialAccount $account, string $id, array $fields): array
     {
-        $response = $this->get($account, "{$this->api()}/tweets/{$id}", $this->lookupParameters($fields));
+        $response = $this->get($account, config('trypost.platforms.x.api')."/tweets/{$id}", $this->lookupParameters($fields));
 
         return [$response->json('data'), $response->json('includes.polls.0'), []];
     }
@@ -75,7 +75,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     private function readThread(SocialAccount $account, string $id, array $replyPolls, array $fields): array
     {
-        $response = $this->get($account, "{$this->api()}/tweets", [
+        $response = $this->get($account, config('trypost.platforms.x.api').'/tweets', [
             ...$this->lookupParameters([...$fields, 'attachments']),
             'ids' => Arr::join([$id, ...$replyPolls], ','),
         ]);
@@ -104,11 +104,6 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             'expansions' => 'attachments.poll_ids',
             'poll.fields' => XPoll::LOOKUP_FIELDS,
         ];
-    }
-
-    private function api(): string
-    {
-        return rtrim((string) config('trypost.platforms.x.api'), '/');
     }
 
     /**

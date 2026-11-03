@@ -112,9 +112,10 @@ final class XPoll
      */
     public static function optionsCountViolation(mixed $options): ?string
     {
-        return count(self::choices($options)) > self::MAX_OPTIONS
-            ? trans('posts.form.x.poll.options_max', ['max' => self::MAX_OPTIONS])
-            : null;
+        return when(
+            count(self::choices($options)) > self::MAX_OPTIONS,
+            fn (): string => trans('posts.form.x.poll.options_max', ['max' => self::MAX_OPTIONS]),
+        );
     }
 
     /**
@@ -122,9 +123,9 @@ final class XPoll
      */
     public static function choiceLengthViolation(mixed $choice): ?string
     {
-        return is_string($choice) && mb_strlen(Str::trim($choice)) > self::OPTION_MAX_LENGTH
-            ? trans('posts.form.x.poll.choice_max', ['max' => self::OPTION_MAX_LENGTH])
-            : null;
+        $tooLong = is_string($choice) && Str::length(Str::trim($choice)) > self::OPTION_MAX_LENGTH;
+
+        return when($tooLong, fn (): string => trans('posts.form.x.poll.choice_max', ['max' => self::OPTION_MAX_LENGTH]));
     }
 
     /**
@@ -154,7 +155,7 @@ final class XPoll
     {
         $question = app(ContentSanitizer::class)->displayText((string) $content, Platform::X);
 
-        return blank($question) ? trans('posts.form.x.poll.question_required') : null;
+        return when(blank($question), fn (): string => trans('posts.form.x.poll.question_required'));
     }
 
     /**

@@ -2,8 +2,12 @@ import type {
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
+import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
 import { newPoll } from '@/lib/xPoll';
-import { ContentType } from '@/types/content-type';
+import {
+    ContentType,
+    MEDIALESS_CONTENT_TYPE_REASONS,
+} from '@/types/content-type';
 import type { XPoll, XPollLimits } from '@/types/x';
 
 type Composition = Pick<
@@ -11,13 +15,23 @@ type Composition = Pick<
     'resolvedDestination' | 'setGroupOverride'
 >;
 
+/** What the composer's thread gives the reply polls: the reply being edited, the replies, and whether a reply's file is still uploading. */
+export interface ComposerThread {
+    activeReply: (group: NetworkGroup) => ThreadReply | undefined;
+    replies: (group: NetworkGroup) => ThreadReply[];
+    setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
+    uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
+}
+
 /**
- * The X poll of each composer card: picking Poll starts one, editing writes
- * it into the card's meta, and any other type drops it, as the server does.
+ * The X polls of each composer card: the post's (picking Poll starts one,
+ * editing writes it into the card's meta, and any other type drops it, as the
+ * server does) and each thread reply's (the toolbar's poll button).
  */
 export const useComposerPoll = (
     composition: Composition,
     pollLimits: (group: NetworkGroup) => XPollLimits | null,
+    thread: ComposerThread,
 ) => {
     const destination = (group: NetworkGroup) =>
         composition.resolvedDestination(group.anchor);
@@ -109,6 +123,55 @@ export const useComposerPoll = (
         metaBeforeOtherType.clear();
     };
 
+    /** A reply poll's question keeps the poll's cap, even on an account with long posts. */
+    const replyPollLimit = (group: NetworkGroup): number =>
+        pollLimits(group)?.questionMaxLength ?? Infinity;
+
+    const setReplyPoll = (
+        group: NetworkGroup,
+        replyKey: string,
+        poll: XPoll | undefined,
+    ): void => {
+        thread.setReplies(
+            group,
+            thread
+                .replies(group)
+                .map((reply) =>
+                    reply.key === replyKey ? withReplyPoll(reply, poll) : reply,
+                ),
+        );
+    };
+
+    /** The poll button shows on an X reply that is not a poll yet. */
+    const replyPollAvailable = (group: NetworkGroup): boolean => {
+        const reply = thread.activeReply(group);
+
+        return (
+            reply !== undefined &&
+            reply.poll === undefined &&
+            pollLimits(group) !== null
+        );
+    };
+
+    /** Media in the reply (or on its way) keeps the poll button off, saying why. */
+    const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
+        const reply = thread.activeReply(group);
+
+        return reply !== undefined &&
+            (reply.media.length > 0 || thread.uploading(group, reply))
+            ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
+            : null;
+    };
+
+    const addReplyPoll = (group: NetworkGroup): void => {
+        const reply = thread.activeReply(group);
+        const limits = pollLimits(group);
+
+        if (reply === undefined || limits === null) return;
+
+        setReplyPoll(group, reply.key, newPoll(limits));
+    };
+
     return {
         isPollGroup,
         groupPoll,
@@ -116,5 +179,10 @@ export const useComposerPoll = (
         pollMetaForContentType,
         forgetGroupPoll,
         forgetPolls,
+        replyPollLimit,
+        setReplyPoll,
+        replyPollAvailable,
+        replyPollDisabledReasonKey,
+        addReplyPoll,
     };
 };

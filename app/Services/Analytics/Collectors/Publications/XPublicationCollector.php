@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class XPublicationCollector extends AbstractPublicationHistoryCollector
 {
@@ -74,25 +75,19 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 fn (array $item): bool => filled(data_get($item, 'preview_image_url')) || filled(data_get($item, 'url')),
             );
 
-            $poll = $polls->get((string) data_get($row, 'attachments.poll_ids.0'));
-            $providerMetadata = Arr::whereNotNull([
-                'media' => $attachedMedia->isEmpty() ? null : $attachedMedia
-                    ->map(fn (array $item): array => Arr::whereNotNull(Arr::only($item, ['type', 'url', 'variants'])))
-                    ->all(),
-                'poll' => is_array($poll) ? XPoll::result($poll) : null,
-            ]);
+            $poll = transform($polls->get((string) data_get($row, 'attachments.poll_ids.0')), XPoll::result(...));
 
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,
                 publishedAt: $publishedAt,
-                contentType: $this->contentType($types->all(), $attachedMedia->count(), is_array($poll)),
+                contentType: $this->contentType($types->all(), $attachedMedia->count(), filled($poll)),
                 providerContentType: $types->implode(','),
                 permalink: filled($account->username) ? "https://x.com/{$account->username}/status/{$postId}" : null,
                 excerpt: data_get($row, 'note_tweet.text') ?: data_get($row, 'text'),
                 previewMetadata: is_array($preview)
                     ? ['thumbnail_url' => data_get($preview, 'preview_image_url') ?: data_get($preview, 'url')]
                     : null,
-                providerMetadata: filled($providerMetadata) ? $providerMetadata : null,
+                providerMetadata: $this->providerMetadata($attachedMedia, $poll),
             );
         }
 
@@ -106,6 +101,21 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             $providerLimited,
             providerRowCount: $walkedRows,
         );
+    }
+
+    /**
+     * What discovery keeps of a post: its media and its poll's result.
+     *
+     * @param  Collection<int, array<string, mixed>>  $media
+     * @param  array<string, mixed>|null  $poll
+     * @return array<string, mixed>|null
+     */
+    private function providerMetadata(Collection $media, ?array $poll): ?array
+    {
+        return Arr::whereNotNull([
+            'media' => $media->map(fn (array $item): array => Arr::whereNotNull(Arr::only($item, ['type', 'url', 'variants'])))->all() ?: null,
+            'poll' => $poll,
+        ]) ?: null;
     }
 
     /** @param list<mixed> $types */

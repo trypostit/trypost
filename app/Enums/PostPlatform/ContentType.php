@@ -11,6 +11,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Str;
 
 enum ContentType: string
 {
@@ -843,6 +844,15 @@ enum ContentType: string
             SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
             default => [$primary],
         };
+    }
+
+    /**
+     * How many characters `$text`, plus what the network adds to it
+     * (`$reserved`), goes over `maxContentLengthFor()`; 0 when it fits.
+     */
+    public static function overflowFor(?SocialAccount $account, SocialPlatform $platform, ?self $type, string $text, int $reserved = 0): int
+    {
+        return max(0, Str::length($text) + $reserved - self::maxContentLengthFor($account, $platform, $type));
     }
 
     /**

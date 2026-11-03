@@ -175,10 +175,9 @@ import {
     newThreadReply,
     type ThreadReply,
     threadRepliesOf,
-    withReplyPoll,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { newPoll, pollLimitsOf } from '@/lib/xPoll';
+import { pollLimitsOf } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -207,7 +206,7 @@ import {
     type QueuePositionValue,
 } from '@/types/post';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
-import type { XPoll, XPollLimits } from '@/types/x';
+import type { XPollLimits } from '@/types/x';
 
 const props = withDefaults(
     defineProps<{
@@ -481,7 +480,18 @@ const {
     pollMetaForContentType,
     forgetGroupPoll,
     forgetPolls,
-} = useComposerPoll(composition, (group) => accountPollLimits(group.anchor));
+    replyPollLimit,
+    setReplyPoll,
+    replyPollAvailable,
+    replyPollDisabledReasonKey,
+    addReplyPoll,
+} = useComposerPoll(composition, (group) => accountPollLimits(group.anchor), {
+    activeReply: (group) => activeReply(group),
+    replies: (group) => threadReplies(group),
+    setReplies: (group, replies) => setThreadReplies(group, replies),
+    uploading: (group, reply) =>
+        Boolean(replyUploaderFor(group, reply)?.busy.value),
+});
 const setGroupContentType = (
     group: NetworkGroup,
     contentType: string,
@@ -1191,9 +1201,6 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
-/** A reply poll's question keeps the poll's cap, even on an account with long posts. */
-const replyPollLimit = (group: NetworkGroup): number =>
-    accountPollLimits(group.anchor)?.questionMaxLength ?? Infinity;
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);
     if (reply === undefined) return groupRemaining(group);
@@ -1204,42 +1211,6 @@ const activeRemaining = (group: NetworkGroup): number | null => {
         : (reply.poll !== undefined
               ? Math.min(limit, replyPollLimit(group))
               : limit) - displayLength(contentFor(reply.text, group.platform));
-};
-const setReplyPoll = (
-    group: NetworkGroup,
-    replyKey: string,
-    poll: XPoll | undefined,
-): void => {
-    setThreadReplies(
-        group,
-        threadReplies(group).map((reply) =>
-            reply.key === replyKey ? withReplyPoll(reply, poll) : reply,
-        ),
-    );
-};
-/** The poll button shows on an X reply without a poll; media in it keeps the button off. */
-const replyPollAvailable = (group: NetworkGroup): boolean => {
-    const reply = activeReply(group);
-
-    return (
-        reply !== undefined &&
-        reply.poll === undefined &&
-        accountPollLimits(group.anchor) !== null
-    );
-};
-const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
-    const reply = activeReply(group);
-
-    return reply !== undefined &&
-        (reply.media.length > 0 || replyUploaderFor(group, reply)?.busy.value)
-        ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
-        : null;
-};
-const addReplyPoll = (group: NetworkGroup): void => {
-    const reply = activeReply(group);
-    const limits = accountPollLimits(group.anchor);
-    if (reply === undefined || limits === null) return;
-    setReplyPoll(group, reply.key, newPoll(limits));
 };
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
@@ -3182,22 +3153,20 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 "
                                             >
                                                 <TooltipTrigger as-child>
-                                                    <span class="inline-flex">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            class="ms-1 size-7 text-primary-text"
-                                                            data-testid="thread-add-reply"
-                                                            :aria-label="
-                                                                $t('posts.form.thread.add')
-                                                            "
-                                                            :disabled="cropUploading"
-                                                            @click="addThreadReply(group)"
-                                                        >
-                                                            <IconCirclePlus class="size-4" />
-                                                        </Button>
-                                                    </span>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        class="ms-1 size-7 text-primary-text"
+                                                        data-testid="thread-add-reply"
+                                                        :aria-label="
+                                                            $t('posts.form.thread.add')
+                                                        "
+                                                        :disabled="cropUploading"
+                                                        @click="addThreadReply(group)"
+                                                    >
+                                                        <IconCirclePlus class="size-4" />
+                                                    </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent
                                                     data-testid="thread-add-reply-tooltip"

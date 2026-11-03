@@ -11,35 +11,18 @@ import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
-import {
-    editablePollOptions,
-    formatPollLength,
-    pollLimitsOf,
-} from '@/lib/xPoll';
+import XPreviewPoll from '@/components/posts/previews/XPreviewPoll.vue';
+import { pollLimitsOf } from '@/lib/xPoll';
 import { ContentType } from '@/types/content-type';
+import type { XPoll } from '@/types/x';
 
 const props = defineProps<PreviewProps>();
 
+const poll = computed((): Partial<XPoll> | null =>
+    props.contentType === ContentType.XPoll ? (props.meta?.poll ?? null) : null,
+);
+
 const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
-
-const poll = computed(() =>
-    props.contentType === ContentType.XPoll && props.meta?.poll
-        ? props.meta.poll
-        : null,
-);
-
-const pollOptions = computed((): string[] =>
-    poll.value && pollLimits.value
-        ? editablePollOptions(poll.value.options, pollLimits.value.minOptions)
-        : [],
-);
-
-const pollLength = computed((): string => {
-    const minutes =
-        poll.value?.duration_minutes ?? pollLimits.value?.defaultDuration;
-
-    return minutes === undefined ? '' : formatPollLength(minutes);
-});
 </script>
 
 <template>
@@ -60,21 +43,6 @@ const pollLength = computed((): string => {
         ]"
         :trailing-actions="[{ icon: IconBookmark }, { icon: IconUpload }]"
     >
-        <div v-if="poll" class="space-y-2" data-testid="x-preview-poll">
-            <div
-                v-for="(option, index) in pollOptions"
-                :key="index"
-                class="min-h-8 truncate rounded-full border border-info px-3 py-1.5 text-center font-bold text-info dark:text-info-text"
-            >
-                {{ option }}
-            </div>
-            <p class="text-muted-foreground">
-                {{
-                    $t('posts.composer.preview.poll_summary', {
-                        time: pollLength,
-                    })
-                }}
-            </p>
-        </div>
+        <XPreviewPoll v-if="poll && pollLimits" :poll="poll" :limits="pollLimits" />
     </PreviewTextPost>
 </template>

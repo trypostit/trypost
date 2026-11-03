@@ -182,7 +182,8 @@ const showsHeader = computed(
                 <span
                     v-if="threaded && platform"
                     aria-hidden="true"
-                    class="pointer-events-none absolute -start-[25px] -top-3.5 -bottom-[14px] w-0.5 rounded-full bg-border"
+                    class="pointer-events-none absolute -start-[25px] -bottom-[14px] w-0.5 rounded-full bg-border"
+                    :class="showsHeader ? '-top-3.5' : 'top-[26px]'"
                     :data-testid="`${testIdPrefix}-thread-connector`"
                 />
                 <button

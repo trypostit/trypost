@@ -173,7 +173,7 @@ class ThreadReplies
         }
 
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
-        $limit = $target instanceof SocialAccount ? $target->maxContentLength() : $platform->maxContentLength();
+        $account = $target instanceof SocialAccount ? $target : null;
 
         foreach ($replies as $index => $reply) {
             $blank = blank(Str::trim($reply['text']));
@@ -187,11 +187,11 @@ class ThreadReplies
                 return ["thread_replies.{$index}", __('posts.form.thread.reply_empty')];
             }
 
-            $replyLimit = $poll ? min($limit, XPoll::QUESTION_MAX_LENGTH) : $limit;
-            $over = $blank ? 0 : max(0, mb_strlen(app(ContentSanitizer::class)->displayText($reply['text'], $platform)) + $reserved - $replyLimit);
+            $type = $poll ? ContentType::XPoll : self::replyContentType($platform);
+            $over = $blank ? 0 : ContentType::overflowFor($account, $platform, $type, app(ContentSanitizer::class)->displayText($reply['text'], $platform), $reserved);
 
             if ($over > 0) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => $replyLimit - $reserved, 'over' => $over])];
+                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => ContentType::maxContentLengthFor($account, $platform, $type) - $reserved, 'over' => $over])];
             }
 
             $pollViolation = $poll ? XPoll::violation($reply) ?? XPoll::requiredViolation($reply) : null;
