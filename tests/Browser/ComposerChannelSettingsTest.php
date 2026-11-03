@@ -908,8 +908,9 @@ test('the threads card offers a topic and a ghost post drops the topic and the m
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForText($page, '[data-slot="tooltip-content"]', __('posts.composer.media_not_supported'));
-    $page->click("@composer-type-{$id}-threads_post");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'));
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.threads.ghost_post_attachments'))
+        ->click("@composer-type-{$id}-threads_post");
     waitFor($page, '@threads-topic-tag');
     $page->assertVisible("@composer-{$id}-media-source-menu")
         ->assertMissing("@composer-{$id}-media-source-disabled")
@@ -1018,12 +1019,39 @@ test('a server error on a thread reply shows under that reply', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a Mastodon reply keeps its media inside the preview, in line with its text', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
+    $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@preview-thread-reply-0 img');
+
+    $edges = $page->script(<<<'JS'
+        (() => {
+            const reply = document.querySelector('[data-testid="preview-thread-reply-0"]');
+            const walker = document.createTreeWalker(reply, NodeFilter.SHOW_TEXT, (node) => node.textContent.includes('With a photo') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP);
+            const text = document.createRange();
+            text.selectNodeContents(walker.nextNode());
+            const image = reply.querySelector('img').getBoundingClientRect();
+            const box = reply.getBoundingClientRect();
+
+            return { gap: box.right - image.right, offset: Math.abs(Math.round(image.left - text.getBoundingClientRect().left)) };
+        })()
+        JS);
+
+    expect($edges['gap'])->toBeGreaterThanOrEqual(16)
+        ->and($edges['offset'])->toBeLessThanOrEqual(1);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a thread reply shows its own media under it and keeps it on save', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $id = $post->social_account_id;
     $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
-    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], 'Plain reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], ['text' => 'Plain reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, "@composer-{$id}-reply-0-media-item-0");
@@ -1059,7 +1087,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
 test('the mastodon preview hides the post behind its content warning on every post of the thread', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => ['Hidden reply']]]);
+    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => [['text' => 'Hidden reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@mastodon-preview-content-warning');
@@ -1149,7 +1177,7 @@ test('arrow keys move between the posts of a thread from the end and the start o
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => 'Root']);
-    $post->update(['meta' => ['thread_replies' => ['First reply', 'Second reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'First reply', 'media' => []], ['text' => 'Second reply', 'media' => []]]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
@@ -1184,7 +1212,11 @@ test('the preview scrolls to the thread post being edited', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => str_repeat('Root post text. ', 40)]);
-    $post->update(['meta' => ['thread_replies' => [str_repeat('First reply text. ', 40), str_repeat('Second reply text. ', 40), 'Last reply']]]);
+    $post->update(['meta' => ['thread_replies' => [
+        ['text' => str_repeat('First reply text. ', 40), 'media' => []],
+        ['text' => str_repeat('Second reply text. ', 40), 'media' => []],
+        ['text' => 'Last reply', 'media' => []],
+    ]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 700);

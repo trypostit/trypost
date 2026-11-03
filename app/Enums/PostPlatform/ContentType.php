@@ -8,7 +8,10 @@ use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Models\SocialAccount;
+use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Str;
 
 enum ContentType: string
 {
@@ -38,6 +41,7 @@ enum ContentType: string
 
     // X (Twitter)
     case XPost = 'x_post';
+    case XPoll = 'x_poll';
 
     // Threads
     case ThreadsPost = 'threads_post';
@@ -92,6 +96,7 @@ enum ContentType: string
             self::TikTokPhoto => 'Photo carousel',
             self::YouTubeShort => 'Short',
             self::XPost => 'Post',
+            self::XPoll => 'Poll',
             self::ThreadsPost => 'Thread',
             self::ThreadsGhostPost => 'Ghost post',
             self::PinterestPin => 'Pin',
@@ -107,7 +112,12 @@ enum ContentType: string
 
     public function description(): string
     {
-        return (string) trans("posts.content_types.{$this->value}.description");
+        $replacements = match ($this) {
+            self::XPoll => ['min' => XPoll::MIN_OPTIONS, 'max' => XPoll::MAX_OPTIONS],
+            default => [],
+        };
+
+        return (string) trans("posts.content_types.{$this->value}.description", $replacements);
     }
 
     public function platform(): SocialPlatform
@@ -119,7 +129,7 @@ enum ContentType: string
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
-            self::XPost => SocialPlatform::X,
+            self::XPost, self::XPoll => SocialPlatform::X,
             self::ThreadsPost, self::ThreadsGhostPost => SocialPlatform::Threads,
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
             self::BlueskyPost => SocialPlatform::Bluesky,
@@ -176,6 +186,28 @@ enum ContentType: string
         };
     }
 
+    /**
+     * The character cap of a post: the account's own limit
+     * (`SocialAccount::maxContentLength()`, an X account with long posts), else
+     * the platform's, capped by the post type when the type belongs to that
+     * platform (an X poll's question stays at the poll's cap even on an account
+     * with long posts). The one formula save, publish, preview and the AI
+     * assistant measure against.
+     */
+    public static function maxContentLengthFor(?SocialAccount $account, SocialPlatform $platform, ?self $type = null): int
+    {
+        $limit = $account?->maxContentLength() ?? $platform->maxContentLength();
+
+        if (blank($type) || ! $type->isCompatibleWith($platform)) {
+            return $limit;
+        }
+
+        return match ($type) {
+            self::XPoll => min($limit, XPoll::QUESTION_MAX_LENGTH),
+            default => $limit,
+        };
+    }
+
     public function maxMediaCount(): int
     {
         return match ($this) {
@@ -188,6 +220,7 @@ enum ContentType: string
             self::TikTokPhoto => 35,
             self::YouTubeShort => 1,
             self::XPost => 4,
+            self::XPoll => 0,
             self::ThreadsPost => 10,
             self::ThreadsGhostPost => 0,
             self::PinterestPin, self::PinterestVideoPin => 1,
@@ -446,7 +479,7 @@ enum ContentType: string
             self::InstagramFeed => ['3:4', '4:5', '1:1', '1.91:1'],
             self::InstagramStory, self::InstagramReel, self::FacebookStory, self::FacebookReel,
             self::TikTokVideo, self::YouTubeShort => ['9:16'],
-            self::XPost => ['1:1', '4:3', '16:9', '2:1'],
+            self::XPost, self::XPoll => ['1:1', '4:3', '16:9', '2:1'],
             self::TikTokPhoto => ['4:3', '16:9', '9:16', '1:1'],
             self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => ['1:1', '1.91:1'],
             self::PinterestPin, self::PinterestCarousel => ['2:3', '1:1'],
@@ -704,6 +737,7 @@ enum ContentType: string
             self::TikTokPhoto => false,
             self::YouTubeShort => true,
             self::XPost => true,
+            self::XPoll => false,
             self::ThreadsPost => true,
             self::ThreadsGhostPost => false,
             self::PinterestVideoPin => true,
@@ -725,6 +759,7 @@ enum ContentType: string
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
             self::ThreadsGhostPost => false,
+            self::XPoll => false,
             self::PinterestVideoPin => false,
             default => true,
         };
@@ -777,7 +812,7 @@ enum ContentType: string
     {
         return match ($this) {
             self::LinkedInPost, self::LinkedInPagePost => false,
-            self::XPost => false,
+            self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost => false,
             self::BlueskyPost => false,
             self::MastodonPost => false,
@@ -805,6 +840,23 @@ enum ContentType: string
             SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
             default => [$primary],
         };
+    }
+
+    /**
+     * How many characters `$text`, plus what the network adds to it
+     * (`$reserved`), goes over `maxContentLengthFor()`; 0 when it fits.
+     */
+    public static function overflowFor(?SocialAccount $account, SocialPlatform $platform, ?self $type, string $text, int $reserved = 0): int
+    {
+        return max(0, Str::length($text) + $reserved - self::maxContentLengthFor($account, $platform, $type));
+    }
+
+    /**
+     * Whether a post of this type can go to `$platform` (`compatiblePlatforms()`).
+     */
+    public function isCompatibleWith(SocialPlatform $platform): bool
+    {
+        return collect($this->compatiblePlatforms())->contains($platform);
     }
 
     /**
@@ -885,6 +937,18 @@ enum ContentType: string
     }
 
     /**
+     * A content type given as the enum or its value; anything else is null.
+     */
+    public static function resolve(mixed $contentType): ?self
+    {
+        return match (true) {
+            $contentType instanceof self => $contentType,
+            is_string($contentType) => self::tryFrom($contentType),
+            default => null,
+        };
+    }
+
+    /**
      * The content type an imported publication is shown as. One place for every
      * platform and publication type pair.
      */
@@ -909,6 +973,10 @@ enum ContentType: string
                 PublicationContentType::Video => self::PinterestVideoPin,
                 PublicationContentType::Carousel => self::PinterestCarousel,
                 default => self::PinterestPin,
+            },
+            SocialPlatform::X => match ($type) {
+                PublicationContentType::Poll => self::XPoll,
+                default => self::XPost,
             },
             default => self::defaultFor($platform),
         };

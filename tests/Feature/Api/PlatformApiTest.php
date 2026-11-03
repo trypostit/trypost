@@ -59,6 +59,22 @@ it('lists content types per platform', function () {
     expect($pinterestTypes->firstWhere('value', 'pinterest_pin')['min_media_count'])->toBe(0);
 });
 
+it('lists the x poll without media capabilities', function () {
+    $response = $this->withToken($this->plainToken)
+        ->getJson(route('api.content-types'))
+        ->assertOk();
+
+    $poll = collect(data_get($response->collect('platforms')->firstWhere('platform', 'x'), 'content_types'))->firstWhere('value', 'x_poll');
+
+    expect($poll)->toMatchArray([
+        'max_media_count' => 0,
+        'accepts_gif' => false,
+        'max_image_bytes' => null,
+        'max_video_bytes' => null,
+        'max_video_duration_sec' => null,
+    ]);
+});
+
 it('rejects content-types without auth', function () {
     $this->getJson(route('api.content-types'))->assertUnauthorized();
 });

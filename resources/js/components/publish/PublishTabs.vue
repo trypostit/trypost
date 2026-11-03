@@ -84,7 +84,7 @@ const closeSelect = (): void => {
                 :href="hrefFor(key)"
                 :aria-current="tab === key ? 'page' : undefined"
                 :data-testid="`publish-tab-${key}`"
-                class="relative inline-flex h-[45px] shrink-0 items-center gap-2 px-2 text-sm font-medium transition-control after:absolute after:inset-x-0.5 after:-bottom-px after:h-px after:bg-primary-text after:opacity-0 aria-[current=page]:after:opacity-100"
+                class="group relative inline-flex h-[45px] shrink-0 items-center gap-2 px-2 text-sm font-medium transition-control after:absolute after:inset-x-0.5 after:-bottom-px after:h-px after:bg-primary-text after:opacity-0 aria-[current=page]:after:opacity-100"
                 :class="
                     tab === key
                         ? 'text-foreground'
@@ -93,7 +93,7 @@ const closeSelect = (): void => {
             >
                 {{ $t(`posts.publish.tabs.${key}`) }}
                 <span
-                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground"
+                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground group-aria-[current=page]:bg-primary-selected group-aria-[current=page]:text-primary-text"
                     :data-testid="`publish-tab-count-${key}`"
                     >{{ counts[key] }}</span
                 >

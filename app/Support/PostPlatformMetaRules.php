@@ -17,6 +17,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\XPoll;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -72,6 +73,11 @@ class PostPlatformMetaRules
             "{$prefix}.audio.audio_volume" => ['sometimes', 'nullable', 'integer', 'between:0,100'],
             "{$prefix}.audio.video_volume" => ['sometimes', 'nullable', 'integer', 'between:0,100'],
 
+            "{$prefix}.poll" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.poll.options" => ['sometimes', 'nullable', 'array', self::pollOptionsCount(...)],
+            "{$prefix}.poll.options.*" => ['nullable', 'string', self::pollChoiceLength(...)],
+            "{$prefix}.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
+
             "{$prefix}.spoiler_text" => ['sometimes', 'nullable', 'string', 'max:500'],
 
             "{$prefix}.thread_replies" => ['sometimes', 'nullable', 'array', 'max:'.ThreadReplies::MAX_REPLIES],
@@ -90,6 +96,10 @@ class PostPlatformMetaRules
             "{$prefix}.thread_replies.*.media.*.id" => ['sometimes', 'nullable', 'string'],
             "{$prefix}.thread_replies.*.media.*.upload_token" => ['sometimes', 'nullable', 'string'],
             "{$prefix}.thread_replies.*.media.*.url" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.thread_replies.*.poll" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.thread_replies.*.poll.options" => ['sometimes', 'nullable', 'array', self::pollOptionsCount(...)],
+            "{$prefix}.thread_replies.*.poll.options.*" => ['nullable', 'string', self::pollChoiceLength(...)],
+            "{$prefix}.thread_replies.*.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
 
             "{$prefix}.document_title" => ['sometimes', 'nullable', 'string', 'max:300'],
 
@@ -185,7 +195,33 @@ class PostPlatformMetaRules
             "{$prefix}.collaborators.*.regex" => __('posts.form.instagram.collaborators.invalid'),
             "{$prefix}.event.end_date.after_or_equal" => __('posts.form.google_business.event_end_date_before_start'),
             "{$prefix}.event.title.max" => __('posts.form.google_business.title_max'),
+            "{$prefix}.poll.array" => __('posts.form.x.poll.poll_object'),
+            "{$prefix}.poll.options.array" => __('posts.form.x.poll.options_list'),
+            "{$prefix}.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
+            "{$prefix}.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
+            "{$prefix}.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
+            "{$prefix}.thread_replies.*.poll.array" => __('posts.form.x.poll.poll_object'),
+            "{$prefix}.thread_replies.*.poll.options.array" => __('posts.form.x.poll.options_list'),
+            "{$prefix}.thread_replies.*.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
+            "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
+            "{$prefix}.thread_replies.*.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
         ];
+    }
+
+    /**
+     * A poll's choices, checked by `XPoll` (the post's poll and each reply's).
+     */
+    private static function pollOptionsCount(string $attribute, mixed $value, Closure $fail): void
+    {
+        transform(XPoll::optionsCountViolation($value), $fail);
+    }
+
+    /**
+     * One poll choice, checked by `XPoll`.
+     */
+    private static function pollChoiceLength(string $attribute, mixed $value, Closure $fail): void
+    {
+        transform(XPoll::choiceLengthViolation($value), $fail);
     }
 
     /**
@@ -218,13 +254,13 @@ class PostPlatformMetaRules
             'Discord: channel_id (required to publish — call list-discord-channels-tool first), mentions ([{token,label}], e.g. {token: "@everyone"} or {token: "<@&roleId>"}), embeds (up to 10 [{title ≤256, description ≤4096, url, image (URL), color (#RRGGBB)}]).',
             'YouTube Shorts: title (≤100, no < or >; omitted, it is derived from the first non-empty line of the content with < and > removed, cut to 100 characters), description (plain text, at most 5000 bytes; omit or null to use the content), category_id (YouTube category id: '.collect(Category::cases())->map(fn (Category $category): string => "{$category->value}=".__($category->labelKey(), [], 'en'))->implode(', ').'; default '.Category::DEFAULT->value.'), privacy_status (public|unlisted|private, default public), license (youtube|creativeCommon), notify_subscribers (default true), embeddable (default true), made_for_kids (default false), is_ai_generated (discloses altered or synthetic content).',
             'Instagram: is_ai_generated (feed, reels, stories, carousels), share_to_feed (instagram_reel only, default true), collaborators (up to '.self::INSTAGRAM_MAX_COLLABORATORS.' Instagram usernames invited as co-authors; feed, reels and carousels, not stories; the post shows on a collaborator\'s profile only after they accept the invite in the Instagram app, and a username that does not exist is only refused when the post publishes, so confirm the usernames first), trial_graduation (instagram_reel only: MANUAL|SS_PERFORMANCE publishes a trial reel shown only to non-followers, graduated by hand in the app or by Instagram when it performs well; not with collaborators, and only on accounts where Instagram offers trial reels), audio (instagram_reel only, Instagram connected through Facebook, platform instagram-facebook: {id} of an Instagram audio track from search-instagram-audio-tool, with optional title, artist, cover_url and preview_url copied from that result so the app can show the track, and audio_volume and video_volume from 0 to 100, default 100). An instagram_feed post with a single video publishes as a Reel. People tags are the media item meta.user_tags and a video cover frame is meta.cover_offset_ms.',
-            'X: is_ai_generated (sent as made_with_ai, discloses AI-generated media on the post).',
+            'X: is_ai_generated (sent as made_with_ai, discloses AI-generated media on the post). poll (content_type x_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies, up to '.XPoll::QUESTION_MAX_LENGTH.' characters): {options (list of '.XPoll::MIN_OPTIONS.' to '.XPoll::MAX_OPTIONS.' choices of 1 to '.XPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.XPoll::MIN_DURATION.' to '.XPoll::MAX_DURATION.', how long voting stays open)}, both required to schedule or publish.',
             'Threads: topic_tag (1-50 characters after a leading # is dropped, no . or &). Use content_type threads_ghost_post for a text-only post archived after 24 hours (no media, no topic).',
             'Facebook, Bluesky, LinkedIn: link_preview (default true; false publishes a text post with a link without its preview card).',
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
-            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X only; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts).',
+            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X only; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
         ]);
     }
 
@@ -270,6 +306,12 @@ class PostPlatformMetaRules
 
             throw ValidationException::withMessages(["meta.{$field}" => $message]);
         }
+
+        $question = $post->content_type === ContentType::XPoll ? XPoll::questionViolation($post->content) : null;
+
+        if (filled($question)) {
+            throw ValidationException::withMessages(['content' => $question]);
+        }
     }
 
     /**
@@ -292,6 +334,10 @@ class PostPlatformMetaRules
 
         if (is_array(data_get($meta, 'thread_replies'))) {
             $meta['thread_replies'] = ThreadReplies::of($meta);
+        }
+
+        if (is_array(data_get($meta, 'poll'))) {
+            $meta['poll'] = XPoll::normalize($meta['poll']);
         }
 
         if (is_array(data_get($meta, 'collaborators'))) {
@@ -345,9 +391,14 @@ class PostPlatformMetaRules
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    public static function formatViolation(?Platform $platform, mixed $meta): ?array
+    public static function formatViolation(?Platform $platform, mixed $meta, ContentType|string|null $contentType = null): ?array
     {
-        return $platform === Platform::YouTube ? YouTubeMetadata::violation($meta) : null;
+        if ($platform === Platform::YouTube) {
+            return YouTubeMetadata::violation($meta);
+        }
+
+        return (ContentType::resolve($contentType) === ContentType::XPoll ? XPoll::violation($meta) : null)
+            ?? ($platform === Platform::X ? ThreadReplies::pollFormatViolation($meta) : null);
     }
 
     /**
@@ -361,7 +412,7 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, mixed $contentType = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $isInstagramReel = ($contentType instanceof ContentType ? $contentType : ContentType::tryFrom(is_string($contentType) ? $contentType : '')) === ContentType::InstagramReel;
+        $type = ContentType::resolve($contentType);
         $threadViolation = ThreadReplies::violation($target, $meta);
 
         if ($threadViolation !== null) {
@@ -375,7 +426,8 @@ class PostPlatformMetaRules
         return match (true) {
             $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
-            $isInstagramReel => self::instagramReelViolation($platform, $meta),
+            $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
+            $type === ContentType::XPoll => XPoll::violation($meta) ?? XPoll::requiredViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $needsGoogleBusinessEvent

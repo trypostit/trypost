@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PostingSchedule;
+use Illuminate\Support\Str;
 
 /**
  * @return array{0: User, 1: Workspace, 2: SocialAccount}
@@ -635,10 +636,10 @@ test('on a phone the view switch and the new post button fit inside the card, on
     'a channel' => [false],
 ])->with(['approvals', 'sent']);
 
-test('the reel and story badges on a post card show a 16px icon', function (ContentType $contentType) {
+test('the reel, story, ghost post and poll badges on a post card show a 16px icon', function (Platform $platform, ContentType $contentType) {
     [$user, $workspace] = publishPageSetup();
-    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->forAccount($instagram, $contentType)->create(['user_id' => $user->id, 'content' => 'Badge']);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $contentType)->create(['user_id' => $user->id, 'content' => 'Badge']);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
@@ -646,7 +647,30 @@ test('the reel and story badges on a post card show a 16px icon', function (Cont
 
     expect($page->script("(() => { const box = document.querySelector('[data-testid=\"post-content-type-icon-{$post->id}\"]').getBoundingClientRect(); return [Math.round(box.width), Math.round(box.height)]; })()"))->toBe([16, 16]);
     $page->assertNoJavaScriptErrors();
-})->with([ContentType::InstagramReel, ContentType::InstagramStory]);
+})->with([
+    'instagram reel' => [Platform::Instagram, ContentType::InstagramReel],
+    'instagram story' => [Platform::Instagram, ContentType::InstagramStory],
+    'threads ghost post' => [Platform::Threads, ContentType::ThreadsGhostPost],
+    'x poll' => [Platform::X, ContentType::XPoll],
+]);
+
+test('a post card names an x poll and leaves a regular x post unmarked', function (ContentType $contentType, bool $badged) {
+    [$user, $workspace] = publishPageSetup();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x, $contentType)->create(['user_id' => $user->id, 'content' => 'Tabs or spaces?']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-card-{$post->id}");
+
+    $badged
+        ? $page->assertSeeIn("@post-content-type-{$post->id}", __('posts.content_types.x_poll.label'))
+        : $page->assertMissing("@post-content-type-{$post->id}");
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'poll' => [ContentType::XPoll, true],
+    'post' => [ContentType::XPost, false],
+]);
 
 test('on a phone the channel filter opens as a sheet on the publish page and the calendar', function (string $route) {
     [$user, $workspace] = publishPageSetup();
@@ -661,3 +685,89 @@ test('on a phone the channel filter opens as a sheet on the publish page and the
     $page->assertVisible('@posts-channel-sheet')
         ->assertNoJavaScriptErrors();
 })->with(['app.posts.index', 'app.calendar']);
+
+test('a thread in the queue shows each post with its own text and media, as the composer previews it', function () {
+    [$user, $workspace] = publishPageSetup();
+    connectAiTo($user);
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x)->create([
+        'user_id' => $user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'content' => 'First post of the thread',
+        'media' => [threadCardImage('root')],
+        'meta' => ['thread_replies' => [
+            ['text' => 'Second post of the thread', 'media' => []],
+            ['text' => 'Third post, with a photo', 'media' => [threadCardImage('reply')]],
+        ]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $x));
+    waitFor($page, "@post-thread-{$post->id}");
+
+    $page->assertSeeIn("@post-thread-{$post->id}-0", 'First post of the thread')
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-0\"] img[src=\"https://cdn.example.test/root.jpg\"]")
+        ->assertSeeIn("@post-thread-{$post->id}-1", 'Second post of the thread')
+        ->assertMissing("[data-testid=\"post-thread-{$post->id}-1\"] img[src^=\"https://cdn.example.test\"]")
+        ->assertSeeIn("@post-thread-{$post->id}-2", 'Third post, with a photo')
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-2\"] img[src=\"https://cdn.example.test/reply.jpg\"]")
+        ->assertMissing("@post-thumbnail-{$post->id}-0")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a thread of polls in the queue shows each poll under its own post', function () {
+    [$user, $workspace] = publishPageSetup();
+    connectAiTo($user);
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($x)->create([
+        'user_id' => $user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'content_type' => ContentType::XPoll,
+        'content' => 'Which desktop?',
+        'meta' => [
+            'poll' => ['options' => ['Linux', 'macOS'], 'duration_minutes' => 1440],
+            'thread_replies' => [
+                ['text' => 'And on the server?', 'media' => [], 'poll' => ['options' => ['Linux', 'Windows Server'], 'duration_minutes' => 1440]],
+                ['text' => 'Thanks for voting', 'media' => [threadCardImage('reply')]],
+            ],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $x));
+    waitFor($page, "@post-thread-{$post->id}");
+
+    $page->assertSeeIn("[data-testid=\"post-thread-{$post->id}-0\"] [data-testid=\"post-poll-{$post->id}\"]", 'macOS')
+        ->assertSeeIn("[data-testid=\"post-thread-{$post->id}-1\"] [data-testid=\"post-poll-{$post->id}-reply-0\"]", 'Windows Server')
+        ->assertMissing("[data-testid=\"post-thread-{$post->id}-2\"] [data-testid^=\"post-poll-\"]")
+        ->assertPresent("[data-testid=\"post-thread-{$post->id}-2\"] img[src=\"https://cdn.example.test/reply.jpg\"]")
+        ->assertMissing("@post-poll-{$post->id}-reply-0-caption");
+
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
+    $page->click("@post-details-open-{$post->id}");
+    waitFor($page, "@thread-view-{$post->id}");
+
+    $page->assertSeeIn("[data-testid=\"thread-view-post-{$post->id}-0\"] [data-testid=\"post-details-poll\"]", 'macOS')
+        ->assertSeeIn("[data-testid=\"thread-view-post-{$post->id}-1\"] [data-testid=\"post-details-poll-reply-0\"]", 'Windows Server')
+        ->assertMissing('@post-details-poll-reply-0-caption')
+        ->assertNoJavaScriptErrors();
+});
+
+/**
+ * @return array<string, int|string>
+ */
+function threadCardImage(string $name): array
+{
+    return [
+        'id' => (string) Str::uuid(),
+        'path' => "medias/{$name}.jpg",
+        'url' => "https://cdn.example.test/{$name}.jpg",
+        'type' => 'image',
+        'mime_type' => 'image/jpeg',
+        'original_filename' => "{$name}.jpg",
+        'size' => 1024,
+    ];
+}

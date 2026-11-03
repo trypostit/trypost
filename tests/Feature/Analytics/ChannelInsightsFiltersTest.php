@@ -229,3 +229,42 @@ test('the channel export is not available for another workspace channel', functi
         ->get(route('app.channels.insights.download', ['account' => $other, 'format' => 'csv']))
         ->assertNotFound();
 });
+
+test('the poll type counts polls made on x that were never imported', function (string $type, array $expected) {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $publish = function (string $key, int $daysAgo, ?ContentType $contentType = null, PublicationContentType $publicationType = PublicationContentType::Text) use ($x): array {
+        $post = filled($contentType)
+            ? Post::factory()->forAccount($x, $contentType)->published()->create(['user_id' => $this->user->id])
+            : null;
+        $publication = AnalyticsPublication::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'social_account_id' => $x->id,
+            'social_account_key' => $x->id,
+            'network' => $x->platform->network(),
+            'platform_user_id' => $x->platform_user_id,
+            'platform' => Platform::X,
+            'post_id' => $post?->id,
+            'content_type' => $publicationType,
+            'provider_published_at' => now('UTC')->subDays($daysAgo),
+        ]);
+
+        return [$key => $publication->id];
+    };
+    $ids = [
+        ...$publish('post', 2, ContentType::XPost),
+        ...$publish('poll', 3, ContentType::XPoll),
+        ...$publish('external_post', 4),
+        ...$publish('external_poll', 5, publicationType: PublicationContentType::Poll),
+    ];
+
+    $this->actingAs($this->user)
+        ->get(filteredInsightsUrl($x, ['types' => [$type]]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.summary.posts.value', count($expected))
+            ->where('publications.data', fn ($publications): bool => collect($publications)->pluck('id')->sort()->values()->all() === collect($expected)->map(fn (string $key): string => $ids[$key])->sort()->values()->all())
+            ->etc());
+})->with([
+    'poll' => ['x_poll', ['poll', 'external_poll']],
+    'post' => ['x_post', ['post', 'external_post']],
+]);

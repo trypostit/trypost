@@ -47,6 +47,15 @@ test('resume keeps the longest matching prefix', function () {
         ->and(ThreadProgress::resumable(null, ['h0']))->toBe([]);
 });
 
+test('a segment without a poll keeps the checkpoint hash it had before polls, and a poll changes it', function () {
+    $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60];
+
+    expect(ThreadProgress::hash('two', ['m1']))->toBe(sha1((string) json_encode(['two', ['m1']])))
+        ->and(ThreadProgress::hash('two', ['m1'], null))->toBe(ThreadProgress::hash('two', ['m1']))
+        ->and(ThreadProgress::hash('two', ['m1'], $poll))->toBe(sha1((string) json_encode(['two', ['m1'], $poll])))
+        ->and(ThreadProgress::hash('two', ['m1'], $poll))->not->toBe(ThreadProgress::hash('two', ['m1']));
+});
+
 test('thread_replies has a rule so validated() keeps it', function () {
     expect(PostPlatformMetaRules::rules())->toHaveKeys(['meta.thread_replies', 'meta.thread_replies.*'])
         ->and(ThreadReplies::supports(Platform::X))->toBeTrue()

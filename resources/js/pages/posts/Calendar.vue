@@ -58,6 +58,7 @@ import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendarDayKey } from '@/lib/calendarItems';
+import { afterPageInHistory } from '@/lib/inAppHistory';
 import { calendar } from '@/routes/app';
 import {
     calendar as channelCalendar,
@@ -144,9 +145,11 @@ provide(
 
 const now = ref(dayjs());
 let clock: ReturnType<typeof setInterval> | undefined;
+let cancelSlotsReload = (): void => {};
 
 onUnmounted(() => {
     clearInterval(clock);
+    cancelSlotsReload();
 });
 
 const userTimezone = computed(
@@ -331,7 +334,9 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        reload(['slots'], [], true);
+        cancelSlotsReload = afterPageInHistory(() =>
+            reload(['slots'], [], true),
+        );
     }
 });
 

@@ -15,6 +15,7 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -173,8 +174,8 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.social_account_id", __('posts.errors.queue_requires_schedule'));
                 }
 
-                $contentType = ContentType::tryFrom((string) $destination['content_type']);
-                if ($contentType && ! in_array($account->platform, $contentType->compatiblePlatforms(), true)) {
+                $contentType = ContentType::resolve($destination['content_type']);
+                if (filled($contentType) && ! $contentType->isCompatibleWith($account->platform)) {
                     $validator->errors()->add("{$key}.content_type", trans('validation.in', ['attribute' => 'content type']));
                 }
 
@@ -197,9 +198,19 @@ class PostCompositionValidator
                     }
                 }
 
-                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, $destination['meta'] ?? []);
+                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, data_get($destination, 'meta', []), $contentType);
                 if ($formatViolation !== null) {
                     [$field, $message] = $formatViolation;
+                    $validator->errors()->add("{$key}.meta.{$field}", $message);
+                }
+
+                $pollWithMedia = $contentType === ContentType::XPoll && filled(data_get($destination, 'media'));
+
+                if ($pollWithMedia) {
+                    $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
+                }
+
+                foreach (ThreadReplies::pollMediaErrors($account->platform, data_get($destination, 'meta', [])) as $field => $message) {
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
@@ -215,7 +226,10 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                if (blank($destination['content']) && $destination['media'] === []) {
+                $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation(data_get($destination, 'content')) : null;
+                if (filled($questionViolation)) {
+                    $validator->errors()->add("{$key}.content", $questionViolation);
+                } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
@@ -226,11 +240,13 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                foreach (ContentTypeCompatibleWithMedia::errorsFor([[
-                    'key' => "{$key}.content_type",
-                    'content_type' => $destination['content_type'],
-                ]], $destination['media'], $workspace) as $field => $message) {
-                    $validator->errors()->add($field, $message);
+                if (! $pollWithMedia) {
+                    foreach (ContentTypeCompatibleWithMedia::errorsFor([[
+                        'key' => "{$key}.content_type",
+                        'content_type' => $destination['content_type'],
+                    ]], $destination['media'], $workspace) as $field => $message) {
+                        $validator->errors()->add($field, $message);
+                    }
                 }
 
                 foreach (ThreadReplies::mediaErrors($account->platform, $destination['meta'] ?? [], $workspace) as $field => $message) {

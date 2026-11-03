@@ -6,19 +6,26 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
-import { newThreadReply, type ThreadReply } from '@/lib/threadReplies';
+import { filled } from '@/lib/helpers';
+import {
+    isBlankThreadReply,
+    newThreadReply,
+    type ThreadReply,
+} from '@/lib/threadReplies';
 
 const props = withDefaults(
     defineProps<{
         platform: string;
         limit: number;
+        /** A reply poll's question cap, kept even on an account with long posts. */
+        pollLimit?: number;
         max?: number;
         disabled?: boolean;
         errors?: Record<number, string>;
         /** Id of the element the active post's toolbar is teleported into. */
         toolbarTarget?: string;
     }>(),
-    { max: Infinity, disabled: false, errors: () => ({}) },
+    { pollLimit: Infinity, max: Infinity, disabled: false, errors: () => ({}) },
 );
 
 const replies = defineModel<ThreadReply[]>({ required: true });
@@ -35,12 +42,17 @@ const activateReply = (index: number): void => {
 const { contentFor } = useXLinkDefuser();
 const editor = ref<HTMLTextAreaElement[]>([]);
 
-const remaining = (reply: ThreadReply): number =>
-    props.limit -
-    displayLength(contentFor(reply.text, props.platform));
+/** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
+const limitFor = (reply: ThreadReply): number => {
+    if (filled(reply.poll)) {
+        return Math.min(props.limit, props.pollLimit);
+    }
 
-const isEmpty = (reply: ThreadReply | undefined): boolean =>
-    reply !== undefined && reply.text === '' && reply.media.length === 0;
+    return props.limit;
+};
+
+const remaining = (reply: ThreadReply): number =>
+    limitFor(reply) - displayLength(contentFor(reply.text, props.platform));
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>
@@ -107,7 +119,7 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
 
     if (
         event.key === 'Backspace' &&
-        isEmpty(replies.value[index]) &&
+        isBlankThreadReply(replies.value[index]) &&
         !event.repeat
     ) {
         event.preventDefault();
@@ -149,7 +161,7 @@ watch(
             <span
                 v-if="index < replies.length - 1"
                 aria-hidden="true"
-                class="absolute start-[11px] top-7 -bottom-3 w-0.5 rounded-full bg-border"
+                class="absolute start-[11px] top-[26px] -bottom-[14px] w-0.5 rounded-full bg-border"
                 :data-testid="`thread-connector-${index}`"
             />
             <PlatformLogo :platform="platform" :size="24" class="shrink-0" />

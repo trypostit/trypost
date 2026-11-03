@@ -85,10 +85,10 @@ export const distinctCountLabels = (values: number[]): string[] => {
 };
 
 export const formatPercent = withDash(
-    (value: number): string =>
+    (value: number, digits: number = 2): string =>
         new Intl.NumberFormat(activeLocale.value, {
             style: 'percent',
-            maximumFractionDigits: 2,
+            maximumFractionDigits: digits,
         }).format(value / 100),
 );
 

@@ -7,11 +7,27 @@ import {
     IconRepeat,
     IconUpload,
 } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
+import XPreviewPoll from '@/components/posts/previews/XPreviewPoll.vue';
+import { pollLimitsOf } from '@/lib/xPoll';
+import { ContentType } from '@/types/content-type';
+import type { XPoll } from '@/types/x';
 
-defineProps<PreviewProps>();
+const props = defineProps<PreviewProps>();
+
+/** The poll the post shows: only a Poll post has one, whatever its meta still holds. */
+const poll = computed((): Partial<XPoll> | undefined => {
+    if (props.contentType !== ContentType.XPoll) {
+        return undefined;
+    }
+
+    return props.meta?.poll;
+});
+
+const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
 </script>
 
 <template>
@@ -23,7 +39,7 @@ defineProps<PreviewProps>();
         :handle="`@${socialAccount.username || socialAccount.handle_label}`"
         content-testid="x-preview-content"
         media-layout="grid"
-        link-card
+        :link-card="!poll"
         :actions="[
             { icon: IconMessageCircle },
             { icon: IconRepeat },
@@ -31,5 +47,9 @@ defineProps<PreviewProps>();
             { icon: IconChartBar },
         ]"
         :trailing-actions="[{ icon: IconBookmark }, { icon: IconUpload }]"
-    />
+    >
+        <template v-if="poll && pollLimits" #default>
+            <XPreviewPoll :poll="poll" :limits="pollLimits" />
+        </template>
+    </PreviewTextPost>
 </template>

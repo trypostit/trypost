@@ -14,6 +14,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\RemoteMediaImporter;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Downloads public URLs as temporary uploads and attaches them as media the
@@ -36,9 +37,13 @@ class MediaAttacher
     /**
      * @param  array<int, array{url: string, alt?: ?string, meta?: ?array<string, mixed>}>  $urls
      * @return array{attached: array<int, array<string, mixed>>, failed: array<int, string>, failures: array<int, array{url: string, reason: string, message: string}>}
+     *
+     * @throws ValidationException
      */
     public function attachFromUrls(Post $post, array $urls, ?User $actor = null): array
     {
+        AppendPostMedia::ensureAcceptsMedia($post, 'urls');
+
         $attached = [];
         $failed = [];
         $failures = [];

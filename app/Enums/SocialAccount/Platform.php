@@ -8,6 +8,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -243,17 +244,6 @@ enum Platform: string
             self::Discord => 2000,
             self::GoogleBusiness => 1500,
         };
-    }
-
-    /**
-     * Number of characters by which the given content exceeds this platform's
-     * hard cap. Returns 0 when it fits. Single source of truth for content-
-     * length checks — used both at schedule-validation time and at publish
-     * time itself so the two paths can never drift apart.
-     */
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
     }
 
     /**
@@ -592,6 +582,9 @@ enum Platform: string
             self::YouTube => [
                 'categoryOptions' => Category::options(),
                 'defaultCategoryId' => Category::DEFAULT->value,
+            ],
+            self::X => [
+                'poll' => XPoll::limits(),
             ],
             default => [],
         };

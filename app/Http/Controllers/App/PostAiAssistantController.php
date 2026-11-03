@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Ai\AssistPostContent;
 use App\Enums\Ai\PostAssistantMode;
 use App\Enums\PostHog\AiEvent;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
@@ -42,6 +43,7 @@ class PostAiAssistantController extends Controller
                 prompt: $request->input('prompt'),
                 previousContent: $request->input('previous_content'),
                 platform: $request->enum('platform', Platform::class),
+                contentType: $request->enum('content_type', ContentType::class),
                 account: $request->filled('social_account_id')
                     ? $workspace->socialAccounts()->find($request->input('social_account_id'))
                     : null,

@@ -291,6 +291,21 @@ test('a content type from another network is rejected for a destination', functi
         ->assertJsonValidationErrors('destinations.0.content_type');
 });
 
+test('an x poll is refused as the format a repurposed video publishes as', function () {
+    $x = SocialAccount::factory()->for($this->workspace)->x()->create();
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $x->id,
+                'content_type' => ContentType::XPoll->value,
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['destinations.0.content_type' => __('repurposes.errors.destination_needs_video')]);
+});
+
 test('the api refuses a transition the interface would never offer', function () {
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,

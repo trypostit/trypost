@@ -1,4 +1,5 @@
 import type { PinterestBoard } from '@/types';
+import type { PublishConfig } from '@/types/platform';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
@@ -37,7 +38,7 @@ export interface Channel {
     issueDocsUrl?: string | null;
     status?: string | null;
     contentTypeError?: string;
-    publishConfig?: Record<string, any> | null;
+    publishConfig?: PublishConfig | null;
     creatorInfo?: ChannelTikTokCreatorInfo | null;
     boards?: PinterestBoard[];
     boardsTruncated?: boolean;

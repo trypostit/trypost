@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
@@ -26,17 +27,48 @@ class PostMeta
      * @param  array<string, mixed>  $stored  the meta the post had before this save
      * @return array<string, mixed>
      */
-    public static function forChannel(SocialAccount $account, array $meta, array $stored = []): array
+    public static function forChannel(SocialAccount $account, array $meta, array $stored = [], ContentType|string|null $contentType = null): array
     {
         $meta = [
             ...PostPlatformMetaRules::normalize($meta),
             ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
         ];
 
+        if (ContentType::resolve($contentType) !== ContentType::XPoll) {
+            $meta = Arr::except($meta, 'poll');
+        }
+
+        if ($account->platform !== Platform::X) {
+            $meta = ThreadReplies::withoutPolls($meta);
+        }
+
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
             default => $meta,
         };
+    }
+
+    /**
+     * The meta an update starts from: the stored meta with the sent keys on top.
+     * A sent poll is merged into the stored one key by key, so sending only its
+     * choices keeps its length (and the reverse); `options` is replaced as a
+     * whole list.
+     *
+     * @param  array<string, mixed>  $stored
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    public static function merge(array $stored, array $incoming): array
+    {
+        $merged = [...$stored, ...$incoming];
+        $storedPoll = data_get($stored, 'poll');
+        $incomingPoll = data_get($incoming, 'poll');
+
+        if (is_array($storedPoll) && is_array($incomingPoll)) {
+            $merged['poll'] = [...$storedPoll, ...$incomingPoll];
+        }
+
+        return $merged;
     }
 
     /**

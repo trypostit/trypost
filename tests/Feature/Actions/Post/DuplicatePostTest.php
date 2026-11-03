@@ -97,3 +97,20 @@ test('execute refuses a duplicate when the channel was removed', function () {
     expect(fn () => DuplicatePost::execute($original->fresh(), $user))
         ->toThrow(ValidationException::class);
 });
+
+test('execute keeps an x poll with its choices and length', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 4320];
+    $original = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'user_id' => $user->id,
+        'content' => 'Tabs or spaces?',
+        'meta' => ['poll' => $poll],
+    ]);
+
+    $copy = DuplicatePost::execute($original, $user)->fresh();
+
+    expect($copy->content_type)->toBe(ContentType::XPoll)
+        ->and($copy->meta['poll'])->toEqual($poll);
+});

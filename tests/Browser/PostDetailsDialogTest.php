@@ -347,7 +347,7 @@ test('the details of a sent thread show every post of the thread with its own me
                 'original_filename' => 'reply.jpg',
                 'size' => 1024,
             ]]],
-            'Third post of the thread',
+            ['text' => 'Third post of the thread', 'media' => []],
         ]],
     ]);
     $this->actingAs($user);

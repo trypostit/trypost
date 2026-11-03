@@ -18,9 +18,15 @@ import XPreview from '@/components/posts/previews/XPreview.vue';
 import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
-import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { filled } from '@/lib/helpers';
+import {
+    type ThreadReply,
+    threadRepliesOf,
+    threadReplyContentType,
+} from '@/lib/threadReplies';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
+import type { PublishConfig } from '@/types/platform';
 
 interface Props {
     platform: string;
@@ -33,6 +39,8 @@ interface Props {
     postedAt?: string | null;
     /** The thread post being edited: -1 is the first post, otherwise the reply index. */
     activePost?: number;
+    /** The account's `publishConfig` (`Platform::publishConfig()`). */
+    publishConfig?: PublishConfig | null;
 }
 
 const props = defineProps<Props>();
@@ -52,13 +60,21 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
               .map((reply, index) => ({ reply, index }))
               .filter(
                   ({ reply }) =>
-                      reply.text.trim() !== '' || reply.media.length > 0,
+                      filled(reply.text) ||
+                      filled(reply.media) ||
+                      filled(reply.poll),
               )
         : [],
 );
 const threadReplies = computed((): ThreadReply[] =>
     shownReplies.value.map(({ reply }) => reply),
 );
+
+/** A reply repeats the post's content warning and carries its own poll. */
+const replyMeta = (reply: ThreadReply): Record<string, any> => ({
+    spoiler_text: props.meta?.spoiler_text,
+    poll: reply.poll,
+});
 
 const thread = ref<HTMLElement | null>(null);
 
@@ -146,6 +162,7 @@ const previewComponent = computed(() => {
                 :content-type="contentType"
                 :meta="meta"
                 :posted-at="postedAt"
+                :publish-config="publishConfig"
                 :thread-position="threadReplies.length ? 'first' : undefined"
             />
             </div>
@@ -160,9 +177,10 @@ const previewComponent = computed(() => {
                     :social-account="resolvedSocialAccount"
                     :content="contentFor(reply.text, platform)"
                     :media="reply.media"
-                    :content-type="contentType"
-                    :meta="{ spoiler_text: meta?.spoiler_text }"
+                    :content-type="threadReplyContentType(platform, reply)"
+                    :meta="replyMeta(reply)"
                     :posted-at="postedAt"
+                    :publish-config="publishConfig"
                     :thread-position="
                         index === threadReplies.length - 1 ? 'last' : 'middle'
                     "

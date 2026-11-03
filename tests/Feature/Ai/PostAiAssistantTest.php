@@ -6,6 +6,7 @@ use App\Ai\Agents\PostContentShortener;
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
 use App\Enums\PostHog\AiEvent;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Jobs\PostHog\CaptureAccountEvent;
@@ -14,11 +15,13 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\Support\AiPromptRules;
+use App\Support\Social\XPoll;
 use Illuminate\Auth\Access\Response as AuthResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -74,6 +77,7 @@ test('assistant validates the prompt, content and platform', function (array $pa
     'generate without prompt' => [['mode' => 'generate'], 'prompt'],
     'rephrase without content' => [['mode' => 'rephrase'], 'current_content'],
     'unknown platform' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'platform' => 'myspace'], 'platform'],
+    'unknown content type' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'content_type' => 'x_story'], 'content_type'],
     'prompt under four words' => [['mode' => 'generate', 'prompt' => 'make it pop'], 'prompt'],
     'prompt over the length limit' => [['mode' => 'generate', 'prompt' => str_repeat('word ', 2000).'x'], 'prompt'],
 ]);
@@ -149,7 +153,7 @@ test('a suggestion for X is shortened to fit what X counts', function () {
         ->json('content');
 
     expect($content)->toBe('Great news, short and sweet.')
-        ->and(Platform::X->contentOverflow(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBe(0);
+        ->and(mb_strlen(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBeLessThanOrEqual(Platform::X->maxContentLength());
 
     PostContentShortener::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Great news for everyone.'));
 });
@@ -176,6 +180,57 @@ test('the assistant writes for the account limit of the card it serves', functio
     'premium account' => [['x_subscription_type' => 'Premium'], 25000, false],
     'free account' => [[], 280, true],
 ]);
+
+test('the assistant keeps the long post limit for a regular post on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPost->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.SocialAccount::X_LONG_POST_LENGTH.' characters'));
+});
+
+test('the assistant writes a poll question within 280 characters even on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'ask our followers about tabs or spaces',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+});
+
+test('the assistant ignores a post type of another network when picking the limit', function () {
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::LinkedIn->value,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.Platform::LinkedIn->maxContentLength().' characters'));
+});
 
 test('the assistant rewrites a post as long as the longest post', function () {
     PostWritingAssistant::fake(['Shorter']);

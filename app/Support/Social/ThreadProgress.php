@@ -16,11 +16,15 @@ final class ThreadProgress
     public const string KEY = 'thread_progress';
 
     /**
+     * A reply poll is part of the segment, so changing it is a new segment;
+     * a segment without one keeps the hash it always had.
+     *
      * @param  list<string>  $mediaIds
+     * @param  array<string, mixed>|null  $poll
      */
-    public static function hash(string $text, array $mediaIds = []): string
+    public static function hash(string $text, array $mediaIds = [], ?array $poll = null): string
     {
-        return sha1((string) json_encode([$text, $mediaIds]));
+        return sha1((string) json_encode(blank($poll) ? [$text, $mediaIds] : [$text, $mediaIds, $poll]));
     }
 
     /**

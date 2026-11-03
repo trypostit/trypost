@@ -238,8 +238,9 @@ const hasActions = computed(
             <PreviewMedia
                 v-if="!concealed"
                 :media="media"
+                :class="{ 'px-4': isStacked && threadPosition }"
                 :layout="mediaLayout"
-                :bleed="isStacked"
+                :bleed="isStacked && !threadPosition"
                 :mute-badge="muteBadge"
             />
             <div

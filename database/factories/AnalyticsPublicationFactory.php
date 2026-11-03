@@ -50,4 +50,10 @@ class AnalyticsPublicationFactory extends Factory
             'provider_metadata' => null,
         ];
     }
+
+    /** @param array<string, mixed> $poll */
+    public function withPoll(array $poll): static
+    {
+        return $this->state(fn (): array => ['provider_metadata' => ['poll' => $poll]]);
+    }
 }

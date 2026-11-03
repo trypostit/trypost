@@ -12,6 +12,8 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\XPoll;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -20,7 +22,9 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post with the scopes we hold.
  * Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply.
+ * string is a text-only reply. On X a reply may carry a poll instead of media
+ * (`{text, media, poll}`), following `XPoll`'s rules with the reply text as
+ * its question.
  */
 class ThreadReplies
 {
@@ -46,7 +50,7 @@ class ThreadReplies
     }
 
     /**
-     * @return list<array{text: string, media: list<array<string, mixed>>}>
+     * @return list<array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}>
      */
     public static function of(mixed $meta): array
     {
@@ -57,7 +61,7 @@ class ThreadReplies
     }
 
     /**
-     * @return array{text: string, media: list<array<string, mixed>>}
+     * @return array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}
      */
     public static function reply(mixed $reply): array
     {
@@ -66,11 +70,81 @@ class ThreadReplies
         }
 
         $text = data_get($reply, 'text');
+        $poll = data_get($reply, 'poll');
 
-        return [
+        $normalized = [
             'text' => is_string($text) ? $text : '',
             'media' => array_values(array_filter((array) data_get($reply, 'media', []), is_array(...))),
         ];
+
+        if (is_array($poll) && filled($poll)) {
+            $normalized['poll'] = XPoll::normalize($poll);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Whether a reply is a poll (an X reply only; `of()` drops an empty one).
+     *
+     * @param  array<string, mixed>  $reply
+     */
+    public static function hasPoll(array $reply): bool
+    {
+        return filled(data_get($reply, 'poll'));
+    }
+
+    /**
+     * Replies without their polls, for a network other than X.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    public static function withoutPolls(array $meta): array
+    {
+        if (blank(data_get($meta, 'thread_replies'))) {
+            return $meta;
+        }
+
+        $meta['thread_replies'] = collect(self::of($meta))->map(fn (array $reply): array => Arr::except($reply, 'poll'))->all();
+
+        return $meta;
+    }
+
+    /**
+     * A reply poll no post may store, even as a draft: repeated choices.
+     *
+     * @return array{0: string, 1: string}|null [field, message]
+     */
+    public static function pollFormatViolation(mixed $meta): ?array
+    {
+        foreach (self::of($meta) as $index => $reply) {
+            $violation = self::hasPoll($reply) ? XPoll::violation($reply) : null;
+
+            if (filled($violation)) {
+                return ["thread_replies.{$index}.{$violation[0]}", $violation[1]];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A reply poll carries no media, drafts included. Only X has reply polls;
+     * any other network drops them on save.
+     *
+     * @return array<string, string>
+     */
+    public static function pollMediaErrors(?Platform $platform, mixed $meta): array
+    {
+        if ($platform !== Platform::X) {
+            return [];
+        }
+
+        return collect(self::of($meta))
+            ->filter(fn (array $reply): bool => self::hasPoll($reply) && filled($reply['media']))
+            ->mapWithKeys(fn (array $reply, int $index): array => ["thread_replies.{$index}.media" => __('posts.errors.media_not_accepted')])
+            ->all();
     }
 
     /**
@@ -104,23 +178,96 @@ class ThreadReplies
         }
 
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
-        $limit = $target instanceof SocialAccount ? $target->maxContentLength() : $platform->maxContentLength();
+        $account = $target instanceof SocialAccount ? $target : null;
 
         foreach ($replies as $index => $reply) {
-            $blank = blank(Str::trim($reply['text']));
+            $violation = self::replyViolation($reply, $platform, $account, $reserved);
 
-            if ($blank && $reply['media'] === []) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_empty')];
-            }
+            if (filled($violation)) {
+                [$field, $message] = $violation;
 
-            $over = $blank ? 0 : max(0, mb_strlen(app(ContentSanitizer::class)->displayText($reply['text'], $platform)) + $reserved - $limit);
-
-            if ($over > 0) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => $limit - $reserved, 'over' => $over])];
+                return [self::replyKey($index, $field), $message];
             }
         }
 
         return null;
+    }
+
+    /**
+     * The validation key of a reply (`thread_replies.0`), or of one of its
+     * fields (`thread_replies.0.poll.options`).
+     */
+    private static function replyKey(int $index, ?string $field): string
+    {
+        if (blank($field)) {
+            return "thread_replies.{$index}";
+        }
+
+        return "thread_replies.{$index}.{$field}";
+    }
+
+    /**
+     * Why one reply cannot go: a poll is checked as a poll, any other reply
+     * needs text or media and must fit the account's limit. The field is
+     * relative to the reply (null for the reply itself).
+     *
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function replyViolation(array $reply, Platform $platform, ?SocialAccount $account, int $reserved): ?array
+    {
+        if ($platform === Platform::X && self::hasPoll($reply)) {
+            return self::pollReplyViolation($reply, $account, $reserved);
+        }
+
+        if (filled(Str::trim($reply['text']))) {
+            return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
+        }
+
+        if (blank($reply['media'])) {
+            return [null, __('posts.form.thread.reply_empty')];
+        }
+
+        return null;
+    }
+
+    /**
+     * A reply poll needs its question (the reply's text) within the poll's cap,
+     * and choices and a length X accepts.
+     *
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function pollReplyViolation(array $reply, ?SocialAccount $account, int $reserved): ?array
+    {
+        $questionViolation = XPoll::questionViolation($reply['text']);
+
+        if (filled($questionViolation)) {
+            return [null, $questionViolation];
+        }
+
+        return self::lengthViolation($reply['text'], Platform::X, $account, ContentType::XPoll, $reserved)
+            ?? XPoll::violation($reply)
+            ?? XPoll::requiredViolation($reply);
+    }
+
+    /**
+     * A reply's text over its limit, measured as the network counts it.
+     *
+     * @return array{0: null, 1: string}|null
+     */
+    private static function lengthViolation(string $text, Platform $platform, ?SocialAccount $account, ?ContentType $type, int $reserved): ?array
+    {
+        $display = app(ContentSanitizer::class)->displayText($text, $platform);
+        $over = ContentType::overflowFor($account, $platform, $type, $display, $reserved);
+
+        if ($over === 0) {
+            return null;
+        }
+
+        $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
+
+        return [null, __('posts.form.thread.reply_too_long', ['limit' => $limit, 'over' => $over])];
     }
 
     /**
