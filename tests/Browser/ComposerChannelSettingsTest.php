@@ -1024,7 +1024,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $id = $post->social_account_id;
     $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
-    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], 'Plain reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], ['text' => 'Plain reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, "@composer-{$id}-reply-0-media-item-0");
@@ -1060,7 +1060,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
 test('the mastodon preview hides the post behind its content warning on every post of the thread', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => ['Hidden reply']]]);
+    $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => [['text' => 'Hidden reply', 'media' => []]]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@mastodon-preview-content-warning');
@@ -1150,7 +1150,7 @@ test('arrow keys move between the posts of a thread from the end and the start o
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
     $post->update(['content' => 'Root']);
-    $post->update(['meta' => ['thread_replies' => ['First reply', 'Second reply']]]);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'First reply', 'media' => []], ['text' => 'Second reply', 'media' => []]]]]);
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);

@@ -12,44 +12,59 @@ const props = defineProps<{
     caption?: string;
 }>();
 
-const totalVotes = computed(() =>
-    props.poll.options.reduce((sum, option) => sum + option.votes, 0),
-);
-
-const topVotes = computed(() =>
-    Math.max(0, ...props.poll.options.map((option) => option.votes)),
-);
-
 /** X shows each choice's share with one decimal ("33.3%"). */
 const PERCENT_DIGITS = 1;
 
-const rows = computed(() =>
-    props.poll.options.map((option) => {
-        const share = totalVotes.value > 0 ? option.votes / totalVotes.value : 0;
+type PollStatus = { key: string; replacements?: Record<string, string> };
 
-        return {
-            label: option.label,
-            votes: option.votes,
-            share,
-            percent: formatPercent(share * 100, PERCENT_DIGITS),
-            leading: totalVotes.value > 0 && option.votes === topVotes.value,
-        };
-    }),
+const votes = computed((): number[] =>
+    props.poll.options.map((option) => option.votes),
+);
+
+const totalVotes = computed((): number =>
+    votes.value.reduce((sum, count) => sum + count, 0),
+);
+
+const topVotes = computed((): number => Math.max(...votes.value));
+
+/** A choice's part of the votes, from 0 to 1; nothing before the first vote. */
+const shareOf = (count: number): number =>
+    totalVotes.value === 0 ? 0 : count / totalVotes.value;
+
+/** The choice with the most votes leads, ties included; none before the first vote. */
+const isLeading = (count: number): boolean =>
+    totalVotes.value > 0 && count === topVotes.value;
+
+const rows = computed(() =>
+    props.poll.options.map(({ label, votes: count }) => ({
+        label,
+        votes: count,
+        width: `${shareOf(count) * 100}%`,
+        percent: formatPercent(shareOf(count) * 100, PERCENT_DIGITS),
+        leading: isLeading(count),
+    })),
 );
 
 /** The voting state shown after the total: final, ended or when voting ends. */
-const status = computed((): { key: string; time?: string } | null => {
+const status = computed((): PollStatus | null => {
     const endsAt = props.poll.end_datetime;
 
     if (props.poll.voting_status === 'closed') {
         return { key: 'posts.poll_results.final' };
     }
 
-    if (endsAt === null) return null;
+    if (endsAt === null) {
+        return null;
+    }
 
-    return date.hasPassed(endsAt)
-        ? { key: 'posts.poll_results.ended' }
-        : { key: 'posts.poll_results.ends', time: date.diffForHumans(endsAt) };
+    if (date.hasPassed(endsAt)) {
+        return { key: 'posts.poll_results.ended' };
+    }
+
+    return {
+        key: 'posts.poll_results.ends',
+        replacements: { time: date.diffForHumans(endsAt) },
+    };
 });
 </script>
 
@@ -65,19 +80,13 @@ const status = computed((): { key: string; time?: string } | null => {
         <div
             v-for="(row, index) in rows"
             :key="index"
-            class="relative flex items-center justify-between gap-3 overflow-hidden rounded-md bg-muted px-3 py-1.5 text-sm"
-            :class="
-                row.leading
-                    ? 'font-semibold text-foreground'
-                    : 'text-muted-foreground'
-            "
+            class="group relative flex items-center justify-between gap-3 overflow-hidden rounded-md bg-muted px-3 py-1.5 text-sm text-muted-foreground data-[leading=true]:font-semibold data-[leading=true]:text-foreground"
             :data-testid="`${testId}-option-${index}`"
-            :data-leading="row.leading ? 'true' : 'false'"
+            :data-leading="String(row.leading)"
         >
             <span
-                class="absolute inset-y-0 start-0 rounded-md"
-                :class="row.leading ? 'bg-primary-selected' : 'bg-secondary'"
-                :style="{ width: `${row.share * 100}%` }"
+                class="absolute inset-y-0 start-0 rounded-md bg-secondary group-data-[leading=true]:bg-primary-selected"
+                :style="{ width: row.width }"
                 aria-hidden="true"
             />
             <span class="relative min-w-0 truncate">{{ row.label }}</span>
@@ -105,7 +114,7 @@ const status = computed((): { key: string; time?: string } | null => {
                 })
             }}
             <template v-if="status"
-                >· {{ $t(status.key, { time: status.time ?? '' }) }}</template
+                >· {{ $t(status.key, status.replacements) }}</template
             >
         </p>
     </div>

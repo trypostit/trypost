@@ -34,19 +34,13 @@ export const isBlankThreadReply = ({
 const isObject = (value: unknown): value is Record<string, any> =>
     value !== null && typeof value === 'object';
 
-/** One stored reply as the composer edits it; a plain string is a text-only reply. */
+/** One stored reply as the composer edits it. */
 const storedReply = (stored: unknown, index: number): ThreadReply => {
-    const key = `stored-${index}`;
-
-    if (typeof stored === 'string') {
-        return { key, text: stored, media: [] };
-    }
-
     const reply: Record<string, any> = isObject(stored) ? stored : {};
 
     return withReplyPoll(
         {
-            key: typeof reply.key === 'string' ? reply.key : key,
+            key: typeof reply.key === 'string' ? reply.key : `stored-${index}`,
             text: typeof reply.text === 'string' ? reply.text : '',
             media: Array.isArray(reply.media) ? reply.media : [],
         },
