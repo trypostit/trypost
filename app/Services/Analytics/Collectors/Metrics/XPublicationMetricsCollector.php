@@ -44,7 +44,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $this->count(MetricKey::Bookmarks, $public, 'bookmark_count'),
             $this->count(MetricKey::LinkClicks, $private, 'url_link_clicks'),
         ])), Arr::whereNotNull([
-            'poll' => is_array($poll) ? XPoll::result($poll) : null,
+            'poll' => transform($poll, XPoll::result(...)),
             'thread_polls' => filled($threadPolls) ? $threadPolls : null,
         ]) ?: null);
     }
@@ -98,9 +98,10 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $polls = $response->collect('includes.polls')->keyBy('id');
         $pollOf = fn (mixed $tweet): mixed => $polls->get((string) data_get($tweet, 'attachments.poll_ids.0'));
         $threadPolls = collect($replyPolls)
-            ->map(fn (string $replyId, int $reply): ?array => is_array($found = $pollOf($tweets->get($replyId)))
-                ? ['reply' => $reply, ...XPoll::result($found)]
-                : null)
+            ->map(fn (string $replyId, int $reply): ?array => transform(
+                $pollOf($tweets->get($replyId)),
+                fn (array $poll): array => ['reply' => $reply, ...XPoll::result($poll)],
+            ))
             ->filter()
             ->values()
             ->all();

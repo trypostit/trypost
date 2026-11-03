@@ -72,11 +72,16 @@ class ThreadReplies
         $text = data_get($reply, 'text');
         $poll = data_get($reply, 'poll');
 
-        return [
+        $normalized = [
             'text' => is_string($text) ? $text : '',
             'media' => array_values(array_filter((array) data_get($reply, 'media', []), is_array(...))),
-            ...(is_array($poll) && filled($poll) ? ['poll' => XPoll::normalize($poll)] : []),
         ];
+
+        if (is_array($poll) && filled($poll)) {
+            $normalized['poll'] = XPoll::normalize($poll);
+        }
+
+        return $normalized;
     }
 
     /**
@@ -97,7 +102,7 @@ class ThreadReplies
      */
     public static function withoutPolls(array $meta): array
     {
-        if (! is_array(data_get($meta, 'thread_replies'))) {
+        if (blank(data_get($meta, 'thread_replies'))) {
             return $meta;
         }
 
