@@ -60,11 +60,11 @@ it('lists content types per platform', function () {
 });
 
 it('lists the x poll without media capabilities', function () {
-    $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+    $response = $this->withToken($this->plainToken)
         ->getJson(route('api.content-types'))
         ->assertOk();
 
-    $poll = collect(collect($response->json('platforms'))->firstWhere('platform', 'x')['content_types'])->firstWhere('value', 'x_poll');
+    $poll = collect(data_get($response->collect('platforms')->firstWhere('platform', 'x'), 'content_types'))->firstWhere('value', 'x_poll');
 
     expect($poll)->toMatchArray([
         'max_media_count' => 0,

@@ -204,7 +204,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                if ($contentType?->acceptsMedia() === false && filled($destination['media'])) {
+                if ($contentType?->acceptsMedia() === false && filled(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
                 }
 
@@ -220,8 +220,8 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation($destination['content']) : null;
-                if ($questionViolation !== null) {
+                $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation(data_get($destination, 'content')) : null;
+                if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
                 } elseif (blank($destination['content']) && $destination['media'] === []) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));

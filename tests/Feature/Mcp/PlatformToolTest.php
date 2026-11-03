@@ -113,7 +113,7 @@ test('list content types shows the x poll without media capabilities', function 
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->etc();
 
-            $poll = collect(collect($json->toArray()['platforms'])->firstWhere('platform', 'x')['content_types'])->firstWhere('value', 'x_poll');
+            $poll = collect(data_get(collect(data_get($json->toArray(), 'platforms'))->firstWhere('platform', 'x'), 'content_types'))->firstWhere('value', 'x_poll');
 
             expect($poll)->toMatchArray([
                 'max_media_count' => 0,

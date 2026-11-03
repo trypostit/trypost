@@ -564,18 +564,18 @@ test('collecting x metrics stores the poll on the publication', function () {
         ->push(['data' => ['public_metrics' => ['impression_count' => 12, 'like_count' => 1]]])]);
     app()->call([$job, 'handle']);
 
-    expect($publication->refresh()->provider_metadata['poll']['options'])->toEqual([
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options'))->toEqual([
         ['label' => 'Yes', 'votes' => 1],
         ['label' => 'No', 'votes' => 2],
     ]);
 
     app()->call([$job, 'handle']);
 
-    expect($publication->refresh()->provider_metadata['poll']['options'][0]['votes'])->toBe(5);
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
 
     app()->call([$job, 'handle']);
 
-    expect($publication->refresh()->provider_metadata['poll']['options'][0]['votes'])->toBe(5);
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
 });
 
 test('storing an x poll result leaves the publication updated_at alone', function () {

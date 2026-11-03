@@ -992,12 +992,12 @@ test('a poll whose voting state x does not report stores no state', function (ar
         'remote_id' => '2117330256323379666',
     ]);
     $response = xPollResponse(now('UTC')->addDay()->toIso8601ZuluString('millisecond'));
-    $response['includes']['polls'][0] = [...Arr::except($response['includes']['polls'][0], 'voting_status'), ...$poll];
+    data_set($response, 'includes.polls.0', [...Arr::except(data_get($response, 'includes.polls.0'), 'voting_status'), ...$poll]);
     Http::fake([config('trypost.platforms.x.api').'/tweets/2117330256323379666*' => Http::response($response)]);
 
     $observation = app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
 
-    expect($observation->providerMetadata['poll']['voting_status'])->toBeNull();
+    expect(data_get($observation->providerMetadata, 'poll.voting_status'))->toBeNull();
 })->with([
     'missing' => [[]],
     'unknown' => [['voting_status' => 'paused']],

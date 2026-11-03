@@ -565,7 +565,7 @@ test('the writing assistant writes a poll question for 280 characters on a long 
     waitForText($page, '@writing-assistant-suggestion', 'Tabs or spaces?');
 
     $page->assertSeeIn('@writing-assistant-suggestion', 'Tabs or spaces?')->assertNoJavaScriptErrors();
-    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
 });
 
 test('a link in a poll question shows no link card in the preview', function () {

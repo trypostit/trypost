@@ -92,7 +92,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 previewMetadata: is_array($preview)
                     ? ['thumbnail_url' => data_get($preview, 'preview_image_url') ?: data_get($preview, 'url')]
                     : null,
-                providerMetadata: $providerMetadata ?: null,
+                providerMetadata: filled($providerMetadata) ? $providerMetadata : null,
             );
         }
 

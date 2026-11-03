@@ -283,7 +283,7 @@ test('post metrics carry the poll result on the publication in REST and MCP', fu
         'metrics' => ['reactions' => ['value' => 7, 'unit' => 'count', 'availability' => 'available']],
     ]);
 
-    expect(app(ReadPublicationAnalytics::class)->forPost($post)['metrics']['publication']['poll'])->toEqual($poll);
+    expect(data_get(app(ReadPublicationAnalytics::class)->forPost($post), 'metrics.publication.poll'))->toEqual($poll);
 
     $this->withToken($access['plain_token'])
         ->getJson(route('api.posts.metrics', $post))

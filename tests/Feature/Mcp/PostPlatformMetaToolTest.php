@@ -1100,7 +1100,7 @@ test('an x poll with invalid choices is refused by the create tool', function (a
         'meta' => ['poll' => $poll],
     ])->assertHasErrors([__($message, $replace)]);
 
-    expect(Post::where('social_account_id', $x->id)->exists())->toBeFalse();
+    $this->assertDatabaseMissing('posts', ['social_account_id' => $x->id]);
 })->with([
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]],
     'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],

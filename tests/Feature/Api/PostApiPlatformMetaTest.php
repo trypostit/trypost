@@ -1501,7 +1501,7 @@ it('measures x poll choices after blanks and spaces are dropped', function () {
         'meta' => ['poll' => ['options' => ['Yes', 'No', 'Maybe', "  {$exactly25}  ", ''], 'duration_minutes' => 60]],
     ])->assertCreated();
 
-    expect(Post::query()->findOrFail($response->json('id'))->meta['poll']['options'])
+    expect(data_get(Post::query()->findOrFail($response->json('id'))->meta, 'poll.options'))
         ->toBe(['Yes', 'No', 'Maybe', $exactly25]);
 });
 

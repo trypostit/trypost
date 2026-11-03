@@ -21,6 +21,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -195,7 +196,7 @@ test('the assistant keeps the long post limit for a regular post on an account w
         ])
         ->assertOk();
 
-    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.SocialAccount::X_LONG_POST_LENGTH.' characters'));
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.SocialAccount::X_LONG_POST_LENGTH.' characters'));
 });
 
 test('the assistant writes a poll question within 280 characters even on an account with long posts', function () {
@@ -213,7 +214,7 @@ test('the assistant writes a poll question within 280 characters even on an acco
         ])
         ->assertOk();
 
-    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
 });
 
 test('the assistant rewrites a post as long as the longest post', function () {
