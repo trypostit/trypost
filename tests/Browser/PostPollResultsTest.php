@@ -119,6 +119,37 @@ test('where voting stands is read from the instant, whatever zone the browser is
     'just ended, browser ahead of the user' => ['Asia/Tokyo', fn (): string => now()->subMinutes(30)->toIso8601String(), 'Voting ended', 'Ends'],
 ]);
 
+test('a poll published before its first read from x shows its choices with no votes and when it ends', function () {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    connectAiTo($user);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subMinutes(5),
+        'published_at' => now()->subMinutes(5),
+        'meta' => [
+            'poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440],
+            'thread_replies' => [['text' => 'And at work?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", 'Linux')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", 'Ends')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-0-option-0", 'Yes')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-0-summary", 'Ends')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a post without a poll shows no results', function () {
     [$user, $account, $post] = pollResultsSetup(null);
     $this->actingAs($user);

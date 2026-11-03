@@ -1,6 +1,14 @@
+import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
-import { clamp, filled } from '@/lib/helpers';
+import { clamp, filled, transform } from '@/lib/helpers';
+import { threadRepliesOf } from '@/lib/threadReplies';
+import type {
+    PublicationPoll,
+    PublicationThreadPoll,
+} from '@/types/analytics';
+import { ContentType } from '@/types/content-type';
 import type { PublishConfig } from '@/types/platform';
+import type { PostCard } from '@/types/publish';
 import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
 export const MINUTES_PER_HOUR = 60;
@@ -90,4 +98,65 @@ export const formatPollLength = (minutes: number): string => {
         unit,
         unitDisplay: 'long',
     }).format(Math.floor(minutes / size));
+};
+
+/** A published poll before its first read from X: its choices with no votes, open until its length from publishing. */
+const unreadPollResult = (
+    poll: Partial<XPoll>,
+    publishedAt: string,
+): PublicationPoll => ({
+    options: (poll.options ?? []).map((label) => ({ label, votes: 0 })),
+    voting_status: 'open',
+    end_datetime: transform(poll.duration_minutes, (minutes) =>
+        dayjs.utc(publishedAt).add(minutes, 'minute').toISOString(),
+    ),
+    duration_minutes: poll.duration_minutes ?? null,
+});
+
+/** A post's own poll: only an X poll has one, whatever its meta still holds. */
+const ownPollOf = (post: PostCard): Partial<XPoll> | undefined => {
+    if (post.content_type !== ContentType.XPoll) {
+        return undefined;
+    }
+
+    return post.meta?.poll;
+};
+
+/**
+ * The polls a sent post shows: what X returned at its last read, or, before
+ * the first read (about an hour after publishing), its own polls with no
+ * votes yet.
+ */
+export const sentPollResults = (
+    post: PostCard,
+): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
+    const detail = post.metrics;
+
+    if (detail?.available) {
+        return {
+            poll: detail.publication.poll,
+            threadPolls: detail.publication.thread_polls ?? [],
+        };
+    }
+
+    const notPublished = { poll: null, threadPolls: [] };
+
+    return transform(
+        post.published_at,
+        (publishedAt) => ({
+            poll: transform(ownPollOf(post), (poll) =>
+                unreadPollResult(poll, publishedAt),
+            ),
+            threadPolls: threadRepliesOf(post.meta).flatMap((reply, index) => {
+                if (filled(reply.poll)) {
+                    return [
+                        { reply: index, ...unreadPollResult(reply.poll, publishedAt) },
+                    ];
+                }
+
+                return [];
+            }),
+        }),
+        notPublished,
+    );
 };

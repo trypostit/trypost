@@ -42,6 +42,7 @@ import dayjs from '@/dayjs';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';
 import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { sentPollResults } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 import { Platform } from '@/types/platform';
@@ -157,17 +158,7 @@ const metricsDetail = computed(() => {
         : null;
 });
 
-const poll = computed(() => {
-    const detail = current.value.metrics;
-
-    return detail?.available ? detail.publication.poll : null;
-});
-
-const threadPolls = computed(() => {
-    const detail = current.value.metrics;
-
-    return detail?.available ? (detail.publication.thread_polls ?? []) : [];
-});
+const pollResults = computed(() => sentPollResults(current.value));
 
 const moment = computed(() => {
     if (current.value.published_at) {
@@ -476,8 +467,8 @@ const siblingMoment = (sibling: PostCard): string | null => {
 
                     <PostPollResultsList
                         class="-mx-6"
-                        :poll="poll"
-                        :thread-polls="threadPolls"
+                        :poll="pollResults.poll"
+                        :thread-polls="pollResults.threadPolls"
                         test-id="post-details-poll"
                     />
 

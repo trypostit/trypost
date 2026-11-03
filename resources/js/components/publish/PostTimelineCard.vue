@@ -75,6 +75,7 @@ import { isImage, isVideo } from '@/lib/mediaType';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
 import { videoFrameUrl } from '@/lib/videoFrame';
+import { sentPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
 import {
     PostOrigin,
@@ -303,6 +304,15 @@ const sentDetail = computed(() => {
     }
 
     return metricsDetail.value;
+});
+
+/** The post's polls on the Sent tab, with no votes yet before the first read from X. */
+const sentPolls = computed(() => {
+    if (props.tab !== 'sent') {
+        return null;
+    }
+
+    return sentPollResults(props.post);
 });
 
 /** On the Approvals tab every card is a request, so the badge would say nothing. */
@@ -718,9 +728,9 @@ defineExpose({ openDetails });
                 />
 
                 <PostPollResultsList
-                    v-if="sentDetail"
-                    :poll="sentDetail.publication.poll"
-                    :thread-polls="sentDetail.publication.thread_polls ?? []"
+                    v-if="sentPolls"
+                    :poll="sentPolls.poll"
+                    :thread-polls="sentPolls.threadPolls"
                     :test-id="`post-poll-${post.id}`"
                 />
 
