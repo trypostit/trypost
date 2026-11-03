@@ -30,7 +30,7 @@ export const isBlankThreadReply = ({
     media,
     poll,
 }: ThreadReply): boolean =>
-    text === '' && blank(media) && poll === undefined;
+    text === '' && blank(media) && blank(poll);
 
 /** A reply as the server stores it; `key` only exists in a draft the composer saved. */
 type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
@@ -44,12 +44,17 @@ export const threadRepliesOf = (
             withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll),
     );
 
-/** The reply with `poll`, or as a plain post of the thread when `poll` is undefined. */
+/** The reply as a poll, which carries no media, or as a plain post when `poll` is undefined. */
 export const withReplyPoll = (
     { key, text, media }: ThreadReply,
     poll: Partial<XPoll> | undefined,
-): ThreadReply =>
-    poll === undefined ? { key, text, media } : { key, text, media, poll };
+): ThreadReply => {
+    if (poll === undefined) {
+        return { key, text, media };
+    }
+
+    return { key, text, media: [], poll };
+};
 
 /** The post type a reply publishes as: a poll, or its network's reply type. */
 export const threadReplyContentType = (

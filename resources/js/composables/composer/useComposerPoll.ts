@@ -2,7 +2,7 @@ import type {
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
-import { filled } from '@/lib/helpers';
+import { blank, filled, transform } from '@/lib/helpers';
 import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
 import { newPoll } from '@/lib/xPoll';
 import {
@@ -94,14 +94,16 @@ export const useComposerPoll = (
         const previous = takeSaved(metaBeforeOtherType, group);
 
         if (previous === undefined) {
-            const limits = pollLimits(group);
-
-            return { ...current, poll: limits ? newPoll(limits) : {} };
+            return { ...current, poll: transform(pollLimits(group), newPoll, {}) };
         }
 
         const { poll, ...previousMeta } = previous;
 
-        return sameMeta(previousMeta, current) ? previous : { ...current, poll };
+        if (sameMeta(previousMeta, current)) {
+            return previous;
+        }
+
+        return { ...current, poll };
     };
 
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
@@ -113,7 +115,11 @@ export const useComposerPoll = (
         metaBeforeOtherType.set(group.key, current);
         const before = takeSaved(metaBeforePoll, group);
 
-        return before !== undefined && sameMeta(before, meta) ? before : meta;
+        if (before !== undefined && sameMeta(before, meta)) {
+            return before;
+        }
+
+        return meta;
     };
 
     /**
@@ -127,12 +133,17 @@ export const useComposerPoll = (
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
         const hasPoll = poll !== undefined;
+        const picksPoll = contentType === ContentType.XPoll;
 
-        if (contentType === ContentType.XPoll) {
-            return hasPoll ? null : metaWithPoll(group, current);
+        if (picksPoll && !hasPoll) {
+            return metaWithPoll(group, current);
         }
 
-        return hasPoll ? metaWithoutPoll(group, current, meta) : null;
+        if (!picksPoll && hasPoll) {
+            return metaWithoutPoll(group, current, meta);
+        }
+
+        return null;
     };
 
     /** Forgets the card's last poll, so picking Poll again starts a new one. */
@@ -155,14 +166,15 @@ export const useComposerPoll = (
         replyKey: string,
         poll: XPoll | undefined,
     ): void => {
-        thread.setReplies(
-            group,
-            thread
-                .replies(group)
-                .map((reply) =>
-                    reply.key === replyKey ? withReplyPoll(reply, poll) : reply,
-                ),
-        );
+        const replies = thread.replies(group).map((reply) => {
+            if (reply.key !== replyKey) {
+                return reply;
+            }
+
+            return withReplyPoll(reply, poll);
+        });
+
+        thread.setReplies(group, replies);
     };
 
     /** The poll button shows on an X reply that is not a poll yet. */
@@ -170,20 +182,22 @@ export const useComposerPoll = (
         const reply = thread.activeReply(group);
 
         return (
-            filled(reply) &&
-            reply.poll === undefined &&
-            filled(pollLimits(group))
+            filled(reply) && blank(reply.poll) && filled(pollLimits(group))
         );
     };
 
     /** Media in the reply (or on its way) keeps the poll button off, saying why. */
     const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
         const reply = thread.activeReply(group);
+        const carriesMedia =
+            filled(reply) &&
+            (filled(reply.media) || thread.uploading(group, reply));
 
-        return filled(reply) &&
-            (filled(reply.media) || thread.uploading(group, reply))
-            ? MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll]
-            : null;
+        if (carriesMedia) {
+            return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
+        }
+
+        return null;
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {

@@ -1,4 +1,5 @@
 import { activeLocale } from '@/language';
+import { clamp } from '@/lib/helpers';
 import type { PublishConfig } from '@/types/platform';
 import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
@@ -33,7 +34,7 @@ export const joinPollDuration = (
         parts.hours * MINUTES_PER_HOUR +
         parts.minutes;
 
-    return Math.min(Math.max(total, limits.minDuration), limits.maxDuration);
+    return clamp(total, limits.minDuration, limits.maxDuration);
 };
 
 export const newPoll = (limits: XPollLimits): XPoll => ({

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import date from '@/date';
+import { transform } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type { PublicationPoll } from '@/types/analytics';
 
@@ -27,36 +28,37 @@ const totalVotes = computed((): number =>
 
 const topVotes = computed((): number => Math.max(...votes.value));
 
-/** A choice's part of the votes, from 0 to 1; nothing before the first vote. */
-const shareOf = (count: number): number =>
-    totalVotes.value === 0 ? 0 : count / totalVotes.value;
+const hasVotes = computed((): boolean => totalVotes.value > 0);
+
+/** A choice's percentage of the votes; none before the first vote. */
+const percentOf = (count: number): number => {
+    if (!hasVotes.value) {
+        return 0;
+    }
+
+    return (count / totalVotes.value) * 100;
+};
 
 /** The choice with the most votes leads, ties included; none before the first vote. */
 const isLeading = (count: number): boolean =>
-    totalVotes.value > 0 && count === topVotes.value;
+    hasVotes.value && count === topVotes.value;
 
 const rows = computed(() =>
-    props.poll.options.map(({ label, votes: count }) => ({
-        label,
-        votes: count,
-        width: `${shareOf(count) * 100}%`,
-        percent: formatPercent(shareOf(count) * 100, PERCENT_DIGITS),
-        leading: isLeading(count),
-    })),
+    props.poll.options.map(({ label, votes: count }) => {
+        const percent = percentOf(count);
+
+        return {
+            label,
+            votes: count,
+            width: `${percent}%`,
+            percent: formatPercent(percent, PERCENT_DIGITS),
+            leading: isLeading(count),
+        };
+    }),
 );
 
-/** The voting state shown after the total: final, ended or when voting ends. */
-const status = computed((): PollStatus | null => {
-    const endsAt = props.poll.end_datetime;
-
-    if (props.poll.voting_status === 'closed') {
-        return { key: 'posts.poll_results.final' };
-    }
-
-    if (endsAt === null) {
-        return null;
-    }
-
+/** When voting ends: already ended, or in how long. */
+const votingEnd = (endsAt: string): PollStatus => {
     if (date.hasPassed(endsAt)) {
         return { key: 'posts.poll_results.ended' };
     }
@@ -65,6 +67,15 @@ const status = computed((): PollStatus | null => {
         key: 'posts.poll_results.ends',
         replacements: { time: date.diffForHumans(endsAt) },
     };
+};
+
+/** The voting state shown after the total: final, ended or when voting ends. */
+const status = computed((): PollStatus | null => {
+    if (props.poll.voting_status === 'closed') {
+        return { key: 'posts.poll_results.final' };
+    }
+
+    return transform(props.poll.end_datetime, votingEnd);
 });
 </script>
 
