@@ -42,7 +42,7 @@ import dayjs from '@/dayjs';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';
 import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
-import { sentPollResults } from '@/lib/xPoll';
+import { postPollResults } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 import { Platform } from '@/types/platform';
@@ -158,7 +158,7 @@ const metricsDetail = computed(() => {
         : null;
 });
 
-const pollResults = computed(() => sentPollResults(current.value));
+const pollResults = computed(() => postPollResults(current.value));
 
 const moment = computed(() => {
     if (current.value.published_at) {

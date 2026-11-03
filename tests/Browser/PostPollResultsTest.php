@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
@@ -161,6 +162,32 @@ test('a poll whose publication x has not read yet shows its choices with no vote
         ->assertSeeIn("@post-poll-{$post->id}-summary", 'Ends')
         ->assertSeeIn("@post-poll-{$post->id}-reply-0-option-0", 'Yes')
         ->assertSeeIn("@post-poll-{$post->id}-reply-0-summary", 'Ends')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a poll still in the queue shows its choices with no votes and no end yet', function () {
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    connectAiTo($user);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create([
+        'user_id' => $user->id,
+        'status' => Status::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'meta' => ['poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $account));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", 'Linux')
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Ends')
         ->assertNoJavaScriptErrors();
 });
 

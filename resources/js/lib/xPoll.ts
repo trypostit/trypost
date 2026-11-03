@@ -120,15 +120,21 @@ export const formatPollLength = (minutes: number): string => {
     }).format(Math.floor(minutes / size));
 };
 
-/** A published poll before its first read from X: its choices with no votes, open until its length from publishing. */
+/**
+ * A poll before X has been read for it: its choices with no votes. Once its
+ * post is published it is open until its length from publishing; before
+ * that, voting has not started and has no end.
+ */
 const unreadPollResult = (
     poll: Partial<XPoll>,
-    publishedAt: string,
+    publishedAt: string | null,
 ): PublicationPoll => ({
     options: (poll.options ?? []).map((label) => ({ label, votes: 0 })),
-    voting_status: 'open',
-    end_datetime: transform(poll.duration_minutes, (minutes) =>
-        dayjs.utc(publishedAt).add(minutes, 'minute').toISOString(),
+    voting_status: transform(publishedAt, (): 'open' => 'open'),
+    end_datetime: transform(publishedAt, (at) =>
+        transform(poll.duration_minutes, (minutes) =>
+            dayjs.utc(at).add(minutes, 'minute').toISOString(),
+        ),
     ),
     duration_minutes: poll.duration_minutes ?? null,
 });
@@ -142,38 +148,34 @@ const ownPollOf = (post: PostCard): Partial<XPoll> | undefined => {
     return post.meta?.poll;
 };
 
-/** A published post's own polls with no votes yet, as they show before X is read. */
+/** A post's own polls (the post's and its replies') with no votes yet. */
 const unreadPollsOf = (
     post: PostCard,
-): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } =>
-    transform(
-        post.published_at,
-        (publishedAt) => ({
-            poll: transform(ownPollOf(post), (poll) =>
-                unreadPollResult(poll, publishedAt),
-            ),
-            threadPolls: threadRepliesOf(post.meta).flatMap((reply, index) => {
-                if (filled(reply.poll)) {
-                    return [
-                        {
-                            reply: index,
-                            ...unreadPollResult(reply.poll, publishedAt),
-                        },
-                    ];
-                }
+): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => ({
+    poll: transform(ownPollOf(post), (poll) =>
+        unreadPollResult(poll, post.published_at),
+    ),
+    threadPolls: threadRepliesOf(post.meta).flatMap((reply, index) => {
+        if (filled(reply.poll)) {
+            return [
+                {
+                    reply: index,
+                    ...unreadPollResult(reply.poll, post.published_at),
+                },
+            ];
+        }
 
-                return [];
-            }),
-        }),
-        { poll: null, threadPolls: [] },
-    );
+        return [];
+    }),
+});
 
 /**
- * The polls a sent post shows: each one as X returned it at the last read,
- * or, until X has been read for it (about an hour after publishing), with
- * its choices and no votes.
+ * The polls a post shows, in every tab: each one as X returned it at the last
+ * read, or, until X has been read for it (about an hour after publishing, and
+ * never for a post still in the queue, a draft or a request), with its
+ * choices and no votes.
  */
-export const sentPollResults = (
+export const postPollResults = (
     post: PostCard,
 ): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
     const read = post.metrics?.available ? post.metrics.publication : null;
