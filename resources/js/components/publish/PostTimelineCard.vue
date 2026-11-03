@@ -212,11 +212,16 @@ const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
 );
 
-const pendingSlotKey = computed((): string | null =>
-    isPending.value && props.post.approval_queue_position
-        ? `posts.publish.pending_slot.${props.post.approval_queue_position}`
-        : null,
-);
+/** What a post without a time shows: the queue slot its approval request asks for, else "No time". */
+const noTimeKey = computed((): string => {
+    const slot = props.post.approval_queue_position;
+
+    if (isPending.value && slot) {
+        return `posts.publish.pending_slot.${slot}`;
+    }
+
+    return 'posts.publish.no_time';
+});
 
 const isEditable = computed(
     () =>
@@ -432,7 +437,7 @@ defineExpose({ openDetails });
                     data-single-line
                     :data-testid="`post-no-time-${post.id}`"
                 >
-                    {{ $t(pendingSlotKey ?? 'posts.publish.no_time') }}
+                    {{ $t(noTimeKey) }}
                 </span>
             </span>
             <Badge

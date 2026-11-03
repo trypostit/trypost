@@ -18,9 +18,14 @@ import type { XPoll } from '@/types/x';
 
 const props = defineProps<PreviewProps>();
 
-const poll = computed((): Partial<XPoll> | null =>
-    props.contentType === ContentType.XPoll ? (props.meta?.poll ?? null) : null,
-);
+/** The poll the post shows: only a Poll post has one, whatever its meta still holds. */
+const poll = computed((): Partial<XPoll> | undefined => {
+    if (props.contentType !== ContentType.XPoll) {
+        return undefined;
+    }
+
+    return props.meta?.poll;
+});
 
 const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
 </script>

@@ -23,40 +23,43 @@ export const newThreadReply = (): ThreadReply => ({
     media: [],
 });
 
+/** A reply with nothing in it yet: no text, no media and no poll. */
+export const isBlankThreadReply = ({
+    text,
+    media,
+    poll,
+}: ThreadReply): boolean =>
+    text === '' && media.length === 0 && poll === undefined;
+
 const isObject = (value: unknown): value is Record<string, any> =>
     value !== null && typeof value === 'object';
 
-/** Replies stored as plain strings are text-only replies. */
+/** One stored reply as the composer edits it; a plain string is a text-only reply. */
+const storedReply = (stored: unknown, index: number): ThreadReply => {
+    const key = `stored-${index}`;
+
+    if (typeof stored === 'string') {
+        return { key, text: stored, media: [] };
+    }
+
+    const reply: Record<string, any> = isObject(stored) ? stored : {};
+
+    return withReplyPoll(
+        {
+            key: typeof reply.key === 'string' ? reply.key : key,
+            text: typeof reply.text === 'string' ? reply.text : '',
+            media: Array.isArray(reply.media) ? reply.media : [],
+        },
+        isObject(reply.poll) ? reply.poll : undefined,
+    );
+};
+
+/** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
 ): ThreadReply[] =>
     Array.isArray(meta?.thread_replies)
-        ? meta.thread_replies.map(
-              (reply: unknown, index: number): ThreadReply => {
-                  const stored: Partial<ThreadReply> = isObject(reply)
-                      ? reply
-                      : {};
-
-                  return withReplyPoll(
-                      {
-                          key:
-                              typeof stored.key === 'string'
-                                  ? stored.key
-                                  : `stored-${index}`,
-                          text:
-                              typeof reply === 'string'
-                                  ? reply
-                                  : typeof stored.text === 'string'
-                                    ? stored.text
-                                    : '',
-                          media: Array.isArray(stored.media)
-                              ? stored.media
-                              : [],
-                      },
-                      isObject(stored.poll) ? stored.poll : undefined,
-                  );
-              },
-          )
+        ? meta.thread_replies.map(storedReply)
         : [];
 
 /** The reply with `poll`, or as a plain post of the thread when `poll` is undefined. */

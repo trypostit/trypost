@@ -6,7 +6,11 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
-import { newThreadReply, type ThreadReply } from '@/lib/threadReplies';
+import {
+    isBlankThreadReply,
+    newThreadReply,
+    type ThreadReply,
+} from '@/lib/threadReplies';
 
 const props = withDefaults(
     defineProps<{
@@ -42,12 +46,6 @@ const remaining = (reply: ThreadReply): number =>
         ? Math.min(props.limit, props.pollLimit)
         : props.limit) -
     displayLength(contentFor(reply.text, props.platform));
-
-const isEmpty = (reply: ThreadReply | undefined): boolean =>
-    reply !== undefined &&
-    reply.text === '' &&
-    reply.media.length === 0 &&
-    reply.poll === undefined;
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>
@@ -114,7 +112,7 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
 
     if (
         event.key === 'Backspace' &&
-        isEmpty(replies.value[index]) &&
+        isBlankThreadReply(replies.value[index]) &&
         !event.repeat
     ) {
         event.preventDefault();
