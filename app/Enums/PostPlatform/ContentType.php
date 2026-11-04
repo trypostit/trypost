@@ -84,7 +84,7 @@ enum ContentType: string
         return in_array($this, [self::FacebookStory, self::InstagramStory], true);
     }
 
-    public function isReplyOnly(): bool
+    public function isComment(): bool
     {
         return $this === self::LinkedInComment;
     }
@@ -845,7 +845,7 @@ enum ContentType: string
      */
     public function compatiblePlatforms(): array
     {
-        if ($this->isReplyOnly()) {
+        if ($this->isComment()) {
             return [];
         }
 
@@ -889,7 +889,7 @@ enum ContentType: string
 
         return array_filter(
             self::cases(),
-            fn (self $type) => $type->platform() === $effective && ! $type->isReplyOnly()
+            fn (self $type) => $type->platform() === $effective && ! $type->isComment()
         );
     }
 
