@@ -517,6 +517,21 @@ test('a linkedin document post stores its title the same way and refuses one ove
     expect($api->meta['document_title'])->toBe('Deck');
 });
 
+test('a linkedin first comment is stored the same way and refused over 1250 characters through api and mcp', function (Platform $platform, ContentType $contentType) {
+    $account = netParityAccount($platform, $platform === Platform::LinkedInPage ? ['organization_id' => '123456'] : []);
+    $payload = fn (string $text) => netParityPayload($account, $contentType, [], ['first_comment' => ['text' => $text]]);
+
+    netParityRefused($payload(str_repeat('c', 1251)), __('posts.form.first_comment.too_long', ['max' => 1250]), 'destinations.0.meta.first_comment.text');
+
+    [$api, $mcp] = netParityAccepted($payload(str_repeat('🐧', 1250)), $payload(str_repeat('🐧', 1250)));
+
+    expect($api->meta['first_comment'])->toBe(['text' => str_repeat('🐧', 1250)])
+        ->and($mcp->meta['first_comment'])->toBe($api->meta['first_comment']);
+})->with([
+    'profile' => [Platform::LinkedIn, ContentType::LinkedInPost],
+    'page' => [Platform::LinkedInPage, ContentType::LinkedInPagePost],
+]);
+
 test('a threads topic tag is normalised and validated the same way through api and mcp', function () {
     $account = netParityAccount(Platform::Threads);
     $payload = fn (string $tag) => netParityPayload($account, ContentType::ThreadsPost, ['status' => 'draft', 'scheduled_at' => null], ['topic_tag' => $tag]);

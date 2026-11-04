@@ -434,6 +434,11 @@ return [
                 'add' => '투표 추가',
             ],
         ],
+        'first_comment' => [
+            'label' => '첫 댓글',
+            'placeholder' => '링크나 추가 설명을 입력하세요',
+            'too_long' => '첫 댓글은 최대 :max자까지 입력할 수 있습니다.',
+        ],
         'linkedin' => [
             'document_title' => '문서 제목',
             'document_title_placeholder' => 'PDF 문서 게시물에 표시됩니다',
@@ -952,6 +957,10 @@ return [
             'media_title' => '미디어 옵션',
         ],
     ],
+    'first_comment' => [
+        'failed' => '첫 댓글을 게시하지 못했습니다. :network에서 직접 추가하세요.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count표|[0,*] :count표',
         'final' => '최종 결과',

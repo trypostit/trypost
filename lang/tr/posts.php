@@ -434,6 +434,11 @@ return [
                 'add' => 'Anket ekle',
             ],
         ],
+        'first_comment' => [
+            'label' => 'İlk yorum',
+            'placeholder' => 'Bir bağlantı veya daha fazla bağlam ekleyin',
+            'too_long' => 'İlk yorumunuz en fazla :max karakter olabilir.',
+        ],
         'linkedin' => [
             'document_title' => 'Belge başlığı',
             'document_title_placeholder' => 'PDF belge gönderinizde gösterilir',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Medya seçenekleri',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'İlk yorumunuz paylaşılamadı. :network üzerinden ekleyin.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count oy|[0,*] :count oy',
         'final' => 'Nihai sonuçlar',

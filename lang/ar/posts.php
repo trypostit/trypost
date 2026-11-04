@@ -434,6 +434,11 @@ return [
                 'add' => 'إضافة استطلاع',
             ],
         ],
+        'first_comment' => [
+            'label' => 'التعليق الأول',
+            'placeholder' => 'أضف رابطًا أو سياقًا إضافيًا',
+            'too_long' => 'يمكن أن يحتوي تعليقك الأول على :max حرف كحد أقصى.',
+        ],
         'linkedin' => [
             'document_title' => 'عنوان المستند',
             'document_title_placeholder' => 'يظهر على منشور مستند PDF الخاص بك',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'خيارات الوسائط',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'تعذّر نشر تعليقك الأول. أضفه على :network.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count صوت|[0,*] :count أصوات',
         'final' => 'النتائج النهائية',

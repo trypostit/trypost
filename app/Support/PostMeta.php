@@ -42,6 +42,10 @@ class PostMeta
             $meta = ThreadReplies::withoutPolls($meta);
         }
 
+        if (! FirstComment::supports($account->platform)) {
+            $meta = Arr::except($meta, 'first_comment');
+        }
+
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
             default => $meta,

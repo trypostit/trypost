@@ -434,6 +434,11 @@ return [
                 'add' => 'Aggiungi sondaggio',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Primo commento',
+            'placeholder' => 'Aggiungi un link o più contesto',
+            'too_long' => 'Il tuo primo commento può avere fino a :max caratteri.',
+        ],
         'linkedin' => [
             'document_title' => 'Titolo del documento',
             'document_title_placeholder' => 'Mostrato sul tuo post con documento PDF',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Opzioni media',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'Non è stato possibile pubblicare il tuo primo commento. Aggiungilo su :network.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count voto|[0,*] :count voti',
         'final' => 'Risultati finali',

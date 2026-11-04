@@ -170,6 +170,81 @@ it('persists the LinkedIn document_title meta on store', function () {
     expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
+it('persists a LinkedIn first comment on store', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Our launch',
+            'social_account_id' => $linkedin->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => ['first_comment' => ['text' => '  Link in the comments  ']],
+        ])
+        ->assertCreated()
+        ->assertJsonPath('meta.first_comment.text', 'Link in the comments');
+
+    expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['first_comment'])->toBe(['text' => 'Link in the comments']);
+});
+
+it('refuses scheduling a LinkedIn first comment longer than LinkedIn allows but keeps it on a draft', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $payload = fn (string $text, string $status) => [
+        'content' => 'Our launch',
+        'social_account_id' => $linkedin->id,
+        'content_type' => ContentType::LinkedInPost->value,
+        'status' => $status,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['first_comment' => ['text' => $text]],
+    ];
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload(str_repeat('a', 1251), PostStatus::Scheduled->value))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['meta.first_comment.text']);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload(str_repeat('🐧', 1250), PostStatus::Scheduled->value))
+        ->assertCreated();
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload(str_repeat('a', 1251), PostStatus::Draft->value))
+        ->assertCreated();
+});
+
+it('stores no first comment when it is blank or the network has none', function (Closure $account, ContentType $contentType, string $text) {
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Our launch',
+            'social_account_id' => $account($this->workspace)->id,
+            'content_type' => $contentType->value,
+            'meta' => ['first_comment' => ['text' => $text]],
+        ])
+        ->assertCreated();
+
+    expect(Post::query()->latest('id')->first()->meta)->not->toHaveKey('first_comment');
+})->with([
+    'blank on linkedin' => [fn ($workspace) => SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]), ContentType::LinkedInPost, '   '],
+    'on x' => [fn ($workspace) => SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]), ContentType::XPost, 'Link below'],
+]);
+
+it('keeps the first comment result when the post meta is updated', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create(['user_id' => $this->user->id]);
+    $post->forceFill(['meta' => ['first_comment' => ['text' => 'Old'], 'first_comment_result' => ['post_id' => 'urn:li:share:1', 'failed' => true]]])->save();
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Draft->value,
+            'meta' => ['first_comment' => ['text' => 'New']],
+        ])
+        ->assertOk();
+
+    expect($post->fresh()->meta)->toEqual([
+        'first_comment' => ['text' => 'New'],
+        'first_comment_result' => ['post_id' => 'urn:li:share:1', 'failed' => true],
+    ]);
+});
+
 it('publishes a LinkedIn document post that has a PDF', function () {
     Queue::fake();
 

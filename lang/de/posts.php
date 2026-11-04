@@ -434,6 +434,11 @@ return [
                 'add' => 'Umfrage hinzufügen',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Erster Kommentar',
+            'placeholder' => 'Füge einen Link oder mehr Kontext hinzu',
+            'too_long' => 'Dein erster Kommentar darf bis zu :max Zeichen haben.',
+        ],
         'linkedin' => [
             'document_title' => 'Dokumenttitel',
             'document_title_placeholder' => 'Wird bei deinem PDF-Dokument-Beitrag angezeigt',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Medienoptionen',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'Dein erster Kommentar konnte nicht veröffentlicht werden. Füge ihn auf :network hinzu.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count Stimme|[0,*] :count Stimmen',
         'final' => 'Endergebnis',

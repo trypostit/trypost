@@ -34,10 +34,11 @@ use Illuminate\Validation\Validator;
 class PostPlatformMetaRules
 {
     /**
-     * Keys TryPost writes itself once a post is live (Telegram reactions): never
-     * taken from a request, and kept when the post's settings are edited.
+     * Keys TryPost writes itself once a post is live (Telegram reactions, what
+     * happened to a first comment): never taken from a request, and kept when the
+     * post's settings are edited.
      */
-    public const SYSTEM_KEYS = ['reactions'];
+    public const SYSTEM_KEYS = ['reactions', FirstComment::RESULT_KEY];
 
     /** What an Instagram music pick stores; anything else sent with it is dropped. */
     private const array INSTAGRAM_AUDIO_FIELDS = ['id', 'title', 'artist', 'cover_url', 'preview_url', 'audio_volume', 'video_volume'];
@@ -102,6 +103,9 @@ class PostPlatformMetaRules
             "{$prefix}.thread_replies.*.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
 
             "{$prefix}.document_title" => ['sometimes', 'nullable', 'string', 'max:300'],
+
+            "{$prefix}.first_comment" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.first_comment.text" => ['sometimes', 'nullable', 'string', 'max:'.Post::CONTENT_MAX_LENGTH],
 
             "{$prefix}.privacy_level" => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
             "{$prefix}.auto_add_music" => ['sometimes', 'boolean'],
@@ -258,6 +262,7 @@ class PostPlatformMetaRules
             'Threads: topic_tag (1-50 characters after a leading # is dropped, no . or &). Use content_type threads_ghost_post for a text-only post archived after 24 hours (no media, no topic).',
             'Facebook, Bluesky, LinkedIn: link_preview (default true; false publishes a text post with a link without its preview card).',
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
+            'First comment (LinkedIn profile and page): first_comment {text (≤1250)}, posted as a comment from the same profile or page right after the post goes live; if it fails, the post stays published.',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
             'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X only; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
@@ -348,6 +353,11 @@ class PostPlatformMetaRules
             $meta['audio'] = Arr::only($meta['audio'], self::INSTAGRAM_AUDIO_FIELDS);
         }
 
+        if (array_key_exists('first_comment', $meta)) {
+            $firstComment = FirstComment::normalize($meta['first_comment']);
+            $meta = $firstComment === null ? Arr::except($meta, 'first_comment') : [...$meta, 'first_comment' => $firstComment];
+        }
+
         return $meta;
     }
 
@@ -417,6 +427,12 @@ class PostPlatformMetaRules
 
         if ($threadViolation !== null) {
             return $threadViolation;
+        }
+
+        $firstCommentViolation = FirstComment::violation($target, $meta);
+
+        if ($firstCommentViolation !== null) {
+            return $firstCommentViolation;
         }
 
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));

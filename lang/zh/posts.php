@@ -434,6 +434,11 @@ return [
                 'add' => '添加投票',
             ],
         ],
+        'first_comment' => [
+            'label' => '首条评论',
+            'placeholder' => '添加链接或更多背景信息',
+            'too_long' => '首条评论最多 :max 个字符。',
+        ],
         'linkedin' => [
             'document_title' => '文档标题',
             'document_title_placeholder' => '显示在你的 PDF 文档帖子上',
@@ -952,6 +957,10 @@ return [
             'media_title' => '媒体选项',
         ],
     ],
+    'first_comment' => [
+        'failed' => '首条评论未能发布。请在 :network 上添加。',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count 票|[0,*] :count 票',
         'final' => '最终结果',

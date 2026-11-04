@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\App;
 
+use App\Support\FirstComment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,7 @@ class PlatformConfigResource extends JsonResource
             'supportsTextOnly' => $this->platform->supportsTextOnly(),
             'requiresContent' => $this->platform->requiresContent(),
             'publishConfig' => $this->platform->publishConfig(),
+            'firstComment' => FirstComment::limitsFor($this->resource),
         ];
     }
 }

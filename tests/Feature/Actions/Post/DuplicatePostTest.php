@@ -114,3 +114,21 @@ test('execute keeps an x poll with its choices and length', function () {
     expect($copy->content_type)->toBe(ContentType::XPoll)
         ->and($copy->meta['poll'])->toEqual($poll);
 });
+
+test('execute keeps a linkedin first comment but not what happened to it', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $original = Post::factory()->forAccount($account, ContentType::LinkedInPost)->published()->create([
+        'user_id' => $user->id,
+        'content' => 'Our launch',
+        'meta' => [
+            'first_comment' => ['text' => 'Link below'],
+            'first_comment_result' => ['post_id' => 'urn:li:share:1', 'failed' => true],
+        ],
+    ]);
+
+    $copy = DuplicatePost::execute($original, $user)->fresh();
+
+    expect($copy->meta)->toEqual(['first_comment' => ['text' => 'Link below']]);
+});

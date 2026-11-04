@@ -434,6 +434,11 @@ return [
                 'add' => 'Dodaj ankietę',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Pierwszy komentarz',
+            'placeholder' => 'Dodaj link lub więcej kontekstu',
+            'too_long' => 'Pierwszy komentarz może mieć maksymalnie :max znaków.',
+        ],
         'linkedin' => [
             'document_title' => 'Tytuł dokumentu',
             'document_title_placeholder' => 'Wyświetlany w Twoim poście z dokumentem PDF',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Opcje multimediów',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'Nie udało się opublikować pierwszego komentarza. Dodaj go w serwisie :network.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count głos|[0,*] Głosów: :count',
         'final' => 'Wyniki końcowe',

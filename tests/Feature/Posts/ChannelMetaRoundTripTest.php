@@ -106,6 +106,8 @@ test('a post keeps every setting of its network through create, edit and reopen'
 })->with([
     'linkedin page post' => [fn (Workspace $workspace) => SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $workspace->id]), ContentType::LinkedInPagePost, ['document_title' => 'Quarterly report']],
     'linkedin pdf title' => [fn (Workspace $workspace) => SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]), ContentType::LinkedInPost, ['document_title' => 'Launch deck 2026']],
+    'linkedin first comment' => [fn (Workspace $workspace) => SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]), ContentType::LinkedInPost, ['first_comment' => ['text' => 'Details in the comments']]],
+    'linkedin page first comment' => [fn (Workspace $workspace) => SocialAccount::factory()->linkedinPage()->create(['workspace_id' => $workspace->id]), ContentType::LinkedInPagePost, ['first_comment' => ['text' => 'Sign up below']]],
     'facebook post without link preview' => [fn (Workspace $workspace) => SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]), ContentType::FacebookPost, ['link_preview' => false]],
     'facebook story' => [fn (Workspace $workspace) => SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]), ContentType::FacebookStory, ['is_ai_generated' => true]],
     'tiktok privacy and interactions' => [fn (Workspace $workspace) => SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]), ContentType::TikTokVideo, [

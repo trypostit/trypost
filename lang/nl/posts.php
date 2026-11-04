@@ -434,6 +434,11 @@ return [
                 'add' => 'Poll toevoegen',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Eerste reactie',
+            'placeholder' => 'Voeg een link of meer context toe',
+            'too_long' => 'Je eerste reactie mag maximaal :max tekens hebben.',
+        ],
         'linkedin' => [
             'document_title' => 'Documenttitel',
             'document_title_placeholder' => 'Getoond op je PDF-documentpost',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Media-opties',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'Je eerste reactie kon niet worden geplaatst. Voeg hem toe op :network.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count stem|[0,*] :count stemmen',
         'final' => 'Eindresultaat',

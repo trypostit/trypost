@@ -165,6 +165,21 @@ test('create post persists LinkedIn document_title meta', function () {
     expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
+test('create post persists a LinkedIn first comment', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Our launch',
+            'social_account_id' => $linkedin->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => ['first_comment' => ['text' => 'Link in the comments']],
+        ])
+        ->assertOk();
+
+    expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['first_comment'])->toBe(['text' => 'Link in the comments']);
+});
+
 test('update post merges per-platform meta', function () {
     $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,

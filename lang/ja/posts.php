@@ -434,6 +434,11 @@ return [
                 'add' => '投票を追加',
             ],
         ],
+        'first_comment' => [
+            'label' => '最初のコメント',
+            'placeholder' => 'リンクや補足を追加',
+            'too_long' => '最初のコメントは:max文字までです。',
+        ],
         'linkedin' => [
             'document_title' => 'ドキュメントタイトル',
             'document_title_placeholder' => 'PDF ドキュメント投稿に表示されます',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'メディアオプション',
         ],
     ],
+    'first_comment' => [
+        'failed' => '最初のコメントを投稿できませんでした。:networkで追加してください。',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count票|[0,*] :count票',
         'final' => '最終結果',

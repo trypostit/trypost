@@ -434,6 +434,11 @@ return [
                 'add' => 'Add a poll',
             ],
         ],
+        'first_comment' => [
+            'label' => 'First comment',
+            'placeholder' => 'Add a link or more context',
+            'too_long' => 'Your first comment can have up to :max characters.',
+        ],
         'linkedin' => [
             'document_title' => 'Document title',
             'document_title_placeholder' => 'Shown on your PDF document post',
@@ -952,6 +957,10 @@ return [
             'media_title' => 'Media options',
         ],
     ],
+    'first_comment' => [
+        'failed' => 'Your first comment couldn\'t be posted. Add it on :network.',
+    ],
+
     'poll_results' => [
         'votes' => '{1} :count vote|[0,*] :count votes',
         'final' => 'Final results',
