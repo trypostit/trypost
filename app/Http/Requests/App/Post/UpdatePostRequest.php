@@ -11,6 +11,7 @@ use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostChannel;
 use App\Rules\PostContentFitsMaxLength;
 use App\Support\PostMediaRules;
+use App\Support\PostMeta;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Foundation\Http\FormRequest;
@@ -120,12 +121,13 @@ class UpdatePostRequest extends FormRequest
     }
 
     /**
-     * The meta the save would store: the submitted keys over the stored ones.
+     * The meta the save would store: the submitted keys over the stored ones,
+     * merged as `UpdatePost` merges them (`PostMeta::merge()`).
      *
      * @return array<string, mixed>
      */
     private function effectiveMeta(): array
     {
-        return [...($this->route('post')->meta ?? []), ...(array) $this->input('meta', [])];
+        return PostMeta::merge($this->route('post')->meta ?? [], (array) $this->input('meta', []));
     }
 }

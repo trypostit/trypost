@@ -418,6 +418,18 @@ test('tiktok publish config privacy options come from the privacy level enum', f
     expect(Platform::TikTok->publishConfig()['privacyLevelOptions'])->toBe(PrivacyLevel::values());
 });
 
+test('x publish config serves the poll limits', function () {
+    expect(Platform::X->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 25,
+        'minDuration' => 5,
+        'maxDuration' => 10080,
+        'defaultDuration' => 1440,
+        'questionMaxLength' => 280,
+    ]]);
+});
+
 test('youtube publish config exposes only the fixed categories and the default', function () {
     $config = Platform::YouTube->publishConfig();
 

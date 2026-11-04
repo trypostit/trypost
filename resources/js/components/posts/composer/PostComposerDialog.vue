@@ -70,6 +70,7 @@ import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfini
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue';
+import XPollField from '@/components/posts/editor/XPollField.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
@@ -92,6 +93,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
@@ -158,6 +160,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
+import { blank, filled, transform } from '@/lib/helpers';
 import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
@@ -171,10 +174,18 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
+    repliesAreComments,
+    replyEmptyKey,
+    replyErrorOf,
+    replyTooLongKey,
+    startThreadKey,
+    threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
+    threadReplyContentType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
+import { pollLimitsOf } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -187,10 +198,10 @@ import type {
 import {
     CAPTIONLESS_CONTENT_TYPES,
     ContentType,
+    MEDIALESS_CONTENT_TYPE_REASONS,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    THREAD_MAX_REPLIES,
     THREAD_PLATFORMS,
     THREAD_REPLY_CONTENT_TYPES,
 } from '@/types/network-options';
@@ -451,18 +462,81 @@ const groupDestination = (
     composition.resolvedDestination(group.anchor);
 const contentTypeOptionsFor = (group: NetworkGroup): ContentTypeOption[] => {
     const options = getPickableContentTypeOptions(group.platform);
-
-    if (group.platform !== Platform.Threads) return options;
-
-    const attached = groupDestination(group).media.length > 0;
+    const attached =
+        filled(groupDestination(group).media) ||
+        uploaderFor(group.key).busy.value;
 
     return options.map((option) =>
-        option.value === ContentType.ThreadsGhostPost && attached
+        attached && MEDIALESS_CONTENT_TYPE_REASONS[option.value]
             ? {
                   ...option,
-                  disabledReasonKey: 'posts.form.threads.ghost_post_attachments',
+                  disabledReasonKey: MEDIALESS_CONTENT_TYPE_REASONS[option.value],
               }
             : option,
+    );
+};
+/** The account's poll limits, served in its `publishConfig`; null off X. */
+const {
+    groupPollLimits,
+    accountTextLimit,
+    isPollGroup,
+    groupPoll,
+    setGroupPoll,
+    setGroupContentType,
+    removeGroupPoll,
+    forgetGroupPoll,
+    forgetPolls,
+    replyPollLimit,
+    replyTextLimit,
+    setReplyPoll,
+    replyPollAvailable,
+    replyPollDisabledReasonKey,
+    addReplyPoll,
+} = useComposerPoll(
+    composition,
+    (account) => pollLimitsOf(props.platformConfigs[account.id]?.publishConfig),
+    {
+    activeReply: (group) => activeReply(group),
+    replies: (group) => threadReplies(group),
+    setReplies: (group, replies) => setThreadReplies(group, replies),
+    replyLimit: (group) => threadReplyLimit(group),
+    uploading: (group, reply) =>
+        Boolean(replyUploaderFor(group, reply)?.busy.value),
+    },
+);
+/**
+ * Step 1 shows no post type, so an X poll, which takes no media, would quietly
+ * refuse the shared media there. Entering it (a second network added) puts
+ * the poll card back on X's first type and forgets its poll, as going back to
+ * step 1 does.
+ */
+watch(sharedStep, (shared) => {
+    if (!shared) return;
+
+    networkGroups.value
+        .filter(
+            (group) =>
+                groupDestination(group).content_type === ContentType.XPoll,
+        )
+        .forEach((group) => {
+            const [firstType] = getPickableContentTypeOptions(group.platform);
+            if (!firstType) return;
+
+            setGroupContentType(group, firstType.value);
+            forgetGroupPoll(group);
+        });
+});
+/** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
+const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
+    const contentType = transform(
+        activeReply(group),
+        (reply) => threadReplyContentType(group.platform, reply),
+        groupDestination(group).content_type,
+    );
+
+    return (
+        transform(contentType, (type) => MEDIALESS_CONTENT_TYPE_REASONS[type]) ??
+        'posts.composer.media_not_supported'
     );
 };
 const openNetwork = (
@@ -993,8 +1067,14 @@ const writeContent = (groupKey: string | null, next: string): void => {
 const assistantContent = computed(() =>
     contentOf(sharedStep.value ? null : openGroupKey.value),
 );
+/** The account's text limit for its current post type. */
+const contentLimit = (account: ComposerAccount): number | undefined =>
+    accountTextLimit(
+        account,
+        props.platformConfigs[account.id]?.maxContentLength,
+    );
 const accountLimit = (account: ComposerAccount): number =>
-    props.platformConfigs[account.id]?.maxContentLength ?? Infinity;
+    contentLimit(account) ?? Infinity;
 const assistantChannel = computed<AssistantChannel | null>(() => {
     const account = sharedStep.value
         ? undefined
@@ -1006,11 +1086,13 @@ const assistantChannel = computed<AssistantChannel | null>(() => {
               undefined,
           );
     if (!account) return null;
-    const limit = props.platformConfigs[account.id]?.maxContentLength;
+    const limit = contentLimit(account);
 
     return {
         accountId: account.id,
         platform: account.platform,
+        contentType:
+            composition.resolvedDestination(account).content_type || null,
         label: getPlatformLabel(account.platform),
         limit: typeof limit === 'number' ? limit : null,
     };
@@ -1035,7 +1117,7 @@ const contentWarningLength = (account: ComposerAccount): number =>
           )
         : 0;
 const remainingCharacters = (account: ComposerAccount): number | null => {
-    const limit = props.platformConfigs[account.id]?.maxContentLength;
+    const limit = contentLimit(account);
     if (typeof limit !== 'number' || limit <= 0) return null;
     const destination = composition.resolvedDestination(account);
     if (CAPTIONLESS_CONTENT_TYPES.has(destination.content_type)) return null;
@@ -1096,7 +1178,11 @@ const setThreadReplies = (
 };
 const addThreadReply = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1105,33 +1191,53 @@ const focusFirstReply = (): void => {
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);
-    if (reply === undefined) return groupRemaining(group);
-    const limit = threadReplyLimit(group);
 
-    return limit === null
-        ? null
-        : limit -
-          displayLength(contentFor(reply.text, group.platform));
+    if (filled(reply)) {
+        return transform(
+            replyTextLimit(group, reply),
+            (limit) => limit - displayLength(contentFor(reply.text, group.platform)),
+        );
+    }
+
+    return groupRemaining(group);
 };
+/** Where the server reports an account's thread replies: one post on an edit, a batch on create. */
+const threadRepliesErrorPrefix = (account: ComposerAccount): string => {
+    if (props.initialPost) {
+        return 'meta.thread_replies';
+    }
+
+    return `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
+};
+/** Each reply's error for the card, the first account's winning. */
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
-    for (const account of group.accounts) {
-        const prefix = props.initialPost
-            ? 'meta.thread_replies'
-            : `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
-        for (const [key, message] of Object.entries(errors.value)) {
-            const match = key.startsWith(`${prefix}.`)
-                ? Number(key.slice(prefix.length + 1).split('.')[0])
-                : NaN;
-            if (Number.isInteger(match)) found[match] ??= message;
+
+    threadReplies(group).forEach((_, index) => {
+        const message = group.accounts
+            .map((account) =>
+                replyErrorOf(
+                    errors.value,
+                    threadRepliesErrorPrefix(account),
+                    index,
+                ),
+            )
+            .find(filled);
+
+        if (filled(message)) {
+            found[index] = message;
         }
-    }
+    });
 
     return found;
 };
@@ -1254,8 +1360,18 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
-const groupAcceptsMedia = (group: NetworkGroup): boolean =>
-    activeReply(group) !== undefined || acceptsMedia(group.key);
+const replyAcceptsMedia = (platform: string): boolean =>
+    getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
+    0;
+const groupAcceptsMedia = (group: NetworkGroup): boolean => {
+    const reply = activeReply(group);
+
+    if (filled(reply)) {
+        return reply.poll === undefined && replyAcceptsMedia(group.platform);
+    }
+
+    return acceptsMedia(group.key);
+};
 const onGroupImportStarted = (
     started: MediaImportStarted,
     group: NetworkGroup,
@@ -1269,7 +1385,7 @@ const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
         return;
     }
     const files = Array.from(event.dataTransfer?.files ?? []);
-    if (files.length && !cropUploading.value) {
+    if (filled(files) && !cropUploading.value && groupAcceptsMedia(group)) {
         groupMediaUploader(group).add(files);
     }
 };
@@ -1279,9 +1395,10 @@ const onReplyMediaPasted = (
 ): void => {
     const files = Array.from(event.clipboardData?.files ?? []);
     if (
-        !files.length ||
-        event.clipboardData?.getData('text/plain').trim() ||
-        cropUploading.value
+        blank(files) ||
+        filled(event.clipboardData?.getData('text/plain')) ||
+        cropUploading.value ||
+        !groupAcceptsMedia(group)
     ) {
         return;
     }
@@ -1361,9 +1478,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             params: {
                 platform: getPlatformLabel(account.platform),
                 over: String(-remaining),
-                limit: String(
-                    props.platformConfigs[account.id]?.maxContentLength ?? '',
-                ),
+                limit: String(contentLimit(account) ?? ''),
             },
             contentType,
         });
@@ -1400,13 +1515,13 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
                 : null;
             if (isBlankText(reply.text) && !reply.media.length) {
                 issues.push({
-                    key: 'posts.form.thread.reply_empty',
+                    key: replyEmptyKey(account.platform),
                     params: {},
                     contentType,
                 });
             } else if (over > 0) {
                 issues.push({
-                    key: 'posts.form.thread.reply_too_long',
+                    key: replyTooLongKey(account.platform),
                     params: { limit: String(limit), over: String(over) },
                     contentType,
                 });
@@ -1607,6 +1722,7 @@ const customizeNetworks = (): void => {
 
 const goBackToSharedStep = (): void => {
     composition.discardCustomization();
+    forgetPolls();
     confirmingBack.value = false;
 };
 
@@ -1910,6 +2026,7 @@ const resumeUnfinishedPost = (): void => {
             ]),
     );
     composition.normalizeGroups();
+    forgetPolls();
     const [firstGroup] = composition.networkGroups.value;
     if (firstGroup) openNetwork(firstGroup.key);
     const mode = snapshot.scheduleMode;
@@ -2640,7 +2757,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                     threadReplies(group)[threadActive] !== undefined
                                 "
                                 :active-reply="threadActive"
-                                :threadable="supportsThread(group)"
+                                :threadable="
+                                    supportsThread(group) &&
+                                    !repliesAreComments(group.platform)
+                                "
                                 :threaded="threadReplies(group).length > 0"
                                 @expand-caption="deselectThread"
                                 @start-thread="startThreadFromCaption(group)"
@@ -2653,11 +2773,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     )
                                 "
                                 @update:content-type="
-                                    composition.setGroupOverride(
-                                        group.key,
-                                        'content_type',
-                                        $event,
-                                    )
+                                    setGroupContentType(group, $event)
                                 "
                                 @paste="onMediaPasted($event, group.key)"
                                 @drop="onGroupMediaDropped($event, group)"
@@ -2834,11 +2950,32 @@ const onDialogOpenChange = (value: boolean): void => {
                                         }}
                                     </p>
                                 </template>
+                                <template
+                                    v-if="
+                                        isPollGroup(group) &&
+                                        groupPollLimits(group)
+                                    "
+                                    #attachment
+                                >
+                                    <XPollField
+                                        :model-value="groupPoll(group)"
+                                        :limits="groupPollLimits(group)!"
+                                        :platform-index="
+                                            selectedAccounts.indexOf(group.anchor)
+                                        "
+                                        :disabled="cropUploading"
+                                        @update:model-value="
+                                            setGroupPoll(group, $event)
+                                        "
+                                        @remove="removeGroupPoll(group)"
+                                    />
+                                </template>
                                 <template #post-media>
                                     <MediaTray
                                         v-if="
-                                            threadActive === -1 ||
-                                            groupDestination(group).media.length ||
+                                            (threadActive === -1 &&
+                                                !isPollGroup(group)) ||
+                                            filled(groupDestination(group).media) ||
                                             trayHasActivity(group.key)
                                         "
                                         class="px-[9px] pt-1"
@@ -2874,10 +3011,12 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <ThreadRepliesField
                                         v-model:active="threadActive"
                                         :toolbar-target="`composer-${group.anchor.id}-reply-toolbar`"
-                                        :max="THREAD_MAX_REPLIES"
+                                        :max="threadMaxReplies(group.platform)"
+                                        :comment="repliesAreComments(group.platform)"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
                                         :limit="threadReplyLimit(group) ?? Infinity"
+                                        :poll-limit="replyPollLimit(group)"
                                         :errors="threadReplyErrors(group)"
                                         :disabled="cropUploading"
                                         @update:model-value="
@@ -2886,11 +3025,35 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @paste="onReplyMediaPasted($event, group)"
                                     >
                                         <template #media="{ reply, index }">
-                                            <div
+                                            <XPollField
                                                 v-if="
-                                                    threadActive === index ||
+                                                    filled(reply.poll) &&
+                                                    threadActive === index &&
+                                                    groupPollLimits(group)
+                                                "
+                                                :key="`reply-poll-${index}`"
+                                                class="px-[9px]"
+                                                :model-value="reply.poll"
+                                                :limits="groupPollLimits(group)!"
+                                                :platform-index="
+                                                    selectedAccounts.indexOf(group.anchor)
+                                                "
+                                                :field-prefix="`thread_replies.${index}.`"
+                                                :test-id-prefix="`thread-reply-${index}-poll`"
+                                                :disabled="cropUploading"
+                                                @update:model-value="
+                                                    setReplyPoll(group, reply.key, $event)
+                                                "
+                                                @remove="
+                                                    setReplyPoll(group, reply.key, undefined)
+                                                "
+                                            />
+                                            <div
+                                                v-else-if="
                                                     reply.media.length ||
-                                                    replyHasActivity(group, reply)
+                                                    (replyAcceptsMedia(group.platform) &&
+                                                        (threadActive === index ||
+                                                            replyHasActivity(group, reply)))
                                                 "
                                                 class="flex flex-col gap-2 px-[9px] pt-1"
                                             >
@@ -2964,6 +3127,14 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :test-id-prefix="`composer-${group.anchor.id}`"
                                         :signatures="availableSignatures"
                                         :media-disabled="!groupAcceptsMedia(group)"
+                                        :media-disabled-reason-key="
+                                            groupMediaDisabledReasonKey(group)
+                                        "
+                                        :poll-available="replyPollAvailable(group)"
+                                        :poll-disabled-reason-key="
+                                            replyPollDisabledReasonKey(group)
+                                        "
+                                        @add-poll="addReplyPoll(group)"
                                         @import-started="
                                             onGroupImportStarted($event, group)
                                         "
@@ -2997,27 +3168,37 @@ const onDialogOpenChange = (value: boolean): void => {
                                             >
                                                 <IconCirclePlus class="size-4" />
                                                 <span data-single-line>{{
-                                                    $t('posts.form.thread.start')
+                                                    $t(startThreadKey(group.platform))
                                                 }}</span>
                                             </Button>
-                                            <Button
+                                            <Tooltip
                                                 v-else-if="
                                                     threadReplies(group).length <
-                                                    THREAD_MAX_REPLIES
+                                                    threadMaxReplies(group.platform)
                                                 "
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                class="ms-1 size-7 text-primary-text"
-                                                data-testid="thread-add-reply"
-                                                :aria-label="
-                                                    $t('posts.form.thread.add')
-                                                "
-                                                :disabled="cropUploading"
-                                                @click="addThreadReply(group)"
                                             >
-                                                <IconCirclePlus class="size-4" />
-                                            </Button>
+                                                <TooltipTrigger as-child>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        class="ms-1 size-7 text-primary-text"
+                                                        data-testid="thread-add-reply"
+                                                        :aria-label="
+                                                            $t('posts.form.thread.add')
+                                                        "
+                                                        :disabled="cropUploading"
+                                                        @click="addThreadReply(group)"
+                                                    >
+                                                        <IconCirclePlus class="size-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent
+                                                    data-testid="thread-add-reply-tooltip"
+                                                >
+                                                    {{ $t('posts.form.thread.add') }}
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </template>
                                         <CharacterCounter
                                             v-if="(groupHashtagsRemaining(group) ?? -1) >= 0"
@@ -3210,6 +3391,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                             groupDestination(group).content_type
                                         "
                                         :meta="groupDestination(group).meta"
+                                        :publish-config="
+                                            platformConfigs[group.anchor.id]
+                                                ?.publishConfig
+                                        "
                                         :active-post="threadActive"
                                     />
                                 </section>
@@ -3233,6 +3418,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                         previewDestination.content_type
                                     "
                                     :meta="previewDestination.meta"
+                                    :publish-config="
+                                        platformConfigs[previewAccount.id]
+                                            ?.publishConfig
+                                    "
                                     :active-post="threadActive"
                                 />
                             </div>

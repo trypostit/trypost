@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\Social\ContentLimitException;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -13,6 +15,8 @@ use App\Services\Social\XPublisher;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -109,4 +113,55 @@ test('the post content cap counts the text a reader sees, not the editor markup'
 })->with([
     'markup over the cap, text under it' => [str_repeat('<p>abcd</p>', 4000), true],
     'text over the cap' => [str_repeat('a', 25001), false],
+]);
+
+test('a poll question is capped at 280 characters even with long posts', function (ContentType $type, bool $passes) {
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    $validator = Validator::make(
+        ['content' => Str::repeat('a', 281)],
+        ['content' => [new ContentFitsPlatformLimits(collect([$account]), [[]], [$type->value])]],
+    );
+
+    expect($validator->passes())->toBe($passes);
+})->with([
+    'poll' => [ContentType::XPoll, false],
+    'post' => [ContentType::XPost, true],
+]);
+
+test('the publisher refuses a 281-character poll question', function () {
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'meta' => ['x_subscription_type' => 'Premium'],
+        'token_expires_at' => now()->addHours(2),
+    ]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create([
+        'user_id' => $this->user->id,
+        'content' => Str::repeat('a', 281),
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+    ]);
+    Http::fake();
+
+    expect(fn () => (new XPublisher)->publish($post))->toThrow(ContentLimitException::class);
+    Http::assertNothingSent();
+});
+
+test('the api and mcp previews report the limit of the post type on a long post account', function (ContentType $type, int $limit) {
+    $token = createApiTestToken();
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $token['workspace']->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'user_id' => $token['user']->id,
+        'content' => 'Tabs or spaces?',
+        'meta' => $type === ContentType::XPoll ? ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]] : [],
+    ]);
+
+    $this->withToken($token['plain_token'])->getJson(route('api.posts.preview', $post))
+        ->assertOk()
+        ->assertJsonPath('max_content_length', $limit);
+
+    TryPostServer::actingAs($token['user'])->tool(PreviewPostTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('max_content_length', $limit)->etc());
+})->with([
+    'poll' => [ContentType::XPoll, 280],
+    'post' => [ContentType::XPost, 25000],
 ]);

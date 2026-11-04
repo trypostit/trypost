@@ -688,3 +688,23 @@ test('an author who left the workspace hands the next occurrence to the workspac
 
     expect(nextOccurrence($post)->user_id)->toBe($this->user->id);
 });
+
+test('the next occurrence of a recurring x poll keeps its poll', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'timezone' => 'UTC']);
+    $poll = ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 60];
+    $post = recurringPost($x, $this->user, [
+        'content_type' => ContentType::XPoll,
+        'content' => 'Tabs or spaces?',
+        'scheduled_at' => now()->subMinute(),
+        'recurrence_interval' => 1,
+        'recurrence_frequency' => RecurrenceFrequency::Day,
+        'recurrence_remaining' => 2,
+        'meta' => ['poll' => $poll],
+    ]);
+
+    publishRecurringPost($post);
+
+    expect(nextOccurrence($post))
+        ->content_type->toBe(ContentType::XPoll)
+        ->meta->toEqual(['poll' => $poll]);
+});

@@ -8,7 +8,10 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class XPublicationCollector extends AbstractPublicationHistoryCollector
 {
@@ -29,10 +32,12 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 'pagination_token' => $cursor,
                 'exclude' => 'retweets,replies',
                 'tweet.fields' => 'created_at,attachments,note_tweet,referenced_tweets',
-                'expansions' => 'attachments.media_keys',
+                'expansions' => 'attachments.media_keys,attachments.poll_ids',
                 'media.fields' => 'media_key,type,preview_image_url,url,variants',
+                'poll.fields' => XPoll::LOOKUP_FIELDS,
             ],
         );
+        $polls = $response->collect('includes.polls')->keyBy('id');
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
         $crossedCutoff = false;
@@ -70,23 +75,19 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 fn (array $item): bool => filled(data_get($item, 'preview_image_url')) || filled(data_get($item, 'url')),
             );
 
+            $poll = transform($polls->get((string) data_get($row, 'attachments.poll_ids.0')), XPoll::result(...));
+
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,
                 publishedAt: $publishedAt,
-                contentType: $this->contentType($types->all(), $attachedMedia->count()),
+                contentType: $this->contentType($types->all(), $attachedMedia->count(), filled($poll)),
                 providerContentType: $types->implode(','),
                 permalink: filled($account->username) ? "https://x.com/{$account->username}/status/{$postId}" : null,
                 excerpt: data_get($row, 'note_tweet.text') ?: data_get($row, 'text'),
                 previewMetadata: is_array($preview)
                     ? ['thumbnail_url' => data_get($preview, 'preview_image_url') ?: data_get($preview, 'url')]
                     : null,
-                providerMetadata: $attachedMedia->isEmpty() ? null : ['media' => $attachedMedia
-                    ->map(fn (array $item): array => array_filter([
-                        'type' => data_get($item, 'type'),
-                        'url' => data_get($item, 'url'),
-                        'variants' => data_get($item, 'variants'),
-                    ], fn (mixed $value): bool => $value !== null))
-                    ->all()],
+                providerMetadata: $this->providerMetadata($attachedMedia, $poll),
             );
         }
 
@@ -102,9 +103,30 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         );
     }
 
-    /** @param list<mixed> $types */
-    private function contentType(array $types, int $mediaCount): PublicationContentType
+    /**
+     * What discovery keeps of a post: its media and its poll's result.
+     *
+     * @param  Collection<int, array<string, mixed>>  $media
+     * @param  array<string, mixed>|null  $poll
+     * @return array<string, mixed>|null
+     */
+    private function providerMetadata(Collection $media, ?array $poll): ?array
     {
+        $metadata = collect([
+            'media' => $media->map(fn (array $item): array => Arr::whereNotNull(Arr::only($item, ['type', 'url', 'variants'])))->all(),
+            'poll' => $poll,
+        ])->filter(fn (mixed $value): bool => filled($value));
+
+        return $metadata->isNotEmpty() ? $metadata->all() : null;
+    }
+
+    /** @param list<mixed> $types */
+    private function contentType(array $types, int $mediaCount, bool $hasPoll): PublicationContentType
+    {
+        if ($hasPoll) {
+            return PublicationContentType::Poll;
+        }
+
         if (in_array('video', $types, true) || in_array('animated_gif', $types, true)) {
             return PublicationContentType::Video;
         }

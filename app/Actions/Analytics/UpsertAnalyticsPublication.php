@@ -16,12 +16,21 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use DateTimeInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
 class UpsertAnalyticsPublication
 {
     private const int EXCERPT_MAX_BYTES = 65535;
+
+    /**
+     * `provider_metadata` keys only the metrics read writes (the polls of X
+     * thread replies, which discovery never sees).
+     *
+     * @var list<string>
+     */
+    private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
     public function __construct(private readonly ResolveAnalyticsAccountKey $accountKeys) {}
 
@@ -125,7 +134,7 @@ class UpsertAnalyticsPublication
                 $current->fill([
                     'permalink' => $discovered->permalink ?? $current->permalink,
                     'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
-                    'provider_metadata' => $discovered->provider_metadata ?? $current->provider_metadata,
+                    'provider_metadata' => self::providerMetadataAfterDiscovery($current, $discovered->provider_metadata),
                     'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
                     'excerpt' => $discovered->excerpt ?? $current->excerpt,
                     'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
@@ -297,7 +306,7 @@ class UpsertAnalyticsPublication
                 'permalink' => $permalink,
                 'excerpt' => $excerpt,
                 'preview_metadata' => $previewMetadata,
-                'provider_metadata' => $providerMetadata,
+                'provider_metadata' => self::providerMetadataAfterDiscovery($publication, $providerMetadata),
                 'account_display_name' => $identity->accountDisplayName,
                 'account_username' => $identity->accountUsername,
                 'account_avatar_url' => $identity->accountAvatarUrl,
@@ -311,5 +320,23 @@ class UpsertAnalyticsPublication
 
             return $publication->refresh();
         });
+    }
+
+    /**
+     * The `provider_metadata` after a discovery reported `$discovered`: what it
+     * reports replaces what was stored, so a key it no longer reports goes, while
+     * the keys only the metrics read writes stay. A discovery that reported
+     * nothing (`null`, not an empty list) keeps it all.
+     *
+     * @param  array<string, mixed>|null  $discovered
+     * @return array<string, mixed>|null
+     */
+    private static function providerMetadataAfterDiscovery(AnalyticsPublication $publication, ?array $discovered): ?array
+    {
+        if (is_null($discovered)) {
+            return $publication->provider_metadata;
+        }
+
+        return [...$discovered, ...Arr::only($publication->provider_metadata ?? [], self::METRICS_ONLY_PROVIDER_METADATA)];
     }
 }

@@ -12,6 +12,7 @@ use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFa
 use App\Services\Analytics\Collectors\Publications\TikTokPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\XPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\YouTubePublicationCollector;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -449,4 +450,57 @@ test('x counts toward the timeline cap only the rows it walked before the cutoff
     expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['inside'])
         ->and($page->providerRowCount)->toBe(1)
         ->and($page->nextCursor)->toBeNull();
+});
+
+test('x discovery keeps the poll of a post made on x', function () {
+    $createdAt = now()->subDay()->toIso8601ZuluString();
+    $endsAt = now()->addHour()->toIso8601ZuluString();
+    Http::fake(['*' => Http::response([
+        'data' => [
+            [
+                'id' => 'tweet-poll',
+                'text' => 'Should we refund?',
+                'created_at' => $createdAt,
+                'attachments' => ['poll_ids' => ['poll-1']],
+            ],
+            [
+                'id' => 'tweet-media',
+                'text' => 'A photo',
+                'created_at' => $createdAt,
+                'attachments' => ['media_keys' => ['media-1']],
+            ],
+            ['id' => 'tweet-plain', 'text' => 'Plain', 'created_at' => $createdAt],
+        ],
+        'includes' => [
+            'media' => [['media_key' => 'media-1', 'type' => 'photo', 'url' => 'https://cdn.example/tweet.jpg']],
+            'polls' => [[
+                'id' => 'poll-1',
+                'duration_minutes' => 1440,
+                'end_datetime' => $endsAt,
+                'voting_status' => 'open',
+                'options' => [
+                    ['position' => 2, 'label' => '❌ No refund', 'votes' => 1],
+                    ['position' => 1, 'label' => '✅ Refund', 'votes' => 3],
+                ],
+            ]],
+        ],
+    ])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X, 'username' => 'example']);
+
+    $page = app(XPublicationCollector::class)->page($account, null, now()->subYear()->toImmutable());
+
+    expect($page->publications[0]->contentType)->toBe(PublicationContentType::Poll)
+        ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Image)
+        ->and($page->publications[2]->contentType)->toBe(PublicationContentType::Text)
+        ->and($page->publications[0]->providerMetadata['poll'])->toEqual([
+            'options' => [['label' => '✅ Refund', 'votes' => 3], ['label' => '❌ No refund', 'votes' => 1]],
+            'voting_status' => 'open',
+            'end_datetime' => $endsAt,
+            'duration_minutes' => 1440,
+        ])
+        ->and($page->publications[1]->providerMetadata)->toHaveKey('media')->not->toHaveKey('poll')
+        ->and($page->publications[2]->providerMetadata)->toBeNull();
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request['expansions'] === 'attachments.media_keys,attachments.poll_ids'
+        && $request['poll.fields'] === XPoll::LOOKUP_FIELDS);
 });

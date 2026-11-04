@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Analytics\SyncTryPostPublication;
+use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationAvailability;
@@ -578,4 +579,118 @@ test('an instagram post deleted on the network is marked deleted and shown as de
         ->and(app(ReadPublicationAnalytics::class)->metricsFor($post->fresh()))
         ->toMatchArray(['reason' => 'deleted_on_network'])
         ->and(PostStatusRules::blocksDeletion($post->fresh()))->toBeFalse();
+});
+
+test('collecting x metrics stores the poll on the publication', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $response = fn (int $votes): array => [
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [
+                ['position' => 1, 'label' => 'Yes', 'votes' => $votes],
+                ['position' => 2, 'label' => 'No', 'votes' => 2],
+            ],
+        ]]],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($response(1))
+        ->push($response(5))
+        ->push(['data' => ['public_metrics' => ['impression_count' => 12, 'like_count' => 1]]])]);
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options'))->toEqual([
+        ['label' => 'Yes', 'votes' => 1],
+        ['label' => 'No', 'votes' => 2],
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
+
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
+});
+
+test('storing an x poll result leaves the publication updated_at alone', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $updatedAt = $publication->refresh()->updated_at;
+    $this->travel(1)->hours();
+
+    Http::fake(['*' => Http::response([
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 1], ['position' => 2, 'label' => 'No', 'votes' => 2]],
+        ]]],
+    ])]);
+    app()->call([new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true), 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->not->toBeNull()
+        ->and($publication->updated_at->equalTo($updatedAt))->toBeTrue();
+});
+
+test('an x poll published by TryPost keeps its result from the metrics read through a rediscovery', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => null])->save();
+    $poll = fn (int $votes): array => [
+        'options' => [['label' => 'Yes', 'votes' => $votes], ['label' => 'No', 'votes' => 2]],
+        'voting_status' => 'open',
+        'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+        'duration_minutes' => 1440,
+    ];
+
+    Http::fake(['*' => Http::response([
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 1], ['position' => 2, 'label' => 'No', 'votes' => 2]],
+        ]]],
+    ])]);
+    app()->call([new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true), 'handle']);
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(1)]);
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, new DiscoveredPublication(
+        providerPostId: $publication->remote_id,
+        publishedAt: $publication->provider_published_at->toImmutable(),
+        contentType: PublicationContentType::Text,
+        providerMetadata: ['poll' => $poll(4)],
+    ));
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4)]);
+});
+
+test('a rediscovery keeps the poll results of the thread replies, which only the metrics read sees, and drops what it no longer reports', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $poll = fn (int $votes): array => [
+        'options' => [['label' => 'Yes', 'votes' => $votes], ['label' => 'No', 'votes' => 2]],
+        'voting_status' => 'open',
+        'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+        'duration_minutes' => 1440,
+    ];
+    $threadPolls = [['reply' => 0, ...$poll(7)]];
+    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => ['poll' => $poll(1), 'thread_polls' => $threadPolls, 'media' => [['type' => 'photo', 'url' => 'https://pbs.twimg.com/media/old.jpg']]]])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, new DiscoveredPublication(
+        providerPostId: $publication->remote_id,
+        publishedAt: $publication->provider_published_at->toImmutable(),
+        contentType: PublicationContentType::Text,
+        providerMetadata: ['poll' => $poll(4)],
+    ));
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4), 'thread_polls' => $threadPolls]);
 });

@@ -351,6 +351,11 @@ export default {
         return dayjs.utc(date).tz(getUserTimezone());
     },
 
+    /** Whether a UTC instant is behind now, compared as instants (the zone does not matter). */
+    hasPassed(date: string) {
+        return dayjs.utc(date).isBefore(dayjs());
+    },
+
     diffForHumans(date: string) {
         return dayjs().to(dayjs.utc(date));
     },

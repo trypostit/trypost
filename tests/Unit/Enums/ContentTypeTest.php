@@ -13,6 +13,7 @@ test('content type has correct labels', function () {
     expect(ContentType::LinkedInPost->label())->toBe('Post');
     expect(ContentType::YouTubeShort->label())->toBe('Short');
     expect(ContentType::XPost->label())->toBe('Post');
+    expect(ContentType::XPoll->label())->toBe('Poll');
     expect(ContentType::TikTokVideo->label())->toBe('Video');
     expect(ContentType::PinterestPin->label())->toBe('Pin');
     expect(ContentType::PinterestVideoPin->label())->toBe('Video Pin');
@@ -104,6 +105,7 @@ test('content type maps to correct platform', function () {
     expect(ContentType::TikTokVideo->platform())->toBe(Platform::TikTok);
     expect(ContentType::YouTubeShort->platform())->toBe(Platform::YouTube);
     expect(ContentType::XPost->platform())->toBe(Platform::X);
+    expect(ContentType::XPoll->platform())->toBe(Platform::X);
     expect(ContentType::ThreadsPost->platform())->toBe(Platform::Threads);
     expect(ContentType::PinterestPin->platform())->toBe(Platform::Pinterest);
     expect(ContentType::BlueskyPost->platform())->toBe(Platform::Bluesky);
@@ -130,6 +132,7 @@ test('content type has correct max media count', function () {
     expect(ContentType::InstagramReel->maxMediaCount())->toBe(1);
     expect(ContentType::LinkedInPost->maxMediaCount())->toBe(10);
     expect(ContentType::XPost->maxMediaCount())->toBe(4);
+    expect(ContentType::XPoll->maxMediaCount())->toBe(0);
     expect(ContentType::PinterestCarousel->maxMediaCount())->toBe(5);
     expect(ContentType::BlueskyPost->maxMediaCount())->toBe(4);
 });
@@ -141,6 +144,7 @@ test('content type supports video correctly', function () {
     expect(ContentType::YouTubeShort->supportsVideo())->toBeTrue();
     expect(ContentType::LinkedInPost->supportsVideo())->toBeTrue();
     expect(ContentType::PinterestPin->supportsVideo())->toBeFalse();
+    expect(ContentType::XPoll->supportsVideo())->toBeFalse();
 });
 
 test('content type supports image correctly', function () {
@@ -153,6 +157,7 @@ test('content type supports image correctly', function () {
     expect(ContentType::FacebookStory->autoFitsImage())->toBeTrue();
     expect(ContentType::TikTokVideo->supportsImage())->toBeFalse();
     expect(ContentType::YouTubeShort->supportsImage())->toBeFalse();
+    expect(ContentType::XPoll->supportsImage())->toBeFalse();
 });
 
 test('content type supports mixed media correctly', function () {
@@ -504,3 +509,56 @@ test('video aspect ratio bounds are the ranges each network documents as accepte
     'x' => [ContentType::XPost, null],
     'bluesky' => [ContentType::BlueskyPost, null],
 ]);
+
+test('a post type that takes no media advertises no media capability', function (ContentType $type) {
+    expect($type->maxMediaCount())->toBe(0)
+        ->and($type->acceptsGif())->toBeFalse()
+        ->and($type->maxImageBytes())->toBeNull()
+        ->and($type->maxVideoBytes())->toBeNull()
+        ->and($type->maxDocumentBytes())->toBeNull()
+        ->and($type->maxVideoDurationSec())->toBeNull()
+        ->and($type->preferredImageDimensions())->toBe(ContentType::ThreadsGhostPost->preferredImageDimensions());
+})->with([
+    'x poll' => [ContentType::XPoll],
+    'threads ghost post' => [ContentType::ThreadsGhostPost],
+]);
+
+test('a post type is compatible with the platforms it can go to', function () {
+    expect(ContentType::InstagramReel->isCompatibleWith(Platform::Instagram))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::InstagramFacebook))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::Facebook))->toBeFalse()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::X))->toBeTrue()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
+});
+
+test('a linkedin comment is a reply type no post can take', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::forPlatform(Platform::LinkedInPage))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedIn))->toBeFalse()
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedInPage))->toBeFalse()
+        ->and(ContentType::LinkedInComment->maxMediaCount())->toBe(0)
+        ->and(ContentType::LinkedInComment->supportsImage())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
+});
+
+test('an instagram account connected through facebook gets the same post types as instagram', function () {
+    expect(ContentType::forPlatform(Platform::InstagramFacebook))->toBe(ContentType::forPlatform(Platform::Instagram))
+        ->and(array_values(ContentType::forPlatform(Platform::Instagram)))->toBe([ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::InstagramStory]);
+});
+
+test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
+    if (! $type->supportsImage()) {
+        expect($type->supportsAltText())->toBeFalse();
+    }
+
+    if (! $type->supportsVideo()) {
+        expect($type->acceptsMov())->toBeFalse();
+    }
+
+    expect($type->toListingArray())->toMatchArray([
+        'accepts_mov' => $type->acceptsMov(),
+        'supports_alt_text' => $type->supportsAltText(),
+    ]);
+})->with(ContentType::cases());

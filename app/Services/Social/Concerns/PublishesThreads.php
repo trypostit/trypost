@@ -21,7 +21,7 @@ trait PublishesThreads
      * part (ThreadProgress::failureMessage()).
      *
      * @param  callable(): array{id: string, url?: ?string, uri?: string, cid?: string}  $postRoot
-     * @param  callable(string, Collection<int, MediaItem>, array<string, mixed>, array<string, mixed>): array{id: string, url?: ?string, uri?: string, cid?: string}  $postReply
+     * @param  callable(string, Collection<int, MediaItem>, array<string, mixed>, array<string, mixed>, ?array<string, mixed>): array{id: string, url?: ?string, uri?: string, cid?: string}  $postReply  the last argument is the reply's poll (X only)
      * @param  (callable(array<string, mixed>): void)|null  $afterThread
      * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
      */
@@ -31,12 +31,13 @@ trait PublishesThreads
             fn (array $reply): array => [
                 'text' => app(ContentSanitizer::class)->sanitize($reply['text'], $post->platform),
                 'media' => ThreadReplies::mediaItems($reply),
+                'poll' => data_get($reply, 'poll'),
             ],
             ThreadReplies::supports($post->platform) ? ThreadReplies::of($post->meta) : [],
         );
         $hashes = [
             ThreadProgress::rootHash($post->error_context) ?? $rootHash,
-            ...array_map(fn (array $reply): string => ThreadProgress::hash($reply['text'], $reply['media']->map(fn (MediaItem $item): string => $item->id)->all()), $replies),
+            ...array_map(fn (array $reply): string => ThreadProgress::hash($reply['text'], $reply['media']->map(fn (MediaItem $item): string => $item->id)->all(), $reply['poll']), $replies),
         ];
         $posted = ThreadProgress::resumable($post->error_context, $hashes);
 
@@ -55,7 +56,7 @@ trait PublishesThreads
                 continue;
             }
 
-            $posted[] = self::threadSegment($hashes[$position], $postReply($reply['text'], $reply['media'], $posted[$position - 1], $posted[0]));
+            $posted[] = self::threadSegment($hashes[$position], $postReply($reply['text'], $reply['media'], $posted[$position - 1], $posted[0], $reply['poll']));
 
             ThreadProgress::remember($post, $posted);
         }

@@ -18,6 +18,8 @@ import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
+import PostPollResults from '@/components/publish/PostPollResults.vue';
+import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,11 +40,12 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
+import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';
-import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
+import { postPollResults } from '@/lib/xPoll';
 import type { MediaItem } from '@/types/media';
-import { THREAD_PLATFORMS } from '@/types/network-options';
 import { Platform } from '@/types/platform';
 import { PostOrigin, PostStatus, PublishStatus } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
@@ -156,6 +159,8 @@ const metricsDetail = computed(() => {
         : null;
 });
 
+const pollResults = computed(() => postPollResults(current.value));
+
 const moment = computed(() => {
     if (current.value.published_at) {
         return {
@@ -202,18 +207,12 @@ watch(
     },
 );
 
-const threadReplies = computed((): ThreadReply[] => {
-    return channel.value && THREAD_PLATFORMS.includes(channel.value.platform)
-        ? threadRepliesOf(current.value.meta ?? {}).filter(
-              (reply) => reply.text.trim() !== '' || reply.media.length > 0,
-          )
-        : [];
-});
+/** The post's thread, each post with its own text, media and poll. */
+const thread = computed(() => postThreadOf(current.value));
 
 const showsThread = computed(
-    () =>
-        threadReplies.value.length > 0 &&
-        Boolean(channel.value?.social_account),
+    (): boolean =>
+        filled(thread.value) && filled(channel.value?.social_account),
 );
 
 const lightboxOpen = ref(false);
@@ -417,10 +416,18 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     <ThreadView
                         v-if="showsThread && channel?.social_account"
                         :account="channel.social_account"
-                        :posts="[{ text: content, media }, ...threadReplies]"
+                        :posts="thread"
                         :test-key="currentKey"
                         @open-media="openMediaPreview"
-                    />
+                    >
+                        <template #post-end="{ index }">
+                            <PostPollResults
+                                v-if="thread[index]?.poll"
+                                :poll="thread[index].poll"
+                                :test-id="`post-details-poll${thread[index].pollTestSuffix}`"
+                            />
+                        </template>
+                    </ThreadView>
                     <template v-else>
                     <div class="flex flex-col items-start gap-1">
                         <p
@@ -459,6 +466,14 @@ const siblingMoment = (sibling: PostCard): string | null => {
                         :post-id="current.id"
                         :labels="current.labels ?? []"
                         :test-key="`details-${currentKey}`"
+                    />
+
+                    <PostPollResultsList
+                        v-if="!showsThread"
+                        class="-mx-6"
+                        :poll="pollResults.poll"
+                        :thread-polls="pollResults.threadPolls"
+                        test-id="post-details-poll"
                     />
 
                     <PostMetricsBand

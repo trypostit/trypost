@@ -238,8 +238,9 @@ const hasActions = computed(
             <PreviewMedia
                 v-if="!concealed"
                 :media="media"
+                :class="{ 'px-4': isStacked && threadPosition }"
                 :layout="mediaLayout"
-                :bleed="isStacked"
+                :bleed="isStacked && !threadPosition"
                 :mute-badge="muteBadge"
             />
             <div
@@ -317,6 +318,9 @@ const hasActions = computed(
                         stroke-width="1.75"
                     />
                 </span>
+            </div>
+            <div v-if="$slots['after-actions']" :class="{ 'px-4': isStacked }">
+                <slot name="after-actions" />
             </div>
         </div>
     </article>

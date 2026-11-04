@@ -1,24 +1,39 @@
 <script setup lang="ts">
 import { IconX } from '@tabler/icons-vue';
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
-import { newThreadReply, type ThreadReply } from '@/lib/threadReplies';
+import { filled } from '@/lib/helpers';
+import { isShiftEnter } from '@/lib/keyboard';
+import {
+    isBlankThreadReply,
+    insertThreadReply,
+    type ThreadReply,
+} from '@/lib/threadReplies';
 
 const props = withDefaults(
     defineProps<{
         platform: string;
         limit: number;
+        /** A reply poll's question cap, kept even on an account with long posts. */
+        pollLimit?: number;
         max?: number;
+        comment?: boolean;
         disabled?: boolean;
         errors?: Record<number, string>;
         /** Id of the element the active post's toolbar is teleported into. */
         toolbarTarget?: string;
     }>(),
-    { max: Infinity, disabled: false, errors: () => ({}) },
+    {
+        pollLimit: Infinity,
+        max: Infinity,
+        comment: false,
+        disabled: false,
+        errors: () => ({}),
+    },
 );
 
 const replies = defineModel<ThreadReply[]>({ required: true });
@@ -35,12 +50,17 @@ const activateReply = (index: number): void => {
 const { contentFor } = useXLinkDefuser();
 const editor = ref<HTMLTextAreaElement[]>([]);
 
-const remaining = (reply: ThreadReply): number =>
-    props.limit -
-    displayLength(contentFor(reply.text, props.platform));
+/** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
+const limitFor = (reply: ThreadReply): number => {
+    if (filled(reply.poll)) {
+        return Math.min(props.limit, props.pollLimit);
+    }
 
-const isEmpty = (reply: ThreadReply | undefined): boolean =>
-    reply !== undefined && reply.text === '' && reply.media.length === 0;
+    return props.limit;
+};
+
+const remaining = (reply: ThreadReply): number =>
+    limitFor(reply) - displayLength(contentFor(reply.text, props.platform));
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>
@@ -63,6 +83,24 @@ const removeReply = (index: number): void => {
         active.value = Math.min(index, replies.value.length - 1);
     }
 };
+
+const canAddReply = computed(() => replies.value.length < props.max);
+
+const copyKeys = computed(() => {
+    if (props.comment) {
+        return {
+            placeholder: 'posts.form.thread.comment_placeholder',
+            label: 'posts.form.thread.comment_label',
+            remove: 'posts.form.thread.remove_comment',
+        };
+    }
+
+    return {
+        placeholder: 'posts.form.thread.reply_placeholder',
+        label: 'posts.form.thread.reply_label',
+        remove: 'posts.form.thread.remove',
+    };
+});
 
 /** Shift+Enter opens the next post right below; Backspace on an empty post folds it back into the one above. */
 const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
@@ -88,18 +126,9 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
         return;
     }
 
-    if (event.key === 'Enter' && event.shiftKey && !event.isComposing) {
+    if (isShiftEnter(event) && canAddReply.value) {
         event.preventDefault();
-
-        if (replies.value.length >= props.max) {
-            return;
-        }
-
-        replies.value = [
-            ...replies.value.slice(0, index + 1),
-            newThreadReply(),
-            ...replies.value.slice(index + 1),
-        ];
+        replies.value = insertThreadReply(replies.value, index + 1);
         active.value = index + 1;
 
         return;
@@ -107,7 +136,7 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
 
     if (
         event.key === 'Backspace' &&
-        isEmpty(replies.value[index]) &&
+        isBlankThreadReply(replies.value[index]) &&
         !event.repeat
     ) {
         event.preventDefault();
@@ -149,7 +178,7 @@ watch(
             <span
                 v-if="index < replies.length - 1"
                 aria-hidden="true"
-                class="absolute start-[11px] top-7 -bottom-3 w-0.5 rounded-full bg-border"
+                class="absolute start-[11px] top-[26px] -bottom-[14px] w-0.5 rounded-full bg-border"
                 :data-testid="`thread-connector-${index}`"
             />
             <PlatformLogo :platform="platform" :size="24" class="shrink-0" />
@@ -159,11 +188,9 @@ watch(
                     ref="editor"
                     :value="reply.text"
                     :data-testid="`thread-reply-${index}`"
-                    :placeholder="$t('posts.form.thread.reply_placeholder')"
+                    :placeholder="$t(copyKeys.placeholder)"
                     :aria-label="
-                        $t('posts.form.thread.reply_label', {
-                            number: String(index + 2),
-                        })
+                        $t(copyKeys.label, { number: String(index + 2) })
                     "
                     :aria-invalid="
                         remaining(reply) < 0 || errors[index] ? true : undefined
@@ -186,7 +213,7 @@ watch(
                         reply.text ||
                         (reply.media.length
                             ? ''
-                            : $t('posts.form.thread.reply_placeholder'))
+                            : $t(copyKeys.placeholder))
                     }}
                 </button>
                 <slot name="media" :reply="reply" :index="index" />
@@ -206,7 +233,7 @@ watch(
             <button
                 type="button"
                 :data-testid="`thread-reply-remove-${index}`"
-                :aria-label="$t('posts.form.thread.remove')"
+                :aria-label="$t(copyKeys.remove)"
                 :disabled="disabled"
                 class="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent"
                 @click="removeReply(index)"

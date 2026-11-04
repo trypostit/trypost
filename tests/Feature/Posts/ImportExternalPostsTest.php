@@ -21,6 +21,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Support\Social\ThreadProgress;
+use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -798,4 +799,66 @@ test('a caption with a less-than sign links to its own publication', function ()
 
     expect(Post::query()->imported()->count())->toBe(0)
         ->and($tryPost->fresh()->platform_post_id)->toBe('media-1');
+});
+
+test('imports an x poll made on x as a poll', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    externalPublication($account, [
+        'remote_id' => 'x-poll-1',
+        'excerpt' => 'Should we refund?',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => '✅ Refund', 'votes' => 3], ['label' => '❌ No refund', 'votes' => 1]],
+            'voting_status' => 'open',
+            'end_datetime' => now()->addHour()->toIso8601ZuluString(),
+            'duration_minutes' => 1440,
+        ]],
+    ]);
+    externalPublication($account, ['remote_id' => 'x-plain-1', 'excerpt' => 'Plain', 'content_type' => PublicationContentType::Text]);
+
+    ImportExternalPosts::execute($account);
+
+    $poll = Post::query()->imported()->where('platform_post_id', 'x-poll-1')->sole();
+    $plain = Post::query()->imported()->where('platform_post_id', 'x-plain-1')->sole();
+
+    expect($poll->content_type)->toBe(ContentType::XPoll)
+        ->and($poll->meta)->toEqual(['poll' => ['options' => ['✅ Refund', '❌ No refund'], 'duration_minutes' => 1440]])
+        ->and($plain->content_type)->toBe(ContentType::XPost)
+        ->and($plain->meta)->toBe([]);
+});
+
+test('an imported x poll without a length gets the default one', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    externalPublication($account, [
+        'remote_id' => 'x-poll-3',
+        'excerpt' => 'Tabs or spaces?',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => 'Tabs', 'votes' => 0], ['label' => 'Spaces', 'votes' => 0]],
+            'voting_status' => 'open',
+            'end_datetime' => null,
+            'duration_minutes' => null,
+        ]],
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    expect(Post::query()->imported()->where('platform_post_id', 'x-poll-3')->sole()->meta)
+        ->toEqual(['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => XPoll::DEFAULT_DURATION]]);
+});
+
+test('a poll published through trypost is linked, not imported again', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $tryPost = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'x-poll-2']);
+    $publication = externalPublication($account, [
+        'remote_id' => 'x-poll-2',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['poll' => ['options' => [['label' => 'Yes', 'votes' => 3], ['label' => 'No', 'votes' => 1]], 'voting_status' => 'open', 'duration_minutes' => 1440]],
+    ]);
+    $count = Post::query()->count();
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->count())->toBe($count)
+        ->and(Post::query()->where('content_type', ContentType::XPoll)->sole()->id)->toBe($tryPost->id)
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });

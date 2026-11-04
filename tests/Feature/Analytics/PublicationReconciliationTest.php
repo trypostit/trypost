@@ -146,6 +146,26 @@ test('TikTok public video id replaces a post imported from that video with the T
         ->and(Post::query()->count())->toBe(1);
 });
 
+test('reconciling a remote id keeps the reply poll results the metrics read stored, next to the discovered poll', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'provisional']);
+    $provisional = app(SyncTryPostPublication::class)->handle($post);
+    $threadPolls = [['reply' => 0, 'options' => [['label' => 'Yes', 'votes' => 5]], 'voting_status' => 'open']];
+    $provisional->forceFill(['provider_metadata' => ['thread_polls' => $threadPolls]])->save();
+    $poll = ['options' => [['label' => 'Tabs', 'votes' => 3]], 'voting_status' => 'open'];
+    app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: '987654321',
+        publishedAt: CarbonImmutable::now('UTC')->subDay(),
+        contentType: PublicationContentType::Poll,
+        providerMetadata: ['poll' => $poll],
+    ));
+
+    app(UpsertAnalyticsPublication::class)->reconcileRemoteId($provisional, '987654321');
+
+    expect(AnalyticsPublication::query()->count())->toBe(1)
+        ->and($provisional->fresh()->provider_metadata)->toEqual(['poll' => $poll, 'thread_polls' => $threadPolls]);
+});
+
 test('TikTok public id owned by another TryPost post is still refused', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
     $targets = collect(['v_pub_provisional', '123456789'])->map(fn (string $remoteId): Post => Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
@@ -282,6 +302,7 @@ test('a network that does not report the type keeps the type TryPost published',
 })->with([
     'TikTok photo' => [Platform::TikTok, ContentType::TikTokPhoto, PublicationContentType::Carousel],
     'YouTube Short' => [Platform::YouTube, ContentType::YouTubeShort, PublicationContentType::Short],
+    'X poll' => [Platform::X, ContentType::XPoll, PublicationContentType::Poll],
 ]);
 
 test('a network that does not report the type stores its default on a new publication', function () {

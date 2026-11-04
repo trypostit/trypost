@@ -6,11 +6,13 @@ import {
     IconCirclePlay,
     IconEdit,
     IconExternalLink,
+    IconGhost2,
     IconMessageCircle,
     IconMessageCircleFilled,
     IconGripVertical,
     IconClockPause,
     IconHourglass,
+    IconListDetails,
     IconLoader2,
     IconPencil,
     IconPlayerPlayFilled,
@@ -33,9 +35,11 @@ import AddToQueueButton from '@/components/publish/AddToQueueButton.vue';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
+import PostCardThread from '@/components/publish/PostCardThread.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
+import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
 import { Badge } from '@/components/ui/badge';
@@ -69,10 +73,13 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
 import { videoFrameUrl } from '@/lib/videoFrame';
+import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
 import {
     PostOrigin,
@@ -211,6 +218,17 @@ const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
 );
 
+/** What a post without a time shows: the queue slot its approval request asks for, else "No time". */
+const noTimeKey = computed((): string => {
+    const slot = props.post.approval_queue_position;
+
+    if (isPending.value && slot) {
+        return `posts.publish.pending_slot.${slot}`;
+    }
+
+    return 'posts.publish.no_time';
+});
+
 const isEditable = computed(
     () =>
         props.post.status === PostStatus.Draft ||
@@ -255,6 +273,8 @@ const CONTENT_TYPE_ICONS: Record<string, Component> = {
     facebook_story: IconCircleDashedPlus,
     instagram_reel: IconCirclePlay,
     facebook_reel: IconCirclePlay,
+    threads_ghost_post: IconGhost2,
+    x_poll: IconListDetails,
 };
 
 const contentTypeIcon = computed(() =>
@@ -284,10 +304,30 @@ const metricsDetail = computed(() => {
     return detail && detail.available ? detail : null;
 });
 
-const hasMetrics = computed(() =>
-    metricsDetail.value
-        ? compactPublicationMetrics(metricsDetail.value).length > 0
-        : false,
+const hasMetrics = computed(
+    (): boolean =>
+        filled(metricsDetail.value) &&
+        filled(compactPublicationMetrics(metricsDetail.value)),
+);
+
+/** The publication's results (votes and metrics) show on the Sent tab only. */
+const sentDetail = computed(() => {
+    if (props.tab !== 'sent') {
+        return null;
+    }
+
+    return metricsDetail.value;
+});
+
+/** The post's thread, each post with its own text, media and poll. */
+const thread = computed(() => postThreadOf(props.post));
+
+/** The post's polls in every tab, with no votes until X has been read for them. */
+const polls = computed(() => postPollResults(props.post));
+
+/** On the Approvals tab every card is a request, so the badge would say nothing. */
+const showsApprovalBadge = computed(
+    (): boolean => isPending.value && props.tab !== 'approvals',
 );
 
 const showStatus = computed(
@@ -426,12 +466,17 @@ defineExpose({ openDetails });
                 >
                     {{ formatTime(time) }}
                 </time>
-                <span v-else class="text-sm font-medium text-muted-foreground">
-                    {{ $t('posts.publish.no_time') }}
+                <span
+                    v-else
+                    class="text-sm font-medium whitespace-nowrap text-muted-foreground"
+                    data-single-line
+                    :data-testid="`post-no-time-${post.id}`"
+                >
+                    {{ $t(noTimeKey) }}
                 </span>
             </span>
             <Badge
-                v-if="isPending"
+                v-if="showsApprovalBadge"
                 variant="warning"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                 :data-testid="`post-approval-badge-${post.id}`"
@@ -620,7 +665,16 @@ defineExpose({ openDetails });
                                 {{ $t(contentTypeKey) }}
                             </Badge>
                         </div>
+                        <PostCardThread
+                            v-if="filled(thread) && account"
+                            :account="account"
+                            :name="account.display_label"
+                            :posts="thread"
+                            :poll-test-id="`post-poll-${post.id}`"
+                            :test-key="post.id"
+                        />
                         <p
+                            v-else
                             class="line-clamp-4 text-sm whitespace-pre-line text-foreground"
                             :class="{
                                 'text-muted-foreground': !preview,
@@ -630,7 +684,7 @@ defineExpose({ openDetails });
                         </p>
                     </div>
                     <div
-                        v-if="thumbnails.length"
+                        v-if="thumbnails.length && blank(thread)"
                         class="relative z-10 grid w-24 shrink-0 content-start gap-2"
                         :class="[
                             thumbnails.length > 1 ? 'grid-cols-2' : '',
@@ -706,9 +760,16 @@ defineExpose({ openDetails });
                     :test-key="post.id"
                 />
 
+                <PostPollResultsList
+                    v-if="blank(thread)"
+                    :poll="polls.poll"
+                    :thread-polls="polls.threadPolls"
+                    :test-id="`post-poll-${post.id}`"
+                />
+
                 <PostMetricsBand
-                    v-if="tab === 'sent' && metricsDetail && hasMetrics"
-                    :detail="metricsDetail"
+                    v-if="sentDetail && hasMetrics"
+                    :detail="sentDetail"
                     :channel-id="account?.id ?? null"
                     :metrics-test-id="`post-metrics-${post.id}`"
                     :insights-test-id="`post-insights-${post.id}`"

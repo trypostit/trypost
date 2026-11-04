@@ -1,15 +1,24 @@
+import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
+import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import {
+    THREAD_MAX_REPLIES,
+    THREAD_REPLY_CONTENT_TYPES,
+} from '@/types/network-options';
+import type { XPoll } from '@/types/x';
 
 /**
  * One post of a thread after the first. `key` only lives in the composer: it
  * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it.
+ * above it, and the server drops it. On X a reply may carry a poll instead of
+ * media, its text being the question.
  */
 export type ThreadReply = {
     key: string;
     text: string;
     media: MediaItem[];
+    poll?: Partial<XPoll>;
 };
 
 export const newThreadReply = (): ThreadReply => ({
@@ -18,31 +27,99 @@ export const newThreadReply = (): ThreadReply => ({
     media: [],
 });
 
-/** Replies stored as plain strings are text-only replies. */
+export const insertThreadReply = (
+    replies: ThreadReply[],
+    position: number,
+): ThreadReply[] => replies.toSpliced(position, 0, newThreadReply());
+
+/** A reply with nothing in it yet: no text, no media and no poll. */
+export const isBlankThreadReply = ({
+    text,
+    media,
+    poll,
+}: ThreadReply): boolean =>
+    isEmpty(text) && blank(media) && blank(poll);
+
+/** A reply as the server stores it; `key` only exists in a draft the composer saved. */
+type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
+
+/** A stored reply as the composer edits it, keyed by its position when it has no key yet. */
+const fromStored = (
+    { key, text, media, poll }: StoredThreadReply,
+    index: number,
+): ThreadReply =>
+    withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll);
+
+/** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
-): ThreadReply[] =>
-    Array.isArray(meta?.thread_replies)
-        ? meta.thread_replies.map(
-              (reply: unknown, index: number): ThreadReply => {
-                  const stored =
-                      reply !== null && typeof reply === 'object'
-                          ? (reply as Partial<ThreadReply>)
-                          : {};
+): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
 
-                  return {
-                      key:
-                          typeof stored.key === 'string'
-                              ? stored.key
-                              : `stored-${index}`,
-                      text:
-                          typeof reply === 'string'
-                              ? reply
-                              : typeof stored.text === 'string'
-                                ? stored.text
-                                : '',
-                      media: Array.isArray(stored.media) ? stored.media : [],
-                  };
-              },
-          )
-        : [];
+/** The reply as a poll, which carries no media, or as a plain post without one. */
+export const withReplyPoll = (
+    { key, text, media }: ThreadReply,
+    poll: Partial<XPoll> | undefined,
+): ThreadReply => {
+    if (blank(poll)) {
+        return { key, text, media };
+    }
+
+    return { key, text, media: [], poll };
+};
+
+/**
+ * The error a reply shows under its text, from the page's validation errors
+ * under `prefix` (`meta.thread_replies`, or `destinations.{n}.meta.thread_replies`
+ * in a batch): the reply's own, its text's or its media's. Its poll's errors
+ * show under the poll.
+ */
+export const replyErrorOf = (
+    errors: Record<string, string>,
+    prefix: string,
+    index: number,
+): string | undefined =>
+    errors[`${prefix}.${index}`] ??
+    errors[`${prefix}.${index}.text`] ??
+    errors[`${prefix}.${index}.media`];
+
+/** The post type a reply publishes as: a poll, or its network's reply type. */
+export const threadReplyContentType = (
+    platform: string,
+    reply: ThreadReply,
+): string | undefined => {
+    if (filled(reply.poll)) {
+        return ContentType.XPoll;
+    }
+
+    return THREAD_REPLY_CONTENT_TYPES[platform];
+};
+
+export const threadMaxReplies = (platform: string): number =>
+    THREAD_MAX_REPLIES[platform] ?? 0;
+
+export const repliesAreComments = (platform: string): boolean =>
+    THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;
+
+export const replyTooLongKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_too_long';
+    }
+
+    return 'posts.form.thread.reply_too_long';
+};
+
+export const startThreadKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.add_comment';
+    }
+
+    return 'posts.form.thread.start';
+};
+
+export const replyEmptyKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_empty';
+    }
+
+    return 'posts.form.thread.reply_empty';
+};

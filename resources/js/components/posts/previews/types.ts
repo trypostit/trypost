@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 
 import type { MediaItem } from '@/types/media';
+import type { PublishConfig } from '@/types/platform';
 import type { VerifiedBadge } from '@/types/social-account';
 
 export interface PreviewAccount {
@@ -21,6 +22,8 @@ export interface PreviewProps {
     contentType?: string;
     meta?: Record<string, any>;
     postedAt?: string | null;
+    /** The account's `publishConfig` (`Platform::publishConfig()`), e.g. X's poll limits. */
+    publishConfig?: PublishConfig | null;
 }
 
 export interface PreviewAction {

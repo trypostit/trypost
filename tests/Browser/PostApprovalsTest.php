@@ -99,7 +99,8 @@ test('an approver adds a queue request to the queue and rejects another', functi
     waitForApprovalsTestId($page, "post-approve-{$queued->id}");
 
     $page->assertSeeIn('@publish-tab-count-approvals', '2')
-        ->assertVisible("@post-approval-badge-{$queued->id}")
+        ->assertMissing("@post-approval-badge-{$queued->id}")
+        ->assertSeeIn("@post-no-time-{$queued->id}", 'Next slot')
         ->assertSeeIn("@post-approve-{$queued->id}", 'Add to queue')
         ->assertSeeIn("@post-approve-{$timed->id}", 'Schedule')
         ->click("@post-approve-{$queued->id}");
@@ -212,4 +213,16 @@ test('a new time for a late request is typed in the channel zone', function () {
     expect($late->fresh()->scheduled_at->toIso8601String())
         ->toBe(CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo')->utc()->toIso8601String());
     $page->assertNoJavaScriptErrors();
+});
+
+test('a request for the top of the queue says so where the time goes', function () {
+    [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
+    $top = approvalsBrowserRequest($workspace, $requester, $channel, ['queue' => 'top']);
+    $this->actingAs($owner);
+
+    $page = visit(route('app.posts.index', ['tab' => 'approvals']));
+    waitFor($page, "@post-no-time-{$top->id}");
+
+    $page->assertSeeIn("@post-no-time-{$top->id}", __('posts.publish.pending_slot.top'))
+        ->assertNoJavaScriptErrors();
 });
