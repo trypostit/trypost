@@ -19,6 +19,9 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
     /** @var list<string> */
     protected array $refusals = [];
 
+    /** Whether an optional read was refused with Graph's "object does not exist" answer. */
+    protected bool $refusedMissingObject = false;
+
     abstract protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation;
 
     abstract protected function graphBaseUrl(SocialAccount $account): string;
@@ -31,10 +34,14 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
 
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
+        $this->refusedMissingObject = false;
+
         try {
             return $this->read($publication, $date);
         } catch (AnalyticsCollectionException $exception) {
-            if ($exception->category === 'malformed' && $this->deletedOnNetwork($publication)) {
+            if ($exception->category === 'malformed'
+                && ($exception->missingObject || $this->refusedMissingObject)
+                && $this->deletedOnNetwork($publication)) {
                 throw AnalyticsCollectionException::deletedOnNetwork("{$publication->platform->value} no longer returns this post.");
             }
 
@@ -102,6 +109,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
             }
 
             $this->refusals[] = $exception->category;
+            $this->refusedMissingObject = $this->refusedMissingObject || $exception->missingObject;
             Log::info('analytics.meta_metric_rejected', [
                 'platform' => $account->platform->value,
                 'path' => parse_url($url, PHP_URL_PATH),

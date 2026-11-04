@@ -30,6 +30,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Pest\Expectation;
 
 test('the metric factory includes every v1 platform and excludes v2 and messaging platforms', function (Platform $platform, string $collector) {
     expect(app(PublicationMetricsCollectorFactory::class)->for($platform))->toBeInstanceOf($collector);
@@ -256,7 +257,7 @@ test('an optional Instagram Reel insight rate limit stays retryable', function (
 
     expect(fn () => app(InstagramPublicationMetricsCollector::class)
         ->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('rate_limited'));
+        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('rate_limited'));
 
     Http::assertSentCount(2);
 });
@@ -345,7 +346,7 @@ test('Meta rate limiting in HTTP 400 is classified as retryable', function () {
     ]);
 
     expect(fn () => app(InstagramPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('rate_limited'));
+        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('rate_limited'));
 });
 
 test('Meta publication metrics classify missing permission on HTTP 400', function () {
@@ -360,7 +361,7 @@ test('Meta publication metrics classify missing permission on HTTP 400', functio
 
     expect(fn () => app(InstagramPublicationMetricsCollector::class)
         ->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
+        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission'));
 });
 
 test('TikTok resolves a TryPost publish id before collecting the public video', function () {
@@ -526,7 +527,7 @@ test('a rejected token refresh is classified as an authentication failure', func
 
     expect(fn () => app(YouTubePublicationMetricsCollector::class)
         ->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('authentication'));
+        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('authentication'));
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/videos')
         || str_contains($request->url(), '/reports'));
 });
@@ -690,7 +691,7 @@ test('facebook reports permission and logs the Graph code when every read is ref
 
     expect(fn () => app(FacebookPublicationMetricsCollector::class)
         ->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
+        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission'));
     Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'analytics.meta_metric_rejected'
         && data_get($context, 'metric') === 'post_clicks'
         && str_contains((string) data_get($context, 'reason'), 'Graph code 100'));
@@ -984,7 +985,7 @@ test('a Meta post the network no longer returns is reported deleted while the ac
         '*' => Http::response(metaMissingObject('17897891718416700'), 400),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeTrue());
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeTrue());
 })->with([
     'instagram via facebook' => [Platform::InstagramFacebook, 'media'],
     'instagram login' => [Platform::Instagram, 'media'],
@@ -996,7 +997,7 @@ test('a Meta post is not reported deleted when the account posts cannot be read 
     $publication = metaMetricsPublication($platform);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([Platform::InstagramFacebook, Platform::Instagram, Platform::Facebook, Platform::Threads]);
 
 test('a Meta post is not reported deleted when reading it fails for another reason', function (array $postRead) {
@@ -1008,12 +1009,21 @@ test('a Meta post is not reported deleted when reading it fails for another reas
         '*' => Http::response(['data' => [['id' => '1']]]),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
     'the post still reads' => [[['id' => '17897891718416700']]],
     'a server error' => [[['error' => ['code' => 2]], 500]],
     'code 100 without subcode 33' => [[['error' => ['code' => 100, 'message' => 'Unsupported']], 400]],
 ]);
+
+test('a Facebook post whose metrics are refused for another reason never checks whether it was deleted', function () {
+    $publication = metaMetricsPublication(Platform::Facebook);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake(['*' => Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400)]);
+
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === "{$graph}/17897891718416700?fields=id");
+});
 
 test('a Meta read refused for permission never checks whether the post was deleted', function () {
     $publication = metaMetricsPublication(Platform::Threads);
@@ -1023,7 +1033,7 @@ test('a Meta read refused for permission never checks whether the post was delet
         '*' => Http::response(['data' => [['id' => '1']]]),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
     Http::assertSentCount(1);
 });
 
@@ -1031,7 +1041,7 @@ test('a story is never reported deleted, since stories expire on their own', fun
     $publication = metaMetricsPublication(Platform::InstagramFacebook, ['content_type' => PublicationContentType::Story]);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
     Http::assertSentCount(1);
 });
 

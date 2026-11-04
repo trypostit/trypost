@@ -8,7 +8,7 @@ import {
     IconTrashX,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { type Component, computed, ref, watch } from 'vue';
 
 import { show as showPostGroup } from '@/actions/App/Http/Controllers/App/PostGroupController';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
@@ -17,6 +17,7 @@ import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import ThreadView from '@/components/posts/ThreadView.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
+import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResults from '@/components/publish/PostPollResults.vue';
@@ -138,6 +139,20 @@ const currentStatusConfig = computed(() =>
             : current.value.status,
     ),
 );
+
+/** A sibling's status in the rail; a post the network deleted reads as deleted. */
+const railStatus = (
+    sibling: PostCard,
+): { icon: Component; iconClass?: string; labelKey: string } =>
+    isDeletedOnNetwork(sibling)
+        ? {
+              icon: IconTrashX,
+              labelKey: 'posts.publish.deleted_on_network.badge',
+          }
+        : {
+              ...getPostStatusConfig(sibling.status),
+              labelKey: `posts.status.${sibling.status}`,
+          };
 
 const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
@@ -310,10 +325,10 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 :data-status="sibling.status"
                             >
                                 <component
-                                    :is="getPostStatusConfig(sibling.status).icon"
-                                    :class="getPostStatusConfig(sibling.status).iconClass"
+                                    :is="railStatus(sibling).icon"
+                                    :class="railStatus(sibling).iconClass"
                                     class="size-3.5 shrink-0"
-                                    :aria-label="$t(`posts.status.${sibling.status}`)"
+                                    :aria-label="$t(railStatus(sibling).labelKey)"
                                 />
                                 {{
                                     siblingMoment(sibling) ??
@@ -343,15 +358,10 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             class="flex flex-wrap items-center gap-2"
                             as="div"
                         >
-                            <Badge
+                            <PostDeletedOnNetworkBadge
                                 v-if="isDeletedOnNetwork(current)"
-                                variant="destructive-subtle"
-                                class="h-6 gap-1 px-2 [&>svg]:size-4"
                                 :data-testid="`post-details-deleted-on-network-${testKey}`"
-                            >
-                                <IconTrashX />
-                                {{ $t('posts.publish.deleted_on_network.badge') }}
-                            </Badge>
+                            />
                             <Badge
                                 v-else
                                 :variant="currentStatusConfig.variant"

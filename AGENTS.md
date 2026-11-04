@@ -1062,13 +1062,15 @@ an `enabled` flag or posts with several channels. Posts created together share
   the post while the account's own posts edge (the one its discovery reads) still
   reads with the same token. A bare 404 or 410 only marks the analytics
   publication, and a story is never checked (it expires on its own).
-  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`); a
-  discovery that lists it again restores it (`markPublicationRestored()`, which
-  does not rerun the "just published" side effects). Such a post can be deleted
-  in TryPost (`Post::isDeletedOnNetwork()`), finalizes as published, and
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
+  the publication's row lock, unless a sync saw the post while it was being
+  checked (`last_seen_at` moved); a sync that sees it again restores it
+  (`markPublicationRestored()`, which does not rerun the "just published" side
+  effects). `Post::isDeletedOnNetwork()` is the rule: `PostStatusRules::blocksDeletion()`
+  lets such a post be deleted in TryPost, it finalizes as published, and it
   still counts as published for the posting goal, the lifecycle and PostHog
-  (`Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics sync)
-  keep `scopePublicationPublished()`. In the UI, `isDeletedOnNetwork()` and
+  (`PublishStatus::wentOut()`, `Post::scopeWentOut()`), while live-only reads
+  (Instagram grid, analytics sync) keep `scopePublicationPublished()`. In the UI, `isDeletedOnNetwork()` and
   `postCardPermalink()` (`usePostCardActions.ts`) decide the badge and the link.
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`

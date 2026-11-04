@@ -13,6 +13,7 @@ import type { Component } from 'vue';
 
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import { transform } from '@/lib/helpers';
 import { edit } from '@/routes/app/posts';
 import { PublishStatus, type PublishStatusValue } from '@/types/post';
 import type { RepurposeItem, RepurposeItemPost } from '@/types/repurpose';
@@ -46,11 +47,12 @@ const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
             : post.publish_status
         : null;
 
-const postStateLabelKey = (post: RepurposeItemPost): string => {
-    const state = postState(post);
-
-    return (state && POST_STATE_LABEL_KEYS[state]) ?? `posts.status.${state}`;
-};
+const postStateLabelKey = (post: RepurposeItemPost): string =>
+    transform(
+        postState(post),
+        (state) => POST_STATE_LABEL_KEYS[state] ?? `posts.status.${state}`,
+        '',
+    );
 </script>
 
 <template>

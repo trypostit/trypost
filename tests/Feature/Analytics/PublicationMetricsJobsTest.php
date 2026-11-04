@@ -29,6 +29,7 @@ use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory
 use App\Support\Analytics\SyncCadence;
 use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -602,6 +603,28 @@ test('a confirmed deletion moves the post, while a bare 404 only marks its publi
     'youtube no longer lists the video' => [Platform::YouTube, [['items' => []]], PublishStatus::Deleted],
     'x answers 404' => [Platform::X, [[], 404], PublishStatus::Published],
 ]);
+
+test('a discovery that sees the post while its deletion is being checked keeps it published', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::InstagramFacebook, now('UTC')->subHours(2));
+    $publication->forceFill(['last_seen_at' => now()->subDay()])->save();
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    $graph = Platform::InstagramFacebook->instagramGraphBaseUrl();
+    Http::fake([
+        "{$graph}/{$publication->platform_user_id}/media*" => function () use ($publication): PromiseInterface {
+            app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+            return Http::response(['data' => [['id' => '1']]]);
+        },
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33]], 400),
+    ]);
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Available)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
+});
 
 test('only a published post is marked deleted, and only a deleted one is restored', function () {
     $inReview = Post::factory()->published()->create(['publish_status' => PublishStatus::PendingReview]);

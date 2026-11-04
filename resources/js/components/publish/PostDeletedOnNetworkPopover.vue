@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { IconTrashX } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { Badge } from '@/components/ui/badge';
+import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import {
     Popover,
     PopoverContent,
@@ -33,13 +32,7 @@ const network = computed(() =>
                 "
                 :data-testid="`post-deleted-on-network-${testKey}`"
             >
-                <Badge
-                    variant="destructive-subtle"
-                    class="h-6 cursor-pointer gap-1 px-2 [&>svg]:size-4"
-                >
-                    <IconTrashX />
-                    {{ $t('posts.publish.deleted_on_network.badge') }}
-                </Badge>
+                <PostDeletedOnNetworkBadge class="cursor-pointer" />
             </button>
         </PopoverTrigger>
         <PopoverContent

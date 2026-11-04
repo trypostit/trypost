@@ -371,7 +371,7 @@ class Post extends Model
      */
     public function scopeWentOut(Builder $query): Builder
     {
-        return $query->whereIn('posts.publish_status', [PublishStatus::Published, PublishStatus::Deleted]);
+        return $query->whereIn('posts.publish_status', PublishStatus::wentOutCases());
     }
 
     /**

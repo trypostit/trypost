@@ -10,6 +10,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 test('a post deleted on the network shows as deleted and offers no link to it', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -22,8 +23,10 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     connectAiTo($user);
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
 
+    $groupId = (string) Str::uuid();
     $sentPost = fn (PublishStatus $publishStatus, int $hoursAgo): Post => Post::factory()->forAccount($account)->published()->create([
         'user_id' => $user->id,
+        'post_group_id' => $groupId,
         'publish_status' => $publishStatus,
         'platform_url' => 'https://www.instagram.com/p/abc/',
         'published_at' => now()->subHours($hoursAgo),
@@ -58,7 +61,10 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     $page->click("@post-details-open-{$deleted->id}");
     waitFor($page, "@post-details-{$deleted->id}");
 
-    $page->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
+    waitFor($page, "@post-details-rail-status-{$deleted->id}");
+
+    $page->assertAttribute("[data-testid=\"post-details-rail-status-{$deleted->id}\"] svg", 'aria-label', __('posts.publish.deleted_on_network.badge'))
+        ->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
         ->assertMissing("@post-details-status-{$deleted->id}")
         ->assertMissing("@post-details-view-{$deleted->id}")
         ->assertNoJavaScriptErrors();

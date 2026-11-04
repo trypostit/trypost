@@ -65,11 +65,12 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     {
         $key = $this->statisticsCacheKey($account, $date, $publication->remote_id);
 
-        if (! Cache::has($key)) {
-            $this->prefetchStatistics($account, $publication, $date);
-        }
-
         $statistics = Cache::get($key);
+
+        if (is_null($statistics)) {
+            $this->prefetchStatistics($account, $publication, $date);
+            $statistics = Cache::get($key);
+        }
 
         if (! is_array($statistics)) {
             throw AnalyticsCollectionException::deletedOnNetwork('YouTube no longer returns this video.');
