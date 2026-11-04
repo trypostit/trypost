@@ -6,6 +6,7 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Idea\CreateIdeaTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
+use App\Mcp\Tools\Platform\ListContentTypesTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostsTool;
@@ -62,13 +63,21 @@ test('post writing tools say content is plain text', function (string $tool) {
 })->with('post writing tools');
 
 test('tools that schedule or publish list the required meta', function (string $tool) {
-    expect(mcpToolText($tool))->toContain('privacy_level')->toContain('board_id')->toContain('channel_id')->toContain('required_meta');
+    expect(mcpToolText($tool))->toContain('privacy_level')->toContain('board_id')->toContain('channel_id')->toContain('required_meta')
+        ->toContain('x_poll')->toContain('meta.poll');
 })->with([
     'create-post' => [CreatePostTool::class],
     'create-posts' => [CreatePostsTool::class],
     'update-post' => [UpdatePostTool::class],
     'publish-post' => [PublishPostTool::class],
 ]);
+
+test('list-content-types says an x poll is refused even as a draft and what it needs', function () {
+    expect(mcpToolDescription(ListContentTypesTool::class))
+        ->toContain('The exception is an X poll')
+        ->toContain('drafts included')
+        ->toContain('x_poll) needs meta.poll');
+});
 
 test('tools that change a post list the statuses that block it', function (string $tool) {
     expect(mcpToolText($tool))->toContain('publishing, published or failed');

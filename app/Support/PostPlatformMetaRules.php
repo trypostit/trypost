@@ -45,6 +45,13 @@ class PostPlatformMetaRules
     /** Instagram takes up to three collaborators on a feed post, carousel or reel. */
     public const INSTAGRAM_MAX_COLLABORATORS = 3;
 
+    /**
+     * What a post needs before it is scheduled or published, told to MCP
+     * clients by every tool that schedules or publishes, so a new rule is
+     * written here once.
+     */
+    public const SCHEDULING_REQUIREMENTS = 'Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text), an X poll (content_type x_poll) meta.poll with at least 2 options and duration_minutes plus text as its question (a reply poll in meta.thread_replies needs the same, its text being the question); list-content-types-tool lists the TikTok, Pinterest and Discord ones per platform as required_meta. A scheduled or published post also needs text or media; an X poll needs text and takes no media.';
+
     /** An Instagram username, with or without its leading @. */
     public const INSTAGRAM_USERNAME_PATTERN = '/^@?[A-Za-z0-9._]{1,30}$/';
 
