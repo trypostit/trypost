@@ -52,10 +52,10 @@ class ThreadReplies
 
     public static function maxReplies(?Platform $platform): int
     {
-        return match (true) {
-            ! self::supports($platform) => 0,
-            $platform === Platform::LinkedIn, $platform === Platform::LinkedInPage => 1,
-            default => self::MAX_REPLIES,
+        return match ($platform) {
+            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
+            Platform::LinkedIn, Platform::LinkedInPage => 1,
+            default => 0,
         };
     }
 
