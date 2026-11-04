@@ -176,6 +176,7 @@ import {
     newThreadReply,
     repliesAreComments,
     replyErrorOf,
+    replyTooLongKey,
     threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
@@ -1518,9 +1519,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
                 });
             } else if (over > 0) {
                 issues.push({
-                    key: repliesAreComments(account.platform)
-                        ? 'posts.form.thread.comment_too_long'
-                        : 'posts.form.thread.reply_too_long',
+                    key: replyTooLongKey(account.platform),
                     params: { limit: String(limit), over: String(over) },
                     contentType,
                 });

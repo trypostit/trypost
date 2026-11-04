@@ -99,3 +99,8 @@ export const threadMaxReplies = (platform: string): number =>
 
 export const repliesAreComments = (platform: string): boolean =>
     THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;
+
+export const replyTooLongKey = (platform: string): string =>
+    repliesAreComments(platform)
+        ? 'posts.form.thread.comment_too_long'
+        : 'posts.form.thread.reply_too_long';
