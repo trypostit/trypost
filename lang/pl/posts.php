@@ -1069,6 +1069,7 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Usunięto',
+            'title' => 'Usunięto na :network',
             'hint' => 'Ten post nie istnieje już na :network. Usuń go lub zduplikuj z menu posta.',
             'hint_without_delete' => 'Ten post nie istnieje już na :network. Zduplikuj go z menu posta.',
         ],

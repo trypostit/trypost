@@ -1069,6 +1069,7 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => '削除済み',
+            'title' => ':network で削除済み',
             'hint' => 'この投稿は :network に存在しません。投稿メニューから削除または複製できます。',
             'hint_without_delete' => 'この投稿は :network に存在しません。投稿メニューから複製できます。',
         ],

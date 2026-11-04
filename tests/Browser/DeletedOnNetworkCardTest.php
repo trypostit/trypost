@@ -37,9 +37,16 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     waitFor($page, "@post-deleted-on-network-{$deleted->id}");
     waitFor($page, "@post-view-{$live->id}");
 
-    $page->assertVisible("@post-deleted-on-network-hint-{$deleted->id}")
-        ->assertMissing("@post-view-{$deleted->id}")
+    $page->assertMissing("@post-view-{$deleted->id}")
         ->assertMissing("@post-deleted-on-network-{$live->id}");
+
+    $page->click("@post-deleted-on-network-{$deleted->id}");
+    waitFor($page, "@post-deleted-on-network-popover-{$deleted->id}");
+
+    $page->assertSeeIn("@post-deleted-on-network-popover-{$deleted->id}", __('posts.publish.deleted_on_network.title', ['network' => 'Instagram']))
+        ->assertVisible("@post-deleted-on-network-hint-{$deleted->id}");
+    $page->keys("@post-deleted-on-network-popover-{$deleted->id}", 'Escape');
+    waitForGone($page, "@post-deleted-on-network-popover-{$deleted->id}");
 
     $page->click("@post-card-menu-{$deleted->id}");
     waitFor($page, "@post-card-menu-content-{$deleted->id}");
@@ -52,6 +59,7 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     waitFor($page, "@post-details-{$deleted->id}");
 
     $page->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
+        ->assertMissing("@post-details-status-{$deleted->id}")
         ->assertMissing("@post-details-view-{$deleted->id}")
         ->assertNoJavaScriptErrors();
 });

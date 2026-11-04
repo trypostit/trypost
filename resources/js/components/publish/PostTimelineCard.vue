@@ -18,7 +18,6 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
-    IconTrashX,
     IconX,
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
@@ -35,6 +34,7 @@ import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
+import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
@@ -74,7 +74,7 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { blank, filled, transform } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
@@ -499,15 +499,11 @@ defineExpose({ openDetails });
                 :mode="scheduleMode"
                 plain
             />
-            <Badge
+            <PostDeletedOnNetworkPopover
                 v-if="deletedOnNetwork"
-                variant="destructive-subtle"
-                class="h-6 gap-1 px-2 [&>svg]:size-4"
-                :data-testid="`post-deleted-on-network-${post.id}`"
-            >
-                <IconTrashX />
-                {{ $t('posts.publish.deleted_on_network.badge') }}
-            </Badge>
+                :post="post"
+                :test-key="post.id"
+            />
             <PostFailurePopover
                 v-if="showStatus && hasFailure"
                 :post="post"
@@ -763,27 +759,6 @@ defineExpose({ openDetails });
                     :metrics-test-id="`post-metrics-${post.id}`"
                     :insights-test-id="`post-insights-${post.id}`"
                 />
-
-                <p
-                    v-if="deletedOnNetwork"
-                    class="mx-4 mb-1 text-sm text-destructive-text"
-                    :data-testid="`post-deleted-on-network-hint-${post.id}`"
-                >
-                    {{
-                        $t(
-                            post.can_delete
-                                ? 'posts.publish.deleted_on_network.hint'
-                                : 'posts.publish.deleted_on_network.hint_without_delete',
-                            {
-                                network: transform(
-                                    platform,
-                                    getPlatformLabel,
-                                    '',
-                                ),
-                            },
-                        )
-                    }}
-                </p>
 
                 <div
                     class="m-2 flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-muted p-3 [&_[data-variant=ghost]:hover]:bg-secondary"

@@ -1069,6 +1069,7 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Gelöscht',
+            'title' => 'Auf :network gelöscht',
             'hint' => 'Dieser Beitrag existiert auf :network nicht mehr. Lösche oder dupliziere ihn über das Beitragsmenü.',
             'hint_without_delete' => 'Dieser Beitrag existiert auf :network nicht mehr. Dupliziere ihn über das Beitragsmenü.',
         ],

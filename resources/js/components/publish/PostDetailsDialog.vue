@@ -344,6 +344,16 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             as="div"
                         >
                             <Badge
+                                v-if="isDeletedOnNetwork(current)"
+                                variant="destructive-subtle"
+                                class="h-6 gap-1 px-2 [&>svg]:size-4"
+                                :data-testid="`post-details-deleted-on-network-${testKey}`"
+                            >
+                                <IconTrashX />
+                                {{ $t('posts.publish.deleted_on_network.badge') }}
+                            </Badge>
+                            <Badge
+                                v-else
                                 :variant="currentStatusConfig.variant"
                                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                                 :data-testid="`post-details-status-${testKey}`"
@@ -357,15 +367,6 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                         ? $t('posts.publish.in_google_review')
                                         : $t(`posts.status.${current.status}`)
                                 }}
-                            </Badge>
-                            <Badge
-                                v-if="isDeletedOnNetwork(current)"
-                                variant="destructive-subtle"
-                                class="h-6 gap-1 px-2 [&>svg]:size-4"
-                                :data-testid="`post-details-deleted-on-network-${testKey}`"
-                            >
-                                <IconTrashX />
-                                {{ $t('posts.publish.deleted_on_network.badge') }}
                             </Badge>
                             <span
                                 class="text-sm text-muted-foreground"

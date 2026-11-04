@@ -1070,6 +1070,7 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Eliminado',
+            'title' => 'Eliminado en :network',
             'hint' => 'Este post ya no existe en :network. Elimínalo o duplícalo desde el menú del post.',
             'hint_without_delete' => 'Este post ya no existe en :network. Duplícalo desde el menú del post.',
         ],
