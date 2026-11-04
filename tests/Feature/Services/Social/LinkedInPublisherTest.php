@@ -1784,7 +1784,7 @@ test('linkedin publisher posts the first comment on the created post as the memb
     $result = $this->publisher->publish($this->post);
 
     expect($result)->toBe(['id' => 'urn:li:share:123', 'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123'])
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
 
     [$request] = linkedInCommentRequests()->sole();
     expect($request->method())->toBe('POST')
@@ -1834,7 +1834,7 @@ test('linkedin publisher comments on a post created again even when an earlier o
     $this->publisher->publish($this->post);
 
     expect(linkedInCommentRequests())->toHaveCount(1)
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
 });
 
 test('a failed first comment leaves the linkedin post published and records the failure', function (int $status, array $body) {
@@ -1845,7 +1845,7 @@ test('a failed first comment leaves the linkedin post published and records the 
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('urn:li:share:123')
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true])
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'failed' => true])
         ->and($this->post->fresh()->meta['first_comment'])->toBe(['text' => 'Link below']);
     Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => str_contains($message, 'first comment failed')
         && $context['account_id'] === $this->socialAccount->id
@@ -1867,7 +1867,7 @@ test('linkedin publisher refreshes the token once for the first comment without 
     expect(linkedInPostRequests())->toHaveCount(1)
         ->and(linkedInCommentRequests())->toHaveCount(2)
         ->and(linkedInCommentRequests()->last()[0]->header('Authorization'))->toBe(['Bearer refreshed-token'])
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
 });
 
 test('linkedin publisher gives up on the first comment when the refreshed token is refused too', function () {
@@ -1882,5 +1882,5 @@ test('linkedin publisher gives up on the first comment when the refreshed token 
     expect($result['id'])->toBe('urn:li:share:123')
         ->and(linkedInPostRequests())->toHaveCount(1)
         ->and(linkedInCommentRequests())->toHaveCount(2)
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true]);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'failed' => true]);
 });

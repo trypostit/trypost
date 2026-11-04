@@ -27,7 +27,7 @@ final class FirstComment
     /**
      * The longest first comment a network takes, in code points, or null when
      * the network takes none. LinkedIn's Comments API documents no limit; 1250
-     * is what a real comment call accepted.
+     * is the limit a third-party integration documents.
      */
     public static function maxLength(?Platform $platform): ?int
     {

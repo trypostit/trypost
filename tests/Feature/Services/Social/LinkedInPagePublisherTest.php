@@ -495,7 +495,7 @@ test('linkedin page publisher posts the first comment as the organization', func
             'object' => 'urn:li:share:123',
             'message' => ['text' => 'Sign up at example.com'],
         ])
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
 });
 
 test('a failed first comment leaves the linkedin page post published', function () {
@@ -508,5 +508,5 @@ test('a failed first comment leaves the linkedin page post published', function 
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('urn:li:share:123')
-        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true]);
+        ->and($this->post->fresh()->meta['first_comment_result'])->toEqual(['post_id' => 'urn:li:share:123', 'failed' => true]);
 });
