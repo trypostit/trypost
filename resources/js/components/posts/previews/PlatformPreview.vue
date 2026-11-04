@@ -56,7 +56,7 @@ const { contentFor } = useXLinkDefuser();
 const previewContent = computed((): string => contentFor(props.content, props.platform));
 
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
-    THREAD_PLATFORMS.includes(props.platform)
+    THREAD_PLATFORMS.includes(props.platform) && !repliesAreComments(props.platform)
         ? threadRepliesOf(props.meta)
               .map((reply, index) => ({ reply, index }))
               .filter(
@@ -68,16 +68,7 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
         : [],
 );
 const threadReplies = computed((): ThreadReply[] =>
-    repliesAreComments(props.platform)
-        ? []
-        : shownReplies.value.map(({ reply }) => reply),
-);
-const comments = computed(() =>
-    repliesAreComments(props.platform)
-        ? shownReplies.value.map(({ reply }) => ({
-              text: contentFor(reply.text, props.platform),
-          }))
-        : undefined,
+    shownReplies.value.map(({ reply }) => reply),
 );
 
 /** A reply repeats the post's content warning and carries its own poll. */
@@ -173,7 +164,6 @@ const previewComponent = computed(() => {
                 :meta="meta"
                 :posted-at="postedAt"
                 :publish-config="publishConfig"
-                :comments="comments"
                 :thread-position="threadReplies.length ? 'first' : undefined"
             />
             </div>
