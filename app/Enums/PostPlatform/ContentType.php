@@ -503,12 +503,11 @@ enum ContentType: string
     }
 
     /**
-     * Whether the editor offers the Alt Text tab for images of this type. A
-     * type that takes no media has none.
+     * Whether the editor offers the Alt Text tab for images of this type.
      */
     public function supportsAltText(): bool
     {
-        return $this->maxMediaCount() > 0 && $this->platform()->supportsAltText();
+        return $this->supportsImage() && $this->platform()->supportsAltText();
     }
 
     /**

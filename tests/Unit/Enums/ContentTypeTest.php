@@ -531,8 +531,8 @@ test('a post type is compatible with the platforms it can go to', function () {
         ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
 });
 
-test('a type without media lists no alt text and a type without video accepts no mov', function (ContentType $type) {
-    if ($type->maxMediaCount() === 0) {
+test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
+    if (! $type->supportsImage()) {
         expect($type->supportsAltText())->toBeFalse();
     }
 
