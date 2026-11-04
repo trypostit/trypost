@@ -36,6 +36,7 @@ import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
+import PostFirstCommentFailedNote from '@/components/publish/PostFirstCommentFailedNote.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
@@ -740,6 +741,13 @@ defineExpose({ openDetails });
                     :poll="polls.poll"
                     :thread-polls="polls.threadPolls"
                     :test-id="`post-poll-${post.id}`"
+                />
+
+                <PostFirstCommentFailedNote
+                    v-if="post.meta?.first_comment_result?.failed === true"
+                    class="px-4 pb-4"
+                    :platform="post.platform"
+                    :test-id="`post-first-comment-failed-${post.id}`"
                 />
 
                 <PostMetricsBand

@@ -17,6 +17,7 @@ import ThreadView from '@/components/posts/ThreadView.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
+import PostFirstCommentFailedNote from '@/components/publish/PostFirstCommentFailedNote.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResults from '@/components/publish/PostPollResults.vue';
 import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
@@ -474,6 +475,12 @@ const siblingMoment = (sibling: PostCard): string | null => {
                         :poll="pollResults.poll"
                         :thread-polls="pollResults.threadPolls"
                         test-id="post-details-poll"
+                    />
+
+                    <PostFirstCommentFailedNote
+                        v-if="current.meta?.first_comment_result?.failed === true"
+                        :platform="current.platform"
+                        test-id="post-details-first-comment-failed"
                     />
 
                     <PostMetricsBand
