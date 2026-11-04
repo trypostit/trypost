@@ -29,13 +29,16 @@ enum PublishStatus: string
     /** The network published the post, deleted there since or not. */
     public function wentOut(): bool
     {
-        return in_array($this, [self::Published, self::Deleted], true);
+        return match ($this) {
+            self::Published, self::Deleted => true,
+            default => false,
+        };
     }
 
     /** @return list<self> */
     public static function wentOutCases(): array
     {
-        return array_values(array_filter(self::cases(), fn (self $status): bool => $status->wentOut()));
+        return collect(self::cases())->filter(fn (self $status): bool => $status->wentOut())->values()->all();
     }
 
     /** The publish job must not run again. Pending review waits on reconcile. */

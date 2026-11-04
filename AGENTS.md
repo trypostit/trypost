@@ -1056,22 +1056,26 @@ an `enabled` flag or posts with several channels. Posts created together share
   `partially_published`.
 - **Deleted on the network.** `publish_status = deleted` means the network
   deleted a post it published; `status` stays published. Only a deletion the
-  collector confirms moves the post (`AnalyticsCollectionException::deletedOnNetwork()`):
-  YouTube no longer listing the video, or Facebook, Instagram and Threads
-  (`AbstractMetaPublicationMetricsCollector`) answering code 100 / subcode 33 for
-  the post while the account's own posts edge (the one its discovery reads) still
-  reads with the same token. A bare 404 or 410 only marks the analytics
+  collector confirms moves the post
+  (`AnalyticsCollectionException::deletedOnNetwork()`): YouTube no longer
+  listing the video, or Facebook, Instagram and Threads
+  (`AbstractMetaPublicationMetricsCollector`) answering code 100 / subcode 33
+  for the post while the account's own posts edge (the one its discovery reads)
+  still reads with the same token. A bare 404 or 410 only marks the analytics
   publication, and a story is never checked (it expires on its own).
   `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
   the publication's row lock, unless a sync saw the post while it was being
   checked (`last_seen_at` moved); a sync that sees it again restores it
   (`markPublicationRestored()`, which does not rerun the "just published" side
-  effects). `Post::isDeletedOnNetwork()` is the rule: `PostStatusRules::blocksDeletion()`
-  lets such a post be deleted in TryPost, it finalizes as published, and it
-  still counts as published for the posting goal, the lifecycle and PostHog
-  (`PublishStatus::wentOut()`, `Post::scopeWentOut()`), while live-only reads
-  (Instagram grid, analytics sync) keep `scopePublicationPublished()`. In the UI, `isDeletedOnNetwork()` and
-  `postCardPermalink()` (`usePostCardActions.ts`) decide the badge and the link.
+  effects). `Post::isDeletedOnNetwork()` is the rule:
+  `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
+  finalizes as published, and it still counts as published for the posting
+  goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
+  `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
+  sync) keep `scopePublicationPublished()`. On the post cards and the details
+  dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
+  (`usePostCardActions.ts`) decide the badge and the link; the repurpose
+  activity list labels `publish_status` directly.
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

@@ -20,12 +20,16 @@ use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
 use App\Jobs\Analytics\SyncTryPostPublication as SyncTryPostPublicationJob;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
+use App\Models\Account;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
 use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
+use App\Services\PostHogService;
 use App\Support\Analytics\SyncCadence;
 use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
@@ -624,6 +628,27 @@ test('a discovery that sees the post while its deletion is being checked keeps i
 
     expect($publication->fresh()->availability)->toBe(PublicationAvailability::Available)
         ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
+});
+
+test('a post deleted on the network still counts as published for the lifecycle and PostHog activity', function () {
+    enablePostHog();
+    $account = Account::factory()->create();
+    $user = User::factory()->create(['account_id' => $account->id]);
+    $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
+    $post = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'publish_status' => PublishStatus::Deleted,
+        'published_at' => now()->subHour(),
+    ]);
+    $postHog = Mockery::mock(PostHogService::class);
+    $postHog->shouldReceive('groupIdentifyNow')
+        ->once()
+        ->withArgs(fn (string $groupType, string $groupKey, array $properties): bool => $properties['last_published_post_id'] === $post->id);
+
+    (new SyncAccountPublishingActivity((string) $account->id))->handle($postHog);
+
+    expect(Account::query()->withLifecycleActivity()->find($account->id)->last_published_at)->not->toBeNull();
 });
 
 test('only a published post is marked deleted, and only a deleted one is restored', function () {

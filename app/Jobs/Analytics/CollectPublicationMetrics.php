@@ -168,7 +168,7 @@ class CollectPublicationMetrics implements ShouldQueue
         DB::transaction(function () use ($publication, $exception): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
 
-            if (blank($current) || $current->last_seen_at != $publication->last_seen_at) {
+            if (blank($current) || $current->getRawOriginal('last_seen_at') !== $publication->getRawOriginal('last_seen_at')) {
                 return;
             }
 

@@ -396,6 +396,28 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
     Http::assertSentCount(2);
 });
 
+test('a youtube video the cache could not keep is read from the response, never reported deleted', function () {
+    config()->set('cache.default', 'null');
+    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
+    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    Http::fake([
+        "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [['name' => 'views']], 'rows' => []]),
+        "{$dataApi}/videos*" => Http::response(['items' => [['id' => 'video-live', 'statistics' => ['viewCount' => '12']]]]),
+    ]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::YouTube,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => 'video-live',
+    ]);
+
+    $observation = app(YouTubePublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect(collect($observation->metrics)->firstWhere('key', MetricKey::Views)?->value)->toBe(12);
+});
+
 test('youtube collects current statistics and every Analytics metric for a short', function () {
     $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
     $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
@@ -992,6 +1014,21 @@ test('a Meta post the network no longer returns is reported deleted while the ac
     'facebook' => [Platform::Facebook, 'published_posts'],
     'threads' => [Platform::Threads, 'threads'],
 ]);
+
+test('a Facebook post is reported deleted even when the Page never granted insights', function () {
+    $publication = metaMetricsPublication(Platform::Facebook, [
+        'remote_id' => '17841400000000001_17897891718416700',
+        'content_type' => PublicationContentType::Image,
+    ]);
+    $publication->socialAccount->update(['scopes' => ['pages_read_engagement']]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17841400000000001/published_posts*" => Http::response(['data' => [['id' => '1']]]),
+        '*' => Http::response(metaMissingObject('17841400000000001_17897891718416700'), 400),
+    ]);
+
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+});
 
 test('a Meta post is not reported deleted when the account posts cannot be read either', function (Platform $platform) {
     $publication = metaMetricsPublication($platform);

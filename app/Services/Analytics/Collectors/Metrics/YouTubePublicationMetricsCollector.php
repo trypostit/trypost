@@ -65,12 +65,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     {
         $key = $this->statisticsCacheKey($account, $date, $publication->remote_id);
 
-        $statistics = Cache::get($key);
-
-        if (is_null($statistics)) {
-            $this->prefetchStatistics($account, $publication, $date);
-            $statistics = Cache::get($key);
-        }
+        $statistics = Cache::get($key) ?? $this->prefetchStatistics($account, $publication, $date);
 
         if (! is_array($statistics)) {
             throw AnalyticsCollectionException::deletedOnNetwork('YouTube no longer returns this video.');
@@ -79,7 +74,10 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
         return $statistics;
     }
 
-    private function prefetchStatistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): void
+    /**
+     * @return array<string, mixed>|false this video's statistics, false when YouTube no longer returns it
+     */
+    private function prefetchStatistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array|false
     {
         $ids = AnalyticsPublication::query()
             ->available()
@@ -102,15 +100,15 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             ['part' => 'statistics', 'id' => $ids->implode(',')],
         )->json('items', []))->filter(fn (mixed $video): bool => is_array($video))->keyBy('id');
 
-        foreach ($ids as $id) {
-            $video = $videos->get($id);
+        $statistics = $ids->mapWithKeys(fn (string $id): array => [
+            $id => transform($videos->get($id), fn (array $video): array => (array) data_get($video, 'statistics', []), false),
+        ]);
 
-            Cache::put(
-                $this->statisticsCacheKey($account, $date, $id),
-                is_array($video) ? (array) data_get($video, 'statistics', []) : false,
-                now()->addHours(self::STATISTICS_CACHE_HOURS),
-            );
+        foreach ($ids as $id) {
+            Cache::put($this->statisticsCacheKey($account, $date, $id), $statistics->get($id), now()->addHours(self::STATISTICS_CACHE_HOURS));
         }
+
+        return $statistics->get($publication->remote_id, false);
     }
 
     private function statisticsCacheKey(SocialAccount $account, CarbonImmutable $date, string $videoId): string

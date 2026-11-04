@@ -40,7 +40,8 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     waitFor($page, "@post-deleted-on-network-{$deleted->id}");
     waitFor($page, "@post-view-{$live->id}");
 
-    $page->assertMissing("@post-view-{$deleted->id}")
+    $page->assertVisible("@post-view-{$live->id}")
+        ->assertMissing("@post-view-{$deleted->id}")
         ->assertMissing("@post-deleted-on-network-{$live->id}");
 
     $page->click("@post-deleted-on-network-{$deleted->id}");
@@ -50,6 +51,7 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
         ->assertVisible("@post-deleted-on-network-hint-{$deleted->id}");
     $page->keys("@post-deleted-on-network-popover-{$deleted->id}", 'Escape');
     waitForGone($page, "@post-deleted-on-network-popover-{$deleted->id}");
+    $page->assertMissing("@post-deleted-on-network-popover-{$deleted->id}");
 
     $page->click("@post-card-menu-{$deleted->id}");
     waitFor($page, "@post-card-menu-content-{$deleted->id}");
@@ -63,7 +65,7 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
 
     waitFor($page, "@post-details-rail-status-{$deleted->id}");
 
-    $page->assertAttribute("[data-testid=\"post-details-rail-status-{$deleted->id}\"] svg", 'aria-label', __('posts.publish.deleted_on_network.badge'))
+    $page->assertAttribute("@post-details-rail-status-icon-{$deleted->id}", 'aria-label', __('posts.publish.deleted_on_network.badge'))
         ->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
         ->assertMissing("@post-details-status-{$deleted->id}")
         ->assertMissing("@post-details-view-{$deleted->id}")

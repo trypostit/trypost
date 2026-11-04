@@ -10,6 +10,7 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\DeletePostTool;
+use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
@@ -270,6 +271,24 @@ test('a published post the network no longer returns can be deleted on the web, 
     TryPostServer::actingAs($this->user)->tool(DeletePostTool::class, ['post_id' => $posts[2]->id])->assertOk();
 
     expect(Post::query()->whereKey($posts->pluck('id'))->exists())->toBeFalse();
+});
+
+test('the metrics of a post the network deleted say so on the api and mcp', function () {
+    $post = Post::factory()->forAccount($this->account)->published()->create([
+        'user_id' => $this->user->id,
+        'publish_status' => PublishStatus::Deleted,
+    ]);
+
+    $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.posts.metrics', $post))
+        ->assertOk()
+        ->assertJsonPath('metrics.reason', 'deleted_on_network');
+
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json): AssertableJson => $json->where('metrics.reason', 'deleted_on_network')->etc());
 });
 
 test('a channel disconnect still deletes published posts', function () {

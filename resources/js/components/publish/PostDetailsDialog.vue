@@ -140,19 +140,24 @@ const currentStatusConfig = computed(() =>
     ),
 );
 
-/** A sibling's status in the rail; a post the network deleted reads as deleted. */
-const railStatus = (
-    sibling: PostCard,
-): { icon: Component; iconClass?: string; labelKey: string } =>
-    isDeletedOnNetwork(sibling)
-        ? {
-              icon: IconTrashX,
-              labelKey: 'posts.publish.deleted_on_network.badge',
-          }
-        : {
-              ...getPostStatusConfig(sibling.status),
-              labelKey: `posts.status.${sibling.status}`,
-          };
+/** Each sibling's status in the rail; a post the network deleted reads as deleted. */
+const railStatuses = computed(() =>
+    Object.fromEntries(
+        siblings.value.map((sibling) => [
+            sibling.id,
+            isDeletedOnNetwork(sibling)
+                ? {
+                      icon: IconTrashX as Component,
+                      iconClass: undefined,
+                      labelKey: 'posts.publish.deleted_on_network.badge',
+                  }
+                : {
+                      ...getPostStatusConfig(sibling.status),
+                      labelKey: `posts.status.${sibling.status}`,
+                  },
+        ]),
+    ),
+);
 
 const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
@@ -325,10 +330,11 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 :data-status="sibling.status"
                             >
                                 <component
-                                    :is="railStatus(sibling).icon"
-                                    :class="railStatus(sibling).iconClass"
+                                    :is="railStatuses[sibling.id].icon"
+                                    :class="railStatuses[sibling.id].iconClass"
                                     class="size-3.5 shrink-0"
-                                    :aria-label="$t(railStatus(sibling).labelKey)"
+                                    :aria-label="$t(railStatuses[sibling.id].labelKey)"
+                                    :data-testid="`post-details-rail-status-icon-${sibling.id}`"
                                 />
                                 {{
                                     siblingMoment(sibling) ??
