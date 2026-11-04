@@ -58,6 +58,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     /**
      * Reads `statistics` for this video together with up to 49 other videos of the channel
      * still due on the same day, so the daily pass spends one quota unit per 50 videos.
+     * Only found videos are cached, so a video is reported deleted by its own read only.
      *
      * @return array<string, mixed>
      */
@@ -104,9 +105,12 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             $id => transform($videos->get($id), fn (array $video): array => (array) data_get($video, 'statistics', []), false),
         ]);
 
-        foreach ($ids as $id) {
-            Cache::put($this->statisticsCacheKey($account, $date, $id), $statistics->get($id), now()->addHours(self::STATISTICS_CACHE_HOURS));
-        }
+        $statistics->filter(fn (array|false $videoStatistics): bool => is_array($videoStatistics))
+            ->each(fn (array $videoStatistics, int|string $id): bool => Cache::put(
+                $this->statisticsCacheKey($account, $date, (string) $id),
+                $videoStatistics,
+                now()->addHours(self::STATISTICS_CACHE_HOURS),
+            ));
 
         return $statistics->get($publication->remote_id, false);
     }

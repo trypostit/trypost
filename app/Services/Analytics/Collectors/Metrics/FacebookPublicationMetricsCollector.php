@@ -114,8 +114,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
                 throw $exception;
             }
 
-            $this->refusals[] = $exception->category;
-            $this->refusedMissingObject = $this->refusedMissingObject || $exception->missingObject;
+            $this->recordRefusal($exception);
             Log::info('analytics.facebook_read_refused', [
                 'path' => parse_url($url, PHP_URL_PATH),
                 'category' => $exception->category,

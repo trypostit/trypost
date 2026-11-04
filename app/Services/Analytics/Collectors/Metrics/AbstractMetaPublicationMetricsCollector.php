@@ -82,6 +82,12 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         }
     }
 
+    protected function recordRefusal(AnalyticsCollectionException $exception): void
+    {
+        $this->refusals[] = $exception->category;
+        $this->refusedMissingObject = $this->refusedMissingObject || $exception->missingObject;
+    }
+
     protected function successfulResponse(Response $response): Response
     {
         return MetaAnalyticsResponse::successful($response, 'publication metrics collection');
@@ -108,8 +114,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
                 ));
             }
 
-            $this->refusals[] = $exception->category;
-            $this->refusedMissingObject = $this->refusedMissingObject || $exception->missingObject;
+            $this->recordRefusal($exception);
             Log::info('analytics.meta_metric_rejected', [
                 'platform' => $account->platform->value,
                 'path' => parse_url($url, PHP_URL_PATH),

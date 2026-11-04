@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;
@@ -68,6 +69,28 @@ test('handle sends the latest confirmed account publication directly to PostHog'
         });
 
     $job->handle($postHog);
+});
+
+test('a post the network deleted after publishing still counts as the latest publication and for the lifecycle', function () {
+    $workspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+    $post = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $this->user->id,
+        'publish_status' => PublishStatus::Deleted,
+        'published_at' => now()->subHour(),
+    ]);
+
+    $postHog = Mockery::mock(PostHogService::class);
+    $postHog->shouldReceive('groupIdentifyNow')
+        ->once()
+        ->withArgs(fn (string $groupType, string $groupKey, array $properties): bool => $properties['last_published_post_id'] === $post->id);
+
+    (new SyncAccountPublishingActivity((string) $this->account->id))->handle($postHog);
+
+    expect(Account::query()->withLifecycleActivity()->find($this->account->id)->last_published_at)->not->toBeNull();
 });
 
 test('handle clears publishing activity when the account has no confirmed publication', function () {

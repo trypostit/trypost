@@ -8,7 +8,7 @@ import {
     IconTrashX,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
-import { type Component, computed, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { show as showPostGroup } from '@/actions/App/Http/Controllers/App/PostGroupController';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
@@ -141,14 +141,18 @@ const currentStatusConfig = computed(() =>
 );
 
 /** Each sibling's status in the rail; a post the network deleted reads as deleted. */
-const railStatuses = computed(() =>
+const railStatuses = computed<
+    Record<
+        string,
+        { icon: typeof IconTrashX; iconClass?: string; labelKey: string }
+    >
+>(() =>
     Object.fromEntries(
         siblings.value.map((sibling) => [
             sibling.id,
             isDeletedOnNetwork(sibling)
                 ? {
-                      icon: IconTrashX as Component,
-                      iconClass: undefined,
+                      icon: IconTrashX,
                       labelKey: 'posts.publish.deleted_on_network.badge',
                   }
                 : {

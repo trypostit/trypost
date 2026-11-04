@@ -418,6 +418,31 @@ test('a youtube video the cache could not keep is read from the response, never 
     expect(collect($observation->metrics)->firstWhere('key', MetricKey::Views)?->value)->toBe(12);
 });
 
+test('a youtube video missing from another batch is read again before it is reported deleted', function () {
+    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
+    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    Http::fake([
+        "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [['name' => 'views']], 'rows' => []]),
+        "{$dataApi}/videos*" => Http::sequence()
+            ->push(['items' => [['id' => 'video-a', 'statistics' => ['viewCount' => '3']]]])
+            ->push(['items' => [['id' => 'video-b', 'statistics' => ['viewCount' => '7']]]]),
+    ]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
+    $publications = collect(['video-a', 'video-b'])->map(fn (string $video): AnalyticsPublication => AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::YouTube,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => $video,
+    ]));
+    $collector = app(YouTubePublicationMetricsCollector::class);
+
+    $collector->collect($publications[0], CarbonImmutable::today('UTC'));
+    $observation = $collector->collect($publications[1], CarbonImmutable::today('UTC'));
+
+    expect(collect($observation->metrics)->firstWhere('key', MetricKey::Views)?->value)->toBe(7);
+});
+
 test('youtube collects current statistics and every Analytics metric for a short', function () {
     $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
     $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');

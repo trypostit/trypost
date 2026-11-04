@@ -251,12 +251,10 @@ test('deleting a publishing, published or failed post is refused with the web me
 })->with([Status::Publishing, Status::Published, Status::Failed]);
 
 test('a published post the network no longer returns can be deleted on the web, the api and mcp', function () {
-    $posts = collect(range(1, 3))->map(function (): Post {
-        return Post::factory()->forAccount($this->account)->published()->create([
-            'user_id' => $this->user->id,
-            'publish_status' => PublishStatus::Deleted,
-        ]);
-    });
+    $posts = Post::factory()->count(3)->forAccount($this->account)->published()->create([
+        'user_id' => $this->user->id,
+        'publish_status' => PublishStatus::Deleted,
+    ]);
 
     $this->actingAs($this->user)->delete(route('app.posts.destroy', $posts[0]))->assertRedirect();
 

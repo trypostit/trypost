@@ -1072,7 +1072,8 @@ an `enabled` flag or posts with several channels. Posts created together share
   finalizes as published, and it still counts as published for the posting
   goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
   `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
-  sync) keep `scopePublicationPublished()`. On the post cards and the details
+  sync, the importer's matching, TikTok video ids) keep
+  `scopePublicationPublished()`. On the post cards and the details
   dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
   (`usePostCardActions.ts`) decide the badge and the link; the repurpose
   activity list labels `publish_status` directly.
