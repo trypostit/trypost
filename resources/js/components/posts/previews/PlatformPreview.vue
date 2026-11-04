@@ -20,6 +20,7 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { filled } from '@/lib/helpers';
 import {
+    repliesAreComments,
     type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
@@ -55,7 +56,7 @@ const { contentFor } = useXLinkDefuser();
 const previewContent = computed((): string => contentFor(props.content, props.platform));
 
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
-    THREAD_PLATFORMS.includes(props.platform)
+    THREAD_PLATFORMS.includes(props.platform) && !repliesAreComments(props.platform)
         ? threadRepliesOf(props.meta)
               .map((reply, index) => ({ reply, index }))
               .filter(

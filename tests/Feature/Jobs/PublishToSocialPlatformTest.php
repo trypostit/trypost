@@ -2504,3 +2504,92 @@ test('a post on another network never asks TikTok for a video id', function () {
     expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
+
+test('a linkedin post whose comment fails is marked failed with the thread progress and a retry only comments', function () {
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence()
+            ->push(['message' => 'Internal error'], 500)
+            ->push([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['thread_replies' => ['Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.linkedin.server_error'),
+        ]));
+
+    $failed->forceFill(['status' => PostStatus::Publishing, 'publish_status' => PlatformStatus::Pending])->save();
+    (new PublishToSocialPlatform($failed->fresh()))->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('urn:li:share:123')
+        ->and($published->thread_reply_ids)->toBe(['999'])
+        ->and(Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts')))->toHaveCount(1);
+});
+
+test('a linkedin comment refused because the post is not ready yet is retried from the queue and only comments', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    $now = now()->startOfSecond();
+    Carbon::setTestNow($now);
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence()
+            ->push(['message' => 'Unable to obtain activity', 'status' => 404], 404)
+            ->push([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['thread_replies' => ['Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $waiting = $this->post->fresh();
+    expect($waiting->publish_status)->toBe(PlatformStatus::Retrying)
+        ->and(data_get($waiting->error_context, 'thread_progress.0.id'))->toBe('urn:li:share:123')
+        ->and($waiting->error_context['next_attempt_at'])->toBe($now->copy()->addSeconds(30)->toIso8601String());
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn ($job) => Carbon::instance($job->delay)->equalTo($now->copy()->addSeconds(30)));
+
+    (new PublishToSocialPlatform($waiting))->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->thread_reply_ids)->toBe(['999'])
+        ->and(Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts')))->toHaveCount(1);
+
+    Carbon::setTestNow();
+});
+
+test('a linkedin comment still refused after five minutes fails the publish with the thread progress', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::response(['message' => 'Unable to obtain activity', 'status' => 404], 404),
+    ]);
+    $this->post->forceFill([
+        'meta' => ['thread_replies' => ['Link below']],
+        'error_context' => [
+            'thread_progress' => [['hash' => 'stored-root', 'id' => 'urn:li:share:123', 'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123']],
+            'processing_retry_count' => 10,
+            'max_retries' => 10,
+            'retry_delay_seconds' => 30,
+        ],
+    ])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.platform_unavailable_exhausted'),
+        ]));
+    Bus::assertNotDispatched(PublishToSocialPlatform::class);
+});

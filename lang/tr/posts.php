@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Gönderi zincirleri bu ağda kullanılamaz.',
             'reply_empty' => 'Zincirdeki bir yanıt boş.',
             'reply_too_long' => 'Bir yanıt :limit karakter sınırını :over aşıyor.',
+            'too_many' => '{1} Bu gönderiye yalnızca bir yorum eklenebilir.|[0,*] Bu gönderiye en fazla :max yanıt eklenebilir.',
+            'add_comment' => 'Yorum ekle',
+            'comment_placeholder' => 'Bir bağlantı veya daha fazla bağlam ekleyin',
+            'comment_label' => 'Yorumunuz',
+            'remove_comment' => 'Yorumu kaldır',
+            'comment_too_long' => 'Yorumunuz :limit karakter sınırını :over karakter aşıyor.',
+            'comment_empty' => 'Yorumunuz boş.',
+            'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
         ],
 
         'pinterest' => [

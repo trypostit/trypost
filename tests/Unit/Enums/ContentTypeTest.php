@@ -531,6 +531,23 @@ test('a post type is compatible with the platforms it can go to', function () {
         ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
 });
 
+test('a linkedin comment is a reply type no post can take', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::forPlatform(Platform::LinkedInPage))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedIn))->toBeFalse()
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedInPage))->toBeFalse()
+        ->and(ContentType::LinkedInComment->maxMediaCount())->toBe(0)
+        ->and(ContentType::LinkedInComment->supportsImage())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
+});
+
+test('an instagram account connected through facebook gets the same post types as instagram', function () {
+    expect(ContentType::forPlatform(Platform::InstagramFacebook))->toBe(ContentType::forPlatform(Platform::Instagram))
+        ->and(array_values(ContentType::forPlatform(Platform::Instagram)))->toBe([ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::InstagramStory]);
+});
+
 test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
     if (! $type->supportsImage()) {
         expect($type->supportsAltText())->toBeFalse();

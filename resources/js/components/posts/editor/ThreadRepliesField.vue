@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { IconX } from '@tabler/icons-vue';
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
 import { filled } from '@/lib/helpers';
+import { isShiftEnter } from '@/lib/keyboard';
 import {
     isBlankThreadReply,
-    newThreadReply,
+    insertThreadReply,
     type ThreadReply,
 } from '@/lib/threadReplies';
 
@@ -20,12 +21,19 @@ const props = withDefaults(
         /** A reply poll's question cap, kept even on an account with long posts. */
         pollLimit?: number;
         max?: number;
+        comment?: boolean;
         disabled?: boolean;
         errors?: Record<number, string>;
         /** Id of the element the active post's toolbar is teleported into. */
         toolbarTarget?: string;
     }>(),
-    { pollLimit: Infinity, max: Infinity, disabled: false, errors: () => ({}) },
+    {
+        pollLimit: Infinity,
+        max: Infinity,
+        comment: false,
+        disabled: false,
+        errors: () => ({}),
+    },
 );
 
 const replies = defineModel<ThreadReply[]>({ required: true });
@@ -76,6 +84,24 @@ const removeReply = (index: number): void => {
     }
 };
 
+const canAddReply = computed(() => replies.value.length < props.max);
+
+const copyKeys = computed(() => {
+    if (props.comment) {
+        return {
+            placeholder: 'posts.form.thread.comment_placeholder',
+            label: 'posts.form.thread.comment_label',
+            remove: 'posts.form.thread.remove_comment',
+        };
+    }
+
+    return {
+        placeholder: 'posts.form.thread.reply_placeholder',
+        label: 'posts.form.thread.reply_label',
+        remove: 'posts.form.thread.remove',
+    };
+});
+
 /** Shift+Enter opens the next post right below; Backspace on an empty post folds it back into the one above. */
 const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
     const textarea = event.target as HTMLTextAreaElement;
@@ -100,18 +126,9 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
         return;
     }
 
-    if (event.key === 'Enter' && event.shiftKey && !event.isComposing) {
+    if (isShiftEnter(event) && canAddReply.value) {
         event.preventDefault();
-
-        if (replies.value.length >= props.max) {
-            return;
-        }
-
-        replies.value = [
-            ...replies.value.slice(0, index + 1),
-            newThreadReply(),
-            ...replies.value.slice(index + 1),
-        ];
+        replies.value = insertThreadReply(replies.value, index + 1);
         active.value = index + 1;
 
         return;
@@ -171,11 +188,9 @@ watch(
                     ref="editor"
                     :value="reply.text"
                     :data-testid="`thread-reply-${index}`"
-                    :placeholder="$t('posts.form.thread.reply_placeholder')"
+                    :placeholder="$t(copyKeys.placeholder)"
                     :aria-label="
-                        $t('posts.form.thread.reply_label', {
-                            number: String(index + 2),
-                        })
+                        $t(copyKeys.label, { number: String(index + 2) })
                     "
                     :aria-invalid="
                         remaining(reply) < 0 || errors[index] ? true : undefined
@@ -198,7 +213,7 @@ watch(
                         reply.text ||
                         (reply.media.length
                             ? ''
-                            : $t('posts.form.thread.reply_placeholder'))
+                            : $t(copyKeys.placeholder))
                     }}
                 </button>
                 <slot name="media" :reply="reply" :index="index" />
@@ -218,7 +233,7 @@ watch(
             <button
                 type="button"
                 :data-testid="`thread-reply-remove-${index}`"
-                :aria-label="$t('posts.form.thread.remove')"
+                :aria-label="$t(copyKeys.remove)"
                 :disabled="disabled"
                 class="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent"
                 @click="removeReply(index)"

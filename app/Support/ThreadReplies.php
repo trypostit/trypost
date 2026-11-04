@@ -40,6 +40,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
+            Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
     }
@@ -47,6 +48,15 @@ class ThreadReplies
     public static function supports(?Platform $platform): bool
     {
         return self::replyContentType($platform) !== null;
+    }
+
+    public static function maxReplies(?Platform $platform): int
+    {
+        return match ($platform) {
+            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
+            Platform::LinkedIn, Platform::LinkedInPage => 1,
+            default => 0,
+        };
     }
 
     /**
@@ -177,6 +187,10 @@ class ThreadReplies
             return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
+        if (count($replies) > self::maxReplies($platform)) {
+            return ['thread_replies', trans_choice('posts.form.thread.too_many', self::maxReplies($platform), ['max' => self::maxReplies($platform)])];
+        }
+
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
         $account = $target instanceof SocialAccount ? $target : null;
 
@@ -224,11 +238,15 @@ class ThreadReplies
             return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
         }
 
-        if (blank($reply['media'])) {
-            return [null, __('posts.form.thread.reply_empty')];
+        if (filled($reply['media'])) {
+            return null;
         }
 
-        return null;
+        if (self::replyContentType($platform) === ContentType::LinkedInComment) {
+            return [null, __('posts.form.thread.comment_empty')];
+        }
+
+        return [null, __('posts.form.thread.reply_empty')];
     }
 
     /**
@@ -266,6 +284,10 @@ class ThreadReplies
         }
 
         $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
+
+        if ($type === ContentType::LinkedInComment) {
+            return [null, __('posts.form.thread.comment_too_long', ['limit' => $limit, 'over' => $over])];
+        }
 
         return [null, __('posts.form.thread.reply_too_long', ['limit' => $limit, 'over' => $over])];
     }
