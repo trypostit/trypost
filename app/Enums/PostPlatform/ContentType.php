@@ -291,13 +291,14 @@ enum ContentType: string
     }
 
     /**
-     * Every network we publish to accepts QuickTime/MOV. Bluesky's stored
-     * embed lexicon is `video/mp4`, but its video service accepts MOV
-     * (`video/quicktime`) and transcodes it — same list as the official app.
+     * Every type that takes video accepts QuickTime/MOV: every network we
+     * publish to does. Bluesky's stored embed lexicon is `video/mp4`, but its
+     * video service accepts MOV (`video/quicktime`) and transcodes it — same
+     * list as the official app.
      */
     public function acceptsMov(): bool
     {
-        return true;
+        return $this->supportsVideo();
     }
 
     /**
@@ -510,7 +511,7 @@ enum ContentType: string
      */
     public function supportsAltText(): bool
     {
-        return $this->platform()->supportsAltText();
+        return $this->supportsImage() && $this->platform()->supportsAltText();
     }
 
     /**
