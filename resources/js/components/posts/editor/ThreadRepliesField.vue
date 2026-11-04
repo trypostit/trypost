@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { IconX } from '@tabler/icons-vue';
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { displayLength } from '@/lib/characters';
 import { filled } from '@/lib/helpers';
+import { isShiftEnter } from '@/lib/keyboard';
 import {
     isBlankThreadReply,
     newThreadReply,
@@ -83,6 +84,8 @@ const removeReply = (index: number): void => {
     }
 };
 
+const canAddReply = computed(() => replies.value.length < props.max);
+
 /** Shift+Enter opens the next post right below; Backspace on an empty post folds it back into the one above. */
 const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
     const textarea = event.target as HTMLTextAreaElement;
@@ -107,18 +110,9 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
         return;
     }
 
-    if (
-        event.key === 'Enter' &&
-        event.shiftKey &&
-        !event.isComposing &&
-        replies.value.length < props.max
-    ) {
+    if (isShiftEnter(event) && canAddReply.value) {
         event.preventDefault();
-        replies.value = [
-            ...replies.value.slice(0, index + 1),
-            newThreadReply(),
-            ...replies.value.slice(index + 1),
-        ];
+        replies.value = replies.value.toSpliced(index + 1, 0, newThreadReply());
         active.value = index + 1;
 
         return;
