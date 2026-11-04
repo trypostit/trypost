@@ -64,8 +64,11 @@ test('does not require explicit schedule for non scheduled statuses', function (
         ->and(PostStatusRules::requiresExplicitSchedule(null, PostStatus::Scheduled->value))->toBeTrue();
 });
 
-test('allows deleting a published post the network no longer returns', function () {
-    $post = Post::factory()->make(['status' => PostStatus::Published, 'publish_status' => PublishStatus::Deleted]);
+test('allows deleting a published post the network deleted, but not one still publishing', function (PostStatus $status, bool $blocked) {
+    $post = Post::factory()->make(['status' => $status, 'publish_status' => PublishStatus::Deleted]);
 
-    expect(PostStatusRules::blocksDeletion($post))->toBeFalse();
-});
+    expect(PostStatusRules::blocksDeletion($post))->toBe($blocked);
+})->with([
+    'published' => [PostStatus::Published, false],
+    'publishing' => [PostStatus::Publishing, true],
+]);

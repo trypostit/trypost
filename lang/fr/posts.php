@@ -1068,9 +1068,9 @@ return [
             'edit_labels_failed' => 'Impossible de mettre à jour les étiquettes. Réessayez.',
         ],
         'deleted_on_network' => [
-            'badge' => 'Supprimé',
-            'tooltip' => 'Supprimé sur :network',
-            'hint' => 'Ce post n\'existe plus sur :network. Supprime-le ou duplique-le depuis le menu de la publication.',
+            'badge' => 'Supprimée',
+            'hint' => 'Cette publication n\'existe plus sur :network. Supprimez-la ou dupliquez-la depuis le menu de la publication.',
+            'hint_without_delete' => 'Cette publication n\'existe plus sur :network. Dupliquez-la depuis le menu de la publication.',
         ],
         'created_by' => 'Créé par :name :when',
         'welcome' => [

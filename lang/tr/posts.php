@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Silindi',
-            'tooltip' => ':network üzerinde silindi',
             'hint' => 'Bu gönderi artık :network üzerinde yok. Gönderi menüsünden silin veya çoğaltın.',
+            'hint_without_delete' => 'Bu gönderi artık :network üzerinde yok. Gönderi menüsünden çoğaltın.',
         ],
         'created_by' => 'Oluşturan: :name :when',
         'welcome' => [

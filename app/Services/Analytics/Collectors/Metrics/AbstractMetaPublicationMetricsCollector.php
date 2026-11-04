@@ -24,13 +24,10 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
     abstract protected function graphBaseUrl(SocialAccount $account): string;
 
     /**
-     * The node the account's token reads as itself, asked to tell a deleted post
-     * from a token that lost access.
+     * The account's list of its own posts, the edge its discovery reads: reading it
+     * proves the token still reads the account's posts.
      */
-    protected function accountNode(SocialAccount $account): string
-    {
-        return 'me';
-    }
+    abstract protected function postsEdge(): string;
 
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
@@ -38,7 +35,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
             return $this->read($publication, $date);
         } catch (AnalyticsCollectionException $exception) {
             if ($exception->category === 'malformed' && $this->deletedOnNetwork($publication)) {
-                throw AnalyticsCollectionException::gone("{$publication->platform->value} no longer returns this post.");
+                throw AnalyticsCollectionException::deletedOnNetwork("{$publication->platform->value} no longer returns this post.");
             }
 
             throw $exception;
@@ -46,15 +43,13 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
     }
 
     /**
-     * Graph answers code 100, subcode 33 both for a post deleted on the network and
-     * for one the token can no longer read, so the post counts as deleted only while
-     * the account's own node still reads with the same token. A story expires after
-     * a day, so an older one is never reported as deleted.
+     * The post counts as deleted only when Graph says it does not exist (see
+     * MetaAnalyticsResponse) while the account's posts still read with the same
+     * token. A story is never checked: it disappears on its own when it expires.
      */
     private function deletedOnNetwork(AnalyticsPublication $publication): bool
     {
-        if ($publication->content_type === PublicationContentType::Story
-            && CarbonImmutable::now('UTC')->greaterThanOrEqualTo($publication->provider_published_at->addDay())) {
+        if ($publication->content_type === PublicationContentType::Story) {
             return false;
         }
 
@@ -66,13 +61,13 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
 
             return false;
         } catch (AnalyticsCollectionException $exception) {
-            if (! $exception->missing) {
+            if (! $exception->missingObject) {
                 return false;
             }
         }
 
         try {
-            $this->get($account, "{$graph}/{$this->accountNode($account)}", ['fields' => 'id']);
+            $this->get($account, "{$graph}/{$account->platform_user_id}/{$this->postsEdge()}", ['fields' => 'id', 'limit' => '1']);
 
             return true;
         } catch (AnalyticsCollectionException) {

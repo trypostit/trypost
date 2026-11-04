@@ -72,7 +72,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
         $statistics = Cache::get($key);
 
         if (! is_array($statistics)) {
-            throw AnalyticsCollectionException::gone('YouTube no longer returns this video.');
+            throw AnalyticsCollectionException::deletedOnNetwork('YouTube no longer returns this video.');
         }
 
         return $statistics;

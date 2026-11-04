@@ -53,7 +53,7 @@ class FinalizePostPublication
                 return null;
             }
 
-            $successful = $post->publish_status === PublishStatus::Published;
+            $successful = in_array($post->publish_status, [PublishStatus::Published, PublishStatus::Deleted], true);
 
             if ($successful) {
                 $post->markAsPublished();

@@ -1054,16 +1054,22 @@ an `enabled` flag or posts with several channels. Posts created together share
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
-- **Deleted on the network.** When the metrics read finds that the network no
-  longer returns a published post (YouTube, or Facebook, Instagram and Threads
-  through `AbstractMetaPublicationMetricsCollector`: Graph says the post does
-  not exist while the account's own node still reads with the same token),
-  `CollectPublicationMetrics` marks the publication `deleted` and the post
-  `publish_status = deleted` (`markPublicationDeleted()`); `status` stays
-  published. Such a post can be deleted in TryPost (`PostStatusRules::blocksDeletion`),
-  its card shows it as deleted with no link to the network, and it no longer
-  counts as published (posting goal, Instagram grid). A discovery that lists it
-  again restores both (`markPublicationRestored()`).
+- **Deleted on the network.** `publish_status = deleted` means the network
+  deleted a post it published; `status` stays published. Only a deletion the
+  collector confirms moves the post (`AnalyticsCollectionException::deletedOnNetwork()`):
+  YouTube no longer listing the video, or Facebook, Instagram and Threads
+  (`AbstractMetaPublicationMetricsCollector`) answering code 100 / subcode 33 for
+  the post while the account's own posts edge (the one its discovery reads) still
+  reads with the same token. A bare 404 or 410 only marks the analytics
+  publication, and a story is never checked (it expires on its own).
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`); a
+  discovery that lists it again restores it (`markPublicationRestored()`, which
+  does not rerun the "just published" side effects). Such a post can be deleted
+  in TryPost (`PostStatusRules::deletedOnNetwork()`), finalizes as published, and
+  still counts as published for the posting goal, the lifecycle and PostHog
+  (`Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics sync)
+  keep `scopePublicationPublished()`. In the UI, `isDeletedOnNetwork()` and
+  `postCardPermalink()` (`usePostCardActions.ts`) decide the badge and the link.
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

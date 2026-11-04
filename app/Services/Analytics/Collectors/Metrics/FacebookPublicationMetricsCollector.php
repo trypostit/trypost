@@ -25,9 +25,9 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         return rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
     }
 
-    protected function accountNode(SocialAccount $account): string
+    protected function postsEdge(): string
     {
-        return (string) $account->platform_user_id;
+        return 'published_posts';
     }
 
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation

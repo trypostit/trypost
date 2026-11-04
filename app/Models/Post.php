@@ -366,6 +366,15 @@ class Post extends Model
     }
 
     /**
+     * Posts the network published, including those deleted there since: they
+     * still count as published by the user (posting goal, lifecycle).
+     */
+    public function scopeWentOut(Builder $query): Builder
+    {
+        return $query->whereIn('posts.publish_status', [PublishStatus::Published, PublishStatus::Deleted]);
+    }
+
+    /**
      * Posts a network refused for a limit whose next attempt is due.
      */
     public function scopeDueForLimitRetry(Builder $query): Builder

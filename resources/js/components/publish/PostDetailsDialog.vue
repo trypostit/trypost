@@ -5,6 +5,7 @@ import {
     IconPencil,
     IconRepeat,
     IconSend,
+    IconTrashX,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
@@ -35,7 +36,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import { schedulePostCard } from '@/composables/usePostCardActions';
+import {
+    isDeletedOnNetwork,
+    postCardPermalink,
+    schedulePostCard,
+} from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
@@ -147,11 +152,7 @@ const channel = computed(() =>
         : null,
 );
 
-const permalink = computed(() =>
-    current.value.publish_status === PublishStatus.Deleted
-        ? null
-        : (current.value.platform_url ?? null),
-);
+const permalink = computed(() => postCardPermalink(current.value));
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;
@@ -356,6 +357,15 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                         ? $t('posts.publish.in_google_review')
                                         : $t(`posts.status.${current.status}`)
                                 }}
+                            </Badge>
+                            <Badge
+                                v-if="isDeletedOnNetwork(current)"
+                                variant="destructive-subtle"
+                                class="h-6 gap-1 px-2 [&>svg]:size-4"
+                                :data-testid="`post-details-deleted-on-network-${testKey}`"
+                            >
+                                <IconTrashX />
+                                {{ $t('posts.publish.deleted_on_network.badge') }}
                             </Badge>
                             <span
                                 class="text-sm text-muted-foreground"

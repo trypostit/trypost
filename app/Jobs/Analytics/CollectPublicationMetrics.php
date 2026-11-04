@@ -140,7 +140,10 @@ class CollectPublicationMetrics implements ShouldQueue
     {
         if ($exception->gone) {
             $publication->forceFill(['availability' => PublicationAvailability::Deleted])->save();
-            $publication->post?->markPublicationDeleted();
+
+            if ($exception->deletedOnNetwork) {
+                $publication->post?->markPublicationDeleted();
+            }
 
             return;
         }

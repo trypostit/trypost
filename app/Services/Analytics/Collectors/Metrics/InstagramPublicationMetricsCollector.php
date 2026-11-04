@@ -28,13 +28,9 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         return $account->platform->instagramGraphBaseUrl();
     }
 
-    /**
-     * Through Facebook the token is the Page's, whose `me` is the Page, so the
-     * Instagram account is read by its id instead.
-     */
-    protected function accountNode(SocialAccount $account): string
+    protected function postsEdge(): string
     {
-        return $account->platform === Platform::InstagramFacebook ? (string) $account->platform_user_id : 'me';
+        return 'media';
     }
 
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation

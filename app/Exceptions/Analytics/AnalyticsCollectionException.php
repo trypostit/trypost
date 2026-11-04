@@ -17,7 +17,8 @@ class AnalyticsCollectionException extends Exception
         string $message,
         public readonly ?CarbonImmutable $retryAt = null,
         public readonly bool $gone = false,
-        public readonly bool $missing = false,
+        public readonly bool $missingObject = false,
+        public readonly bool $deletedOnNetwork = false,
     ) {
         parent::__construct($message);
     }
@@ -32,9 +33,13 @@ class AnalyticsCollectionException extends Exception
         return new self('malformed', $message);
     }
 
-    public static function gone(string $message): self
+    /**
+     * The collector confirmed the network deleted the post, so the post itself is
+     * marked deleted, not only its publication (a bare 404 or 410 is only `gone`).
+     */
+    public static function deletedOnNetwork(string $message): self
     {
-        return new self('malformed', $message, gone: true);
+        return new self('malformed', $message, gone: true, deletedOnNetwork: true);
     }
 
     /**

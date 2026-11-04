@@ -91,12 +91,10 @@ class ReadPublicationAnalytics
         }
 
         return $posts->mapWithKeys(function (Post $post) use ($publications, $snapshots): array {
-            if ($post->publish_status === PublishStatus::Deleted) {
-                return [$post->id => $this->unavailable('deleted_on_network')];
-            }
+            $unpublished = $this->unpublishedReason($post);
 
-            if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
-                return [$post->id => $this->unavailable('not_published')];
+            if (filled($unpublished)) {
+                return [$post->id => $this->unavailable($unpublished)];
             }
 
             if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
@@ -117,12 +115,10 @@ class ReadPublicationAnalytics
     /** @return array<string, mixed> */
     public function latestFor(Post $post): array
     {
-        if ($post->publish_status === PublishStatus::Deleted) {
-            return $this->unavailable('deleted_on_network');
-        }
+        $unpublished = $this->unpublishedReason($post);
 
-        if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
-            return $this->unavailable('not_published');
+        if (filled($unpublished)) {
+            return $this->unavailable($unpublished);
         }
 
         if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
@@ -150,6 +146,15 @@ class ReadPublicationAnalytics
         $snapshot = $publication->dailySnapshots()->orderByDesc('date')->first();
 
         return $this->detail($publication, $snapshot);
+    }
+
+    private function unpublishedReason(Post $post): ?string
+    {
+        return match (true) {
+            $post->publish_status === PublishStatus::Deleted => 'deleted_on_network',
+            $post->publish_status !== PublishStatus::Published || blank($post->platform_post_id) => 'not_published',
+            default => null,
+        };
     }
 
     private function isCollectable(Post $post): bool

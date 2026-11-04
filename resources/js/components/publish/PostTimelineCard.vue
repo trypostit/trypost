@@ -64,6 +64,8 @@ import {
     copyPostCardLink,
     duplicatePostCard,
     editPostCardUrlKey,
+    isDeletedOnNetwork,
+    postCardPermalink,
     schedulePostCard,
     sharePostCardLink,
     toastFirstError,
@@ -72,7 +74,7 @@ import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { blank, filled } from '@/lib/helpers';
+import { blank, filled, transform } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
@@ -286,13 +288,9 @@ const contentTypeKey = computed(() =>
         : null,
 );
 
-const deletedOnNetwork = computed(
-    () => props.post.publish_status === PublishStatus.Deleted,
-);
+const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
 
-const permalink = computed(() =>
-    deletedOnNetwork.value ? null : (props.post.platform_url ?? null),
-);
+const permalink = computed(() => postCardPermalink(props.post));
 
 const metricsDetail = computed(() => {
     const detail = props.post.metrics ?? null;
@@ -503,14 +501,9 @@ defineExpose({ openDetails });
             />
             <Badge
                 v-if="deletedOnNetwork"
-                variant="destructive"
+                variant="destructive-subtle"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                 :data-testid="`post-deleted-on-network-${post.id}`"
-                :title="
-                    $t('posts.publish.deleted_on_network.tooltip', {
-                        network: platform ? getPlatformLabel(platform) : '',
-                    })
-                "
             >
                 <IconTrashX />
                 {{ $t('posts.publish.deleted_on_network.badge') }}
@@ -777,9 +770,18 @@ defineExpose({ openDetails });
                     :data-testid="`post-deleted-on-network-hint-${post.id}`"
                 >
                     {{
-                        $t('posts.publish.deleted_on_network.hint', {
-                            network: platform ? getPlatformLabel(platform) : '',
-                        })
+                        $t(
+                            post.can_delete
+                                ? 'posts.publish.deleted_on_network.hint'
+                                : 'posts.publish.deleted_on_network.hint_without_delete',
+                            {
+                                network: transform(
+                                    platform,
+                                    getPlatformLabel,
+                                    '',
+                                ),
+                            },
+                        )
                     }}
                 </p>
 

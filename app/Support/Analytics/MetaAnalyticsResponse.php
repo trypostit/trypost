@@ -29,15 +29,14 @@ class MetaAnalyticsResponse
             $category,
             "{$context} failed with HTTP {$response->status()} (Graph code {$code})",
             RetryAfter::from($response),
-            missing: self::isMissingObject($code, $subcode),
+            missingObject: self::isMissingObject($code, $subcode),
         );
     }
 
     /**
      * Graph answers code 100, subcode 33 ("Object with ID ... does not exist, cannot be
      * loaded due to missing permissions, or does not support this operation") both when
-     * the post was deleted on the network and when the token can no longer read it. The
-     * caller confirms the account itself is still readable before treating it as deleted.
+     * the object was deleted and when the token can no longer read it.
      */
     private static function isMissingObject(int $code, int $subcode): bool
     {

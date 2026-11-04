@@ -45,11 +45,13 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     waitFor($page, "@post-card-menu-content-{$deleted->id}");
 
     $page->assertVisible("@post-delete-{$deleted->id}")
+        ->assertVisible("@post-duplicate-{$deleted->id}")
         ->assertMissing("@post-share-link-{$deleted->id}");
 
     $page->click("@post-details-open-{$deleted->id}");
     waitFor($page, "@post-details-{$deleted->id}");
 
-    $page->assertMissing("@post-details-view-{$deleted->id}")
+    $page->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
+        ->assertMissing("@post-details-view-{$deleted->id}")
         ->assertNoJavaScriptErrors();
 });

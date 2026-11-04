@@ -345,8 +345,8 @@ Depois de mudar variáveis: `php artisan config:clear`.
 ### 7.3 No deploy (Laravel Cloud)
 
 1. **Comando de deploy, só neste release**, depois das migrations:
-   `php artisan release:trypost-2 --force` (a adoção da biblioteca é o passo 3 dele e termina no próprio processo;
-   roteiro em [`DEPLOYMENT.md` §3](DEPLOYMENT.md)). O `media:adopt-library` avulso fica em
+   `php artisan release:trypost-2 --force` (a adoção da biblioteca é o passo 3 dele e termina no próprio processo).
+   O `media:adopt-library` avulso fica em
    `app/Console/Commands/Scripts/` (no Docker ele roda no `docker/entrypoint.sh` a cada boot e não faz nada depois
    que tudo foi migrado).
 2. **Filas novas.** Os workers/Horizon precisam consumir `media-imports` e `rss-feeds` (supervisores novos em

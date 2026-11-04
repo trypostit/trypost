@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Deleted',
-            'tooltip' => 'Deleted on :network',
             'hint' => 'This post no longer exists on :network. Delete it or duplicate it from the post menu.',
+            'hint_without_delete' => 'This post no longer exists on :network. Duplicate it from the post menu.',
         ],
         'created_by' => 'Created by :name :when',
         'welcome' => [

@@ -7,8 +7,10 @@ import { duplicate as duplicatePost } from '@/actions/App/Http/Controllers/App/P
 import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/PostLabelController';
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { filled } from '@/lib/helpers';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
+import { PostStatus, PublishStatus } from '@/types/post';
 import type {
     PostCard,
     PostCardLabel,
@@ -78,16 +80,27 @@ export const duplicatePostCard = (post: PostCard): void => {
     router.post(duplicatePost.url(post.id));
 };
 
+/** Whether the network deleted the post after it was published. */
+export const isDeletedOnNetwork = (post: PostCard): boolean =>
+    post.status === PostStatus.Published &&
+    post.publish_status === PublishStatus.Deleted;
+
+/** The post's link on the network, none once the network deleted it. */
+export const postCardPermalink = (post: PostCard): string | null =>
+    isDeletedOnNetwork(post) ? null : (post.platform_url ?? null);
+
 /** Opens the composer with the sent post's link and every channel of the workspace. */
 export const sharePostCardLink = (post: PostCard): void => {
-    if (!post.platform_url) return;
+    const permalink = postCardPermalink(post);
+
+    if (!filled(permalink)) return;
 
     const channels = (usePage().props.channels as SidebarChannel[] | undefined) ?? [];
 
     openPostComposer({
         socialAccountIds: channels.map((channel) => channel.id),
         draft: {
-            content: post.platform_url,
+            content: permalink,
             media: [],
             scheduled_at: null,
             label_ids: [],
@@ -96,8 +109,10 @@ export const sharePostCardLink = (post: PostCard): void => {
 };
 
 export const copyPostCardLink = (post: PostCard): void => {
-    if (post.platform_url) {
-        void copyToClipboard(post.platform_url, undefined, {
+    const permalink = postCardPermalink(post);
+
+    if (filled(permalink)) {
+        void copyToClipboard(permalink, undefined, {
             showSuccessToast: false,
         });
     }

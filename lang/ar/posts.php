@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'محذوف',
-            'tooltip' => 'محذوف على :network',
             'hint' => 'لم يعد هذا المنشور موجودًا على :network. احذفه أو كرّره من قائمة المنشور.',
+            'hint_without_delete' => 'لم يعد هذا المنشور موجودًا على :network. كرّره من قائمة المنشور.',
         ],
         'created_by' => 'أنشأه :name :when',
         'welcome' => [

@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => '삭제됨',
-            'tooltip' => ':network에서 삭제됨',
             'hint' => '이 게시물은 더 이상 :network에 없습니다. 게시물 메뉴에서 삭제하거나 복제하세요.',
+            'hint_without_delete' => '이 게시물은 더 이상 :network에 없습니다. 게시물 메뉴에서 복제하세요.',
         ],
         'created_by' => '작성자: :name :when',
         'welcome' => [

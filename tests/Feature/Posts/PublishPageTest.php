@@ -448,6 +448,19 @@ test('an invalid time zone and an oversized queue window fall back safely', func
                 ->where('queue.queueDays', 14)));
 });
 
+test('sent this week still counts a post the network deleted afterwards', function () {
+    foreach ([PlatformStatus::Published, PlatformStatus::Deleted] as $publishStatus) {
+        publishPagePost($this->channel, PostStatus::Published, [], [
+            'publish_status' => $publishStatus,
+            'published_at' => now()->subMinutes(5),
+        ]);
+    }
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.publish', $this->channel))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('channel.sent_this_week', 2));
+});
+
 test("sent this week starts on the viewer's week start in the channel time zone", function (WeekStart $weekStart, int $expected) {
     $this->travelTo(CarbonImmutable::parse('2026-09-30 12:00:00', 'America/Sao_Paulo'));
     $this->channel->update(['timezone' => 'America/Sao_Paulo']);

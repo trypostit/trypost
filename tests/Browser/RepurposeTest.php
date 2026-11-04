@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\ItemStatus;
@@ -12,6 +13,7 @@ use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -212,6 +214,32 @@ test('the activity list reads as what happened, never as a database id', functio
 
     $page->assertVisible("@repurpose-item-{$withoutLink->id}")
         ->assertDontSee($withoutLink->source_media_id)
+        ->assertNoJavaScriptErrors();
+});
+
+test('a repurposed post deleted on the network reads as deleted in the activity list', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+    $item = RepurposeItem::factory()->for($repurpose)->create(['source_created_at' => now()->subHour()]);
+    $post = Post::factory()->forAccount($source)->published()->create([
+        'repurpose_item_id' => $item->id,
+        'publish_status' => PublishStatus::Deleted,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitFor($page, '@tab-activity');
+    $page->click('@tab-activity');
+    waitFor($page, "@repurpose-item-post-state-{$post->id}");
+
+    $page->assertSeeIn("@repurpose-item-post-state-{$post->id}", __('posts.publish.deleted_on_network.badge'))
+        ->assertDontSeeIn("@repurpose-item-post-state-{$post->id}", 'posts.')
         ->assertNoJavaScriptErrors();
 });
 

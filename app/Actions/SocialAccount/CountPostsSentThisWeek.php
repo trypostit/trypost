@@ -21,7 +21,7 @@ class CountPostsSentThisWeek
 
         return Post::query()
             ->where('social_account_id', $channel->id)
-            ->publicationPublished()
+            ->wentOut()
             ->whereNotNull('published_at')
             ->whereBetween('published_at', [
                 $now->startOfWeek($weekStart->firstDay())->utc(),

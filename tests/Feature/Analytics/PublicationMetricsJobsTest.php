@@ -18,6 +18,8 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
+use App\Jobs\Analytics\SyncTryPostPublication as SyncTryPostPublicationJob;
+use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
@@ -582,6 +584,34 @@ test('a post marked deleted that the network lists again is published again', fu
 
     expect($publication->refresh()->availability)->toBe(PublicationAvailability::Available)
         ->and($post->refresh()->publish_status)->toBe(PublishStatus::Published);
+    Queue::assertNotPushed(SyncTryPostPublicationJob::class);
+    Queue::assertNotPushed(SyncAccountPublishingActivity::class);
+});
+
+test('a confirmed deletion moves the post, while a bare 404 only marks its publication', function (Platform $platform, array $response, PublishStatus $expected) {
+    $publication = metricJobPublication($platform, now('UTC')->subHours(2));
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    Http::fake(['*' => Http::response(...$response)]);
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and($post->fresh()->publish_status)->toBe($expected);
+})->with([
+    'youtube no longer lists the video' => [Platform::YouTube, [['items' => []]], PublishStatus::Deleted],
+    'x answers 404' => [Platform::X, [[], 404], PublishStatus::Published],
+]);
+
+test('only a published post is marked deleted, and only a deleted one is restored', function () {
+    $inReview = Post::factory()->published()->create(['publish_status' => PublishStatus::PendingReview]);
+    $failed = Post::factory()->published()->create(['publish_status' => PublishStatus::Failed]);
+
+    $inReview->markPublicationDeleted();
+    $failed->markPublicationRestored();
+
+    expect($inReview->fresh()->publish_status)->toBe(PublishStatus::PendingReview)
+        ->and($failed->fresh()->publish_status)->toBe(PublishStatus::Failed);
 });
 
 test('collecting x metrics stores the poll on the publication', function () {

@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Verwijderd',
-            'tooltip' => 'Verwijderd op :network',
-            'hint' => 'Dit bericht bestaat niet meer op :network. Verwijder of dupliceer het via het postmenu.',
+            'hint' => 'Deze post bestaat niet meer op :network. Verwijder of dupliceer hem via het postmenu.',
+            'hint_without_delete' => 'Deze post bestaat niet meer op :network. Dupliceer hem via het postmenu.',
         ],
         'created_by' => 'Gemaakt door :name :when',
         'welcome' => [

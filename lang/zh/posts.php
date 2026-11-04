@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => '已删除',
-            'tooltip' => '已在 :network 删除',
             'hint' => '此帖子已不在 :network 上。可在帖子菜单中删除或复制。',
+            'hint_without_delete' => '此帖子已不在 :network 上。可在帖子菜单中复制。',
         ],
         'created_by' => '创建者：:name :when',
         'welcome' => [

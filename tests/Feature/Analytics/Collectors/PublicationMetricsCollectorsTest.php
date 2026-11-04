@@ -969,66 +969,70 @@ function metaMetricsPublication(Platform $platform, array $attributes = []): Ana
     ]);
 }
 
-function metaCollectionFailure(AnalyticsPublication $publication): AnalyticsCollectionException
+function metaCollect(AnalyticsPublication $publication): Closure
 {
-    $collector = app(PublicationMetricsCollectorFactory::class)->for($publication->platform);
-
-    try {
-        $collector->collect($publication, CarbonImmutable::today('UTC'));
-    } catch (AnalyticsCollectionException $exception) {
-        return $exception;
-    }
-
-    throw new RuntimeException('Expected a collection exception.');
+    return fn () => app(PublicationMetricsCollectorFactory::class)
+        ->for($publication->platform)
+        ->collect($publication, CarbonImmutable::today('UTC'));
 }
 
-test('a Meta post the network no longer returns is reported as gone while the account still reads', function (Platform $platform, string $accountNode) {
+test('a Meta post the network no longer returns is reported deleted while the account posts still read', function (Platform $platform, string $postsEdge) {
     $publication = metaMetricsPublication($platform);
     $graph = metaGraphBase($platform);
     Http::fake([
-        "{$graph}/{$accountNode}*" => Http::response(['id' => '17841400000000001']),
+        "{$graph}/17841400000000001/{$postsEdge}*" => Http::response(['data' => [['id' => '1']]]),
         '*' => Http::response(metaMissingObject('17897891718416700'), 400),
     ]);
 
-    expect(metaCollectionFailure($publication)->gone)->toBeTrue();
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeTrue());
 })->with([
-    'instagram via facebook reads the instagram account, not the page' => [Platform::InstagramFacebook, '17841400000000001'],
-    'instagram login reads its own user' => [Platform::Instagram, 'me'],
-    'facebook reads the page' => [Platform::Facebook, '17841400000000001'],
-    'threads reads its own user' => [Platform::Threads, 'me'],
+    'instagram via facebook' => [Platform::InstagramFacebook, 'media'],
+    'instagram login' => [Platform::Instagram, 'media'],
+    'facebook' => [Platform::Facebook, 'published_posts'],
+    'threads' => [Platform::Threads, 'threads'],
 ]);
 
-test('a Meta post is not reported as gone when the account cannot be read either', function (Platform $platform) {
+test('a Meta post is not reported deleted when the account posts cannot be read either', function (Platform $platform) {
     $publication = metaMetricsPublication($platform);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([Platform::InstagramFacebook, Platform::Instagram, Platform::Facebook, Platform::Threads]);
 
-test('a Meta post that still reads is not reported as gone when only its insights fail', function () {
+test('a Meta post is not reported deleted when reading it fails for another reason', function (array $postRead) {
     $publication = metaMetricsPublication(Platform::InstagramFacebook);
     $graph = metaGraphBase(Platform::InstagramFacebook);
     Http::fake([
-        "{$graph}/17897891718416700/insights*" => Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400),
-        '*' => Http::response(['id' => '17897891718416700']),
+        "{$graph}/17897891718416700/insights*" => Http::response(metaMissingObject('17897891718416700'), 400),
+        "{$graph}/17897891718416700*" => Http::response(...$postRead),
+        '*' => Http::response(['data' => [['id' => '1']]]),
     ]);
 
-    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
+})->with([
+    'the post still reads' => [[['id' => '17897891718416700']]],
+    'a server error' => [[['error' => ['code' => 2]], 500]],
+    'code 100 without subcode 33' => [[['error' => ['code' => 100, 'message' => 'Unsupported']], 400]],
+]);
+
+test('a Meta read refused for permission never checks whether the post was deleted', function () {
+    $publication = metaMetricsPublication(Platform::Threads);
+    $graph = metaGraphBase(Platform::Threads);
+    Http::fake([
+        "{$graph}/17897891718416700/insights*" => Http::response(['error' => ['code' => 10]], 403),
+        '*' => Http::response(['data' => [['id' => '1']]]),
+    ]);
+
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertSentCount(1);
 });
 
-test('a story older than a day is never reported as gone, since stories expire', function () {
-    $publication = metaMetricsPublication(Platform::Facebook, [
-        'content_type' => PublicationContentType::Story,
-        'provider_published_at' => now()->subDays(2),
-    ]);
-    $graph = metaGraphBase(Platform::Facebook);
-    Http::fake([
-        "{$graph}/17841400000000001*" => Http::response(['id' => '17841400000000001']),
-        '*' => Http::response(metaMissingObject('17897891718416700'), 400),
-    ]);
+test('a story is never reported deleted, since stories expire on their own', function () {
+    $publication = metaMetricsPublication(Platform::InstagramFacebook, ['content_type' => PublicationContentType::Story]);
+    Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
-    Http::assertNotSent(fn (Request $request): bool => $request->url() === "{$graph}/17897891718416700?fields=id");
+    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertSentCount(1);
 });
 
 /**

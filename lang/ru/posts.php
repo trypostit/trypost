@@ -1069,8 +1069,8 @@ return [
         ],
         'deleted_on_network' => [
             'badge' => 'Удалено',
-            'tooltip' => 'Удалено в :network',
             'hint' => 'Этого поста больше нет в :network. Удалите или дублируйте его в меню поста.',
+            'hint_without_delete' => 'Этого поста больше нет в :network. Дублируйте его в меню поста.',
         ],
         'created_by' => 'Создано: :name :when',
         'welcome' => [

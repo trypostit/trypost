@@ -1069,9 +1069,9 @@ return [
             'edit_labels_failed' => 'No se pudieron actualizar las etiquetas. Inténtalo de nuevo.',
         ],
         'deleted_on_network' => [
-            'badge' => 'Eliminada',
-            'tooltip' => 'Eliminada en :network',
-            'hint' => 'Esta publicación ya no existe en :network. Elimínala o duplícala desde el menú del post.',
+            'badge' => 'Eliminado',
+            'hint' => 'Este post ya no existe en :network. Elimínalo o duplícalo desde el menú del post.',
+            'hint_without_delete' => 'Este post ya no existe en :network. Duplícalo desde el menú del post.',
         ],
         'created_by' => 'Creado por :name :when',
         'welcome' => [

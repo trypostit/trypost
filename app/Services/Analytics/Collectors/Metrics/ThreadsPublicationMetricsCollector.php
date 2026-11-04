@@ -18,6 +18,11 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
         return rtrim((string) config('trypost.platforms.threads.graph_api'), '/');
     }
 
+    protected function postsEdge(): string
+    {
+        return 'threads';
+    }
+
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);

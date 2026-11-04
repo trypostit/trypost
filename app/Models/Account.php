@@ -118,7 +118,7 @@ class Account extends Model
      */
     public function scopeWithLifecycleActivity(Builder $query): Builder
     {
-        $publishedByTryPost = fn (Builder $posts): Builder => $posts->createdInTryPost()->publicationPublished();
+        $publishedByTryPost = fn (Builder $posts): Builder => $posts->createdInTryPost()->wentOut();
 
         return $query
             ->withExists('socialAccounts as has_social_account')
