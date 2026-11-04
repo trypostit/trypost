@@ -66,7 +66,6 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
               )
         : [],
 );
-/** Replies a network publishes as posts of their own; comments show inside the post instead. */
 const threadReplies = computed((): ThreadReply[] =>
     repliesAreComments(props.platform)
         ? []

@@ -34,8 +34,7 @@ use Throwable;
  * Shared LinkedIn publishing pipeline. The publish format follows the attached
  * media: a PDF becomes a document post, two or more images a multi-image post,
  * and a single image or video a media post. A text post with a link becomes an
- * article, because the Posts API does not scrape URLs. A thread reply is a
- * comment from the same author on the new post. Subclasses provide the
+ * article, because the Posts API does not scrape URLs. Subclasses provide the
  * author identity (member or company page) and its public URL.
  */
 abstract class AbstractLinkedInPublisher
@@ -122,10 +121,6 @@ abstract class AbstractLinkedInPublisher
     }
 
     /**
-     * The post, then its thread reply as a comment on it. A post with a reply is
-     * checkpointed once it is live, so a retry after a refused comment only
-     * comments.
-     *
      * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
      */
     private function publishWithComment(Post $post, ?string $content, string $rootHash): array
@@ -422,12 +417,9 @@ abstract class AbstractLinkedInPublisher
     }
 
     /**
-     * Comments on the post as its author through the unversioned
-     * `/v2/socialActions` API: the versioned `/rest/socialActions` one needs the
-     * Community Management API, which this app does not have, while `/v2/` takes
-     * the publish scopes TryPost holds. A comment's text is plain (not `little`)
-     * and it carries no media: LinkedIn accepts an image by URL, then drops the
-     * whole comment when it cannot fetch that URL, so a comment is text only.
+     * `/v2/` because the versioned `/rest/socialActions` needs the Community
+     * Management API. Text only: LinkedIn drops the whole comment when it
+     * cannot fetch an image URL.
      *
      * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
      */
@@ -806,10 +798,6 @@ abstract class AbstractLinkedInPublisher
             ]);
     }
 
-    /**
-     * The client for LinkedIn's unversioned `/v2/` API, which takes no
-     * `LinkedIn-Version` header.
-     */
     private function unversionedHttpClient(): PendingRequest
     {
         return $this->socialHttp()->withToken($this->accessToken)

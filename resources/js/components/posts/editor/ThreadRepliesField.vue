@@ -20,7 +20,6 @@ const props = withDefaults(
         /** A reply poll's question cap, kept even on an account with long posts. */
         pollLimit?: number;
         max?: number;
-        /** The replies are comments on the post (LinkedIn), not posts of their own. */
         comment?: boolean;
         disabled?: boolean;
         errors?: Record<number, string>;

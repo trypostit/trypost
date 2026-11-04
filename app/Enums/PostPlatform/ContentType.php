@@ -27,8 +27,6 @@ enum ContentType: string
     // LinkedIn Page
     case LinkedInPagePost = 'linkedin_page_post';
 
-    // The comment a LinkedIn post (profile or page) publishes as its one thread
-    // reply, text only. A reply type only: no post is ever stored with it.
     case LinkedInComment = 'linkedin_comment';
 
     // Facebook
@@ -86,10 +84,6 @@ enum ContentType: string
         return in_array($this, [self::FacebookStory, self::InstagramStory], true);
     }
 
-    /**
-     * A type only a thread reply publishes as (`ThreadReplies::replyContentType()`):
-     * never offered for a post and never accepted on one.
-     */
     public function isReplyOnly(): bool
     {
         return $this === self::LinkedInComment;
@@ -845,7 +839,7 @@ enum ContentType: string
      * Platforms this content_type can be assigned to. Most content types are
      * tied to a single platform; Instagram-family types (feed/carousel/reel/
      * story) work for both `Instagram` (Basic Display) and `InstagramFacebook`
-     * (Business via Facebook Page) accounts. A reply-only type has none.
+     * (Business via Facebook Page) accounts.
      *
      * @return array<SocialPlatform>
      */

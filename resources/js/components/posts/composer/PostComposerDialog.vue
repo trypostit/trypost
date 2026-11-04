@@ -1356,7 +1356,6 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
-/** Whether a network's thread reply takes media: a LinkedIn comment does not. */
 const replyAcceptsMedia = (platform: string): boolean =>
     getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
     0;

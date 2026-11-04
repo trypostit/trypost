@@ -24,8 +24,7 @@ use Illuminate\Support\Str;
  * the rules of the network's reply content type. A reply stored as a bare
  * string is a text-only reply. On X a reply may carry a poll instead of media
  * (`{text, media, poll}`), following `XPoll`'s rules with the reply text as
- * its question. On LinkedIn the one reply is a comment from the author
- * (`ContentType::LinkedInComment`).
+ * its question.
  */
 class ThreadReplies
 {
@@ -51,11 +50,6 @@ class ThreadReplies
         return self::replyContentType($platform) !== null;
     }
 
-    /**
-     * How many replies a network's thread takes. A LinkedIn post takes one: its
-     * reply is a comment, and a single comment from the author stays first
-     * however the comments are sorted.
-     */
     public static function maxReplies(?Platform $platform): int
     {
         return match (true) {
