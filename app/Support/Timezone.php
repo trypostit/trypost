@@ -24,10 +24,6 @@ class Timezone
             return $value;
         }
 
-        if (! in_array($value, DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC), true)) {
-            return self::DEFAULT;
-        }
-
         $mapped = IntlTimeZone::getIanaID($value);
 
         return is_string($mapped) && in_array($mapped, $canonical, true)
