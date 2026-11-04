@@ -25,7 +25,7 @@ export interface PreviewProps {
     /** The account's `publishConfig` (`Platform::publishConfig()`), e.g. X's poll limits. */
     publishConfig?: PublishConfig | null;
     /** The thread replies a network publishes as comments on the post (LinkedIn). */
-    comments?: { text: string; media: MediaItem[] }[];
+    comments?: { text: string }[];
 }
 
 export interface PreviewAction {

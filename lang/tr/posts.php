@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Bir bağlantı veya daha fazla bağlam ekleyin',
             'comment_label' => 'Yorumunuz',
             'remove_comment' => 'Yorumu kaldır',
+            'comment_too_long' => 'Yorumunuz :limit karakter sınırını :over karakter aşıyor.',
+            'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
         ],
 
         'pinterest' => [

@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Ajoutez un lien ou plus de contexte',
             'comment_label' => 'Votre commentaire',
             'remove_comment' => 'Retirer le commentaire',
+            'comment_too_long' => 'Votre commentaire dépasse la limite de :limit caractères de :over.',
+            'comment_attachments' => 'Les commentaires LinkedIn ne peuvent pas contenir de médias.',
         ],
 
         'pinterest' => [

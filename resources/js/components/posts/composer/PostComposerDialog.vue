@@ -531,7 +531,11 @@ const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
     }
 
     if (filled(reply)) {
-        return 'posts.composer.media_not_supported';
+        return (
+            MEDIALESS_CONTENT_TYPE_REASONS[
+                THREAD_REPLY_CONTENT_TYPES[group.platform]
+            ] ?? 'posts.composer.media_not_supported'
+        );
     }
 
     return (
@@ -1352,11 +1356,15 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
+/** Whether a network's thread reply takes media: a LinkedIn comment does not. */
+const replyAcceptsMedia = (platform: string): boolean =>
+    getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
+    0;
 const groupAcceptsMedia = (group: NetworkGroup): boolean => {
     const reply = activeReply(group);
 
     if (filled(reply)) {
-        return reply.poll === undefined;
+        return reply.poll === undefined && replyAcceptsMedia(group.platform);
     }
 
     return acceptsMedia(group.key);
@@ -1510,7 +1518,9 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
                 });
             } else if (over > 0) {
                 issues.push({
-                    key: 'posts.form.thread.reply_too_long',
+                    key: repliesAreComments(account.platform)
+                        ? 'posts.form.thread.comment_too_long'
+                        : 'posts.form.thread.reply_too_long',
                     params: { limit: String(limit), over: String(over) },
                     contentType,
                 });
@@ -3036,9 +3046,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                             />
                                             <div
                                                 v-else-if="
-                                                    threadActive === index ||
                                                     reply.media.length ||
-                                                    replyHasActivity(group, reply)
+                                                    (replyAcceptsMedia(group.platform) &&
+                                                        (threadActive === index ||
+                                                            replyHasActivity(group, reply)))
                                                 "
                                                 class="flex flex-col gap-2 px-[9px] pt-1"
                                             >

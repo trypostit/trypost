@@ -49,7 +49,6 @@ defineProps<PreviewProps>();
                 :key="index"
                 :account="socialAccount"
                 :text="comment.text"
-                :media="comment.media"
                 :data-testid="`preview-comment-${index}`"
             />
         </template>

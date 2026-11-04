@@ -1801,7 +1801,7 @@ test('a linkedin thread posts its reply as a comment from the member on the new 
         ]);
 });
 
-test('a linkedin comment carries its image by url', function () {
+test('a linkedin comment is sent as text only, even when a stored reply still carries media', function () {
     linkedInCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
     $image = ['id' => 'comment-image', 'path' => 'medias/photo.jpg', 'url' => 'https://example.com/medias/photo.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg'];
     $this->post->update(['meta' => ['thread_replies' => [['text' => 'The chart', 'media' => [$image]]]]]);
@@ -1812,7 +1812,6 @@ test('a linkedin comment carries its image by url', function () {
         'actor' => 'urn:li:person:abc123xyz',
         'object' => 'urn:li:share:123',
         'message' => ['text' => 'The chart'],
-        'content' => [['type' => 'IMAGE', 'url' => 'https://example.com/medias/photo.jpg']],
     ]);
 });
 

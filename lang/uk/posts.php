@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Додайте посилання або більше контексту',
             'comment_label' => 'Ваш коментар',
             'remove_comment' => 'Видалити коментар',
+            'comment_too_long' => 'Коментар перевищує ліміт у :limit символів на :over.',
+            'comment_attachments' => 'Коментарі в LinkedIn не можуть містити медіафайли.',
         ],
 
         'pinterest' => [

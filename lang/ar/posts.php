@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'أضف رابطًا أو سياقًا إضافيًا',
             'comment_label' => 'تعليقك',
             'remove_comment' => 'إزالة التعليق',
+            'comment_too_long' => 'يتجاوز تعليقك حد :limit حرف بمقدار :over.',
+            'comment_attachments' => 'لا يمكن أن تتضمن تعليقات LinkedIn وسائط.',
         ],
 
         'pinterest' => [

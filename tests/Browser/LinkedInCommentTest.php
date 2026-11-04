@@ -30,6 +30,23 @@ function linkedInCommentPost(string $factoryState, ContentType $contentType): Po
     return $post;
 }
 
+test('a linkedin comment takes no media and the media button says why', function () {
+    $post = linkedInCommentPost('linkedinPage', ContentType::LinkedInPagePost);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    waitFor($page, "@composer-{$id}-media-source-disabled");
+
+    $page->assertMissing("@composer-{$id}-reply-0-dropzone")
+        ->assertMissing("@composer-{$id}-media-source-menu")
+        ->hover("@composer-{$id}-media-source-disabled");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.thread.comment_attachments'));
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a linkedin post takes one comment that shows under the post in the preview and is kept after saving', function (string $factoryState, ContentType $contentType) {
     $post = linkedInCommentPost($factoryState, $contentType);
 

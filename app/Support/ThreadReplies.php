@@ -287,7 +287,9 @@ class ThreadReplies
 
         $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
 
-        return [null, __('posts.form.thread.reply_too_long', ['limit' => $limit, 'over' => $over])];
+        $key = $type?->isReplyOnly() ? 'posts.form.thread.comment_too_long' : 'posts.form.thread.reply_too_long';
+
+        return [null, __($key, ['limit' => $limit, 'over' => $over])];
     }
 
     /**

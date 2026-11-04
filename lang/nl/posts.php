@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Voeg een link of meer context toe',
             'comment_label' => 'Je reactie',
             'remove_comment' => 'Reactie verwijderen',
+            'comment_too_long' => 'Je reactie overschrijdt de limiet van :limit tekens met :over.',
+            'comment_attachments' => 'Reacties op LinkedIn kunnen geen media bevatten.',
         ],
 
         'pinterest' => [

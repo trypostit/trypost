@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Add a link or more context',
             'comment_label' => 'Your comment',
             'remove_comment' => 'Remove comment',
+            'comment_too_long' => 'Your comment exceeds the :limit-character limit by :over.',
+            'comment_attachments' => 'LinkedIn comments can\'t include media.',
         ],
 
         'pinterest' => [

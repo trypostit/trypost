@@ -76,7 +76,6 @@ const comments = computed(() =>
     repliesAreComments(props.platform)
         ? shownReplies.value.map(({ reply }) => ({
               text: contentFor(reply.text, props.platform),
-              media: reply.media,
           }))
         : undefined,
 );

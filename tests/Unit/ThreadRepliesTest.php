@@ -78,17 +78,15 @@ test('a linkedin post takes one comment while the other threads take up to 24 re
         ->toBe(['thread_replies', trans_choice('posts.form.thread.too_many', 1, ['max' => 1])]);
 });
 
-test('a linkedin comment takes one image and no video or document', function () {
+test('a linkedin comment takes no media and its length error names the comment', function () {
     $image = ['id' => 'image', 'type' => 'image', 'mime_type' => 'image/jpeg'];
-    $video = ['id' => 'video', 'type' => 'video', 'mime_type' => 'video/mp4'];
-    $document = ['id' => 'document', 'type' => 'document', 'mime_type' => 'application/pdf'];
-    $comment = fn (array $media): array => ['thread_replies' => [['text' => 'Link below', 'media' => $media]]];
 
-    expect(ThreadReplies::mediaErrors(Platform::LinkedIn, $comment([$image]), null))->toBe([])
-        ->and(ThreadReplies::mediaErrors(Platform::LinkedIn, $comment([$image, $image]), null))
-        ->toBe(['thread_replies.0.media' => __('posts.form.warnings.max_files_exceeded', ['max' => 1, 'current' => 2])])
-        ->and(ThreadReplies::mediaErrors(Platform::LinkedInPage, $comment([$video]), null))->toHaveKey('thread_replies.0.media')
-        ->and(ThreadReplies::mediaErrors(Platform::LinkedIn, $comment([$document]), null))->toHaveKey('thread_replies.0.media');
+    expect(ThreadReplies::mediaErrors(Platform::LinkedIn, ['thread_replies' => [['text' => 'Link below', 'media' => [$image]]]], null))
+        ->toBe(['thread_replies.0.media' => __('posts.form.warnings.max_files_exceeded', ['max' => 0, 'current' => 1])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['thread_replies' => [str_repeat('a', 3001)]]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.comment_too_long', ['limit' => 3000, 'over' => 1])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => [str_repeat('a', 281)]]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.reply_too_long', ['limit' => 280, 'over' => 1])]);
 });
 
 test('a reply publishes as its network post type and takes that type media rules', function () {

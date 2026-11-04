@@ -38,6 +38,7 @@ export const CAPTIONLESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
 export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Record<string, string>> = {
     [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
     [ContentType.XPoll]: 'posts.form.x.poll.attachments',
+    [ContentType.LinkedInComment]: 'posts.form.thread.comment_attachments',
 };
 
 /** Content types that carry no media: the composer hides the media tray. */

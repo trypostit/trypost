@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'リンクや補足を追加',
             'comment_label' => 'あなたのコメント',
             'remove_comment' => 'コメントを削除',
+            'comment_too_long' => 'コメントが:limit文字の上限を:over文字超えています。',
+            'comment_attachments' => 'LinkedInのコメントにはメディアを添付できません。',
         ],
 
         'pinterest' => [

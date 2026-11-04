@@ -497,6 +497,8 @@ return [
             'comment_placeholder' => 'Dodaj link lub więcej kontekstu',
             'comment_label' => 'Twój komentarz',
             'remove_comment' => 'Usuń komentarz',
+            'comment_too_long' => 'Komentarz przekracza limit :limit znaków o :over.',
+            'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
         ],
 
         'pinterest' => [

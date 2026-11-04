@@ -28,7 +28,7 @@ enum ContentType: string
     case LinkedInPagePost = 'linkedin_page_post';
 
     // The comment a LinkedIn post (profile or page) publishes as its one thread
-    // reply. A reply type only: no post is ever stored with it.
+    // reply, text only. A reply type only: no post is ever stored with it.
     case LinkedInComment = 'linkedin_comment';
 
     // Facebook
@@ -228,7 +228,7 @@ enum ContentType: string
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
             self::LinkedInPost, self::LinkedInPagePost => 10,
-            self::LinkedInComment => 1,
+            self::LinkedInComment => 0,
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
             self::TikTokVideo => 1,
@@ -326,7 +326,7 @@ enum ContentType: string
             self::InstagramFeed, self::InstagramStory => self::bytesFromMb(8),
             self::FacebookPost => self::bytesFromMb(4),
             self::FacebookStory => self::bytesFromMb(10),
-            self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment => self::bytesFromMb(5),
+            self::LinkedInPost, self::LinkedInPagePost => self::bytesFromMb(5),
             self::PinterestPin, self::PinterestCarousel => self::bytesFromMb(20),
             self::XPost => self::bytesFromMb(5),
             self::ThreadsPost => self::bytesFromMb(8),
@@ -777,6 +777,7 @@ enum ContentType: string
             self::ThreadsGhostPost => false,
             self::XPoll => false,
             self::PinterestVideoPin => false,
+            self::LinkedInComment => false,
             default => true,
         };
     }

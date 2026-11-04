@@ -135,7 +135,7 @@ abstract class AbstractLinkedInPublisher
             $rootHash,
             fn (): array => $this->dispatchByMedia($content, $post),
             fn (string $text, Collection $media, array $previous, array $root): array => [
-                'id' => $this->createComment((string) $root['id'], $text, $media->first()),
+                'id' => $this->createComment((string) $root['id'], $text),
             ],
         );
     }
@@ -426,26 +426,20 @@ abstract class AbstractLinkedInPublisher
      * `/v2/socialActions` API: the versioned `/rest/socialActions` one needs the
      * Community Management API, which this app does not have, while `/v2/` takes
      * the publish scopes TryPost holds. A comment's text is plain (not `little`)
-     * and it carries one image at most, by URL: LinkedIn shows the image from that
-     * URL, and an image uploaded through the Images API shows broken in a comment.
+     * and it carries no media: LinkedIn accepts an image by URL, then drops the
+     * whole comment when it cannot fetch that URL, so a comment is text only.
      *
      * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
      */
-    private function createComment(string $postUrn, string $text, ?MediaItem $image): string
+    private function createComment(string $postUrn, string $text): string
     {
-        $payload = [
-            'actor' => $this->authorUrn(),
-            'object' => $postUrn,
-            'message' => ['text' => $text],
-        ];
-
-        if ($image !== null) {
-            $payload['content'] = [['type' => 'IMAGE', 'url' => $image->url]];
-        }
-
         $response = $this->unversionedHttpClient()->post(
             "{$this->baseUrl()}/v2/socialActions/".rawurlencode($postUrn).'/comments',
-            $payload,
+            [
+                'actor' => $this->authorUrn(),
+                'object' => $postUrn,
+                'message' => ['text' => $text],
+            ],
         );
 
         if ($response->failed()) {
