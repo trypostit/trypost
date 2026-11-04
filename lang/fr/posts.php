@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Supprimée',
             'title' => 'Supprimée sur :network',
-            'hint' => 'Cette publication n\'existe plus sur :network. Supprimez-la ou dupliquez-la depuis le menu de la publication.',
-            'hint_without_delete' => 'Cette publication n\'existe plus sur :network. Dupliquez-la depuis le menu de la publication.',
+            'hint' => 'Elle a été retirée après sa publication : son lien et ses insights ne sont plus disponibles.',
         ],
         'created_by' => 'Créé par :name :when',
         'welcome' => [

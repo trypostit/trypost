@@ -54,14 +54,7 @@ const network = computed(() =>
                 class="text-sm text-foreground"
                 :data-testid="`post-deleted-on-network-hint-${testKey}`"
             >
-                {{
-                    $t(
-                        post.can_delete
-                            ? 'posts.publish.deleted_on_network.hint'
-                            : 'posts.publish.deleted_on_network.hint_without_delete',
-                        { network },
-                    )
-                }}
+                {{ $t('posts.publish.deleted_on_network.hint') }}
             </p>
         </PopoverContent>
     </Popover>

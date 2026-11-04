@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Silindi',
             'title' => ':network üzerinde silindi',
-            'hint' => 'Bu gönderi artık :network üzerinde yok. Gönderi menüsünden silin veya çoğaltın.',
-            'hint_without_delete' => 'Bu gönderi artık :network üzerinde yok. Gönderi menüsünden çoğaltın.',
+            'hint' => 'Yayınlandıktan sonra kaldırıldı, bu yüzden bağlantısı ve Insights verileri artık kullanılamıyor.',
         ],
         'created_by' => 'Oluşturan: :name :when',
         'welcome' => [

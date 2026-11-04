@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Verwijderd',
             'title' => 'Verwijderd op :network',
-            'hint' => 'Deze post bestaat niet meer op :network. Verwijder of dupliceer hem via het postmenu.',
-            'hint_without_delete' => 'Deze post bestaat niet meer op :network. Dupliceer hem via het postmenu.',
+            'hint' => 'Hij is na publicatie verwijderd, dus de link en insights zijn niet meer beschikbaar.',
         ],
         'created_by' => 'Gemaakt door :name :when',
         'welcome' => [

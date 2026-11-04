@@ -1071,8 +1071,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Eliminado',
             'title' => 'Eliminado en :network',
-            'hint' => 'Este post ya no existe en :network. Elimínalo o duplícalo desde el menú del post.',
-            'hint_without_delete' => 'Este post ya no existe en :network. Duplícalo desde el menú del post.',
+            'hint' => 'Se eliminó después de publicarse, así que su enlace y sus insights ya no están disponibles.',
         ],
         'created_by' => 'Creado por :name :when',
         'welcome' => [

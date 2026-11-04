@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'محذوف',
             'title' => 'محذوف على :network',
-            'hint' => 'لم يعد هذا المنشور موجودًا على :network. احذفه أو كرّره من قائمة المنشور.',
-            'hint_without_delete' => 'لم يعد هذا المنشور موجودًا على :network. كرّره من قائمة المنشور.',
+            'hint' => 'أُزيل بعد نشره، لذلك لم يعد رابطه ولا Insights الخاصة به متاحة.',
         ],
         'created_by' => 'أنشأه :name :when',
         'welcome' => [

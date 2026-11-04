@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Deleted',
             'title' => 'Deleted on :network',
-            'hint' => 'This post no longer exists on :network. Delete it or duplicate it from the post menu.',
-            'hint_without_delete' => 'This post no longer exists on :network. Duplicate it from the post menu.',
+            'hint' => 'It was removed after it was published, so its link and insights are no longer available.',
         ],
         'created_by' => 'Created by :name :when',
         'welcome' => [

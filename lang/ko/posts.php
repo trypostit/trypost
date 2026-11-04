@@ -1070,8 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => '삭제됨',
             'title' => ':network에서 삭제됨',
-            'hint' => '이 게시물은 더 이상 :network에 없습니다. 게시물 메뉴에서 삭제하거나 복제하세요.',
-            'hint_without_delete' => '이 게시물은 더 이상 :network에 없습니다. 게시물 메뉴에서 복제하세요.',
+            'hint' => '게시 후 삭제되어 링크와 Insights를 더 이상 사용할 수 없습니다.',
         ],
         'created_by' => '작성자: :name :when',
         'welcome' => [
