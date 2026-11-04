@@ -1132,6 +1132,18 @@ an `enabled` flag or posts with several channels. Posts created together share
 - `meta.link_preview === false` (the × on the card) is honoured only by the Facebook post, Bluesky and LinkedIn publishers, through `Post::attachesLinkPreview()`. Threads has no ×: its API always cards the first link.
 - "Replace link preview with media" goes through `LinkPreviewMediaController`.
 
+## First comment
+
+A post can carry a comment TryPost posts on it right after it goes live, as the same author (#465). LinkedIn (profile and page) has it today; Threads and Instagram are meant to follow on the same structure, so nothing about it is named after LinkedIn except the LinkedIn network call.
+
+- **`meta.first_comment` is `{text}`**, an object so a comment with media later is a new key, never a new shape. Blank text is stored as absent; a network without first comments drops it (`PostMeta::forChannel()`).
+- **`App\Support\FirstComment` is the one home of its rules**: which networks take one and each one's length (`maxLength()`, in code points; LinkedIn 1250), the extra scopes an account needs (`requiredScopes()`, none on LinkedIn), whether an account can post one (`availableFor()`, sent to the composer per account as `firstComment` by `PlatformConfigResource`), and the length violation, checked with the required meta (`requiredMetaViolation()`) once a post is scheduled or published, like thread replies; the request rule caps at `Post::CONTENT_MAX_LENGTH`.
+- **A network offers a first comment or thread replies, never both** (`FirstCommentTest` fails otherwise). Where a comment is a reply (Threads, X), the first comment is the first reply.
+- **Publishing** goes through `Concerns\PublishesFirstComment`: a publisher implements `createFirstComment()` and `refreshAccessToken()`, and calls `publishFirstComment($post, $postId)` once its post exists, outside the post's own token retry so a refused comment never creates the post again. A dead token is refreshed once for the comment only.
+- **A failed comment never fails the post**: it is already public. The outcome is the system key `meta.first_comment_result` (`PostPlatformMetaRules::SYSTEM_KEYS`): `{post_id, comment_id}` or `{post_id, failed: true}`. It is the checkpoint (a post that has its comment is never commented again; a post created again after a lost response gets its own) and the lasting record (Threads will need the comment id to keep its own reply out of `ImportExternalPosts`). The Sent card and the post details show `posts.first_comment.failed` when it failed; there is no retry action (owner decision November 2026).
+- **LinkedIn** comments through `POST /v2/socialActions/{post URN}/comments` with `X-Restli-Protocol-Version: 2.0.0` and no `LinkedIn-Version`. The versioned `/rest/socialActions` endpoint needs the Community Management API (403 `partnerApiSocialActions.CREATE`); `/v2/` takes the scopes we already hold (`w_member_social`, `w_organization_social`). A page comments as the organization. The text is sent as it is (a comment's message is not `little` text). LinkedIn's docs give no comment length limit; 1250 is the limit a third-party integration documents.
+- **Adding a network**: one arm in `FirstComment::maxLength()` and `requiredScopes()`, `createFirstComment()` in its publisher, and `PreviewFirstComment` in its preview. The composer row and the Sent note need nothing.
+
 ## YouTube
 
 - Without `meta.title`, the title is the first non-empty line of the post's plain text, with `<` and `>` removed, cut to 100 code points, and no ` #Shorts` (`YouTubeMetadata::title()`); `YouTubeSettings.vue` fills the Title field with the same rule.
