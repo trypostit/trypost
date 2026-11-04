@@ -135,7 +135,7 @@ abstract class AbstractLinkedInPublisher
             $rootHash,
             fn (): array => $this->dispatchByMedia($content, $post),
             fn (string $text, Collection $media, array $previous, array $root): array => [
-                'id' => $this->createComment((string) $root['id'], $text),
+                'id' => $this->createComment((string) data_get($root, 'id'), $text),
             ],
         );
     }

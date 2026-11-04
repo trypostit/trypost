@@ -10,6 +10,7 @@ import PreviewComment from '@/components/posts/previews/PreviewComment.vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
+import { filled } from '@/lib/helpers';
 
 
 defineProps<PreviewProps>();
@@ -43,7 +44,7 @@ defineProps<PreviewProps>();
             { icon: IconSend, labelKey: 'posts.composer.preview.send' },
         ]"
     >
-        <template v-if="comments?.length" #after-actions>
+        <template v-if="filled(comments)" #after-actions>
             <PreviewComment
                 v-for="(comment, index) in comments"
                 :key="index"
