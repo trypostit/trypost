@@ -25,7 +25,7 @@ import {
     threadReplyContentType,
 } from '@/lib/threadReplies';
 import type { MediaItem } from '@/types/media';
-import { THREAD_PLATFORMS } from '@/types/network-options';
+import { repliesAreComments, THREAD_PLATFORMS } from '@/types/network-options';
 import type { PublishConfig } from '@/types/platform';
 
 interface Props {
@@ -66,8 +66,19 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
               )
         : [],
 );
+/** Replies a network publishes as posts of their own; comments show inside the post instead. */
 const threadReplies = computed((): ThreadReply[] =>
-    shownReplies.value.map(({ reply }) => reply),
+    repliesAreComments(props.platform)
+        ? []
+        : shownReplies.value.map(({ reply }) => reply),
+);
+const comments = computed(() =>
+    repliesAreComments(props.platform)
+        ? shownReplies.value.map(({ reply }) => ({
+              text: contentFor(reply.text, props.platform),
+              media: reply.media,
+          }))
+        : undefined,
 );
 
 /** A reply repeats the post's content warning and carries its own poll. */
@@ -163,6 +174,7 @@ const previewComponent = computed(() => {
                 :meta="meta"
                 :posted-at="postedAt"
                 :publish-config="publishConfig"
+                :comments="comments"
                 :thread-position="threadReplies.length ? 'first' : undefined"
             />
             </div>

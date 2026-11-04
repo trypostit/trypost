@@ -493,7 +493,7 @@ return [
             'reply_empty' => 'Uma resposta da sequência está vazia.',
             'reply_too_long' => 'Uma resposta passa do limite de :limit caracteres em :over.',
             'too_many' => '{1} Este post aceita só um comentário.|[0,*] Este post aceita até :max respostas.',
-            'add_comment' => 'Adicionar comentário',
+            'add_comment' => 'Comentar',
             'comment_placeholder' => 'Adicione um link ou mais contexto',
             'comment_label' => 'Seu comentário',
             'remove_comment' => 'Remover comentário',

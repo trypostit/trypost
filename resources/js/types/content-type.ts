@@ -4,6 +4,8 @@ export const ContentType = {
     InstagramReel: 'instagram_reel',
     LinkedInPost: 'linkedin_post',
     LinkedInPagePost: 'linkedin_page_post',
+    /** The comment a LinkedIn post publishes as its one thread reply; never a post's own type. */
+    LinkedInComment: 'linkedin_comment',
     FacebookPost: 'facebook_post',
     FacebookReel: 'facebook_reel',
     FacebookStory: 'facebook_story',

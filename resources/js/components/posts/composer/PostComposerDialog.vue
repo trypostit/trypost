@@ -196,9 +196,10 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    THREAD_MAX_REPLIES,
+    repliesAreComments,
     THREAD_PLATFORMS,
     THREAD_REPLY_CONTENT_TYPES,
+    threadMaxReplies,
 } from '@/types/network-options';
 import { Platform } from '@/types/platform';
 import {
@@ -1177,7 +1178,7 @@ const setThreadReplies = (
 };
 const addThreadReply = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+    if (replies.length >= threadMaxReplies(group.platform)) return;
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1186,7 +1187,7 @@ const focusFirstReply = (): void => {
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+    if (replies.length >= threadMaxReplies(group.platform)) return;
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
@@ -2996,7 +2997,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <ThreadRepliesField
                                         v-model:active="threadActive"
                                         :toolbar-target="`composer-${group.anchor.id}-reply-toolbar`"
-                                        :max="THREAD_MAX_REPLIES"
+                                        :max="threadMaxReplies(group.platform)"
+                                        :comment="repliesAreComments(group.platform)"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
                                         :limit="threadReplyLimit(group) ?? Infinity"
@@ -3151,13 +3153,17 @@ const onDialogOpenChange = (value: boolean): void => {
                                             >
                                                 <IconCirclePlus class="size-4" />
                                                 <span data-single-line>{{
-                                                    $t('posts.form.thread.start')
+                                                    $t(
+                                                        repliesAreComments(group.platform)
+                                                            ? 'posts.form.thread.add_comment'
+                                                            : 'posts.form.thread.start',
+                                                    )
                                                 }}</span>
                                             </Button>
                                             <Tooltip
                                                 v-else-if="
                                                     threadReplies(group).length <
-                                                    THREAD_MAX_REPLIES
+                                                    threadMaxReplies(group.platform)
                                                 "
                                             >
                                                 <TooltipTrigger as-child>

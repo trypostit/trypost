@@ -493,7 +493,7 @@ return [
             'reply_empty' => 'Eine Antwort im Thread ist leer.',
             'reply_too_long' => 'Eine Antwort überschreitet das Limit von :limit Zeichen um :over.',
             'too_many' => '{1} Dieser Beitrag nimmt nur einen Kommentar an.|[0,*] Dieser Beitrag nimmt bis zu :max Antworten an.',
-            'add_comment' => 'Kommentar hinzufügen',
+            'add_comment' => 'Kommentieren',
             'comment_placeholder' => 'Füge einen Link oder mehr Kontext hinzu',
             'comment_label' => 'Dein Kommentar',
             'remove_comment' => 'Kommentar entfernen',
