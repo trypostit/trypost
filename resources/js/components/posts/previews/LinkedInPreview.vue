@@ -6,7 +6,7 @@ import {
     IconThumbUp,
 } from '@tabler/icons-vue';
 
-import PreviewComment from '@/components/posts/previews/PreviewComment.vue';
+import LinkedInPreviewComment from '@/components/posts/previews/LinkedInPreviewComment.vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
@@ -45,7 +45,7 @@ defineProps<PreviewProps>();
         ]"
     >
         <template v-if="filled(comments)" #after-actions>
-            <PreviewComment
+            <LinkedInPreviewComment
                 v-for="(comment, index) in comments"
                 :key="index"
                 :account="socialAccount"
