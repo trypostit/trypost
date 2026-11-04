@@ -107,13 +107,13 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
         return;
     }
 
-    if (event.key === 'Enter' && event.shiftKey && !event.isComposing) {
+    if (
+        event.key === 'Enter' &&
+        event.shiftKey &&
+        !event.isComposing &&
+        replies.value.length < props.max
+    ) {
         event.preventDefault();
-
-        if (replies.value.length >= props.max) {
-            return;
-        }
-
         replies.value = [
             ...replies.value.slice(0, index + 1),
             newThreadReply(),

@@ -174,7 +174,9 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
+    repliesAreComments,
     replyErrorOf,
+    threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
@@ -196,10 +198,8 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    repliesAreComments,
     THREAD_PLATFORMS,
     THREAD_REPLY_CONTENT_TYPES,
-    threadMaxReplies,
 } from '@/types/network-options';
 import { Platform } from '@/types/platform';
 import {
@@ -2755,7 +2755,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                     threadReplies(group)[threadActive] !== undefined
                                 "
                                 :active-reply="threadActive"
-                                :threadable="supportsThread(group)"
+                                :threadable="
+                                    supportsThread(group) &&
+                                    !repliesAreComments(group.platform)
+                                "
                                 :threaded="threadReplies(group).length > 0"
                                 @expand-caption="deselectThread"
                                 @start-thread="startThreadFromCaption(group)"

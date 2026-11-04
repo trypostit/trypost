@@ -2,7 +2,10 @@ import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { THREAD_REPLY_CONTENT_TYPES } from '@/types/network-options';
+import {
+    THREAD_MAX_REPLIES,
+    THREAD_REPLY_CONTENT_TYPES,
+} from '@/types/network-options';
 import type { XPoll } from '@/types/x';
 
 /**
@@ -85,3 +88,9 @@ export const threadReplyContentType = (
 
     return THREAD_REPLY_CONTENT_TYPES[platform];
 };
+
+export const threadMaxReplies = (platform: string): number =>
+    THREAD_MAX_REPLIES[platform] ?? 0;
+
+export const repliesAreComments = (platform: string): boolean =>
+    THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;

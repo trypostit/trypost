@@ -71,3 +71,63 @@ test('a linkedin post takes one comment that shows under the post in the preview
     'profile' => ['linkedin', ContentType::LinkedInPost],
     'page' => ['linkedinPage', ContentType::LinkedInPagePost],
 ]);
+
+test('shift enter breaks the line in a linkedin caption and comment instead of opening a thread', function () {
+    $post = linkedInCommentPost('linkedin', ContentType::LinkedInPost);
+    $caption = "@composer-caption-{$post->social_account_id}";
+    $captionHtml = "document.querySelector('[data-testid=\"composer-caption-{$post->social_account_id}\"]').innerHTML";
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, $caption);
+
+    $page->keys($caption, 'End')->keys($caption, 'Shift+Enter');
+    waitForCondition($page, "{$captionHtml}.includes('<br')");
+
+    $page->assertMissing('@thread-reply-0')
+        ->assertPresent('@thread-start')
+        ->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+
+    $page->fill('@thread-reply-0', 'First line')
+        ->keys('@thread-reply-0', 'Shift+Enter');
+    waitForCondition($page, "document.querySelector('[data-testid=\"thread-reply-0\"]')?.value === 'First line\\n'");
+
+    $page->assertMissing('@thread-reply-1')->assertNoJavaScriptErrors();
+});
+
+test('a linkedin comment over 3000 characters blocks publishing with a comment error', function () {
+    $post = linkedInCommentPost('linkedin', ContentType::LinkedInPost);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+
+    $page->fill('@thread-reply-0', str_repeat('a', 3001))
+        ->hover('@composer-submit');
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.thread.comment_too_long', ['limit' => 3000, 'over' => 1]));
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a linkedin comment speaks of a comment and removing it brings the add button back', function () {
+    $post = linkedInCommentPost('linkedin', ContentType::LinkedInPost);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+
+    $page->assertAttribute('@thread-reply-0', 'placeholder', __('posts.form.thread.comment_placeholder'))
+        ->assertAttribute('@thread-reply-0', 'aria-label', __('posts.form.thread.comment_label'))
+        ->assertAttribute('@thread-reply-remove-0', 'aria-label', __('posts.form.thread.remove_comment'))
+        ->click('@thread-reply-remove-0');
+    waitForGone($page, '@thread-reply-0');
+    waitFor($page, '@thread-start');
+
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta)->not->toHaveKey('thread_replies');
+    $page->assertNoJavaScriptErrors();
+});

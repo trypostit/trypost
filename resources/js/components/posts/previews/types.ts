@@ -15,6 +15,10 @@ export interface PreviewAccount {
     verified_badge?: VerifiedBadge | null;
 }
 
+export interface PreviewCommentContent {
+    text: string;
+}
+
 export interface PreviewProps {
     socialAccount: PreviewAccount;
     content: string;
@@ -24,7 +28,7 @@ export interface PreviewProps {
     postedAt?: string | null;
     /** The account's `publishConfig` (`Platform::publishConfig()`), e.g. X's poll limits. */
     publishConfig?: PublishConfig | null;
-    comments?: { text: string }[];
+    comments?: PreviewCommentContent[];
 }
 
 export interface PreviewAction {

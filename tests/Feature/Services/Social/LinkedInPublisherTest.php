@@ -1862,3 +1862,37 @@ test('a linkedin token that expires on the comment is refreshed without creating
         ->and(linkedInCommentRequests())->toHaveCount(2)
         ->and(linkedInCommentRequests()->last()->header('Authorization'))->toBe(['Bearer refreshed-token']);
 });
+
+test('a linkedin comment refused after a token refresh surfaces the real error, not an expired token', function () {
+    linkedInCommentFake([
+        Http::response(['code' => 'EXPIRED_ACCESS_TOKEN'], 401),
+        Http::response(['message' => 'Internal error'], 500),
+    ]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(LinkedInPublishException::class);
+
+    expect(linkedInPostRequests())->toHaveCount(1)
+        ->and(linkedInCommentRequests())->toHaveCount(2);
+});
+
+test('a linkedin token that expires on the post is refreshed and the comment still posts', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::sequence()
+            ->push(['code' => 'EXPIRED_ACCESS_TOKEN'], 401)
+            ->push(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::response([], 201, ['x-restli-id' => '999']),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
+            'access_token' => 'refreshed-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 5184000,
+        ], 200),
+    ]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['999'])
+        ->and(linkedInPostRequests())->toHaveCount(2)
+        ->and(linkedInCommentRequests()->sole()->header('Authorization'))->toBe(['Bearer refreshed-token']);
+});

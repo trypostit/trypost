@@ -20,12 +20,13 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { filled } from '@/lib/helpers';
 import {
+    repliesAreComments,
     type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
 } from '@/lib/threadReplies';
 import type { MediaItem } from '@/types/media';
-import { repliesAreComments, THREAD_PLATFORMS } from '@/types/network-options';
+import { THREAD_PLATFORMS } from '@/types/network-options';
 import type { PublishConfig } from '@/types/platform';
 
 interface Props {

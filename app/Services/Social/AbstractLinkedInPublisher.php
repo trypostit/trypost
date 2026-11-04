@@ -161,8 +161,6 @@ abstract class AbstractLinkedInPublisher
         try {
             app(ConnectionVerifier::class)->refreshToken($this->account);
             $this->accessToken = $this->account->access_token;
-
-            return $this->publishWithComment($post, $content, $rootHash);
         } catch (Throwable $e) {
             Log::error("{$this->label()} refresh failed during retry", [
                 'account_id' => $this->account->id,
@@ -170,6 +168,8 @@ abstract class AbstractLinkedInPublisher
             ]);
             throw $originalException;
         }
+
+        return $this->publishWithComment($post, $content, $rootHash);
     }
 
     private function publishPost(?string $content, $media, bool $attachArticle): array

@@ -25,14 +25,11 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<Record<string, string>> = {
 export const THREAD_PLATFORMS: readonly string[] = Object.keys(
     THREAD_REPLY_CONTENT_TYPES,
 );
-const THREAD_MAX_REPLIES: Readonly<Record<string, number>> = {
+export const THREAD_MAX_REPLIES: Readonly<Record<string, number>> = {
     bluesky: 24,
     mastodon: 24,
     x: 24,
     linkedin: 1,
     'linkedin-page': 1,
 };
-export const threadMaxReplies = (platform: string): number =>
-    THREAD_MAX_REPLIES[platform] ?? 0;
-export const repliesAreComments = (platform: string): boolean =>
-    THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;
+

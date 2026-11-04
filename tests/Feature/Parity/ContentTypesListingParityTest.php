@@ -61,6 +61,16 @@ test('content types say where thread replies are supported and how many', functi
         ->toMatchArray(['supports_thread_replies' => false, 'max_thread_replies' => null]);
 });
 
+test('a linkedin post lists one thread reply and the comment type is never listed', function () {
+    $platforms = contentTypesListingApi($this);
+
+    expect(contentTypesListingType($platforms, 'linkedin', 'linkedin_post'))
+        ->toMatchArray(['supports_thread_replies' => true, 'max_thread_replies' => 1])
+        ->and(contentTypesListingType($platforms, 'linkedin-page', 'linkedin_page_post'))
+        ->toMatchArray(['supports_thread_replies' => true, 'max_thread_replies' => 1])
+        ->and(collect($platforms)->pluck('content_types')->flatten(1)->pluck('value'))->not->toContain('linkedin_comment');
+});
+
 test('platforms list the meta required to schedule or publish', function () {
     $platforms = contentTypesListingApi($this);
 
