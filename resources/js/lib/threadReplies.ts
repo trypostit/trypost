@@ -27,6 +27,11 @@ export const newThreadReply = (): ThreadReply => ({
     media: [],
 });
 
+export const insertThreadReply = (
+    replies: ThreadReply[],
+    position: number,
+): ThreadReply[] => replies.toSpliced(position, 0, newThreadReply());
+
 /** A reply with nothing in it yet: no text, no media and no poll. */
 export const isBlankThreadReply = ({
     text,

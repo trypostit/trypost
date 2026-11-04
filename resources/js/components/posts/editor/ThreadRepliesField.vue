@@ -10,7 +10,7 @@ import { filled } from '@/lib/helpers';
 import { isShiftEnter } from '@/lib/keyboard';
 import {
     isBlankThreadReply,
-    newThreadReply,
+    insertThreadReply,
     type ThreadReply,
 } from '@/lib/threadReplies';
 
@@ -112,7 +112,7 @@ const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
 
     if (isShiftEnter(event) && canAddReply.value) {
         event.preventDefault();
-        replies.value = replies.value.toSpliced(index + 1, 0, newThreadReply());
+        replies.value = insertThreadReply(replies.value, index + 1);
         active.value = index + 1;
 
         return;
