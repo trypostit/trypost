@@ -50,6 +50,14 @@ abstract class AbstractLinkedInPublisher
     private const int ARTICLE_THUMB_TIMEOUT_SECONDS = 10;
 
     /**
+     * LinkedIn answers 404 to a comment on a post it has not finished making
+     * available, so the comment is retried from the queue for up to five minutes.
+     */
+    private const int COMMENT_RETRY_DELAY_SECONDS = 30;
+
+    private const int COMMENT_MAX_RETRIES = 10;
+
+    /**
      * Characters `little` reserves for mentions, hashtags and templates. Any of
      * them left unescaped ends the plain text there, so LinkedIn publishes the
      * commentary cut at that character without an error.
@@ -433,6 +441,15 @@ abstract class AbstractLinkedInPublisher
                 'message' => ['text' => $text],
             ],
         );
+
+        if ($response->notFound()) {
+            throw new PlatformUnavailableException(
+                "{$this->label()} post is not ready for its comment yet",
+                $response->status(),
+                retryDelaySeconds: self::COMMENT_RETRY_DELAY_SECONDS,
+                maxRetries: self::COMMENT_MAX_RETRIES,
+            );
+        }
 
         if ($response->failed()) {
             Log::error("{$this->label()} comment creation failed", [

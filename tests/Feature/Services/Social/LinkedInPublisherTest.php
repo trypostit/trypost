@@ -1895,3 +1895,19 @@ test('a linkedin token that expires on the post is refreshed and the comment sti
         ->and(linkedInPostRequests())->toHaveCount(2)
         ->and(linkedInCommentRequests()->sole()->header('Authorization'))->toBe(['Bearer refreshed-token']);
 });
+
+test('a linkedin post not ready for its comment waits and retries the comment for up to five minutes', function () {
+    linkedInCommentFake([Http::response(['message' => "Unable to obtain activity for urn: 'urn:li:share:123'", 'status' => 404], 404)]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+
+    try {
+        $this->publisher->publish($this->post->fresh());
+        $this->fail('The comment was not deferred.');
+    } catch (PlatformUnavailableException $e) {
+        expect($e->httpStatus)->toBe(404)
+            ->and($e->retryDelaySeconds)->toBe(30)
+            ->and($e->maxRetries)->toBe(10);
+    }
+
+    expect(data_get($this->post->fresh()->error_context, ThreadProgress::KEY.'.0.id'))->toBe('urn:li:share:123');
+});
