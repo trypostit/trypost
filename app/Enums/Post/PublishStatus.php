@@ -13,14 +13,15 @@ enum PublishStatus: string
     case Published = 'published';
     case Failed = 'failed';
     case Rejected = 'rejected';
+    case Deleted = 'deleted';
 
     public const self DEFAULT = self::Pending;
 
-    /** Published, failed, or rejected — the post can be settled. */
+    /** Published, failed, rejected or deleted on the network — the post can be settled. */
     public function isFinished(): bool
     {
         return match ($this) {
-            self::Published, self::Failed, self::Rejected => true,
+            self::Published, self::Failed, self::Rejected, self::Deleted => true,
             default => false,
         };
     }

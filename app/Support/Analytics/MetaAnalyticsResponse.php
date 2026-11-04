@@ -39,7 +39,7 @@ class MetaAnalyticsResponse
      * the post was deleted on the network and when the token can no longer read it. The
      * caller confirms the account itself is still readable before treating it as deleted.
      */
-    public static function isMissingObject(int $code, int $subcode): bool
+    private static function isMissingObject(int $code, int $subcode): bool
     {
         return $code === 100 && $subcode === 33;
     }

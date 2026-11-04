@@ -1050,10 +1050,20 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Two status columns.** `posts.status` is the lifecycle (draft,
   pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
   (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
-  retrying, pending_review, published, failed, rejected). Publishers write
+  retrying, pending_review, published, failed, rejected, deleted). Publishers write
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
+- **Deleted on the network.** When the metrics read finds that the network no
+  longer returns a published post (YouTube, or Facebook, Instagram and Threads
+  through `AbstractMetaPublicationMetricsCollector`: Graph says the post does
+  not exist while the account's own node still reads with the same token),
+  `CollectPublicationMetrics` marks the publication `deleted` and the post
+  `publish_status = deleted` (`markPublicationDeleted()`); `status` stays
+  published. Such a post can be deleted in TryPost (`PostStatusRules::blocksDeletion`),
+  its card shows it as deleted with no link to the network, and it no longer
+  counts as published (posting goal, Instagram grid). A discovery that lists it
+  again restores both (`markPublicationRestored()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

@@ -20,17 +20,22 @@ use Illuminate\Support\Facades\Log;
  */
 class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function graphBaseUrl(SocialAccount $account): string
     {
-        return $this->detectingDeletion($publication, rtrim((string) config('trypost.platforms.facebook.graph_api'), '/'), fn (): PublicationMetricObservation => $this->read($publication, $date));
+        return rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
     }
 
-    private function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function accountNode(SocialAccount $account): string
+    {
+        return (string) $account->platform_user_id;
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
-        $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+        $graph = $this->graphBaseUrl($account);
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
         $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->remote_id, '_'));

@@ -147,7 +147,11 @@ const channel = computed(() =>
         : null,
 );
 
-const permalink = computed(() => current.value.platform_url ?? null);
+const permalink = computed(() =>
+    current.value.publish_status === PublishStatus.Deleted
+        ? null
+        : (current.value.platform_url ?? null),
+);
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;

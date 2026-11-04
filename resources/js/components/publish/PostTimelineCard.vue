@@ -18,7 +18,6 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
-    IconTrash,
     IconTrashX,
     IconX,
 } from '@tabler/icons-vue';
@@ -288,10 +287,7 @@ const contentTypeKey = computed(() =>
 );
 
 const deletedOnNetwork = computed(
-    () =>
-        props.post.status === PostStatus.Published &&
-        props.post.metrics?.available === false &&
-        props.post.metrics.reason === 'deleted_on_network',
+    () => props.post.publish_status === PublishStatus.Deleted,
 );
 
 const permalink = computed(() =>
@@ -511,13 +507,13 @@ defineExpose({ openDetails });
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                 :data-testid="`post-deleted-on-network-${post.id}`"
                 :title="
-                    $t('posts.publish.actions.deleted_on_network', {
+                    $t('posts.publish.deleted_on_network.tooltip', {
                         network: platform ? getPlatformLabel(platform) : '',
                     })
                 "
             >
                 <IconTrashX />
-                {{ $t('posts.publish.actions.deleted') }}
+                {{ $t('posts.publish.deleted_on_network.badge') }}
             </Badge>
             <PostFailurePopover
                 v-if="showStatus && hasFailure"
@@ -781,7 +777,7 @@ defineExpose({ openDetails });
                     :data-testid="`post-deleted-on-network-hint-${post.id}`"
                 >
                     {{
-                        $t('posts.publish.actions.deleted_on_network_hint', {
+                        $t('posts.publish.deleted_on_network.hint', {
                             network: platform ? getPlatformLabel(platform) : '',
                         })
                     }}
@@ -902,27 +898,6 @@ defineExpose({ openDetails });
                             :post="post"
                             :account="account"
                         />
-                        <template v-if="deletedOnNetwork">
-                            <Button
-                                v-if="post.can_delete"
-                                variant="outline"
-                                class="text-destructive-text"
-                                :data-testid="`post-deleted-delete-${post.id}`"
-                                @click="deletePost(post)"
-                            >
-                                <IconTrash class="size-4" />
-                                {{ $t('posts.publish.actions.delete') }}
-                            </Button>
-                            <Button
-                                v-if="canCreatePost"
-                                variant="outline"
-                                :data-testid="`post-deleted-repost-${post.id}`"
-                                @click="duplicatePostCard(post)"
-                            >
-                                <IconRepeat class="size-4" />
-                                {{ $t('posts.publish.actions.repost') }}
-                            </Button>
-                        </template>
                         <Tooltip v-if="permalink && platform">
                             <TooltipTrigger as-child>
                                 <Button

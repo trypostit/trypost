@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Відкрити допис у :network',
             'see_insights' => 'Статистика допису',
             'view_post' => 'Переглянути допис',
-            'deleted' => 'Видалено',
-            'deleted_on_network' => 'Видалено в :network',
-            'deleted_on_network_hint' => 'Цей допис видалили в :network після публікації. Видаліть його тут або опублікуйте знову.',
-            'repost' => 'Опублікувати знову',
             'edit_labels' => 'Редагувати мітки',
             'edit_labels_failed' => 'Не вдалося оновити мітки. Спробуйте ще раз.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Видалено',
+            'tooltip' => 'Видалено в :network',
+            'hint' => 'Цього допису більше немає в :network. Видаліть або дублюйте його в меню допису.',
         ],
         'created_by' => 'Створено: :name :when',
         'welcome' => [

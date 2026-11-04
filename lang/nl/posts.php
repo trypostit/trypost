@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Bericht openen op :network',
             'see_insights' => 'Berichtinzichten bekijken',
             'view_post' => 'Bericht bekijken',
-            'deleted' => 'Verwijderd',
-            'deleted_on_network' => 'Verwijderd op :network',
-            'deleted_on_network_hint' => 'Dit bericht is na publicatie van :network verwijderd. Verwijder het hier of plaats het opnieuw.',
-            'repost' => 'Opnieuw plaatsen',
             'edit_labels' => 'Labels bewerken',
             'edit_labels_failed' => 'Labels konden niet worden bijgewerkt. Probeer het opnieuw.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Verwijderd',
+            'tooltip' => 'Verwijderd op :network',
+            'hint' => 'Dit bericht bestaat niet meer op :network. Verwijder of dupliceer het via het postmenu.',
         ],
         'created_by' => 'Gemaakt door :name :when',
         'welcome' => [

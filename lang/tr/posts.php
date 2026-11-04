@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => ':network üzerinde gönderiyi aç',
             'see_insights' => 'Gönderi istatistiklerini gör',
             'view_post' => 'Gönderiyi görüntüle',
-            'deleted' => 'Silindi',
-            'deleted_on_network' => ':network üzerinde silindi',
-            'deleted_on_network_hint' => 'Bu gönderi yayınlandıktan sonra :network üzerinden kaldırıldı. Burada silin veya yeniden paylaşın.',
-            'repost' => 'Yeniden paylaş',
             'edit_labels' => 'Etiketleri düzenle',
             'edit_labels_failed' => 'Etiketler güncellenemedi. Tekrar deneyin.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Silindi',
+            'tooltip' => ':network üzerinde silindi',
+            'hint' => 'Bu gönderi artık :network üzerinde yok. Gönderi menüsünden silin veya çoğaltın.',
         ],
         'created_by' => 'Oluşturan: :name :when',
         'welcome' => [

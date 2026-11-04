@@ -10,7 +10,6 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
-use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
@@ -65,17 +64,12 @@ class ReadPublicationAnalytics
         $eligible = $posts->filter(fn (Post $post): bool => $this->isCollectable($post));
 
         $publications = $eligible->isEmpty() ? collect() : AnalyticsPublication::query()
-            ->whereIn('availability', [PublicationAvailability::Available, PublicationAvailability::Deleted])
+            ->available()
             ->where('workspace_id', $workspaceId)
             ->whereIn('post_id', $eligible->pluck('id'))
             ->whereIn('platform', Platform::analyticsValues())
             ->get()
             ->keyBy('post_id');
-
-        $deleted = $publications
-            ->filter(fn (AnalyticsPublication $publication): bool => $publication->availability === PublicationAvailability::Deleted)
-            ->map(fn (): bool => true);
-        $publications = $publications->diffKeys($deleted);
 
         $snapshots = collect();
 
@@ -96,7 +90,11 @@ class ReadPublicationAnalytics
                 ->keyBy('publication_id');
         }
 
-        return $posts->mapWithKeys(function (Post $post) use ($publications, $snapshots, $deleted): array {
+        return $posts->mapWithKeys(function (Post $post) use ($publications, $snapshots): array {
+            if ($post->publish_status === PublishStatus::Deleted) {
+                return [$post->id => $this->unavailable('deleted_on_network')];
+            }
+
             if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
                 return [$post->id => $this->unavailable('not_published')];
             }
@@ -110,10 +108,6 @@ class ReadPublicationAnalytics
                 $post->relationLoaded('socialAccount') ? $post->socialAccount : null,
             );
 
-            if ($publication === null && $deleted->has($post->id)) {
-                return [$post->id => $this->unavailable('deleted_on_network')];
-            }
-
             return [$post->id => $publication
                 ? $this->detail($publication, $snapshots->get($publication->id))
                 : $this->unavailable('not_collected')];
@@ -123,6 +117,10 @@ class ReadPublicationAnalytics
     /** @return array<string, mixed> */
     public function latestFor(Post $post): array
     {
+        if ($post->publish_status === PublishStatus::Deleted) {
+            return $this->unavailable('deleted_on_network');
+        }
+
         if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
             return $this->unavailable('not_published');
         }
@@ -139,17 +137,7 @@ class ReadPublicationAnalytics
             ->whereIn('platform', Platform::analyticsValues())
             ->first();
 
-        if ($publication) {
-            return $this->latestForPublication($publication);
-        }
-
-        $deleted = AnalyticsPublication::query()
-            ->where('availability', PublicationAvailability::Deleted)
-            ->where('workspace_id', $post->workspace_id)
-            ->where('post_id', $post->id)
-            ->exists();
-
-        return $this->unavailable($deleted ? 'deleted_on_network' : 'not_collected');
+        return $publication ? $this->latestForPublication($publication) : $this->unavailable('not_collected');
     }
 
     /** @return array<string, mixed> */

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Enums\Analytics\PublicationAvailability;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
@@ -51,30 +51,14 @@ class PostStatusRules
         return in_array($post->status, self::EDIT_BLOCKED_STATUSES, true);
     }
 
+    /**
+     * A published post the network no longer returns has nothing left to protect, so
+     * it may be removed from TryPost too.
+     */
     public static function blocksDeletion(Post $post): bool
     {
-        if (! in_array($post->status, self::DELETE_BLOCKED_STATUSES, true)) {
-            return false;
-        }
-
-        return ! self::deletedOnNetwork($post);
-    }
-
-    /**
-     * A published post the network no longer returns (deleted there after publishing) has
-     * nothing left to protect, so it may be removed from TryPost too.
-     */
-    public static function deletedOnNetwork(Post $post): bool
-    {
-        if ($post->status !== PostStatus::Published) {
-            return false;
-        }
-
-        $publication = $post->relationLoaded('analyticsPublication')
-            ? $post->analyticsPublication
-            : $post->analyticsPublication()->first();
-
-        return $publication?->availability === PublicationAvailability::Deleted;
+        return in_array($post->status, self::DELETE_BLOCKED_STATUSES, true)
+            && $post->publish_status !== PublishStatus::Deleted;
     }
 
     public static function editBlockedMessage(): string

@@ -195,6 +195,23 @@ test('the sent tab returns settled posts newest first with metrics', function ()
                 ->where('posts.data.2.metrics.reason', 'not_published')));
 });
 
+test('the sent tab lets a post deleted on the network be deleted, and keeps other published posts', function () {
+    $live = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(2)], ['publish_status' => PlatformStatus::Published]);
+    $deleted = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDay()], ['publish_status' => PlatformStatus::Deleted]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tab' => 'sent']))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->where('posts.data.0.id', $deleted->id)
+                ->where('posts.data.0.publish_status', PlatformStatus::Deleted->value)
+                ->where('posts.data.0.can_delete', true)
+                ->where('posts.data.0.metrics.reason', 'deleted_on_network')
+                ->where('posts.data.1.id', $live->id)
+                ->where('posts.data.1.can_delete', false)));
+});
+
 test('the sent tab places a failed post at the time it was attempted, not when its row was last touched', function () {
     $older = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(3), 'updated_at' => now()->subDays(3)]);
     $newer = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDay(), 'updated_at' => now()]);

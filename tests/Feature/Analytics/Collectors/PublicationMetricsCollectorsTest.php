@@ -929,6 +929,9 @@ test('TikTok classifies an invalid access token as an authentication failure', f
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
 });
 
+/**
+ * @return array<string, mixed>
+ */
 function metaMissingObject(string $id): array
 {
     return ['error' => [
@@ -939,7 +942,19 @@ function metaMissingObject(string $id): array
     ]];
 }
 
-function metaMetricsPublication(Platform $platform, string $remoteId): AnalyticsPublication
+function metaGraphBase(Platform $platform): string
+{
+    return match ($platform) {
+        Platform::Instagram, Platform::InstagramFacebook => $platform->instagramGraphBaseUrl(),
+        Platform::Facebook => rtrim((string) config('trypost.platforms.facebook.graph_api'), '/'),
+        Platform::Threads => rtrim((string) config('trypost.platforms.threads.graph_api'), '/'),
+    };
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function metaMetricsPublication(Platform $platform, array $attributes = []): AnalyticsPublication
 {
     $account = SocialAccount::factory()->create(['platform' => $platform, 'platform_user_id' => '17841400000000001']);
 
@@ -948,57 +963,72 @@ function metaMetricsPublication(Platform $platform, string $remoteId): Analytics
         'social_account_id' => $account->id,
         'platform' => $platform,
         'platform_user_id' => $account->platform_user_id,
-        'remote_id' => $remoteId,
+        'remote_id' => '17897891718416700',
         'content_type' => PublicationContentType::Reel,
+        ...$attributes,
     ]);
 }
 
-test('a Meta post the network no longer returns is reported as gone while the account still reads', function (Platform $platform, string $collector) {
-    $publication = metaMetricsPublication($platform, '17897891718416700');
-    Http::fake(function (Request $request) {
-        return str_contains($request->url(), '/17841400000000001')
-            ? Http::response(['id' => '17841400000000001'])
-            : Http::response(metaMissingObject('17897891718416700'), 400);
-    });
+function metaCollectionFailure(AnalyticsPublication $publication): AnalyticsCollectionException
+{
+    $collector = app(PublicationMetricsCollectorFactory::class)->for($publication->platform);
 
     try {
-        app($collector)->collect($publication, CarbonImmutable::today('UTC'));
-        $this->fail('Expected the collector to report the post as gone.');
+        $collector->collect($publication, CarbonImmutable::today('UTC'));
     } catch (AnalyticsCollectionException $exception) {
-        expect($exception->gone)->toBeTrue();
+        return $exception;
     }
+
+    throw new RuntimeException('Expected a collection exception.');
+}
+
+test('a Meta post the network no longer returns is reported as gone while the account still reads', function (Platform $platform, string $accountNode) {
+    $publication = metaMetricsPublication($platform);
+    $graph = metaGraphBase($platform);
+    Http::fake([
+        "{$graph}/{$accountNode}*" => Http::response(['id' => '17841400000000001']),
+        '*' => Http::response(metaMissingObject('17897891718416700'), 400),
+    ]);
+
+    expect(metaCollectionFailure($publication)->gone)->toBeTrue();
 })->with([
-    'instagram via facebook login' => [Platform::InstagramFacebook, InstagramPublicationMetricsCollector::class],
-    'instagram login' => [Platform::Instagram, InstagramPublicationMetricsCollector::class],
-    'facebook page' => [Platform::Facebook, FacebookPublicationMetricsCollector::class],
+    'instagram via facebook reads the instagram account, not the page' => [Platform::InstagramFacebook, '17841400000000001'],
+    'instagram login reads its own user' => [Platform::Instagram, 'me'],
+    'facebook reads the page' => [Platform::Facebook, '17841400000000001'],
+    'threads reads its own user' => [Platform::Threads, 'me'],
 ]);
 
-test('a Meta post that cannot be read is not reported as gone when the account cannot be read either', function () {
-    $publication = metaMetricsPublication(Platform::InstagramFacebook, '17897891718416700');
+test('a Meta post is not reported as gone when the account cannot be read either', function (Platform $platform) {
+    $publication = metaMetricsPublication($platform);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    try {
-        app(InstagramPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
-        $this->fail('Expected a collection exception.');
-    } catch (AnalyticsCollectionException $exception) {
-        expect($exception->gone)->toBeFalse();
-    }
-});
+    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
+})->with([Platform::InstagramFacebook, Platform::Instagram, Platform::Facebook, Platform::Threads]);
 
 test('a Meta post that still reads is not reported as gone when only its insights fail', function () {
-    $publication = metaMetricsPublication(Platform::InstagramFacebook, '17897891718416700');
-    Http::fake(function (Request $request) {
-        return str_contains($request->url(), '/insights')
-            ? Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400)
-            : Http::response(['id' => '17897891718416700']);
-    });
+    $publication = metaMetricsPublication(Platform::InstagramFacebook);
+    $graph = metaGraphBase(Platform::InstagramFacebook);
+    Http::fake([
+        "{$graph}/17897891718416700/insights*" => Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400),
+        '*' => Http::response(['id' => '17897891718416700']),
+    ]);
 
-    try {
-        app(InstagramPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
-        $this->fail('Expected a collection exception.');
-    } catch (AnalyticsCollectionException $exception) {
-        expect($exception->gone)->toBeFalse();
-    }
+    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
+});
+
+test('a story older than a day is never reported as gone, since stories expire', function () {
+    $publication = metaMetricsPublication(Platform::Facebook, [
+        'content_type' => PublicationContentType::Story,
+        'provider_published_at' => now()->subDays(2),
+    ]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17841400000000001*" => Http::response(['id' => '17841400000000001']),
+        '*' => Http::response(metaMissingObject('17897891718416700'), 400),
+    ]);
+
+    expect(metaCollectionFailure($publication)->gone)->toBeFalse();
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === "{$graph}/17897891718416700?fields=id");
 });
 
 /**

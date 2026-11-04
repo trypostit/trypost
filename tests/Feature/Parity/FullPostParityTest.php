@@ -46,6 +46,7 @@ function fullPostRouter(): Closure
         $discord = config('trypost.platforms.discord.api');
         $telegram = config('trypost.platforms.telegram.api');
         $google = config('trypost.platforms.google_business.local_posts_api');
+        $youtube = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
 
         return match (true) {
             str_contains($url, 'storage/') && str_ends_with($url, '.mp4') => Http::response(str_repeat("\x00\xff", 2048), 200, ['Content-Type' => 'video/mp4']),
@@ -86,6 +87,7 @@ function fullPostRouter(): Closure
             str_starts_with($url, $tiktok) && str_contains($url, '/status/fetch/') => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7000000000000000001']], 'error' => ['code' => 'ok']], 200),
             str_contains($url, 'youtube.googleapis.com/upload') || str_contains($url, 'googleapis.com/upload/youtube') => Http::response('', 200, ['Location' => 'https://upload.example.test/session']),
             str_contains($url, 'upload.example.test/session') => Http::response(['id' => 'yt-short-id']),
+            str_starts_with($url, "{$youtube}/videos") && $method === 'GET' => Http::response(['items' => [['id' => 'yt-short-id', 'statistics' => ['viewCount' => '0']]]], 200),
             str_starts_with($url, $discord) && str_contains($url, '/guilds/') && str_ends_with($url, '/channels') => Http::response([['id' => '444555666', 'name' => 'general', 'type' => 0]], 200),
             str_starts_with($url, $discord) && str_contains($url, '/roles') => Http::response([['id' => '999000111', 'name' => '@everyone', 'permissions' => '248832']], 200),
             str_starts_with($url, $discord) && str_contains($url, '/members/') => Http::response(['roles' => []], 200),

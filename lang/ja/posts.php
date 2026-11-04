@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => ':networkで投稿を開く',
             'see_insights' => '投稿のインサイトを見る',
             'view_post' => '投稿を表示',
-            'deleted' => '削除済み',
-            'deleted_on_network' => ':network で削除済み',
-            'deleted_on_network_hint' => 'この投稿は公開後に :network で削除されました。ここで削除するか、もう一度投稿してください。',
-            'repost' => '再投稿',
             'edit_labels' => 'ラベルを編集',
             'edit_labels_failed' => 'ラベルを更新できませんでした。もう一度お試しください。',
+        ],
+        'deleted_on_network' => [
+            'badge' => '削除済み',
+            'tooltip' => ':network で削除済み',
+            'hint' => 'この投稿は :network に存在しません。投稿メニューから削除または複製できます。',
         ],
         'created_by' => '作成者: :name :when',
         'welcome' => [

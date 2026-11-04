@@ -23,14 +23,21 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         'SWIPE_FORWARD' => 'swipes_forward',
     ];
 
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function graphBaseUrl(SocialAccount $account): string
     {
-        $account = $this->account($publication);
-
-        return $this->detectingDeletion($publication, $account->platform->instagramGraphBaseUrl(), fn (): PublicationMetricObservation => $this->read($publication, $date));
+        return $account->platform->instagramGraphBaseUrl();
     }
 
-    private function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    /**
+     * Through Facebook the token is the Page's, whose `me` is the Page, so the
+     * Instagram account is read by its id instead.
+     */
+    protected function accountNode(SocialAccount $account): string
+    {
+        return $account->platform === Platform::InstagramFacebook ? (string) $account->platform_user_id : 'me';
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $this->refusals = [];
         $account = $this->account($publication);
@@ -42,7 +49,7 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         $fields = $isStory
             ? ['reach', 'views', 'replies']
             : ['reach', 'views', 'likes', 'comments', 'shares', 'saved'];
-        $url = $account->platform->instagramGraphBaseUrl()."/{$publication->remote_id}/insights";
+        $url = "{$this->graphBaseUrl($account)}/{$publication->remote_id}/insights";
         $response = $this->get($account, $url, ['metric' => implode(',', $fields)]);
         $items = $response->json('data');
 

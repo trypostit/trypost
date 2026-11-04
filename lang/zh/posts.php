@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => '在 :network 上打开帖子',
             'see_insights' => '查看帖子洞察',
             'view_post' => '查看帖子',
-            'deleted' => '已删除',
-            'deleted_on_network' => '已在 :network 删除',
-            'deleted_on_network_hint' => '此帖子发布后已在 :network 上被删除。可在此删除，或重新发布。',
-            'repost' => '重新发布',
             'edit_labels' => '编辑标签',
             'edit_labels_failed' => '无法更新标签。请重试。',
+        ],
+        'deleted_on_network' => [
+            'badge' => '已删除',
+            'tooltip' => '已在 :network 删除',
+            'hint' => '此帖子已不在 :network 上。可在帖子菜单中删除或复制。',
         ],
         'created_by' => '创建者：:name :when',
         'welcome' => [

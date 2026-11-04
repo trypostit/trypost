@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Открыть пост в :network',
             'see_insights' => 'Статистика поста',
             'view_post' => 'Посмотреть пост',
-            'deleted' => 'Удалено',
-            'deleted_on_network' => 'Удалено в :network',
-            'deleted_on_network_hint' => 'Этот пост был удалён в :network после публикации. Удалите его здесь или опубликуйте снова.',
-            'repost' => 'Опубликовать снова',
             'edit_labels' => 'Изменить метки',
             'edit_labels_failed' => 'Не удалось обновить метки. Попробуйте ещё раз.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Удалено',
+            'tooltip' => 'Удалено в :network',
+            'hint' => 'Этого поста больше нет в :network. Удалите или дублируйте его в меню поста.',
         ],
         'created_by' => 'Создано: :name :when',
         'welcome' => [

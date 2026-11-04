@@ -582,6 +582,27 @@ class Post extends Model
     }
 
     /**
+     * The network no longer returns a post it published (deleted there). Its id and
+     * URL are kept for support; only a published post moves.
+     */
+    public function markPublicationDeleted(): void
+    {
+        if ($this->publish_status === PublishStatus::Published) {
+            $this->writePublication(['publish_status' => PublishStatus::Deleted]);
+        }
+    }
+
+    /**
+     * A post marked deleted that the network lists again was never gone.
+     */
+    public function markPublicationRestored(): void
+    {
+        if ($this->publish_status === PublishStatus::Deleted) {
+            $this->writePublication(['publish_status' => PublishStatus::Published]);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>|null  $errorContext
      */
     public function markPublicationFailed(string $errorMessage, ?array $errorContext = null): void

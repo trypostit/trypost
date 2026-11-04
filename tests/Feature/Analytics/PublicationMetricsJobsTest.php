@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
-use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Analytics\SyncTryPostPublication;
 use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Dto\Analytics\DiscoveredPublication;
@@ -28,7 +27,6 @@ use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory
 use App\Support\Analytics\SyncCadence;
 use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
-use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -545,17 +543,9 @@ test('the daily run leaves a fresh post to its first read an hour after publishi
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
 })->with([Platform::X, Platform::Instagram]);
 
-test('an instagram post deleted on the network is marked deleted and shown as deleted on its card', function () {
-    CarbonImmutable::setTestNow('2026-11-03 06:00:00 UTC');
+test('a post deleted on Instagram is marked deleted and can then be deleted in TryPost', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook, 'platform_user_id' => '17841400000000001']);
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::InstagramFacebook,
-        'status' => App\Enums\Post\Status::Published,
-        'publish_status' => PublishStatus::Published,
-        'platform_post_id' => '17897891718416700',
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => '17897891718416700']);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
@@ -565,20 +555,33 @@ test('an instagram post deleted on the network is marked deleted and shown as de
         'network' => Platform::InstagramFacebook->network(),
         'platform_user_id' => $account->platform_user_id,
         'remote_id' => '17897891718416700',
-        'provider_published_at' => CarbonImmutable::now('UTC')->subHours(2),
+        'provider_published_at' => now()->subHours(2),
     ]);
-    Http::fake(function (Request $request) {
-        return str_contains($request->url(), '/17841400000000001')
-            ? Http::response(['id' => '17841400000000001'])
-            : Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'type' => 'GraphMethodException']], 400);
-    });
+    $graph = Platform::InstagramFacebook->instagramGraphBaseUrl();
+    Http::fake([
+        "{$graph}/17841400000000001*" => Http::response(['id' => '17841400000000001']),
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'type' => 'GraphMethodException']], 400),
+    ]);
 
-    app()->call([new CollectPublicationMetrics($publication->id, '2026-11-03'), 'handle']);
+    expect(PostStatusRules::blocksDeletion($post))->toBeTrue();
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
 
     expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
-        ->and(app(ReadPublicationAnalytics::class)->metricsFor($post->fresh()))
-        ->toMatchArray(['reason' => 'deleted_on_network'])
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Deleted)
         ->and(PostStatusRules::blocksDeletion($post->fresh()))->toBeFalse();
+});
+
+test('a post marked deleted that the network lists again is published again', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, now('UTC')->subDay());
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['publish_status' => PublishStatus::Deleted]);
+    $publication->forceFill(['post_id' => $post->id, 'availability' => PublicationAvailability::Deleted])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($publication->refresh()->availability)->toBe(PublicationAvailability::Available)
+        ->and($post->refresh()->publish_status)->toBe(PublishStatus::Published);
 });
 
 test('collecting x metrics stores the poll on the publication', function () {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Support\PostStatusRules;
@@ -27,7 +28,6 @@ test('allows editing for non terminal statuses', function (PostStatus $status) {
 
 test('blocks deletion for sent and failed statuses', function (PostStatus $status) {
     $post = Post::factory()->make(['status' => $status]);
-    $post->setRelation('analyticsPublication', null);
 
     expect(PostStatusRules::blocksDeletion($post))->toBeTrue();
 })->with([
@@ -62,4 +62,10 @@ test('does not require explicit schedule for non scheduled statuses', function (
 
     expect(PostStatusRules::requiresExplicitSchedule($post, PostStatus::Draft->value))->toBeFalse()
         ->and(PostStatusRules::requiresExplicitSchedule(null, PostStatus::Scheduled->value))->toBeTrue();
+});
+
+test('allows deleting a published post the network no longer returns', function () {
+    $post = Post::factory()->make(['status' => PostStatus::Published, 'publish_status' => PublishStatus::Deleted]);
+
+    expect(PostStatusRules::blocksDeletion($post))->toBeFalse();
 });

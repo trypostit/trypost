@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Ouvrir le post sur :network',
             'see_insights' => 'Voir les statistiques du post',
             'view_post' => 'Voir le post',
-            'deleted' => 'Supprimé',
-            'deleted_on_network' => 'Supprimé sur :network',
-            'deleted_on_network_hint' => 'Ce post a été retiré de :network après sa publication. Supprime-le ici ou publie-le à nouveau.',
-            'repost' => 'Republier',
             'edit_labels' => 'Modifier les étiquettes',
             'edit_labels_failed' => 'Impossible de mettre à jour les étiquettes. Réessayez.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Supprimé',
+            'tooltip' => 'Supprimé sur :network',
+            'hint' => 'Ce post n\'existe plus sur :network. Supprime-le ou duplique-le depuis le menu de la publication.',
         ],
         'created_by' => 'Créé par :name :when',
         'welcome' => [

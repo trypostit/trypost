@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => ':network에서 게시물 열기',
             'see_insights' => '게시물 인사이트 보기',
             'view_post' => '게시물 보기',
-            'deleted' => '삭제됨',
-            'deleted_on_network' => ':network에서 삭제됨',
-            'deleted_on_network_hint' => '이 게시물은 게시 후 :network에서 삭제되었습니다. 여기서 삭제하거나 다시 게시하세요.',
-            'repost' => '다시 게시',
             'edit_labels' => '라벨 편집',
             'edit_labels_failed' => '라벨을 업데이트하지 못했습니다. 다시 시도해 주세요.',
+        ],
+        'deleted_on_network' => [
+            'badge' => '삭제됨',
+            'tooltip' => ':network에서 삭제됨',
+            'hint' => '이 게시물은 더 이상 :network에 없습니다. 게시물 메뉴에서 삭제하거나 복제하세요.',
         ],
         'created_by' => '작성자: :name :when',
         'welcome' => [

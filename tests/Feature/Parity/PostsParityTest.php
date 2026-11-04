@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\DeleteChannelPosts;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
@@ -247,6 +248,29 @@ test('deleting a publishing, published or failed post is refused with the web me
 
     expect(Post::query()->whereKey($post->id)->exists())->toBeTrue();
 })->with([Status::Publishing, Status::Published, Status::Failed]);
+
+test('a published post the network no longer returns can be deleted on the web, the api and mcp', function () {
+    $posts = collect(range(1, 3))->map(function (): Post {
+        return Post::factory()->forAccount($this->account)->published()->create([
+            'user_id' => $this->user->id,
+            'publish_status' => PublishStatus::Deleted,
+        ]);
+    });
+
+    $this->actingAs($this->user)->delete(route('app.posts.destroy', $posts[0]))->assertRedirect();
+
+    auth()->forgetGuards();
+
+    $this->withHeaders(parityApi($this->token))
+        ->deleteJson(route('api.posts.destroy', $posts[1]))
+        ->assertNoContent();
+
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(DeletePostTool::class, ['post_id' => $posts[2]->id])->assertOk();
+
+    expect(Post::query()->whereKey($posts->pluck('id'))->exists())->toBeFalse();
+});
 
 test('a channel disconnect still deletes published posts', function () {
     $post = Post::factory()->forAccount($this->account)->published()->create(['user_id' => $this->user->id]);

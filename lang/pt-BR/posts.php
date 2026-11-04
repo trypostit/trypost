@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Abrir post no :network',
             'see_insights' => 'Ver insights do post',
             'view_post' => 'Ver post',
-            'deleted' => 'Excluído',
-            'deleted_on_network' => 'Excluído no :network',
-            'deleted_on_network_hint' => 'Este post foi removido do :network depois de publicado. Exclua aqui ou publique de novo.',
-            'repost' => 'Republicar',
             'edit_labels' => 'Editar labels',
             'edit_labels_failed' => 'Não foi possível atualizar as labels. Tente novamente.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Excluído',
+            'tooltip' => 'Excluído no :network',
+            'hint' => 'Este post não existe mais no :network. Exclua ou duplique pelo menu do post.',
         ],
         'created_by' => 'Criado por :name :when',
         'welcome' => [

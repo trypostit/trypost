@@ -26,7 +26,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { isRecurring } from '@/lib/recurrence';
-import { PostStatus, ScheduleMode } from '@/types/post';
+import { PostStatus, PublishStatus, ScheduleMode } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
 
 const props = withDefaults(
@@ -124,7 +124,12 @@ const isQueued = computed(
                         <IconArrowsMaximize class="size-4" />
                         {{ $t('posts.show.title') }}
                     </DropdownMenuItem>
-                    <template v-if="post.platform_url">
+                    <template
+                        v-if="
+                            post.platform_url &&
+                            post.publish_status !== PublishStatus.Deleted
+                        "
+                    >
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             :data-testid="`post-share-link-${testKey}`"

@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Beitrag auf :network öffnen',
             'see_insights' => 'Beitragsstatistiken ansehen',
             'view_post' => 'Beitrag ansehen',
-            'deleted' => 'Gelöscht',
-            'deleted_on_network' => 'Auf :network gelöscht',
-            'deleted_on_network_hint' => 'Dieser Beitrag wurde nach der Veröffentlichung auf :network entfernt. Lösche ihn hier oder veröffentliche ihn erneut.',
-            'repost' => 'Erneut posten',
             'edit_labels' => 'Labels bearbeiten',
             'edit_labels_failed' => 'Labels konnten nicht aktualisiert werden. Versuche es erneut.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Gelöscht',
+            'tooltip' => 'Auf :network gelöscht',
+            'hint' => 'Dieser Beitrag existiert auf :network nicht mehr. Lösche oder dupliziere ihn über das Beitragsmenü.',
         ],
         'created_by' => 'Erstellt von :name :when',
         'welcome' => [

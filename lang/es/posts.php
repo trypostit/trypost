@@ -1065,12 +1065,13 @@ return [
             'open_on_network' => 'Abrir publicación en :network',
             'see_insights' => 'Ver insights de la publicación',
             'view_post' => 'Ver publicación',
-            'deleted' => 'Eliminada',
-            'deleted_on_network' => 'Eliminada en :network',
-            'deleted_on_network_hint' => 'Esta publicación se eliminó en :network después de publicarse. Elimínala aquí o publícala de nuevo.',
-            'repost' => 'Volver a publicar',
             'edit_labels' => 'Editar etiquetas',
             'edit_labels_failed' => 'No se pudieron actualizar las etiquetas. Inténtalo de nuevo.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Eliminada',
+            'tooltip' => 'Eliminada en :network',
+            'hint' => 'Esta publicación ya no existe en :network. Elimínala o duplícala desde el menú del post.',
         ],
         'created_by' => 'Creado por :name :when',
         'welcome' => [

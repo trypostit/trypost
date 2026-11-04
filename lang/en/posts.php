@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'Open post on :network',
             'see_insights' => 'See post insights',
             'view_post' => 'View post',
-            'deleted' => 'Deleted',
-            'deleted_on_network' => 'Deleted on :network',
-            'deleted_on_network_hint' => 'This post was removed on :network after it was published. Delete it here or post it again.',
-            'repost' => 'Repost',
             'edit_labels' => 'Edit labels',
             'edit_labels_failed' => 'Couldn\'t update labels. Try again.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Deleted',
+            'tooltip' => 'Deleted on :network',
+            'hint' => 'This post no longer exists on :network. Delete it or duplicate it from the post menu.',
         ],
         'created_by' => 'Created by :name :when',
         'welcome' => [

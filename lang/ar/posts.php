@@ -1064,12 +1064,13 @@ return [
             'open_on_network' => 'فتح المنشور على :network',
             'see_insights' => 'عرض إحصاءات المنشور',
             'view_post' => 'عرض المنشور',
-            'deleted' => 'محذوف',
-            'deleted_on_network' => 'محذوف على :network',
-            'deleted_on_network_hint' => 'حُذف هذا المنشور على :network بعد نشره. احذفه هنا أو انشره مرة أخرى.',
-            'repost' => 'إعادة النشر',
             'edit_labels' => 'تعديل التسميات',
             'edit_labels_failed' => 'تعذّر تحديث التسميات. حاول مرة أخرى.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'محذوف',
+            'tooltip' => 'محذوف على :network',
+            'hint' => 'لم يعد هذا المنشور موجودًا على :network. احذفه أو كرّره من قائمة المنشور.',
         ],
         'created_by' => 'أنشأه :name :when',
         'welcome' => [
