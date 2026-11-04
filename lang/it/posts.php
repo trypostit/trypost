@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Modifica etichette',
             'edit_labels_failed' => 'Impossibile aggiornare le etichette. Riprova.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Eliminato',
+            'title' => 'Eliminato su :network',
+            'hint' => 'È stato rimosso dopo la pubblicazione, quindi il link e gli insight non sono più disponibili.',
+        ],
         'created_by' => 'Creato da :name :when',
         'welcome' => [
             'title' => 'Benvenuto su TryPost 👋',

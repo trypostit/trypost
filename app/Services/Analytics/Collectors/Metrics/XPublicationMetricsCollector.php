@@ -12,10 +12,15 @@ use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Uri;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
+    /** The post being read, so a 404's problem is matched against it. */
+    private string $postId = '';
+
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
@@ -26,10 +31,18 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $fields[] = 'non_public_metrics';
         }
 
-        [$tweet, $poll, $threadPolls] = $this->read($account, $publication, $fields);
+        $this->postId = $publication->remote_id;
+
+        [$tweet, $poll, $threadPolls, $errors] = $this->readUnlessDeleted(
+            fn (): array => $this->read($account, $publication, $fields),
+            fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
+            'X',
+        );
 
         if (! is_array($tweet)) {
-            throw AnalyticsCollectionException::malformed('X post response lacks data.');
+            throw $this->reportsDeletedPost($errors)
+                ? AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.')
+                : AnalyticsCollectionException::malformed('X post response lacks data.');
         }
 
         $public = (array) data_get($tweet, 'public_metrics', []);
@@ -54,7 +67,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      * no poll is read alone, otherwise with its reply polls in one lookup.
      *
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
      */
     private function read(SocialAccount $account, AnalyticsPublication $publication, array $fields): array
     {
@@ -71,13 +84,13 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      * One post: its tweet and its poll.
      *
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
      */
     private function readPost(SocialAccount $account, string $id, array $fields): array
     {
         $response = $this->get($account, config('trypost.platforms.x.api')."/tweets/{$id}", $this->lookupParameters($fields));
 
-        return [$response->json('data'), $response->json('includes.polls.0'), []];
+        return [$response->json('data'), $response->json('includes.polls.0'), [], (array) $response->json('errors', [])];
     }
 
     /**
@@ -86,7 +99,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      *
      * @param  array<int, string>  $replyPolls  tweet ids keyed by reply position
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
      */
     private function readThread(SocialAccount $account, string $id, array $replyPolls, array $fields): array
     {
@@ -106,7 +119,31 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             ->values()
             ->all();
 
-        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls];
+        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls, (array) $response->json('errors', [])];
+    }
+
+    /**
+     * X answers a deleted post with its documented `resource-not-found` problem, in the
+     * `errors` of a 200 or in the body of a 404. A token that lost access gets 401/403
+     * or `not-authorized-for-resource` instead, so the problem alone confirms it.
+     */
+    protected function successfulResponse(Response $response): Response
+    {
+        if ($response->notFound() && $this->reportsDeletedPost((array) $response->json('errors', []))) {
+            throw AnalyticsCollectionException::fromResponse($response, 'publication metrics collection', missingObject: true);
+        }
+
+        return parent::successfulResponse($response);
+    }
+
+    /**
+     * @param  array<int, mixed>  $errors
+     */
+    private function reportsDeletedPost(array $errors): bool
+    {
+        return collect($errors)->contains(fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
+            && data_get($error, 'resource_type') === 'tweet'
+            && (string) data_get($error, 'resource_id') === $this->postId);
     }
 
     /**

@@ -25,6 +25,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\DB;
 
 class CollectPublicationMetrics implements ShouldQueue
 {
@@ -139,7 +140,7 @@ class CollectPublicationMetrics implements ShouldQueue
     private function recordTerminalFailure(AnalyticsPublication $publication, AnalyticsCollectionException $exception): void
     {
         if ($exception->gone) {
-            $publication->forceFill(['availability' => PublicationAvailability::Deleted])->save();
+            $this->recordGone($publication, $exception);
 
             return;
         }
@@ -156,6 +157,27 @@ class CollectPublicationMetrics implements ShouldQueue
                 ? PublicationAvailability::Unavailable
                 : $publication->availability,
         ])->save();
+    }
+
+    /**
+     * Under the row lock discovery writes with, so a sync that saw the post while
+     * this read ran (it moves `last_seen_at`) wins over the deletion.
+     */
+    private function recordGone(AnalyticsPublication $publication, AnalyticsCollectionException $exception): void
+    {
+        DB::transaction(function () use ($publication, $exception): void {
+            $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
+
+            if (blank($current) || $current->getRawOriginal('last_seen_at') !== $publication->getRawOriginal('last_seen_at')) {
+                return;
+            }
+
+            $current->forceFill(['availability' => PublicationAvailability::Deleted])->save();
+
+            if ($exception->deletedOnNetwork) {
+                $current->post?->markPublicationDeleted();
+            }
+        });
     }
 
     private function eligible(AnalyticsPublication $publication, SocialAccount $account, CarbonImmutable $date): bool

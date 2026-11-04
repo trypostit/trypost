@@ -24,6 +24,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { postCardPermalink } from '@/composables/usePostCardActions';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { isRecurring } from '@/lib/recurrence';
 import { PostStatus, ScheduleMode } from '@/types/post';
@@ -124,7 +125,7 @@ const isQueued = computed(
                         <IconArrowsMaximize class="size-4" />
                         {{ $t('posts.show.title') }}
                     </DropdownMenuItem>
-                    <template v-if="post.platform_url">
+                    <template v-if="postCardPermalink(post)">
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             :data-testid="`post-share-link-${testKey}`"

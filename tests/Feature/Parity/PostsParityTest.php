@@ -9,6 +9,7 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\DeletePostTool;
+use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
@@ -247,6 +248,43 @@ test('deleting a publishing, published or failed post is refused with the web me
 
     expect(Post::query()->whereKey($post->id)->exists())->toBeTrue();
 })->with([Status::Publishing, Status::Published, Status::Failed]);
+
+test('a published post the network no longer returns can be deleted on the web, the api and mcp', function () {
+    $posts = Post::factory()->count(3)->forAccount($this->account)->deletedOnNetwork()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)->delete(route('app.posts.destroy', $posts[0]))->assertRedirect();
+
+    auth()->forgetGuards();
+
+    $this->withHeaders(parityApi($this->token))
+        ->deleteJson(route('api.posts.destroy', $posts[1]))
+        ->assertNoContent();
+
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(DeletePostTool::class, ['post_id' => $posts[2]->id])->assertOk();
+
+    expect(Post::query()->whereKey($posts->pluck('id'))->exists())->toBeFalse();
+});
+
+test('the metrics of a post the network deleted say so on the api and mcp', function () {
+    $post = Post::factory()->forAccount($this->account)->deletedOnNetwork()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.posts.metrics', $post))
+        ->assertOk()
+        ->assertJsonPath('metrics.reason', 'deleted_on_network');
+
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json): AssertableJson => $json->where('metrics.reason', 'deleted_on_network')->etc());
+});
 
 test('a channel disconnect still deletes published posts', function () {
     $post = Post::factory()->forAccount($this->account)->published()->create(['user_id' => $this->user->id]);

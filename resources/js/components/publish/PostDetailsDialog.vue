@@ -5,6 +5,7 @@ import {
     IconPencil,
     IconRepeat,
     IconSend,
+    IconTrashX,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
@@ -16,6 +17,7 @@ import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import ThreadView from '@/components/posts/ThreadView.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
+import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResults from '@/components/publish/PostPollResults.vue';
@@ -35,7 +37,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import { schedulePostCard } from '@/composables/usePostCardActions';
+import {
+    isDeletedOnNetwork,
+    postCardPermalink,
+    schedulePostCard,
+} from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
@@ -134,6 +140,29 @@ const currentStatusConfig = computed(() =>
     ),
 );
 
+/** Each sibling's status in the rail; a post the network deleted reads as deleted. */
+const railStatuses = computed<
+    Record<
+        string,
+        { icon: typeof IconTrashX; iconClass?: string; labelKey: string }
+    >
+>(() =>
+    Object.fromEntries(
+        siblings.value.map((sibling) => [
+            sibling.id,
+            isDeletedOnNetwork(sibling)
+                ? {
+                      icon: IconTrashX,
+                      labelKey: 'posts.publish.deleted_on_network.badge',
+                  }
+                : {
+                      ...getPostStatusConfig(sibling.status),
+                      labelKey: `posts.status.${sibling.status}`,
+                  },
+        ]),
+    ),
+);
+
 const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
 );
@@ -147,7 +176,7 @@ const channel = computed(() =>
         : null,
 );
 
-const permalink = computed(() => current.value.platform_url ?? null);
+const permalink = computed(() => postCardPermalink(current.value));
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;
@@ -305,10 +334,11 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 :data-status="sibling.status"
                             >
                                 <component
-                                    :is="getPostStatusConfig(sibling.status).icon"
-                                    :class="getPostStatusConfig(sibling.status).iconClass"
+                                    :is="railStatuses[sibling.id].icon"
+                                    :class="railStatuses[sibling.id].iconClass"
                                     class="size-3.5 shrink-0"
-                                    :aria-label="$t(`posts.status.${sibling.status}`)"
+                                    :aria-label="$t(railStatuses[sibling.id].labelKey)"
+                                    :data-testid="`post-details-rail-status-icon-${sibling.id}`"
                                 />
                                 {{
                                     siblingMoment(sibling) ??
@@ -338,7 +368,12 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             class="flex flex-wrap items-center gap-2"
                             as="div"
                         >
+                            <PostDeletedOnNetworkBadge
+                                v-if="isDeletedOnNetwork(current)"
+                                :data-testid="`post-details-deleted-on-network-${testKey}`"
+                            />
                             <Badge
+                                v-else
                                 :variant="currentStatusConfig.variant"
                                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                                 :data-testid="`post-details-status-${testKey}`"

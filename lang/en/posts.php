@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Edit labels',
             'edit_labels_failed' => 'Couldn\'t update labels. Try again.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Deleted',
+            'title' => 'Deleted on :network',
+            'hint' => 'It was removed after it was published, so its link and insights are no longer available.',
+        ],
         'created_by' => 'Created by :name :when',
         'welcome' => [
             'title' => 'Welcome to TryPost 👋',

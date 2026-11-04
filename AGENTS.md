@@ -1050,10 +1050,49 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Two status columns.** `posts.status` is the lifecycle (draft,
   pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
   (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
-  retrying, pending_review, published, failed, rejected). Publishers write
+  retrying, pending_review, published, failed, rejected, deleted). Publishers write
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
+- **Deleted on the network.** `publish_status = deleted` means the network
+  deleted a post it published; `status` stays published. Only a deletion the
+  collector confirms moves the post
+  (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
+  read it already makes. Where the network's "does not exist" answer could also
+  mean lost access, an account-level read (the list its discovery reads) must
+  still work (`readUnlessDeleted()`, `readsMissing()` and `stillReads()` on
+  `AbstractPublicationMetricsCollector`; a read that fails only for now is
+  rethrown so the job retries):
+    - YouTube: its own `videos.list` read no longer returns the video.
+    - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
+      code 100 / subcode 33 for the post, and the posts edge still reads; a
+      story is never checked (it expires).
+    - X: the documented `resource-not-found` problem naming the post, in a
+      200's `errors` or a 404's body; no extra request (X bills each one).
+    - Bluesky: `getPosts` leaves it out, its repository answers
+      `RecordNotFound`, and `listRecords` still reads.
+    - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also
+      means private), and the account's statuses still read.
+    - Pinterest: 404 or 410 on the Pin analytics and on the Pin, and the Pins
+      list still reads.
+
+  Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
+  deleted from private; LinkedIn, Google Business, Telegram and Discord have no
+  read after publishing (#481).
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
+  the publication's row lock, unless a sync saw the post while it was being
+  checked (`last_seen_at` moved); a sync that sees it again restores it
+  (`markPublicationRestored()`, which does not rerun the "just published" side
+  effects). `Post::isDeletedOnNetwork()` is the rule:
+  `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
+  finalizes as published, and it still counts as published for the posting
+  goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
+  `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
+  sync, the importer's matching, TikTok video ids) keep
+  `scopePublicationPublished()`. On the post cards and the details
+  dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
+  (`usePostCardActions.ts`) decide the badge and the link; the repurpose
+  activity list labels `publish_status` directly.
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

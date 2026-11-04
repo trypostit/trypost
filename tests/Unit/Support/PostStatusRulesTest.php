@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Support\PostStatusRules;
@@ -62,3 +63,12 @@ test('does not require explicit schedule for non scheduled statuses', function (
     expect(PostStatusRules::requiresExplicitSchedule($post, PostStatus::Draft->value))->toBeFalse()
         ->and(PostStatusRules::requiresExplicitSchedule(null, PostStatus::Scheduled->value))->toBeTrue();
 });
+
+test('allows deleting a published post the network deleted, but not one still publishing', function (PostStatus $status, bool $blocked) {
+    $post = Post::factory()->make(['status' => $status, 'publish_status' => PublishStatus::Deleted]);
+
+    expect(PostStatusRules::blocksDeletion($post))->toBe($blocked);
+})->with([
+    'published' => [PostStatus::Published, false],
+    'publishing' => [PostStatus::Publishing, true],
+]);

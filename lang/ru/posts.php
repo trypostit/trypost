@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Изменить метки',
             'edit_labels_failed' => 'Не удалось обновить метки. Попробуйте ещё раз.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Удалён',
+            'title' => 'Удалён в :network',
+            'hint' => 'Его удалили после публикации, поэтому ссылка и Insights больше недоступны.',
+        ],
         'created_by' => 'Создано: :name :when',
         'welcome' => [
             'title' => 'Добро пожаловать в TryPost 👋',

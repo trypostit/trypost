@@ -11,7 +11,9 @@ use App\Enums\Analytics\MetricUnit;
 use App\Enums\Analytics\PublicationContentType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 
 class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -26,14 +28,18 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
             $fields = array_merge($fields, ['VIDEO_MRC_VIEW', 'VIDEO_AVG_WATCH_TIME', 'VIDEO_10S_VIEW', 'QUARTILE_95_PERCENT_VIEW', 'VIDEO_V50_WATCH_TIME']);
         }
 
-        $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->remote_id}/analytics",
-            [
+        $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+
+        $response = $this->readUnlessDeleted(
+            fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}/analytics", [
                 'start_date' => $date->subDays(89)->toDateString(),
                 'end_date' => $date->toDateString(),
                 'metric_types' => implode(',', $fields),
-            ],
+            ]),
+            fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account, $publication, $api),
+            'Pinterest',
         );
+
         $values = $response->json('all.summary_metrics');
 
         if (! is_array($values)) {
@@ -58,5 +64,20 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
         ]);
 
         return $this->observation($date, $this->withEngagements($metrics));
+    }
+
+    /**
+     * Pinterest documents only the 404 status for a Pin it cannot find, so the Pin
+     * itself must answer 404 too, while the account's Pins, the list discovery reads,
+     * still read with the same token.
+     */
+    private function confirmsDeletion(SocialAccount $account, AnalyticsPublication $publication, string $api): bool
+    {
+        return $this->readsMissing(
+            fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}"),
+            fn (AnalyticsCollectionException $exception): bool => $exception->gone,
+        ) && $this->stillReads(
+            fn (): Response => $this->get($account, "{$api}/pins", ['page_size' => 1]),
+        );
     }
 }

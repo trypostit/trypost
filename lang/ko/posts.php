@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => '라벨 편집',
             'edit_labels_failed' => '라벨을 업데이트하지 못했습니다. 다시 시도해 주세요.',
         ],
+        'deleted_on_network' => [
+            'badge' => '삭제됨',
+            'title' => ':network에서 삭제됨',
+            'hint' => '게시 후 삭제되어 링크와 Insights를 더 이상 사용할 수 없습니다.',
+        ],
         'created_by' => '작성자: :name :when',
         'welcome' => [
             'title' => 'TryPost에 오신 것을 환영합니다 👋',

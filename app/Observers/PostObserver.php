@@ -54,6 +54,7 @@ class PostObserver
     {
         return $post->wasChanged('publish_status')
             && $post->publish_status === PublishStatus::Published
+            && $post->getOriginal('publish_status') !== PublishStatus::Deleted
             && filled($post->platform_post_id);
     }
 

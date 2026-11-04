@@ -429,6 +429,15 @@ class SocialAccount extends Model
     }
 
     /**
+     * Base URL of the Bluesky PDS this account's repository lives on, without a
+     * trailing slash.
+     */
+    public function blueskyService(): string
+    {
+        return rtrim((string) data_get($this->meta, 'service', config('trypost.platforms.bluesky.default_service')), '/');
+    }
+
+    /**
      * Base URL of the Mastodon instance this account lives on, without a
      * trailing slash.
      */

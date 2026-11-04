@@ -20,12 +20,22 @@ use Illuminate\Support\Facades\Log;
  */
 class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function graphBaseUrl(SocialAccount $account): string
+    {
+        return rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+    }
+
+    protected function postsEdge(): string
+    {
+        return 'published_posts';
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
-        $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+        $graph = $this->graphBaseUrl($account);
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
         $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->remote_id, '_'));
@@ -104,7 +114,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
                 throw $exception;
             }
 
-            $this->refusals[] = $exception->category;
+            $this->recordRefusal($exception);
             Log::info('analytics.facebook_read_refused', [
                 'path' => parse_url($url, PHP_URL_PATH),
                 'category' => $exception->category,

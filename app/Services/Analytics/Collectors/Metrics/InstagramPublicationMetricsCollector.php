@@ -23,7 +23,17 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         'SWIPE_FORWARD' => 'swipes_forward',
     ];
 
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function graphBaseUrl(SocialAccount $account): string
+    {
+        return $account->platform->instagramGraphBaseUrl();
+    }
+
+    protected function postsEdge(): string
+    {
+        return 'media';
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $this->refusals = [];
         $account = $this->account($publication);
@@ -35,7 +45,7 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         $fields = $isStory
             ? ['reach', 'views', 'replies']
             : ['reach', 'views', 'likes', 'comments', 'shares', 'saved'];
-        $url = $account->platform->instagramGraphBaseUrl()."/{$publication->remote_id}/insights";
+        $url = "{$this->graphBaseUrl($account)}/{$publication->remote_id}/insights";
         $response = $this->get($account, $url, ['metric' => implode(',', $fields)]);
         $items = $response->json('data');
 

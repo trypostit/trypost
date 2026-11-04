@@ -366,6 +366,15 @@ class Post extends Model
     }
 
     /**
+     * Posts the network published, including those deleted there since: they
+     * still count as published by the user (posting goal, lifecycle).
+     */
+    public function scopeWentOut(Builder $query): Builder
+    {
+        return $query->whereIn('posts.publish_status', PublishStatus::wentOutCases());
+    }
+
+    /**
      * Posts a network refused for a limit whose next attempt is due.
      */
     public function scopeDueForLimitRetry(Builder $query): Builder
@@ -524,6 +533,15 @@ class Post extends Model
         ]);
     }
 
+    /**
+     * The network deleted the post after it was published.
+     */
+    public function isDeletedOnNetwork(): bool
+    {
+        return $this->status === PostStatus::Published
+            && $this->publish_status === PublishStatus::Deleted;
+    }
+
     public function isPublicationWaitingForLimitRetry(): bool
     {
         return $this->publish_status === PublishStatus::Retrying && $this->retry_at?->isFuture() === true;
@@ -579,6 +597,27 @@ class Post extends Model
             'error_message' => $errorMessage,
             'error_context' => $errorContext,
         ]);
+    }
+
+    /**
+     * The network no longer returns a post it published (deleted there). Its id and
+     * URL are kept for support; only a published post moves.
+     */
+    public function markPublicationDeleted(): void
+    {
+        if ($this->publish_status === PublishStatus::Published) {
+            $this->writePublication(['publish_status' => PublishStatus::Deleted]);
+        }
+    }
+
+    /**
+     * A post marked deleted that the network lists again was never gone.
+     */
+    public function markPublicationRestored(): void
+    {
+        if ($this->publish_status === PublishStatus::Deleted) {
+            $this->writePublication(['publish_status' => PublishStatus::Published]);
+        }
     }
 
     /**

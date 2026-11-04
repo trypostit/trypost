@@ -34,6 +34,22 @@ function finalizeWorkspaceOf(User $owner): Workspace
     return $workspace;
 }
 
+test('a post the network deleted before it was finalized still counts as published', function () {
+    $owner = User::factory()->create();
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => finalizeWorkspaceOf($owner)->id]);
+    $post = Post::factory()->forAccount($account)->facebook()->scheduled()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Deleted,
+        'platform_post_id' => 'fb-1',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::PostPublished);
+    Queue::assertNotPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::PostFailed);
+});
+
 test('a published post queues the published email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
     $workspace = finalizeWorkspaceOf($owner);

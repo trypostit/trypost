@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'تعديل التسميات',
             'edit_labels_failed' => 'تعذّر تحديث التسميات. حاول مرة أخرى.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'محذوف',
+            'title' => 'محذوف على :network',
+            'hint' => 'أُزيل بعد نشره، لذلك لم يعد رابطه ولا Insights الخاصة به متاحة.',
+        ],
         'created_by' => 'أنشأه :name :when',
         'welcome' => [
             'title' => 'مرحبًا بك في TryPost 👋',

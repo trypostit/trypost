@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => '编辑标签',
             'edit_labels_failed' => '无法更新标签。请重试。',
         ],
+        'deleted_on_network' => [
+            'badge' => '已删除',
+            'title' => '已在 :network 删除',
+            'hint' => '该帖子发布后已被删除，链接和 Insights 不再可用。',
+        ],
         'created_by' => '创建者：:name :when',
         'welcome' => [
             'title' => '欢迎使用 TryPost 👋',

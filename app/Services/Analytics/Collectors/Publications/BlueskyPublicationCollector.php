@@ -20,14 +20,9 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
-        $pds = rtrim((string) data_get(
-            $account->meta,
-            'service',
-            config('trypost.platforms.bluesky.default_service'),
-        ), '/');
         $response = $this->get(
             $account,
-            "{$pds}/xrpc/".BlueskyLexicon::LIST_RECORDS,
+            "{$account->blueskyService()}/xrpc/".BlueskyLexicon::LIST_RECORDS,
             [
                 'repo' => $account->platform_user_id,
                 'collection' => BlueskyLexicon::FEED_POST,

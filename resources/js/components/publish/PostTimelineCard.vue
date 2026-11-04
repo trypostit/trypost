@@ -34,6 +34,7 @@ import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
+import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
@@ -63,6 +64,8 @@ import {
     copyPostCardLink,
     duplicatePostCard,
     editPostCardUrlKey,
+    isDeletedOnNetwork,
+    postCardPermalink,
     schedulePostCard,
     sharePostCardLink,
     toastFirstError,
@@ -285,7 +288,9 @@ const contentTypeKey = computed(() =>
         : null,
 );
 
-const permalink = computed(() => props.post.platform_url ?? null);
+const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
+
+const permalink = computed(() => postCardPermalink(props.post));
 
 const metricsDetail = computed(() => {
     const detail = props.post.metrics ?? null;
@@ -493,6 +498,11 @@ defineExpose({ openDetails });
                 :post-id="post.id"
                 :mode="scheduleMode"
                 plain
+            />
+            <PostDeletedOnNetworkPopover
+                v-if="deletedOnNetwork"
+                :post="post"
+                :test-key="post.id"
             />
             <PostFailurePopover
                 v-if="showStatus && hasFailure"

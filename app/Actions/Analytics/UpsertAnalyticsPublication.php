@@ -316,7 +316,12 @@ class UpsertAnalyticsPublication
                 }
             }
 
+            $wasDeleted = $publication->availability === PublicationAvailability::Deleted;
             $publication->fill($values)->save();
+
+            if ($wasDeleted) {
+                $publication->post?->markPublicationRestored();
+            }
 
             return $publication->refresh();
         });
