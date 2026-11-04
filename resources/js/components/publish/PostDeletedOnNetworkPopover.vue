@@ -37,6 +37,7 @@ const network = computed(() =>
         </PopoverTrigger>
         <PopoverContent
             align="start"
+            :collision-padding="16"
             class="flex w-80 flex-col gap-2"
             :data-testid="`post-deleted-on-network-popover-${testKey}`"
         >
