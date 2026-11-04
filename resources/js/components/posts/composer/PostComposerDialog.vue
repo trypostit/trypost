@@ -1175,7 +1175,11 @@ const setThreadReplies = (
 };
 const addThreadReply = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= threadMaxReplies(group.platform)) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1184,7 +1188,11 @@ const focusFirstReply = (): void => {
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= threadMaxReplies(group.platform)) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
