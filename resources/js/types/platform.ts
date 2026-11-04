@@ -20,6 +20,11 @@ export const Platform = {
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];
 
+/** What `FirstComment::limitsFor()` serves for an account that can post a first comment. */
+export interface FirstCommentLimits {
+    maxLength: number;
+}
+
 /** What `Platform::publishConfig()` serves for an account: each network fills only its own keys. */
 export interface PublishConfig {
     /** TikTok: the privacy levels the creator may pick, and the policy links. */

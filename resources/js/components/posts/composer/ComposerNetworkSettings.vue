@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import ComposerLiveDataPending from '@/components/posts/composer/ComposerLiveDataPending.vue';
 import AiGeneratedRow from '@/components/posts/editor/AiGeneratedRow.vue';
 import DiscordSettings from '@/components/posts/editor/DiscordSettings.vue';
+import FirstCommentRow from '@/components/posts/editor/FirstCommentRow.vue';
 import GoogleBusinessSettings from '@/components/posts/editor/GoogleBusinessSettings.vue';
 import InstagramSettings from '@/components/posts/editor/InstagramSettings.vue';
 import LinkedInSettings from '@/components/posts/editor/LinkedInSettings.vue';
@@ -192,6 +193,14 @@ const aiGenerated = computed({
         />
         <MastodonSettings
             v-else-if="account.platform === Platform.Mastodon"
+            :meta="destination.meta"
+            :disabled="disabled"
+            @update:meta="update"
+        />
+        <FirstCommentRow
+            v-if="platformConfig?.firstComment"
+            :account-id="account.id"
+            :limits="platformConfig.firstComment"
             :meta="destination.meta"
             :disabled="disabled"
             @update:meta="update"

@@ -6,9 +6,11 @@ import {
     IconThumbUp,
 } from '@tabler/icons-vue';
 
+import PreviewFirstComment from '@/components/posts/previews/PreviewFirstComment.vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
+import { filled } from '@/lib/helpers';
 
 
 defineProps<PreviewProps>();
@@ -41,5 +43,12 @@ defineProps<PreviewProps>();
             { icon: IconRepeat, labelKey: 'posts.composer.preview.repost' },
             { icon: IconSend, labelKey: 'posts.composer.preview.send' },
         ]"
-    />
+    >
+        <template v-if="filled(meta?.first_comment?.text)" #after-actions>
+            <PreviewFirstComment
+                :account="socialAccount"
+                :text="meta?.first_comment?.text"
+            />
+        </template>
+    </PreviewTextPost>
 </template>

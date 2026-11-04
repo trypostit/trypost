@@ -65,6 +65,30 @@ test('closing an edited post with unsaved changes asks first, keeps it open on c
     expect($post->fresh()->meta)->toBe([]);
 });
 
+test('editing only the first comment of an edited post asks before closing', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->create([
+        'user_id' => $user->id,
+        'content' => 'Unsaved changes',
+        'meta' => ['first_comment' => ['text' => 'Link below']],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@first-comment-{$account->id}");
+    $page->click("@first-comment-{$account->id}")
+        ->fill("@first-comment-{$account->id}", 'Link in the comments')
+        ->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
+    expect($post->fresh()->meta['first_comment'])->toBe(['text' => 'Link below']);
+});
+
 test('saving an edited post closes it without asking', function () {
     $post = seedUnsavedChangesReel();
 

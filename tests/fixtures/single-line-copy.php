@@ -120,6 +120,7 @@ return [
     'posts.content_types.youtube_short.label' => 9,
     'posts.edit.tabs.preview' => 19,
     'posts.form.ai_generated.label' => 17,
+    'posts.form.first_comment.label' => 19,
     'posts.form.google_business.add_more_details' => 18,
     'posts.form.google_business.add_time' => 15,
     'posts.form.google_business.event_end_time' => 20,
