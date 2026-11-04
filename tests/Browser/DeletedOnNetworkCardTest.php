@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus;
+use App\Enums\Post\Status as PostStatus;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
@@ -58,7 +59,8 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
 
     $page->assertVisible("@post-delete-{$deleted->id}")
         ->assertVisible("@post-duplicate-{$deleted->id}")
-        ->assertMissing("@post-share-link-{$deleted->id}");
+        ->assertMissing("@post-share-link-{$deleted->id}")
+        ->assertMissing("@post-copy-link-{$deleted->id}");
 
     $page->click("@post-details-open-{$deleted->id}");
     waitFor($page, "@post-details-{$deleted->id}");
@@ -66,8 +68,35 @@ test('a post deleted on the network shows as deleted and offers no link to it', 
     waitFor($page, "@post-details-rail-status-{$deleted->id}");
 
     $page->assertAttribute("@post-details-rail-status-icon-{$deleted->id}", 'aria-label', __('posts.publish.deleted_on_network.badge'))
+        ->assertAttribute("@post-details-rail-status-icon-{$live->id}", 'aria-label', __('posts.status.published'))
         ->assertVisible("@post-details-deleted-on-network-{$deleted->id}")
         ->assertMissing("@post-details-status-{$deleted->id}")
         ->assertMissing("@post-details-view-{$deleted->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a post still publishing is never shown as deleted, even when the network side says so', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    connectAiTo($user);
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
+    $publishing = Post::factory()->forAccount($account)->create([
+        'user_id' => $user->id,
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Deleted,
+        'scheduled_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+    $page = visit(route('app.posts.index', ['tab' => 'queue']));
+
+    waitFor($page, "@post-card-{$publishing->id}");
+
+    $page->assertMissing("@post-deleted-on-network-{$publishing->id}")
         ->assertNoJavaScriptErrors();
 });

@@ -98,6 +98,16 @@ class PostFactory extends Factory
         ]);
     }
 
+    /**
+     * Published, then deleted on the network.
+     */
+    public function deletedOnNetwork(): static
+    {
+        return $this->published()->state(fn (array $attributes) => [
+            'publish_status' => PublishStatus::Deleted,
+        ]);
+    }
+
     public function imported(): static
     {
         return $this->state(fn (array $attributes) => [

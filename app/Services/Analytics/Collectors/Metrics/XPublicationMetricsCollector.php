@@ -33,14 +33,16 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
         $this->postId = $publication->remote_id;
 
-        try {
-            [$tweet, $poll, $threadPolls, $errors] = $this->read($account, $publication, $fields);
-        } catch (AnalyticsCollectionException $exception) {
-            throw $exception->missingObject ? $this->deleted() : $exception;
-        }
+        [$tweet, $poll, $threadPolls, $errors] = $this->readUnlessDeleted(
+            fn (): array => $this->read($account, $publication, $fields),
+            fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
+            'X',
+        );
 
         if (! is_array($tweet)) {
-            throw $this->reportsDeletedPost($errors) ? $this->deleted() : AnalyticsCollectionException::malformed('X post response lacks data.');
+            throw $this->reportsDeletedPost($errors)
+                ? AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.')
+                : AnalyticsCollectionException::malformed('X post response lacks data.');
         }
 
         $public = (array) data_get($tweet, 'public_metrics', []);
@@ -142,11 +144,6 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         return collect($errors)->contains(fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
             && data_get($error, 'resource_type') === 'tweet'
             && (string) data_get($error, 'resource_id') === $this->postId);
-    }
-
-    private function deleted(): AnalyticsCollectionException
-    {
-        return AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
     }
 
     /**

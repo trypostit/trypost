@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;
@@ -76,10 +75,9 @@ test('a post the network deleted after publishing still counts as the latest pub
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $post = Post::factory()->linkedin()->published()->create([
+    $post = Post::factory()->linkedin()->deletedOnNetwork()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $this->user->id,
-        'publish_status' => PublishStatus::Deleted,
         'published_at' => now()->subHour(),
     ]);
 

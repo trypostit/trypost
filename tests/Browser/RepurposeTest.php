@@ -225,9 +225,8 @@ test('a repurposed post deleted on the network reads as deleted in the activity 
         'source_social_account_id' => $source->id,
     ]);
     $item = RepurposeItem::factory()->for($repurpose)->create(['source_created_at' => now()->subHour()]);
-    $post = Post::factory()->forAccount($source)->published()->create([
+    $post = Post::factory()->forAccount($source)->deletedOnNetwork()->create([
         'repurpose_item_id' => $item->id,
-        'publish_status' => PublishStatus::Deleted,
     ]);
 
     $this->actingAs($user);
@@ -239,6 +238,32 @@ test('a repurposed post deleted on the network reads as deleted in the activity 
     waitFor($page, "@repurpose-item-post-state-{$post->id}");
 
     $page->assertSeeIn("@repurpose-item-post-state-{$post->id}", __('posts.publish.deleted_on_network.badge'))
+        ->assertDontSeeIn("@repurpose-item-post-state-{$post->id}", 'posts.')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a repurposed post in Google review reads as in review in the activity list', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+
+    $repurpose = Repurpose::factory()->active()->create([
+        'workspace_id' => $workspace->id,
+        'source_social_account_id' => $source->id,
+    ]);
+    $item = RepurposeItem::factory()->for($repurpose)->create(['source_created_at' => now()->subHour()]);
+    $post = Post::factory()->forAccount($source)->published()->create([
+        'repurpose_item_id' => $item->id,
+        'publish_status' => PublishStatus::PendingReview,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose));
+
+    waitFor($page, '@tab-activity');
+    $page->click('@tab-activity');
+    waitFor($page, "@repurpose-item-post-state-{$post->id}");
+
+    $page->assertSeeIn("@repurpose-item-post-state-{$post->id}", __('posts.publish.in_google_review'))
         ->assertDontSeeIn("@repurpose-item-post-state-{$post->id}", 'posts.')
         ->assertNoJavaScriptErrors();
 });

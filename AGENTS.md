@@ -1060,8 +1060,9 @@ an `enabled` flag or posts with several channels. Posts created together share
   (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
   read it already makes. Where the network's "does not exist" answer could also
   mean lost access, an account-level read (the list its discovery reads) must
-  still work (`readsMissing()` and `stillReads()`; a read that fails only for
-  now is rethrown so the job retries):
+  still work (`readUnlessDeleted()`, `readsMissing()` and `stillReads()` on
+  `AbstractPublicationMetricsCollector`; a read that fails only for now is
+  rethrown so the job retries):
     - YouTube: its own `videos.list` read no longer returns the video.
     - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
       code 100 / subcode 33 for the post, and the posts edge still reads; a
@@ -1070,10 +1071,10 @@ an `enabled` flag or posts with several channels. Posts created together share
       200's `errors` or a 404's body; no extra request (X bills each one).
     - Bluesky: `getPosts` leaves it out, its repository answers
       `RecordNotFound`, and `listRecords` still reads.
-    - Mastodon: 404 on an owner read only (without `read`, 404 also means
-      private), and the account's statuses still read.
-    - Pinterest: 404 on the Pin analytics and on the Pin, and the Pins list
-      still reads.
+    - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also
+      means private), and the account's statuses still read.
+    - Pinterest: 404 or 410 on the Pin analytics and on the Pin, and the Pins
+      list still reads.
 
   Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
   deleted from private; LinkedIn, Google Business, Telegram and Discord have no

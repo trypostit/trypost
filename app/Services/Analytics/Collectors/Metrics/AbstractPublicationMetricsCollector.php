@@ -17,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Http\Client\Response;
 
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
@@ -34,11 +35,34 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
     }
 
     /**
-     * Whether the post's own read says it is missing. Confirming a deletion takes
-     * this and {@see stillReads()} on the account's posts, the list its discovery
-     * reads, so a token that lost access is never taken for a deleted post.
+     * Runs the post's read and, when it fails in a way `$confirmsDeletion` confirms,
+     * reports the post deleted on the network instead of the failure.
      *
-     * @param  Closure(): mixed  $read
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $read
+     * @param  Closure(AnalyticsCollectionException): bool  $confirmsDeletion
+     * @return TResult
+     */
+    protected function readUnlessDeleted(Closure $read, Closure $confirmsDeletion, string $network): mixed
+    {
+        try {
+            return $read();
+        } catch (AnalyticsCollectionException $exception) {
+            if ($confirmsDeletion($exception)) {
+                throw AnalyticsCollectionException::deletedOnNetwork("{$network} no longer returns this post.");
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Whether the post's own read says it is missing. Confirming a deletion takes
+     * this and {@see self::stillReads()} on the account's posts, the list its
+     * discovery reads, so a token that lost access is never taken for a deleted post.
+     *
+     * @param  Closure(): Response  $read
      * @param  Closure(AnalyticsCollectionException): bool  $isMissing
      */
     protected function readsMissing(Closure $read, Closure $isMissing): bool
@@ -55,7 +79,7 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
     }
 
     /**
-     * @param  Closure(): mixed  $read
+     * @param  Closure(): Response  $read
      */
     protected function stillReads(Closure $read): bool
     {

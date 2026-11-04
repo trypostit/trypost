@@ -30,6 +30,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 use Pest\Expectation;
 
 test('the metric factory includes every v1 platform and excludes v2 and messaging platforms', function (Platform $platform, string $collector) {
@@ -1002,26 +1003,35 @@ function metaGraphBase(Platform $platform): string
 /**
  * @param  array<string, mixed>  $attributes
  */
-function metaMetricsPublication(Platform $platform, array $attributes = []): AnalyticsPublication
+function networkPublication(SocialAccount $account, string $remoteId, array $attributes = []): AnalyticsPublication
 {
-    $account = SocialAccount::factory()->create(['platform' => $platform, 'platform_user_id' => '17841400000000001']);
-
     return AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
-        'platform' => $platform,
+        'platform' => $account->platform,
         'platform_user_id' => $account->platform_user_id,
-        'remote_id' => '17897891718416700',
-        'content_type' => PublicationContentType::Reel,
+        'remote_id' => $remoteId,
         ...$attributes,
     ]);
 }
 
-function metaCollect(AnalyticsPublication $publication): Closure
+function collectFrom(AnalyticsPublication $publication): Closure
 {
     return fn () => app(PublicationMetricsCollectorFactory::class)
         ->for($publication->platform)
         ->collect($publication, CarbonImmutable::today('UTC'));
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function metaMetricsPublication(Platform $platform, array $attributes = []): AnalyticsPublication
+{
+    return networkPublication(
+        SocialAccount::factory()->create(['platform' => $platform, 'platform_user_id' => '17841400000000001']),
+        '17897891718416700',
+        ['content_type' => PublicationContentType::Reel, ...$attributes],
+    );
 }
 
 test('a Meta post the network no longer returns is reported deleted while the account posts still read', function (Platform $platform, string $postsEdge) {
@@ -1032,7 +1042,7 @@ test('a Meta post the network no longer returns is reported deleted while the ac
         '*' => Http::response(metaMissingObject('17897891718416700'), 400),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeTrue());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeTrue());
 })->with([
     'instagram via facebook' => [Platform::InstagramFacebook, 'media'],
     'instagram login' => [Platform::Instagram, 'media'],
@@ -1052,14 +1062,14 @@ test('a Facebook post is reported deleted even when the Page never granted insig
         '*' => Http::response(metaMissingObject('17841400000000001_17897891718416700'), 400),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
 });
 
 test('a Meta post is not reported deleted when the account posts cannot be read either', function (Platform $platform) {
     $publication = metaMetricsPublication($platform);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([Platform::InstagramFacebook, Platform::Instagram, Platform::Facebook, Platform::Threads]);
 
 test('a Meta post is not reported deleted when reading it fails for another reason', function (array $postRead) {
@@ -1071,7 +1081,7 @@ test('a Meta post is not reported deleted when reading it fails for another reas
         '*' => Http::response(['data' => [['id' => '1']]]),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
     'the post still reads' => [[['id' => '17897891718416700']]],
     'a server error' => [[['error' => ['code' => 2]], 500]],
@@ -1080,11 +1090,72 @@ test('a Meta post is not reported deleted when reading it fails for another reas
 
 test('a Facebook post whose metrics are refused for another reason never checks whether it was deleted', function () {
     $publication = metaMetricsPublication(Platform::Facebook);
-    $graph = metaGraphBase(Platform::Facebook);
     Http::fake(['*' => Http::response(['error' => ['code' => 100, 'message' => 'Unsupported metric']], 400)]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
-    Http::assertNotSent(fn (Request $request): bool => $request->url() === "{$graph}/17897891718416700?fields=id");
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertNotSent(fn (Request $request): bool => data_get($request->data(), 'fields') === 'id');
+});
+
+test('a Meta deletion check that fails only for now is retried before anything is reported', function (array $post, array $posts, string $category) {
+    $publication = metaMetricsPublication(Platform::InstagramFacebook);
+    $graph = metaGraphBase(Platform::InstagramFacebook);
+    Http::fake([
+        "{$graph}/17897891718416700/insights*" => Http::response(metaMissingObject('17897891718416700'), 400),
+        "{$graph}/17897891718416700*" => Http::response(...$post),
+        "{$graph}/17841400000000001/media*" => Http::response(...$posts),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe($category)->and($exception->deletedOnNetwork)->toBeFalse());
+})->with([
+    'the post read is rate limited' => [[['error' => ['code' => 4]], 400], [['data' => []]], 'rate_limited'],
+    'the post read is throttled' => [[[], 429], [['data' => []]], 'rate_limited'],
+    'the posts read fails on the server' => [[metaMissingObject('17897891718416700'), 400], [['error' => ['code' => 2]], 500], 'transient'],
+]);
+
+test('a Meta read that fails for a reason other than a missing post never checks whether it was deleted', function () {
+    $publication = metaMetricsPublication(Platform::Facebook, [
+        'remote_id' => '17841400000000001_17897891718416700',
+        'content_type' => PublicationContentType::Image,
+    ]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake(fn (Request $request) => str_contains($request->url(), '/insights')
+        ? Http::response(metaMissingObject('17841400000000001_17897891718416700'), 400)
+        : Http::response(['error' => ['code' => 4]], 400));
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('rate_limited'));
+    Http::assertNotSent(fn (Request $request): bool => data_get($request->data(), 'fields') === 'id');
+});
+
+test('a Facebook post on a Page without insights keeps its permission refusal when the deletion is not confirmed', function () {
+    $publication = metaMetricsPublication(Platform::Facebook, [
+        'remote_id' => '17841400000000001_17897891718416700',
+        'content_type' => PublicationContentType::Image,
+    ]);
+    $publication->socialAccount->update(['scopes' => ['pages_read_engagement']]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17841400000000001/published_posts*" => Http::response(['error' => ['code' => 10]], 403),
+        '*' => Http::response(metaMissingObject('17841400000000001_17897891718416700'), 400),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+});
+
+test('a Meta collector reused for another post forgets the first one\'s refusals', function () {
+    $collector = app(FacebookPublicationMetricsCollector::class);
+    $deleted = metaMetricsPublication(Platform::Facebook);
+    $live = networkPublication($deleted->socialAccount, '17841400000000001_17897891718416799', ['content_type' => PublicationContentType::Image]);
+    $live->socialAccount->update(['scopes' => ['pages_read_engagement']]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake(fn (Request $request) => match (true) {
+        str_contains($request->url(), '/published_posts') => Http::response(['data' => [['id' => '1']]]),
+        str_contains($request->url(), '17897891718416700') => Http::response(metaMissingObject('17897891718416700'), 400),
+        data_get($request->data(), 'fields') === 'id' => Http::response(metaMissingObject('17841400000000001_17897891718416799'), 400),
+        default => Http::response(['error' => ['code' => 10]], 403),
+    });
+
+    expect(fn () => $collector->collect($deleted, CarbonImmutable::today('UTC')))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue())
+        ->and(fn () => $collector->collect($live, CarbonImmutable::today('UTC')))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
 });
 
 test('a Meta read refused for permission never checks whether the post was deleted', function () {
@@ -1095,7 +1166,7 @@ test('a Meta read refused for permission never checks whether the post was delet
         '*' => Http::response(['data' => [['id' => '1']]]),
     ]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
     Http::assertSentCount(1);
 });
 
@@ -1103,24 +1174,9 @@ test('a story is never reported deleted, since stories expire on their own', fun
     $publication = metaMetricsPublication(Platform::InstagramFacebook, ['content_type' => PublicationContentType::Story]);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
 
-    expect(metaCollect($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
     Http::assertSentCount(1);
 });
-
-/**
- * @param  array<string, mixed>  $attributes
- */
-function networkPublication(SocialAccount $account, string $remoteId, array $attributes = []): AnalyticsPublication
-{
-    return AnalyticsPublication::factory()->create([
-        'workspace_id' => $account->workspace_id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'platform_user_id' => $account->platform_user_id,
-        'remote_id' => $remoteId,
-        ...$attributes,
-    ]);
-}
 
 /**
  * @return array<string, mixed>
@@ -1134,13 +1190,6 @@ function xNotFoundProblem(string $id, string $host = 'https://api.x.com'): array
         'resource_type' => 'tweet',
         'resource_id' => $id,
     ];
-}
-
-function collectFrom(AnalyticsPublication $publication): Closure
-{
-    return fn () => app(PublicationMetricsCollectorFactory::class)
-        ->for($publication->platform)
-        ->collect($publication, CarbonImmutable::today('UTC'));
 }
 
 test('an X post the network deleted is reported deleted from the lookup itself', function (int $status, string $host) {
@@ -1197,12 +1246,11 @@ test('a Bluesky post the AppView returns is read once, with no deletion check', 
     Http::assertSentCount(1);
 });
 
-test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function (?string $service) {
+test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function (?string $service, string $pds) {
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $account->update(['meta' => [...$account->meta, 'service' => $service ?? data_get($account->meta, 'service')]]);
     $publication = networkPublication($account, '3kpost');
     $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
-    $pds = $account->blueskyService();
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
         "{$pds}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound', 'message' => 'Could not locate record'], 400),
@@ -1211,8 +1259,9 @@ test('a Bluesky post its repository no longer holds is reported deleted while th
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
 })->with([
-    'the account PDS' => [null],
-    'a self-hosted PDS' => ['https://pds.example.test'],
+    'the account PDS' => [null, 'https://bsky.social'],
+    'a self-hosted PDS' => ['https://pds.example.test', 'https://pds.example.test'],
+    'a self-hosted PDS with a trailing slash' => ['https://pds.example.test/', 'https://pds.example.test'],
 ]);
 
 test('a Bluesky post the AppView hides, or one whose repository cannot be read, is not reported deleted', function (array $record, array $list) {
@@ -1236,14 +1285,15 @@ test('a Bluesky post the AppView hides, or one whose repository cannot be read, 
 test('a Mastodon status the owner can no longer read is reported deleted while the account statuses still read', function (int $status) {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read', 'write']]);
     $publication = networkPublication($account, '113000000000000001');
-    $statuses = "{$account->mastodonInstance()}/api/v1/accounts/{$account->platform_user_id}/statuses";
     Http::fake([
         "{$account->mastodonInstance()}/api/v1/statuses/113000000000000001" => Http::response(['error' => 'Record not found'], $status),
-        "{$statuses}?limit=1" => Http::response([['id' => '113000000000000002']]),
+        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([['id' => '113000000000000002']]),
     ]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
-    Http::assertSent(fn (Request $request): bool => $request->url() === "{$statuses}?limit=1" && $request->hasHeader('Authorization'));
+    Http::assertSent(fn (Request $request): bool => Uri::of($request->url())->path() === "api/v1/accounts/{$account->platform_user_id}/statuses"
+        && data_get($request->data(), 'limit') === 1
+        && $request->hasHeader('Authorization'));
 })->with(['404' => [404], '410' => [410]]);
 
 test('a Mastodon status is not reported deleted without an owner read, an error other than 404, or an account that no longer reads', function (array $scopes, int $status, int $accountStatus) {
@@ -1262,19 +1312,45 @@ test('a Mastodon status is not reported deleted without an owner read, an error 
     'the account no longer reads' => [['read', 'write'], 404, 401],
 ]);
 
-test('a deletion check that fails only for now is retried before anything is reported', function (Platform $platform) {
-    $account = SocialAccount::factory()->{$platform === Platform::Mastodon ? 'mastodon' : 'pinterest'}()->create(['scopes' => $platform === Platform::Mastodon ? ['read'] : ['pins:read', 'boards:read']]);
-    $publication = networkPublication($account, '113000000000000001');
-    $list = $platform === Platform::Mastodon
-        ? "{$account->mastodonInstance()}/api/v1/accounts/*"
-        : rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins?*';
-    Http::fake([
-        $list => Http::response([], 503),
-        '*' => Http::response(['code' => 2], 404),
-    ]);
+test('a deletion check that fails only for now is retried before anything is reported', function (Closure $account, Closure $fakes, string $category) {
+    $publication = networkPublication($account(), '113000000000000001');
+    Http::fake($fakes($publication->socialAccount));
 
-    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('transient')->and($exception->gone)->toBeFalse());
-})->with([Platform::Mastodon, Platform::Pinterest]);
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe($category)->and($exception->gone)->toBeFalse());
+})->with([
+    'mastodon statuses fail on the server' => [
+        fn (): SocialAccount => SocialAccount::factory()->mastodon()->create(['scopes' => ['read']]),
+        fn (SocialAccount $account): array => [
+            "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([], 503),
+            '*' => Http::response([], 404),
+        ],
+        'transient',
+    ],
+    'pinterest Pins fail on the server' => [
+        fn (): SocialAccount => SocialAccount::factory()->pinterest()->create(),
+        fn (): array => [
+            rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins?*' => Http::response([], 503),
+            '*' => Http::response(['code' => 2], 404),
+        ],
+        'transient',
+    ],
+    'pinterest Pin read is rate limited' => [
+        fn (): SocialAccount => SocialAccount::factory()->pinterest()->create(),
+        fn (): array => [
+            rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins/113000000000000001/analytics*' => Http::response(['code' => 2], 404),
+            '*' => Http::response([], 429),
+        ],
+        'rate_limited',
+    ],
+    'bluesky record read fails on the server' => [
+        fn (): SocialAccount => SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']),
+        fn (SocialAccount $account): array => [
+            rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+            '*' => Http::response([], 503),
+        ],
+        'transient',
+    ],
+]);
 
 test('a Pinterest Pin the account no longer has is reported deleted while its Pins still read', function () {
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');

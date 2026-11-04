@@ -36,17 +36,25 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
     {
         $this->refusedMissingObject = false;
 
-        try {
-            return $this->read($publication, $date);
-        } catch (AnalyticsCollectionException $exception) {
-            if ($exception->category === 'malformed'
-                && ($exception->missingObject || $this->refusedMissingObject)
-                && $this->deletedOnNetwork($publication)) {
-                throw AnalyticsCollectionException::deletedOnNetwork("{$publication->platform->value} no longer returns this post.");
-            }
+        return $this->readUnlessDeleted(
+            fn (): PublicationMetricObservation => $this->read($publication, $date),
+            fn (AnalyticsCollectionException $exception): bool => $this->mayBeDeleted($exception) && $this->confirmsDeletion($publication),
+            $publication->platform->value,
+        );
+    }
 
-            throw $exception;
-        }
+    /**
+     * A read that failed as malformed, or every read refused for permission while one
+     * of them answered "object does not exist", may hide a deleted post. Otherwise the
+     * failure stands as it is.
+     */
+    private function mayBeDeleted(AnalyticsCollectionException $exception): bool
+    {
+        return match ($exception->category) {
+            'malformed' => $exception->missingObject || $this->refusedMissingObject,
+            'permission' => $this->refusedMissingObject,
+            default => false,
+        };
     }
 
     /**
@@ -54,7 +62,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
      * MetaAnalyticsResponse) while the account's posts still read with the same
      * token. A story is never checked: it disappears on its own when it expires.
      */
-    private function deletedOnNetwork(AnalyticsPublication $publication): bool
+    private function confirmsDeletion(AnalyticsPublication $publication): bool
     {
         if ($publication->content_type === PublicationContentType::Story) {
             return false;

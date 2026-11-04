@@ -30,19 +30,16 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
 
         $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
 
-        try {
-            $response = $this->get($account, "{$api}/pins/{$publication->remote_id}/analytics", [
+        $response = $this->readUnlessDeleted(
+            fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}/analytics", [
                 'start_date' => $date->subDays(89)->toDateString(),
                 'end_date' => $date->toDateString(),
                 'metric_types' => implode(',', $fields),
-            ]);
-        } catch (AnalyticsCollectionException $exception) {
-            if ($exception->gone && $this->deletedOnNetwork($account, $publication, $api)) {
-                throw AnalyticsCollectionException::deletedOnNetwork('Pinterest no longer returns this Pin.');
-            }
+            ]),
+            fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account, $publication, $api),
+            'Pinterest',
+        );
 
-            throw $exception;
-        }
         $values = $response->json('all.summary_metrics');
 
         if (! is_array($values)) {
@@ -74,7 +71,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
      * itself must answer 404 too, while the account's Pins, the list discovery reads,
      * still read with the same token.
      */
-    private function deletedOnNetwork(SocialAccount $account, AnalyticsPublication $publication, string $api): bool
+    private function confirmsDeletion(SocialAccount $account, AnalyticsPublication $publication, string $api): bool
     {
         return $this->readsMissing(
             fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}"),

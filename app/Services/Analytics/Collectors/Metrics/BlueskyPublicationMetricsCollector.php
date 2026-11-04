@@ -27,7 +27,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
 
         $post = (array) $response->json('posts.0', []);
 
-        if (blank($post) && $this->deletedOnNetwork($account, $publication)) {
+        if (blank($post) && $this->confirmsDeletion($account, $publication)) {
             throw AnalyticsCollectionException::deletedOnNetwork('Bluesky no longer returns this post.');
         }
 
@@ -53,7 +53,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
      * counts as deleted only when its own repository answers `RecordNotFound` while the
      * repository's posts, the list discovery reads, still read.
      */
-    private function deletedOnNetwork(SocialAccount $account, AnalyticsPublication $publication): bool
+    private function confirmsDeletion(SocialAccount $account, AnalyticsPublication $publication): bool
     {
         $records = "{$account->blueskyService()}/xrpc/";
         $repository = ['repo' => $account->platform_user_id, 'collection' => BlueskyLexicon::FEED_POST];

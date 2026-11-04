@@ -94,7 +94,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
             $this->count(MetricKey::TotalInteractions, $values, $isStory ? 'story_interaction' : 'post_video_social_actions'),
         ]));
 
-        if ($metrics === [] && in_array('permission', $this->refusals, true) && ! $this->refusedMissingObject) {
+        if ($metrics === [] && in_array('permission', $this->refusals, true)) {
             throw new AnalyticsCollectionException('permission', 'Facebook refused every publication metrics read.');
         }
 

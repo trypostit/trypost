@@ -18,19 +18,15 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
     {
         $account = $this->account($publication);
 
-        try {
-            $response = $this->get(
+        $response = $this->readUnlessDeleted(
+            fn (): Response => $this->get(
                 $account,
                 "{$account->mastodonInstance()}/api/v1/statuses/{$publication->remote_id}",
                 authenticated: $account->canReadMastodonStatuses(),
-            );
-        } catch (AnalyticsCollectionException $exception) {
-            if ($exception->gone && $this->deletedOnNetwork($account)) {
-                throw AnalyticsCollectionException::deletedOnNetwork('Mastodon no longer returns this status.');
-            }
-
-            throw $exception;
-        }
+            ),
+            fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account),
+            'Mastodon',
+        );
 
         $status = (array) $response->json();
 
@@ -46,7 +42,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
      * its owner's token, so only an owner read counts, and only while the account's
      * statuses, the list discovery reads, still read with that token.
      */
-    private function deletedOnNetwork(SocialAccount $account): bool
+    private function confirmsDeletion(SocialAccount $account): bool
     {
         return $account->canReadMastodonStatuses() && $this->stillReads(
             fn (): Response => $this->get($account, "{$account->mastodonInstance()}/api/v1/accounts/{$account->platform_user_id}/statuses", ['limit' => 1]),
