@@ -79,6 +79,13 @@ test('list-content-types says an x poll is refused even as a draft and what it n
         ->toContain('x_poll) needs meta.poll');
 });
 
+test('the attach media tools say an x poll takes no media', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('x_poll) takes no media');
+})->with([
+    'upload' => [AttachMediaFromUploadTool::class],
+    'url' => [AttachMediaFromUrlTool::class],
+]);
+
 test('tools that change a post list the statuses that block it', function (string $tool) {
     expect(mcpToolText($tool))->toContain('publishing, published or failed');
 })->with([
