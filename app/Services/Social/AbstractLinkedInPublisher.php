@@ -425,7 +425,7 @@ abstract class AbstractLinkedInPublisher
      */
     private function createComment(string $postUrn, string $text): string
     {
-        $response = $this->unversionedHttpClient()->post(
+        $response = $this->getHttpClient()->post(
             "{$this->baseUrl()}/v2/socialActions/".rawurlencode($postUrn).'/comments',
             [
                 'actor' => $this->authorUrn(),
@@ -794,15 +794,6 @@ abstract class AbstractLinkedInPublisher
             ->withHeaders([
                 'X-Restli-Protocol-Version' => '2.0.0',
                 'LinkedIn-Version' => $this->apiVersion,
-                'Content-Type' => 'application/json',
-            ]);
-    }
-
-    private function unversionedHttpClient(): PendingRequest
-    {
-        return $this->socialHttp()->withToken($this->accessToken)
-            ->withHeaders([
-                'X-Restli-Protocol-Version' => '2.0.0',
                 'Content-Type' => 'application/json',
             ]);
     }

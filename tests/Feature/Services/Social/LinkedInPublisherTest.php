@@ -1793,7 +1793,6 @@ test('a linkedin thread posts its reply as a comment from the member on the new 
     expect($request->method())->toBe('POST')
         ->and($request->url())->toBe(config('trypost.platforms.linkedin.api').'/v2/socialActions/urn%3Ali%3Ashare%3A123/comments')
         ->and($request->header('X-Restli-Protocol-Version'))->toBe(['2.0.0'])
-        ->and($request->hasHeader('LinkedIn-Version'))->toBeFalse()
         ->and($request->data())->toBe([
             'actor' => 'urn:li:person:abc123xyz',
             'object' => 'urn:li:share:123',
