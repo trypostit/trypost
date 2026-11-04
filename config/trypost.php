@@ -231,6 +231,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI
+    |--------------------------------------------------------------------------
+    |
+    | Text models that reject the `temperature` parameter, as regular
+    | expressions. Agents send their preferred temperature to every other
+    | model. The Claude 5 family rejects it (claude-sonnet-5-5,
+    | claude-opus-5-5, ...); Claude 4.x accepts it.
+    |
+    */
+
+    'ai' => [
+        'models_without_temperature' => [
+            '/^claude-[a-z]+-5(-\d{1,2})?(-\d{8})?$/',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | External posts
     |--------------------------------------------------------------------------
     |
