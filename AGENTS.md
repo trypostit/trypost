@@ -1057,12 +1057,22 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Deleted on the network.** `publish_status = deleted` means the network
   deleted a post it published; `status` stays published. Only a deletion the
   collector confirms moves the post
-  (`AnalyticsCollectionException::deletedOnNetwork()`): YouTube no longer
-  listing the video, or Facebook, Instagram and Threads
-  (`AbstractMetaPublicationMetricsCollector`) answering code 100 / subcode 33
-  for the post while the account's own posts edge (the one its discovery reads)
-  still reads with the same token. A bare 404 or 410 only marks the analytics
-  publication, and a story is never checked (it expires on its own).
+  (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
+  read it already makes and with an account-level read (the list its discovery
+  reads) proving the token still works:
+    - YouTube: `videos.list` no longer returns the video.
+    - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
+      code 100 / subcode 33 for the post; a story is never checked (it expires).
+    - X: the documented `resource-not-found` problem for the post, in a 200's
+      `errors` or a 404's body; no extra request (X bills each one).
+    - Bluesky: `getPosts` leaves it out and its repository answers
+      `RecordNotFound`.
+    - Mastodon: 404 on an owner read only (without `read`, 404 also means
+      private).
+    - Pinterest: 404 on the Pin analytics and on the Pin.
+  Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
+  deleted from private; LinkedIn, Google Business, Telegram and Discord have no
+  read after publishing (#481).
   `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
   the publication's row lock, unless a sync saw the post while it was being
   checked (`last_seen_at` moved); a sync that sees it again restores it

@@ -17,6 +17,8 @@ final class BlueskyLexicon
 
     public const LIST_RECORDS = 'com.atproto.repo.listRecords';
 
+    public const GET_RECORD = 'com.atproto.repo.getRecord';
+
     public const UPLOAD_BLOB = 'com.atproto.repo.uploadBlob';
 
     public const CREATE_SESSION = 'com.atproto.server.createSession';

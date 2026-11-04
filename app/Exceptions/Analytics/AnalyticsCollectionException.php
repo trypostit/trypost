@@ -59,7 +59,11 @@ class AnalyticsCollectionException extends Exception
         }
     }
 
-    public static function fromResponse(Response $response, string $operation): self
+    /**
+     * `$missingObject` is set by a collector that recognises the network's documented
+     * "this post does not exist" answer, to confirm a deletion before reporting it.
+     */
+    public static function fromResponse(Response $response, string $operation, bool $missingObject = false): self
     {
         $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
         $category = match (true) {
@@ -76,6 +80,7 @@ class AnalyticsCollectionException extends Exception
             "{$operation} failed with HTTP {$response->status()}",
             RetryAfter::from($response),
             in_array($response->status(), [404, 410], true),
+            $missingObject,
         );
     }
 }

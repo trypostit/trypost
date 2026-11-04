@@ -11,6 +11,7 @@ use App\Enums\Analytics\MetricUnit;
 use App\Enums\Analytics\PublicationContentType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
 class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCollector
@@ -26,14 +27,21 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
             $fields = array_merge($fields, ['VIDEO_MRC_VIEW', 'VIDEO_AVG_WATCH_TIME', 'VIDEO_10S_VIEW', 'QUARTILE_95_PERCENT_VIEW', 'VIDEO_V50_WATCH_TIME']);
         }
 
-        $response = $this->get($account,
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->remote_id}/analytics",
-            [
+        $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+
+        try {
+            $response = $this->get($account, "{$api}/pins/{$publication->remote_id}/analytics", [
                 'start_date' => $date->subDays(89)->toDateString(),
                 'end_date' => $date->toDateString(),
                 'metric_types' => implode(',', $fields),
-            ],
-        );
+            ]);
+        } catch (AnalyticsCollectionException $exception) {
+            if ($exception->gone && $this->deletedOnNetwork($account, $publication, $api)) {
+                throw AnalyticsCollectionException::deletedOnNetwork('Pinterest no longer returns this Pin.');
+            }
+
+            throw $exception;
+        }
         $values = $response->json('all.summary_metrics');
 
         if (! is_array($values)) {
@@ -58,5 +66,31 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
         ]);
 
         return $this->observation($date, $this->withEngagements($metrics));
+    }
+
+    /**
+     * Pinterest documents only the 404 status for a Pin it cannot find, so the Pin
+     * itself must answer 404 too, while the account's Pins, the list discovery reads,
+     * still read with the same token.
+     */
+    private function deletedOnNetwork(SocialAccount $account, AnalyticsPublication $publication, string $api): bool
+    {
+        try {
+            $this->get($account, "{$api}/pins/{$publication->remote_id}");
+
+            return false;
+        } catch (AnalyticsCollectionException $exception) {
+            if (! $exception->gone) {
+                return false;
+            }
+        }
+
+        try {
+            $this->get($account, "{$api}/pins", ['page_size' => 1]);
+
+            return true;
+        } catch (AnalyticsCollectionException) {
+            return false;
+        }
     }
 }
