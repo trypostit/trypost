@@ -179,6 +179,7 @@ import {
     threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
+    threadReplyContentType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { pollLimitsOf } from '@/lib/xPoll';
@@ -524,22 +525,14 @@ watch(sharedStep, (shared) => {
 });
 /** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
-    const reply = activeReply(group);
-
-    if (filled(reply) && filled(reply.poll)) {
-        return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
-    }
-
-    if (filled(reply)) {
-        return (
-            MEDIALESS_CONTENT_TYPE_REASONS[
-                THREAD_REPLY_CONTENT_TYPES[group.platform]
-            ] ?? 'posts.composer.media_not_supported'
-        );
-    }
+    const contentType = transform(
+        activeReply(group),
+        (reply) => threadReplyContentType(group.platform, reply),
+        groupDestination(group).content_type,
+    );
 
     return (
-        MEDIALESS_CONTENT_TYPE_REASONS[groupDestination(group).content_type] ??
+        transform(contentType, (type) => MEDIALESS_CONTENT_TYPE_REASONS[type]) ??
         'posts.composer.media_not_supported'
     );
 };
