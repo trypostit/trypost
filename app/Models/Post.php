@@ -533,6 +533,15 @@ class Post extends Model
         ]);
     }
 
+    /**
+     * The network deleted the post after it was published.
+     */
+    public function isDeletedOnNetwork(): bool
+    {
+        return $this->status === PostStatus::Published
+            && $this->publish_status === PublishStatus::Deleted;
+    }
+
     public function isPublicationWaitingForLimitRetry(): bool
     {
         return $this->publish_status === PublishStatus::Retrying && $this->retry_at?->isFuture() === true;

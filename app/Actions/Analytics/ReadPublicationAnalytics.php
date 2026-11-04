@@ -151,7 +151,7 @@ class ReadPublicationAnalytics
     private function unpublishedReason(Post $post): ?string
     {
         return match (true) {
-            $post->publish_status === PublishStatus::Deleted => 'deleted_on_network',
+            $post->isDeletedOnNetwork() => 'deleted_on_network',
             $post->publish_status !== PublishStatus::Published || blank($post->platform_post_id) => 'not_published',
             default => null,
         };

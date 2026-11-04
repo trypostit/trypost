@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
@@ -51,20 +50,14 @@ class PostStatusRules
         return in_array($post->status, self::EDIT_BLOCKED_STATUSES, true);
     }
 
-    public static function blocksDeletion(Post $post): bool
-    {
-        return in_array($post->status, self::DELETE_BLOCKED_STATUSES, true)
-            && ! self::deletedOnNetwork($post);
-    }
-
     /**
      * A published post the network deleted has nothing left to protect, so it may
      * be removed from TryPost too.
      */
-    public static function deletedOnNetwork(Post $post): bool
+    public static function blocksDeletion(Post $post): bool
     {
-        return $post->status === PostStatus::Published
-            && $post->publish_status === PublishStatus::Deleted;
+        return in_array($post->status, self::DELETE_BLOCKED_STATUSES, true)
+            && ! $post->isDeletedOnNetwork();
     }
 
     public static function editBlockedMessage(): string

@@ -1065,7 +1065,7 @@ an `enabled` flag or posts with several channels. Posts created together share
   `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`); a
   discovery that lists it again restores it (`markPublicationRestored()`, which
   does not rerun the "just published" side effects). Such a post can be deleted
-  in TryPost (`PostStatusRules::deletedOnNetwork()`), finalizes as published, and
+  in TryPost (`Post::isDeletedOnNetwork()`), finalizes as published, and
   still counts as published for the posting goal, the lifecycle and PostHog
   (`Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics sync)
   keep `scopePublicationPublished()`. In the UI, `isDeletedOnNetwork()` and
