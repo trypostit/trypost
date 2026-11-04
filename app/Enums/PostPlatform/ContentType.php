@@ -84,11 +84,6 @@ enum ContentType: string
         return in_array($this, [self::FacebookStory, self::InstagramStory], true);
     }
 
-    public function isComment(): bool
-    {
-        return $this === self::LinkedInComment;
-    }
-
     public function label(): string
     {
         return match ($this) {
@@ -845,15 +840,10 @@ enum ContentType: string
      */
     public function compatiblePlatforms(): array
     {
-        if ($this->isComment()) {
-            return [];
-        }
-
-        $primary = $this->platform();
-
-        return match ($primary) {
-            SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
-            default => [$primary],
+        return match (true) {
+            $this === self::LinkedInComment => [],
+            $this->platform() === SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
+            default => [$this->platform()],
         };
     }
 
@@ -882,14 +872,9 @@ enum ContentType: string
      */
     public static function forPlatform(SocialPlatform $platform): array
     {
-        $effective = match ($platform) {
-            SocialPlatform::InstagramFacebook => SocialPlatform::Instagram,
-            default => $platform,
-        };
-
         return array_filter(
             self::cases(),
-            fn (self $type) => $type->platform() === $effective && ! $type->isComment()
+            fn (self $type) => $type->isCompatibleWith($platform)
         );
     }
 

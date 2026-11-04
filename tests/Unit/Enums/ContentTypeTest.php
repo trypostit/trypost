@@ -536,8 +536,6 @@ test('a linkedin comment is a reply type no post can take', function () {
         ->and(ContentType::forPlatform(Platform::LinkedInPage))->not->toContain(ContentType::LinkedInComment)
         ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedIn))->toBeFalse()
         ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedInPage))->toBeFalse()
-        ->and(ContentType::LinkedInComment->isComment())->toBeTrue()
-        ->and(ContentType::LinkedInPost->isComment())->toBeFalse()
         ->and(ContentType::LinkedInComment->maxMediaCount())->toBe(0)
         ->and(ContentType::LinkedInComment->supportsImage())->toBeFalse()
         ->and(ContentType::LinkedInComment->supportsVideo())->toBeFalse()
