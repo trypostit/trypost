@@ -175,6 +175,7 @@ import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
     repliesAreComments,
+    replyEmptyKey,
     replyErrorOf,
     replyTooLongKey,
     startThreadKey,
@@ -1514,7 +1515,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
                 : null;
             if (isBlankText(reply.text) && !reply.media.length) {
                 issues.push({
-                    key: 'posts.form.thread.reply_empty',
+                    key: replyEmptyKey(account.platform),
                     params: {},
                     contentType,
                 });

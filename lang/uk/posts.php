@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Ваш коментар',
             'remove_comment' => 'Видалити коментар',
             'comment_too_long' => 'Коментар перевищує ліміт у :limit символів на :over.',
+            'comment_empty' => 'Коментар порожній.',
             'comment_attachments' => 'Коментарі в LinkedIn не можуть містити медіафайли.',
         ],
 

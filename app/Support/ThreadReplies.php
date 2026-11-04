@@ -238,11 +238,15 @@ class ThreadReplies
             return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
         }
 
-        if (blank($reply['media'])) {
-            return [null, __('posts.form.thread.reply_empty')];
+        if (filled($reply['media'])) {
+            return null;
         }
 
-        return null;
+        if (self::replyContentType($platform) === ContentType::LinkedInComment) {
+            return [null, __('posts.form.thread.comment_empty')];
+        }
+
+        return [null, __('posts.form.thread.reply_empty')];
     }
 
     /**

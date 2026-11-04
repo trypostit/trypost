@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Il tuo commento',
             'remove_comment' => 'Rimuovi commento',
             'comment_too_long' => 'Il tuo commento supera il limite di :limit caratteri di :over.',
+            'comment_empty' => 'Il tuo commento è vuoto.',
             'comment_attachments' => 'I commenti su LinkedIn non possono contenere media.',
         ],
 

@@ -498,6 +498,7 @@ return [
             'comment_label' => 'تعليقك',
             'remove_comment' => 'إزالة التعليق',
             'comment_too_long' => 'يتجاوز تعليقك حد :limit حرف بمقدار :over.',
+            'comment_empty' => 'تعليقك فارغ.',
             'comment_attachments' => 'لا يمكن أن تتضمن تعليقات LinkedIn وسائط.',
         ],
 

@@ -131,3 +131,21 @@ test('a linkedin comment speaks of a comment and removing it brings the add butt
     expect($post->fresh()->meta)->not->toHaveKey('thread_replies');
     $page->assertNoJavaScriptErrors();
 });
+
+test('a linkedin post opened with a saved comment shows it as a comment and keeps it on save', function () {
+    $post = linkedInCommentPost('linkedin', ContentType::LinkedInPost);
+    $post->update(['meta' => ['thread_replies' => [['text' => 'Saved comment', 'media' => []]]]]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@preview-comment-0');
+
+    $page->assertSeeIn('@preview-comment-0', 'Saved comment')
+        ->assertMissing('@preview-thread-reply-0')
+        ->assertMissing('@thread-start')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Saved comment', 'media' => []]]);
+});

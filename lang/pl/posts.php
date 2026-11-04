@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Twój komentarz',
             'remove_comment' => 'Usuń komentarz',
             'comment_too_long' => 'Komentarz przekracza limit :limit znaków o :over.',
+            'comment_empty' => 'Komentarz jest pusty.',
             'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
         ],
 

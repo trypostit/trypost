@@ -498,6 +498,7 @@ return [
             'comment_label' => '내 댓글',
             'remove_comment' => '댓글 삭제',
             'comment_too_long' => '댓글이 :limit자 제한을 :over자 초과했습니다.',
+            'comment_empty' => '댓글이 비어 있습니다.',
             'comment_attachments' => 'LinkedIn 댓글에는 미디어를 첨부할 수 없습니다.',
         ],
 

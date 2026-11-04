@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Dein Kommentar',
             'remove_comment' => 'Kommentar entfernen',
             'comment_too_long' => 'Dein Kommentar überschreitet das Limit von :limit Zeichen um :over.',
+            'comment_empty' => 'Dein Kommentar ist leer.',
             'comment_attachments' => 'LinkedIn-Kommentare können keine Medien enthalten.',
         ],
 

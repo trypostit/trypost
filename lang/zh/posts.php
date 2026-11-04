@@ -498,6 +498,7 @@ return [
             'comment_label' => '你的评论',
             'remove_comment' => '移除评论',
             'comment_too_long' => '你的评论超出 :limit 个字符的限制 :over 个字符。',
+            'comment_empty' => '你的评论是空的。',
             'comment_attachments' => 'LinkedIn 评论不能包含媒体。',
         ],
 

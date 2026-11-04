@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Your comment',
             'remove_comment' => 'Remove comment',
             'comment_too_long' => 'Your comment exceeds the :limit-character limit by :over.',
+            'comment_empty' => 'Your comment is empty.',
             'comment_attachments' => 'LinkedIn comments can\'t include media.',
         ],
 

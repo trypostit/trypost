@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Votre commentaire',
             'remove_comment' => 'Retirer le commentaire',
             'comment_too_long' => 'Votre commentaire dépasse la limite de :limit caractères de :over.',
+            'comment_empty' => 'Votre commentaire est vide.',
             'comment_attachments' => 'Les commentaires LinkedIn ne peuvent pas contenir de médias.',
         ],
 

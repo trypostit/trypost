@@ -115,3 +115,11 @@ export const startThreadKey = (platform: string): string => {
 
     return 'posts.form.thread.start';
 };
+
+export const replyEmptyKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_empty';
+    }
+
+    return 'posts.form.thread.reply_empty';
+};

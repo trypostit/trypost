@@ -498,6 +498,7 @@ return [
             'comment_label' => 'Το σχόλιό σας',
             'remove_comment' => 'Αφαίρεση σχολίου',
             'comment_too_long' => 'Το σχόλιό σας υπερβαίνει το όριο των :limit χαρακτήρων κατά :over.',
+            'comment_empty' => 'Το σχόλιό σας είναι κενό.',
             'comment_attachments' => 'Τα σχόλια στο LinkedIn δεν μπορούν να περιέχουν πολυμέσα.',
         ],
 

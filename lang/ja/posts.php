@@ -498,6 +498,7 @@ return [
             'comment_label' => 'あなたのコメント',
             'remove_comment' => 'コメントを削除',
             'comment_too_long' => 'コメントが:limit文字の上限を:over文字超えています。',
+            'comment_empty' => 'コメントが空です。',
             'comment_attachments' => 'LinkedInのコメントにはメディアを添付できません。',
         ],
 
