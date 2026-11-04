@@ -15,7 +15,9 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -1751,3 +1753,134 @@ function linkedInJpegBytes(): string
 
     return $bytes === false ? '' : $bytes;
 }
+
+function linkedInFirstCommentFake(array $comment): void
+{
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence($comment),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
+            'access_token' => 'refreshed-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 5184000,
+        ], 200),
+    ]);
+}
+
+function linkedInCommentRequests(): Collection
+{
+    return Http::recorded(fn ($request) => str_contains($request->url(), '/v2/socialActions/'));
+}
+
+function linkedInPostRequests(): Collection
+{
+    return Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts'));
+}
+
+test('linkedin publisher posts the first comment on the created post as the member', function () {
+    linkedInFirstCommentFake([Http::response(['id' => '999'], 201, ['x-restli-id' => '999'])]);
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Docs (here) @team #php']]]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result)->toBe(['id' => 'urn:li:share:123', 'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123'])
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+
+    [$request] = linkedInCommentRequests()->sole();
+    expect($request->method())->toBe('POST')
+        ->and($request->url())->toBe(config('trypost.platforms.linkedin.api').'/v2/socialActions/urn%3Ali%3Ashare%3A123/comments')
+        ->and($request->header('X-Restli-Protocol-Version'))->toBe(['2.0.0'])
+        ->and($request->hasHeader('LinkedIn-Version'))->toBeFalse()
+        ->and($request->header('Authorization')[0])->toStartWith('Bearer ')
+        ->and($request->data())->toBe([
+            'actor' => 'urn:li:person:abc123xyz',
+            'object' => 'urn:li:share:123',
+            'message' => ['text' => 'Docs (here) @team #php'],
+        ]);
+});
+
+test('linkedin publisher sends no comment request without a first comment', function (array $meta) {
+    linkedInFirstCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+    $this->post->forceFill(['meta' => $meta])->save();
+
+    $this->publisher->publish($this->post);
+
+    expect(linkedInCommentRequests())->toBeEmpty()
+        ->and($this->post->fresh()->meta)->not->toHaveKey('first_comment_result');
+})->with([
+    'none' => [[]],
+    'blank' => [['first_comment' => ['text' => '   ']]],
+]);
+
+test('linkedin publisher does not comment twice on the same post', function () {
+    linkedInFirstCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+    $this->post->forceFill(['meta' => [
+        'first_comment' => ['text' => 'Link below'],
+        'first_comment_result' => ['post_id' => 'urn:li:share:123', 'comment_id' => '998'],
+    ]])->save();
+
+    $this->publisher->publish($this->post);
+
+    expect(linkedInCommentRequests())->toBeEmpty();
+});
+
+test('linkedin publisher comments on a post created again even when an earlier one got the comment', function () {
+    linkedInFirstCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+    $this->post->forceFill(['meta' => [
+        'first_comment' => ['text' => 'Link below'],
+        'first_comment_result' => ['post_id' => 'urn:li:share:OLD', 'comment_id' => '998'],
+    ]])->save();
+
+    $this->publisher->publish($this->post);
+
+    expect(linkedInCommentRequests())->toHaveCount(1)
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+});
+
+test('a failed first comment leaves the linkedin post published and records the failure', function (int $status, array $body) {
+    linkedInFirstCommentFake([Http::response($body, $status)]);
+    Log::spy();
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Link below']]]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('urn:li:share:123')
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true])
+        ->and($this->post->fresh()->meta['first_comment'])->toBe(['text' => 'Link below']);
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message, array $context): bool => str_contains($message, 'first comment failed')
+        && $context['account_id'] === $this->socialAccount->id
+        && $context['platform_error_code'] === (string) $status);
+})->with([
+    'server error' => [500, ['message' => 'Internal error']],
+    'forbidden' => [403, ['serviceErrorCode' => 100, 'message' => 'Not enough permissions', 'status' => 403]],
+]);
+
+test('linkedin publisher refreshes the token once for the first comment without creating the post again', function () {
+    linkedInFirstCommentFake([
+        Http::response(['code' => 'EXPIRED_ACCESS_TOKEN'], 401),
+        Http::response([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Link below']]]);
+
+    $this->publisher->publish($this->post);
+
+    expect(linkedInPostRequests())->toHaveCount(1)
+        ->and(linkedInCommentRequests())->toHaveCount(2)
+        ->and(linkedInCommentRequests()->last()[0]->header('Authorization'))->toBe(['Bearer refreshed-token'])
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+});
+
+test('linkedin publisher gives up on the first comment when the refreshed token is refused too', function () {
+    linkedInFirstCommentFake([
+        Http::response(['code' => 'EXPIRED_ACCESS_TOKEN'], 401),
+        Http::response(['code' => 'EXPIRED_ACCESS_TOKEN'], 401),
+    ]);
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Link below']]]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('urn:li:share:123')
+        ->and(linkedInPostRequests())->toHaveCount(1)
+        ->and(linkedInCommentRequests())->toHaveCount(2)
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true]);
+});

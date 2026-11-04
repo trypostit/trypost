@@ -477,3 +477,36 @@ test('linkedin page publisher sends the article card under the organization', fu
         && $request['content']['article']['source'] === 'https://example.com/article'
         && $request['content']['article']['title'] === 'The Article');
 });
+
+test('linkedin page publisher posts the first comment as the organization', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin-page.api').'/v2/socialActions/*' => Http::response(['id' => '999'], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Sign up at example.com']]]);
+
+    $this->publisher->publish($this->post);
+
+    $request = Http::recorded(fn ($request) => str_contains($request->url(), '/v2/socialActions/'))->sole()[0];
+    expect($request->url())->toBe(config('trypost.platforms.linkedin-page.api').'/v2/socialActions/urn%3Ali%3Ashare%3A123/comments')
+        ->and($request->hasHeader('LinkedIn-Version'))->toBeFalse()
+        ->and($request->data())->toBe([
+            'actor' => 'urn:li:organization:123456',
+            'object' => 'urn:li:share:123',
+            'message' => ['text' => 'Sign up at example.com'],
+        ])
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'comment_id' => '999']);
+});
+
+test('a failed first comment leaves the linkedin page post published', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin-page.api').'/v2/socialActions/*' => Http::response(['message' => 'Not enough permissions'], 403),
+    ]);
+    $this->post->update(['meta' => ['first_comment' => ['text' => 'Sign up at example.com']]]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('urn:li:share:123')
+        ->and($this->post->fresh()->meta['first_comment_result'])->toBe(['post_id' => 'urn:li:share:123', 'failed' => true]);
+});

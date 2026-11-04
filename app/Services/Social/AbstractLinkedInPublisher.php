@@ -15,6 +15,7 @@ use App\Models\SocialAccount;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\PublishesFirstComment;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use Illuminate\Http\Client\PendingRequest;
@@ -30,12 +31,14 @@ use Throwable;
  * Shared LinkedIn publishing pipeline. The publish format follows the attached
  * media: a PDF becomes a document post, two or more images a multi-image post,
  * and a single image or video a media post. A text post with a link becomes an
- * article, because the Posts API does not scrape URLs. Subclasses provide the
+ * article, because the Posts API does not scrape URLs. Once the post exists,
+ * its first comment is posted as the same author. Subclasses provide the
  * author identity (member or company page) and its public URL.
  */
 abstract class AbstractLinkedInPublisher
 {
     use HasSocialHttpClient;
+    use PublishesFirstComment;
 
     /** Article title must be under 400 characters, description under 4,086. */
     private const int ARTICLE_TITLE_MAX = 399;
@@ -108,10 +111,16 @@ abstract class AbstractLinkedInPublisher
         $this->accessToken = $this->account->access_token;
 
         try {
-            return $this->dispatchByMedia($content, $post);
+            $result = $this->dispatchByMedia($content, $post);
         } catch (TokenExpiredException $e) {
-            return $this->retryWithRefresh($post, $content, $e);
+            $result = $this->retryWithRefresh($post, $content, $e);
         }
+
+        if ($result['id'] !== 'unknown') {
+            $this->publishFirstComment($post, $result['id']);
+        }
+
+        return $result;
     }
 
     private function dispatchByMedia(?string $content, Post $post): array
@@ -138,8 +147,7 @@ abstract class AbstractLinkedInPublisher
         $this->hasRetried = true;
 
         try {
-            app(ConnectionVerifier::class)->refreshToken($this->account);
-            $this->accessToken = $this->account->access_token;
+            $this->refreshAccessToken();
 
             return $this->dispatchByMedia($content, $post);
         } catch (Throwable $e) {
@@ -393,6 +401,39 @@ abstract class AbstractLinkedInPublisher
             'id' => $postId ?? 'unknown',
             'url' => $this->postUrl($postId ?: null),
         ];
+    }
+
+    protected function refreshAccessToken(): void
+    {
+        app(ConnectionVerifier::class)->refreshToken($this->account);
+        $this->accessToken = $this->account->access_token;
+    }
+
+    /**
+     * Comments through the unversioned `/v2/socialActions` API: the versioned
+     * `/rest/socialActions` one needs the Community Management API, which this
+     * app does not have, while `/v2/` takes the publish scopes TryPost holds
+     * (`w_member_social`, `w_organization_social`). The text is sent as it is:
+     * a comment's message is not `little` commentary.
+     *
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
+     */
+    protected function createFirstComment(string $postId, string $text): string
+    {
+        $response = $this->unversionedHttpClient()->post(
+            "{$this->baseUrl()}/v2/socialActions/".rawurlencode($postId).'/comments',
+            [
+                'actor' => $this->authorUrn(),
+                'object' => $postId,
+                'message' => ['text' => $text],
+            ],
+        );
+
+        if ($response->failed()) {
+            $this->handleApiError($response);
+        }
+
+        return (string) $response->header('x-restli-id');
     }
 
     /**
@@ -744,6 +785,19 @@ abstract class AbstractLinkedInPublisher
             ->withHeaders([
                 'X-Restli-Protocol-Version' => '2.0.0',
                 'LinkedIn-Version' => $this->apiVersion,
+                'Content-Type' => 'application/json',
+            ]);
+    }
+
+    /**
+     * The client for LinkedIn's unversioned `/v2/` API, which takes no
+     * `LinkedIn-Version` header.
+     */
+    private function unversionedHttpClient(): PendingRequest
+    {
+        return $this->socialHttp()->withToken($this->accessToken)
+            ->withHeaders([
+                'X-Restli-Protocol-Version' => '2.0.0',
                 'Content-Type' => 'application/json',
             ]);
     }

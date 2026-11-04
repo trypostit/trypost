@@ -2504,3 +2504,27 @@ test('a post on another network never asks TikTok for a video id', function () {
     expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
+
+test('a linkedin post whose first comment fails still ends published and keeps the failure', function (int $commentStatus, array $expectedResult) {
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::response(['message' => 'comment'], $commentStatus, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['first_comment' => ['text' => 'Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $post = $this->post->fresh();
+    expect($post->status)->toBe(PostStatus::Published)
+        ->and($post->publish_status)->toBe(PlatformStatus::Published)
+        ->and($post->platform_post_id)->toBe('urn:li:share:123')
+        ->and($post->error_context)->toBeNull()
+        ->and($post->meta)->toEqual([
+            'first_comment' => ['text' => 'Link below'],
+            'first_comment_result' => $expectedResult,
+        ]);
+})->with([
+    'comment posted' => [201, ['post_id' => 'urn:li:share:123', 'comment_id' => '999']],
+    'comment failed' => [500, ['post_id' => 'urn:li:share:123', 'failed' => true]],
+]);

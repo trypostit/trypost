@@ -75,6 +75,7 @@ function fullPostRouter(): Closure
             str_starts_with($url, $facebook) => Http::response(['id' => "page_1_fb-post-{$counter}"], 200),
             str_starts_with($url, $linkedin) && str_contains($url, 'action=initializeUpload') => Http::response(['value' => ['uploadUrl' => "https://www.linkedin.com/dms-uploads/{$counter}", 'document' => "urn:li:document:{$counter}", 'image' => "urn:li:image:{$counter}"]], 200),
             str_starts_with($url, $linkedin) && str_contains($url, '/rest/posts') => Http::response(null, 201, ['x-restli-id' => "urn:li:share:{$counter}"]),
+            str_starts_with($url, $linkedin) && str_contains($url, '/v2/socialActions/') => Http::response(null, 201, ['x-restli-id' => "comment-{$counter}"]),
             str_contains($url, 'linkedin.com/dms-uploads') => Http::response(null, 201),
             str_starts_with($url, $linkedin) => Http::response(['status' => 'AVAILABLE'], 200),
             str_starts_with($url, $pinterest) && str_ends_with(parse_url($url, PHP_URL_PATH), '/media') && $method === 'POST' => Http::response(['media_id' => "pin-media-{$counter}", 'upload_url' => 'https://pinterest-media-upload.s3.amazonaws.com/', 'upload_parameters' => ['key' => 'k']], 201),
@@ -318,7 +319,7 @@ function fullPostCase(string $name): array
             'content_type' => 'linkedin_post',
             'content' => 'Read https://example.com/article',
             'media' => [],
-            'meta' => ['link_preview' => false],
+            'meta' => ['link_preview' => false, 'first_comment' => ['text' => 'More (details) @below']],
         ],
         'linkedin page images' => [
             'account' => $account('linkedinPage', ['platform_user_id' => '123456', 'meta' => ['organization_id' => '123456']]),
@@ -449,7 +450,7 @@ function fullPostNormalize(mixed $value): mixed
             '/media\/\d{4}-\d{2}\//',
             '/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z/',
             '/\b([a-z]+(?:-[a-z]+)*)-\d+\b/',
-            '/(urn:li:(?:document|image|share):|dms-uploads\/|app\.bsky\.feed\.post\/p)\d+/',
+            '/(urn:li:(?:document|image|share):|urn%3Ali%3Ashare%3A|dms-uploads\/|app\.bsky\.feed\.post\/p)\d+/',
         ],
         ['{uuid}', 'media/{month}/', '{now}', '$1-#', '$1#'],
         $value,
@@ -945,6 +946,17 @@ function fullPostExpected(string $name): array
                         'thirdPartyDistributionChannels' => [],
                     ],
                     'lifecycleState' => 'PUBLISHED',
+                ],
+            ],
+            [
+                'POST',
+                'https://api.linkedin.com/v2/socialActions/urn%3Ali%3Ashare%3A#/comments',
+                [
+                    'actor' => 'urn:li:person:li_person',
+                    'object' => 'urn:li:share:#',
+                    'message' => [
+                        'text' => 'More (details) @below',
+                    ],
                 ],
             ],
         ],
