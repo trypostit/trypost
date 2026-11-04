@@ -2504,3 +2504,33 @@ test('a post on another network never asks TikTok for a video id', function () {
     expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
+
+test('a linkedin post whose comment fails is marked failed with the thread progress and a retry only comments', function () {
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence()
+            ->push(['message' => 'Internal error'], 500)
+            ->push([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['thread_replies' => ['Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.linkedin.server_error'),
+        ]));
+
+    $failed->forceFill(['status' => PostStatus::Publishing, 'publish_status' => PlatformStatus::Pending])->save();
+    (new PublishToSocialPlatform($failed->fresh()))->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('urn:li:share:123')
+        ->and($published->thread_reply_ids)->toBe(['999'])
+        ->and(Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts')))->toHaveCount(1);
+});

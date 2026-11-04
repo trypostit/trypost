@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -15,10 +16,13 @@ use App\Models\SocialAccount;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -30,12 +34,14 @@ use Throwable;
  * Shared LinkedIn publishing pipeline. The publish format follows the attached
  * media: a PDF becomes a document post, two or more images a multi-image post,
  * and a single image or video a media post. A text post with a link becomes an
- * article, because the Posts API does not scrape URLs. Subclasses provide the
+ * article, because the Posts API does not scrape URLs. A thread reply is a
+ * comment from the same author on the new post. Subclasses provide the
  * author identity (member or company page) and its public URL.
  */
 abstract class AbstractLinkedInPublisher
 {
     use HasSocialHttpClient;
+    use PublishesThreads;
 
     /** Article title must be under 400 characters, description under 4,086. */
     private const int ARTICLE_TITLE_MAX = 399;
@@ -106,12 +112,32 @@ abstract class AbstractLinkedInPublisher
         }
 
         $this->accessToken = $this->account->access_token;
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 
         try {
-            return $this->dispatchByMedia($content, $post);
+            return $this->publishWithComment($post, $content, $rootHash);
         } catch (TokenExpiredException $e) {
-            return $this->retryWithRefresh($post, $content, $e);
+            return $this->retryWithRefresh($post, $content, $rootHash, $e);
         }
+    }
+
+    /**
+     * The post, then its thread reply as a comment on it. A post with a reply is
+     * checkpointed once it is live, so a retry after a refused comment only
+     * comments.
+     *
+     * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
+     */
+    private function publishWithComment(Post $post, ?string $content, string $rootHash): array
+    {
+        return $this->publishThread(
+            $post,
+            $rootHash,
+            fn (): array => $this->dispatchByMedia($content, $post),
+            fn (string $text, Collection $media, array $previous, array $root): array => [
+                'id' => $this->createComment((string) $root['id'], $text, $media->first()),
+            ],
+        );
     }
 
     private function dispatchByMedia(?string $content, Post $post): array
@@ -129,7 +155,7 @@ abstract class AbstractLinkedInPublisher
         return $this->publishPost($content, $media, $post->attachesLinkPreview());
     }
 
-    private function retryWithRefresh(Post $post, ?string $content, TokenExpiredException $originalException): array
+    private function retryWithRefresh(Post $post, ?string $content, string $rootHash, TokenExpiredException $originalException): array
     {
         if ($this->hasRetried) {
             throw $originalException;
@@ -141,7 +167,7 @@ abstract class AbstractLinkedInPublisher
             app(ConnectionVerifier::class)->refreshToken($this->account);
             $this->accessToken = $this->account->access_token;
 
-            return $this->dispatchByMedia($content, $post);
+            return $this->publishWithComment($post, $content, $rootHash);
         } catch (Throwable $e) {
             Log::error("{$this->label()} refresh failed during retry", [
                 'account_id' => $this->account->id,
@@ -393,6 +419,44 @@ abstract class AbstractLinkedInPublisher
             'id' => $postId ?? 'unknown',
             'url' => $this->postUrl($postId ?: null),
         ];
+    }
+
+    /**
+     * Comments on the post as its author through the unversioned
+     * `/v2/socialActions` API: the versioned `/rest/socialActions` one needs the
+     * Community Management API, which this app does not have, while `/v2/` takes
+     * the publish scopes TryPost holds. A comment's text is plain (not `little`)
+     * and it carries one image at most, by URL: LinkedIn shows the image from that
+     * URL, and an image uploaded through the Images API shows broken in a comment.
+     *
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
+     */
+    private function createComment(string $postUrn, string $text, ?MediaItem $image): string
+    {
+        $payload = [
+            'actor' => $this->authorUrn(),
+            'object' => $postUrn,
+            'message' => ['text' => $text],
+        ];
+
+        if ($image !== null) {
+            $payload['content'] = [['type' => 'IMAGE', 'url' => $image->url]];
+        }
+
+        $response = $this->unversionedHttpClient()->post(
+            "{$this->baseUrl()}/v2/socialActions/".rawurlencode($postUrn).'/comments',
+            $payload,
+        );
+
+        if ($response->failed()) {
+            Log::error("{$this->label()} comment creation failed", [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        return (string) $response->header('x-restli-id');
     }
 
     /**
@@ -744,6 +808,19 @@ abstract class AbstractLinkedInPublisher
             ->withHeaders([
                 'X-Restli-Protocol-Version' => '2.0.0',
                 'LinkedIn-Version' => $this->apiVersion,
+                'Content-Type' => 'application/json',
+            ]);
+    }
+
+    /**
+     * The client for LinkedIn's unversioned `/v2/` API, which takes no
+     * `LinkedIn-Version` header.
+     */
+    private function unversionedHttpClient(): PendingRequest
+    {
+        return $this->socialHttp()->withToken($this->accessToken)
+            ->withHeaders([
+                'X-Restli-Protocol-Version' => '2.0.0',
                 'Content-Type' => 'application/json',
             ]);
     }

@@ -492,6 +492,11 @@ return [
             'unsupported' => '此网络不支持帖子串。',
             'reply_empty' => '帖子串中的一条回复为空。',
             'reply_too_long' => '一条回复超出 :limit 字符上限 :over 个字符。',
+            'too_many' => '{1} 此帖子只能添加一条评论。|[0,*] 此帖子最多可添加 :max 条回复。',
+            'add_comment' => '添加评论',
+            'comment_placeholder' => '添加链接或更多背景信息',
+            'comment_label' => '你的评论',
+            'remove_comment' => '移除评论',
         ],
 
         'pinterest' => [

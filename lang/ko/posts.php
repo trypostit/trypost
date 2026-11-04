@@ -492,6 +492,11 @@ return [
             'unsupported' => '이 네트워크에서는 게시물 스레드를 사용할 수 없습니다.',
             'reply_empty' => '스레드의 답글이 비어 있습니다.',
             'reply_too_long' => '답글이 :limit자 제한을 :over자 초과합니다.',
+            'too_many' => '{1} 이 게시물에는 댓글을 하나만 달 수 있습니다.|[0,*] 이 게시물에는 답글을 최대 :max개까지 달 수 있습니다.',
+            'add_comment' => '댓글 추가',
+            'comment_placeholder' => '링크나 추가 설명을 입력하세요',
+            'comment_label' => '내 댓글',
+            'remove_comment' => '댓글 삭제',
         ],
 
         'pinterest' => [

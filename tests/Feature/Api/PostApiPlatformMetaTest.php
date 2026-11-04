@@ -170,6 +170,42 @@ it('persists the LinkedIn document_title meta on store', function () {
     expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
+it('stores a LinkedIn comment as the thread reply and refuses a second one when scheduling', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $payload = fn (array $replies) => [
+        'content' => 'Our launch',
+        'social_account_id' => $linkedin->id,
+        'content_type' => ContentType::LinkedInPost->value,
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => $replies],
+    ];
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload([['text' => 'Link in the comments', 'media' => []]]))
+        ->assertCreated()
+        ->assertJsonPath('meta.thread_replies.0.text', 'Link in the comments');
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), $payload(['First', 'Second']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['meta.thread_replies']);
+});
+
+it('refuses a post stored as a LinkedIn comment', function () {
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->withHeaders($this->headers)
+        ->postJson(route('api.posts.store'), [
+            'content' => 'Our launch',
+            'social_account_id' => $linkedin->id,
+            'content_type' => ContentType::LinkedInComment->value,
+        ])
+        ->assertUnprocessable();
+
+    expect(Post::query()->count())->toBe(0);
+});
+
 it('publishes a LinkedIn document post that has a PDF', function () {
     Queue::fake();
 

@@ -15,6 +15,8 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
+use App\Support\Social\ThreadProgress;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -1751,3 +1753,113 @@ function linkedInJpegBytes(): string
 
     return $bytes === false ? '' : $bytes;
 }
+
+function linkedInCommentFake(array $comment): void
+{
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence($comment),
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
+            'access_token' => 'refreshed-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 5184000,
+        ], 200),
+    ]);
+}
+
+function linkedInCommentRequests(): Collection
+{
+    return Http::recorded(fn ($request) => str_contains($request->url(), '/v2/socialActions/'))->map(fn (array $pair) => $pair[0]);
+}
+
+function linkedInPostRequests(): Collection
+{
+    return Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts'));
+}
+
+test('a linkedin thread posts its reply as a comment from the member on the new post', function () {
+    linkedInCommentFake([Http::response(['id' => '999'], 201, ['x-restli-id' => '999'])]);
+    $this->post->update(['meta' => ['thread_replies' => ['Docs (here) @team #php']]]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result)->toBe([
+        'id' => 'urn:li:share:123',
+        'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123',
+        'thread_reply_ids' => ['999'],
+    ]);
+
+    $request = linkedInCommentRequests()->sole();
+    expect($request->method())->toBe('POST')
+        ->and($request->url())->toBe(config('trypost.platforms.linkedin.api').'/v2/socialActions/urn%3Ali%3Ashare%3A123/comments')
+        ->and($request->header('X-Restli-Protocol-Version'))->toBe(['2.0.0'])
+        ->and($request->hasHeader('LinkedIn-Version'))->toBeFalse()
+        ->and($request->data())->toBe([
+            'actor' => 'urn:li:person:abc123xyz',
+            'object' => 'urn:li:share:123',
+            'message' => ['text' => 'Docs (here) @team #php'],
+        ]);
+});
+
+test('a linkedin comment carries its image by url', function () {
+    linkedInCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+    $image = ['id' => 'comment-image', 'path' => 'medias/photo.jpg', 'url' => 'https://example.com/medias/photo.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg'];
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'The chart', 'media' => [$image]]]]]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    expect(linkedInCommentRequests()->sole()->data())->toBe([
+        'actor' => 'urn:li:person:abc123xyz',
+        'object' => 'urn:li:share:123',
+        'message' => ['text' => 'The chart'],
+        'content' => [['type' => 'IMAGE', 'url' => 'https://example.com/medias/photo.jpg']],
+    ]);
+});
+
+test('a linkedin post without a reply sends no comment request', function () {
+    linkedInCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result)->not->toHaveKey('thread_reply_ids')
+        ->and(linkedInCommentRequests())->toBeEmpty();
+});
+
+test('a linkedin thread resumed after the post went live only posts the comment', function () {
+    linkedInCommentFake([Http::response([], 201, ['x-restli-id' => '999'])]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+    $this->post->forceFill(['error_context' => [ThreadProgress::KEY => [
+        ['hash' => 'stored-root', 'id' => 'urn:li:share:123', 'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123'],
+    ]]])->save();
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['999'])
+        ->and(linkedInPostRequests())->toBeEmpty()
+        ->and(linkedInCommentRequests())->toHaveCount(1);
+});
+
+test('a linkedin comment refused after the post went live fails the publish and keeps the post checkpointed', function () {
+    linkedInCommentFake([Http::response(['message' => 'Internal error'], 500)]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(LinkedInPublishException::class);
+
+    expect(data_get($this->post->fresh()->error_context, ThreadProgress::KEY.'.0.id'))->toBe('urn:li:share:123')
+        ->and(linkedInPostRequests())->toHaveCount(1);
+});
+
+test('a linkedin token that expires on the comment is refreshed without creating the post again', function () {
+    linkedInCommentFake([
+        Http::response(['code' => 'EXPIRED_ACCESS_TOKEN'], 401),
+        Http::response([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->update(['meta' => ['thread_replies' => ['Link below']]]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['999'])
+        ->and(linkedInPostRequests())->toHaveCount(1)
+        ->and(linkedInCommentRequests())->toHaveCount(2)
+        ->and(linkedInCommentRequests()->last()->header('Authorization'))->toBe(['Bearer refreshed-token']);
+});

@@ -492,6 +492,11 @@ return [
             'unsupported' => 'Threads of posts are not available on this network.',
             'reply_empty' => 'A reply in the thread is empty.',
             'reply_too_long' => 'A reply exceeds the :limit-character limit by :over.',
+            'too_many' => '{1} Only one comment can follow this post.|[0,*] Up to :max replies can follow this post.',
+            'add_comment' => 'Add comment',
+            'comment_placeholder' => 'Add a link or more context',
+            'comment_label' => 'Your comment',
+            'remove_comment' => 'Remove comment',
         ],
 
         'pinterest' => [

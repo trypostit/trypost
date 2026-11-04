@@ -492,6 +492,11 @@ return [
             'unsupported' => 'このネットワークでは投稿のスレッドを利用できません。',
             'reply_empty' => 'スレッド内の返信が空です。',
             'reply_too_long' => '返信が:limit文字の上限を:over文字超えています。',
+            'too_many' => '{1} この投稿に追加できるコメントは1件だけです。|[0,*] この投稿には返信を:max件まで追加できます。',
+            'add_comment' => 'コメントを追加',
+            'comment_placeholder' => 'リンクや補足を追加',
+            'comment_label' => 'あなたのコメント',
+            'remove_comment' => 'コメントを削除',
         ],
 
         'pinterest' => [

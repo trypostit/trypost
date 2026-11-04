@@ -492,6 +492,11 @@ return [
             'unsupported' => 'Les fils de publications ne sont pas disponibles sur ce réseau.',
             'reply_empty' => 'Une réponse du fil est vide.',
             'reply_too_long' => 'Une réponse dépasse la limite de :limit caractères de :over.',
+            'too_many' => '{1} Cette publication n’accepte qu’un commentaire.|[0,*] Cette publication accepte jusqu’à :max réponses.',
+            'add_comment' => 'Ajouter un commentaire',
+            'comment_placeholder' => 'Ajoutez un lien ou plus de contexte',
+            'comment_label' => 'Votre commentaire',
+            'remove_comment' => 'Retirer le commentaire',
         ],
 
         'pinterest' => [

@@ -530,3 +530,17 @@ test('a post type is compatible with the platforms it can go to', function () {
         ->and(ContentType::XPoll->isCompatibleWith(Platform::X))->toBeTrue()
         ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
 });
+
+test('a linkedin comment is a reply type no post can take', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::forPlatform(Platform::LinkedInPage))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedIn))->toBeFalse()
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedInPage))->toBeFalse()
+        ->and(ContentType::LinkedInComment->isReplyOnly())->toBeTrue()
+        ->and(ContentType::LinkedInPost->isReplyOnly())->toBeFalse()
+        ->and(ContentType::LinkedInComment->maxMediaCount())->toBe(1)
+        ->and(ContentType::LinkedInComment->supportsImage())->toBeTrue()
+        ->and(ContentType::LinkedInComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
+});

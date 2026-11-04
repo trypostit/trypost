@@ -24,7 +24,8 @@ use Illuminate\Support\Str;
  * the rules of the network's reply content type. A reply stored as a bare
  * string is a text-only reply. On X a reply may carry a poll instead of media
  * (`{text, media, poll}`), following `XPoll`'s rules with the reply text as
- * its question.
+ * its question. On LinkedIn the one reply is a comment from the author
+ * (`ContentType::LinkedInComment`).
  */
 class ThreadReplies
 {
@@ -40,6 +41,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
+            Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
     }
@@ -47,6 +49,20 @@ class ThreadReplies
     public static function supports(?Platform $platform): bool
     {
         return self::replyContentType($platform) !== null;
+    }
+
+    /**
+     * How many replies a network's thread takes. A LinkedIn post takes one: its
+     * reply is a comment, and a single comment from the author stays first
+     * however the comments are sorted.
+     */
+    public static function maxReplies(?Platform $platform): int
+    {
+        return match (true) {
+            ! self::supports($platform) => 0,
+            $platform === Platform::LinkedIn, $platform === Platform::LinkedInPage => 1,
+            default => self::MAX_REPLIES,
+        };
     }
 
     /**
@@ -175,6 +191,10 @@ class ThreadReplies
 
         if ($platform === null || ! self::supports($platform)) {
             return ['thread_replies', __('posts.form.thread.unsupported')];
+        }
+
+        if (count($replies) > self::maxReplies($platform)) {
+            return ['thread_replies', trans_choice('posts.form.thread.too_many', self::maxReplies($platform), ['max' => self::maxReplies($platform)])];
         }
 
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);

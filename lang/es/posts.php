@@ -492,6 +492,11 @@ return [
             'unsupported' => 'Los hilos de publicaciones no están disponibles en esta red.',
             'reply_empty' => 'Una respuesta del hilo está vacía.',
             'reply_too_long' => 'Una respuesta supera el límite de :limit caracteres en :over.',
+            'too_many' => '{1} Esta publicación admite solo un comentario.|[0,*] Esta publicación admite hasta :max respuestas.',
+            'add_comment' => 'Añadir comentario',
+            'comment_placeholder' => 'Añade un enlace o más contexto',
+            'comment_label' => 'Tu comentario',
+            'remove_comment' => 'Quitar comentario',
         ],
 
         'pinterest' => [

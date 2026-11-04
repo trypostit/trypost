@@ -492,6 +492,11 @@ return [
             'unsupported' => 'Threads van berichten zijn niet beschikbaar op dit netwerk.',
             'reply_empty' => 'Een antwoord in de thread is leeg.',
             'reply_too_long' => 'Een antwoord overschrijdt de limiet van :limit tekens met :over.',
+            'too_many' => '{1} Dit bericht neemt maar één reactie.|[0,*] Dit bericht neemt maximaal :max antwoorden.',
+            'add_comment' => 'Reactie toevoegen',
+            'comment_placeholder' => 'Voeg een link of meer context toe',
+            'comment_label' => 'Je reactie',
+            'remove_comment' => 'Reactie verwijderen',
         ],
 
         'pinterest' => [
