@@ -41,15 +41,11 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
 
     protected function successfulResponse(Response $response): Response
     {
-        if ($response->successful()) {
-            return $response;
+        if (! $response->successful() && $response->json('error') === 'RecordNotFound') {
+            throw AnalyticsCollectionException::fromResponse($response, 'publication metrics collection', missingObject: true);
         }
 
-        throw AnalyticsCollectionException::fromResponse(
-            $response,
-            'publication metrics collection',
-            missingObject: $response->json('error') === 'RecordNotFound',
-        );
+        return parent::successfulResponse($response);
     }
 
     /**
@@ -59,25 +55,14 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
      */
     private function deletedOnNetwork(SocialAccount $account, AnalyticsPublication $publication): bool
     {
-        $pds = rtrim((string) data_get($account->meta, 'service', config('trypost.platforms.bluesky.default_service')), '/');
+        $records = "{$account->blueskyService()}/xrpc/";
         $repository = ['repo' => $account->platform_user_id, 'collection' => BlueskyLexicon::FEED_POST];
 
-        try {
-            $this->get($account, "{$pds}/xrpc/".BlueskyLexicon::GET_RECORD, [...$repository, 'rkey' => $publication->remote_id], authenticated: false);
-
-            return false;
-        } catch (AnalyticsCollectionException $exception) {
-            if (! $exception->missingObject) {
-                return false;
-            }
-        }
-
-        try {
-            $this->get($account, "{$pds}/xrpc/".BlueskyLexicon::LIST_RECORDS, [...$repository, 'limit' => 1], authenticated: false);
-
-            return true;
-        } catch (AnalyticsCollectionException) {
-            return false;
-        }
+        return $this->readsMissing(
+            fn (): Response => $this->get($account, $records.BlueskyLexicon::GET_RECORD, [...$repository, 'rkey' => $publication->remote_id], authenticated: false),
+            fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
+        ) && $this->stillReads(
+            fn (): Response => $this->get($account, $records.BlueskyLexicon::LIST_RECORDS, [...$repository, 'limit' => 1], authenticated: false),
+        );
     }
 }

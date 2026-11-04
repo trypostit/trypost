@@ -105,12 +105,9 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             $id => transform($videos->get($id), fn (array $video): array => (array) data_get($video, 'statistics', []), false),
         ]);
 
-        $statistics->filter(fn (array|false $videoStatistics): bool => is_array($videoStatistics))
-            ->each(fn (array $videoStatistics, int|string $id): bool => Cache::put(
-                $this->statisticsCacheKey($account, $date, (string) $id),
-                $videoStatistics,
-                now()->addHours(self::STATISTICS_CACHE_HOURS),
-            ));
+        foreach ($statistics->filter(fn (array|false $videoStatistics): bool => is_array($videoStatistics)) as $id => $videoStatistics) {
+            Cache::put($this->statisticsCacheKey($account, $date, (string) $id), $videoStatistics, now()->addHours(self::STATISTICS_CACHE_HOURS));
+        }
 
         return $statistics->get($publication->remote_id, false);
     }

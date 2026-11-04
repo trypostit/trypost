@@ -604,6 +604,39 @@ test('a confirmed deletion moves the post, while a bare 404 only marks its publi
     'x answers 404' => [Platform::X, [[], 404], PublishStatus::Published],
 ]);
 
+test('a deletion X, Bluesky, Mastodon or Pinterest confirms moves the post', function (Platform $platform, Closure $fakes) {
+    $publication = metricJobPublication($platform, now('UTC')->subHours(2));
+    $account = $publication->socialAccount;
+    $account->update(['scopes' => ['read', 'tweet.read', 'users.read', 'pins:read', 'boards:read']]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    Http::fake($fakes($publication, $account->fresh()));
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Deleted);
+})->with([
+    'x' => [Platform::X, fn (AnalyticsPublication $publication): array => ['*' => Http::response(['errors' => [[
+        'type' => 'https://api.x.com/2/problems/resource-not-found',
+        'resource_type' => 'tweet',
+        'resource_id' => $publication->remote_id,
+    ]]])]],
+    'bluesky' => [Platform::Bluesky, fn (AnalyticsPublication $publication, SocialAccount $account): array => [
+        rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+        "{$account->blueskyService()}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound'], 400),
+        "{$account->blueskyService()}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => []]),
+    ]],
+    'mastodon' => [Platform::Mastodon, fn (AnalyticsPublication $publication, SocialAccount $account): array => [
+        "{$account->mastodonInstance()}/api/v1/statuses/*" => Http::response([], 404),
+        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([]),
+    ]],
+    'pinterest' => [Platform::Pinterest, fn (AnalyticsPublication $publication): array => [
+        rtrim((string) config('trypost.platforms.pinterest.api'), '/')."/pins/{$publication->remote_id}*" => Http::response(['code' => 2], 404),
+        rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins?page_size=1' => Http::response(['items' => []]),
+    ]],
+]);
+
 test('a discovery that sees the post while its deletion is being checked keeps it published', function () {
     Queue::fake();
     $publication = metricJobPublication(Platform::InstagramFacebook, now('UTC')->subHours(2));

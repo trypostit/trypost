@@ -13,6 +13,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 
 class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -75,22 +76,11 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
      */
     private function deletedOnNetwork(SocialAccount $account, AnalyticsPublication $publication, string $api): bool
     {
-        try {
-            $this->get($account, "{$api}/pins/{$publication->remote_id}");
-
-            return false;
-        } catch (AnalyticsCollectionException $exception) {
-            if (! $exception->gone) {
-                return false;
-            }
-        }
-
-        try {
-            $this->get($account, "{$api}/pins", ['page_size' => 1]);
-
-            return true;
-        } catch (AnalyticsCollectionException) {
-            return false;
-        }
+        return $this->readsMissing(
+            fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}"),
+            fn (AnalyticsCollectionException $exception): bool => $exception->gone,
+        ) && $this->stillReads(
+            fn (): Response => $this->get($account, "{$api}/pins", ['page_size' => 1]),
+        );
     }
 }

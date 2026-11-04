@@ -18,6 +18,9 @@ use Illuminate\Support\Uri;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
+    /** The post being read, so a 404's problem is matched against it. */
+    private string $postId = '';
+
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
@@ -28,14 +31,16 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $fields[] = 'non_public_metrics';
         }
 
-        [$tweet, $poll, $threadPolls, $errors] = $this->read($account, $publication, $fields);
+        $this->postId = $publication->remote_id;
 
-        if (! is_array($tweet) && $this->reportsDeletedPost($errors, $publication->remote_id)) {
-            throw AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
+        try {
+            [$tweet, $poll, $threadPolls, $errors] = $this->read($account, $publication, $fields);
+        } catch (AnalyticsCollectionException $exception) {
+            throw $exception->missingObject ? $this->deleted() : $exception;
         }
 
         if (! is_array($tweet)) {
-            throw AnalyticsCollectionException::malformed('X post response lacks data.');
+            throw $this->reportsDeletedPost($errors) ? $this->deleted() : AnalyticsCollectionException::malformed('X post response lacks data.');
         }
 
         $public = (array) data_get($tweet, 'public_metrics', []);
@@ -123,7 +128,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     protected function successfulResponse(Response $response): Response
     {
         if ($response->notFound() && $this->reportsDeletedPost((array) $response->json('errors', []))) {
-            throw AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
+            throw AnalyticsCollectionException::fromResponse($response, 'publication metrics collection', missingObject: true);
         }
 
         return parent::successfulResponse($response);
@@ -132,11 +137,16 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     /**
      * @param  array<int, mixed>  $errors
      */
-    private function reportsDeletedPost(array $errors, ?string $id = null): bool
+    private function reportsDeletedPost(array $errors): bool
     {
         return collect($errors)->contains(fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
             && data_get($error, 'resource_type') === 'tweet'
-            && (blank($id) || (string) data_get($error, 'resource_id', $id) === $id));
+            && (string) data_get($error, 'resource_id') === $this->postId);
+    }
+
+    private function deleted(): AnalyticsCollectionException
+    {
+        return AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
     }
 
     /**

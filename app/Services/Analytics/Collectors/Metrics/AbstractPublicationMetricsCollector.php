@@ -16,6 +16,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
 use Carbon\CarbonImmutable;
+use Closure;
 
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
@@ -30,6 +31,54 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         }
 
         return $account;
+    }
+
+    /**
+     * Whether the post's own read says it is missing. Confirming a deletion takes
+     * this and {@see stillReads()} on the account's posts, the list its discovery
+     * reads, so a token that lost access is never taken for a deleted post.
+     *
+     * @param  Closure(): mixed  $read
+     * @param  Closure(AnalyticsCollectionException): bool  $isMissing
+     */
+    protected function readsMissing(Closure $read, Closure $isMissing): bool
+    {
+        try {
+            $read();
+
+            return false;
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowWhenTemporary($exception);
+
+            return $isMissing($exception);
+        }
+    }
+
+    /**
+     * @param  Closure(): mixed  $read
+     */
+    protected function stillReads(Closure $read): bool
+    {
+        try {
+            $read();
+
+            return true;
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowWhenTemporary($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * A confirming read that failed only for now is rethrown, so the job retries
+     * instead of settling the post's read without a confirmation.
+     */
+    private function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
+    {
+        if (in_array($exception->category, ['rate_limited', 'transient'], true)) {
+            throw $exception;
+        }
     }
 
     /**

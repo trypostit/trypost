@@ -63,23 +63,12 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         $account = $this->account($publication);
         $graph = $this->graphBaseUrl($account);
 
-        try {
-            $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']);
-
-            return false;
-        } catch (AnalyticsCollectionException $exception) {
-            if (! $exception->missingObject) {
-                return false;
-            }
-        }
-
-        try {
-            $this->get($account, "{$graph}/{$account->platform_user_id}/{$this->postsEdge()}", ['fields' => 'id', 'limit' => '1']);
-
-            return true;
-        } catch (AnalyticsCollectionException) {
-            return false;
-        }
+        return $this->readsMissing(
+            fn (): Response => $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']),
+            fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
+        ) && $this->stillReads(
+            fn (): Response => $this->get($account, "{$graph}/{$account->platform_user_id}/{$this->postsEdge()}", ['fields' => 'id', 'limit' => '1']),
+        );
     }
 
     protected function recordRefusal(AnalyticsCollectionException $exception): void

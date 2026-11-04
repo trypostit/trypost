@@ -1107,6 +1107,9 @@ test('a story is never reported deleted, since stories expire on their own', fun
     Http::assertSentCount(1);
 });
 
+/**
+ * @param  array<string, mixed>  $attributes
+ */
 function networkPublication(SocialAccount $account, string $remoteId, array $attributes = []): AnalyticsPublication
 {
     return AnalyticsPublication::factory()->create([
@@ -1133,113 +1136,170 @@ function xNotFoundProblem(string $id, string $host = 'https://api.x.com'): array
     ];
 }
 
+function collectFrom(AnalyticsPublication $publication): Closure
+{
+    return fn () => app(PublicationMetricsCollectorFactory::class)
+        ->for($publication->platform)
+        ->collect($publication, CarbonImmutable::today('UTC'));
+}
+
 test('an X post the network deleted is reported deleted from the lookup itself', function (int $status, string $host) {
     $publication = networkPublication(SocialAccount::factory()->x()->create(), '1900000000000000001');
     Http::fake(['*' => Http::response(['errors' => [xNotFoundProblem('1900000000000000001', $host)]], $status)]);
 
-    expect(fn () => app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
     Http::assertSentCount(1);
 })->with([
-    'in the errors of a 200' => [200, 'https://api.x.com'],
-    'in the body of a 404' => [404, 'https://api.twitter.com'],
+    'in the errors of a 200, api.x.com' => [200, 'https://api.x.com'],
+    'in the errors of a 200, api.twitter.com' => [200, 'https://api.twitter.com'],
+    'in the body of a 404, api.x.com' => [404, 'https://api.x.com'],
+    'in the body of a 404, api.twitter.com' => [404, 'https://api.twitter.com'],
 ]);
 
-test('an X post X refuses to show, or another missing post, is not reported deleted', function (array $error) {
+test('an X problem that does not name this post as deleted is not reported deleted', function (int $status, array $error) {
     $publication = networkPublication(SocialAccount::factory()->x()->create(), '1900000000000000001');
-    Http::fake(['*' => Http::response(['errors' => [$error]])]);
+    Http::fake(['*' => Http::response(['errors' => [$error]], $status)]);
 
-    expect(fn () => app(XPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
-    'not authorized' => [['type' => 'https://api.x.com/2/problems/not-authorized-for-resource', 'resource_type' => 'tweet', 'resource_id' => '1900000000000000001']],
-    'another post' => [xNotFoundProblem('1900000000000000002')],
+    'not authorized' => [200, ['type' => 'https://api.x.com/2/problems/not-authorized-for-resource', 'resource_type' => 'tweet', 'resource_id' => '1900000000000000001']],
+    'another post' => [200, xNotFoundProblem('1900000000000000002')],
+    'another post in a 404' => [404, xNotFoundProblem('1900000000000000002')],
+    'not a post' => [200, [...xNotFoundProblem('1900000000000000001'), 'resource_type' => 'user']],
+    'no resource id' => [200, collect(xNotFoundProblem('1900000000000000001'))->except('resource_id')->all()],
 ]);
 
-test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function () {
+test('an X post read with its reply polls is reported deleted when the lookup names the post itself', function () {
+    $account = SocialAccount::factory()->x()->create();
+    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'thread_replies' => [
+            ['text' => 'And next time?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+        ]],
+    ]);
+    $post->forceFill(['thread_reply_ids' => ['1900000000000000002']])->save();
+    $publication = networkPublication($account, '1900000000000000001', ['post_id' => $post->id]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets*' => Http::response([
+        'data' => [['id' => '1900000000000000002', 'public_metrics' => ['impression_count' => 3]]],
+        'errors' => [xNotFoundProblem('1900000000000000001')],
+    ])]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    Http::assertSent(fn (Request $request): bool => $request['ids'] === '1900000000000000001,1900000000000000002');
+});
+
+test('a Bluesky post the AppView returns is read once, with no deletion check', function () {
+    $publication = networkPublication(SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']), '3kpost');
+    $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    Http::fake(["{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => [['likeCount' => 2, 'replyCount' => 1]]])]);
+
+    collectFrom($publication)();
+
+    Http::assertSentCount(1);
+});
+
+test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function (?string $service) {
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
+    $account->update(['meta' => [...$account->meta, 'service' => $service ?? data_get($account->meta, 'service')]]);
     $publication = networkPublication($account, '3kpost');
     $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $pds = $account->blueskyService();
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
-        'https://bsky.social/xrpc/com.atproto.repo.getRecord*' => Http::response(['error' => 'RecordNotFound', 'message' => 'Could not locate record'], 400),
-        'https://bsky.social/xrpc/com.atproto.repo.listRecords*' => Http::response(['records' => [['uri' => 'at://did:plc:trypost/app.bsky.feed.post/3kother']]]),
+        "{$pds}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound', 'message' => 'Could not locate record'], 400),
+        "{$pds}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => [['uri' => 'at://did:plc:trypost/app.bsky.feed.post/3kother']]]),
     ]);
 
-    expect(fn () => app(BlueskyPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
-});
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+})->with([
+    'the account PDS' => [null],
+    'a self-hosted PDS' => ['https://pds.example.test'],
+]);
 
 test('a Bluesky post the AppView hides, or one whose repository cannot be read, is not reported deleted', function (array $record, array $list) {
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $publication = networkPublication($account, '3kpost');
     $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $pds = $account->blueskyService();
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
-        'https://bsky.social/xrpc/com.atproto.repo.getRecord*' => Http::response(...$record),
-        'https://bsky.social/xrpc/com.atproto.repo.listRecords*' => Http::response(...$list),
+        "{$pds}/xrpc/com.atproto.repo.getRecord*" => Http::response(...$record),
+        "{$pds}/xrpc/com.atproto.repo.listRecords*" => Http::response(...$list),
     ]);
 
-    expect(fn () => app(BlueskyPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
     'the record still exists' => [[['uri' => 'at://did:plc:trypost/app.bsky.feed.post/3kpost']], [['records' => []]]],
     'the repository is deactivated' => [[['error' => 'RepoDeactivated'], 400], [['records' => []]]],
     'the repository does not list' => [[['error' => 'RecordNotFound'], 400], [['error' => 'RepoNotFound'], 400]],
 ]);
 
-test('a Mastodon status the owner can no longer read is reported deleted while the account statuses still read', function () {
+test('a Mastodon status the owner can no longer read is reported deleted while the account statuses still read', function (int $status) {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read', 'write']]);
     $publication = networkPublication($account, '113000000000000001');
+    $statuses = "{$account->mastodonInstance()}/api/v1/accounts/{$account->platform_user_id}/statuses";
     Http::fake([
-        'https://mastodon.social/api/v1/statuses/*' => Http::response(['error' => 'Record not found'], 404),
-        'https://mastodon.social/api/v1/accounts/*' => Http::response([['id' => '113000000000000002']]),
+        "{$account->mastodonInstance()}/api/v1/statuses/113000000000000001" => Http::response(['error' => 'Record not found'], $status),
+        "{$statuses}?limit=1" => Http::response([['id' => '113000000000000002']]),
     ]);
 
-    expect(fn () => app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
-});
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    Http::assertSent(fn (Request $request): bool => $request->url() === "{$statuses}?limit=1" && $request->hasHeader('Authorization'));
+})->with(['404' => [404], '410' => [410]]);
 
-test('a Mastodon status read without the owner token, or with an account that no longer reads, is not reported deleted', function (array $scopes, int $accountStatus) {
+test('a Mastodon status is not reported deleted without an owner read, an error other than 404, or an account that no longer reads', function (array $scopes, int $status, int $accountStatus) {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => $scopes]);
     $publication = networkPublication($account, '113000000000000001');
     Http::fake([
-        'https://mastodon.social/api/v1/statuses/*' => Http::response(['error' => 'Record not found'], 404),
-        'https://mastodon.social/api/v1/accounts/*' => Http::response([], $accountStatus),
+        "{$account->mastodonInstance()}/api/v1/statuses/*" => Http::response(['error' => 'Record not found'], $status),
+        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([], $accountStatus),
     ]);
 
-    expect(fn () => app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->gone)->toBeTrue()->and($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
-    'without read access' => [['write'], 200],
-    'the account no longer reads' => [['read', 'write'], 401],
+    'without read access' => [['write'], 404, 200],
+    'a server error' => [['read', 'write'], 500, 200],
+    'a refusal' => [['read', 'write'], 403, 200],
+    'the account no longer reads' => [['read', 'write'], 404, 401],
 ]);
+
+test('a deletion check that fails only for now is retried before anything is reported', function (Platform $platform) {
+    $account = SocialAccount::factory()->{$platform === Platform::Mastodon ? 'mastodon' : 'pinterest'}()->create(['scopes' => $platform === Platform::Mastodon ? ['read'] : ['pins:read', 'boards:read']]);
+    $publication = networkPublication($account, '113000000000000001');
+    $list = $platform === Platform::Mastodon
+        ? "{$account->mastodonInstance()}/api/v1/accounts/*"
+        : rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins?*';
+    Http::fake([
+        $list => Http::response([], 503),
+        '*' => Http::response(['code' => 2], 404),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('transient')->and($exception->gone)->toBeFalse());
+})->with([Platform::Mastodon, Platform::Pinterest]);
 
 test('a Pinterest Pin the account no longer has is reported deleted while its Pins still read', function () {
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');
     $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
     Http::fake([
         "{$api}/pins/900000000000000001*" => Http::response(['code' => 2, 'message' => 'Pin not found.'], 404),
-        "{$api}/pins*" => Http::response(['items' => [['id' => '900000000000000002']]]),
+        "{$api}/pins?page_size=1" => Http::response(['items' => [['id' => '900000000000000002']]]),
     ]);
 
-    expect(fn () => app(PinterestPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
 });
 
-test('a Pinterest Pin that still reads, or an account whose Pins do not, is not reported deleted', function (array $pin, array $pins) {
+test('a Pinterest Pin that still reads, is refused, or whose Pins do not read, is not reported deleted', function (array $pin, array $pins) {
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');
     $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
     Http::fake([
         "{$api}/pins/900000000000000001/analytics*" => Http::response(['code' => 2], 404),
-        "{$api}/pins/900000000000000001*" => Http::response(...$pin),
-        "{$api}/pins*" => Http::response(...$pins),
+        "{$api}/pins/900000000000000001" => Http::response(...$pin),
+        "{$api}/pins?page_size=1" => Http::response(...$pins),
     ]);
 
-    expect(fn () => app(PinterestPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
     'the Pin still reads' => [[['id' => '900000000000000001']], [['items' => []]]],
+    'the Pin read is refused' => [[['code' => 3], 401], [['items' => []]]],
     'the Pins do not read' => [[['code' => 2], 404], [['code' => 3], 401]],
 ]);
 
@@ -1247,8 +1307,7 @@ test('a Pinterest read refused for authentication never checks whether the Pin w
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');
     Http::fake(['*' => Http::response(['code' => 3], 401)]);
 
-    expect(fn () => app(PinterestPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
-        ->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('authentication'));
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('authentication'));
     Http::assertSentCount(1);
 });
 

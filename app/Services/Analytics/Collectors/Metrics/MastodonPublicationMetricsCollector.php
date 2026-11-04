@@ -10,6 +10,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 
 class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -47,16 +48,8 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
      */
     private function deletedOnNetwork(SocialAccount $account): bool
     {
-        if (! $account->canReadMastodonStatuses()) {
-            return false;
-        }
-
-        try {
-            $this->get($account, "{$account->mastodonInstance()}/api/v1/accounts/{$account->platform_user_id}/statuses", ['limit' => 1]);
-
-            return true;
-        } catch (AnalyticsCollectionException) {
-            return false;
-        }
+        return $account->canReadMastodonStatuses() && $this->stillReads(
+            fn (): Response => $this->get($account, "{$account->mastodonInstance()}/api/v1/accounts/{$account->platform_user_id}/statuses", ['limit' => 1]),
+        );
     }
 }
