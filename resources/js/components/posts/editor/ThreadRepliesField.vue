@@ -86,6 +86,22 @@ const removeReply = (index: number): void => {
 
 const canAddReply = computed(() => replies.value.length < props.max);
 
+const copyKeys = computed(() => {
+    if (props.comment) {
+        return {
+            placeholder: 'posts.form.thread.comment_placeholder',
+            label: 'posts.form.thread.comment_label',
+            remove: 'posts.form.thread.remove_comment',
+        };
+    }
+
+    return {
+        placeholder: 'posts.form.thread.reply_placeholder',
+        label: 'posts.form.thread.reply_label',
+        remove: 'posts.form.thread.remove',
+    };
+});
+
 /** Shift+Enter opens the next post right below; Backspace on an empty post folds it back into the one above. */
 const onReplyKeydown = (event: KeyboardEvent, index: number): void => {
     const textarea = event.target as HTMLTextAreaElement;
@@ -172,19 +188,9 @@ watch(
                     ref="editor"
                     :value="reply.text"
                     :data-testid="`thread-reply-${index}`"
-                    :placeholder="
-                        $t(
-                            comment
-                                ? 'posts.form.thread.comment_placeholder'
-                                : 'posts.form.thread.reply_placeholder',
-                        )
-                    "
+                    :placeholder="$t(copyKeys.placeholder)"
                     :aria-label="
-                        comment
-                            ? $t('posts.form.thread.comment_label')
-                            : $t('posts.form.thread.reply_label', {
-                                  number: String(index + 2),
-                              })
+                        $t(copyKeys.label, { number: String(index + 2) })
                     "
                     :aria-invalid="
                         remaining(reply) < 0 || errors[index] ? true : undefined
@@ -207,11 +213,7 @@ watch(
                         reply.text ||
                         (reply.media.length
                             ? ''
-                            : $t(
-                                  comment
-                                      ? 'posts.form.thread.comment_placeholder'
-                                      : 'posts.form.thread.reply_placeholder',
-                              ))
+                            : $t(copyKeys.placeholder))
                     }}
                 </button>
                 <slot name="media" :reply="reply" :index="index" />
@@ -231,13 +233,7 @@ watch(
             <button
                 type="button"
                 :data-testid="`thread-reply-remove-${index}`"
-                :aria-label="
-                    $t(
-                        comment
-                            ? 'posts.form.thread.remove_comment'
-                            : 'posts.form.thread.remove',
-                    )
-                "
+                :aria-label="$t(copyKeys.remove)"
                 :disabled="disabled"
                 class="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent"
                 @click="removeReply(index)"

@@ -177,6 +177,7 @@ import {
     repliesAreComments,
     replyErrorOf,
     replyTooLongKey,
+    startThreadKey,
     threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
@@ -3166,11 +3167,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             >
                                                 <IconCirclePlus class="size-4" />
                                                 <span data-single-line>{{
-                                                    $t(
-                                                        repliesAreComments(group.platform)
-                                                            ? 'posts.form.thread.add_comment'
-                                                            : 'posts.form.thread.start',
-                                                    )
+                                                    $t(startThreadKey(group.platform))
                                                 }}</span>
                                             </Button>
                                             <Tooltip
