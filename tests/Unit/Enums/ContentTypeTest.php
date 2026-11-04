@@ -530,3 +530,18 @@ test('a post type is compatible with the platforms it can go to', function () {
         ->and(ContentType::XPoll->isCompatibleWith(Platform::X))->toBeTrue()
         ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
 });
+
+test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
+    if (! $type->supportsImage()) {
+        expect($type->supportsAltText())->toBeFalse();
+    }
+
+    if (! $type->supportsVideo()) {
+        expect($type->acceptsMov())->toBeFalse();
+    }
+
+    expect($type->toListingArray())->toMatchArray([
+        'accepts_mov' => $type->acceptsMov(),
+        'supports_alt_text' => $type->supportsAltText(),
+    ]);
+})->with(ContentType::cases());
