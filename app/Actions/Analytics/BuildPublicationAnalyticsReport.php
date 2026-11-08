@@ -9,6 +9,7 @@ use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\User\WeekStart;
+use App\Models\AnalyticsPublication;
 use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\Analytics\MetricComparison;
@@ -329,7 +330,7 @@ class BuildPublicationAnalyticsReport
             'content_type' => $row->content_type,
             'availability' => $row->availability,
             'published_at' => $row->provider_published_at,
-            'permalink' => $row->permalink,
+            'permalink' => AnalyticsPublication::visiblePermalink($row->permalink, $row->availability),
             'excerpt' => $row->excerpt,
             'preview_metadata' => $row->preview_metadata ? json_decode((string) $row->preview_metadata, true) : null,
             'media' => $postMedia->get((string) $row->post_id),

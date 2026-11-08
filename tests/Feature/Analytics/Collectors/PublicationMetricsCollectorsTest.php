@@ -24,10 +24,12 @@ use App\Services\Analytics\Collectors\Metrics\TikTokPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\XPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\YouTubePublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
+use App\Services\Social\BlueskyLexicon;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Uri;
@@ -442,6 +444,30 @@ test('a youtube video missing from another batch is read again before it is repo
     $observation = $collector->collect($publications[1], CarbonImmutable::today('UTC'));
 
     expect(collect($observation->metrics)->firstWhere('key', MetricKey::Views)?->value)->toBe(7);
+});
+
+test('a youtube video cached as missing is read again before it is reported deleted', function () {
+    $date = CarbonImmutable::today('UTC');
+    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
+    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::YouTube,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => 'video-live',
+    ]);
+    Cache::put("analytics:youtube-statistics:{$account->id}:{$date->toDateString()}:video-live", false);
+    Http::fake([
+        "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [['name' => 'views']], 'rows' => []]),
+        "{$dataApi}/videos*" => Http::response(['items' => [['id' => 'video-live', 'statistics' => ['viewCount' => '12']]]]),
+    ]);
+
+    $observation = app(YouTubePublicationMetricsCollector::class)->collect($publication, $date);
+
+    expect(collect($observation->metrics)->firstWhere('key', MetricKey::Views)?->value)->toBe(12);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/videos'));
 });
 
 test('youtube collects current statistics and every Analytics metric for a short', function () {
@@ -1141,6 +1167,32 @@ test('a Facebook post on a Page without insights keeps its permission refusal wh
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
 });
 
+test('a Facebook reel without insights is reported deleted when the video itself is missing', function () {
+    $publication = metaMetricsPublication(Platform::Facebook);
+    $publication->socialAccount->update(['scopes' => ['pages_read_engagement']]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17841400000000001/published_posts*" => Http::response(['data' => [['id' => '1']]]),
+        '*' => Http::response(metaMissingObject('17897891718416700'), 400),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue())
+        ->and(Http::recorded(fn (Request $request): bool => Uri::of($request->url())->path() === Uri::of("{$graph}/17897891718416700")->path()))->toHaveCount(1);
+});
+
+test('a Facebook reel without insights stays published when the video still reads', function () {
+    $publication = metaMetricsPublication(Platform::Facebook);
+    $publication->socialAccount->update(['scopes' => ['pages_read_engagement']]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17897891718416700*" => Http::response(['id' => '17897891718416700']),
+        '*' => Http::response(metaMissingObject('17897891718416700'), 400),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/published_posts'));
+});
+
 test('a Meta collector reused for another post forgets the first one\'s refusals', function () {
     $collector = app(FacebookPublicationMetricsCollector::class);
     $deleted = metaMetricsPublication(Platform::Facebook);
@@ -1258,6 +1310,16 @@ test('a Bluesky post its repository no longer holds is reported deleted while th
     ]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), BlueskyLexicon::GET_RECORD)
+        && data_get($request->data(), 'repo') === 'did:plc:trypost'
+        && data_get($request->data(), 'collection') === BlueskyLexicon::FEED_POST
+        && data_get($request->data(), 'rkey') === '3kpost'
+        && ! $request->hasHeader('Authorization'));
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), BlueskyLexicon::LIST_RECORDS)
+        && data_get($request->data(), 'repo') === 'did:plc:trypost'
+        && data_get($request->data(), 'collection') === BlueskyLexicon::FEED_POST
+        && (int) data_get($request->data(), 'limit') === 1
+        && ! $request->hasHeader('Authorization'));
 })->with([
     'the account PDS' => [null, 'https://bsky.social'],
     'a self-hosted PDS' => ['https://pds.example.test', 'https://pds.example.test'],

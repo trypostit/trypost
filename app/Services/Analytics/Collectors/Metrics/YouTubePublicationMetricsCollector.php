@@ -58,15 +58,19 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     /**
      * Reads `statistics` for this video together with up to 49 other videos of the channel
      * still due on the same day, so the daily pass spends one quota unit per 50 videos.
-     * Only found videos are cached, so a video is reported deleted by its own read only.
+     * Only a cached statistics array is reused. A `false` left by an older batch is read
+     * again, so a video is reported deleted by its own `videos.list` only.
      *
      * @return array<string, mixed>
      */
     private function statistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array
     {
         $key = $this->statisticsCacheKey($account, $date, $publication->remote_id);
+        $cached = Cache::get($key);
 
-        $statistics = Cache::get($key) ?? $this->prefetchStatistics($account, $publication, $date);
+        $statistics = is_array($cached)
+            ? $cached
+            : $this->prefetchStatistics($account, $publication, $date);
 
         if (! is_array($statistics)) {
             throw AnalyticsCollectionException::deletedOnNetwork('YouTube no longer returns this video.');

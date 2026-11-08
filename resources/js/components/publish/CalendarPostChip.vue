@@ -9,6 +9,7 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
+    IconTrashX,
 } from '@tabler/icons-vue';
 import { computed, nextTick, ref, type Component } from 'vue';
 
@@ -25,7 +26,7 @@ import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
-import { PostStatus, ScheduleMode } from '@/types/post';
+import { PostStatus, PublishStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PublishTab } from '@/types/publish';
 
 defineOptions({ inheritAttrs: false });
@@ -100,6 +101,7 @@ type StatusKey =
     | 'recurring'
     | 'publishing'
     | 'published'
+    | 'deleted'
     | 'failed';
 
 interface StatusMarker {
@@ -116,11 +118,16 @@ const STATUS_MARKERS: Record<StatusKey, StatusMarker> = {
     recurring: { icon: IconRepeat, tone: 'text-muted-foreground', testId: 'calendar-post-recurring' },
     publishing: { icon: IconSend, tone: 'text-muted-foreground', testId: 'calendar-post-publishing' },
     published: { icon: IconCircleCheck, tone: 'text-success', testId: 'calendar-post-published' },
+    deleted: { icon: IconTrashX, tone: 'text-destructive', testId: 'calendar-post-deleted' },
     failed: { icon: IconAlertCircle, tone: 'text-destructive', testId: 'calendar-post-failed' },
 };
 
 const statusKey = computed((): StatusKey => {
-    const { status, schedule_mode, recurrence_frequency } = props.post;
+    const { status, schedule_mode, recurrence_frequency, publish_status } = props.post;
+
+    if (status === PostStatus.Published && publish_status === PublishStatus.Deleted) {
+        return 'deleted';
+    }
 
     if (status !== PostStatus.Scheduled) {
         return status as StatusKey;
@@ -135,8 +142,10 @@ const statusKey = computed((): StatusKey => {
 
 const statusMarker = computed(() => STATUS_MARKERS[statusKey.value]);
 
-const statusLabelKey = computed(
-    () => `calendar.post_status.${statusKey.value}`,
+const statusLabelKey = computed(() =>
+    statusKey.value === 'deleted'
+        ? 'posts.publish.deleted_on_network.badge'
+        : `calendar.post_status.${statusKey.value}`,
 );
 
 const chipClass = computed(() => [

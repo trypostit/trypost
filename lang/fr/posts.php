@@ -1070,7 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Supprimée',
             'title' => 'Supprimée sur :network',
-            'hint' => 'Elle a été retirée après sa publication : son lien et ses insights ne sont plus disponibles.',
+            'hint' => 'Elle a été retirée après sa publication : son lien et ses statistiques ne sont plus disponibles.',
         ],
         'created_by' => 'Créé par :name :when',
         'welcome' => [

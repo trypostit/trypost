@@ -8,6 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
+use App\Models\AnalyticsPublication;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Analytics\ChannelMetrics;
@@ -54,6 +55,7 @@ class ListChannelPublicationPerformance
             ->when($filter !== null, fn (Builder $filtered): Builder => $filter->apply($filtered))
             ->select([
                 'publication.id', 'publication.post_id', 'publication.excerpt', 'publication.preview_metadata', 'publication.permalink',
+                'publication.availability',
                 'publication.provider_published_at', 'publication.content_type', 'destination.media as post_media',
                 'metric.reactions_count', 'metric.comments_count', 'metric.views_count', 'metric.shares_count',
                 'metric.saves_count', 'metric.reach_count', 'metric.engagement_count', 'metric.exposure_count',
@@ -92,7 +94,7 @@ class ListChannelPublicationPerformance
             'excerpt' => $row->excerpt,
             'thumbnail_url' => $media?->isImage() ? $media->url : $this->thumbnail($row->preview_metadata),
             'media' => $media?->toArray(),
-            'permalink' => $row->permalink,
+            'permalink' => AnalyticsPublication::visiblePermalink($row->permalink, $row->availability),
             'published_at' => CarbonImmutable::parse($row->provider_published_at, 'UTC')->toIso8601String(),
             'content_type' => $row->content_type,
             'metrics' => [

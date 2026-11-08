@@ -12,6 +12,8 @@ test('every webhook event has the expected value', function (EventType $event, s
     [EventType::PostScheduled, 'post.scheduled'],
     [EventType::PostUnscheduled, 'post.unscheduled'],
     [EventType::PostPublished, 'post.published'],
+    [EventType::PostDeletedOnNetwork, 'post.deleted_on_network'],
+    [EventType::PostRestored, 'post.restored'],
     [EventType::PostFailed, 'post.failed'],
     [EventType::PostDeleted, 'post.deleted'],
 ]);

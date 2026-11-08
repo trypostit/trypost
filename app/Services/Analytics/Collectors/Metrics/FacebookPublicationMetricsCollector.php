@@ -12,6 +12,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Each read is optional on its own: Page insights are refused for small Pages,
@@ -30,15 +31,32 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         return 'published_posts';
     }
 
+    /**
+     * A post read by its bare video id makes no other read of the post, so a
+     * permission refusal there may hide a deleted video: the confirmation reads it.
+     */
+    protected function mayBeDeleted(AnalyticsCollectionException $exception, AnalyticsPublication $publication): bool
+    {
+        return parent::mayBeDeleted($exception, $publication)
+            || ($exception->category === 'permission' && $this->isReadByVideoId($publication));
+    }
+
+    /**
+     * A Page post id is `{page id}_{post id}`; a video or reel is known by its bare id.
+     */
+    private function isReadByVideoId(AnalyticsPublication $publication): bool
+    {
+        return ! Str::contains($publication->remote_id, '_');
+    }
+
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
-        $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
         $graph = $this->graphBaseUrl($account);
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
-        $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->remote_id, '_'));
+        $isVideo = ! $isStory && (filled($videoId) || $this->isReadByVideoId($publication));
         $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->remote_id;
         $edge = $isVideo ? 'video_insights' : 'insights';
         $fields = match (true) {
@@ -56,7 +74,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
             $this->refusals[] = 'permission';
         }
 
-        if (! $isStory && str_contains($publication->remote_id, '_')) {
+        if (! $isStory && ! $this->isReadByVideoId($publication)) {
             $post = "{$graph}/{$publication->remote_id}";
             $details = array_merge(
                 $this->optional($account, $post, ['fields' => 'reactions.limit(0).summary(total_count),shares']),

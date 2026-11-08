@@ -161,14 +161,14 @@ class CollectPublicationMetrics implements ShouldQueue
 
     /**
      * Under the row lock discovery writes with, so a sync that saw the post while
-     * this read ran (it moves `last_seen_at`) wins over the deletion.
+     * this read ran (it moves `seen_generation`) wins over the deletion.
      */
     private function recordGone(AnalyticsPublication $publication, AnalyticsCollectionException $exception): void
     {
         DB::transaction(function () use ($publication, $exception): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
 
-            if (blank($current) || $current->getRawOriginal('last_seen_at') !== $publication->getRawOriginal('last_seen_at')) {
+            if (blank($current) || $current->seen_generation !== $publication->seen_generation) {
                 return;
             }
 

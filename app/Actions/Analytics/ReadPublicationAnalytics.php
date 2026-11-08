@@ -194,7 +194,7 @@ class ReadPublicationAnalytics
                 'content_type' => $publication->content_type->value,
                 'availability' => $publication->availability->value,
                 'provider_published_at' => $publication->provider_published_at?->toIso8601String(),
-                'permalink' => $publication->permalink,
+                'permalink' => AnalyticsPublication::visiblePermalink($publication->permalink, $publication->availability),
                 'excerpt' => $publication->excerpt,
                 'preview_metadata' => $publication->preview_metadata,
                 'poll' => data_get($publication->provider_metadata, 'poll'),

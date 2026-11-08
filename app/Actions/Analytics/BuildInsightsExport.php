@@ -9,6 +9,7 @@ use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\SocialAccount\Platform;
+use App\Models\AnalyticsPublication;
 use App\Models\Workspace;
 use App\Support\Analytics\EngagementRate;
 use Carbon\CarbonImmutable;
@@ -171,7 +172,7 @@ class BuildInsightsExport
                 $this->network($row->platform),
                 __("analytics.detail.content_types.{$row->content_type}"),
                 $row->excerpt,
-                $row->permalink,
+                AnalyticsPublication::visiblePermalink($row->permalink, $row->availability),
                 ...array_values($values),
             ];
         }

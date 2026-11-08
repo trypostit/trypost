@@ -35,7 +35,6 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
 
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
-        $this->refusals = [];
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, ...$account->platform === Platform::InstagramFacebook
             ? ['instagram_basic', 'instagram_manage_insights', 'pages_read_engagement']

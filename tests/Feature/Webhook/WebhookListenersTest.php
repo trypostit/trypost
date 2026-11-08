@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Actions\Post\DeletePost;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\Webhook\EventType;
 use App\Events\PostCreated;
 use App\Events\PostDeleted;
 use App\Events\PostStatusChanged;
+use App\Events\PostStatusUpdated;
 use App\Jobs\DispatchWebhook;
 use App\Listeners\Webhook\SendPostCreatedWebhook;
 use App\Listeners\Webhook\SendPostDeletedWebhook;
@@ -189,6 +191,36 @@ test('deleting a post dispatches the deleted webhook', function () {
         return $job->eventType === EventType::PostDeleted->value
             && data_get($job->payload, 'id') === $post->id;
     });
+});
+
+test('a post deleted on the network sends its webhook and refreshes open schedules', function () {
+    $post = Post::factory()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    Event::fake([PostStatusUpdated::class]);
+
+    $post->markPublicationDeleted();
+
+    Queue::assertPushed(DispatchWebhook::class, fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostDeletedOnNetwork->value
+        && data_get($job->payload, 'id') === $post->id
+        && data_get($job->payload, 'publish_status') === PublishStatus::Deleted->value);
+    Event::assertDispatched(PostStatusUpdated::class, fn (PostStatusUpdated $event): bool => $event->post->is($post));
+});
+
+test('a post the network lists again sends post.restored, never post.published', function () {
+    $post = Post::factory()->deletedOnNetwork()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+    Event::fake([PostStatusUpdated::class]);
+
+    $post->markPublicationRestored();
+
+    Queue::assertPushed(DispatchWebhook::class, fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostRestored->value
+        && data_get($job->payload, 'id') === $post->id);
+    Queue::assertNotPushed(DispatchWebhook::class, fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostPublished->value);
+    Event::assertDispatched(PostStatusUpdated::class, fn (PostStatusUpdated $event): bool => $event->post->is($post));
 });
 
 test('post created listener is wired via auto-discovery', function () {

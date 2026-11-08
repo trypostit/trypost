@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Post gedeeltelijk gepubliceerd',
         'post_failed' => 'Post mislukt',
         'post_deleted' => 'Post verwijderd',
+        'post_deleted_on_network' => 'Post verwijderd op netwerk',
+        'post_restored' => 'Post terug op netwerk',
     ],
     'event_descriptions' => [
         'post_created' => 'Wanneer een nieuwe post wordt aangemaakt.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Wanneer een post live gaat op een kanaal.',
         'post_failed' => 'Wanneer het publiceren van een post mislukt.',
         'post_deleted' => 'Wanneer een post wordt verwijderd.',
+        'post_deleted_on_network' => 'Wanneer een post op zijn netwerk wordt verwijderd.',
+        'post_restored' => 'Wanneer een verwijderde post terug is op zijn netwerk.',
     ],
     'http_reasons' => [
         'unknown' => 'Onbekend',

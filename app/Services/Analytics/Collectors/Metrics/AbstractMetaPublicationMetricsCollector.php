@@ -34,11 +34,12 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
 
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
+        $this->refusals = [];
         $this->refusedMissingObject = false;
 
         return $this->readUnlessDeleted(
             fn (): PublicationMetricObservation => $this->read($publication, $date),
-            fn (AnalyticsCollectionException $exception): bool => $this->mayBeDeleted($exception) && $this->confirmsDeletion($publication),
+            fn (AnalyticsCollectionException $exception): bool => $this->mayBeDeleted($exception, $publication) && $this->confirmsDeletion($publication),
             $publication->platform->value,
         );
     }
@@ -48,7 +49,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
      * of them answered "object does not exist", may hide a deleted post. Otherwise the
      * failure stands as it is.
      */
-    private function mayBeDeleted(AnalyticsCollectionException $exception): bool
+    protected function mayBeDeleted(AnalyticsCollectionException $exception, AnalyticsPublication $publication): bool
     {
         return match ($exception->category) {
             'malformed' => $exception->missingObject || $this->refusedMissingObject,

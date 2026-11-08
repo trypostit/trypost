@@ -1081,18 +1081,23 @@ an `enabled` flag or posts with several channels. Posts created together share
   read after publishing (#481).
   `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
   the publication's row lock, unless a sync saw the post while it was being
-  checked (`last_seen_at` moved); a sync that sees it again restores it
-  (`markPublicationRestored()`, which does not rerun the "just published" side
-  effects). `Post::isDeletedOnNetwork()` is the rule:
+  checked (`seen_generation` moved; `last_seen_at` is only the clock);
+  a sync that sees it again restores it (`markPublicationRestored()`, which
+  does not rerun the "just published" side effects) and queues a fresh metrics
+  read so a stale discovery page cannot leave it published until the next day.
+  Marking it deleted sends `post.deleted_on_network`, and restoring it sends
+  `post.restored`; both also broadcast `post.platform.status.updated` so an
+  open schedule reloads. `Post::isDeletedOnNetwork()` is the rule:
   `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
   finalizes as published, and it still counts as published for the posting
   goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
   `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
   sync, the importer's matching, TikTok video ids) keep
-  `scopePublicationPublished()`. On the post cards and the details
+  `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
   dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
   (`usePostCardActions.ts`) decide the badge and the link; the repurpose
-  activity list labels `publish_status` directly.
+  activity list labels `publish_status` directly. Insights keep the historical
+  numbers and drop the network link (`AnalyticsPublication::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

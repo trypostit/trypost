@@ -12,6 +12,8 @@ enum EventType: string
     case PostScheduled = 'post.scheduled';
     case PostUnscheduled = 'post.unscheduled';
     case PostPublished = 'post.published';
+    case PostDeletedOnNetwork = 'post.deleted_on_network';
+    case PostRestored = 'post.restored';
     case PostFailed = 'post.failed';
     case PostDeleted = 'post.deleted';
 

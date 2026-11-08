@@ -1070,7 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Usunięto',
             'title' => 'Usunięto na :network',
-            'hint' => 'Został usunięty po publikacji, więc jego link i insights nie są już dostępne.',
+            'hint' => 'Został usunięty po publikacji, więc jego link i statystyki nie są już dostępne.',
         ],
         'created_by' => 'Utworzone przez :name :when',
         'welcome' => [

@@ -18,6 +18,9 @@ use Illuminate\Validation\ValidationException;
 class DeletePost
 {
     /**
+     * Locks the publication rows before the post, the same order the analytics
+     * writers use, so a delete overlapping a metrics write cannot deadlock.
+     *
      * @throws ValidationException
      */
     public static function execute(Post $post, bool $respectStatus = false): void
@@ -27,6 +30,12 @@ class DeletePost
         $isImported = $post->origin === Origin::Network;
 
         $deleted = DB::transaction(function () use ($post, $postId, $respectStatus): bool {
+            AnalyticsPublication::query()
+                ->where('post_id', $postId)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
             $locked = Post::query()->whereKey($postId)->lockForUpdate()->first();
 
             if ($locked === null) {

@@ -1070,7 +1070,7 @@ return [
         'deleted_on_network' => [
             'badge' => 'Verwijderd',
             'title' => 'Verwijderd op :network',
-            'hint' => 'Hij is na publicatie verwijderd, dus de link en insights zijn niet meer beschikbaar.',
+            'hint' => 'Hij is na publicatie verwijderd, dus de link en de berichtinzichten zijn niet meer beschikbaar.',
         ],
         'created_by' => 'Gemaakt door :name :when',
         'welcome' => [

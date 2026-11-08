@@ -10,10 +10,13 @@ use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\Post\PublishStatus;
+use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Arr;
@@ -298,6 +301,7 @@ class UpsertAnalyticsPublication
                 'content_type' => $contentTypeReported || ! $publication->exists ? $contentType : $publication->content_type,
                 'availability' => PublicationAvailability::Available,
                 'last_seen_at' => $now,
+                'seen_generation' => (int) $publication->seen_generation + 1,
                 'provider_synced_at' => $providerSyncedAt ?? $publication->provider_synced_at,
             ];
 
@@ -319,8 +323,12 @@ class UpsertAnalyticsPublication
             $wasDeleted = $publication->availability === PublicationAvailability::Deleted;
             $publication->fill($values)->save();
 
-            if ($wasDeleted) {
-                $publication->post?->markPublicationRestored();
+            $post = $publication->post;
+
+            if ($wasDeleted && $post?->publish_status === PublishStatus::Deleted) {
+                $post->markPublicationRestored();
+                CollectPublicationMetrics::dispatch($publication->id, CarbonImmutable::now('UTC')->toDateString())
+                    ->afterCommit();
             }
 
             return $publication->refresh();

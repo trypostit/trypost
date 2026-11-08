@@ -8,8 +8,11 @@ use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\Webhook\EventType;
 use App\Events\PostCreated;
+use App\Events\PostNetworkPresenceChanged;
 use App\Events\PostStatusChanged;
+use App\Events\PostStatusUpdated;
 use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Post;
@@ -42,12 +45,38 @@ class PostObserver
 
     public function updated(Post $post): void
     {
+        if ($this->wasMarkedDeletedOnNetwork($post) || $this->wasRestoredOnNetwork($post)) {
+            $type = $post->publish_status === PublishStatus::Deleted
+                ? EventType::PostDeletedOnNetwork
+                : EventType::PostRestored;
+
+            DB::afterCommit(function () use ($post, $type): void {
+                PostNetworkPresenceChanged::dispatch($post, $type);
+                PostStatusUpdated::dispatch($post);
+            });
+
+            return;
+        }
+
         if (! $this->wasJustPublished($post)) {
             return;
         }
 
         $this->syncPublicationAnalytics($post);
         $this->syncPublishingActivity($post);
+    }
+
+    private function wasMarkedDeletedOnNetwork(Post $post): bool
+    {
+        return $post->wasChanged('publish_status')
+            && $post->publish_status === PublishStatus::Deleted;
+    }
+
+    private function wasRestoredOnNetwork(Post $post): bool
+    {
+        return $post->wasChanged('publish_status')
+            && $post->publish_status === PublishStatus::Published
+            && $post->getOriginal('publish_status') === PublishStatus::Deleted;
     }
 
     private function wasJustPublished(Post $post): bool
