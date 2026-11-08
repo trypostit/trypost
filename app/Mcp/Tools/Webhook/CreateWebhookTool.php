@@ -59,12 +59,15 @@ class CreateWebhookTool extends Tool
      */
     public function schema(JsonSchema $schema): array
     {
+        $events = array_column(EventType::cases(), 'value');
+        $eventList = implode(', ', $events);
+
         return [
             'endpoint' => $schema->string()->required()->description('Public URL, up to 255 characters, that will receive signed webhook payloads. Private or local addresses are rejected.'),
             'events' => $schema->array()
-                ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
+                ->items($schema->string()->enum($events))
                 ->required()
-                ->description('At least one event to subscribe to: '.implode(', ', array_column(EventType::cases(), 'value')).'.'),
+                ->description("At least one event to subscribe to: {$eventList}."),
         ];
     }
 }

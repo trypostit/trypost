@@ -22,11 +22,12 @@ import {
 } from '@/components/ui/tooltip';
 import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { isDeletedOnNetwork } from '@/composables/usePostCardActions';
 import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
-import { PostStatus, PublishStatus, ScheduleMode } from '@/types/post';
+import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PublishTab } from '@/types/publish';
 
 defineOptions({ inheritAttrs: false });
@@ -123,11 +124,11 @@ const STATUS_MARKERS: Record<StatusKey, StatusMarker> = {
 };
 
 const statusKey = computed((): StatusKey => {
-    const { status, schedule_mode, recurrence_frequency, publish_status } = props.post;
-
-    if (status === PostStatus.Published && publish_status === PublishStatus.Deleted) {
+    if (isDeletedOnNetwork(props.post)) {
         return 'deleted';
     }
+
+    const { status, schedule_mode, recurrence_frequency } = props.post;
 
     if (status !== PostStatus.Scheduled) {
         return status as StatusKey;
@@ -142,10 +143,8 @@ const statusKey = computed((): StatusKey => {
 
 const statusMarker = computed(() => STATUS_MARKERS[statusKey.value]);
 
-const statusLabelKey = computed(() =>
-    statusKey.value === 'deleted'
-        ? 'posts.publish.deleted_on_network.badge'
-        : `calendar.post_status.${statusKey.value}`,
+const statusLabelKey = computed(
+    () => `calendar.post_status.${statusKey.value}`,
 );
 
 const chipClass = computed(() => [

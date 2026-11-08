@@ -12,7 +12,7 @@ import { trans } from 'laravel-vue-i18n';
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'destructive-subtle' | 'success' | 'warning' | 'info' | 'outline';
 
-interface StatusConfig {
+export interface StatusConfig {
     variant: BadgeVariant;
     icon: typeof IconFileText;
     /** In-flight statuses spin their icon so they never read as stuck. */

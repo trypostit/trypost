@@ -7,6 +7,7 @@ use App\Actions\Analytics\GetAnalyticsBounds;
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\ObservationProvenance;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
@@ -499,4 +500,20 @@ test('publication detail shows the current avatar of a live account', function (
     $detail = app(ReadPublicationAnalytics::class)->latestForWorkspacePublication($workspace, $publication->id);
 
     expect(data_get($detail, 'publication.account_avatar_url'))->toBe('https://current-cdn.test/social-accounts/avatar.jpg');
+});
+
+test('top posts drop the link of a publication the network deleted', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $start = now('UTC')->subDays(10)->startOfDay();
+    $live = analyticsReportPublication($account, $start->addDays(2)->toDateTimeString(), 9, 1, 10, 100);
+    $deleted = analyticsReportPublication($account, $start->addDays(3)->toDateTimeString(), 5, 1, 6, 100);
+    $deleted->update(['availability' => PublicationAvailability::Deleted]);
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, new DateRange($start, $start->addDays(9)));
+    $top = collect($report['top_posts']['reactions'])->keyBy('id');
+
+    expect(data_get($top->get($live->id), 'permalink'))->toBe($live->permalink)
+        ->and($top->has($deleted->id))->toBeTrue()
+        ->and(data_get($top->get($deleted->id), 'permalink'))->toBeNull();
 });
