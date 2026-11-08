@@ -223,6 +223,17 @@ test('a post the network lists again sends post.restored, never post.published',
     Event::assertDispatched(PostStatusUpdated::class, fn (PostStatusUpdated $event): bool => $event->post->is($post));
 });
 
+test('a post imported from the network sends no webhook when deleted or listed again there, but still refreshes open schedules', function () {
+    $post = Post::factory()->imported()->createQuietly(['workspace_id' => $this->workspace->id]);
+    Event::fake([PostStatusUpdated::class]);
+
+    $post->markPublicationDeleted();
+    $post->markPublicationRestored();
+
+    Queue::assertNotPushed(DispatchWebhook::class);
+    Event::assertDispatchedTimes(PostStatusUpdated::class, 2);
+});
+
 test('post created listener is wired via auto-discovery', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

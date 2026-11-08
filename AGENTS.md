@@ -1086,8 +1086,9 @@ an `enabled` flag or posts with several channels. Posts created together share
   does not rerun the "just published" side effects) and queues a fresh metrics
   read so a stale discovery page cannot leave it published until the next day.
   Marking it deleted sends `post.deleted_on_network`, and restoring it sends
-  `post.restored`; both also broadcast `post.platform.status.updated` so an
-  open schedule reloads. `Post::isDeletedOnNetwork()` is the rule:
+  `post.restored`, never for a post imported from the network, which sends no
+  webhook at all (`ImportExternalPosts`); both also broadcast
+  `post.platform.status.updated` so an open schedule reloads, imported or not. `Post::isDeletedOnNetwork()` is the rule:
   `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
   finalizes as published, and it still counts as published for the posting
   goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
