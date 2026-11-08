@@ -45,7 +45,6 @@ class AnalyticsPublication extends Model
         'account_avatar_url',
         'first_seen_at',
         'last_seen_at',
-        'seen_generation',
         'provider_synced_at',
         'provider_metadata',
     ];
@@ -63,7 +62,6 @@ class AnalyticsPublication extends Model
             'preview_metadata' => 'array',
             'first_seen_at' => 'immutable_datetime',
             'last_seen_at' => 'immutable_datetime',
-            'seen_generation' => 'integer',
             'provider_synced_at' => 'immutable_datetime',
             'provider_metadata' => 'array',
         ];

@@ -301,7 +301,6 @@ class UpsertAnalyticsPublication
                 'content_type' => $contentTypeReported || ! $publication->exists ? $contentType : $publication->content_type,
                 'availability' => PublicationAvailability::Available,
                 'last_seen_at' => $now,
-                'seen_generation' => (int) $publication->seen_generation + 1,
                 'provider_synced_at' => $providerSyncedAt ?? $publication->provider_synced_at,
             ];
 

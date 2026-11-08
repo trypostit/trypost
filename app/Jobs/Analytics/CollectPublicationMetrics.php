@@ -109,6 +109,7 @@ class CollectPublicationMetrics implements ShouldQueue
         }
 
         $publication->setRelation('socialAccount', $channel);
+        $readStartedAt = CarbonImmutable::now('UTC')->startOfSecond();
 
         try {
             $collector = $collectors->for($publication->platform);
@@ -129,7 +130,7 @@ class CollectPublicationMetrics implements ShouldQueue
             }
         } catch (AnalyticsCollectionException $exception) {
             $log->record($channel, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
-            $this->recordTerminalFailure($publication, $exception);
+            $this->recordTerminalFailure($publication, $exception, $readStartedAt);
             $this->retry($publication, $date, $exception->category, $exception->retryAt, $log);
         } catch (ConnectionException) {
             $log->record($channel, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
@@ -137,10 +138,10 @@ class CollectPublicationMetrics implements ShouldQueue
         }
     }
 
-    private function recordTerminalFailure(AnalyticsPublication $publication, AnalyticsCollectionException $exception): void
+    private function recordTerminalFailure(AnalyticsPublication $publication, AnalyticsCollectionException $exception, CarbonImmutable $readStartedAt): void
     {
         if ($exception->gone) {
-            $this->recordGone($publication, $exception);
+            $this->recordGone($publication, $exception, $readStartedAt);
 
             return;
         }
@@ -160,15 +161,16 @@ class CollectPublicationMetrics implements ShouldQueue
     }
 
     /**
-     * Under the row lock discovery writes with, so a sync that saw the post while
-     * this read ran (it moves `seen_generation`) wins over the deletion.
+     * Under the row lock discovery writes with, so a sync that saw the post since
+     * the second this read started wins over the deletion. A sync earlier in that
+     * same second wins too: the deletion then waits for the next read.
      */
-    private function recordGone(AnalyticsPublication $publication, AnalyticsCollectionException $exception): void
+    private function recordGone(AnalyticsPublication $publication, AnalyticsCollectionException $exception, CarbonImmutable $readStartedAt): void
     {
-        DB::transaction(function () use ($publication, $exception): void {
+        DB::transaction(function () use ($publication, $exception, $readStartedAt): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->find($publication->id);
 
-            if (blank($current) || $current->seen_generation !== $publication->seen_generation) {
+            if (blank($current) || $current->last_seen_at?->greaterThanOrEqualTo($readStartedAt)) {
                 return;
             }
 

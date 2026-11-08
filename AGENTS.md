@@ -1080,8 +1080,9 @@ an `enabled` flag or posts with several channels. Posts created together share
   deleted from private; LinkedIn, Google Business, Telegram and Discord have no
   read after publishing (#481).
   `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
-  the publication's row lock, unless a sync saw the post while it was being
-  checked (`seen_generation` moved; `last_seen_at` is only the clock);
+  the publication's row lock, unless a sync saw the post since the second the
+  read started (`last_seen_at` at or after it; a sync earlier in that second
+  only delays the deletion to the next read);
   a sync that sees it again restores it (`markPublicationRestored()`, which
   does not rerun the "just published" side effects) and queues a fresh metrics
   read so a stale discovery page cannot leave it published until the next day.

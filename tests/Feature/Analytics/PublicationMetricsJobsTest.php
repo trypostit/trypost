@@ -590,10 +590,10 @@ test('a post marked deleted that the network lists again is published again', fu
     Queue::assertPushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id);
 });
 
-test('a discovery in the same second as the deletion check keeps the post published', function () {
+test('a discovery during the deletion check keeps the post published, even in the same second', function () {
     $this->travelTo(now()->startOfSecond());
     $publication = metricJobPublication(Platform::InstagramFacebook, now('UTC')->subHours(2));
-    $publication->forceFill(['last_seen_at' => now(), 'seen_generation' => 4])->save();
+    $publication->forceFill(['last_seen_at' => now()->subHour()])->save();
     $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
     $publication->forceFill(['post_id' => $post->id])->save();
     $graph = Platform::InstagramFacebook->instagramGraphBaseUrl();
@@ -608,8 +608,7 @@ test('a discovery in the same second as the deletion check keeps the post publis
 
     app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
 
-    expect($publication->fresh()->seen_generation)->toBe(5)
-        ->and($publication->fresh()->availability)->toBe(PublicationAvailability::Available)
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Available)
         ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
 });
 
