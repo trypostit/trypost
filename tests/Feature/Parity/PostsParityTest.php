@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\DeleteChannelPosts;
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\Post\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
@@ -277,13 +278,13 @@ test('the metrics of a post the network deleted say so on the api and mcp', func
     $this->withHeaders(parityApi($this->token))
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('metrics.reason', 'deleted_on_network');
+        ->assertJsonPath('metrics.reason', MetricsUnavailableReason::DeletedOnNetwork->value);
 
     auth()->forgetGuards();
 
     TryPostServer::actingAs($this->user)->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
         ->assertOk()
-        ->assertStructuredContent(fn (AssertableJson $json): AssertableJson => $json->where('metrics.reason', 'deleted_on_network')->etc());
+        ->assertStructuredContent(fn (AssertableJson $json): AssertableJson => $json->where('metrics.reason', MetricsUnavailableReason::DeletedOnNetwork->value)->etc());
 });
 
 test('a channel disconnect still deletes published posts', function () {

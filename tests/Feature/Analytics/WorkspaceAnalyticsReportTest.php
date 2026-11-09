@@ -6,6 +6,7 @@ use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
 use App\Actions\Analytics\GetAnalyticsBounds;
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Dto\Analytics\DateRange;
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\Analytics\ObservationProvenance;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
@@ -399,7 +400,7 @@ test('publication detail remains scoped to the post workspace and excludes unsup
     expect(app(ReadPublicationAnalytics::class)->latestFor($post)['available'])->toBeFalse();
 
     $post->update(['platform' => Platform::LinkedIn]);
-    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['reason'])->toBe('platform_not_supported');
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['reason'])->toBe(MetricsUnavailableReason::PlatformNotSupported->value);
 });
 
 test('external YouTube upload stays a video and not a short without authoritative metadata', function () {

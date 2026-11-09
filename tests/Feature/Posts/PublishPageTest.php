@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\BuildPublishPageProps;
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\ScheduleMode;
@@ -192,7 +193,7 @@ test('the sent tab returns settled posts newest first with metrics', function ()
                 ->where('posts.data.0.can_delete', false)
                 ->where('posts.data.2.can_delete', false)
                 ->has('posts.data.0.metrics')
-                ->where('posts.data.2.metrics.reason', 'not_published')));
+                ->where('posts.data.2.metrics.reason', MetricsUnavailableReason::NotPublished->value)));
 });
 
 test('the sent tab lets a post deleted on the network be deleted, and keeps other published posts', function () {
@@ -207,7 +208,7 @@ test('the sent tab lets a post deleted on the network be deleted, and keeps othe
                 ->where('posts.data.0.id', $deleted->id)
                 ->where('posts.data.0.publish_status', PlatformStatus::Deleted->value)
                 ->where('posts.data.0.can_delete', true)
-                ->where('posts.data.0.metrics.reason', 'deleted_on_network')
+                ->where('posts.data.0.metrics.reason', MetricsUnavailableReason::DeletedOnNetwork->value)
                 ->where('posts.data.1.id', $live->id)
                 ->where('posts.data.1.can_delete', false)));
 });

@@ -296,6 +296,12 @@ export const PublicationAvailability = {
 export type PublicationAvailabilityValue =
     (typeof PublicationAvailability)[keyof typeof PublicationAvailability];
 
+export type MetricsUnavailableReason =
+    | 'not_published'
+    | 'deleted_on_network'
+    | 'platform_not_supported'
+    | 'not_collected';
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;

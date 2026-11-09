@@ -1,5 +1,8 @@
 import type { RecurrenceFrequency } from '@/lib/recurrence';
-import type { PublicationAnalyticsDetail } from '@/types/analytics';
+import type {
+    MetricsUnavailableReason,
+    PublicationAnalyticsDetail,
+} from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
 import type { PlatformValue } from '@/types/platform';
 import type {
@@ -48,7 +51,7 @@ export interface PostCardLabel {
 
 export interface UnavailablePostMetrics {
     available: false;
-    reason: string | null;
+    reason: MetricsUnavailableReason;
 }
 
 export type PostCardMetrics = PublicationAnalyticsDetail | UnavailablePostMetrics;

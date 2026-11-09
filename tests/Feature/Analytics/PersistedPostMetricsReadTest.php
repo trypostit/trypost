@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\ReadPublicationAnalytics;
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -85,7 +86,7 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json
             ->where('metrics.unsupported', true)
-            ->where('metrics.reason', 'platform_not_supported')
+            ->where('metrics.reason', MetricsUnavailableReason::PlatformNotSupported->value)
             ->etc());
 
     $foreignPost = Post::factory()->linkedin()->published()->create();
