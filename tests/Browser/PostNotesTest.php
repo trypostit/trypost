@@ -95,6 +95,7 @@ test('the note composer enables send only with text and sends on Enter but not S
 
     $page->keys('@note-input', ['Enter']);
     waitFor($page, '@note-body');
+    waitForText($page, "@post-notes-count-{$post->id}", '1');
 
     $page->assertSeeIn('@note-body', 'First line')
         ->assertValue('@note-input', '')
@@ -196,12 +197,14 @@ test('the notes count follows the thread when it opens and when a note is delete
     $page->click("@post-notes-trigger-{$post->id}");
     waitFor($page, '@note-body');
     waitForCount($page, '@note-item', 2);
+    waitForText($page, "@post-notes-count-{$post->id}", '2');
     $page->assertSeeIn("@post-notes-count-{$post->id}", '2');
 
     $page->hover('@note-item')->click('@note-actions');
     waitFor($page, '@note-delete');
     $page->click('@note-delete');
     waitForCount($page, '@note-item', 1);
+    waitForText($page, "@post-notes-count-{$post->id}", '1');
 
     $page->assertSeeIn("@post-notes-count-{$post->id}", '1')->assertNoJavaScriptErrors();
 });
@@ -230,6 +233,7 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
 
     $page->keys('@note-input', ['Enter']);
     waitFor($page, '@note-body');
+    waitForText($page, "@post-notes-count-{$post->id}", '1');
     $page->assertSeeIn("@post-notes-count-{$post->id}", '1')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
 
