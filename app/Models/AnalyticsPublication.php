@@ -91,12 +91,4 @@ class AnalyticsPublication extends Model
     {
         return $query->where('availability', PublicationAvailability::Available);
     }
-
-    /**
-     * A publication the network no longer has keeps its row, and loses the link to it.
-     */
-    public static function visiblePermalink(?string $permalink, ?PublicationAvailability $availability): ?string
-    {
-        return $availability === PublicationAvailability::Deleted ? null : $permalink;
-    }
 }

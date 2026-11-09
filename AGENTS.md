@@ -1099,7 +1099,7 @@ an `enabled` flag or posts with several channels. Posts created together share
   dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
   (`usePostCardActions.ts`) decide the badge and the link; the repurpose
   activity list labels `publish_status` directly. Insights keep the historical
-  numbers and drop the network link (`AnalyticsPublication::visiblePermalink()`).
+  numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)

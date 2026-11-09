@@ -10,7 +10,6 @@ use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\SocialAccount\Platform;
-use App\Models\AnalyticsPublication;
 use App\Models\Workspace;
 use App\Support\Analytics\EngagementRate;
 use Carbon\CarbonImmutable;
@@ -173,7 +172,7 @@ class BuildInsightsExport
                 $this->network($row->platform),
                 __("analytics.detail.content_types.{$row->content_type}"),
                 $row->excerpt,
-                AnalyticsPublication::visiblePermalink($row->permalink, PublicationAvailability::tryFrom((string) $row->availability)),
+                PublicationAvailability::from($row->availability)->visiblePermalink($row->permalink),
                 ...array_values($values),
             ];
         }
