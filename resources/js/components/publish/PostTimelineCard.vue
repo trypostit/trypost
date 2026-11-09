@@ -74,7 +74,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
-import { isDeletedOnNetwork, postPermalink } from '@/lib/postPublication';
+import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';

@@ -24,7 +24,7 @@ import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
-import { isDeletedOnNetwork } from '@/lib/postPublication';
+import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus, ScheduleMode } from '@/types/post';

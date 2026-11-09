@@ -8,7 +8,7 @@ import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/P
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { filled } from '@/lib/helpers';
-import { postPermalink } from '@/lib/postPublication';
+import { postPermalink } from '@/lib/postNetwork';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
 import type {

@@ -47,7 +47,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { filled } from '@/lib/helpers';
-import { isDeletedOnNetwork, postPermalink } from '@/lib/postPublication';
+import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';

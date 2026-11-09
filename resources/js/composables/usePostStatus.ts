@@ -11,7 +11,7 @@ import {
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 
-import { isDeletedOnNetwork } from '@/lib/postPublication';
+import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import type { PostCard } from '@/types/publish';
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'destructive-subtle' | 'success' | 'warning' | 'info' | 'outline';

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { postPermalink } from '@/lib/postPublication';
+import { postPermalink } from '@/lib/postNetwork';
 import { isRecurring } from '@/lib/recurrence';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';

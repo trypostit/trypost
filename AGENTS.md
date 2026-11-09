@@ -1099,7 +1099,7 @@ an `enabled` flag or posts with several channels. Posts created together share
   sync, the importer's matching, TikTok video ids) keep
   `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
   dialog, `isDeletedOnNetwork()` and `postPermalink()`
-  (`lib/postPublication.ts`) decide the badge and the link, and
+  (`lib/postNetwork.ts`) decide the badge and the link, and
   `getPostCardStatusConfig()` (`usePostStatus.ts`) the status shown; the repurpose
   activity list labels `publish_status` directly. Insights keep the historical
   numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
