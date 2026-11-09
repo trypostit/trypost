@@ -60,7 +60,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
 use Laravel\Nightwatch\Facades\Nightwatch;
-use Laravel\Nightwatch\Records\CacheEvent;
 use Laravel\Nightwatch\Records\Query;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
@@ -110,18 +109,14 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureNightwatch(): void
     {
+        if (! config('nightwatch.enabled')) {
+            return;
+        }
+
         $slowQueryMicroseconds = config('nightwatch.filtering.slow_query_ms') * 1000;
 
         Nightwatch::rejectQueries(fn (Query $query): bool => $this->app->runningInConsole()
             && $query->duration < $slowQueryMicroseconds);
-
-        Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
-            return in_array($cacheEvent->key, [
-                'illuminate:foundation:down',
-                'illuminate:queue:restart',
-                'illuminate:schedule:interrupt',
-            ]);
-        });
     }
 
     protected function configureMorphMap(): void
