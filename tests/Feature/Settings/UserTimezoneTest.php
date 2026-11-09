@@ -45,6 +45,26 @@ test('normalize maps legacy aliases to canonical identifiers', function (string 
     'Saigon' => ['Asia/Saigon', 'Asia/Ho_Chi_Minh'],
 ]);
 
+test('normalize maps an alias missing from PHP\'s time zone list', function (string $alias, string $canonical) {
+    expect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->not->toContain($alias)
+        ->and(Timezone::normalize($alias))->toBe($canonical);
+})->with([
+    'East-Saskatchewan' => ['Canada/East-Saskatchewan', 'America/Regina'],
+    'Pacific-New' => ['US/Pacific-New', 'America/Los_Angeles'],
+]);
+
+test('registration maps an alias missing from PHP\'s time zone list', function () {
+    $this->post(route('register.store'), [
+        'name' => 'Ravi',
+        'email' => 'ravi@example.com',
+        'password' => strongPassword(),
+        'locale' => 'en',
+        'timezone' => 'Canada/East-Saskatchewan',
+    ]);
+
+    expect(User::query()->where('email', 'ravi@example.com')->value('timezone'))->toBe('America/Regina');
+});
+
 test('registration falls back to UTC for a missing or invalid time zone', function (?string $timezone) {
     $payload = [
         'name' => 'Bo',
