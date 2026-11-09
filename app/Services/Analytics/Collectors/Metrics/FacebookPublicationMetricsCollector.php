@@ -34,11 +34,15 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
     /**
      * A post read by its bare video id makes no other read of the post, so a
      * permission refusal there may hide a deleted video: the confirmation reads it.
+     * Only once its reads were refused, never when the Page did not grant reading
+     * it at all, since nothing was read then.
      */
     protected function mayBeDeleted(AnalyticsCollectionException $exception, AnalyticsPublication $publication): bool
     {
         return parent::mayBeDeleted($exception, $publication)
-            || ($exception->category === 'permission' && $this->isReadByVideoId($publication));
+            || ($exception->category === 'permission'
+                && filled($this->refusals)
+                && $this->isReadByVideoId($publication));
     }
 
     /**

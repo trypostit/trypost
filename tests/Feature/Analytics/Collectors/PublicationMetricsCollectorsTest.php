@@ -1193,6 +1193,15 @@ test('a Facebook reel without insights stays published when the video still read
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/published_posts'));
 });
 
+test('a Facebook reel on a Page that never granted reading it never checks whether it was deleted', function () {
+    $publication = metaMetricsPublication(Platform::Facebook);
+    $publication->socialAccount->update(['scopes' => ['read_insights']]);
+    Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->category)->toBe('permission')->and($exception->deletedOnNetwork)->toBeFalse());
+    Http::assertNothingSent();
+});
+
 test('a Meta collector reused for another post forgets the first one\'s refusals', function () {
     $collector = app(FacebookPublicationMetricsCollector::class);
     $deleted = metaMetricsPublication(Platform::Facebook);
