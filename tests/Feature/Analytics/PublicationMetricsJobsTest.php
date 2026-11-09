@@ -31,6 +31,7 @@ use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -588,6 +589,22 @@ test('a post marked deleted that the network lists again is published again', fu
     Queue::assertNotPushed(SyncTryPostPublicationJob::class);
     Queue::assertNotPushed(SyncAccountPublishingActivity::class);
     Queue::assertPushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id);
+});
+
+test('a discovery of a live publication never reads its post', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, now('UTC')->subDay());
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create();
+    $publication->forceFill(['post_id' => $post->id])->save();
+    $postsRead = 0;
+    Event::listen('eloquent.retrieved: '.Post::class, function () use (&$postsRead): void {
+        $postsRead++;
+    });
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($postsRead)->toBe(0)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
 });
 
 test('a discovery during the deletion check keeps the post published, even in the same second', function () {

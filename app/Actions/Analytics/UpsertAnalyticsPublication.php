@@ -322,10 +322,8 @@ class UpsertAnalyticsPublication
             $wasDeleted = $publication->availability === PublicationAvailability::Deleted;
             $publication->fill($values)->save();
 
-            $post = $publication->post;
-
-            if ($wasDeleted && $post?->publish_status === PublishStatus::Deleted) {
-                $post->markPublicationRestored();
+            if ($wasDeleted && $publication->post?->publish_status === PublishStatus::Deleted) {
+                $publication->post->markPublicationRestored();
                 CollectPublicationMetrics::dispatch($publication->id, CarbonImmutable::now('UTC')->toDateString())
                     ->afterCommit();
             }
