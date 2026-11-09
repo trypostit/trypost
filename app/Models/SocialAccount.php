@@ -35,7 +35,6 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 #[ObservedBy([SocialAccountObserver::class, ComposerVersionObserver::class])]
 #[ScopedBy(SocialAccountOrderScope::class)]
@@ -430,19 +429,19 @@ class SocialAccount extends Model
     }
 
     /**
-     * The Bluesky server (PDS) this account signed in through, without a trailing slash.
+     * The Bluesky server (PDS) this account signed in through.
      */
     protected function blueskyService(): Attribute
     {
-        return Attribute::get(fn (): string => Str::rtrim(data_get($this->meta, 'service', config('trypost.platforms.bluesky.default_service')), '/'));
+        return Attribute::get(fn (): string => data_get($this->meta, 'service', config('trypost.platforms.bluesky.default_service')));
     }
 
     /**
-     * The Mastodon instance this account lives on, without a trailing slash.
+     * The Mastodon instance this account lives on.
      */
     protected function mastodonInstance(): Attribute
     {
-        return Attribute::get(fn (): string => Str::rtrim(data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')), '/'));
+        return Attribute::get(fn (): string => data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')));
     }
 
     /**

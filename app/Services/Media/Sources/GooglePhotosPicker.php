@@ -251,7 +251,7 @@ class GooglePhotosPicker
 
     private function client(string $accessToken): PendingRequest
     {
-        $api = (string) config('trypost.media_sources.google_photos.api');
+        $api = config('trypost.media_sources.google_photos.api');
 
         return Http::baseUrl("{$api}/v1/")
             ->withToken($accessToken)

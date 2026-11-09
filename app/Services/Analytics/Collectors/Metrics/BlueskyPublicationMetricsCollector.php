@@ -20,7 +20,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
         $account = $this->account($publication);
         $uri = "at://{$account->platform_user_id}/".BlueskyLexicon::FEED_POST."/{$publication->remote_id}";
         $response = $this->get($account,
-            (string) config('trypost.platforms.bluesky.public_appview').'/xrpc/'.BlueskyLexicon::GET_POSTS,
+            config('trypost.platforms.bluesky.public_appview').'/xrpc/'.BlueskyLexicon::GET_POSTS,
             ['uris' => [$uri]],
             authenticated: false,
         );

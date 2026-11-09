@@ -39,6 +39,6 @@ class TelegramApi
 
     private static function baseUrl(): string
     {
-        return (string) config('trypost.platforms.telegram.api');
+        return config('trypost.platforms.telegram.api');
     }
 }

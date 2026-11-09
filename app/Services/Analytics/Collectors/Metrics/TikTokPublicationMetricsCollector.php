@@ -19,7 +19,7 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
         $videoId = $this->publicVideoId($publication);
 
         $response = $this->post($account,
-            (string) config('trypost.platforms.tiktok.api').'/video/query/?fields=id,view_count,like_count,comment_count,share_count',
+            config('trypost.platforms.tiktok.api').'/video/query/?fields=id,view_count,like_count,comment_count,share_count',
             ['filters' => ['video_ids' => [$videoId]]],
         );
         $errorCode = $response->json('error.code');
@@ -57,7 +57,7 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
 
         if (! ctype_digit($videoId)) {
             $status = $this->post($this->account($publication),
-                (string) config('trypost.platforms.tiktok.api').'/post/publish/status/fetch/',
+                config('trypost.platforms.tiktok.api').'/post/publish/status/fetch/',
                 ['publish_id' => $videoId],
             );
             $videoId = (string) $status->json('data.publicaly_available_post_id.0', '');

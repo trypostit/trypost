@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Models\SocialAccount;
 
-test('a channel server is read from the account without a trailing slash, else from the config', function (string $factoryState, string $metaKey, string $attribute, string $configKey) {
+test('a channel server is read from the account, else from the config', function (string $factoryState, string $metaKey, string $attribute, string $configKey) {
     $account = SocialAccount::factory()->{$factoryState}()->make();
 
-    $account->meta = [...$account->meta, $metaKey => 'https://server.example.test/'];
+    $account->meta = [...$account->meta, $metaKey => 'https://server.example.test'];
     expect($account->{$attribute})->toBe('https://server.example.test');
 
     $account->meta = collect($account->meta)->except($metaKey)->all();

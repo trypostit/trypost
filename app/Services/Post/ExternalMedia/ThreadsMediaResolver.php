@@ -10,6 +10,6 @@ class ThreadsMediaResolver extends AbstractMetaCarouselResolver
 {
     protected function baseUrl(SocialAccount $account): string
     {
-        return (string) config('trypost.platforms.threads.graph_api');
+        return config('trypost.platforms.threads.graph_api');
     }
 }

@@ -217,7 +217,7 @@ test('mastodon returns image video and gifv attachments in order', function () {
 
 test('mastodon reads a public status without a token when the account lacks a read scope', function () {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['write:statuses'], 'meta' => []]);
-    $instance = (string) config('trypost.platforms.mastodon.default_instance');
+    $instance = config('trypost.platforms.mastodon.default_instance');
     Http::fake(["{$instance}/api/v1/statuses/1200" => Http::response(['media_attachments' => [
         ['type' => 'image', 'url' => 'https://files.example.test/d.png'],
     ]])]);
@@ -230,7 +230,7 @@ test('mastodon reads a public status without a token when the account lacks a re
 
 test('bluesky returns full size images and nothing for a video', function () {
     $account = SocialAccount::factory()->bluesky()->create();
-    $appView = (string) config('trypost.platforms.bluesky.public_appview');
+    $appView = config('trypost.platforms.bluesky.public_appview');
     Http::fake(["{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::sequence()
         ->push(['posts' => [['embed' => ['images' => [
             ['fullsize' => 'https://cdn.bsky.example.test/1.jpg'],

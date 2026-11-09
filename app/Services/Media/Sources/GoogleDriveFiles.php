@@ -28,7 +28,7 @@ class GoogleDriveFiles
             throw new InvalidArgumentException('Invalid Google Drive file id.');
         }
 
-        $api = (string) config('trypost.media_sources.google_drive.api');
+        $api = config('trypost.media_sources.google_drive.api');
 
         return new RemoteFile(
             "{$api}/files/{$fileId}?alt=media&supportsAllDrives=true",

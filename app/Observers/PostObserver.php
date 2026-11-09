@@ -43,35 +43,36 @@ class PostObserver
         }
     }
 
+    /**
+     * The network side of the post moved: the network deleted it or listed it
+     * again, or it just went live.
+     */
     public function updated(Post $post): void
     {
-        $networkEvent = $post->wasChanged('publish_status')
-            ? EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'))
-            : null;
+        if (! $post->wasChanged('publish_status')) {
+            return;
+        }
+
+        $networkEvent = EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'));
 
         if (filled($networkEvent)) {
-            DB::afterCommit(function () use ($post, $networkEvent): void {
-                PostNetworkPresenceChanged::dispatch($post, $networkEvent);
-                PostStatusUpdated::dispatch($post);
-            });
+            $this->announceNetworkPresence($post, $networkEvent);
 
             return;
         }
 
-        if (! $this->wasJustPublished($post)) {
-            return;
+        if ($post->publish_status === PublishStatus::Published && filled($post->platform_post_id)) {
+            $this->syncPublicationAnalytics($post);
+            $this->syncPublishingActivity($post);
         }
-
-        $this->syncPublicationAnalytics($post);
-        $this->syncPublishingActivity($post);
     }
 
-    private function wasJustPublished(Post $post): bool
+    private function announceNetworkPresence(Post $post, EventType $event): void
     {
-        return $post->wasChanged('publish_status')
-            && $post->publish_status === PublishStatus::Published
-            && $post->getOriginal('publish_status') !== PublishStatus::Deleted
-            && filled($post->platform_post_id);
+        DB::afterCommit(function () use ($post, $event): void {
+            PostNetworkPresenceChanged::dispatch($post, $event);
+            PostStatusUpdated::dispatch($post);
+        });
     }
 
     /**

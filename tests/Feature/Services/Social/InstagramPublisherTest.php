@@ -1605,7 +1605,7 @@ test('instagram facebook publisher recovers a published container on graph.faceb
     ])->save();
     $this->post->setRelation('socialAccount', $account);
 
-    $graph = (string) config('trypost.platforms.instagram-facebook.graph_api');
+    $graph = config('trypost.platforms.instagram-facebook.graph_api');
 
     Http::fake(function (Request $request) use ($graph) {
         expect($request->url())->toStartWith($graph)

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Webhook\EventType;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
@@ -71,26 +72,27 @@ test('creating a webhook happens in a centered dialog with cancel before the pri
         ->assertDisabled('@create-webhook-submit');
 
     $checkedCount = "document.querySelectorAll('[data-testid=\"create-webhook-events\"] [role=\"checkbox\"][data-state=\"checked\"]').length";
+    $events = count(EventType::cases());
 
-    $page->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+    $page->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.select_all'))
         ->assertSeeIn('@create-webhook-events-post-published-description', __('webhooks.event_descriptions.post_published'))
         ->assertSeeIn('@create-webhook-endpoint-help', __('webhooks.create.endpoint_help'))
         ->click('@create-webhook-events-toggle-all')
-        ->assertScript($checkedCount, 6)
-        ->assertSeeIn('@create-webhook-events-count', '6 of 6 selected')
+        ->assertScript($checkedCount, $events)
+        ->assertSeeIn('@create-webhook-events-count', "{$events} of {$events} selected")
         ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.deselect_all'))
         ->assertEnabled('@create-webhook-submit')
         ->click('@create-webhook-events-toggle-all')
         ->assertScript($checkedCount, 0)
-        ->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->assertDisabled('@create-webhook-submit')
         ->click('@create-webhook-events-post-failed-description')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'checked')
-        ->assertSeeIn('@create-webhook-events-count', '1 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "1 of {$events} selected")
         ->click('@create-webhook-events-post-failed-checkbox')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'unchecked')
-        ->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->click('@create-webhook-events-post-published')
         ->click('@cancel-create-webhook');
     waitForWebhookCreateTestIdGone($page, 'create-webhook-dialog');

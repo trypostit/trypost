@@ -51,7 +51,7 @@ class GoogleMediaOAuth
      */
     public function exchangeCode(string $code, string $verifier): array
     {
-        $tokenApi = (string) config('trypost.media_sources.google_oauth.token_api');
+        $tokenApi = config('trypost.media_sources.google_oauth.token_api');
 
         $response = Http::asForm()
             ->acceptJson()

@@ -477,8 +477,8 @@ enum Platform: string
     public function instagramGraphBaseUrl(): string
     {
         return match ($this) {
-            self::InstagramFacebook => (string) config('trypost.platforms.instagram-facebook.graph_api'),
-            default => (string) config('trypost.platforms.instagram.graph_api'),
+            self::InstagramFacebook => config('trypost.platforms.instagram-facebook.graph_api'),
+            default => config('trypost.platforms.instagram.graph_api'),
         };
     }
 

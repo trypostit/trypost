@@ -23,7 +23,7 @@ class UnsplashService
 
     public function __construct()
     {
-        $this->baseUrl = (string) config('trypost.media_sources.unsplash.api');
+        $this->baseUrl = config('trypost.media_sources.unsplash.api');
         $this->accessKey = (string) config('services.unsplash.access_key', '');
     }
 
@@ -173,7 +173,7 @@ class UnsplashService
 
     private function website(): string
     {
-        $website = (string) config('trypost.media_sources.unsplash.website');
+        $website = config('trypost.media_sources.unsplash.website');
 
         return "{$website}/";
     }

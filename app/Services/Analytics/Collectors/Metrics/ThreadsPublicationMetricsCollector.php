@@ -15,7 +15,7 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
 {
     protected function graphBaseUrl(SocialAccount $account): string
     {
-        return (string) config('trypost.platforms.threads.graph_api');
+        return config('trypost.platforms.threads.graph_api');
     }
 
     protected function postsEdge(): string

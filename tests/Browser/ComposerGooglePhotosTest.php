@@ -92,7 +92,7 @@ function enableOnlyGooglePhotosForComposer(bool $mediaItemsSet = true): string
 
     test()->mock(HostResolver::class)->shouldReceive('addresses')->andReturn(['142.250.0.10']);
 
-    $api = (string) config('trypost.media_sources.google_photos.api').'/v1';
+    $api = config('trypost.media_sources.google_photos.api').'/v1';
 
     Http::fake([
         'https://oauth2.google.test/token' => Http::response([

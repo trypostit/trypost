@@ -313,6 +313,6 @@ class CanvaClient
 
     private function apiUrl(string $path): string
     {
-        return (string) config('trypost.media_sources.canva.api').$path;
+        return config('trypost.media_sources.canva.api').$path;
     }
 }

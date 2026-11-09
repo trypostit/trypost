@@ -28,7 +28,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
             $fields = array_merge($fields, ['VIDEO_MRC_VIEW', 'VIDEO_AVG_WATCH_TIME', 'VIDEO_10S_VIEW', 'QUARTILE_95_PERCENT_VIEW', 'VIDEO_V50_WATCH_TIME']);
         }
 
-        $api = (string) config('trypost.platforms.pinterest.api');
+        $api = config('trypost.platforms.pinterest.api');
 
         $response = $this->readUnlessDeleted(
             fn (): Response => $this->get($account, "{$api}/pins/{$publication->remote_id}/analytics", [
