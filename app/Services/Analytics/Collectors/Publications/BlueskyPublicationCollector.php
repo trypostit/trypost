@@ -22,7 +22,7 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
     {
         $response = $this->get(
             $account,
-            "{$account->blueskyService()}/xrpc/".BlueskyLexicon::LIST_RECORDS,
+            "{$account->bluesky_service}/xrpc/".BlueskyLexicon::LIST_RECORDS,
             [
                 'repo' => $account->platform_user_id,
                 'collection' => BlueskyLexicon::FEED_POST,

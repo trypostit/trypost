@@ -647,12 +647,12 @@ test('a deletion X, Bluesky, Mastodon or Pinterest confirms moves the post', fun
     ]]])]],
     'bluesky' => [Platform::Bluesky, [], fn (AnalyticsPublication $publication, SocialAccount $account): array => [
         rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
-        "{$account->blueskyService()}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound'], 400),
-        "{$account->blueskyService()}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => []]),
+        "{$account->bluesky_service}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound'], 400),
+        "{$account->bluesky_service}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => []]),
     ]],
     'mastodon' => [Platform::Mastodon, ['read'], fn (AnalyticsPublication $publication, SocialAccount $account): array => [
-        "{$account->mastodonInstance()}/api/v1/statuses/*" => Http::response([], 404),
-        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([]),
+        "{$account->mastodon_instance}/api/v1/statuses/*" => Http::response([], 404),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([]),
     ]],
     'pinterest' => [Platform::Pinterest, ['pins:read', 'boards:read'], function (AnalyticsPublication $publication): array {
         $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
@@ -671,8 +671,8 @@ test('a publication removed while its deletion is being checked is left alone', 
     $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => $publication->remote_id]);
     $publication->forceFill(['post_id' => $post->id])->save();
     Http::fake([
-        "{$account->mastodonInstance()}/api/v1/statuses/*" => Http::response([], 404),
-        "{$account->mastodonInstance()}/api/v1/accounts/*" => function () use ($publication): PromiseInterface {
+        "{$account->mastodon_instance}/api/v1/statuses/*" => Http::response([], 404),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => function () use ($publication): PromiseInterface {
             $publication->delete();
 
             return Http::response([]);

@@ -55,7 +55,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
      */
     private function confirmsDeletion(SocialAccount $account, AnalyticsPublication $publication): bool
     {
-        $records = "{$account->blueskyService()}/xrpc/";
+        $records = "{$account->bluesky_service}/xrpc/";
         $repository = ['repo' => $account->platform_user_id, 'collection' => BlueskyLexicon::FEED_POST];
 
         return $this->readsMissing(

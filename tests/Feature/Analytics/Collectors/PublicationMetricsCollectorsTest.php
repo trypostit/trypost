@@ -1339,7 +1339,7 @@ test('a Bluesky post the AppView hides, or one whose repository cannot be read, 
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $publication = networkPublication($account, '3kpost');
     $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
-    $pds = $account->blueskyService();
+    $pds = $account->bluesky_service;
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
         "{$pds}/xrpc/com.atproto.repo.getRecord*" => Http::response(...$record),
@@ -1357,8 +1357,8 @@ test('a Mastodon status the owner can no longer read is reported deleted while t
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read', 'write']]);
     $publication = networkPublication($account, '113000000000000001');
     Http::fake([
-        "{$account->mastodonInstance()}/api/v1/statuses/113000000000000001" => Http::response(['error' => 'Record not found'], $status),
-        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([['id' => '113000000000000002']]),
+        "{$account->mastodon_instance}/api/v1/statuses/113000000000000001" => Http::response(['error' => 'Record not found'], $status),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([['id' => '113000000000000002']]),
     ]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
@@ -1371,8 +1371,8 @@ test('a Mastodon status is not reported deleted without an owner read, an error 
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => $scopes]);
     $publication = networkPublication($account, '113000000000000001');
     Http::fake([
-        "{$account->mastodonInstance()}/api/v1/statuses/*" => Http::response(['error' => 'Record not found'], $status),
-        "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([], $accountStatus),
+        "{$account->mastodon_instance}/api/v1/statuses/*" => Http::response(['error' => 'Record not found'], $status),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([], $accountStatus),
     ]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
@@ -1392,7 +1392,7 @@ test('a deletion check that fails only for now is retried before anything is rep
     'mastodon statuses fail on the server' => [
         fn (): SocialAccount => SocialAccount::factory()->mastodon()->create(['scopes' => ['read']]),
         fn (SocialAccount $account): array => [
-            "{$account->mastodonInstance()}/api/v1/accounts/*" => Http::response([], 503),
+            "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([], 503),
             '*' => Http::response([], 404),
         ],
         'transient',

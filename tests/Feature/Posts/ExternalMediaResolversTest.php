@@ -201,7 +201,7 @@ test('the factory covers the open networks', function (Platform $platform, strin
 
 test('mastodon returns image video and gifv attachments in order', function () {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read']]);
-    $instance = $account->mastodonInstance();
+    $instance = $account->mastodon_instance;
     Http::fake(["{$instance}/api/v1/statuses/1100" => Http::response(['media_attachments' => [
         ['type' => 'image', 'url' => 'https://files.example.test/a.png'],
         ['type' => 'audio', 'url' => 'https://files.example.test/b.mp3'],

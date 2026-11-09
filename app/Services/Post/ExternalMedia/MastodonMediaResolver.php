@@ -15,7 +15,7 @@ class MastodonMediaResolver extends AbstractMediaResolver
     {
         $status = $this->getJson(
             $account,
-            "{$account->mastodonInstance()}/api/v1/statuses/{$publication->remote_id}",
+            "{$account->mastodon_instance}/api/v1/statuses/{$publication->remote_id}",
             authenticated: $account->canReadMastodonStatuses(),
         );
 

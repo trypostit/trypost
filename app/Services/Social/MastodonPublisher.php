@@ -36,7 +36,7 @@ class MastodonPublisher
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
-        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+        $instance = $account->mastodon_instance;
 
         $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 

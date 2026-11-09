@@ -12,12 +12,7 @@ class MastodonFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {
-        $instance = rtrim((string) data_get(
-            $account->meta,
-            'instance',
-            config('trypost.platforms.mastodon.default_instance'),
-        ), '/');
-        $response = $this->get($account, "{$instance}/api/v1/accounts/{$account->platform_user_id}");
+        $response = $this->get($account, "{$account->mastodon_instance}/api/v1/accounts/{$account->platform_user_id}");
 
         return $this->observation($date, data_get($response->json(), 'followers_count'));
     }

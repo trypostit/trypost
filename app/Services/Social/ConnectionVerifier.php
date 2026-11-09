@@ -338,7 +338,7 @@ class ConnectionVerifier
 
     private function refreshBlueskyToken(SocialAccount $account): void
     {
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
         $client = TokenRefreshClient::for(Platform::Bluesky);
 
         try {
@@ -813,7 +813,7 @@ class ConnectionVerifier
 
     private function verifyBluesky(SocialAccount $account): bool
     {
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
 
         $response = Http::withToken($account->access_token)
             ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
@@ -870,7 +870,7 @@ class ConnectionVerifier
 
     private function verifyMastodon(SocialAccount $account): bool
     {
-        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+        $instance = $account->mastodon_instance;
 
         $response = Http::withToken($account->access_token)
             ->get("{$instance}/api/v1/accounts/verify_credentials");

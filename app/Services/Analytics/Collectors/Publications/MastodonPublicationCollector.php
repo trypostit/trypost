@@ -20,7 +20,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
         $hasPrivateHistoryScope = $account->canReadMastodonStatuses();
-        $instance = $account->mastodonInstance();
+        $instance = $account->mastodon_instance;
         $response = $this->get(
             $account,
             "{$instance}/api/v1/accounts/{$account->platform_user_id}/statuses",

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\Webhook;
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 
 enum EventType: string
@@ -25,6 +26,18 @@ enum EventType: string
             PostStatus::Failed => self::PostFailed,
             PostStatus::Draft => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,
             PostStatus::PendingApproval => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,
+            default => null,
+        };
+    }
+
+    /**
+     * The network side of a post changed: deleted there, or listed there again.
+     */
+    public static function fromPublishStatus(PublishStatus $status, ?PublishStatus $previous = null): ?self
+    {
+        return match (true) {
+            $status === PublishStatus::Deleted => self::PostDeletedOnNetwork,
+            $status === PublishStatus::Published && $previous === PublishStatus::Deleted => self::PostRestored,
             default => null,
         };
     }

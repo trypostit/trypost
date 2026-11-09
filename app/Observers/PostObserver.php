@@ -45,13 +45,13 @@ class PostObserver
 
     public function updated(Post $post): void
     {
-        if ($this->wasMarkedDeletedOnNetwork($post) || $this->wasRestoredOnNetwork($post)) {
-            $type = $post->publish_status === PublishStatus::Deleted
-                ? EventType::PostDeletedOnNetwork
-                : EventType::PostRestored;
+        $networkEvent = $post->wasChanged('publish_status')
+            ? EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'))
+            : null;
 
-            DB::afterCommit(function () use ($post, $type): void {
-                PostNetworkPresenceChanged::dispatch($post, $type);
+        if (filled($networkEvent)) {
+            DB::afterCommit(function () use ($post, $networkEvent): void {
+                PostNetworkPresenceChanged::dispatch($post, $networkEvent);
                 PostStatusUpdated::dispatch($post);
             });
 
@@ -64,19 +64,6 @@ class PostObserver
 
         $this->syncPublicationAnalytics($post);
         $this->syncPublishingActivity($post);
-    }
-
-    private function wasMarkedDeletedOnNetwork(Post $post): bool
-    {
-        return $post->wasChanged('publish_status')
-            && $post->publish_status === PublishStatus::Deleted;
-    }
-
-    private function wasRestoredOnNetwork(Post $post): bool
-    {
-        return $post->wasChanged('publish_status')
-            && $post->publish_status === PublishStatus::Published
-            && $post->getOriginal('publish_status') === PublishStatus::Deleted;
     }
 
     private function wasJustPublished(Post $post): bool

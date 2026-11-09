@@ -59,7 +59,7 @@ class BlueskyPublisher
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
 
         // Refresh token if needed
         if ($account->needsProactiveTokenRefresh()) {

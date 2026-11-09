@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\Webhook\EventType;
 
@@ -30,4 +31,15 @@ test('fromPostStatus maps publishable statuses and ignores the rest', function (
     [PostStatus::Draft, null, PostStatus::Publishing],
     [PostStatus::Draft, null, PostStatus::Published],
     [PostStatus::Publishing, null],
+]);
+
+test('fromPublishStatus maps a deletion on the network and its return, and ignores the rest', function (PublishStatus $status, ?PublishStatus $previous, ?EventType $event) {
+    expect(EventType::fromPublishStatus($status, $previous))->toBe($event);
+})->with([
+    [PublishStatus::Deleted, PublishStatus::Published, EventType::PostDeletedOnNetwork],
+    [PublishStatus::Published, PublishStatus::Deleted, EventType::PostRestored],
+    [PublishStatus::Published, PublishStatus::Publishing, null],
+    [PublishStatus::Published, null, null],
+    [PublishStatus::Failed, PublishStatus::Published, null],
+    [PublishStatus::Retrying, PublishStatus::Deleted, null],
 ]);
