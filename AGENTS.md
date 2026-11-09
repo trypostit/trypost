@@ -1069,8 +1069,9 @@ an `enabled` flag or posts with several channels. Posts created together share
       story is never checked (it expires). A Facebook Page post is checked on
       its insights edge (`readPost()`): Graph answers its own node with #10,
       which also means a missing permission.
-    - X: the documented `resource-not-found` problem naming the post, in a
-      200's `errors` or a 404's body; no extra request (X bills each one).
+    - X: the documented `resource-not-found` problem naming the post, in the
+      `errors` of the lookup's 200 (single and batch alike, checked against a
+      real deleted post); no extra request (X bills each one).
     - Bluesky: `getPosts` leaves it out, its repository answers
       `RecordNotFound`, and `listRecords` still reads.
     - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also

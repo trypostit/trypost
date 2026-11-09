@@ -18,9 +18,6 @@ use Illuminate\Support\Uri;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
-    /** The post being read, so a 404's problem is matched against it. */
-    private string $postId = '';
-
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
@@ -31,13 +28,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $fields[] = 'non_public_metrics';
         }
 
-        $this->postId = $publication->remote_id;
-
-        [$tweet, $poll, $threadPolls] = $this->readUnlessDeleted(
-            fn (): array => $this->read($account, $publication, $fields),
-            fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
-            $publication->platform,
-        );
+        [$tweet, $poll, $threadPolls] = $this->read($account, $publication, $fields);
 
         if (! is_array($tweet)) {
             throw AnalyticsCollectionException::malformed('X post response lacks data.');
@@ -88,7 +79,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     {
         $response = $this->get($account, config('trypost.platforms.x.api')."/tweets/{$id}", $this->lookupParameters($fields));
 
-        return [$response->json('data'), $response->json('includes.polls.0'), []];
+        return [$this->postTweet($response, $id, $response->json('data')), $response->json('includes.polls.0'), []];
     }
 
     /**
@@ -117,31 +108,30 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             ->values()
             ->all();
 
-        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls];
+        $tweet = $this->postTweet($response, $id, $tweets->get($id));
+
+        return [$tweet, $pollOf($tweet), $threadPolls];
     }
 
     /**
-     * X answers a deleted post with its documented `resource-not-found` problem, in the
-     * `errors` of a 200 or in the body of a 404. A token that lost access gets 401/403
-     * or `not-authorized-for-resource` instead, so the problem alone confirms it.
+     * The post's tweet from a lookup. X leaves a deleted post out of `data` and names it
+     * in `errors` with its documented `resource-not-found` problem, in a 200; a token that
+     * lost access gets 401/403 or `not-authorized-for-resource` instead, so that problem
+     * alone confirms the deletion, with no extra request.
      */
-    protected function successfulResponse(Response $response): Response
+    private function postTweet(Response $response, string $id, mixed $tweet): mixed
     {
-        if ($this->reportsDeletedPost((array) $response->json('errors', []))) {
-            throw AnalyticsCollectionException::fromResponse($response, 'publication metrics collection', missingObject: true);
+        $deleted = blank($tweet) && $response->collect('errors')->contains(
+            fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
+                && data_get($error, 'resource_type') === 'tweet'
+                && (string) data_get($error, 'resource_id') === $id,
+        );
+
+        if ($deleted) {
+            throw AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
         }
 
-        return parent::successfulResponse($response);
-    }
-
-    /**
-     * @param  array<int, mixed>  $errors
-     */
-    private function reportsDeletedPost(array $errors): bool
-    {
-        return collect($errors)->contains(fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
-            && data_get($error, 'resource_type') === 'tweet'
-            && (string) data_get($error, 'resource_id') === $this->postId);
+        return $tweet;
     }
 
     /**

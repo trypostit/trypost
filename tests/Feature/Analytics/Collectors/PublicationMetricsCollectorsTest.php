@@ -1272,30 +1272,27 @@ function xNotFoundProblem(string $id, string $host = 'https://api.x.com'): array
     ];
 }
 
-test('an X post the network deleted is reported deleted from the lookup itself', function (int $status, string $host) {
+test('an X post the network deleted is reported deleted from the lookup itself', function (string $host) {
     $publication = networkPublication(SocialAccount::factory()->x()->create(), '1900000000000000001');
-    Http::fake(['*' => Http::response(['errors' => [xNotFoundProblem('1900000000000000001', $host)]], $status)]);
+    Http::fake(['*' => Http::response(['errors' => [xNotFoundProblem('1900000000000000001', $host)]])]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
     Http::assertSentCount(1);
 })->with([
-    'in the errors of a 200, api.x.com' => [200, 'https://api.x.com'],
-    'in the errors of a 200, api.twitter.com' => [200, 'https://api.twitter.com'],
-    'in the body of a 404, api.x.com' => [404, 'https://api.x.com'],
-    'in the body of a 404, api.twitter.com' => [404, 'https://api.twitter.com'],
+    'api.x.com' => ['https://api.x.com'],
+    'api.twitter.com' => ['https://api.twitter.com'],
 ]);
 
-test('an X problem that does not name this post as deleted is not reported deleted', function (int $status, array $error) {
+test('an X problem that does not name this post as deleted is not reported deleted', function (array $error) {
     $publication = networkPublication(SocialAccount::factory()->x()->create(), '1900000000000000001');
-    Http::fake(['*' => Http::response(['errors' => [$error]], $status)]);
+    Http::fake(['*' => Http::response(['errors' => [$error]])]);
 
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeFalse());
 })->with([
-    'not authorized' => [200, ['type' => 'https://api.x.com/2/problems/not-authorized-for-resource', 'resource_type' => 'tweet', 'resource_id' => '1900000000000000001']],
-    'another post' => [200, xNotFoundProblem('1900000000000000002')],
-    'another post in a 404' => [404, xNotFoundProblem('1900000000000000002')],
-    'not a post' => [200, [...xNotFoundProblem('1900000000000000001'), 'resource_type' => 'user']],
-    'no resource id' => [200, collect(xNotFoundProblem('1900000000000000001'))->except('resource_id')->all()],
+    'not authorized' => [['type' => 'https://api.x.com/2/problems/not-authorized-for-resource', 'resource_type' => 'tweet', 'resource_id' => '1900000000000000001']],
+    'another post' => [xNotFoundProblem('1900000000000000002')],
+    'not a post' => [[...xNotFoundProblem('1900000000000000001'), 'resource_type' => 'user']],
+    'no resource id' => [collect(xNotFoundProblem('1900000000000000001'))->except('resource_id')->all()],
 ]);
 
 test('an X post read with its reply polls is reported deleted when the lookup names the post itself', function () {
