@@ -1098,8 +1098,9 @@ an `enabled` flag or posts with several channels. Posts created together share
   `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
   sync, the importer's matching, TikTok video ids) keep
   `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
-  dialog, `isDeletedOnNetwork()` and `postCardPermalink()`
-  (`usePostCardActions.ts`) decide the badge and the link; the repurpose
+  dialog, `isDeletedOnNetwork()` and `postPermalink()`
+  (`lib/postPublication.ts`) decide the badge and the link, and
+  `getPostCardStatusConfig()` (`usePostStatus.ts`) the status shown; the repurpose
   activity list labels `publish_status` directly. Insights keep the historical
   numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every

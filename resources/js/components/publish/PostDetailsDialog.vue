@@ -5,7 +5,6 @@ import {
     IconPencil,
     IconRepeat,
     IconSend,
-    IconTrashX,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
@@ -38,15 +37,17 @@ import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
 import {
-    isDeletedOnNetwork,
-    postCardPermalink,
     schedulePostCard,
 } from '@/composables/usePostCardActions';
-import { getPostStatusConfig } from '@/composables/usePostStatus';
+import {
+    getPostCardStatusConfig,
+    getPostStatusConfig,
+} from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { filled } from '@/lib/helpers';
+import { isDeletedOnNetwork, postPermalink } from '@/lib/postPublication';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { isRecurring } from '@/lib/recurrence';
@@ -141,21 +142,11 @@ const currentStatusConfig = computed(() =>
 );
 
 /** Each sibling's status in the rail; a post the network deleted reads as deleted. */
-const railStatuses = computed<
-    Record<string, Pick<ReturnType<typeof getPostStatusConfig>, 'icon' | 'iconClass'> & { labelKey: string }>
->(() =>
+const railStatuses = computed(() =>
     Object.fromEntries(
         siblings.value.map((sibling) => [
             sibling.id,
-            isDeletedOnNetwork(sibling)
-                ? {
-                      icon: IconTrashX,
-                      labelKey: 'posts.publish.deleted_on_network.badge',
-                  }
-                : {
-                      ...getPostStatusConfig(sibling.status),
-                      labelKey: `posts.status.${sibling.status}`,
-                  },
+            getPostCardStatusConfig(sibling),
         ]),
     ),
 );
@@ -173,7 +164,7 @@ const channel = computed(() =>
         : null,
 );
 
-const permalink = computed(() => postCardPermalink(current.value));
+const permalink = computed(() => postPermalink(current.value));
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;
@@ -334,7 +325,7 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                     :is="railStatuses[sibling.id].icon"
                                     :class="railStatuses[sibling.id].iconClass"
                                     class="size-3.5 shrink-0"
-                                    :aria-label="$t(railStatuses[sibling.id].labelKey)"
+                                    :aria-label="railStatuses[sibling.id].label"
                                     :data-testid="`post-details-rail-status-icon-${sibling.id}`"
                                 />
                                 {{

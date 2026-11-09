@@ -22,9 +22,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { isDeletedOnNetwork } from '@/composables/usePostCardActions';
 import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { isDeletedOnNetwork } from '@/lib/postPublication';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus, ScheduleMode } from '@/types/post';

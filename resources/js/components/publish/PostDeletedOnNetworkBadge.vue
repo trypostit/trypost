@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { IconTrashX } from '@tabler/icons-vue';
-
 import { Badge } from '@/components/ui/badge';
+import { getDeletedOnNetworkStatusConfig } from '@/composables/usePostStatus';
+
+const status = getDeletedOnNetworkStatusConfig();
 </script>
 
 <template>
-    <Badge variant="destructive-subtle" class="h-6 gap-1 px-2 [&>svg]:size-4">
-        <IconTrashX />
-        {{ $t('posts.publish.deleted_on_network.badge') }}
+    <Badge :variant="status.variant" class="h-6 gap-1 px-2 [&>svg]:size-4">
+        <component :is="status.icon" />
+        {{ status.label }}
     </Badge>
 </template>

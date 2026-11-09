@@ -64,8 +64,6 @@ import {
     copyPostCardLink,
     duplicatePostCard,
     editPostCardUrlKey,
-    isDeletedOnNetwork,
-    postCardPermalink,
     schedulePostCard,
     sharePostCardLink,
     toastFirstError,
@@ -76,6 +74,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { isDeletedOnNetwork, postPermalink } from '@/lib/postPublication';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
@@ -290,7 +289,7 @@ const contentTypeKey = computed(() =>
 
 const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
 
-const permalink = computed(() => postCardPermalink(props.post));
+const permalink = computed(() => postPermalink(props.post));
 
 const metricsDetail = computed(() => {
     const detail = props.post.metrics ?? null;
