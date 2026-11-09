@@ -92,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureMorphMap();
+        $this->configureNightwatch();
         $this->configurePostHog();
         $this->configureRateLimiting();
         $this->configureSocialite();
@@ -100,6 +101,31 @@ class AppServiceProvider extends ServiceProvider
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
         Cashier::keepPastDueSubscriptionsActive();
+    }
+
+    /**
+     * Jobs, commands and scheduled tasks send only their slow queries: the queue
+     * runs millions of fast ones a month, and each would count as an event. Web
+     * requests keep every query, since they are already sampled.
+     */
+    protected function configureNightwatch(): void
+    {
+        $slowQueryMicroseconds = config('nightwatch.filtering.slow_query_ms') * 1000;
+
+        Nightwatch::rejectQueries(function (Query $query) use ($slowQueryMicroseconds): bool {
+            $ranOutsideARequest = $this->app->runningInConsole();
+            $isFast = $query->duration < $slowQueryMicroseconds;
+
+            return $ranOutsideARequest && $isFast;
+        });
+
+        Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
+            return in_array($cacheEvent->key, [
+                'illuminate:foundation:down',
+                'illuminate:queue:restart',
+                'illuminate:schedule:interrupt',
+            ]);
+        });
     }
 
     protected function configureMorphMap(): void
@@ -278,19 +304,6 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): Password => PasswordRequirements::rule());
-
-        $slowQueryMicroseconds = config('nightwatch.filtering.slow_query_ms') * 1000;
-
-        Nightwatch::rejectQueries(fn (Query $query): bool => $this->app->runningInConsole()
-            && $query->duration < $slowQueryMicroseconds);
-
-        Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
-            return in_array($cacheEvent->key, [
-                'illuminate:foundation:down',
-                'illuminate:queue:restart',
-                'illuminate:schedule:interrupt',
-            ]);
-        });
 
         // Custom email verification template
         VerifyEmail::toMailUsing(function (User $user, string $url) {
