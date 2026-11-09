@@ -8,6 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\Workspace;
@@ -172,7 +173,7 @@ class BuildInsightsExport
                 $this->network($row->platform),
                 __("analytics.detail.content_types.{$row->content_type}"),
                 $row->excerpt,
-                AnalyticsPublication::visiblePermalink($row->permalink, $row->availability),
+                AnalyticsPublication::visiblePermalink($row->permalink, PublicationAvailability::tryFrom((string) $row->availability)),
                 ...array_values($values),
             ];
         }

@@ -95,12 +95,8 @@ class AnalyticsPublication extends Model
     /**
      * A publication the network no longer has keeps its row, and loses the link to it.
      */
-    public static function visiblePermalink(?string $permalink, PublicationAvailability|string|null $availability): ?string
+    public static function visiblePermalink(?string $permalink, ?PublicationAvailability $availability): ?string
     {
-        $deleted = $availability instanceof PublicationAvailability
-            ? $availability === PublicationAvailability::Deleted
-            : $availability === PublicationAvailability::Deleted->value;
-
-        return $deleted ? null : $permalink;
+        return $availability === PublicationAvailability::Deleted ? null : $permalink;
     }
 }

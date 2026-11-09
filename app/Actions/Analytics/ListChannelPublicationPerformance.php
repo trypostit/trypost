@@ -8,6 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -94,7 +95,7 @@ class ListChannelPublicationPerformance
             'excerpt' => $row->excerpt,
             'thumbnail_url' => $media?->isImage() ? $media->url : $this->thumbnail($row->preview_metadata),
             'media' => $media?->toArray(),
-            'permalink' => AnalyticsPublication::visiblePermalink($row->permalink, $row->availability),
+            'permalink' => AnalyticsPublication::visiblePermalink($row->permalink, PublicationAvailability::tryFrom((string) $row->availability)),
             'published_at' => CarbonImmutable::parse($row->provider_published_at, 'UTC')->toIso8601String(),
             'content_type' => $row->content_type,
             'metrics' => [
