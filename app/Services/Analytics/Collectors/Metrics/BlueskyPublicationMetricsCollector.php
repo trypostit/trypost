@@ -20,7 +20,7 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
         $account = $this->account($publication);
         $uri = "at://{$account->platform_user_id}/".BlueskyLexicon::FEED_POST."/{$publication->remote_id}";
         $response = $this->get($account,
-            config('trypost.platforms.bluesky.public_appview').'/xrpc/'.BlueskyLexicon::GET_POSTS,
+            BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.public_appview'), BlueskyLexicon::GET_POSTS),
             ['uris' => [$uri]],
             authenticated: false,
         );
@@ -55,14 +55,13 @@ class BlueskyPublicationMetricsCollector extends AbstractPublicationMetricsColle
      */
     private function confirmsDeletion(SocialAccount $account, AnalyticsPublication $publication): bool
     {
-        $records = "{$account->bluesky_service}/xrpc/";
         $repository = ['repo' => $account->platform_user_id, 'collection' => BlueskyLexicon::FEED_POST];
 
         return $this->readsMissing(
-            fn (): Response => $this->get($account, $records.BlueskyLexicon::GET_RECORD, [...$repository, 'rkey' => $publication->remote_id], authenticated: false),
+            fn (): Response => $this->get($account, BlueskyLexicon::xrpc($account->bluesky_service, BlueskyLexicon::GET_RECORD), [...$repository, 'rkey' => $publication->remote_id], authenticated: false),
             fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
         ) && $this->stillReads(
-            fn (): Response => $this->get($account, $records.BlueskyLexicon::LIST_RECORDS, [...$repository, 'limit' => 1], authenticated: false),
+            fn (): Response => $this->get($account, BlueskyLexicon::xrpc($account->bluesky_service, BlueskyLexicon::LIST_RECORDS), [...$repository, 'limit' => 1], authenticated: false),
         );
     }
 }

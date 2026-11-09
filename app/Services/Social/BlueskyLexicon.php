@@ -52,4 +52,12 @@ final class BlueskyLexicon
     public const FACET_MENTION = 'app.bsky.richtext.facet#mention';
 
     public const FACET_TAG = 'app.bsky.richtext.facet#tag';
+
+    /**
+     * The XRPC endpoint of a method on a Bluesky server, e.g. `https://bsky.social/xrpc/com.atproto.server.getSession`.
+     */
+    public static function xrpc(string $server, string $method): string
+    {
+        return "{$server}/xrpc/{$method}";
+    }
 }

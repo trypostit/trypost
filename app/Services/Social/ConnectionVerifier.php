@@ -346,7 +346,7 @@ class ConnectionVerifier
             // still sends an empty JSON body, and bsky.social now rejects it
             // with "A request body was provided when none was expected".
             $response = $client->send(fn () => $this->refreshHttp()->withToken($account->refresh_token)
-                ->send('POST', "{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
+                ->send('POST', BlueskyLexicon::xrpc($service, BlueskyLexicon::REFRESH_SESSION)));
 
             $this->updateBlueskySession($account, $response);
 
@@ -357,7 +357,7 @@ class ConnectionVerifier
 
         if (isset($account->meta['password'])) {
             try {
-                $reauth = $client->send(fn () => $this->refreshHttp()->post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
+                $reauth = $client->send(fn () => $this->refreshHttp()->post(BlueskyLexicon::xrpc($service, BlueskyLexicon::CREATE_SESSION), [
                     'identifier' => $account->meta['identifier'],
                     'password' => decrypt($account->meta['password']),
                 ]));
@@ -816,7 +816,7 @@ class ConnectionVerifier
         $service = $account->bluesky_service;
 
         $response = Http::withToken($account->access_token)
-            ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
+            ->get(BlueskyLexicon::xrpc($service, BlueskyLexicon::GET_PROFILE), [
                 'actor' => $account->platform_user_id,
             ]);
 

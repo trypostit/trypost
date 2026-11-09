@@ -27,3 +27,15 @@ it('builds the endpoint from a host configured with a trailing slash', function 
     expect(TelegramApi::endpoint('getChat'))
         ->toBe('https://api.telegram.org/botTESTTOKEN/getChat');
 });
+
+it('links to the bot from the deep link host and the bot username', function () {
+    config(['trypost.platforms.telegram.bot_username' => 'TryPostBot']);
+
+    expect(TelegramApi::botUrl())->toBe(config('trypost.platforms.telegram.deep_link').'/TryPostBot');
+});
+
+it('has no bot link while no bot username is configured', function () {
+    config(['trypost.platforms.telegram.bot_username' => null]);
+
+    expect(TelegramApi::botUrl())->toBeNull();
+});

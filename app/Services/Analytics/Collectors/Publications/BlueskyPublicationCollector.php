@@ -22,7 +22,7 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
     {
         $response = $this->get(
             $account,
-            "{$account->bluesky_service}/xrpc/".BlueskyLexicon::LIST_RECORDS,
+            BlueskyLexicon::xrpc($account->bluesky_service, BlueskyLexicon::LIST_RECORDS),
             [
                 'repo' => $account->platform_user_id,
                 'collection' => BlueskyLexicon::FEED_POST,
@@ -90,7 +90,7 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
         foreach ($uris->chunk(self::HYDRATION_BATCH_SIZE) as $batch) {
             $response = $this->get(
                 $account,
-                "{$appView}/xrpc/".BlueskyLexicon::GET_POSTS,
+                BlueskyLexicon::xrpc($appView, BlueskyLexicon::GET_POSTS),
                 ['uris' => $batch->values()->all()],
                 authenticated: false,
             );
