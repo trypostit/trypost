@@ -5,35 +5,9 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForSettingsSidebarTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForSettingsSidebarScript(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function waitForSettingsSidebarState(mixed $page, string $state): void
 {
-    waitForSettingsSidebarScript($page, "document.querySelector('[data-slot=\"sidebar\"][data-state]')?.dataset.state === '{$state}'");
+    waitForState($page, '[data-slot="sidebar"][data-state]', "element.dataset.state === '{$state}'");
 }
 
 /**
@@ -93,7 +67,7 @@ test('settings pages swap the app sidebar for the settings sidebar', function ()
     $this->actingAs(settingsSidebarUser('admin'));
 
     $page = visit(route('app.profile.edit'));
-    waitForSettingsSidebarTestId($page, 'settings-sidebar');
+    waitFor($page, '@settings-sidebar');
 
     $page->assertVisible('@settings-sidebar')
         ->assertVisible('@settings-nav-profile')
@@ -127,7 +101,7 @@ test('members only see the settings they may use', function () {
     $this->actingAs(settingsSidebarUser('member'));
 
     $page = visit(route('app.profile.edit'));
-    waitForSettingsSidebarTestId($page, 'settings-sidebar');
+    waitFor($page, '@settings-sidebar');
 
     $page->assertVisible('@settings-nav-profile')
         ->assertVisible('@settings-nav-signatures')
@@ -143,9 +117,9 @@ test('the back link returns to the app', function () {
     $this->actingAs(settingsSidebarUser('admin'));
 
     $page = visit(route('app.labels.index'));
-    waitForSettingsSidebarTestId($page, 'settings-back');
+    waitFor($page, '@settings-back');
     $page->click('@settings-back');
-    waitForSettingsSidebarTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
 
     $page->assertVisible('@sidebar-new')->assertNoJavaScriptErrors();
 });
@@ -154,7 +128,7 @@ test('with the sidebar collapsed the settings nav stays as icons and the footer 
     $this->actingAs(settingsSidebarUser('admin'));
 
     $page = visit(route('app.profile.edit'))->resize(1280, 900);
-    waitForSettingsSidebarTestId($page, 'sidebar-footer-toggle');
+    waitFor($page, '@sidebar-footer-toggle');
     $page->click('@sidebar-footer-toggle');
     waitForSettingsSidebarState($page, 'collapsed');
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
@@ -170,7 +144,7 @@ test('with the sidebar collapsed the settings nav stays as icons and the footer 
     $page->assertMissing('@settings-nav-channels-count');
 
     $page->script('location.reload()');
-    waitForSettingsSidebarTestId($page, 'settings-nav-profile');
+    waitFor($page, '@settings-nav-profile');
     waitForSettingsSidebarState($page, 'collapsed');
     $page->assertVisible('@settings-nav-profile');
 

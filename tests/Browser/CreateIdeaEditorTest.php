@@ -18,53 +18,7 @@ function waitForCreateIdeaEditorTestId(mixed $page, string $testId, string $text
 {
     $expected = json_encode($text);
 
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element?.getBoundingClientRect().height > 0
-                    && (element.value ?? element.textContent ?? '').includes({$expected})) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateIdeaEditorCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateIdeaEditorDatabase(mixed $page, Closure $condition): void
-{
-    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
-}
-
-/**
- * The editor opens as an animated dialog; a click that lands before the
- * animation settles is swallowed.
- */
-function waitForCreateIdeaEditorDialog(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const dialog = document.querySelector('[data-testid="idea-editor"]');
-                if (dialog?.getAttribute('data-state') === 'open'
-                    && dialog.getAnimations().every((animation) => animation.playState !== 'running')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForState($page, "@{$testId}", "element.getBoundingClientRect().height > 0 && (element.value ?? element.textContent ?? '').includes({$expected})");
 }
 
 /**
@@ -100,29 +54,29 @@ test('a label created from the idea editor is selected and saved with the idea',
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     $page->fill('@idea-editor-title', 'Labelled idea')
         ->click('@idea-editor-labels');
-    waitForCreateIdeaEditorTestId($page, 'idea-editor-label-empty-create');
+    waitFor($page, '@idea-editor-label-empty-create');
     $page->click('@idea-editor-label-empty-create');
-    waitForCreateIdeaEditorTestId($page, 'idea-editor-label-new-name');
+    waitFor($page, '@idea-editor-label-new-name');
     $page->fill('@idea-editor-label-new-name', 'Launch')
         ->click('@submit-idea-editor-label-new');
 
     $label = null;
-    waitForCreateIdeaEditorDatabase($page, function () use ($workspace, &$label): bool {
+    waitForDatabase($page, function () use ($workspace, &$label): bool {
         $label = WorkspaceLabel::where('workspace_id', $workspace->id)->where('name', 'Launch')->first();
 
         return $label !== null;
     });
-    waitForCreateIdeaEditorTestId($page, "idea-editor-label-checkbox-{$label->id}");
+    waitFor($page, "@idea-editor-label-checkbox-{$label->id}");
 
     $page->assertScript("document.querySelector('[data-testid=\"idea-editor-label-checkbox-{$label->id}\"]').getAttribute('data-state')", 'checked')
         ->click('@idea-editor-labels')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => Idea::where('title', 'Labelled idea')->exists());
+    waitForDatabase($page, fn (): bool => Idea::where('title', 'Labelled idea')->exists());
     $idea = Idea::where('title', 'Labelled idea')->sole();
 
     expect($idea->labels()->pluck('workspace_labels.id')->all())->toBe([$label->id]);
@@ -135,31 +89,32 @@ test('a new idea is saved with its stage and label and the editor returns to the
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     $page->assertDisabled('@idea-editor-save')
         ->assertDisabled('@idea-editor-create-post')
         ->fill('@idea-editor-title', 'Spring launch')
         ->assertEnabled('@idea-editor-save')
         ->click('@idea-editor-stage');
-    waitForCreateIdeaEditorTestId($page, "idea-editor-stage-option-{$stage->id}");
+    waitFor($page, "@idea-editor-stage-option-{$stage->id}");
     $page->click("@idea-editor-stage-option-{$stage->id}")
         ->assertSeeIn('@idea-editor-stage', $stage->name)
         ->click('@idea-editor-labels');
-    waitForCreateIdeaEditorTestId($page, "idea-editor-label-option-{$label->id}");
+    waitFor($page, "@idea-editor-label-option-{$label->id}");
     $page->click("@idea-editor-label-option-{$label->id}")
         ->click('@idea-editor-labels')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => Idea::where('title', 'Spring launch')->exists());
+    waitForDatabase($page, fn (): bool => Idea::where('title', 'Spring launch')->exists());
     $idea = Idea::where('title', 'Spring launch')->sole();
 
     expect($idea->idea_stage_id)->toBe($stage->id)
         ->and($idea->labels()->pluck('workspace_labels.id')->all())->toBe([$label->id]);
 
     $indexPath = parse_url(route('app.create.ideas.index'), PHP_URL_PATH);
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]') && location.pathname === '{$indexPath}'");
-    waitForCreateIdeaEditorTestId($page, "idea-card-{$idea->id}");
+    waitForGone($page, '@idea-editor');
+    waitForPath($page, $indexPath);
+    waitFor($page, "@idea-card-{$idea->id}");
 
     expect($page->script('location.pathname'))->toBe($indexPath);
     $page->assertMissing('@idea-editor')
@@ -173,18 +128,18 @@ test('an existing idea opens in the editor and saves its changes', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     $page->assertValue('@idea-editor-title', 'Old title')
         ->assertValue('@idea-editor-body', 'Old body')
         ->fill('@idea-editor-body', 'New body')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => $idea->refresh()->body === 'New body');
+    waitForDatabase($page, fn (): bool => $idea->refresh()->body === 'New body');
 
     expect($idea->refresh()->body)->toBe('New body')
         ->and($idea->title)->toBe('Old title');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
+    waitForGone($page, '@idea-editor');
     $page->assertMissing('@idea-editor')
         ->assertNoJavaScriptErrors();
 });
@@ -251,24 +206,24 @@ test('an uploaded image blocks saving until it is ready, then the idea owns it',
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     holdCreateIdeaEditorUploads($page);
     $page->fill('@idea-editor-title', 'With a picture');
     selectCreateIdeaEditorFile($page, 'idea-photo.png');
-    waitForCreateIdeaEditorCondition($page, 'window.__ideaRequests.length === 1');
+    waitForCondition($page, 'window.__ideaRequests.length === 1');
 
     $page->assertVisible('@idea-upload-item')
         ->assertDisabled('@idea-editor-save')
         ->assertDisabled('@idea-editor-create-post');
 
     $page->script('window.__releaseIdeaRequests()');
-    waitForCreateIdeaEditorTestId($page, 'idea-media-item');
+    waitFor($page, '@idea-media-item');
     $page->assertMissing('@idea-upload-item')
         ->assertEnabled('@idea-editor-save')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => Idea::where('title', 'With a picture')->exists());
+    waitForDatabase($page, fn (): bool => Idea::where('title', 'With a picture')->exists());
     $idea = Idea::where('title', 'With a picture')->sole();
     $owned = $idea->ownedMedia()->sole();
 
@@ -277,17 +232,17 @@ test('an uploaded image blocks saving until it is ready, then the idea owns it',
         ->and($owned->original_filename)->toBe('idea-photo.png')
         ->and(Media::where('workspace_id', $workspace->id)->count())->toBe(1);
 
-    waitForCreateIdeaEditorCondition($page, "document.querySelector('[data-testid=\"idea-card-{$idea->id}\"] img')?.getBoundingClientRect().height > 0");
+    waitFor($page, "@idea-card-{$idea->id} img");
     expect($page->script("document.querySelector('[data-testid=\"idea-card-{$idea->id}\"] img').getAttribute('src')"))->toBe($owned->url);
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-media-item');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-media-item');
     $page->click('@idea-remove-0')
         ->assertMissing('@idea-media-item')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => $idea->refresh()->media === []);
+    waitForDatabase($page, fn (): bool => $idea->refresh()->media === []);
 
     expect($idea->refresh()->media)->toBe([])
         ->and(Media::find($owned->id))->toBeNull();
@@ -299,12 +254,12 @@ test('a failed upload blocks saving until it is removed', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     holdCreateIdeaEditorUploads($page, 'fail');
     $page->fill('@idea-editor-title', 'Failing upload');
     selectCreateIdeaEditorFile($page, 'broken.png');
-    waitForCreateIdeaEditorTestId($page, 'idea-upload-error');
+    waitFor($page, '@idea-upload-error');
 
     $page->assertVisible('@idea-editor-upload-blocked')
         ->assertDisabled('@idea-editor-save')
@@ -322,18 +277,18 @@ test('a media error from the server lands on the tile it belongs to', function (
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     $page->fill('@idea-editor-title', 'Two pictures');
     selectCreateIdeaEditorFile($page, 'first.png');
-    waitForCreateIdeaEditorCondition($page, "document.querySelectorAll('[data-testid=\"idea-media-item\"]').length === 1");
+    waitForCount($page, '@idea-media-item', 1);
     selectCreateIdeaEditorFile($page, 'second.png');
-    waitForCreateIdeaEditorCondition($page, "document.querySelectorAll('[data-testid=\"idea-media-item\"]').length === 2");
+    waitForCount($page, '@idea-media-item', 2);
 
     Media::where('workspace_id', $workspace->id)->where('original_filename', 'second.png')->sole()->delete();
 
     $page->click('@idea-editor-save');
-    waitForCreateIdeaEditorTestId($page, 'idea-media-error-1');
+    waitFor($page, '@idea-media-error-1');
 
     $page->assertVisible('@idea-media-error-1')
         ->assertMissing('@idea-media-error-0')
@@ -348,14 +303,15 @@ test('closing the editor aborts uploads in flight', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     holdCreateIdeaEditorUploads($page);
     selectCreateIdeaEditorFile($page, 'pending.png');
-    waitForCreateIdeaEditorCondition($page, 'window.__ideaRequests.length === 1');
+    waitForCondition($page, 'window.__ideaRequests.length === 1');
 
     $page->click('@idea-editor-cancel');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]') && window.__ideaAborted > 0");
+    waitForGone($page, '@idea-editor');
+    waitForCondition($page, 'window.__ideaAborted > 0');
 
     expect($page->script('window.__ideaAborted'))->toBe(1);
     $page->assertMissing('@idea-editor')
@@ -368,17 +324,17 @@ test('the dropzone is disabled while the idea saves', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     interceptCreateIdeaEditorRequests($page, route('app.create.ideas.store', absolute: false));
     $page->fill('@idea-editor-title', 'Saving slowly')
         ->assertEnabled('@idea-dropzone')
         ->click('@idea-editor-save');
-    waitForCreateIdeaEditorCondition($page, 'window.__ideaRequests.length === 1');
+    waitForCondition($page, 'window.__ideaRequests.length === 1');
 
     $page->assertDisabled('@idea-dropzone');
 
     $page->script('window.__releaseIdeaRequests()');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
+    waitForGone($page, '@idea-editor');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -387,8 +343,8 @@ test('the toolbar has no add button and the dropzone opens the file dialog', fun
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     $page->script(<<<'JS'
         (() => {
             window.__ideaFileDialogOpened = 0;
@@ -409,25 +365,25 @@ test('the AI assistant rewrites and extends the body without a channel', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->fill('@idea-editor-body', 'Rough text')
         ->click('@idea-editor-ai');
-    waitForCreateIdeaEditorTestId($page, 'writing-assistant-panel');
+    waitFor($page, '@writing-assistant-panel');
 
     $page->assertMissing('@writing-assistant-channel')
         ->assertVisible('@writing-assistant-disclaimer')
         ->click('@writing-assistant-mode-rephrase');
-    waitForCreateIdeaEditorTestId($page, 'writing-assistant-replace');
+    waitFor($page, '@writing-assistant-replace');
     $page->click('@writing-assistant-replace')
         ->assertValue('@idea-editor-body', 'Sharper text');
 
     PostWritingAssistant::fake(['New angle']);
 
     $page->click('@writing-assistant-mode-generate');
-    waitForCreateIdeaEditorTestId($page, 'writing-assistant-prompt');
+    waitFor($page, '@writing-assistant-prompt');
     $page->fill('@writing-assistant-prompt', 'ideas for our spring sale')
         ->click('@writing-assistant-generate');
-    waitForCreateIdeaEditorTestId($page, 'writing-assistant-insert');
+    waitFor($page, '@writing-assistant-insert');
     $page->click('@writing-assistant-insert')
         ->assertValue('@idea-editor-body', "Sharper text\n\nNew angle")
         ->assertNoJavaScriptErrors();
@@ -441,7 +397,7 @@ test('create post closes the editor and opens the composer with the idea', funct
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->click('@idea-editor-create-post');
     waitForCreateIdeaEditorTestId($page, 'composer-base-content', 'Hello');
 
@@ -465,9 +421,9 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
     if ($size !== null) {
         $page->resize(...$size);
     }
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate');
+    waitFor($page, '@ideas-generate');
     $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
+    waitFor($page, '@ideas-generate-dialog');
 
     $page->assertMissing('@ideas-generate-count')
         ->assertMissing('@ideas-generate-stage')
@@ -501,7 +457,7 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
         && $prompt->agent->business === 'A handmade ceramics studio');
 
     $page->click('@ideas-generate-use');
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     waitForCreateIdeaEditorTestId($page, 'idea-editor-title', 'Glaze of the week');
 
     $page->assertMissing('@ideas-generate-dialog')
@@ -511,25 +467,25 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
     expect(Idea::where('workspace_id', $workspace->id)->exists())->toBeFalse();
 
     $page->click('@idea-editor-save');
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => Idea::where('workspace_id', $workspace->id)->exists());
+    waitForDatabase($page, fn (): bool => Idea::where('workspace_id', $workspace->id)->exists());
 
     $idea = Idea::where('workspace_id', $workspace->id)->sole();
     expect($idea->title)->toBe('Glaze of the week')
         ->and($idea->body)->toBe('Feature one glaze.')
         ->and($idea->idea_stage_id)->toBeNull();
 
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
-    waitForCreateIdeaEditorTestId($page, 'ideas-new');
+    waitForGone($page, '@idea-editor');
+    waitFor($page, '@ideas-new');
     $page->click('@ideas-new');
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     $page->assertValue('@idea-editor-title', '')
         ->assertValue('@idea-editor-body', '');
 
     $page->click('@idea-editor-cancel');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
+    waitForGone($page, '@idea-editor');
     $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-audience');
+    waitFor($page, '@ideas-generate-audience');
 
     $page->assertValue('@ideas-generate-audience', '')
         ->assertValue('@ideas-generate-business', '')
@@ -549,9 +505,9 @@ test('generate ideas shows the payment required message inline when AI is denied
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate');
+    waitFor($page, '@ideas-generate');
     $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
+    waitFor($page, '@ideas-generate-dialog');
     $page->fill('@ideas-generate-business', 'A handmade ceramics studio')
         ->fill('@ideas-generate-audience', 'Home decor lovers')
         ->click('@ideas-generate-submit');
@@ -576,9 +532,9 @@ test('generate ideas shows the failure inline when the provider fails and a retr
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate');
+    waitFor($page, '@ideas-generate');
     $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
+    waitFor($page, '@ideas-generate-dialog');
     $page->fill('@ideas-generate-business', 'A handmade ceramics studio')
         ->fill('@ideas-generate-audience', 'Home decor lovers')
         ->click('@ideas-generate-submit');
@@ -590,7 +546,7 @@ test('generate ideas shows the failure inline when the provider fails and a retr
         ->click('@ideas-generate-submit');
     waitForCreateIdeaEditorTestId($page, 'ideas-generate-result', 'Behind the kiln');
 
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"ideas-generate-error\"]')");
+    waitForGone($page, '@ideas-generate-error');
 
     $page->assertSeeIn('@ideas-generate-result', 'Show the firing process.')
         ->assertMissing('@ideas-generate-error')
@@ -603,7 +559,7 @@ test('the editor footer renders cancel, then create post, then save', function (
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -644,13 +600,14 @@ test('opening and closing an idea on the board reloads only the editor', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeaEditorTestId($page, "idea-card-{$idea->id}");
+    waitFor($page, "@idea-card-{$idea->id}");
     recordCreateIdeaEditorInertiaRequests($page);
 
     $page->click("@idea-card-{$idea->id}");
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->click('@idea-editor-cancel');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]') && window.__inertiaRequests.length >= 2");
+    waitForGone($page, '@idea-editor');
+    waitForCondition($page, 'window.__inertiaRequests.length >= 2');
 
     expect($page->script('window.__inertiaRequests'))->toBe(['editor', 'editor']);
     $page->assertMissing('@idea-editor')
@@ -663,13 +620,13 @@ test('saving an idea reloads the board with the change', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeaEditorTestId($page, "idea-card-{$idea->id}");
+    waitFor($page, "@idea-card-{$idea->id}");
     $page->click("@idea-card-{$idea->id}");
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->fill('@idea-editor-title', 'After')
         ->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
+    waitForGone($page, '@idea-editor');
     waitForCreateIdeaEditorTestId($page, "idea-card-{$idea->id}", 'After');
 
     $page->assertSeeIn("@idea-card-{$idea->id}", 'After')
@@ -686,18 +643,18 @@ test('opening and closing an idea in the gallery keeps the loaded pages', functi
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index', ['view' => 'gallery']));
-    waitForCreateIdeaEditorTestId($page, "idea-card-{$ideas->first()->id}");
+    waitFor($page, "@idea-card-{$ideas->first()->id}");
     $page->script("document.querySelector('[data-testid=\"ideas-gallery\"]').scrollTo(0, 1e6)");
-    waitForCreateIdeaEditorCondition($page, "document.querySelectorAll('[data-testid^=\"idea-card-menu-\"]').length > {$size}");
+    waitForCount($page, '[data-testid^="idea-card-menu-"]', $size, '>');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"idea-card-menu-\"]').length"))->toBe($size + 5);
 
     $last = $ideas->last();
     $page->script("document.querySelector('[data-testid=\"idea-card-{$last->id}\"]').click()");
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->assertValue('@idea-editor-title', $last->title)
         ->click('@idea-editor-cancel');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')");
+    waitForGone($page, '@idea-editor');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"idea-card-menu-\"]').length"))->toBe($size + 5);
     $page->assertNoJavaScriptErrors();
@@ -708,18 +665,18 @@ test('editing an idea image swaps in the edited file and releases the original o
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
-    waitForCreateIdeaEditorTestId($page, 'idea-dropzone');
+    waitForOpen($page, '@idea-editor');
+    waitFor($page, '@idea-dropzone');
     $page->fill('@idea-editor-title', 'Edited picture');
     selectCreateIdeaEditorFile($page, 'idea-photo.png');
-    waitForCreateIdeaEditorTestId($page, 'idea-media-item');
+    waitFor($page, '@idea-media-item');
     $page->click('@idea-editor-save');
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => Idea::where('title', 'Edited picture')->exists());
+    waitForDatabase($page, fn (): bool => Idea::where('title', 'Edited picture')->exists());
     $idea = Idea::where('title', 'Edited picture')->sole();
     $original = $idea->ownedMedia()->sole();
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $fixture = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page->script(<<<JS
         (() => {
@@ -732,18 +689,19 @@ test('editing an idea image swaps in the edited file and releases the original o
             });
         })();
     JS);
-    waitForCreateIdeaEditorTestId($page, 'idea-edit-0');
+    waitFor($page, '@idea-edit-0');
     $page->assertMissing('@idea-alt-0')
         ->assertMissing('@idea-tag-0')
         ->click('@idea-edit-0');
-    waitForCreateIdeaEditorCondition($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     $page->assertMissing('@media-editor-segments')
         ->click('@media-editor-rotate-right')
         ->click('@media-editor-apply');
-    waitForCreateIdeaEditorCondition($page, "!document.querySelector('[data-testid=\"media-editor\"]') && document.querySelector('[data-testid=\"idea-editor-save\"]')?.disabled === false");
+    waitForGone($page, '@media-editor');
+    waitForState($page, '@idea-editor-save', 'element.disabled === false');
     $page->click('@idea-editor-save');
 
-    waitForCreateIdeaEditorDatabase($page, fn (): bool => data_get($idea->refresh()->media, '0.id') !== $original->id);
+    waitForDatabase($page, fn (): bool => data_get($idea->refresh()->media, '0.id') !== $original->id);
     $owned = $idea->refresh()->ownedMedia()->sole();
 
     expect($owned->id)->not->toBe($original->id)
@@ -760,11 +718,11 @@ test('the assistant buttons only open the AI sidebar; it closes from its X', fun
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     foreach (['idea-editor-ai', 'idea-editor-use-assistant'] as $button) {
         $page->click("@{$button}");
-        waitForCreateIdeaEditorTestId($page, 'idea-editor-assistant');
+        waitFor($page, '@idea-editor-assistant');
         $page->assertAttribute("@{$button}", 'aria-pressed', 'true')
             ->click("@{$button}");
         $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
@@ -785,7 +743,7 @@ test('the assistant buttons only open the AI sidebar; it closes from its X', fun
         JS))->toBe(['onTheLeft' => true, 'closesApart' => true]);
 
         $page->click('@idea-editor-assistant-close');
-        waitForCreateIdeaEditorCondition($page, '!document.querySelector(\'[data-testid="idea-editor-assistant"]\')');
+        waitForGone($page, '@idea-editor-assistant');
 
         $page->assertMissing('@idea-editor-assistant')
             ->assertAttribute("@{$button}", 'aria-pressed', 'false');
@@ -800,7 +758,7 @@ test('on a phone the title and close share the first row and the stage and label
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.create.ideas.create'))->resize(390, 844);
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -840,10 +798,10 @@ test('the generate ideas dialog keeps its footer on screen at 390px in the form 
     JS;
 
     $page = visit(route('app.create.ideas.index'))->resize(390, 844);
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate');
+    waitFor($page, '@ideas-generate');
     $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-submit');
+    waitFor($page, '@ideas-generate-dialog');
+    waitFor($page, '@ideas-generate-submit');
 
     expect($page->script("document.querySelector('[data-testid=\"ideas-generate-dialog\"]').getAttribute('role') === 'dialog' && document.querySelector('[data-testid=\"ideas-generate-cancel\"]').compareDocumentPosition(document.querySelector('[data-testid=\"ideas-generate-submit\"]')) & Node.DOCUMENT_POSITION_FOLLOWING ? true : false"))->toBeTrue();
 
@@ -866,11 +824,11 @@ test('the stage picker search ignores accents and matches each word in any order
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.create'));
-    waitForCreateIdeaEditorDialog($page);
+    waitForOpen($page, '@idea-editor');
     $page->click('@idea-editor-stage');
-    waitForCreateIdeaEditorTestId($page, 'idea-editor-stage-search');
+    waitFor($page, '@idea-editor-stage-search');
     $page->type('@idea-editor-stage-search', 'FINAL revisao');
-    waitForCreateIdeaEditorTestId($page, "idea-editor-stage-option-{$stage->id}");
+    waitFor($page, "@idea-editor-stage-option-{$stage->id}");
 
     $page->assertPresent("@idea-editor-stage-option-{$stage->id}")
         ->assertMissing("@idea-editor-stage-option-{$other->id}")

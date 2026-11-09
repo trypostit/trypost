@@ -12,23 +12,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 
-function waitForPublishListSkeletonCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForPublishListSkeletonTestId(mixed $page, string $testId): void
-{
-    waitForPublishListSkeletonCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
 /**
  * Holds every Inertia partial reload that asks for `posts` until
  * `window.__releasePublishList()`.
@@ -134,14 +117,14 @@ test('each tab shows the skeleton, never the empty state, until its cards arrive
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForPublishListSkeletonTestId($page, "post-card-{$posts['sent']->id}");
+    waitFor($page, "@post-card-{$posts['sent']->id}");
     holdPublishListReloads($page);
 
     foreach (['queue' => 'timeline', 'approvals' => 'list', 'drafts' => 'list', 'sent' => 'list'] as $tab => $variant) {
         $post = $posts[$tab];
 
         $page->click("@publish-tab-{$tab}");
-        waitForPublishListSkeletonTestId($page, "publish-list-skeleton-{$tab}");
+        waitFor($page, "@publish-list-skeleton-{$tab}");
 
         expect(publishListVisible($page, "publish-list-skeleton-{$tab}"))->toBeTrue()
             ->and($page->script("document.querySelector('[data-testid=\"publish-list-skeleton-{$tab}\"]').dataset.variant"))->toBe($variant)
@@ -153,7 +136,7 @@ test('each tab shows the skeleton, never the empty state, until its cards arrive
             ->and($page->script("document.querySelectorAll('[data-testid=\"publish-list-skeleton-slot\"]').length > 0"))->toBe($variant === 'timeline');
 
         $page->script('window.__releasePublishList()');
-        waitForPublishListSkeletonTestId($page, "post-card-{$post->id}");
+        waitFor($page, "@post-card-{$post->id}");
 
         $page->assertVisible("@post-card-{$post->id}")
             ->assertMissing("@publish-list-skeleton-{$tab}")
@@ -172,12 +155,12 @@ test('a tab without data shows its empty state and never the skeleton', function
     $this->actingAs($user);
 
     $page = visit($url('drafts'));
-    waitForPublishListSkeletonTestId($page, 'publish-empty-new-post-drafts');
+    waitFor($page, '@publish-empty-new-post-drafts');
     watchPublishListSkeleton($page);
 
     foreach (['sent', 'queue', 'approvals', 'drafts'] as $tab) {
         $page->click("@publish-tab-{$tab}");
-        waitForPublishListSkeletonTestId($page, "publish-empty-new-post-{$tab}");
+        waitFor($page, "@publish-empty-new-post-{$tab}");
 
         $page->assertVisible("@publish-empty-new-post-{$tab}")
             ->assertMissing("@publish-list-skeleton-{$tab}");
@@ -193,21 +176,21 @@ test('the channel queue skeleton is a plain list while the posting times are hid
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', ['account' => $channel, 'tab' => 'drafts']));
-    waitForPublishListSkeletonTestId($page, 'empty-state');
+    waitFor($page, '@empty-state');
     setBrowserStorageItem($page, $user, 'publish.showSlots', false);
     $page->refresh();
-    waitForPublishListSkeletonTestId($page, 'empty-state');
+    waitFor($page, '@empty-state');
     $page->click('@publish-tab-sent');
-    waitForPublishListSkeletonTestId($page, 'empty-state');
+    waitFor($page, '@empty-state');
     holdPublishListReloads($page);
     $page->click('@publish-tab-queue');
-    waitForPublishListSkeletonTestId($page, 'publish-list-skeleton-queue');
+    waitFor($page, '@publish-list-skeleton-queue');
 
     expect($page->script("document.querySelector('[data-testid=\"publish-list-skeleton-queue\"]').dataset.variant"))->toBe('list')
         ->and(publishListVisible($page, 'empty-state'))->toBeFalse();
 
     $page->script('window.__releasePublishList()');
-    waitForPublishListSkeletonTestId($page, "post-card-{$post->id}");
+    waitFor($page, "@post-card-{$post->id}");
     $page->assertVisible("@post-card-{$post->id}")->assertNoJavaScriptErrors();
 });
 
@@ -222,7 +205,7 @@ test('the deferred list keeps appending pages on scroll', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForPublishListSkeletonCondition($page, "document.querySelectorAll('[data-testid^=\"post-card-\"][data-post-id]').length >= {$perPage}");
+    waitForCount($page, '[data-testid^="post-card-"][data-post-id]', $perPage, '>=');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"post-card-\"][data-post-id]').length"))->toBe($perPage);
 
@@ -232,7 +215,7 @@ test('the deferred list keeps appending pages on scroll', function () {
             scroller.scrollTop = scroller.scrollHeight;
         })();
     JS);
-    waitForPublishListSkeletonCondition($page, "document.querySelectorAll('[data-testid^=\"post-card-\"][data-post-id]').length > {$perPage}");
+    waitForCount($page, '[data-testid^="post-card-"][data-post-id]', $perPage, '>');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"post-card-\"][data-post-id]').length"))->toBe($perPage + 3);
     $page->assertMissing('@publish-list-skeleton-drafts')->assertNoJavaScriptErrors();
@@ -245,17 +228,17 @@ test('deleting a draft keeps the list on screen without the skeleton', function 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForPublishListSkeletonTestId($page, "post-card-{$deleted->id}");
+    waitFor($page, "@post-card-{$deleted->id}");
     watchPublishListSkeleton($page);
 
     $page->click("@post-card-menu-{$deleted->id}");
-    waitForPublishListSkeletonTestId($page, "post-delete-{$deleted->id}");
+    waitFor($page, "@post-delete-{$deleted->id}");
     $page->click("@post-delete-{$deleted->id}");
-    waitForPublishListSkeletonTestId($page, 'confirm-delete-action');
+    waitFor($page, '@confirm-delete-action');
     $page->assertMissing('@confirm-delete-input')
         ->assertSeeIn('@confirm-delete-action', __('posts.edit.delete_modal.action'))
         ->click('@confirm-delete-action');
-    waitForPublishListSkeletonCondition($page, "document.querySelector('[data-testid=\"post-card-{$deleted->id}\"]') === null");
+    waitForGone($page, "@post-card-{$deleted->id}");
 
     expect($page->script('window.__publishSkeletonSeen'))->toBeFalse()
         ->and(Post::query()->whereKey($deleted->id)->exists())->toBeFalse();

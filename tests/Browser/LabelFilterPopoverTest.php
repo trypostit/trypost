@@ -6,31 +6,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 
-function waitForLabelPopoverTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function waitForLabelPopoverUrl(mixed $page, string $condition): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const params = new URLSearchParams(location.search);
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForCondition($page, "((params) => {$condition})(new URLSearchParams(location.search))");
 }
 
 test('the label filter offers untagged, clears the selection and links to the labels page', function () {
@@ -43,9 +21,9 @@ test('the label filter offers untagged, clears the selection and links to the la
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForLabelPopoverTestId($page, 'posts-label-filter');
+    waitFor($page, '@posts-label-filter');
     $page->click('@posts-label-filter');
-    waitForLabelPopoverTestId($page, 'posts-label-untagged');
+    waitFor($page, '@posts-label-untagged');
 
     $page->assertScript('document.querySelector("[data-testid=posts-label-settings]").getAttribute("href")', route('app.labels.index', absolute: false))
         ->assertPresent('@posts-label-clear')
@@ -75,16 +53,16 @@ test('the label filter offers to create a label when the workspace has none', fu
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForLabelPopoverTestId($page, 'posts-label-filter');
+    waitFor($page, '@posts-label-filter');
     $page->click('@posts-label-filter');
-    waitForLabelPopoverTestId($page, 'posts-label-empty');
+    waitFor($page, '@posts-label-empty');
 
     $page->assertMissing('@posts-label-untagged')
         ->assertMissing('@posts-label-settings')
         ->assertSeeIn('@posts-label-empty', __('posts.no_labels'))
         ->assertMissing('@posts-label-create')
         ->click('@posts-label-empty-create');
-    waitForLabelPopoverTestId($page, 'posts-label-new-name');
+    waitFor($page, '@posts-label-new-name');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -99,9 +77,7 @@ test('the label filter offers to create a label when the workspace has none', fu
     $page->fill('@posts-label-new-name', 'Launch')
         ->click('@submit-posts-label-new');
 
-    for ($attempt = 0; $attempt < 40 && ! WorkspaceLabel::query()->where('workspace_id', $workspace->id)->where('name', 'Launch')->exists(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => WorkspaceLabel::query()->where('workspace_id', $workspace->id)->where('name', 'Launch')->exists());
 
     expect(WorkspaceLabel::query()->where('workspace_id', $workspace->id)->where('name', 'Launch')->exists())->toBeTrue();
 
@@ -119,9 +95,9 @@ test('the label filter search ignores accents and hides untagged when it does no
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForLabelPopoverTestId($page, 'posts-label-filter');
+    waitFor($page, '@posts-label-filter');
     $page->click('@posts-label-filter');
-    waitForLabelPopoverTestId($page, 'posts-label-untagged');
+    waitFor($page, '@posts-label-untagged');
 
     $page->fill('@posts-label-search', 'promocao')
         ->assertVisible("@posts-label-option-{$promo->id}")

@@ -13,30 +13,6 @@ use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Illuminate\Support\Facades\Queue;
 
-function waitForCardActionsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCardActionsCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return list<string>
  */
@@ -50,9 +26,9 @@ function cardActionsMenuItems(mixed $page, string $key): array
 
 function openCardActionsMenu(mixed $page, string $key): void
 {
-    waitForCardActionsTestId($page, "post-card-menu-{$key}");
+    waitFor($page, "@post-card-menu-{$key}");
     $page->click("@post-card-menu-{$key}");
-    waitForCardActionsTestId($page, "post-card-menu-content-{$key}");
+    waitFor($page, "@post-card-menu-content-{$key}");
 }
 
 /**
@@ -111,7 +87,7 @@ test('a queued card shows publish now, edit and the menu in order', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForCardActionsTestId($page, "post-publish-now-{$queued->id}");
+    waitFor($page, "@post-publish-now-{$queued->id}");
 
     $footer = $page->script(<<<JS
         Array.from(document.querySelector('[data-testid="post-publish-now-{$queued->id}"]').parentElement.children)
@@ -169,12 +145,10 @@ test('publish now on a queued card sends the post', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForCardActionsTestId($page, "post-publish-now-{$queued->id}");
+    waitFor($page, "@post-publish-now-{$queued->id}");
     $page->click("@post-publish-now-{$queued->id}");
 
-    for ($attempt = 0; $attempt < 50 && $queued->refresh()->status !== PostStatus::Publishing; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $queued->refresh()->status === PostStatus::Publishing);
 
     expect($queued->refresh()->status)->toBe(PostStatus::Publishing);
     $page->assertNoJavaScriptErrors();
@@ -186,12 +160,12 @@ test('move to drafts takes the card out of the queue and updates the tab counts'
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForCardActionsTestId($page, 'publish-tab-count-queue');
+    waitFor($page, '@publish-tab-count-queue');
     $page->assertSeeIn('@publish-tab-count-queue', '1');
 
     openCardActionsMenu($page, $queued->id);
     $page->click("@post-move-drafts-{$queued->id}");
-    waitForCardActionsCondition($page, "!document.querySelector('[data-testid=\"post-card-{$queued->id}\"]')");
+    waitForGone($page, "@post-card-{$queued->id}");
 
     expect($queued->refresh()->status)->toBe(PostStatus::Draft);
     $page->assertMissing("@post-card-{$queued->id}")
@@ -209,7 +183,7 @@ test('duplicate creates a copy and opens it in the composer', function () {
     $page = visit(route('app.posts.index'));
     openCardActionsMenu($page, $queued->id);
     $page->click("@post-duplicate-{$queued->id}");
-    waitForCardActionsTestId($page, 'post-composer-dialog');
+    waitFor($page, '@post-composer-dialog');
 
     $copy = Post::query()->where('workspace_id', $workspace->id)->whereKeyNot($queued->id)->first();
 
@@ -228,7 +202,7 @@ test('post details opens a read-only preview of the post', function () {
     $page = visit(route('app.posts.index'));
     openCardActionsMenu($page, $queued->id);
     $page->click("@post-details-open-{$queued->id}");
-    waitForCardActionsTestId($page, "post-details-{$queued->id}");
+    waitFor($page, "@post-details-{$queued->id}");
 
     $page->assertSeeIn("@post-details-{$queued->id}", __('posts.show.title'))
         ->assertSeeIn("@post-details-status-{$queued->id}", __('posts.status.scheduled'))
@@ -303,14 +277,14 @@ test('a sent post with a link offers to share it in a new post and to copy it', 
 
     $page->script('window.__copied = null; navigator.clipboard.writeText = async (text) => { window.__copied = text; };');
     $page->click("@post-copy-link-{$published->id}");
-    waitForCardActionsCondition($page, 'window.__copied !== null');
+    waitForCondition($page, 'window.__copied !== null');
     expect($page->script('window.__copied'))->toBe($url);
 
     openCardActionsMenu($page, $published->id);
     $page->click("@post-share-link-{$published->id}");
-    waitForCardActionsTestId($page, 'post-composer-dialog');
-    waitForCardActionsTestId($page, "composer-account-{$channel->id}");
-    waitForCardActionsTestId($page, "composer-caption-{$channel->id}");
+    waitFor($page, '@post-composer-dialog');
+    waitFor($page, "@composer-account-{$channel->id}");
+    waitFor($page, "@composer-caption-{$channel->id}");
 
     $page->assertVisible("@composer-account-{$channel->id}")
         ->assertValue("@composer-caption-{$channel->id}", $url)

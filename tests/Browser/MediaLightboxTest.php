@@ -12,28 +12,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
-function waitForMediaLightboxCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForMediaLightboxTestId(mixed $page, string $testId): void
-{
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
-function waitForMediaLightboxGone(mixed $page): void
-{
-    waitForMediaLightboxCondition($page, "!document.querySelector('[data-testid=\"media-lightbox\"]')");
-}
-
 function mediaLightboxCounter(mixed $page): string
 {
     return trim((string) $page->script("document.querySelector('[data-testid=\"media-lightbox-counter\"]')?.textContent ?? ''"));
@@ -108,11 +86,11 @@ test('a single image opens without navigation and closes on escape', function ()
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-0");
+    waitFor($page, "@post-thumbnail-{$post->id}-0");
     $before = $page->script('location.href');
 
     $page->click("@post-thumbnail-{$post->id}-0");
-    waitForMediaLightboxTestId($page, 'media-lightbox-image');
+    waitFor($page, '@media-lightbox-image');
 
     $page->assertVisible('@media-lightbox-image')
         ->assertVisible('@media-lightbox-close')
@@ -125,7 +103,7 @@ test('a single image opens without navigation and closes on escape', function ()
         ->and(mediaLightboxImageLabel($page))->toBe('1');
 
     $page->keys('@media-lightbox', 'Escape');
-    waitForMediaLightboxGone($page);
+    waitForGone($page, '@media-lightbox');
 
     $page->assertNotPresent('@media-lightbox');
     expect($page->script('location.href'))->toBe($before);
@@ -137,7 +115,7 @@ test('five images open at the clicked one and move with the buttons and arrow ke
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-1");
+    waitFor($page, "@post-thumbnail-{$post->id}-1");
 
     $page->assertPresent("@post-thumbnail-more-{$post->id}")
         ->assertNotPresent("@post-thumbnail-{$post->id}-4");
@@ -147,23 +125,23 @@ test('five images open at the clicked one and move with the buttons and arrow ke
     expect($page->script($expandOpacity))->toBe('0');
 
     $page->hover("@post-thumbnail-{$post->id}-1");
-    waitForMediaLightboxCondition($page, "{$expandOpacity} === '1'");
+    waitForState($page, "@post-thumbnail-expand-{$post->id}-1", "getComputedStyle(element).opacity === '1'");
 
     expect($page->script($expandOpacity))->toBe('1');
 
     $page->click("@post-thumbnail-{$post->id}-1");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+    waitFor($page, '@media-lightbox-counter');
 
     expect(mediaLightboxCounter($page))->toBe('2 / 5')
         ->and(mediaLightboxImageLabel($page))->toBe('2');
 
     $page->click('@media-lightbox-next');
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '3 / 5'");
+    waitForState($page, '@media-lightbox-counter', "element.textContent.trim() === '3 / 5'");
     expect(mediaLightboxCounter($page))->toBe('3 / 5');
 
     $page->keys('@media-lightbox', 'ArrowRight');
     $page->keys('@media-lightbox', 'ArrowRight');
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '5 / 5'");
+    waitForState($page, '@media-lightbox-counter', "element.textContent.trim() === '5 / 5'");
     expect(mediaLightboxCounter($page))->toBe('5 / 5')
         ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-next\"]').disabled"))->toBeTrue()
         ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-previous\"]').disabled"))->toBeFalse();
@@ -172,19 +150,19 @@ test('five images open at the clicked one and move with the buttons and arrow ke
     expect(mediaLightboxCounter($page))->toBe('5 / 5');
 
     $page->click('@media-lightbox-previous');
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '4 / 5'");
+    waitForState($page, '@media-lightbox-counter', "element.textContent.trim() === '4 / 5'");
     $page->keys('@media-lightbox', 'ArrowLeft');
     $page->keys('@media-lightbox', 'ArrowLeft');
     $page->keys('@media-lightbox', 'ArrowLeft');
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '1 / 5'");
+    waitForState($page, '@media-lightbox-counter', "element.textContent.trim() === '1 / 5'");
     expect(mediaLightboxCounter($page))->toBe('1 / 5')
         ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-previous\"]').disabled"))->toBeTrue();
 
     $page->click('@media-lightbox-close');
-    waitForMediaLightboxGone($page);
+    waitForGone($page, '@media-lightbox');
 
     $page->click("@post-thumbnail-more-{$post->id}");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+    waitFor($page, '@media-lightbox-counter');
 
     expect(mediaLightboxCounter($page))->toBe('5 / 5')
         ->and(mediaLightboxImageLabel($page))->toBe('5');
@@ -196,7 +174,7 @@ test('five images open at the clicked one and move with the buttons and arrow ke
         ->and($page->script($active))->toBe(['false', 'false', 'false', 'false', 'true']);
 
     $page->click('@media-lightbox-thumbnail-3');
-    waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '4 / 5'");
+    waitForState($page, '@media-lightbox-counter', "element.textContent.trim() === '4 / 5'");
 
     expect(mediaLightboxCounter($page))->toBe('4 / 5')
         ->and(mediaLightboxImageLabel($page))->toBe('4')
@@ -229,19 +207,19 @@ test('five images open at the clicked one and move with the buttons and arrow ke
 
     $page->click('@media-lightbox-zoom-in');
     $page->click('@media-lightbox-zoom-in');
-    waitForMediaLightboxCondition($page, "{$scale} === 2");
+    waitForState($page, '@media-lightbox-image', 'new DOMMatrix(getComputedStyle(element).transform).a === 2');
 
     expect($page->script($scale))->toEqual(2);
 
     $page->click('@media-lightbox-zoom-in');
     $page->click('@media-lightbox-zoom-in');
-    waitForMediaLightboxCondition($page, "{$scale} === 3");
+    waitForState($page, '@media-lightbox-image', 'new DOMMatrix(getComputedStyle(element).transform).a === 3');
 
     expect($page->script($scale))->toEqual(3)
         ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-zoom-in\"]').disabled"))->toBeTrue();
 
     $page->click('@media-lightbox-zoom-out');
-    waitForMediaLightboxCondition($page, "{$scale} === 2.5");
+    waitForState($page, '@media-lightbox-image', 'new DOMMatrix(getComputedStyle(element).transform).a === 2.5');
 
     expect($page->script($scale))->toEqual(2.5);
     $page->assertVisible('@media-lightbox')
@@ -253,10 +231,10 @@ test('a video plays in the lightbox', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-1");
+    waitFor($page, "@post-thumbnail-{$post->id}-1");
 
     $page->click("@post-thumbnail-{$post->id}-1");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+    waitFor($page, '@media-lightbox-counter');
 
     expect(mediaLightboxCounter($page))->toBe('2 / 2')
         ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]')?.tagName"))->toBe('VIDEO')
@@ -272,16 +250,16 @@ test('the details dialog media strip opens the same lightbox', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForMediaLightboxTestId($page, "post-details-media-item-{$post->id}-2");
+    waitFor($page, "@post-details-media-item-{$post->id}-2");
 
     $page->click("@post-details-media-item-{$post->id}-2");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+    waitFor($page, '@media-lightbox-counter');
 
     expect(mediaLightboxCounter($page))->toBe('3 / 3')
         ->and(mediaLightboxImageLabel($page))->toBe('3');
 
     $page->keys('@media-lightbox', 'Escape');
-    waitForMediaLightboxGone($page);
+    waitForGone($page, '@media-lightbox');
 
     $page->assertNotPresent('@media-lightbox')
         ->assertVisible("@post-details-{$post->id}")

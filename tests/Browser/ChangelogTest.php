@@ -11,45 +11,14 @@ use App\Models\ChangelogEntryView;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForChangelogCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForChangelogTestId(mixed $page, string $testId): void
-{
-    waitForChangelogCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
-function waitForChangelogText(mixed $page, string $testId, string $text): void
-{
-    waitForChangelogCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.textContent.includes('{$text}')");
-}
-
-function waitForChangelogTestIdGone(mixed $page, string $testId): void
-{
-    waitForChangelogCondition($page, "!document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
 function waitForChangelogViews(mixed $page, User $user, int $count): void
 {
-    for ($attempt = 0; $attempt < 100 && ChangelogEntryView::where('user_id', $user->id)->count() < $count; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 50))');
-    }
+    waitForDatabase($page, fn () => ChangelogEntryView::where('user_id', $user->id)->count() >= $count);
 }
 
 function waitForChangelogReaction(mixed $page, ChangelogEntry $entry, ?Reaction $reaction): void
 {
-    for ($attempt = 0; $attempt < 100 && ChangelogEntryView::where('changelog_entry_id', $entry->id)->value('reaction') !== $reaction?->value; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 50))');
-    }
+    waitForDatabase($page, fn () => ChangelogEntryView::where('changelog_entry_id', $entry->id)->value('reaction') === $reaction?->value);
 }
 
 function createChangelogUser(array $attributes = []): User
@@ -112,30 +81,30 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogText($page, 'changelog-card-title', 'Newest feature');
+    waitForText($page, '@changelog-card-title', 'Newest feature');
 
     expect($page->script("document.querySelector('[data-testid=\"changelog-card\"] [data-testid^=\"changelog-tag-\"]') === null"))->toBeTrue();
 
     $page->click('@changelog-card');
-    waitForChangelogText($page, 'changelog-entry-title', 'Newest feature');
+    waitForText($page, '@changelog-entry-title', 'Newest feature');
     $page->assertSeeIn('@changelog-entry', 'The newest feature body.')
         ->assertSeeIn('@changelog-entry-tags', 'New')
         ->assertSeeIn('@changelog-entry-tags', 'Beta')
         ->assertSeeIn('@changelog-back', 'All updates');
     expect($page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').getAttribute('aria-labelledby') && document.getElementById(document.querySelector('[data-testid=\"changelog-dialog\"]').getAttribute('aria-labelledby')).textContent.trim()"))
         ->toBe('Newest feature');
-    waitForChangelogTestIdGone($page, 'changelog-card');
+    waitForGone($page, '@changelog-card');
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->all())
         ->toBe([$newest->id]);
 
     $page->click('@changelog-back');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-older');
+    waitForState($page, '@changelog-item-2026-10-13-older', 'true');
     $page->assertPresent('@changelog-unseen-2026-10-13-older')
         ->assertMissing('@changelog-unseen-2026-10-14-newest');
 
     $page->click('@changelog-item-2026-10-13-older');
-    waitForChangelogText($page, 'changelog-entry-title', 'Older feature');
+    waitForText($page, '@changelog-entry-title', 'Older feature');
     waitForChangelogViews($page, $user, 2);
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->sort()->values()->all())
@@ -158,7 +127,7 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
     expect(ChangelogEntryView::where('changelog_entry_id', $older->id)->sole()->reaction)->toBeNull();
 
     $page->click('@changelog-close');
-    waitForChangelogTestIdGone($page, 'changelog-dialog');
+    waitForGone($page, '@changelog-dialog');
 
     $page->assertMissing('@changelog-card')
         ->assertMissing('@changelog-dialog')
@@ -177,7 +146,7 @@ test('the help menu item is translated and opens the list', function () {
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
 
     openChangelogHelpMenu($page);
 
@@ -185,7 +154,7 @@ test('the help menu item is translated and opens the list', function () {
     expect(__('sidebar.support.changelog', [], 'pt-BR'))->toBe('Novidades');
 
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-listed');
+    waitForState($page, '@changelog-item-2026-10-13-listed', 'true');
 
     $page->assertPresent('@changelog-unseen-2026-10-13-listed')
         ->assertMissing('@changelog-card')
@@ -206,27 +175,27 @@ test('hovering a list item highlights it, only hovering its cover zooms the cove
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
 
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-cover-2026-10-13-hovered');
+    waitForState($page, '@changelog-item-cover-2026-10-13-hovered', 'true');
 
     $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-zoom-2026-10-13-hovered\"]')).scale";
     $itemBackground = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-2026-10-13-hovered\"]')).backgroundColor";
     $idleBackground = $page->script($itemBackground);
 
     $page->hover('@changelog-item-title-2026-10-13-hovered');
-    waitForChangelogCondition($page, "{$itemBackground} !== '{$idleBackground}'");
+    waitForState($page, '@changelog-item-2026-10-13-hovered', "getComputedStyle(element).backgroundColor !== '{$idleBackground}'");
     expect($page->script($itemBackground))->not->toBe($idleBackground)
         ->and($page->script($coverScale))->toBe('none');
 
     $page->hover('@changelog-item-cover-2026-10-13-hovered');
-    waitForChangelogCondition($page, "{$coverScale} === '1.04'");
+    waitForState($page, '@changelog-item-zoom-2026-10-13-hovered', "getComputedStyle(element).scale === '1.04'");
     expect($page->script($coverScale))->toBe('1.04');
 
     $page->click('@changelog-item-title-2026-10-13-hovered');
-    waitForChangelogText($page, 'changelog-entry-title', 'Hovered feature');
+    waitForText($page, '@changelog-entry-title', 'Hovered feature');
 
     $page->assertSeeIn('@changelog-entry-title', 'Hovered feature')
         ->assertNoJavaScriptErrors();
@@ -244,30 +213,30 @@ test('the list loads the next page on scroll, reopens on the list and shows an e
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-09-01-paged');
+    waitForState($page, '@changelog-item-2026-09-01-paged', 'true');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(5);
 
     $page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop = 100000");
-    waitForChangelogTestId($page, 'changelog-item-2026-09-07-paged');
+    waitForState($page, '@changelog-item-2026-09-07-paged', 'true');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(7);
 
     $page->click('@changelog-item-title-2026-09-07-paged');
-    waitForChangelogTestId($page, 'changelog-entry');
-    waitForChangelogCondition($page, "document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop === 0");
+    waitForState($page, '@changelog-entry', 'true');
+    waitForState($page, '@changelog-dialog', 'element.scrollTop === 0');
 
     expect($page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop"))->toBe(0);
     $page->click('@changelog-close');
-    waitForChangelogTestIdGone($page, 'changelog-dialog');
+    waitForGone($page, '@changelog-dialog');
 
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-09-01-paged');
-    waitForChangelogCondition($page, "document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length === 5");
+    waitForState($page, '@changelog-item-2026-09-01-paged', 'true');
+    waitForCount($page, '[data-testid^="changelog-item-cover-"]', 5);
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(5);
     $page->assertMissing('@changelog-entry')
@@ -276,10 +245,10 @@ test('the list loads the next page on scroll, reopens on the list and shows an e
     ChangelogEntry::query()->delete();
 
     $empty = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($empty, 'sidebar-workspace-menu');
+    waitForState($empty, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($empty);
     $empty->click('@sidebar-support-changelog');
-    waitForChangelogTestId($empty, 'changelog-empty');
+    waitForState($empty, '@changelog-empty', 'true');
 
     $empty->assertSeeIn('@changelog-empty', 'Nothing new yet')
         ->assertNoJavaScriptErrors();
@@ -294,17 +263,17 @@ test('a reaction that fails to save is undone and explained', function () {
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-title-2026-10-13-failing');
+    waitForState($page, '@changelog-item-title-2026-10-13-failing', 'true');
     $page->click('@changelog-item-title-2026-10-13-failing');
-    waitForChangelogTestId($page, 'changelog-reaction-like');
+    waitForState($page, '@changelog-reaction-like', 'true');
     waitForChangelogViews($page, $user, 1);
 
     $entry->delete();
     $page->click('@changelog-reaction-like');
-    waitForChangelogCondition($page, "document.body.innerText.includes(\"Couldn't save your answer\")");
+    waitForCondition($page, "document.body.innerText.includes(\"Couldn't save your answer\")");
 
     expect($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('false');
     $page->assertSee("Couldn't save your answer. Try again.");
@@ -319,7 +288,7 @@ test('nothing of the changelog shows when it is turned off', function () {
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     $page->script(<<<'JS'
         (async () => {
             const find = async (testId) => {
@@ -352,12 +321,12 @@ test('a second reaction click while the first is saving is ignored', function ()
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-title-2026-10-13-double');
+    waitForState($page, '@changelog-item-title-2026-10-13-double', 'true');
     $page->click('@changelog-item-title-2026-10-13-double');
-    waitForChangelogTestId($page, 'changelog-reaction-like');
+    waitForState($page, '@changelog-reaction-like', 'true');
     waitForChangelogViews($page, $user, 1);
 
     $page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').click(); document.querySelector('[data-testid=\"changelog-reaction-dislike\"]').click();");
@@ -380,30 +349,30 @@ test('a browser Back closes the modal, and reopening shows a fresh list', functi
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-fresh');
+    waitForState($page, '@changelog-unseen-2026-10-13-fresh', 'true');
     $page->click('@changelog-item-title-2026-10-13-fresh');
     waitForChangelogViews($page, $user, 1);
     $page->click('@changelog-close');
-    waitForChangelogTestIdGone($page, 'changelog-dialog');
+    waitForGone($page, '@changelog-dialog');
 
     $page->script("document.querySelector('[data-testid=\"nav-{$insightsPath}\"]').click()");
-    waitForChangelogCondition($page, "location.pathname === '{$insightsPath}'");
+    waitForPath($page, $insightsPath);
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
+    waitForState($page, '@changelog-item-2026-10-13-fresh', 'true');
 
     $page->back();
-    waitForChangelogCondition($page, "location.pathname === '{$calendarPath}'");
-    waitForChangelogTestIdGone($page, 'changelog-dialog');
+    waitForPath($page, $calendarPath);
+    waitForGone($page, '@changelog-dialog');
 
     $page->assertPathIs($calendarPath)->assertMissing('@changelog-dialog');
 
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
+    waitForState($page, '@changelog-item-2026-10-13-fresh', 'true');
 
     $page->assertMissing('@changelog-unseen-2026-10-13-fresh')
         ->assertNoJavaScriptErrors();
@@ -420,15 +389,15 @@ test('a browser Back between two entries of the same page closes the modal too',
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     $page->script('window.history.pushState(window.history.state, "", location.href)');
 
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-same');
+    waitForState($page, '@changelog-item-2026-10-13-same', 'true');
 
     $page->back();
-    waitForChangelogTestIdGone($page, 'changelog-dialog');
+    waitForGone($page, '@changelog-dialog');
 
     $page->assertPathIs(route('app.calendar', absolute: false))
         ->assertMissing('@changelog-dialog')
@@ -444,16 +413,16 @@ test('an open that fails to record keeps the entry marked as unseen', function (
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    waitForState($page, '@sidebar-workspace-menu', 'true');
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-unrecorded');
+    waitForState($page, '@changelog-unseen-2026-10-13-unrecorded', 'true');
 
     $entry->update(['published_on' => today()->addDay()]);
     $page->click('@changelog-item-title-2026-10-13-unrecorded');
-    waitForChangelogTestId($page, 'changelog-entry');
+    waitForState($page, '@changelog-entry', 'true');
     $page->click('@changelog-back');
-    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-unrecorded');
+    waitForState($page, '@changelog-unseen-2026-10-13-unrecorded', 'true');
 
     $page->assertPresent('@changelog-unseen-2026-10-13-unrecorded');
     expect(ChangelogEntryView::count())->toBe(0);

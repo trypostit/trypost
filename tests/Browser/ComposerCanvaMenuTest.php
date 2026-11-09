@@ -16,27 +16,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-function waitForComposerCanvaCondition(mixed $page, string $condition, int $attempts = 100): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < {$attempts}; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerCanvaTestId(mixed $page, string $testId, int $rounds = 1): void
-{
-    $visible = "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0";
-
-    for ($round = 0; $round < $rounds && ! $page->script("Boolean({$visible})"); $round++) {
-        waitForComposerCanvaCondition($page, $visible);
-    }
-}
-
 /**
  * @return array{page: mixed, user: User, workspace: Workspace}
  */
@@ -61,7 +40,7 @@ function openComposerWithOnlyCanva(mixed $test): array
     $test->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerCanvaCondition($page, "document.querySelector('[data-testid=\"composer-base-toolbar\"]')?.getBoundingClientRect().height > 0", attempts: 300);
+    waitFor($page, '@composer-base-toolbar');
 
     return ['page' => $page, 'user' => $user, 'workspace' => $workspace];
 }
@@ -70,9 +49,9 @@ test('the Canva submenu lists the five presets with their sizes, Square first an
     ['page' => $page] = openComposerWithOnlyCanva($this);
 
     $page->click('@composer-base-media-source-menu');
-    waitForComposerCanvaTestId($page, 'media-source-canva');
+    waitFor($page, '@media-source-canva');
     $page->click('@media-source-canva');
-    waitForComposerCanvaTestId($page, 'canva-preset-square');
+    waitFor($page, '@canva-preset-square');
 
     expect($page->script("[...document.querySelectorAll('[data-testid^=\"canva-preset-\"]:not([data-testid\$=\"-default\"])')].map((element) => element.dataset.testid)"))
         ->toBe(['canva-preset-square', 'canva-preset-portrait_4_5', 'canva-preset-portrait_3_4', 'canva-preset-landscape', 'canva-preset-story']);
@@ -91,7 +70,7 @@ test('the Canva entry shows the official Canva logo', function () {
     ['page' => $page] = openComposerWithOnlyCanva($this);
 
     $page->click('@composer-base-media-source-menu');
-    waitForComposerCanvaTestId($page, 'media-source-canva');
+    waitFor($page, '@media-source-canva');
 
     $page->assertPresent('[data-testid="media-source-canva"] svg path[fill="#7D2AE7"]')
         ->assertNoJavaScriptErrors();
@@ -108,9 +87,9 @@ function pickCanvaPresetWithStubbedPopup(mixed $page, string $preset, bool $seve
     $page->script("window.__canvaOpened = []; window.open = (url) => { window.__canvaOpened.push(url); return {$popup}; }; true;");
 
     $page->click('@composer-base-media-source-menu');
-    waitForComposerCanvaTestId($page, 'media-source-canva');
+    waitFor($page, '@media-source-canva');
     $page->click('@media-source-canva');
-    waitForComposerCanvaTestId($page, "canva-preset-{$preset}");
+    waitFor($page, "@canva-preset-{$preset}");
     $page->click("@canva-preset-{$preset}");
 
     $opened = $page->script('window.__canvaOpened');
@@ -153,7 +132,7 @@ test('a preset opens the Canva popup and a message carrying its nonce becomes a 
         true;
     JS);
 
-    waitForComposerCanvaTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-media-item');
     $page->assertCount('@composer-media-item', 1)
         ->assertNoJavaScriptErrors();
 });
@@ -193,10 +172,10 @@ test('with the opener severed, the real return page reaches the composer through
     ], $pem, 'RS256', 'browser-kid');
 
     $popup = visit(route('app.integrations.canva.return', ['correlation_jwt' => $jwt]));
-    waitForComposerCanvaTestId($popup, 'media-source-popup', rounds: 6);
+    waitFor($popup, '@media-source-popup');
     $popup->assertAttribute('@media-source-popup', 'data-success', 'true');
 
-    waitForComposerCanvaTestId($page, 'composer-import-item', rounds: 6);
+    waitFor($page, '@composer-import-item');
     $page->assertCount('@composer-import-item', 1)
         ->assertNoJavaScriptErrors();
     Queue::assertPushed(ExportCanvaDesign::class, fn (ExportCanvaDesign $job): bool => $job->designId === 'DAF-browser');
@@ -216,7 +195,7 @@ test('with every transport lost, the composer finds the return on the server', f
         'replaces' => null,
     ], 3600);
 
-    waitForComposerCanvaTestId($page, 'composer-media-item', rounds: 12);
+    waitFor($page, '@composer-media-item', seconds: 60);
     $page->assertCount('@composer-media-item', 1)
         ->assertNoJavaScriptErrors();
 });

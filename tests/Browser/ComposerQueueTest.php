@@ -17,49 +17,6 @@ use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 
 /**
- * Poll from the page (never sleep()) until the composer dialog is open and
- * still and the given element is laid out.
- */
-function waitForComposerQueueTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerQueueClosed(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerQueuePageTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
  * @return array{0: User, 1: Workspace}
  */
 function composerQueueWorkspace(): array
@@ -131,7 +88,8 @@ function composerQueueSeedPost(User $user, Workspace $workspace, SocialAccount $
 
 function composerQueueOpenWith(mixed $page, SocialAccount $channel): void
 {
-    waitForComposerQueueTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$channel->id}")
         ->fill("@composer-caption-{$channel->id}", 'Queued from the composer');
@@ -145,7 +103,8 @@ test('a channel with slots defaults to the queue and takes its first slot', func
     $page = visit(route('app.posts.create'));
     composerQueueOpenWith($page, $channel);
 
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('next')
         ->and($page->script('document.querySelector("[data-testid=composer-submit]").textContent.trim()'))->toBe('Add to queue');
 
@@ -157,7 +116,7 @@ test('a channel with slots defaults to the queue and takes its first slot', func
         ->assertMissing('@composer-queue-hint')
         ->click('@composer-schedule-next')
         ->click('@composer-submit');
-    waitForComposerQueueClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::query()->where('workspace_id', $workspace->id)->sole();
 
@@ -176,7 +135,8 @@ test('the default posting action preference picks the composer initial mode', fu
 
     $page = visit(route('app.posts.create'));
     composerQueueOpenWith($page, $channel);
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe($mode);
     $page->assertNoJavaScriptErrors();
@@ -194,7 +154,8 @@ test('a queue default falls back when the channel has no posting times', functio
 
     $page = visit(route('app.posts.create'));
     composerQueueOpenWith($page, $channel);
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('now');
     $page->assertNoJavaScriptErrors();
@@ -208,7 +169,7 @@ test('rapid star clicks keep only the last default posting action', function () 
     $page = visit(route('app.posts.create'));
     composerQueueOpenWith($page, $channel);
     $page->click('@composer-schedule-trigger');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-default-now');
+    waitFor($page, '@composer-schedule-default-now');
 
     $page->script(<<<'JS'
         (() => {
@@ -232,15 +193,7 @@ test('rapid star clicks keep only the last default posting action', function () 
             document.querySelector('[data-testid="composer-schedule-default-top"]').click();
         })();
     JS);
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const preferences = window.__preferences;
-                if (preferences.last === 'top' && preferences.settled === preferences.started) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForCondition($page, "window.__preferences.last === 'top' && window.__preferences.settled === window.__preferences.started");
 
     expect($page->script('window.__preferences.events'))->toBe(['start:now', 'end:now', 'start:top', 'end:top'])
         ->and($page->script('window.__preferences.last'))->toBe('top')
@@ -258,7 +211,7 @@ test('the star saves the default posting action without selecting the option', f
     $page = visit(route('app.posts.create'));
     composerQueueOpenWith($page, $channel);
     $page->click('@composer-schedule-trigger');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-default-now');
+    waitFor($page, '@composer-schedule-default-now');
 
     expect($page->script('document.querySelector("[data-testid=composer-schedule-default-next]").getAttribute("aria-pressed")'))->toBe('true')
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-next]").getAttribute("aria-pressed")'))->toBe('true');
@@ -270,14 +223,7 @@ test('the star saves the default posting action without selecting the option', f
     $page->hover('@composer-schedule-default-now')
         ->assertSee('Set as default posting action: Now.')
         ->click('@composer-schedule-default-now');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (performance.getEntriesByType('resource').some((entry) => entry.name.includes('/settings/preferences'))) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForCondition($page, "performance.getEntriesByType('resource').some((entry) => entry.name.includes('/settings/preferences'))");
 
     expect($page->script('document.querySelector("[data-testid=composer-schedule-default-now]").getAttribute("aria-pressed")'))->toBe('true')
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-default-next]").getAttribute("aria-pressed")'))->toBe('false')
@@ -307,11 +253,12 @@ test('prioritize puts the new post first and moves the queued one back', functio
     $page->click('@composer-schedule-trigger')
         ->click('@composer-schedule-top');
 
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('top');
 
     $page->click('@composer-submit');
-    waitForComposerQueueClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $created = Post::query()->where('workspace_id', $workspace->id)->whereKeyNot($existing->id)->sole();
 
@@ -329,7 +276,8 @@ test('editing a queued post to a custom time switches its marker to custom', fun
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $queued));
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('next');
 
     $page->click('@composer-schedule-trigger')
@@ -341,9 +289,7 @@ test('editing a queued post to a custom time switches its marker to custom', fun
 
     $page->click('@composer-submit');
 
-    for ($attempt = 0; $attempt < 50 && $queued->refresh()->schedule_mode !== ScheduleMode::Custom; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn (): bool => $queued->refresh()->schedule_mode === ScheduleMode::Custom);
 
     expect($queued->refresh()->schedule_mode)->toBe(ScheduleMode::Custom);
 
@@ -362,15 +308,17 @@ test('recovering an empty-target draft into the queue confirms it with a toast',
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $legacy));
-    waitForComposerQueueTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$channel->id}");
-    waitForComposerQueueTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('next');
 
     $page->click('@composer-submit');
-    waitForComposerQueueClosed($page);
-    waitForComposerQueuePageTestId($page, 'queue-added-toast');
+    waitForGone($page, '@post-composer-dialog');
+    waitFor($page, '@queue-added-toast');
 
     $recovered = Post::query()->where('workspace_id', $workspace->id)->sole();
 
@@ -387,11 +335,12 @@ test('recovering an empty-target draft into the queue confirms it with a toast',
  */
 function composerScheduleOpenPicker(mixed $page): void
 {
-    waitForComposerQueueTestId($page, 'composer-schedule-trigger');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-schedule-trigger');
     $page->click('@composer-schedule-trigger');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-custom');
+    waitFor($page, '@composer-schedule-custom');
     $page->click('@composer-schedule-custom');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-picker');
+    waitFor($page, '@composer-schedule-picker');
 }
 
 /**

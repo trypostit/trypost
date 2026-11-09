@@ -6,27 +6,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForChannelReorderTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForChannelReorderDatabase(mixed $page, Closure $condition): void
-{
-    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
-}
-
 /**
  * @return array{0: User, 1: list<SocialAccount>}
  */
@@ -72,9 +51,9 @@ test('the channels settings page lists channels without reordering them', functi
     $this->actingAs($user);
 
     $page = visit(route('app.workspace.channels'));
-    waitForChannelReorderTestId($page, "channel-list-row-{$third->id}");
+    waitFor($page, "@channel-list-row-{$third->id}");
     $page->click("@channel-menu-{$second->id}");
-    waitForChannelReorderTestId($page, "channel-disconnect-{$second->id}");
+    waitFor($page, "@channel-disconnect-{$second->id}");
 
     expect($page->script('document.querySelectorAll(\'[data-testid^="channel-handle-"], [data-testid^="channel-menu-move-"], [data-sortable-channel]\').length'))->toBe(0)
         ->and(channelReorderDomOrder($page, 'channel-list-row-', [$first, $second, $third]))->toBe([$first->id, $second->id, $third->id]);
@@ -86,10 +65,10 @@ test('a sidebar channel can be moved with the keyboard', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForChannelReorderTestId($page, "sidebar-channel-row-{$third->id}");
+    waitFor($page, "@sidebar-channel-row-{$third->id}");
     $page->hover("@sidebar-channel-row-{$third->id}");
     $page->keys("@sidebar-channel-handle-{$third->id}", 'ArrowUp');
-    waitForChannelReorderDatabase($page, fn (): bool => $third->refresh()->position === 1);
+    waitForDatabase($page, fn (): bool => $third->refresh()->position === 1);
 
     expect($user->currentWorkspace->socialAccounts()->pluck('id')->all())->toBe([$first->id, $third->id, $second->id])
         ->and($page->script('document.activeElement?.dataset.testid'))->toBe("sidebar-channel-handle-{$third->id}")
@@ -102,14 +81,14 @@ test('a stale reorder is rolled back and reported', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForChannelReorderTestId($page, "sidebar-channel-row-{$second->id}");
+    waitFor($page, "@sidebar-channel-row-{$second->id}");
     $late = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
     $page->hover("@sidebar-channel-row-{$second->id}");
     $page->keys("@sidebar-channel-handle-{$second->id}", 'ArrowUp');
-    waitForChannelReorderTestId($page, 'channels-reorder-error-toast');
+    waitFor($page, '@channels-reorder-error-toast');
 
     $page->assertSeeIn('@channels-reorder-error-toast', __('channels.reorder.stale'));
-    waitForChannelReorderTestId($page, "sidebar-channel-row-{$late->id}");
+    waitFor($page, "@sidebar-channel-row-{$late->id}");
 
     expect($user->currentWorkspace->socialAccounts()->pluck('id')->all())->toBe([$first->id, $second->id, $third->id, $late->id])
         ->and(channelReorderDomOrder($page, 'sidebar-channel-row-', [$first, $second, $third, $late]))->toBe([$first->id, $second->id, $third->id, $late->id]);

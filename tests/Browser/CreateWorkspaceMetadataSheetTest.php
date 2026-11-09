@@ -54,14 +54,7 @@ test('workspace metadata creation uses a centered dialog and still saves', funct
     }
 
     $page->click("@submit-create-{$resource}");
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (! document.querySelector('[data-testid="create-{$resource}-sheet"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForGone($page, "@create-{$resource}-sheet");
 
     $this->assertDatabaseHas($table, [
         'workspace_id' => $workspace->id,

@@ -13,20 +13,6 @@ use Carbon\CarbonInterface;
 
 const CHANNEL_GRID_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
-function waitForChannelGridTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function channelGridBrowserUser(): User
 {
     $user = User::factory()->create(['timezone' => 'UTC', 'locale' => Locale::DEFAULT]);
@@ -76,12 +62,12 @@ test('an instagram channel offers the grid view and the grid lays posts out in t
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.publish', $this->instagram));
-    waitForChannelGridTestId($page, 'schedule-view-grid');
+    waitFor($page, '@schedule-view-grid');
 
     $page->assertVisible('@schedule-view-grid')
         ->click('@schedule-view-grid');
 
-    waitForChannelGridTestId($page, 'channel-grid');
+    waitFor($page, '@channel-grid');
 
     $page->assertPathIs(route('app.channels.grid', $this->instagram, false))
         ->assertVisible("@grid-tile-{$reel->id}")
@@ -105,7 +91,7 @@ test('an instagram channel offers the grid view and the grid lays posts out in t
     expect(array_unique($tops))->toHaveCount(1);
 
     $page->hover("@grid-tile-{$reel->id}");
-    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->id}");
+    waitFor($page, "@grid-tile-tooltip-{$reel->id}");
 
     expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->id}\"] [role=\"tooltip\"]').textContent")))
         ->toBe("This post was sent {$reel->published_at->format('F j, Y \\a\\t g:i A')}");
@@ -121,7 +107,7 @@ test('the grid sits under the shared channel header, which stays put while the g
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, 'channel-grid');
+    waitFor($page, '@channel-grid');
 
     $page->assertVisible('@header-title')
         ->assertVisible('@channel-grid-divider')
@@ -142,7 +128,7 @@ test('the grid sits under the shared channel header, which stays put while the g
         ->and($after)->toBe($before);
 
     $page->hover('@schedule-view-grid');
-    waitForChannelGridTestId($page, 'schedule-view-grid-note');
+    waitFor($page, '@schedule-view-grid-note');
 
     expect(trim((string) $page->script('document.querySelector(\'[data-testid="schedule-view-grid-note"] [role="tooltip"]\').textContent')))
         ->toBe('This is an approximation of your post grid. It may differ on other devices, and posts published directly on Instagram update when we sync them.');
@@ -156,24 +142,24 @@ test('the grid keeps the schedule view switch and the new post button', function
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, 'schedule-view-grid');
+    waitFor($page, '@schedule-view-grid');
 
     $page->assertAttribute('@schedule-view-grid', 'aria-current', 'page')
         ->assertAttributeMissing('@schedule-view-list', 'aria-current')
         ->assertVisible('@schedule-view-calendar')
         ->click('@posts-new-post');
 
-    waitForChannelGridTestId($page, 'post-composer-dialog');
-    waitForChannelGridTestId($page, "composer-account-{$this->instagram->id}");
+    waitFor($page, '@post-composer-dialog');
+    waitFor($page, "@composer-account-{$this->instagram->id}");
 
     $page->assertVisible('@post-composer-dialog')
         ->assertVisible("@composer-account-{$this->instagram->id}")
         ->assertPathIs(route('app.channels.grid', $this->instagram, false));
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, 'schedule-view-list');
+    waitFor($page, '@schedule-view-list');
     $page->click('@schedule-view-list');
-    waitForChannelGridTestId($page, 'publish-page');
+    waitFor($page, '@publish-page');
 
     $page->assertPathIs(route('app.channels.publish', $this->instagram, false))
         ->assertAttribute('@schedule-view-list', 'aria-current', 'page')
@@ -186,10 +172,10 @@ test('clicking a carousel tile opens its media in the lightbox', function () {
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, "grid-tile-{$carousel->id}");
+    waitFor($page, "@grid-tile-{$carousel->id}");
 
     $page->click("@grid-tile-{$carousel->id}");
-    waitForChannelGridTestId($page, 'media-lightbox-counter');
+    waitFor($page, '@media-lightbox-counter');
 
     $page->assertVisible('@media-lightbox')
         ->assertVisible('@media-lightbox-image')
@@ -207,9 +193,9 @@ test('the grid tooltip shows the sent time in the user zone, not the browser zon
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, "grid-tile-{$reel->id}");
+    waitFor($page, "@grid-tile-{$reel->id}");
     $page->hover("@grid-tile-{$reel->id}");
-    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->id}");
+    waitFor($page, "@grid-tile-tooltip-{$reel->id}");
 
     expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->id}\"] [role=\"tooltip\"]').textContent")))
         ->toBe("This post was sent {$reel->published_at->setTimezone('Asia/Tokyo')->format('F j, Y \\a\\t g:i A')}");

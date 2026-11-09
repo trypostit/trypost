@@ -9,21 +9,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-function waitForComposerPreviewTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return array{0: User, 1: array<string, SocialAccount>}
  */
@@ -56,12 +41,14 @@ test('the preview panel lists one labelled card per network and renders each net
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerPreviewTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
 
     $page->click('@composer-add-account')
         ->click('@composer-select-all')
         ->fill('@composer-base-content', 'Testing the preview https://trypost.it #hashtags');
-    waitForComposerPreviewTestId($page, 'youtube-preview-subscribe');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@youtube-preview-subscribe');
 
     $page->assertSeeIn('@composer-preview-title', 'Post previews')
         ->assertPresent('@composer-preview-info');
@@ -95,7 +82,8 @@ test('the preview panel lists one labelled card per network and renders each net
     expect($page->script('document.querySelectorAll("[data-testid=youtube-preview] [data-testid=preview-rail-action]").length'))->toBe(4);
 
     $page->click('@composer-next');
-    waitForComposerPreviewTestId($page, 'composer-customization');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-customization');
 
     expect($page->script('document.querySelector("[data-testid=composer-preview-title]").textContent.trim()'))
         ->toMatch('/^(X|TikTok|Instagram|YouTube) preview$/')
@@ -117,7 +105,8 @@ test('a pdf preview crops the browser viewer frame around the page', function ()
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
-    waitForComposerPreviewTestId($page, 'linkedin-preview');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@linkedin-preview');
 
     $crop = $page->script(<<<'JS'
         (() => {
@@ -156,7 +145,8 @@ test('the x preview lays two images side by side and three as one tall image bes
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
-    waitForComposerPreviewTestId($page, 'x-preview');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@x-preview');
 
     $tiles = $page->script(<<<'JS'
         [...document.querySelectorAll('[data-testid="x-preview"] [data-testid="preview-media"] img')].map((image) => {

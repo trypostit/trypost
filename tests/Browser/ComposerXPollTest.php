@@ -388,7 +388,7 @@ function openCustomizedXPollComposer(Post $post): array
     $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
 
     $page = visit(route('app.posts.create'))->resize(1280, 900);
-    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@post-composer-dialog');
     $page->click('@composer-add-account');
     waitFor($page, "@composer-account-option-{$linkedIn->id}");
     $page->click("@composer-account-option-{$linkedIn->id}");
@@ -437,7 +437,7 @@ test('a poll picked while x was the only network turns back into a post when ano
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
 
     $page = visit(route('app.posts.create'))->resize(1280, 900);
-    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@post-composer-dialog');
     $page->click('@composer-add-account');
     waitFor($page, "@composer-account-option-{$x->id}");
     $page->click("@composer-account-option-{$x->id}")
@@ -484,7 +484,7 @@ test('a threads ghost post stays a ghost post when another network joins, since 
     $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
 
     $page = visit(route('app.posts.create'))->resize(1280, 900);
-    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@post-composer-dialog');
     $page->click('@composer-add-account');
     waitFor($page, "@composer-account-option-{$threads->id}");
     $page->click("@composer-account-option-{$threads->id}")
@@ -634,7 +634,7 @@ test('a server error on the poll shows on the x card when x is not the first cha
     $linkedIn = SocialAccount::factory()->linkedin()->create(['workspace_id' => $post->workspace_id]);
 
     $page = visit(route('app.posts.create'))->resize(1280, 900);
-    waitForState($page, '@post-composer-dialog', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@post-composer-dialog');
     $page->click('@composer-add-account');
     waitFor($page, "@composer-account-option-{$linkedIn->id}");
     $page->click("@composer-account-option-{$linkedIn->id}");
@@ -824,7 +824,7 @@ test('a thread reply turns into a poll from its toolbar, turns its media off and
     $page->fill('@thread-reply-0-poll-choice-0', 'Tabs')
         ->fill('@thread-reply-0-poll-choice-1', 'Spaces');
     waitFor($page, "@composer-{$id}-media-source-disabled");
-    waitForText($page, '@preview-thread-reply-0 [data-testid="x-preview-poll"]', 'Spaces');
+    waitForText($page, '@preview-thread-reply-0 @x-preview-poll', 'Spaces');
 
     $page->assertMissing("@composer-{$id}-poll")
         ->assertMissing('@x-poll')
@@ -852,7 +852,7 @@ test('a thread reply poll shows in the preview before its question, and its choi
     waitFor($page, '@thread-reply-0-poll-choice-0');
     $page->fill('@thread-reply-0-poll-choice-0', 'Tabs')
         ->fill('@thread-reply-0-poll-choice-1', 'Tabs');
-    waitForText($page, '@preview-thread-reply-0 [data-testid="x-preview-poll"]', 'Tabs');
+    waitForText($page, '@preview-thread-reply-0 @x-preview-poll', 'Tabs');
     $page->assertVisible('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]')
         ->click('@composer-save-draft');
     waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'));
@@ -978,7 +978,7 @@ test('every toolbar button names itself in a tooltip and the ai-generated hint o
     waitForGone($page, '@thread-add-reply-tooltip');
 
     $page->hover('@x-ai-generated-info');
-    waitForState($page, '@x-ai-generated-tooltip', "element.getAttribute('data-state') === 'delayed-open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@x-ai-generated-tooltip', 'delayed-open');
 
     expect($page->script("document.querySelector('[data-testid=\"x-ai-generated-tooltip\"]').getBoundingClientRect().bottom <= document.querySelector('[data-testid=\"x-ai-generated-info\"]').getBoundingClientRect().top"))->toBeTrue();
     $page->assertNoJavaScriptErrors();

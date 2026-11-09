@@ -7,20 +7,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForSidebarChannelsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function sidebarChannelsUser(string $role): User
 {
     $owner = User::factory()->create();
@@ -48,7 +34,7 @@ test('admins see channels with settings and connect controls', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}");
 
     $page->assertVisible('@sidebar-channels')
         ->assertVisible('@sidebar-channels-settings')
@@ -64,9 +50,9 @@ test('a channel publish link leads to that channel publish page', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}");
     $page->click("@sidebar-channel-{$channel->id}");
-    waitForSidebarChannelsTestId($page, 'publish-channel-settings');
+    waitFor($page, '@publish-channel-settings');
 
     expect($page->script('window.location.pathname'))->toBe(parse_url(route('app.channels.publish', $channel), PHP_URL_PATH));
     $page->assertVisible('@publish-page')
@@ -80,7 +66,7 @@ test('members see channels without admin controls', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}");
 
     $page->assertVisible("@sidebar-channel-{$channel->id}")
         ->assertMissing('@sidebar-channels-settings')
@@ -94,7 +80,7 @@ test('a lost connection is flagged on the channel', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}-lost");
+    waitFor($page, "@sidebar-channel-{$channel->id}-lost");
 
     $page->assertVisible("@sidebar-channel-{$channel->id}-lost")
         ->assertMissing("@channel-avatar-disconnected-{$channel->id}")
@@ -107,7 +93,7 @@ test('a lost connection shows one dot on the avatar for members who cannot recon
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "channel-avatar-disconnected-{$channel->id}");
+    waitFor($page, "@channel-avatar-disconnected-{$channel->id}");
 
     $page->assertVisible("@channel-avatar-disconnected-{$channel->id}")
         ->assertMissing("@sidebar-channel-{$channel->id}-lost")
@@ -118,7 +104,7 @@ test('an empty workspace offers to connect a channel', function () {
     $this->actingAs(sidebarChannelsUser('admin'));
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, 'sidebar-channels-empty');
+    waitFor($page, '@sidebar-channels-empty');
 
     $page->assertSeeIn('@sidebar-channels-label', __('sidebar.connect_channels'))
         ->assertVisible('@sidebar-channels-empty-connect-instagram')
@@ -147,7 +133,7 @@ test('an empty workspace offers to connect a channel', function () {
     JS))->toBeTrue();
 
     $page->click('@sidebar-channels-empty');
-    waitForSidebarChannelsTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-linkedin')->assertNoJavaScriptErrors();
 });
@@ -159,26 +145,14 @@ test('the channel new-post shortcut opens the composer with that channel selecte
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}");
     $page->click("@sidebar-channel-{$channel->id}-new-post");
-    waitForSidebarChannelsTestId($page, "composer-account-{$channel->id}");
+    waitFor($page, "@composer-account-{$channel->id}");
 
     $page->assertVisible("@composer-account-{$channel->id}")
         ->assertMissing("@composer-account-{$other->id}")
         ->assertNoJavaScriptErrors();
 });
-
-function waitForSidebarChannelsScript(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
 
 test('the chevron expands and collapses a channel submenu with an animated grid row', function () {
     $user = sidebarChannelsUser('admin');
@@ -186,7 +160,7 @@ test('the chevron expands and collapses a channel submenu with an animated grid 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
+    waitFor($page, "@sidebar-channel-{$channel->id}");
 
     $submenu = "document.querySelector('[data-testid=\"sidebar-channel-{$channel->id}-submenu\"]')";
 
@@ -196,13 +170,13 @@ test('the chevron expands and collapses a channel submenu with an animated grid 
     $page->assertMissing("@sidebar-channel-{$channel->id}-publish")
         ->click("@sidebar-channel-{$channel->id}-toggle");
 
-    waitForSidebarChannelsScript($page, "{$submenu}.getBoundingClientRect().height > 60");
+    waitForState($page, "@sidebar-channel-{$channel->id}-submenu", 'element.getBoundingClientRect().height > 60');
 
     expect($page->script("document.querySelector('[data-testid=\"sidebar-channel-{$channel->id}-toggle\"]').getAttribute('aria-expanded')"))->toBe('true');
     $page->assertVisible("@sidebar-channel-{$channel->id}-publish")
         ->click("@sidebar-channel-{$channel->id}-toggle");
 
-    waitForSidebarChannelsScript($page, "getComputedStyle({$submenu}).visibility === 'hidden' && {$submenu}.getBoundingClientRect().height === 0");
+    waitForState($page, "@sidebar-channel-{$channel->id}-submenu", "getComputedStyle(element).visibility === 'hidden' && element.getBoundingClientRect().height === 0");
 
     $page->assertMissing("@sidebar-channel-{$channel->id}-publish")
         ->assertNoJavaScriptErrors();
@@ -216,7 +190,7 @@ test('the sidebar cannot be collapsed', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
 
     $sidebar = "document.querySelector('[data-slot=\"sidebar\"]')";
 
@@ -243,17 +217,17 @@ test('an expanded channel shows its scheduled count on the Publish item', functi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-count-{$channel->id}");
+    waitFor($page, "@sidebar-channel-count-{$channel->id}");
 
     expect(trim((string) $page->script("document.querySelector('[data-testid=\"sidebar-channel-count-{$channel->id}\"]').textContent")))->toBe('3');
 
     $page->click("@sidebar-channel-{$channel->id}-toggle");
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}-publish-count");
+    waitFor($page, "@sidebar-channel-{$channel->id}-publish-count");
 
     $page->assertSeeIn('@sidebar-publish-count', '3')
         ->assertSeeIn("@sidebar-channel-{$channel->id}-publish-count", '3')
         ->click("@sidebar-channel-{$empty->id}-toggle");
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$empty->id}-publish");
+    waitFor($page, "@sidebar-channel-{$empty->id}-publish");
 
     $page->assertMissing("@sidebar-channel-{$empty->id}-publish-count")
         ->assertNoJavaScriptErrors();
@@ -265,11 +239,11 @@ test('keyboard focus reveals the channels header actions', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, 'sidebar-channels-label');
+    waitFor($page, '@sidebar-channels-label');
 
     $actions = "document.querySelector('[data-testid=\"sidebar-channels-actions\"]')";
     $page->script("document.querySelector('[data-testid=\"sidebar-channels-search\"]').focus()");
-    waitForSidebarChannelsScript($page, "getComputedStyle({$actions}).opacity === '1'");
+    waitForState($page, '@sidebar-channels-actions', "getComputedStyle(element).opacity === '1'");
 
     expect($page->script("getComputedStyle({$actions}).opacity"))->toBe('1');
     $page->assertMissing('@sidebar-channels-settings')
@@ -317,10 +291,10 @@ test('the channels search button shows its shortcut and opens the command palett
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, 'sidebar-channels-label');
+    waitFor($page, '@sidebar-channels-label');
 
     $page->hover('@sidebar-channels-label')->hover('@sidebar-channels-search');
-    waitForSidebarChannelsTestId($page, 'sidebar-channels-search-tooltip');
+    waitFor($page, '@sidebar-channels-search-tooltip');
 
     $isMac = (bool) $page->script('/Mac|iPhone|iPad/.test(navigator.platform)');
 
@@ -347,10 +321,10 @@ test('the channels settings and connect actions show a tooltip above them', func
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, 'sidebar-channels-label');
+    waitFor($page, '@sidebar-channels-label');
 
     $page->hover('@sidebar-channels-label')->hover("@sidebar-channels-{$action}");
-    waitForSidebarChannelsTestId($page, "sidebar-channels-{$action}-tooltip");
+    waitFor($page, "@sidebar-channels-{$action}-tooltip");
 
     $page->assertSeeIn("@sidebar-channels-{$action}-tooltip", $action === 'settings' ? __('channels.settings') : __('channels.connect'));
 
@@ -370,7 +344,7 @@ test('only the channel list scrolls while the main nav and the footer stay fixed
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'))->resize(1280, 700);
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channels->first()->id}");
+    waitFor($page, "@sidebar-channel-{$channels->first()->id}");
 
     $layout = fn (): array => $page->script(<<<'JS'
         (() => {
@@ -412,9 +386,9 @@ test('the collapsed sidebar shows every channel network badge without clipping i
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $channels->first()->id))->resize(1280, 900);
-    waitForSidebarChannelsTestId($page, 'sidebar-footer-toggle');
+    waitFor($page, '@sidebar-footer-toggle');
     $page->click('@sidebar-footer-toggle');
-    waitForSidebarChannelsScript($page, "document.querySelector('[data-slot=\"sidebar\"][data-state]')?.dataset.state === 'collapsed'");
+    waitForState($page, '[data-slot="sidebar"][data-state]', "element.dataset.state === 'collapsed'");
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
 
     foreach ($channels as $channel) {
