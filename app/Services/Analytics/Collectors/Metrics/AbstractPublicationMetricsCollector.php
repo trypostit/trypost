@@ -11,6 +11,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
@@ -44,13 +45,13 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
      * @param  Closure(AnalyticsCollectionException): bool  $confirmsDeletion
      * @return TResult
      */
-    protected function readUnlessDeleted(Closure $read, Closure $confirmsDeletion, string $network): mixed
+    protected function readUnlessDeleted(Closure $read, Closure $confirmsDeletion, Platform $platform): mixed
     {
         try {
             return $read();
         } catch (AnalyticsCollectionException $exception) {
             if ($confirmsDeletion($exception)) {
-                throw AnalyticsCollectionException::deletedOnNetwork("{$network} no longer returns this post.");
+                throw AnalyticsCollectionException::deletedOnNetwork("{$platform->label()} no longer returns this post.");
             }
 
             throw $exception;

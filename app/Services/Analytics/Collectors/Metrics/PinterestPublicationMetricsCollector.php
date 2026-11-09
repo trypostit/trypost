@@ -37,7 +37,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
                 'metric_types' => implode(',', $fields),
             ]),
             fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account, $publication, $api),
-            'Pinterest',
+            $publication->platform,
         );
 
         $values = $response->json('all.summary_metrics');

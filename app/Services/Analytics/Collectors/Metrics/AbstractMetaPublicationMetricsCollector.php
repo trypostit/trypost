@@ -38,7 +38,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         return $this->readUnlessDeleted(
             fn (): PublicationMetricObservation => $this->read($publication, $date),
             fn (AnalyticsCollectionException $exception): bool => $this->mayBeDeleted($exception, $publication) && $this->confirmsDeletion($publication),
-            $publication->platform->value,
+            $publication->platform,
         );
     }
 

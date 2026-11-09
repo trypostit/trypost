@@ -433,7 +433,7 @@ class SocialAccount extends Model
      */
     protected function blueskyService(): Attribute
     {
-        return Attribute::get(fn (): string => data_get($this->meta, 'service', config('trypost.platforms.bluesky.default_service')));
+        return Attribute::get(fn (): string => data_get($this->meta, 'service') ?? config('trypost.platforms.bluesky.default_service'));
     }
 
     /**
@@ -441,7 +441,7 @@ class SocialAccount extends Model
      */
     protected function mastodonInstance(): Attribute
     {
-        return Attribute::get(fn (): string => data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')));
+        return Attribute::get(fn (): string => data_get($this->meta, 'instance') ?? config('trypost.platforms.mastodon.default_instance'));
     }
 
     /**

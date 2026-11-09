@@ -34,7 +34,7 @@ class DeletePost
                 ->where('post_id', $postId)
                 ->orderBy('id')
                 ->lockForUpdate()
-                ->get();
+                ->pluck('id');
 
             $locked = Post::query()->whereKey($postId)->lockForUpdate()->first();
 

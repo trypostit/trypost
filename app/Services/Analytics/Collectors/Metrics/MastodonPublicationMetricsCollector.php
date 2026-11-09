@@ -25,7 +25,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
                 authenticated: $account->canReadMastodonStatuses(),
             ),
             fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account),
-            'Mastodon',
+            $publication->platform,
         );
 
         $status = (array) $response->json();

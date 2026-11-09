@@ -36,7 +36,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         [$tweet, $poll, $threadPolls, $errors] = $this->readUnlessDeleted(
             fn (): array => $this->read($account, $publication, $fields),
             fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
-            'X',
+            $publication->platform,
         );
 
         if (! is_array($tweet)) {
