@@ -33,16 +33,14 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
         $this->postId = $publication->remote_id;
 
-        [$tweet, $poll, $threadPolls, $errors] = $this->readUnlessDeleted(
+        [$tweet, $poll, $threadPolls] = $this->readUnlessDeleted(
             fn (): array => $this->read($account, $publication, $fields),
             fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
             $publication->platform,
         );
 
         if (! is_array($tweet)) {
-            throw $this->reportsDeletedPost($errors)
-                ? AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.')
-                : AnalyticsCollectionException::malformed('X post response lacks data.');
+            throw AnalyticsCollectionException::malformed('X post response lacks data.');
         }
 
         $public = (array) data_get($tweet, 'public_metrics', []);
@@ -67,7 +65,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      * no poll is read alone, otherwise with its reply polls in one lookup.
      *
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
      */
     private function read(SocialAccount $account, AnalyticsPublication $publication, array $fields): array
     {
@@ -84,13 +82,13 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      * One post: its tweet and its poll.
      *
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
      */
     private function readPost(SocialAccount $account, string $id, array $fields): array
     {
         $response = $this->get($account, config('trypost.platforms.x.api')."/tweets/{$id}", $this->lookupParameters($fields));
 
-        return [$response->json('data'), $response->json('includes.polls.0'), [], (array) $response->json('errors', [])];
+        return [$response->json('data'), $response->json('includes.polls.0'), []];
     }
 
     /**
@@ -99,7 +97,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      *
      * @param  array<int, string>  $replyPolls  tweet ids keyed by reply position
      * @param  list<string>  $fields
-     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>, 3: array<int, mixed>}
+     * @return array{0: mixed, 1: mixed, 2: list<array<string, mixed>>}
      */
     private function readThread(SocialAccount $account, string $id, array $replyPolls, array $fields): array
     {
@@ -119,7 +117,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             ->values()
             ->all();
 
-        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls, (array) $response->json('errors', [])];
+        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls];
     }
 
     /**
@@ -129,7 +127,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     protected function successfulResponse(Response $response): Response
     {
-        if ($response->notFound() && $this->reportsDeletedPost((array) $response->json('errors', []))) {
+        if ($this->reportsDeletedPost((array) $response->json('errors', []))) {
             throw AnalyticsCollectionException::fromResponse($response, 'publication metrics collection', missingObject: true);
         }
 
