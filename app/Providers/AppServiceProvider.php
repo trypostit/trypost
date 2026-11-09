@@ -61,6 +61,7 @@ use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
+use Laravel\Nightwatch\Records\Query;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use PostHog\PostHog;
@@ -277,6 +278,11 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(fn (): Password => PasswordRequirements::rule());
+
+        $slowQueryMicroseconds = config('nightwatch.filtering.slow_query_ms') * 1000;
+
+        Nightwatch::rejectQueries(fn (Query $query): bool => $this->app->runningInConsole()
+            && $query->duration < $slowQueryMicroseconds);
 
         Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
             return in_array($cacheEvent->key, [
