@@ -44,6 +44,13 @@ class SocialAccount extends Model
     /** @use HasFactory<SocialAccountFactory> */
     use HasFactory, HasUuids;
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
+    ];
+
     public const int X_LONG_POST_LENGTH = 25000;
 
     /**
@@ -368,7 +375,7 @@ class SocialAccount extends Model
     protected function timezone(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value): string => Timezone::normalize($value),
+            get: fn (string $value): string => Timezone::normalize($value),
         );
     }
 

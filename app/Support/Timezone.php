@@ -6,6 +6,7 @@ namespace App\Support;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Collection;
 use IntlTimeZone;
 
 class Timezone
@@ -14,21 +15,14 @@ class Timezone
 
     public static function normalize(?string $value): string
     {
-        if (! is_string($value)) {
+        if (blank($value)) {
             return self::DEFAULT;
         }
 
-        $canonical = once(fn (): array => array_flip(DateTimeZone::listIdentifiers()));
+        $canonical = once(fn (): Collection => collect(DateTimeZone::listIdentifiers())->flip());
 
-        if (isset($canonical[$value])) {
-            return $value;
-        }
-
-        $mapped = IntlTimeZone::getIanaID($value);
-
-        return is_string($mapped) && isset($canonical[$mapped])
-            ? $mapped
-            : self::DEFAULT;
+        return collect([$value, IntlTimeZone::getIanaID($value)])
+            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone), self::DEFAULT);
     }
 
     /**

@@ -79,6 +79,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
         'theme' => Theme::DEFAULT->value,
         'time_format' => TimeFormat::DEFAULT->value,
         'week_starts_on' => WeekStart::DEFAULT->value,
@@ -153,7 +154,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     protected function timezone(): Attribute
     {
         return Attribute::make(
-            get: fn (?string $value): string => Timezone::normalize($value),
+            get: fn (string $value): string => Timezone::normalize($value),
         );
     }
 
