@@ -20,7 +20,7 @@ return [
     ],
 
     'filtering' => [
-        'ignore_cache_events' => env('NIGHTWATCH_IGNORE_CACHE_EVENTS', false),
+        'ignore_cache_events' => env('NIGHTWATCH_IGNORE_CACHE_EVENTS', true),
         'ignore_mail' => env('NIGHTWATCH_IGNORE_MAIL', false),
         'ignore_notifications' => env('NIGHTWATCH_IGNORE_NOTIFICATIONS', false),
         'ignore_outgoing_requests' => env('NIGHTWATCH_IGNORE_OUTGOING_REQUESTS', false),
