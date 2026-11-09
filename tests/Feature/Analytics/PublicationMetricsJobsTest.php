@@ -591,6 +591,29 @@ test('a post marked deleted that the network lists again is published again', fu
     Queue::assertPushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id);
 });
 
+test('a post a stale discovery lists again after its metrics window is read again and stays deleted', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, SyncCadence::metricsWindowStart(Platform::Instagram, now('UTC'))->subDays(3));
+    $post = Post::factory()->forAccount($publication->socialAccount)->deletedOnNetwork()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id, 'availability' => PublicationAvailability::Deleted, 'last_seen_at' => now()->subDay()])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($post->refresh()->publish_status)->toBe(PublishStatus::Published);
+
+    $publication->forceFill(['last_seen_at' => now()->subHour()])->save();
+    $graph = Platform::Instagram->graphApiUrl();
+    Http::fake([
+        "{$graph}/{$publication->platform_user_id}/media*" => Http::response(['data' => [['id' => '1']]]),
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33]], 400),
+    ]);
+
+    Queue::pushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id)
+        ->each(fn (CollectPublicationMetrics $job) => app()->call([$job, 'handle']));
+
+    expect($post->refresh()->publish_status)->toBe(PublishStatus::Deleted);
+});
+
 test('a discovery of a live publication never reads its post', function () {
     Queue::fake();
     $publication = metricJobPublication(Platform::Instagram, now('UTC')->subDay());

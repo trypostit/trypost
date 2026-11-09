@@ -16,6 +16,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\Analytics\SyncCadence;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -324,8 +325,7 @@ class UpsertAnalyticsPublication
 
             if ($wasDeleted && $publication->post?->publish_status === PublishStatus::Deleted) {
                 $publication->post->markPublicationRestored();
-                CollectPublicationMetrics::dispatch($publication->id, CarbonImmutable::now('UTC')->toDateString())
-                    ->afterCommit();
+                $this->readAgain($publication);
             }
 
             return $publication->refresh();
@@ -348,5 +348,22 @@ class UpsertAnalyticsPublication
         }
 
         return [...$discovered, ...Arr::only($publication->provider_metadata ?? [], self::METRICS_ONLY_PROVIDER_METADATA)];
+    }
+
+    /**
+     * A post listed again is read once more, so a stale discovery page cannot leave
+     * it published: past its metrics window too (as a baseline read), and even when
+     * today's read already ran.
+     */
+    private function readAgain(AnalyticsPublication $publication): void
+    {
+        $today = CarbonImmutable::now('UTC');
+
+        CollectPublicationMetrics::dispatch(
+            $publication->id,
+            $today->toDateString(),
+            baseline: $publication->provider_published_at->lessThan(SyncCadence::metricsWindowStart($publication->platform, $today)),
+            refreshSameDay: true,
+        )->afterCommit();
     }
 }

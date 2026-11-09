@@ -1307,9 +1307,10 @@ test('a Bluesky post the AppView returns is read once, with no deletion check', 
     Http::assertSentCount(1);
 });
 
-test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function (?string $service, string $pds) {
+test('a Bluesky post its repository no longer holds is reported deleted while the repository still reads', function (?string $service) {
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $account->update(['meta' => [...$account->meta, 'service' => $service ?? data_get($account->meta, 'service')]]);
+    $pds = data_get($account->fresh()->meta, 'service');
     $publication = networkPublication($account, '3kpost');
     $appView = config('trypost.platforms.bluesky.public_appview');
     Http::fake([
@@ -1330,8 +1331,8 @@ test('a Bluesky post its repository no longer holds is reported deleted while th
         && (int) data_get($request->data(), 'limit') === 1
         && ! $request->hasHeader('Authorization'));
 })->with([
-    'the account PDS' => [null, 'https://bsky.social'],
-    'a self-hosted PDS' => ['https://pds.example.test', 'https://pds.example.test'],
+    'the account PDS' => [null],
+    'a self-hosted PDS' => ['https://pds.example.test'],
 ]);
 
 test('a Bluesky post the AppView hides, or one whose repository cannot be read, is not reported deleted', function (array $record, array $list) {
