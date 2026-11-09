@@ -474,11 +474,16 @@ enum Platform: string
             ->all();
     }
 
-    public function instagramGraphBaseUrl(): string
+    /**
+     * The Graph API a Meta platform reads and publishes through.
+     */
+    public function graphApiUrl(): string
     {
         return match ($this) {
+            self::Facebook => config('trypost.platforms.facebook.graph_api'),
+            self::Instagram => config('trypost.platforms.instagram.graph_api'),
             self::InstagramFacebook => config('trypost.platforms.instagram-facebook.graph_api'),
-            default => config('trypost.platforms.instagram.graph_api'),
+            self::Threads => config('trypost.platforms.threads.graph_api'),
         };
     }
 

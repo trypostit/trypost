@@ -24,8 +24,6 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
 
     abstract protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation;
 
-    abstract protected function graphBaseUrl(SocialAccount $account): string;
-
     /**
      * The account's list of its own posts, the edge its discovery reads: reading it
      * proves the token still reads the account's posts.
@@ -70,7 +68,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         }
 
         $account = $this->account($publication);
-        $graph = $this->graphBaseUrl($account);
+        $graph = $account->platform->graphApiUrl();
 
         return $this->readsMissing(
             fn (): Response => $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']),

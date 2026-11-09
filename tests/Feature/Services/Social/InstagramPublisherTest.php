@@ -2359,7 +2359,7 @@ test('instagram reel sends the chosen cover frame as thumb_offset in millisecond
             'meta' => array_filter(['duration' => 10, 'cover_offset_ms' => $coverOffsetMs], fn (mixed $value): bool => $value !== null),
         ]],
     ]);
-    $graph = Platform::Instagram->instagramGraphBaseUrl();
+    $graph = Platform::Instagram->graphApiUrl();
 
     Http::fake([
         "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123']),
@@ -2398,7 +2398,7 @@ test('instagram carousel video child sends its cover frame as thumb_offset', fun
             ],
         ],
     ]);
-    $graph = Platform::Instagram->instagramGraphBaseUrl();
+    $graph = Platform::Instagram->graphApiUrl();
 
     Http::fake([
         "{$graph}/ig_123456789/media" => Http::sequence()

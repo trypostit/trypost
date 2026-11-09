@@ -7,15 +7,17 @@ namespace App\Services\Post\ExternalMedia;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 
-abstract class AbstractMetaCarouselResolver extends AbstractMediaResolver
+/**
+ * Instagram (both connections) and Threads list a carousel's media as the
+ * children of the post on their Graph API.
+ */
+class MetaCarouselResolver extends AbstractMediaResolver
 {
     private const string FIELDS = 'media_type,media_url,children{media_type,media_url}';
 
-    abstract protected function baseUrl(SocialAccount $account): string;
-
     public function files(SocialAccount $account, AnalyticsPublication $publication): array
     {
-        $media = $this->getJson($account, "{$this->baseUrl($account)}/{$publication->remote_id}", ['fields' => self::FIELDS]);
+        $media = $this->getJson($account, "{$account->platform->graphApiUrl()}/{$publication->remote_id}", ['fields' => self::FIELDS]);
 
         return $this->remoteFiles(collect(data_get($media, 'children.data') ?: [$media])->pluck('media_url'));
     }

@@ -8,16 +8,10 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
-use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
 class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
-    protected function graphBaseUrl(SocialAccount $account): string
-    {
-        return config('trypost.platforms.threads.graph_api');
-    }
-
     protected function postsEdge(): string
     {
         return 'threads';
@@ -28,7 +22,7 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'threads_basic', 'threads_manage_insights');
         $response = $this->get($account,
-            "{$this->graphBaseUrl($account)}/{$publication->remote_id}/insights",
+            "{$account->platform->graphApiUrl()}/{$publication->remote_id}/insights",
             ['metric' => 'views,likes,replies,reposts,quotes'],
         );
         $items = $response->json('data');

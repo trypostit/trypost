@@ -1020,7 +1020,7 @@ function metaMissingObject(string $id): array
 function metaGraphBase(Platform $platform): string
 {
     return match ($platform) {
-        Platform::Instagram, Platform::InstagramFacebook => $platform->instagramGraphBaseUrl(),
+        Platform::Instagram, Platform::InstagramFacebook => $platform->graphApiUrl(),
         Platform::Facebook => config('trypost.platforms.facebook.graph_api'),
         Platform::Threads => config('trypost.platforms.threads.graph_api'),
     };

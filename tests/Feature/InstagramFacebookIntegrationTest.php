@@ -33,13 +33,14 @@ beforeEach(function () {
     ]);
 });
 
-test('instagram facebook platform uses graph.facebook.com base url', function () {
-    expect(Platform::InstagramFacebook->instagramGraphBaseUrl())
-        ->toContain('graph.facebook.com');
-
-    expect(Platform::Instagram->instagramGraphBaseUrl())
-        ->toContain('graph.instagram.com');
-});
+test('each Meta platform reads its own Graph API', function (Platform $platform, string $configKey, string $host) {
+    expect($platform->graphApiUrl())->toBe(config($configKey))->toContain($host);
+})->with([
+    'instagram via facebook' => [Platform::InstagramFacebook, 'trypost.platforms.instagram-facebook.graph_api', 'graph.facebook.com'],
+    'instagram login' => [Platform::Instagram, 'trypost.platforms.instagram.graph_api', 'graph.instagram.com'],
+    'facebook' => [Platform::Facebook, 'trypost.platforms.facebook.graph_api', 'graph.facebook.com'],
+    'threads' => [Platform::Threads, 'trypost.platforms.threads.graph_api', 'graph.threads.net'],
+]);
 
 test('instagram facebook platform has correct label', function () {
     expect(Platform::InstagramFacebook->label())

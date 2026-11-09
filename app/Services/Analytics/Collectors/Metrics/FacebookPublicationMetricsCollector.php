@@ -21,11 +21,6 @@ use Illuminate\Support\Str;
  */
 class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
-    protected function graphBaseUrl(SocialAccount $account): string
-    {
-        return config('trypost.platforms.facebook.graph_api');
-    }
-
     protected function postsEdge(): string
     {
         return 'published_posts';
@@ -57,7 +52,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
     {
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
-        $graph = $this->graphBaseUrl($account);
+        $graph = $account->platform->graphApiUrl();
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
         $isVideo = ! $isStory && (filled($videoId) || $this->isReadByVideoId($publication));

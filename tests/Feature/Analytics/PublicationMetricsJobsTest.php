@@ -561,7 +561,7 @@ test('a post deleted on Instagram is marked deleted and can then be deleted in T
         'remote_id' => '17897891718416700',
         'provider_published_at' => now()->subHours(2),
     ]);
-    $graph = Platform::InstagramFacebook->instagramGraphBaseUrl();
+    $graph = Platform::InstagramFacebook->graphApiUrl();
     Http::fake([
         "{$graph}/17841400000000001*" => Http::response(['id' => '17841400000000001']),
         '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'type' => 'GraphMethodException']], 400),
@@ -613,7 +613,7 @@ test('a discovery during the deletion check keeps the post published, even in th
     $publication->forceFill(['last_seen_at' => now()->subHour()])->save();
     $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
     $publication->forceFill(['post_id' => $post->id])->save();
-    $graph = Platform::InstagramFacebook->instagramGraphBaseUrl();
+    $graph = Platform::InstagramFacebook->graphApiUrl();
     Http::fake([
         "{$graph}/{$publication->platform_user_id}/media*" => function () use ($publication) {
             app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));

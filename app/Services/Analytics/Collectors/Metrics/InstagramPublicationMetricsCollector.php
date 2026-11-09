@@ -23,11 +23,6 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         'SWIPE_FORWARD' => 'swipes_forward',
     ];
 
-    protected function graphBaseUrl(SocialAccount $account): string
-    {
-        return $account->platform->instagramGraphBaseUrl();
-    }
-
     protected function postsEdge(): string
     {
         return 'media';
@@ -44,7 +39,7 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         $fields = $isStory
             ? ['reach', 'views', 'replies']
             : ['reach', 'views', 'likes', 'comments', 'shares', 'saved'];
-        $url = "{$this->graphBaseUrl($account)}/{$publication->remote_id}/insights";
+        $url = "{$account->platform->graphApiUrl()}/{$publication->remote_id}/insights";
         $response = $this->get($account, $url, ['metric' => implode(',', $fields)]);
         $items = $response->json('data');
 
