@@ -62,6 +62,14 @@ test('a user and a channel stored with an alias missing from PHP\'s list read th
         ->and($channel->fresh()->timezone)->toBe('America/Regina');
 });
 
+test('a user and a channel stored with a zone PHP knows without a canonical name keep it', function () {
+    $user = User::factory()->create(['timezone' => 'Etc/GMT+10']);
+    $channel = SocialAccount::factory()->create(['timezone' => 'Etc/GMT-14']);
+
+    expect($user->fresh()->timezone)->toBe('Etc/GMT+10')
+        ->and($channel->fresh()->timezone)->toBe('Etc/GMT-14');
+});
+
 test('registration maps an alias missing from PHP\'s time zone list', function () {
     $this->post(route('register.store'), [
         'name' => 'Ravi',

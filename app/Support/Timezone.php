@@ -26,6 +26,19 @@ class Timezone
     }
 
     /**
+     * A stored zone made safe to compute with: its canonical identifier, or the
+     * zone itself when PHP knows it without one (Etc/GMT+10), so a zone PHP
+     * understands never shifts to UTC; only one it does not know is replaced.
+     */
+    public static function usable(string $value): string
+    {
+        $known = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
+        $normalized = self::normalize($value);
+
+        return $normalized === self::DEFAULT && $known->has($value) ? $value : $normalized;
+    }
+
+    /**
      * @return list<array{value: string, label: string, offset: string}>
      */
     public static function options(): array

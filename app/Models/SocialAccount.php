@@ -375,7 +375,7 @@ class SocialAccount extends Model
     protected function timezone(): Attribute
     {
         return Attribute::make(
-            get: fn (string $value): string => Timezone::normalize($value),
+            get: fn (string $value): string => Timezone::usable($value),
         );
     }
 
