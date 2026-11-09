@@ -6,35 +6,21 @@ use App\Enums\User\Theme;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-function waitForProfileTabsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('the profile tabs keep password, login and sessions apart and remember the open tab in the url', function () {
     $this->actingAs(User::factory()->create());
 
     $page = visit(route('app.profile.edit'));
-    waitForProfileTabsTestId($page, 'profile-tab-login');
+    waitFor($page, '@profile-tab-login');
 
     $page->assertVisible('[data-test="update-profile-button"]')
         ->assertMissing('@profile-new-password')
         ->click('@profile-tab-login');
-    waitForProfileTabsTestId($page, 'profile-new-password');
+    waitFor($page, '@profile-new-password');
 
     $page->assertVisible('[data-test="connected-account-google"]')
         ->assertQueryStringHas('tab', 'login')
         ->click('@profile-tab-sessions');
-    waitForProfileTabsTestId($page, 'profile-sessions');
+    waitFor($page, '@profile-sessions');
 
     $page->assertQueryStringHas('tab', 'sessions')
         ->assertMissing('@profile-new-password')
@@ -45,7 +31,7 @@ test('a link to the login tab opens it', function () {
     $this->actingAs(User::factory()->create());
 
     $page = visit(route('app.profile.edit', ['tab' => 'login']));
-    waitForProfileTabsTestId($page, 'profile-new-password');
+    waitFor($page, '@profile-new-password');
 
     $page->assertVisible('@profile-new-password')
         ->assertMissing('[data-test="update-profile-button"]')
@@ -56,7 +42,7 @@ test('the delete account button sits under a neutral warning', function () {
     $this->actingAs(User::factory()->create());
 
     $page = visit(route('app.profile.edit'));
-    waitForProfileTabsTestId($page, 'delete-account-warning');
+    waitFor($page, '@delete-account-warning');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -84,7 +70,7 @@ test('each session shows its browser and system icons under the log out button',
     $this->actingAs($user);
 
     $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
-    waitForProfileTabsTestId($page, 'session-browser-icon-firefox-on-windows');
+    waitFor($page, '@session-browser-icon-firefox-on-windows');
 
     $page->assertAttribute('@session-browser-icon-firefox-on-windows', 'src', '/images/browsers/firefox.svg')
         ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png')
@@ -114,7 +100,7 @@ test('the apple logo of a mac session turns light on the dark theme', function (
     $this->actingAs($user);
 
     $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
-    waitForProfileTabsTestId($page, 'session-os-icon-safari-on-mac');
+    waitFor($page, '@session-os-icon-safari-on-mac');
 
     expect($page->script('getComputedStyle(document.querySelector(\'[data-testid="session-os-icon-safari-on-mac"]\')).filter'))->toBe('invert(1)');
     $page->assertNoJavaScriptErrors();
@@ -124,7 +110,7 @@ test('the github mark is drawn in the text color on the dark theme while google 
     $this->actingAs(User::factory()->create(['theme' => Theme::Dark]));
 
     $page = visit(route('app.profile.edit', ['tab' => 'login']));
-    waitForProfileTabsTestId($page, 'connected-account-icon-github');
+    waitFor($page, '@connected-account-icon-github');
 
     $github = $page->script(<<<'JS'
         (() => {
@@ -151,16 +137,14 @@ test('logging out other devices asks for a plain confirmation without a password
     $this->actingAs($user);
 
     $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
-    waitForProfileTabsTestId($page, 'session-browser-icon-phone');
+    waitFor($page, '@session-browser-icon-phone');
     $page->click('[data-test="log-out-other-sessions-button"]');
-    waitForProfileTabsTestId($page, 'confirm-log-out-other-sessions');
+    waitFor($page, '@confirm-log-out-other-sessions');
 
     expect($page->script('document.querySelectorAll(\'[data-testid="confirm-delete-modal"] input\').length'))->toBe(0);
 
     $page->click('@confirm-log-out-other-sessions');
-    for ($attempt = 0; $attempt < 50 && DB::table($table)->whereIn('id', ['phone', 'laptop'])->exists(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => ! DB::table($table)->whereIn('id', ['phone', 'laptop'])->exists());
 
     expect(DB::table($table)->whereIn('id', ['phone', 'laptop'])->exists())->toBeFalse();
     $page->assertNoJavaScriptErrors();

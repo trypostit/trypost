@@ -17,23 +17,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
-function waitForPostDetailsDialogCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForPostDetailsDialogTestId(mixed $page, string $testId): void
-{
-    waitForPostDetailsDialogCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
 /**
  * @return array{0: User, 1: SocialAccount}
  */
@@ -103,22 +86,22 @@ test('clicking a sent card opens the post details, and so does the menu', functi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForPostDetailsDialogTestId($page, "post-open-{$post->id}");
+    waitFor($page, "@post-open-{$post->id}");
     $before = $page->script('location.href');
 
     $page->click("@post-open-{$post->id}");
-    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     expect($page->script('location.href'))->toBe($before);
     $page->assertPresent("@post-details-status-{$post->id}")
         ->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post');
 
     $page->keys("@post-details-{$post->id}", 'Escape');
-    waitForPostDetailsDialogCondition($page, "!document.querySelector('[data-testid=\"post-details-{$post->id}\"]')");
+    waitForGone($page, "@post-details-{$post->id}");
     $page->click("@post-card-menu-{$post->id}");
-    waitForPostDetailsDialogTestId($page, "post-details-open-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
-    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertNoJavaScriptErrors();
 });
@@ -129,7 +112,7 @@ test('the post details deep link opens the dialog on the sent tab', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertVisible("@post-details-{$post->id}")
         ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.published'))
@@ -144,7 +127,7 @@ test('the post details of a google business post in review say google is reviewi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertSeeIn("@post-details-status-{$post->id}", __('posts.publish.in_google_review'))
         ->assertNoJavaScriptErrors();
@@ -156,8 +139,8 @@ test('the details media sits below the text in a single scrollable row', functio
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]))->resize(1280, 900);
-    waitForPostDetailsDialogTestId($page, "post-details-media-{$post->id}");
-    waitForPostDetailsDialogCondition($page, "document.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitFor($page, "@post-details-media-{$post->id}");
+    waitForCondition($page, "document.getAnimations().every((animation) => animation.playState !== 'running')");
 
     $layout = $page->script(<<<JS
         (() => {
@@ -200,9 +183,9 @@ test('the details metrics band scrolls with arrows, shows when it refreshed and 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]))->resize(390, 844);
-    waitForPostDetailsDialogTestId($page, $band);
-    waitForPostDetailsDialogCondition($page, "document.getAnimations().every((animation) => animation.playState !== 'running')");
-    waitForPostDetailsDialogTestId($page, "{$band}-next");
+    waitFor($page, "@{$band}");
+    waitForCondition($page, "document.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitFor($page, "@{$band}-next");
 
     $page->assertVisible("@{$band}-next")
         ->assertPresent("@{$band}-fade-next")
@@ -211,17 +194,17 @@ test('the details metrics band scrolls with arrows, shows when it refreshed and 
         ->assertMissing("@{$band}-refreshed");
 
     $page->click("@{$band}-next");
-    waitForPostDetailsDialogTestId($page, "{$band}-prev");
+    waitFor($page, "@{$band}-prev");
     $page->assertVisible("@{$band}-prev")
         ->assertPresent("@{$band}-fade-prev");
 
     $page->script("(() => { const strip = document.querySelector('[data-testid=\"{$band}\"]'); strip.scrollLeft = strip.scrollWidth; })()");
-    waitForPostDetailsDialogCondition($page, "!document.querySelector('[data-testid=\"{$band}-next\"]')");
+    waitForGone($page, "@{$band}-next");
     $page->assertNotPresent("@{$band}-next")
         ->assertNotPresent("@{$band}-fade-next");
 
     $page->hover("@{$band}");
-    waitForPostDetailsDialogTestId($page, "{$band}-refreshed");
+    waitFor($page, "@{$band}-refreshed");
     $page->assertVisible("@{$band}-refreshed")
         ->assertSeeIn("@{$band}-refreshed", __('posts.publish.metrics.refreshed', ['time' => '2 hours ago']));
 
@@ -231,7 +214,7 @@ test('the details metrics band scrolls with arrows, shows when it refreshed and 
         ->toBe($insightsPath);
 
     $page->click("@post-details-insights-{$post->id}");
-    waitForPostDetailsDialogCondition($page, "location.pathname === '{$insightsPath}'");
+    waitForPath($page, $insightsPath);
 
     $page->assertPathIs($insightsPath)
         ->assertNoJavaScriptErrors();
@@ -249,7 +232,7 @@ test('the details metrics follow the order of the post content type and network'
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForPostDetailsDialogTestId($page, "post-details-metrics-{$post->id}");
+    waitFor($page, "@post-details-metrics-{$post->id}");
 
     expect($page->script("[...document.querySelectorAll('[data-testid=\"post-details-metrics-{$post->id}\"] [data-metric]')].map((item) => item.dataset.metric)"))
         ->toBe($expected);
@@ -291,8 +274,8 @@ test('the metrics band arrows follow the real overflow when the metrics change w
     $page = visit($surface === 'dialog'
         ? route('app.posts.index', ['post' => $post->id])
         : route('app.posts.index', ['tab' => 'sent']))->resize($width, 1000);
-    waitForPostDetailsDialogTestId($page, $band);
-    waitForPostDetailsDialogCondition($page, "document.fonts.status === 'loaded' && document.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitFor($page, "@{$band}");
+    waitForCondition($page, "document.fonts.status === 'loaded' && document.getAnimations().every((animation) => animation.playState !== 'running')");
 
     expect(postDetailsDialogMetricsBandState($page, $band))->toBe(['overflows' => true, 'next' => true, 'fadeNext' => true]);
 
@@ -304,12 +287,12 @@ test('the metrics band arrows follow the real overflow when the metrics change w
             document.head.append(style);
         })()
     JS);
-    waitForPostDetailsDialogCondition($page, "!document.querySelector('[data-testid=\"{$band}-next\"]')");
+    waitForGone($page, "@{$band}-next");
 
     expect(postDetailsDialogMetricsBandState($page, $band))->toBe(['overflows' => false, 'next' => false, 'fadeNext' => false]);
 
     $page->script("document.getElementById('narrow-metrics').remove()");
-    waitForPostDetailsDialogTestId($page, "{$band}-next");
+    waitFor($page, "@{$band}-next");
 
     expect(postDetailsDialogMetricsBandState($page, $band))->toBe(['overflows' => true, 'next' => true, 'fadeNext' => true]);
     $page->assertNoJavaScriptErrors();
@@ -325,7 +308,7 @@ test('a publishing post shows a spinning status in its details', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForPostDetailsDialogTestId($page, "post-details-status-{$post->id}");
+    waitFor($page, "@post-details-status-{$post->id}");
 
     expect($page->script("document.querySelector('[data-testid=\"post-details-status-{$post->id}\"] svg').classList.contains('animate-spin')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -353,7 +336,7 @@ test('the details of a sent thread show every post of the thread with its own me
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForPostDetailsDialogTestId($page, "thread-view-{$post->id}");
+    waitFor($page, "@thread-view-{$post->id}");
 
     $page->assertSeeIn("@thread-view-post-{$post->id}-0", 'First post of the thread')
         ->assertSeeIn("@thread-view-post-{$post->id}-1", 'Second post of the thread')

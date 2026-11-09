@@ -66,46 +66,17 @@ function composerSharedDataPost(Workspace $workspace, SocialAccount $account, Co
     ]);
 }
 
-function waitForComposerSharedDataCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerSharedDataTestId(mixed $page, string $testId): void
-{
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
-function waitForComposerSharedDataReady(mixed $page, string $testId): void
-{
-    waitForComposerSharedDataCondition($page, <<<JS
-        (() => {
-            const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-            return sheet?.getAttribute('data-state') === 'open'
-                && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0;
-        })()
-    JS);
-}
-
 test('editing from the calendar opens the post with its board', function () {
     [$user, $workspace, $pinterest] = composerSharedDataSetup();
     $post = composerSharedDataPost($workspace, $pinterest, ContentType::PinterestPin, ['board_id' => 'board_live']);
     $this->actingAs($user);
 
     $page = visit(route('app.calendar', ['view' => 'month', 'month' => $post->scheduled_at->format('Y-m-d')]));
-    waitForComposerSharedDataTestId($page, "calendar-post-{$post->id}");
+    waitFor($page, "@calendar-post-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitForComposerSharedDataTestId($page, "post-details-edit-{$post->id}");
+    waitFor($page, "@post-details-edit-{$post->id}");
     $page->click("@post-details-edit-{$post->id}");
-    waitForComposerSharedDataTestId($page, 'pinterest-board-selected');
+    waitFor($page, '@pinterest-board-selected');
 
     $page->assertSeeIn('@pinterest-board-selected', 'Live board')
         ->assertNoJavaScriptErrors();
@@ -117,7 +88,7 @@ function clickComposerSharedDataNewPost(mixed $page): void
 
     for ($attempt = 0; $attempt < 3 && ! $page->script($menuOpen); $attempt++) {
         $page->click('@sidebar-new');
-        waitForCondition($page, $menuOpen);
+        waitForState($page, '@sidebar-new-menu[data-state="open"]', 'true');
     }
 
     waitFor($page, '@sidebar-new-post');
@@ -127,29 +98,30 @@ function clickComposerSharedDataNewPost(mixed $page): void
 function openComposerFromSidebar(mixed $page): void
 {
     clickComposerSharedDataNewPost($page);
-    waitForComposerSharedDataReady($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
 }
 
 function closeComposerSharedData(mixed $page): void
 {
     $page->click('@composer-close');
-    waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 }
 
 function composerSharedDataZoneLabel(mixed $page, SocialAccount $channel): string
 {
     $page->click('@composer-add-account');
-    waitForComposerSharedDataTestId($page, "composer-account-option-{$channel->id}");
+    waitFor($page, "@composer-account-option-{$channel->id}");
     $page->click("@composer-account-option-{$channel->id}");
-    waitForComposerSharedDataTestId($page, 'composer-schedule-trigger');
+    waitFor($page, '@composer-schedule-trigger');
     $page->click('@composer-schedule-trigger');
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-schedule-picker\"]') || document.querySelector('[data-testid=\"composer-schedule-custom\"]')");
+    waitForState($page, '@composer-schedule-picker, @composer-schedule-custom', 'true');
 
     if (! $page->script('Boolean(document.querySelector(\'[data-testid="composer-schedule-picker"]\'))')) {
         $page->click('@composer-schedule-custom');
     }
 
-    waitForComposerSharedDataTestId($page, 'composer-schedule-timezone');
+    waitFor($page, '@composer-schedule-timezone');
 
     return trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-timezone]").textContent'));
 }
@@ -167,11 +139,12 @@ test('the next composer open shows a channel time zone the user just changed wit
     $channel->update(['timezone' => 'Asia/Tokyo']);
 
     clickComposerSharedDataNewPost($page);
-    waitForComposerSharedDataTestId($page, 'composer-resume-discard');
+    waitFor($page, '@composer-resume-discard');
     $page->click('@composer-resume-discard');
-    waitForComposerSharedDataReady($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     composerSharedDataZoneLabel($page, $channel);
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-schedule-timezone\"]')?.textContent.includes('Tokyo')");
+    waitForText($page, '@composer-schedule-timezone', 'Tokyo');
 
     expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-timezone]").textContent')))->toContain('Tokyo');
     $page->assertNoJavaScriptErrors();
@@ -193,7 +166,7 @@ test('a signature created in the composer is there when the composer opens again
 
     openComposerFromSidebar($page);
     $page->click('@composer-base-signature');
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-signatures-popover\"]')?.textContent.includes('Launch tags')");
+    waitForText($page, '@composer-signatures-popover', 'Launch tags');
 
     $page->assertSeeIn('@composer-signatures-popover', 'Launch tags')
         ->assertNoJavaScriptErrors();
@@ -221,9 +194,9 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['edit' => $post->id]));
-    waitForComposerSharedDataTestId($page, 'tiktok-allow-comments');
+    waitFor($page, '@tiktok-allow-comments');
     $page->click('@composer-save-draft');
-    waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 
     expect(data_get($post->fresh()->meta, 'allow_comments'))->toBeTrue();
 });
@@ -253,11 +226,11 @@ test('editing a post shows a server media error on the item it belongs to', func
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['edit' => $post->id]));
-    waitForComposerSharedDataCondition($page, "document.querySelectorAll('[data-testid\$=\"-media-item\"]').length === 2");
+    waitForCount($page, '[data-testid$="-media-item"]', 2);
     $media->last()->delete();
 
     $page->click('@composer-save-draft');
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid\$=\"-media-error-1\"]') !== null");
+    waitForState($page, '[data-testid$="-media-error-1"]', 'true');
 
     expect($page->script("document.querySelector('[data-testid\$=\"-media-error-0\"]')"))->toBeNull();
     $page->assertNoJavaScriptErrors();

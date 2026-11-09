@@ -9,32 +9,6 @@ use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Services\WebhookService;
 
-function waitForWebhookShowTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForWebhookShowCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 150; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return array{0: User, 1: Webhook}
  */
@@ -64,7 +38,7 @@ test('the header shows the host, the path and the status', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-endpoint');
+    waitFor($page, '@webhook-endpoint');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -83,7 +57,7 @@ test('the header shows the host, the path and the status', function () {
         ->assertVisible('@signing-secret')
         ->click('@webhook-back');
 
-    waitForWebhookShowCondition($page, "location.pathname === '".route('app.webhooks.index', absolute: false)."'");
+    waitForPath($page, route('app.webhooks.index', absolute: false));
 
     expect($page->script('location.pathname'))->toBe(route('app.webhooks.index', absolute: false));
     $page->assertNoJavaScriptErrors();
@@ -104,7 +78,7 @@ test('the newest delivery is selected by default and selecting a row shows its p
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-log-detail');
+    waitFor($page, '@webhook-log-detail');
 
     $page->assertSeeIn("@webhook-log-status-{$older->id}", '200')
         ->assertSeeIn("@webhook-log-status-{$newest->id}", '500')
@@ -118,7 +92,7 @@ test('the newest delivery is selected by default and selecting a row shows its p
         ->toContain('destructive');
 
     $page->click("@webhook-log-{$older->id}");
-    waitForWebhookShowCondition($page, "document.querySelector('[data-testid=\"webhook-log-payload\"]').textContent.includes('older-delivery')");
+    waitForState($page, '@webhook-log-payload', "element.textContent.includes('older-delivery')");
 
     $page->assertSeeIn('@webhook-log-payload', 'older-delivery')
         ->assertSeeIn('@webhook-log-title', __('webhooks.events.post_published'))
@@ -132,40 +106,40 @@ test('the actions menu pauses, edits and deletes the webhook after a plain confi
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
+    waitFor($page, '@webhook-actions-trigger');
     $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'toggle-webhook-status');
+    waitFor($page, '@toggle-webhook-status');
 
     $page->assertMissing('@copy-id-button')
         ->assertVisible('@rotate-secret-menu-item')
         ->click('@toggle-webhook-status');
 
     $disabled = __('webhooks.status.disabled');
-    waitForWebhookShowCondition($page, "document.querySelector('[data-testid=\"webhook-status\"]').textContent.includes('{$disabled}')");
+    waitForState($page, '@webhook-status', "element.textContent.includes('{$disabled}')");
 
     $page->assertSeeIn('@webhook-status', $disabled);
     expect($webhook->fresh()->status->value)->toBe('disabled');
 
-    waitForWebhookShowCondition($page, "!document.querySelector('[data-testid=\"toggle-webhook-status\"]')");
+    waitForGone($page, '@toggle-webhook-status');
     $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'edit-webhook-button');
+    waitFor($page, '@edit-webhook-button');
     $page->click('@edit-webhook-button');
-    waitForWebhookShowTestId($page, 'edit-webhook-dialog');
+    waitFor($page, '@edit-webhook-dialog');
 
     $page->assertValue('@edit-webhook-endpoint', 'https://hooks.example.com/trypost/inbound')
         ->click('@cancel-edit-webhook');
-    waitForWebhookShowCondition($page, "!document.querySelector('[data-testid=\"edit-webhook-dialog\"]')");
+    waitForGone($page, '@edit-webhook-dialog');
 
     $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'delete-webhook-button');
+    waitFor($page, '@delete-webhook-button');
     $page->click('@delete-webhook-button');
-    waitForWebhookShowTestId($page, 'confirm-delete-action');
+    waitFor($page, '@confirm-delete-action');
 
     $page->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action');
 
     $indexPath = route('app.webhooks.index', absolute: false);
-    waitForWebhookShowCondition($page, "location.pathname === '{$indexPath}'");
+    waitForPath($page, $indexPath);
 
     expect(Webhook::query()->whereKey($webhook->id)->exists())->toBeFalse()
         ->and($page->script('location.pathname'))->toBe($indexPath);
@@ -181,14 +155,14 @@ test('send test event pings the endpoint from the header and from the empty deli
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-deliveries-empty');
+    waitFor($page, '@webhook-deliveries-empty');
 
     $page->assertSeeIn('@webhook-deliveries-empty', __('webhooks.deliveries.empty_title'))
         ->assertSeeIn('@webhook-deliveries-empty', __('webhooks.deliveries.empty_description'))
         ->assertVisible('@webhooks-empty-illustration')
         ->assertMissing('@webhook-log-list')
         ->click('@webhook-deliveries-send-test');
-    waitForWebhookShowCondition($page, "document.querySelector('[data-sonner-toast]') !== null");
+    waitForState($page, '[data-sonner-toast]', 'true');
 
     $page->assertSee(__('webhooks.flash.tested'));
 
@@ -200,7 +174,7 @@ test('send test event pings the endpoint from the header and from the empty deli
     JS))->toBe([true, true]);
 
     $page->click('@send-test-webhook');
-    waitForWebhookShowCondition($page, "document.querySelectorAll('[data-sonner-toast]').length >= 2");
+    waitForCount($page, '[data-sonner-toast]', 2, '>=');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -211,7 +185,7 @@ test('a live delivery update never shows the same delivery twice', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
+    waitFor($page, '@webhook-actions-trigger');
 
     $log = WebhookLog::factory()->create(['webhook_id' => $webhook->id]);
     $payload = json_encode([
@@ -233,7 +207,7 @@ test('a live delivery update never shows the same delivery twice', function () {
             }
         })()
     JS);
-    waitForWebhookShowCondition($page, "document.querySelectorAll('[data-testid^=\"webhook-log-status-\"]').length >= 3");
+    waitForCount($page, '[data-testid^="webhook-log-status-"]', 3, '>=');
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
     expect($page->script(<<<'JS'

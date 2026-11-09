@@ -843,7 +843,7 @@ test('on a phone the custom range applies the two days picked in its sheet', fun
         $page->click("[data-testid=\"date-range-picker-sheet\"] [data-slot=\"range-calendar-trigger\"][data-value=\"{$day}\"]");
     }
 
-    waitForCondition($page, "new URLSearchParams(location.search).get('end') === '{$days[1]}'");
+    waitForQueryParameter($page, 'end', $days[1]);
 
     $page->assertQueryStringHas('range', 'custom')
         ->assertQueryStringHas('start', $days[0])

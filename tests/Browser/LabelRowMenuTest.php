@@ -7,20 +7,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 
-function waitForLabelMenuTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function labelMenuOwner(): array
 {
     $user = User::factory()->create();
@@ -37,9 +23,9 @@ function labelMenuOwner(): array
 
 function assertLabelFilterSelected(mixed $page, string $testId, string $labelId): void
 {
-    waitForLabelMenuTestId($page, "{$testId}-filter");
+    waitFor($page, "@{$testId}-filter");
     $page->click("@{$testId}-filter");
-    waitForLabelMenuTestId($page, "{$testId}-checkbox-{$labelId}");
+    waitFor($page, "@{$testId}-checkbox-{$labelId}");
     $page->assertAttribute("@{$testId}-checkbox-{$labelId}", 'data-state', 'checked')
         ->assertNoJavaScriptErrors();
 }
@@ -49,9 +35,9 @@ test('label row menu opens posts filtered by the label in a new tab', function (
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, "label-menu-{$label->id}");
+    waitFor($page, "@label-menu-{$label->id}");
     $page->click("@label-menu-{$label->id}");
-    waitForLabelMenuTestId($page, "label-view-posts-{$label->id}");
+    waitFor($page, "@label-view-posts-{$label->id}");
 
     $links = $page->script(<<<JS
         (() => ['label-view-posts-{$label->id}'].map((id) => {
@@ -81,7 +67,7 @@ test('the labels page without labels shows a centered illustration and a create 
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, 'labels-empty');
+    waitFor($page, '@labels-empty');
 
     $page->assertVisible('@labels-empty-illustration')
         ->assertMissing('@header-title')
@@ -115,7 +101,7 @@ test('the labels page without labels shows a centered illustration and a create 
     JS))->toBe([true, true]);
 
     $page->click('@labels-empty-create');
-    waitForLabelMenuTestId($page, 'create-label-sheet');
+    waitFor($page, '@create-label-sheet');
     $page->assertVisible('@create-label-sheet')->assertNoJavaScriptErrors();
 });
 
@@ -124,7 +110,7 @@ test('a search without results keeps the header and search, and clearing it neve
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index', ['search' => 'nothing-matches']));
-    waitForLabelMenuTestId($page, 'empty-state');
+    waitFor($page, '@empty-state');
 
     $page->assertVisible('@header-title')
         ->assertVisible('@create-label-button')
@@ -162,7 +148,7 @@ test('a long labels list starts at the top and scrolls normally', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, "label-row-{$label->id}");
+    waitFor($page, "@label-row-{$label->id}");
 
     expect($page->script(<<<'JS'
         (() => {
@@ -186,7 +172,7 @@ test('a label row shows its color, how many posts use it and its actions in one 
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, "label-row-{$label->id}");
+    waitFor($page, "@label-row-{$label->id}");
 
     $page->assertSeeIn("@label-posts-count-{$label->id}", trans_choice('labels.meta.posts', 1, ['count' => 1]));
 
@@ -194,11 +180,11 @@ test('a label row shows its color, how many posts use it and its actions in one 
         ->toBe('rgb(22, 163, 74)');
 
     $page->click("@label-menu-{$label->id}");
-    waitForLabelMenuTestId($page, "edit-label-{$label->id}");
+    waitFor($page, "@edit-label-{$label->id}");
 
     $page->assertVisible("@delete-label-{$label->id}")
         ->click("@edit-label-{$label->id}");
-    waitForLabelMenuTestId($page, 'edit-label-dialog');
+    waitFor($page, '@edit-label-dialog');
 
     $page->assertVisible('@edit-label-dialog')->assertNoJavaScriptErrors();
 });

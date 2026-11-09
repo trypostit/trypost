@@ -13,23 +13,6 @@ use App\Support\MediaImportStatus;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-function waitForEditInCanvaCondition(mixed $page, string $condition, int $attempts = 100): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < {$attempts}; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForEditInCanvaTestId(mixed $page, string $testId): void
-{
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
 /**
  * A finished Canva import: a temporary upload that remembers its design.
  *
@@ -87,9 +70,9 @@ function editInCanvaPickSquare(mixed $page, string $toolbarPrefix): string
 {
     ['query' => $query] = editInCanvaStubbedPopup($page, function () use ($page, $toolbarPrefix): void {
         $page->click("@{$toolbarPrefix}-media-source-menu");
-        waitForEditInCanvaTestId($page, 'media-source-canva');
+        waitFor($page, '@media-source-canva');
         $page->click('@media-source-canva');
-        waitForEditInCanvaTestId($page, 'canva-preset-square');
+        waitFor($page, '@canva-preset-square');
         $page->click('@canva-preset-square');
     });
 
@@ -128,10 +111,10 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     $channelEdited = editInCanvaBrowserImport($user, $workspace, 'DAF-channel-edited', $channelMade['media']->id);
 
     $page = visit(route('app.posts.create'));
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"composer-add-account\"]')?.getBoundingClientRect().height > 0", attempts: 300);
+    waitFor($page, '@composer-add-account');
 
     editInCanvaDeliver($page, editInCanvaPickSquare($page, 'composer-base'), $shared['import'], null);
-    waitForEditInCanvaTestId($page, 'composer-media-item-0');
+    waitFor($page, '@composer-media-item-0');
 
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page->script(<<<JS
@@ -144,7 +127,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
             input.dispatchEvent(new Event('change', { bubbles: true }));
         })();
     JS);
-    waitForEditInCanvaTestId($page, 'composer-media-item-1');
+    waitFor($page, '@composer-media-item-1');
 
     $uploadedSrc = editInCanvaTileSrc($page, 'composer', 1);
 
@@ -153,11 +136,11 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
         ->assertAttribute('@composer-edit-canva-0', 'aria-label', 'Edit DAF-shared.png in Canva')
         ->hover('@composer-dropzone');
     $page->script('document.activeElement?.blur(); true;');
-    waitForEditInCanvaCondition($page, "getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity === '0'");
+    waitForState($page, '@composer-edit-canva-0', "getComputedStyle(element.parentElement).opacity === '0'");
     expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity"))->toBe('0');
 
     $page->hover('@composer-media-item-0');
-    waitForEditInCanvaCondition($page, "getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity === '1'");
+    waitForState($page, '@composer-edit-canva-0', "getComputedStyle(element.parentElement).opacity === '1'");
     expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity"))->toBe('1');
 
     ['path' => $path, 'query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click('@composer-edit-canva-0'));
@@ -169,7 +152,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     $exporting = (string) Str::uuid();
     MediaImportStatus::pending($exporting, $user->id, $workspace->id, $shared['media']->id);
     editInCanvaDeliver($page, (string) data_get($query, 'nonce'), $exporting, $shared['media']->id);
-    waitForEditInCanvaTestId($page, 'composer-replacing-0');
+    waitFor($page, '@composer-replacing-0');
 
     $page->assertPresent('@composer-replacing-0')
         ->assertMissing('@composer-import-item')
@@ -178,7 +161,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
         ->and($page->script("document.querySelectorAll('[data-testid^=\"composer-media-item-\"]').length"))->toBe(2);
 
     MediaImportStatus::complete($exporting, $sharedEdited['media']);
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"composer-media-item-0\"] img')?.getAttribute('src') === '{$sharedEdited['media']->url}'");
+    waitForState($page, '@composer-media-item-0 img', "element.getAttribute('src') === '{$sharedEdited['media']->url}'");
 
     expect(editInCanvaTileSrc($page, 'composer', 0))->toBe($sharedEdited['media']->url)
         ->and(editInCanvaTileSrc($page, 'composer', 1))->toBe($uploadedSrc)
@@ -186,10 +169,10 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
 
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$channel->id}");
-    waitForEditInCanvaTestId($page, "composer-{$channel->id}-media-item-1");
+    waitFor($page, "@composer-{$channel->id}-media-item-1");
 
     editInCanvaDeliver($page, editInCanvaPickSquare($page, "composer-{$channel->id}"), $channelMade['import'], null);
-    waitForEditInCanvaTestId($page, "composer-{$channel->id}-media-item-2");
+    waitFor($page, "@composer-{$channel->id}-media-item-2");
 
     $page->assertPresent("@composer-{$channel->id}-edit-canva-0")
         ->assertMissing("@composer-{$channel->id}-edit-canva-1")
@@ -200,16 +183,16 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     expect(data_get($channelQuery, 'media'))->toBe($channelMade['media']->id);
 
     editInCanvaDeliver($page, (string) data_get($channelQuery, 'nonce'), $channelEdited['import'], $channelMade['media']->id);
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"composer-{$channel->id}-media-item-2\"] img')?.getAttribute('src') === '{$channelEdited['media']->url}'");
+    waitForState($page, "@composer-{$channel->id}-media-item-2 img", "element.getAttribute('src') === '{$channelEdited['media']->url}'");
 
     expect(editInCanvaTileSrc($page, "composer-{$channel->id}", 2))->toBe($channelEdited['media']->url)
         ->and(editInCanvaTileSrc($page, "composer-{$channel->id}", 0))->toBe($sharedEdited['media']->url)
         ->and(editInCanvaTileSrc($page, "composer-{$channel->id}", 1))->toBe($uploadedSrc)
         ->and($page->script("document.querySelectorAll('[data-testid^=\"composer-{$channel->id}-media-item-\"]').length"))->toBe(3);
 
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
     $page->click('@composer-save-draft');
-    waitForEditInCanvaCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')", attempts: 200);
+    waitForGone($page, '@post-composer-dialog');
 
     $saved = Post::query()->where('workspace_id', $workspace->id)->sole()->media;
 
@@ -248,7 +231,7 @@ test('the idea editor replaces a Canva tile in place and the save releases the r
     $edited = editInCanvaBrowserImport($user, $workspace, 'DAF-idea-edited', $original->id);
 
     $page = visit(route('app.create.ideas.show', $idea));
-    waitForEditInCanvaTestId($page, 'idea-media-item-1');
+    waitFor($page, '@idea-media-item-1');
 
     $page->assertPresent('@idea-edit-canva-0')
         ->assertMissing('@idea-edit-canva-1');
@@ -259,13 +242,13 @@ test('the idea editor replaces a Canva tile in place and the save releases the r
         ->and(data_get($query, 'media'))->toBe($original->id);
 
     editInCanvaDeliver($page, (string) data_get($query, 'nonce'), $edited['import'], $original->id);
-    waitForEditInCanvaCondition($page, "document.querySelector('[data-testid=\"idea-media-item-0\"] img')?.getAttribute('src') === '{$edited['media']->url}'");
+    waitForState($page, '@idea-media-item-0 img', "element.getAttribute('src') === '{$edited['media']->url}'");
 
     expect(editInCanvaTileSrc($page, 'idea', 0))->toBe($edited['media']->url)
         ->and(editInCanvaTileSrc($page, 'idea', 1))->toBe($plain->url);
 
     $page->click('@idea-editor-save');
-    waitForEditInCanvaCondition($page, "!document.querySelector('[data-testid=\"idea-editor\"]')", attempts: 200);
+    waitForGone($page, '@idea-editor');
 
     expect(collect($idea->refresh()->media)->pluck('id')->all())->toBe([$edited['media']->id, $plain->id])
         ->and(Media::query()->find($original->id))->toBeNull()

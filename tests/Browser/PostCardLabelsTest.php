@@ -18,13 +18,7 @@ function waitForCardLabelsStored(mixed $page, Post $post, array $expected): void
 {
     sort($expected);
 
-    for ($attempt = 0; $attempt < 50; $attempt++) {
-        if ($post->labels()->pluck('workspace_labels.id')->sort()->values()->all() === $expected) {
-            return;
-        }
-
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $post->labels()->pluck('workspace_labels.id')->sort()->values()->all() === $expected);
 }
 
 /**

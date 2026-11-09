@@ -6,20 +6,6 @@ use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 
-function waitForSettingsListRowTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create([
@@ -39,7 +25,7 @@ test('api key rows render through the shared settings list row', function () {
     $row = "[data-testid=\"api-key-row-{$token->id}\"]";
 
     $page = visit(route('app.api-keys.index'));
-    waitForSettingsListRowTestId($page, "api-key-row-{$token->id}");
+    waitFor($page, "@api-key-row-{$token->id}");
 
     $page
         ->assertVisible($row)
@@ -57,7 +43,7 @@ test('webhook rows open the webhook when clicked', function () {
     ]);
 
     $page = visit(route('app.webhooks.index'));
-    waitForSettingsListRowTestId($page, "webhook-row-{$webhook->id}");
+    waitFor($page, "@webhook-row-{$webhook->id}");
 
     $page
         ->assertSeeIn("@webhook-row-{$webhook->id}", 'example.com/hooks/trypost')

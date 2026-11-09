@@ -18,12 +18,10 @@ use App\Models\Workspace;
  */
 function assertNoHorizontalOverflow(mixed $page, string $label): void
 {
+    waitForState($page, 'h1, h2, main, [data-sidebar="trigger"]', 'true');
+
     $result = $page->script(<<<'JS'
         (async () => {
-            for (let i = 0; i < 80; i++) {
-                if (document.querySelector('h1, h2, main, [data-sidebar="trigger"]')) break;
-                await new Promise((r) => setTimeout(r, 50));
-            }
             await new Promise((r) => setTimeout(r, 400));
             const vw = window.innerWidth;
             let worst = null;

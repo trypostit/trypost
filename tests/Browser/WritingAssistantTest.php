@@ -9,45 +9,6 @@ use App\Models\User;
 use App\Models\Workspace;
 
 /**
- * Poll from the page (never sleep()) until the element is laid out and, when
- * given, contains the expected text.
- */
-function waitForWritingAssistantTestId(mixed $page, string $testId, string $text = ''): void
-{
-    $expected = json_encode($text);
-
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element?.getBoundingClientRect().height > 0
-                    && (element.value ?? element.textContent ?? '').includes({$expected})) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
- * The composer opens as an animated dialog; a click that lands before the
- * animation settles is swallowed.
- */
-function waitForWritingAssistantComposer(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="composer-add-account"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
  * @param  array<int, Platform>  $platforms
  * @return array{0: User, 1: array<int, SocialAccount>}
  */
@@ -79,18 +40,19 @@ function openWritingAssistant(User $user, array $accounts, string $content = '')
     test()->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForWritingAssistantComposer($page);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     if ($content !== '') {
         $page->fill('@composer-base-content', $content);
     }
     $page->click('@composer-add-account');
     foreach ($accounts as $account) {
-        waitForWritingAssistantTestId($page, "composer-account-option-{$account->id}");
+        waitFor($page, "@composer-account-option-{$account->id}");
         $page->click("@composer-account-option-{$account->id}");
     }
-    waitForWritingAssistantTestId($page, 'composer-ai-assistant');
+    waitFor($page, '@composer-ai-assistant');
     $page->click('@composer-ai-assistant');
-    waitForWritingAssistantTestId($page, 'writing-assistant-panel');
+    waitFor($page, '@writing-assistant-panel');
 
     return $page;
 }
@@ -118,11 +80,13 @@ test('generate needs four words, regenerates and inserts after the existing text
         ->assertEnabled('@writing-assistant-generate')
         ->click('@writing-assistant-generate');
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-suggestion', 'First idea');
+    waitFor($page, '@writing-assistant-suggestion');
+    waitForText($page, '@writing-assistant-suggestion', 'First idea');
     $page->assertSeeIn('@writing-assistant-suggestion', 'First idea')
         ->click('@writing-assistant-regenerate');
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-suggestion', 'Second idea');
+    waitFor($page, '@writing-assistant-suggestion');
+    waitForText($page, '@writing-assistant-suggestion', 'Second idea');
     $page->assertSeeIn('@writing-assistant-suggestion', 'Second idea')
         ->click('@writing-assistant-insert')
         ->assertValue("@composer-caption-{$accounts[0]->id}", "Existing line\n\nSecond idea")
@@ -136,7 +100,7 @@ test('a rewrite replaces the text and offers no regenerate', function () {
     $page = openWritingAssistant($user, $accounts, 'Hello world')
         ->click('@writing-assistant-mode-rephrase');
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-replace');
+    waitFor($page, '@writing-assistant-replace');
     $page->assertMissing('@writing-assistant-regenerate')
         ->click('@writing-assistant-replace')
         ->assertValue("@composer-caption-{$accounts[0]->id}", 'Hi everyone')
@@ -169,7 +133,8 @@ test('a premium X channel gets suggestions written for its own limit', function 
         ->fill('@writing-assistant-prompt', 'announce our summer launch today')
         ->click('@writing-assistant-generate');
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-suggestion', 'Great news');
+    waitFor($page, '@writing-assistant-suggestion');
+    waitForText($page, '@writing-assistant-suggestion', 'Great news');
     expect(trim((string) $page->script("document.querySelector('[data-testid=\"writing-assistant-suggestion\"]').textContent")))->toBe($long);
     $page->assertNoJavaScriptErrors();
 });
@@ -180,24 +145,25 @@ test('switching channel after a suggestion resets the panel and never writes to 
 
     test()->actingAs($user);
     $page = visit(route('app.posts.create'));
-    waitForWritingAssistantComposer($page);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->fill('@composer-base-content', 'Hello world')
         ->click('@composer-add-account');
-    waitForWritingAssistantTestId($page, "composer-account-option-{$linkedIn->id}");
+    waitFor($page, "@composer-account-option-{$linkedIn->id}");
     $page->click("@composer-account-option-{$linkedIn->id}");
-    waitForWritingAssistantTestId($page, "composer-account-option-{$x->id}");
+    waitFor($page, "@composer-account-option-{$x->id}");
     $page->click("@composer-account-option-{$x->id}");
-    waitForWritingAssistantTestId($page, 'composer-customization');
+    waitFor($page, '@composer-customization');
     $page->click("@composer-account-{$linkedIn->id}")
         ->click('@composer-ai-assistant');
-    waitForWritingAssistantTestId($page, 'writing-assistant-panel');
+    waitFor($page, '@writing-assistant-panel');
     $page->click('@writing-assistant-mode-shorten');
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-replace');
+    waitFor($page, '@writing-assistant-replace');
     $page->assertSeeIn('@writing-assistant-suggestion', 'Shortened for LinkedIn')
         ->click("@composer-account-{$x->id}");
 
-    waitForWritingAssistantTestId($page, 'writing-assistant-mode-shorten');
+    waitFor($page, '@writing-assistant-mode-shorten');
     $page->assertVisible('@writing-assistant-mode-shorten')
         ->assertMissing('@writing-assistant-replace')
         ->assertMissing('@writing-assistant-suggestion')

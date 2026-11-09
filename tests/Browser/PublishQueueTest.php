@@ -18,35 +18,9 @@ use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonInterface;
 
-function waitForPublishQueueTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForPublishQueueCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function waitForPublishQueueOrder(mixed $page, Post $first, Post $second): void
 {
-    for ($attempt = 0; $attempt < 50 && ! $first->refresh()->scheduled_at->lessThan($second->refresh()->scheduled_at); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $first->refresh()->scheduled_at->lessThan($second->refresh()->scheduled_at));
 }
 
 /**
@@ -113,22 +87,22 @@ test('a slot opens the composer at that slot and saving places the post there as
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "queue-slot-{$slotKey}");
+    waitFor($page, "@queue-slot-{$slotKey}");
 
     $page->assertVisible("@queue-day-{$slot->utc()->format('Y-m-d')}")
         ->assertVisible("@queue-slot-{$slotKey}")
         ->click("@queue-slot-new-{$slotKey}");
 
-    waitForPublishQueueTestId($page, "composer-caption-{$channel->id}");
+    waitFor($page, "@composer-caption-{$channel->id}");
     $page->fill("@composer-caption-{$channel->id}", 'From an empty slot');
-    waitForPublishQueueTestId($page, 'composer-submit');
+    waitFor($page, '@composer-submit');
     $label = $slot->format($slot->year === now('UTC')->year ? 'M j' : 'M j, Y').", {$slot->format('H:i')}";
 
     expect($page->script('document.querySelector(\'[data-testid="composer-submit"]\').dataset.scheduleMode'))->toBe('custom')
         ->and(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))->toBe($label);
 
     $page->click('@composer-submit');
-    waitForPublishQueueCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::query()->where('workspace_id', $channel->workspace_id)->sole();
 
@@ -146,7 +120,7 @@ test('a member whose posts need approval can still open the composer from an emp
     $this->actingAs($requester);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "queue-slot-new-{$slotKey}");
+    waitFor($page, "@queue-slot-new-{$slotKey}");
 
     expect($page->script("(() => { const slot = document.querySelector('[data-testid=\"queue-slot-new-{$slotKey}\"]'); const icon = slot.querySelector('svg[data-testid=\"queue-slot-icon-{$slotKey}\"]'); return [icon !== null, slot.querySelector('img') === null, icon && getComputedStyle(icon).color]; })()"))
         ->toBe([true, true, 'rgb(10, 102, 194)']);
@@ -154,7 +128,7 @@ test('a member whose posts need approval can still open the composer from an emp
     $page->assertSeeIn("@queue-slot-new-{$slotKey}", 'New')
         ->click("@queue-slot-new-{$slotKey}");
 
-    waitForPublishQueueTestId($page, "composer-caption-{$channel->id}");
+    waitFor($page, "@composer-caption-{$channel->id}");
     $page->assertVisible("@composer-caption-{$channel->id}")
         ->assertNoJavaScriptErrors();
 });
@@ -171,7 +145,7 @@ test('scheduled posts replace the slots with a list of only those posts', functi
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "post-card-{$custom->id}");
+    waitFor($page, "@post-card-{$custom->id}");
 
     $page->assertVisible("@post-card-{$queued->id}")
         ->assertPresent("@queue-day-{$custom->scheduled_at->format('Y-m-d')}")
@@ -190,9 +164,9 @@ test('move down from the card menu swaps a queued post with the next one', funct
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-card-menu-{$a->id}");
+    waitFor($page, "@post-card-menu-{$a->id}");
     $page->click("@post-card-menu-{$a->id}");
-    waitForPublishQueueTestId($page, "post-move-down-{$a->id}");
+    waitFor($page, "@post-move-down-{$a->id}");
     $page->click("@post-move-down-{$a->id}");
     waitForPublishQueueOrder($page, $b, $a);
 
@@ -207,7 +181,7 @@ test('dragging a queued post above another reorders the queue', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-drag-handle-{$b->id}");
+    waitFor($page, "@post-drag-handle-{$b->id}");
     $page->drag("@post-card-{$b->id}", "@post-card-{$a->id}");
     waitForPublishQueueOrder($page, $b, $a);
 
@@ -222,15 +196,15 @@ test('a stale reorder is rolled back and reported', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-card-menu-{$a->id}");
+    waitFor($page, "@post-card-menu-{$a->id}");
     $top = publishQueuePost($user, $channel, QueuePosition::Top);
     $page->click("@post-card-menu-{$a->id}");
-    waitForPublishQueueTestId($page, "post-move-down-{$a->id}");
+    waitFor($page, "@post-move-down-{$a->id}");
     $page->click("@post-move-down-{$a->id}");
-    waitForPublishQueueTestId($page, 'queue-reorder-error-toast');
+    waitFor($page, '@queue-reorder-error-toast');
 
     $page->assertSeeIn('@queue-reorder-error-toast', __('posts.errors.queue_order_stale'));
-    waitForPublishQueueTestId($page, "post-card-{$top->id}");
+    waitFor($page, "@post-card-{$top->id}");
     $page->assertVisible("@post-card-{$top->id}");
     expect($page->script("document.querySelector('[data-post-id=\"{$a->id}\"]').compareDocumentPosition(document.querySelector('[data-post-id=\"{$b->id}\"]')) & Node.DOCUMENT_POSITION_FOLLOWING"))->toBeGreaterThan(0)
         ->and($a->refresh()->scheduled_at->lessThan($b->refresh()->scheduled_at))->toBeTrue();
@@ -245,17 +219,17 @@ test('the posting times toggle hides every slot and survives a reload', function
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "queue-slot-{$slotKey}");
+    waitFor($page, "@queue-slot-{$slotKey}");
     $page->click('@publish-menu');
-    waitForPublishQueueTestId($page, 'publish-toggle-slots');
+    waitFor($page, '@publish-toggle-slots');
     $page->click('@publish-toggle-slots');
-    waitForPublishQueueCondition($page, '!document.querySelector(\'[data-testid^="queue-slot-"]\')');
+    waitForGone($page, '[data-testid^="queue-slot-"]');
 
     expect($page->script('document.querySelectorAll(\'[data-testid^="queue-slot-"]\').length'))->toBe(0);
     $page->assertVisible("@post-card-{$queued->id}");
 
     $page->refresh();
-    waitForPublishQueueTestId($page, "post-card-{$queued->id}");
+    waitFor($page, "@post-card-{$queued->id}");
 
     expect($page->script('document.querySelectorAll(\'[data-testid^="queue-slot-"]\').length'))->toBe(0);
     $page->assertVisible("@post-card-{$queued->id}")
@@ -271,16 +245,16 @@ test('a far display time zone regroups slots under its own calendar day', functi
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "queue-slot-{$slotKey}");
+    waitFor($page, "@queue-slot-{$slotKey}");
 
     expect($page->script("!!document.querySelector('[data-testid=\"queue-day-{$utcDay}\"] [data-testid=\"queue-slot-{$slotKey}\"]')"))->toBeTrue();
 
     $page->click('@publish-timezone-trigger');
-    waitForPublishQueueTestId($page, 'publish-timezone-search');
+    waitFor($page, '@publish-timezone-search');
     $page->type('@publish-timezone-search', 'Auckland');
-    waitForPublishQueueTestId($page, 'publish-timezone-option-Pacific-Auckland');
+    waitFor($page, '@publish-timezone-option-Pacific-Auckland');
     $page->click('@publish-timezone-option-Pacific-Auckland');
-    waitForPublishQueueCondition($page, "!!document.querySelector('[data-testid=\"queue-day-{$aucklandDay}\"] [data-testid=\"queue-slot-{$slotKey}\"]')");
+    waitForState($page, "@queue-day-{$aucklandDay} @queue-slot-{$slotKey}", 'true');
 
     expect($page->script('new URLSearchParams(location.search).get("tz")'))->toBe('Pacific/Auckland')
         ->and($page->script("!!document.querySelector('[data-testid=\"queue-day-{$aucklandDay}\"] [data-testid=\"queue-slot-{$slotKey}\"]')"))->toBeTrue();
@@ -294,9 +268,9 @@ test('the time zone picked for the list is kept in the browser and shown again o
     $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
     waitFor($page, '@publish-timezone-trigger');
     $page->click('@publish-timezone-trigger');
-    waitForPublishQueueTestId($page, 'publish-timezone-search');
+    waitFor($page, '@publish-timezone-search');
     $page->type('@publish-timezone-search', 'Auckland');
-    waitForPublishQueueTestId($page, 'publish-timezone-option-Pacific-Auckland');
+    waitFor($page, '@publish-timezone-option-Pacific-Auckland');
     $page->click('@publish-timezone-option-Pacific-Auckland');
     waitForQueryParameter($page, 'tz', 'Pacific/Auckland');
 
@@ -322,16 +296,16 @@ test('changing the time zone keeps a tab that came from a notes link', function 
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.posts.index', ['notes' => $draft->id]));
-    waitForPublishQueueTestId($page, "post-card-{$draft->id}");
+    waitFor($page, "@post-card-{$draft->id}");
     $page->script("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
 
     $page->click('@publish-timezone-trigger');
-    waitForPublishQueueTestId($page, 'publish-timezone-search');
+    waitFor($page, '@publish-timezone-search');
     $page->type('@publish-timezone-search', 'Auckland');
-    waitForPublishQueueTestId($page, 'publish-timezone-option-Pacific-Auckland');
+    waitFor($page, '@publish-timezone-option-Pacific-Auckland');
     $page->click('@publish-timezone-option-Pacific-Auckland');
-    waitForPublishQueueCondition($page, 'new URLSearchParams(location.search).get("tz") === "Pacific/Auckland"');
-    waitForPublishQueueTestId($page, "post-card-{$draft->id}");
+    waitForQueryParameter($page, 'tz', 'Pacific/Auckland');
+    waitFor($page, "@post-card-{$draft->id}");
 
     expect($page->script('new URLSearchParams(location.search).get("tab")'))->toBe('drafts')
         ->and($page->script('new URLSearchParams(location.search).has("notes")'))->toBeFalse();
@@ -344,10 +318,10 @@ test('more times extends the queue range', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, 'queue-more-times');
+    waitFor($page, '@queue-more-times');
     $page->assertMissing("@queue-day-{$farDay}")
         ->click('@queue-more-times');
-    waitForPublishQueueTestId($page, "queue-day-{$farDay}");
+    waitFor($page, "@queue-day-{$farDay}");
 
     $page->assertPresent("@queue-day-{$farDay}")
         ->assertNoJavaScriptErrors();
@@ -364,7 +338,7 @@ test('a failed post is listed in sent with its failed badge and actions', functi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForPublishQueueTestId($page, "post-card-{$failed->id}");
+    waitFor($page, "@post-card-{$failed->id}");
 
     $page->assertSeeIn("@post-status-{$failed->id}", __('posts.status.failed'))
         ->assertSeeIn("@post-created-by-{$failed->id}", $user->name)
@@ -375,16 +349,16 @@ test('a failed post is listed in sent with its failed badge and actions', functi
         ->toStartWith($failed->scheduled_at->toDateString());
 
     $page->click("@post-status-{$failed->id}");
-    waitForPublishQueueTestId($page, "post-failure-{$failed->id}");
+    waitFor($page, "@post-failure-{$failed->id}");
 
     $page->assertSeeIn("@post-failure-reason-{$failed->id}", __('posts.publish.failure.categories.media_format'))
         ->assertSeeIn("@post-failure-details-{$failed->id}", 'Video duration exceeds the 90 second limit.');
 
     $page->script("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))");
-    waitForPublishQueueCondition($page, "!document.querySelector('[data-testid=\"post-failure-{$failed->id}\"]')");
+    waitForGone($page, "@post-failure-{$failed->id}");
 
     $page->click("@post-card-menu-{$failed->id}");
-    waitForPublishQueueTestId($page, "post-duplicate-{$failed->id}");
+    waitFor($page, "@post-duplicate-{$failed->id}");
 
     $page->assertPresent("@post-duplicate-{$failed->id}")
         ->assertPresent("@post-details-open-{$failed->id}")
@@ -412,9 +386,7 @@ function publishQueueFollows(mixed $page, string $firstTestId, string $secondTes
 
 function waitForPublishQueueMode(mixed $page, Post $post, ScheduleMode $mode): void
 {
-    for ($attempt = 0; $attempt < 50 && $post->refresh()->schedule_mode !== $mode; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $post->refresh()->schedule_mode === $mode);
 }
 
 test('a scheduled post sits between the free posting times and its drag handle shows in the gutter on hover', function () {
@@ -425,8 +397,8 @@ test('a scheduled post sits between the free posting times and its drag handle s
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-time-{$queued->id}");
-    waitForPublishQueueTestId($page, "queue-slot-{$nextFreeKey}");
+    waitFor($page, "@post-time-{$queued->id}");
+    waitFor($page, "@queue-slot-{$nextFreeKey}");
 
     $page->assertVisible("@post-card-{$queued->id}")
         ->assertVisible("@queue-slot-{$nextFreeKey}")
@@ -441,7 +413,7 @@ test('a scheduled post sits between the free posting times and its drag handle s
     expect($page->script("getComputedStyle({$handle}).opacity"))->toBe('0');
 
     $page->hover("@post-time-{$queued->id}");
-    waitForPublishQueueCondition($page, "getComputedStyle({$handle}).opacity === '1'");
+    waitForState($page, "@post-drag-handle-{$queued->id}", "getComputedStyle(element).opacity === '1'");
 
     expect($page->script("getComputedStyle({$handle}).opacity"))->toBe('1')
         ->and($page->script("{$handle}.getBoundingClientRect().left >= {$time}.getBoundingClientRect().right"))->toBeTrue()
@@ -460,14 +432,14 @@ test('dragging a post with its own time onto a free slot queues it at that slot'
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-drag-handle-{$custom->id}");
-    waitForPublishQueueTestId($page, "queue-slot-{$targetKey}");
+    waitFor($page, "@post-drag-handle-{$custom->id}");
+    waitFor($page, "@queue-slot-{$targetKey}");
     $page->drag("@post-card-{$custom->id}", "@queue-slot-{$targetKey}");
     waitForPublishQueueMode($page, $custom, ScheduleMode::Queue);
 
     expect($custom->refresh()->schedule_mode)->toBe(ScheduleMode::Queue)
         ->and($custom->scheduled_at->equalTo($slots[2]))->toBeTrue();
-    waitForPublishQueueCondition($page, "!document.querySelector('[data-testid=\"queue-slot-{$targetKey}\"]')");
+    waitForGone($page, "@queue-slot-{$targetKey}");
     $page->assertMissing("@queue-slot-{$targetKey}")
         ->assertNoJavaScriptErrors();
 });
@@ -481,11 +453,11 @@ test('dropping a post on a slot taken meanwhile is rolled back and reported', fu
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "queue-slot-{$targetKey}");
-    waitForPublishQueueTestId($page, "post-drag-handle-{$custom->id}");
+    waitFor($page, "@queue-slot-{$targetKey}");
+    waitFor($page, "@post-drag-handle-{$custom->id}");
     publishQueuePost($user, $channel);
     $page->drag("@post-card-{$custom->id}", "@queue-slot-{$targetKey}");
-    waitForPublishQueueTestId($page, 'queue-reorder-error-toast');
+    waitFor($page, '@queue-reorder-error-toast');
 
     $page->assertSeeIn('@queue-reorder-error-toast', __('posts.errors.queue_order_stale'));
     expect($custom->refresh()->schedule_mode)->toBe(ScheduleMode::Custom)
@@ -504,18 +476,16 @@ test('dragging a queued post onto a later free slot keeps it there and leaves th
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "queue-slot-{$targetKey}");
-    waitForPublishQueueTestId($page, "post-card-{$first->id}");
+    waitFor($page, "@queue-slot-{$targetKey}");
+    waitFor($page, "@post-card-{$first->id}");
     $page->drag("@post-card-{$first->id}", "@queue-slot-{$targetKey}");
 
-    for ($attempt = 0; $attempt < 50 && ! $first->refresh()->scheduled_at->equalTo($slots[3]); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $first->refresh()->scheduled_at->equalTo($slots[3]));
 
     expect($first->refresh()->scheduled_at->equalTo($slots[3]))->toBeTrue()
         ->and($first->schedule_mode)->toBe(ScheduleMode::Queue)
         ->and($second->refresh()->scheduled_at->equalTo($secondAt))->toBeTrue();
-    waitForPublishQueueTestId($page, 'queue-slot-'.publishQueueSlotKey($channel, $slots[0]));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $slots[0]));
     $page->assertPresent('@queue-slot-'.publishQueueSlotKey($channel, $slots[0]))
         ->assertNoJavaScriptErrors();
 });
@@ -531,8 +501,8 @@ test('free slots follow the loaded posts beyond the default range', function () 
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-card-{$far->id}");
-    waitForPublishQueueCondition($page, "!!document.querySelector('[data-testid=\"queue-slot-{$slotKey}\"]')");
+    waitFor($page, "@post-card-{$far->id}");
+    waitForState($page, "@queue-slot-{$slotKey}", 'true');
 
     $page->assertPresent("@queue-slot-{$slotKey}");
     expect(publishQueueFollows($page, "queue-slot-{$slotKey}", "post-card-{$far->id}"))->toBeTrue();
@@ -546,7 +516,7 @@ test('the all channels queue keeps its drag handle inline before the time', func
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "post-drag-handle-{$first->id}");
+    waitFor($page, "@post-drag-handle-{$first->id}");
 
     $handle = "document.querySelector('[data-testid=\"post-drag-handle-{$first->id}\"]')";
     $time = "document.querySelector('[data-testid=\"post-time-{$first->id}\"]')";
@@ -582,7 +552,7 @@ test('a pending queue request shows at its reserved slot and approving it keeps 
     $this->actingAs($user);
 
     $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
-    waitForPublishQueueTestId($page, "post-card-{$pending->id}");
+    waitFor($page, "@post-card-{$pending->id}");
 
     $page->assertVisible("@post-approval-badge-{$pending->id}")
         ->assertVisible("@post-approve-{$pending->id}")
@@ -596,12 +566,12 @@ test('a pending queue request shows at its reserved slot and approving it keeps 
         ->and(publishQueueFollows($page, 'queue-slot-'.publishQueueSlotKey($channel, $first), "post-card-{$pending->id}"))->toBeTrue();
 
     $page->click("@post-approve-{$pending->id}");
-    waitForPublishQueueCondition($page, "!document.querySelector('[data-testid=\"post-approval-badge-{$pending->id}\"]')");
+    waitForGone($page, "@post-approval-badge-{$pending->id}");
 
     expect($pending->refresh()->status)->toBe(PostStatus::Scheduled)
         ->and($pending->scheduled_at->equalTo($reserved))->toBeTrue();
 
-    waitForPublishQueueTestId($page, "post-card-{$pending->id}");
+    waitFor($page, "@post-card-{$pending->id}");
     $page->assertVisible("@post-card-{$pending->id}")
         ->assertMissing("@post-approval-badge-{$pending->id}")
         ->assertPresent("@post-drag-handle-{$pending->id}")
@@ -626,7 +596,7 @@ test('a publishing post waiting for a network limit shows when it retries', func
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "post-limit-retry-{$waiting->id}");
+    waitFor($page, "@post-limit-retry-{$waiting->id}");
 
     $page->assertVisible("@post-publishing-{$waiting->id}")
         ->assertSeeIn("@post-limit-retry-{$waiting->id}", __('posts.publish.retrying_at', ['time' => $retryAt->utc()->format('H:i')]))
@@ -646,7 +616,7 @@ test('a google business post waiting for review says google is reviewing it', fu
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "post-google-review-{$inReview->id}");
+    waitFor($page, "@post-google-review-{$inReview->id}");
 
     $page->assertSeeIn("@post-google-review-{$inReview->id}", __('posts.publish.in_google_review'))
         ->assertNotPresent("@post-publishing-progress-{$inReview->id}")
@@ -667,7 +637,7 @@ test('a publishing post sits in its own queue group and moves to sent once it se
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, "post-publishing-{$publishing->id}");
+    waitFor($page, "@post-publishing-{$publishing->id}");
 
     $page->assertVisible('@queue-publishing')
         ->assertVisible("@post-publishing-{$publishing->id}")
@@ -695,7 +665,7 @@ test('a publishing post sits in its own queue group and moves to sent once it se
         window.Pusher.instances[0].channels.channels['private-workspace.{$workspace->id}']
             .emit('post.platform.status.updated', { post_id: '{$publishing->id}' });
     JS);
-    waitForPublishQueueCondition($page, '!document.querySelector(\'[data-testid="queue-publishing"]\')');
+    waitForGone($page, '@queue-publishing');
 
     $page->assertMissing('@queue-publishing')
         ->assertMissing("@post-card-{$publishing->id}")
@@ -703,7 +673,7 @@ test('a publishing post sits in its own queue group and moves to sent once it se
         ->assertSeeIn('@publish-tab-count-queue', '1');
 
     $page->click('@publish-tab-sent');
-    waitForPublishQueueTestId($page, "post-card-{$publishing->id}");
+    waitFor($page, "@post-card-{$publishing->id}");
 
     $page->assertVisible("@post-card-{$publishing->id}")
         ->assertNoJavaScriptErrors();

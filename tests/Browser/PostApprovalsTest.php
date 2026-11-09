@@ -15,30 +15,6 @@ use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 
-function waitForApprovalsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForApprovalsGone(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="{$testId}"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return array{0: User, 1: Workspace, 2: SocialAccount, 3: User}
  */
@@ -96,7 +72,7 @@ test('an approver adds a queue request to the queue and rejects another', functi
     $this->actingAs($owner);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));
-    waitForApprovalsTestId($page, "post-approve-{$queued->id}");
+    waitFor($page, "@post-approve-{$queued->id}");
 
     $page->assertSeeIn('@publish-tab-count-approvals', '2')
         ->assertMissing("@post-approval-badge-{$queued->id}")
@@ -104,10 +80,10 @@ test('an approver adds a queue request to the queue and rejects another', functi
         ->assertSeeIn("@post-approve-{$queued->id}", 'Add to queue')
         ->assertSeeIn("@post-approve-{$timed->id}", 'Schedule')
         ->click("@post-approve-{$queued->id}");
-    waitForApprovalsGone($page, "post-card-{$queued->id}");
+    waitForGone($page, "@post-card-{$queued->id}");
 
     $page->click("@post-reject-{$timed->id}");
-    waitForApprovalsGone($page, "post-card-{$timed->id}");
+    waitForGone($page, "@post-card-{$timed->id}");
 
     expect($queued->fresh()->status)->toBe(PostStatus::Scheduled)
         ->and($queued->fresh()->approved_by)->toBe($owner->id)
@@ -128,15 +104,15 @@ test('a request whose time has passed asks for a new time or publish now', funct
     $this->actingAs($owner);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));
-    waitForApprovalsTestId($page, "post-time-passed-{$late->id}");
+    waitFor($page, "@post-time-passed-{$late->id}");
 
     $page->assertSeeIn("@post-approve-{$late->id}", 'Approve')
         ->click("@post-approve-{$late->id}");
-    waitForApprovalsTestId($page, "post-approve-publish-now-{$late->id}");
+    waitFor($page, "@post-approve-publish-now-{$late->id}");
 
     $page->assertVisible("@post-approve-picker-{$late->id}")
         ->click("@post-approve-publish-now-{$late->id}");
-    waitForApprovalsGone($page, "post-card-{$late->id}");
+    waitForGone($page, "@post-card-{$late->id}");
 
     expect($late->fresh()->status)->toBe(PostStatus::Publishing);
     $page->assertNoJavaScriptErrors();
@@ -149,14 +125,14 @@ test('a requester sees only their own requests and can revert them', function ()
     $this->actingAs($requester);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));
-    waitForApprovalsTestId($page, "post-revert-{$own->id}");
+    waitFor($page, "@post-revert-{$own->id}");
 
     $page->assertSeeIn('@publish-tab-count-approvals', '1')
         ->assertMissing("@post-card-{$others->id}")
         ->assertMissing("@post-approve-{$own->id}")
         ->assertMissing("@post-reject-{$own->id}")
         ->click("@post-revert-{$own->id}");
-    waitForApprovalsGone($page, "post-card-{$own->id}");
+    waitForGone($page, "@post-card-{$own->id}");
 
     expect($own->fresh()->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
@@ -168,10 +144,10 @@ test('a requester adding a draft to the queue is told it awaits approval', funct
     $this->actingAs($requester);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForApprovalsTestId($page, "post-add-to-queue-{$draft->id}");
+    waitFor($page, "@post-add-to-queue-{$draft->id}");
 
     $page->click("@post-add-to-queue-{$draft->id}");
-    waitForApprovalsTestId($page, 'post-schedule-toast');
+    waitFor($page, '@post-schedule-toast');
 
     $page->assertSeeIn('@post-schedule-toast', 'Approval requested')
         ->assertDontSee('Added to queue')
@@ -191,9 +167,9 @@ test('a new time for a late request is typed in the channel zone', function () {
     $this->actingAs($owner);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));
-    waitForApprovalsTestId($page, "post-approve-{$late->id}");
+    waitFor($page, "@post-approve-{$late->id}");
     $page->click("@post-approve-{$late->id}");
-    waitForApprovalsTestId($page, 'composer-schedule-timezone');
+    waitFor($page, '@composer-schedule-timezone');
 
     expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-timezone]").textContent')))->toBe('America/Sao Paulo');
 
@@ -208,7 +184,7 @@ test('a new time for a late request is typed in the channel zone', function () {
     $page->click("@composer-schedule-day-{$day}")
         ->fill('@composer-schedule-time-input', '1000')
         ->click('@composer-schedule-done');
-    waitForApprovalsGone($page, "post-card-{$late->id}");
+    waitForGone($page, "@post-card-{$late->id}");
 
     expect($late->fresh()->scheduled_at->toIso8601String())
         ->toBe(CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo')->utc()->toIso8601String());

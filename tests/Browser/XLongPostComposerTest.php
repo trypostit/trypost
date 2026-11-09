@@ -7,20 +7,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForXLongPostTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if ((sheet === null || sheet.getAnimations().every((animation) => animation.playState !== 'running'))
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function xLongPostCounter(mixed $page, string $testId): string
 {
     return trim((string) $page->script("document.querySelector('[data-testid=\"{$testId}\"]').textContent"));
@@ -46,15 +32,18 @@ test('a premium x card counts against the account limit', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForXLongPostTestId($page, 'composer-add-account');
+    waitFor($page, '@composer-add-account');
+    waitForState($page, '@post-composer-dialog', "element.getAnimations().every((animation) => animation.playState !== 'running')");
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$x->id}")
         ->click("@composer-account-option-{$linkedin->id}");
-    waitForXLongPostTestId($page, 'composer-base-content');
+    waitFor($page, '@composer-base-content');
+    waitForState($page, '@post-composer-dialog', "element.getAnimations().every((animation) => animation.playState !== 'running')");
     $page->fill('@composer-base-content', 'Hello')
         ->assertMissing('@composer-base-char-count')
         ->click('@composer-next');
-    waitForXLongPostTestId($page, "composer-char-count-{$x->id}");
+    waitFor($page, "@composer-char-count-{$x->id}");
+    waitForState($page, '@post-composer-dialog', "element.getAnimations().every((animation) => animation.playState !== 'running')");
 
     expect(xLongPostCounter($page, "composer-char-count-{$x->id}"))->toBe('24995');
     $page->assertNoJavaScriptErrors();

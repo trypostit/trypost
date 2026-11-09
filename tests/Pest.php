@@ -727,15 +727,18 @@ function waitForWebFonts(mixed $page): void
 }
 
 /**
- * Wait until a JavaScript expression is true in the page, for up to 15
- * seconds. Assertions do not wait for the SPA to paint, and a blocking
- * sleep() would starve the server that serves the page, so the page polls.
+ * Wait until a JavaScript expression is true in the page, for up to 30
+ * seconds (longer for a slow import or a fallback that polls the server).
+ * Assertions do not wait for the SPA to paint, and a blocking sleep() would
+ * starve the server that serves the page, so the page polls.
  */
-function waitForCondition(mixed $page, string $condition): void
+function waitForCondition(mixed $page, string $condition, int $seconds = 30): void
 {
+    $attempts = $seconds * 20;
+
     $page->script(<<<JS
         (async () => {
-            for (let i = 0; i < 300; i++) {
+            for (let i = 0; i < {$attempts}; i++) {
                 if ({$condition}) return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
@@ -779,29 +782,41 @@ function jsSelector(string $selector): string
  * Wait until an element matching the selector exists and the expression,
  * written about `element`, is true: "element.getAttribute('aria-checked') === 'true'".
  */
-function waitForState(mixed $page, string $selector, string $expression): void
+function waitForState(mixed $page, string $selector, string $expression, int $seconds = 30): void
 {
     $selector = jsSelector($selector);
 
-    waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))");
+    waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))", $seconds);
 }
 
 /**
  * Wait until an element matching the selector is mounted and laid out.
  */
-function waitFor(mixed $page, string $selector): void
+function waitFor(mixed $page, string $selector, int $seconds = 30): void
 {
-    waitForState($page, $selector, 'element.getBoundingClientRect().height > 0');
+    waitForState($page, $selector, 'element.getBoundingClientRect().height > 0', $seconds);
+}
+
+/**
+ * Wait until the element matching the selector is open (its `data-state`,
+ * `open` by default) and has finished animating in, so a click or a
+ * measurement lands where the user would see it.
+ */
+function waitForOpen(mixed $page, string $selector, string $state = 'open'): void
+{
+    $state = json_encode($state);
+
+    waitForState($page, $selector, "element.getAttribute('data-state') === {$state} && element.getAnimations().every((animation) => animation.playState !== 'running')");
 }
 
 /**
  * Wait until no element matches the selector.
  */
-function waitForGone(mixed $page, string $selector): void
+function waitForGone(mixed $page, string $selector, int $seconds = 30): void
 {
     $selector = jsSelector($selector);
 
-    waitForCondition($page, "!document.querySelector({$selector})");
+    waitForCondition($page, "!document.querySelector({$selector})", $seconds);
 }
 
 /**
@@ -813,6 +828,17 @@ function waitForText(mixed $page, string $selector, string $text): void
     $text = json_encode($text);
 
     waitForCondition($page, "[...document.querySelectorAll({$selector})].some((element) => element.textContent.includes({$text}))");
+}
+
+/**
+ * Wait until the number of elements matching the selector compares to the
+ * count: exactly (`===`, the default) or with another operator (`>=`, `>`).
+ */
+function waitForCount(mixed $page, string $selector, int $count, string $operator = '==='): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "document.querySelectorAll({$selector}).length {$operator} {$count}");
 }
 
 /**

@@ -10,10 +10,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
 
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
 function welcomePlanVisibleReview(mixed $page): ?string
 {
     return $page->script(<<<'JS'

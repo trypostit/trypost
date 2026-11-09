@@ -11,20 +11,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForRepurposeHealthTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 test('a repurpose whose source was deleted explains itself instead of rendering a hole', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -52,7 +38,7 @@ test('a repurpose whose source was deleted explains itself instead of rendering 
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeHealthTestId($page, 'repurpose-health-banner');
+    waitFor($page, '@repurpose-health-banner');
 
     $page->assertSee(__('repurposes.health.source_missing'))
         ->assertSee(__('repurposes.summary.no_source'))

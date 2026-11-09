@@ -75,14 +75,7 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
         ->click('@analytics-channel-filter');
     waitFor($page, "@analytics-channel-checkbox-{$alpha->id}");
     $page->click("@analytics-channel-checkbox-{$alpha->id}");
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ([...new URLSearchParams(location.search).keys()].filter((key) => key.startsWith('channels')).length === 1) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForCondition($page, "[...new URLSearchParams(location.search).keys()].filter((key) => key.startsWith('channels')).length === 1");
     waitFor($page, '@insights-card-followers');
 
     $page->assertScript('[...new URLSearchParams(location.search)].filter(([key]) => key.startsWith("channels")).map(([, value]) => value)', [$alpha->id])
@@ -91,14 +84,7 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
         ->assertNoJavaScriptErrors();
 
     $page->click('@insights-range-7d');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (new URLSearchParams(location.search).get('range') === '7d') return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForQueryParameter($page, 'range', '7d');
 
     $page->assertScript('[...new URLSearchParams(location.search)].filter(([key]) => key.startsWith("channels")).map(([, value]) => value)', [$alpha->id])
         ->assertNoJavaScriptErrors();
@@ -195,14 +181,7 @@ test('a channel without data shows the filtered empty state and history navigati
     $page = visit(route('app.insights'));
     waitFor($page, '@insights-range-7d');
     $page->click('@insights-range-7d');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (new URLSearchParams(location.search).get('range') === '7d') return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForQueryParameter($page, 'range', '7d');
     waitFor($page, '@analytics-channel-filter');
     $page->click('@analytics-channel-filter');
     waitFor($page, "@analytics-channel-checkbox-{$silent->id}");
@@ -215,14 +194,7 @@ test('a channel without data shows the filtered empty state and history navigati
         ->assertScript('new URLSearchParams(location.search).get("range")', '7d');
 
     $page->script('history.back()');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (location.pathname.endsWith('/insights') && !location.search.includes('range=7d')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForCondition($page, "location.pathname.endsWith('/insights') && !location.search.includes('range=7d')");
     waitFor($page, '@analytics-summary-followers');
 
     $page->assertScript('location.pathname.endsWith("/insights") && !location.search.includes("channels")', true)

@@ -7,54 +7,6 @@ use App\Models\PostTemplate;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForCreateTemplatesTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateTemplatesCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
- * Dialogs animate in; a click that lands before the animation settles is swallowed.
- */
-function waitForCreateTemplatesDialog(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const dialog = document.querySelector('[data-testid="{$testId}"]');
-                if (dialog?.getAttribute('data-state') === 'open'
-                    && dialog.getAnimations().every((animation) => animation.playState !== 'running')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateTemplatesDatabase(mixed $page, Closure $condition): void
-{
-    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
-}
-
 function createTemplatesCardCount(mixed $page, string $scopeTestId): int
 {
     return $page->script("document.querySelectorAll('[data-testid=\"{$scopeTestId}\"] article[data-testid^=\"template-card-\"]').length");
@@ -82,7 +34,7 @@ test('discover shows the featured band, capped rows and the scope counts', funct
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-featured');
+    waitFor($page, '@templates-featured');
 
     $page->assertVisible('@create-tab-templates')
         ->assertAttribute('@create-tab-templates', 'aria-current', 'page')
@@ -101,7 +53,7 @@ test('the filter narrows the library, updates the url and resets', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-filter');
+    waitFor($page, '@templates-filter');
     $page->script(<<<'JS'
         (() => {
             window.__sawEmptyState = false;
@@ -111,9 +63,9 @@ test('the filter narrows the library, updates the url and resets', function () {
         })()
     JS);
     $page->click('@templates-filter');
-    waitForCreateTemplatesTestId($page, 'templates-filter-type-question');
+    waitFor($page, '@templates-filter-type-question');
     $page->click('@templates-filter-type-question');
-    waitForCreateTemplatesTestId($page, 'templates-results');
+    waitFor($page, '@templates-results');
 
     expect($page->script('window.__sawEmptyState'))->toBeFalse();
 
@@ -121,7 +73,7 @@ test('the filter narrows the library, updates the url and resets', function () {
         ->and(urldecode($page->script('window.location.search')))->toMatch('/types\[\d*\]=question/');
 
     $page->click('@templates-filter-reset');
-    waitForCreateTemplatesTestId($page, 'templates-featured');
+    waitFor($page, '@templates-featured');
 
     $page->assertVisible('@templates-row-story')->assertNoJavaScriptErrors();
 });
@@ -131,14 +83,14 @@ test('a library card opens its detail in place and use template opens the compos
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'template-card-origin_story');
+    waitFor($page, '@template-card-origin_story');
     $page->click('@template-card-origin_story');
-    waitForCreateTemplatesDialog($page, 'template-detail');
+    waitForOpen($page, '@template-detail');
 
     expect($page->script('window.location.pathname + window.location.search'))->toBe(route('app.create.templates.index', [], false));
 
     $page->click('@template-use');
-    waitForCreateTemplatesTestId($page, 'composer-base-content');
+    waitFor($page, '@composer-base-content');
 
     $body = __('template_library.origin_story.body');
     $page->assertVisible('@post-composer-dialog')
@@ -152,15 +104,15 @@ test('creating a personal template shows the card without a success toast', func
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-scope-personal');
+    waitFor($page, '@templates-scope-personal');
     $page->click('@templates-scope-personal');
-    waitForCreateTemplatesTestId($page, 'templates-empty');
+    waitFor($page, '@templates-empty');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
     $page->fill('@template-editor-title', 'Weekly recap')
         ->fill('@template-editor-body', "• Win\n• Lesson");
     $page->click('@template-editor-save');
-    waitForCreateTemplatesCondition($page, "document.querySelectorAll('article[data-testid^=\"template-card-\"]').length === 1");
+    waitForCount($page, 'article[data-testid^="template-card-"]', 1);
 
     $page->assertSeeIn('@templates-grid', 'Weekly recap')
         ->assertSeeIn('@templates-scope-count-personal', '1')
@@ -177,17 +129,17 @@ test('duplicating a library template into the team scope adds the copy suffix', 
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'template-card-quick_win');
+    waitFor($page, '@template-card-quick_win');
     $page->click('@template-card-menu-quick_win');
-    waitForCreateTemplatesTestId($page, 'template-duplicate-quick_win');
+    waitFor($page, '@template-duplicate-quick_win');
     $page->click('@template-duplicate-quick_win');
-    waitForCreateTemplatesDialog($page, 'template-duplicate-dialog');
+    waitForOpen($page, '@template-duplicate-dialog');
     $page->assertSeeIn('@template-duplicate-dialog', __('template_library.quick_win.title'))
         ->click('@template-duplicate-visibility');
-    waitForCreateTemplatesTestId($page, 'template-duplicate-visibility-team');
+    waitFor($page, '@template-duplicate-visibility-team');
     $page->click('@template-duplicate-visibility-team');
     $page->click('@template-duplicate-confirm');
-    waitForCreateTemplatesCondition($page, "document.querySelectorAll('[data-testid=\"templates-grid\"] article').length === 1");
+    waitForCount($page, '@templates-grid article', 1);
 
     $page->assertSeeIn('@templates-grid', __('template_library.quick_win.title').' (copy)')
         ->assertSeeIn('@templates-scope-count-team', '1')
@@ -207,16 +159,16 @@ test('deleting a template asks for confirmation without typing a keyword', funct
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index', ['view' => 'team']));
-    waitForCreateTemplatesTestId($page, "template-card-{$template->id}");
+    waitFor($page, "@template-card-{$template->id}");
     $page->click("@template-card-menu-{$template->id}");
-    waitForCreateTemplatesTestId($page, "template-delete-{$template->id}");
+    waitFor($page, "@template-delete-{$template->id}");
     $page->click("@template-delete-{$template->id}");
-    waitForCreateTemplatesDialog($page, 'confirm-delete-modal');
+    waitForOpen($page, '@confirm-delete-modal');
     $page->assertMissing('@confirm-delete-input')
         ->click('@template-delete-confirm');
 
-    waitForCreateTemplatesDatabase($page, fn () => PostTemplate::query()->whereKey($template->id)->doesntExist());
-    waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-card-{$template->id}\"]')");
+    waitForDatabase($page, fn () => PostTemplate::query()->whereKey($template->id)->doesntExist());
+    waitForGone($page, "@template-card-{$template->id}");
 
     expect(PostTemplate::query()->whereKey($template->id)->exists())->toBeFalse();
     $page->assertMissing("@template-card-{$template->id}")->assertNoJavaScriptErrors();
@@ -228,11 +180,11 @@ test('editing a template from its menu updates the card and the row', function (
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index', ['view' => 'personal']));
-    waitForCreateTemplatesTestId($page, "template-card-{$template->id}");
+    waitFor($page, "@template-card-{$template->id}");
     $page->click("@template-card-menu-{$template->id}");
-    waitForCreateTemplatesTestId($page, "template-edit-{$template->id}");
+    waitFor($page, "@template-edit-{$template->id}");
     $page->click("@template-edit-{$template->id}");
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
 
     expect($page->script('window.location.pathname + window.location.search'))->toBe(route('app.create.templates.index', ['view' => 'personal'], false));
 
@@ -240,7 +192,7 @@ test('editing a template from its menu updates the card and the row', function (
         ->fill('@template-editor-title', 'Final title')
         ->fill('@template-editor-body', 'New body')
         ->click('@template-editor-save');
-    waitForCreateTemplatesCondition($page, "(document.querySelector('[data-testid=\"templates-grid\"]')?.textContent ?? '').includes('Final title')");
+    waitForText($page, '@templates-grid', 'Final title');
 
     $template->refresh();
 
@@ -259,7 +211,7 @@ test('a picked emoji is kept among the user\'s recents in this browser', functio
     $page = visit(route('app.create.templates.index'));
     waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForState($page, '@template-editor', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@template-editor');
     $page->click('@template-editor-emoji');
     waitFor($page, '@emoji-picker-option');
     $emoji = $page->script(<<<'JS'
@@ -276,7 +228,7 @@ test('a picked emoji is kept among the user\'s recents in this browser', functio
     $page->navigate(route('app.create.templates.index'));
     waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForState($page, '@template-editor', "element.getAttribute('data-state') === 'open' && element.getAnimations().every((animation) => animation.playState !== 'running')");
+    waitForOpen($page, '@template-editor');
     $page->click('@template-editor-emoji');
     waitFor($page, '@emoji-picker-recent');
 
@@ -290,12 +242,12 @@ test('the emoji picker sets the template emoji', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-new');
+    waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
     $page->assertSeeIn('@template-editor-emoji', '📝')
         ->click('@template-editor-emoji');
-    waitForCreateTemplatesTestId($page, 'emoji-picker-option');
+    waitFor($page, '@emoji-picker-option');
 
     $gap = $page->script(<<<'JS'
         (async () => {
@@ -331,12 +283,12 @@ test('the emoji picker sets the template emoji', function () {
         })()
     JS);
 
-    waitForCreateTemplatesCondition($page, '!document.querySelector(\'[data-testid="emoji-picker-option"]\')');
+    waitForGone($page, '@emoji-picker-option');
     $page->assertSeeIn('@template-editor-emoji', $emoji)
         ->fill('@template-editor-title', 'With emoji')
         ->fill('@template-editor-body', 'Body')
         ->click('@template-editor-save');
-    waitForCreateTemplatesDatabase($page, fn () => PostTemplate::query()->where('workspace_id', $workspace->id)->exists());
+    waitForDatabase($page, fn () => PostTemplate::query()->where('workspace_id', $workspace->id)->exists());
 
     expect($emoji)->not->toBe('📝')
         ->and(PostTemplate::query()->where('workspace_id', $workspace->id)->sole()->emoji)->toBe($emoji);
@@ -348,19 +300,19 @@ test('a card opens with Enter and Space from its own button', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'template-card-open-origin_story');
+    waitFor($page, '@template-card-open-origin_story');
 
     expect($page->script("document.querySelector('[data-testid=\"template-card-origin_story\"]').hasAttribute('role')"))->toBeFalse();
 
     $page->keys('@template-card-open-origin_story', 'Enter');
-    waitForCreateTemplatesDialog($page, 'template-detail');
+    waitForOpen($page, '@template-detail');
     $page->assertVisible('@template-detail')
         ->keys('@template-detail', 'Escape');
-    waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-detail\"]')");
+    waitForGone($page, '@template-detail');
 
     $page->assertMissing('@template-detail')
         ->keys('@template-card-open-origin_story', 'Space');
-    waitForCreateTemplatesDialog($page, 'template-detail');
+    waitForOpen($page, '@template-detail');
 
     $page->assertVisible('@template-detail')->assertNoJavaScriptErrors();
 });
@@ -374,11 +326,11 @@ test('only the creator can change the visibility of a team template', function (
 
     $this->actingAs($bob->fresh());
     $page = visit(route('app.create.templates.index', ['view' => 'team']));
-    waitForCreateTemplatesTestId($page, "template-card-menu-{$template->id}");
+    waitFor($page, "@template-card-menu-{$template->id}");
     $page->click("@template-card-menu-{$template->id}");
-    waitForCreateTemplatesTestId($page, "template-edit-{$template->id}");
+    waitFor($page, "@template-edit-{$template->id}");
     $page->click("@template-edit-{$template->id}");
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
 
     $page->assertVisible('@template-editor-visibility-hint')
         ->assertNoJavaScriptErrors();
@@ -391,20 +343,20 @@ test('dialogs put cancel before the primary action', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-new');
+    waitFor($page, '@templates-new');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
 
     $editorOrder = $page->script(<<<'JS'
         document.querySelector('[data-testid="template-editor-cancel"]').compareDocumentPosition(document.querySelector('[data-testid="template-editor-save"]')) & Node.DOCUMENT_POSITION_FOLLOWING
     JS);
 
     $page->click('@template-editor-cancel');
-    waitForCreateTemplatesTestId($page, 'template-card-quick_win');
+    waitFor($page, '@template-card-quick_win');
     $page->click('@template-card-menu-quick_win');
-    waitForCreateTemplatesTestId($page, 'template-duplicate-quick_win');
+    waitFor($page, '@template-duplicate-quick_win');
     $page->click('@template-duplicate-quick_win');
-    waitForCreateTemplatesDialog($page, 'template-duplicate-dialog');
+    waitForOpen($page, '@template-duplicate-dialog');
 
     $duplicateOrder = $page->script(<<<'JS'
         document.querySelector('[data-testid="template-duplicate-cancel"]').compareDocumentPosition(document.querySelector('[data-testid="template-duplicate-confirm"]')) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -420,7 +372,7 @@ test('a matching discover search keeps the rows until the results arrive', funct
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-search');
+    waitFor($page, '@templates-search');
     $page->script(<<<'JS'
         (() => {
             window.__sawEmptyState = false;
@@ -430,9 +382,9 @@ test('a matching discover search keeps the rows until the results arrive', funct
         })()
     JS);
     $page->click('@templates-search');
-    waitForCreateTemplatesTestId($page, 'templates-search-input');
+    waitFor($page, '@templates-search-input');
     $page->fill('@templates-search-input', 'five-minute');
-    waitForCreateTemplatesTestId($page, 'templates-results');
+    waitFor($page, '@templates-results');
 
     expect($page->script('window.__sawEmptyState'))->toBeFalse()
         ->and(createTemplatesCardCount($page, 'templates-results'))->toBeGreaterThan(0);
@@ -453,20 +405,20 @@ test('the detail and the editor close with the close button, escape and an outsi
     ];
 
     foreach ($closers as $close) {
-        waitForCreateTemplatesTestId($page, 'template-card-origin_story');
+        waitFor($page, '@template-card-origin_story');
         $page->click('@template-card-origin_story');
-        waitForCreateTemplatesDialog($page, 'template-detail');
+        waitForOpen($page, '@template-detail');
         $close();
-        waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-detail\"]')");
+        waitForGone($page, '@template-detail');
 
         $page->assertMissing('@template-detail');
         expect($page->script('window.location.pathname + window.location.search'))->toBe($path);
     }
 
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
     $page->keys('@template-editor', 'Escape');
-    waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-editor\"]')");
+    waitForGone($page, '@template-editor');
 
     $page->assertMissing('@template-editor')->assertNoJavaScriptErrors();
     expect($page->script('window.location.pathname + window.location.search'))->toBe($path);
@@ -477,21 +429,21 @@ test('the visibility select shows a user icon for personal and the channels grid
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index'));
-    waitForCreateTemplatesTestId($page, 'templates-scope-personal');
+    waitFor($page, '@templates-scope-personal');
     $page->click('@templates-scope-personal');
-    waitForCreateTemplatesTestId($page, 'templates-empty');
+    waitFor($page, '@templates-empty');
     $page->click('@templates-new');
-    waitForCreateTemplatesDialog($page, 'template-editor');
+    waitForOpen($page, '@template-editor');
 
     $page->assertVisible('@template-editor-visibility-icon-personal');
 
     $page->click('@template-editor-visibility');
-    waitForCreateTemplatesTestId($page, 'template-editor-visibility-team');
+    waitFor($page, '@template-editor-visibility-team');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"template-editor-visibility-\"] svg').length"))->toBeGreaterThanOrEqual(2);
 
     $page->click('@template-editor-visibility-team');
-    waitForCreateTemplatesTestId($page, 'template-editor-visibility-icon-team');
+    waitFor($page, '@template-editor-visibility-icon-team');
 
     expect($page->script("document.querySelector('[data-testid=\"template-editor-visibility-icon-team\"]').classList.contains('tabler-icon-layout-grid')"))->toBeTrue();
 
@@ -507,7 +459,7 @@ test('clicking the active scope again does not duplicate its templates', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.templates.index', ['view' => $scope]));
-    waitForCreateTemplatesCondition($page, "document.querySelectorAll('article[data-testid^=\"template-card-\"]').length === 1");
+    waitForCount($page, 'article[data-testid^="template-card-"]', 1);
 
     foreach (range(1, 3) as $attempt) {
         $page->click("@templates-scope-{$scope}");
@@ -517,9 +469,9 @@ test('clicking the active scope again does not duplicate its templates', functio
     expect($page->script("document.querySelectorAll('article[data-testid^=\"template-card-\"]').length"))->toBe(1);
 
     $page->click('@templates-scope-discover');
-    waitForCreateTemplatesTestId($page, 'templates-featured');
+    waitFor($page, '@templates-featured');
     $page->click("@templates-scope-{$scope}");
-    waitForCreateTemplatesCondition($page, "document.querySelectorAll('article[data-testid^=\"template-card-\"]').length >= 1");
+    waitForCount($page, 'article[data-testid^="template-card-"]', 1, '>=');
     $page->script('new Promise((resolve) => setTimeout(resolve, 600))');
 
     expect($page->script("document.querySelectorAll('article[data-testid^=\"template-card-\"]').length"))->toBe(1);

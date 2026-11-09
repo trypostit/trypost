@@ -15,17 +15,7 @@ use App\Models\Workspace;
  */
 function waitForSidebarTestId(mixed $page, string $testId): void
 {
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-
+    waitFor($page, "@{$testId}");
     waitForWebFonts($page);
 }
 
@@ -90,7 +80,7 @@ test('account owners see settings, channels and plans and billing in the sidebar
     $page->click('@sidebar-menu-manage-team');
 
     $membersPath = route('app.members', absolute: false);
-    $page->script("(async () => { for (let i = 0; i < 150; i++) { if (location.pathname === '{$membersPath}') return; await new Promise((r) => setTimeout(r, 50)); } })();");
+    waitForPath($page, $membersPath);
 
     $page->assertPathIs($membersPath)
         ->assertNoJavaScriptErrors();
@@ -324,14 +314,7 @@ test('the sidebar menu opens right to left for a right-to-left language', functi
 
 function waitForSidebarState(mixed $page, string $state): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (document.querySelector('[data-slot="sidebar"][data-state]')?.dataset.state === '{$state}') return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForState($page, '[data-slot="sidebar"][data-state]', "element.dataset.state === '{$state}'");
 }
 
 test('the sidebar footer toggle collapses and expands the sidebar and the state survives a reload', function () {
@@ -410,13 +393,7 @@ test('the sidebar auto-collapses below 1024px, can be expanded there, and restor
 
     $page->resize(700, 900);
     waitForSidebarTestId($page, 'app-sidebar-trigger');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100 && document.querySelector('[data-testid="sidebar-footer-toggle"]'); i++) {
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForGone($page, '@sidebar-footer-toggle');
     expect($page->script("document.querySelector('[data-testid=\"sidebar-footer-toggle\"]')"))->toBeNull();
 
     $page->resize(1280, 900);
@@ -468,7 +445,7 @@ test('on a phone a global bar with the menu button and logo sits above the conte
 
     $page->click('@app-sidebar-trigger');
     $mobileSidebar = '(document.querySelector(\'[data-mobile="true"]\')?.getBoundingClientRect().width ?? 0) > 0';
-    $page->script("(async () => { for (let attempt = 0; attempt < 100; attempt++) { if ({$mobileSidebar}) return; await new Promise((resolve) => setTimeout(resolve, 50)); } })()");
+    waitForState($page, '[data-mobile="true"]', 'element.getBoundingClientRect().width > 0');
     expect($page->script($mobileSidebar))->toBeTrue();
 
     $page->resize(1280, 900);

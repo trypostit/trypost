@@ -6,45 +6,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForCommandPaletteTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCommandPaletteGone(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                if (!document.querySelector(sel)) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCommandPalettePath(mixed $page, string $path): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (window.location.pathname === '{$path}' && document.querySelector('[data-testid="publish-page"]')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function commandPaletteUser(string $role): User
 {
     $owner = User::factory()->create();
@@ -68,9 +29,9 @@ function commandPaletteUser(string $role): User
 
 function openCommandPalette(mixed $page): void
 {
-    waitForCommandPaletteTestId($page, 'app-content-shell');
+    waitFor($page, '@app-content-shell');
     $page->keys('@app-content-shell', 'ControlOrMeta+k');
-    waitForCommandPaletteTestId($page, 'command-palette-input');
+    waitFor($page, '@command-palette-input');
 }
 
 test('the shortcut opens the palette and escape closes it', function () {
@@ -85,7 +46,7 @@ test('the shortcut opens the palette and escape closes it', function () {
         ->assertAttribute('@command-palette-input', 'placeholder', 'Search channels, pages...');
 
     $page->keys('@command-palette-input', 'Escape');
-    waitForCommandPaletteGone($page, 'command-palette');
+    waitForGone($page, '@command-palette');
 
     $page->assertMissing('@command-palette')->assertNoJavaScriptErrors();
 });
@@ -140,7 +101,7 @@ test('typing filters the list and exposes settings and insights pages', function
     openCommandPalette($page);
 
     $page->type('@command-palette-input', 'set');
-    waitForCommandPaletteTestId($page, 'command-palette-item-settings-profile');
+    waitFor($page, '@command-palette-item-settings-profile');
 
     $page->assertVisible('@command-palette-group-settings')
         ->assertSeeIn('@command-palette-item-settings-profile', 'Settings → Profile')
@@ -150,7 +111,7 @@ test('typing filters the list and exposes settings and insights pages', function
         ->assertMissing("@command-palette-item-insights-{$channel->id}");
 
     $page->type('@command-palette-input', 'acme');
-    waitForCommandPaletteTestId($page, "command-palette-item-insights-{$channel->id}");
+    waitFor($page, "@command-palette-item-insights-{$channel->id}");
 
     $page->assertVisible("@command-palette-item-channel-{$channel->id}")
         ->assertSeeIn("@command-palette-item-insights-{$channel->id}", 'Acme LinkedIn → Insights')
@@ -165,7 +126,7 @@ test('an unmatched query shows the empty state', function () {
     openCommandPalette($page);
 
     $page->type('@command-palette-input', 'zzqq');
-    waitForCommandPaletteTestId($page, 'command-palette-empty');
+    waitFor($page, '@command-palette-empty');
 
     $page->assertSeeIn('@command-palette-empty', 'No results for "zzqq". Try different keywords.')
         ->assertMissing('@command-palette-group-actions')
@@ -184,10 +145,11 @@ test('selecting a channel opens its publish page and it shows up under recent', 
     openCommandPalette($page);
 
     $page->type('@command-palette-input', 'acme');
-    waitForCommandPaletteTestId($page, "command-palette-item-channel-{$channel->id}");
+    waitFor($page, "@command-palette-item-channel-{$channel->id}");
     $page->click("@command-palette-item-channel-{$channel->id}");
     $channelPath = parse_url(route('app.channels.publish', $channel), PHP_URL_PATH);
-    waitForCommandPalettePath($page, $channelPath);
+    waitForPath($page, $channelPath);
+    waitForState($page, '@publish-page', 'true');
 
     expect($page->script('window.location.pathname'))->toBe($channelPath);
     $page->assertMissing('@command-palette');
@@ -207,17 +169,17 @@ test('invite and connect open their dialogs for admins', function () {
     openCommandPalette($page);
 
     $page->click('@command-palette-item-action-invite-member');
-    waitForCommandPaletteTestId($page, 'invite-member-dialog');
+    waitFor($page, '@invite-member-dialog');
     $page->assertVisible('@invite-member-dialog')->assertMissing('@command-palette');
 
     $page->keys('@invite-member-dialog', 'Escape');
-    waitForCommandPaletteGone($page, 'invite-member-dialog');
+    waitForGone($page, '@invite-member-dialog');
 
     openCommandPalette($page);
     $page->type('@command-palette-input', 'connect');
-    waitForCommandPaletteTestId($page, 'command-palette-item-action-connect-channel');
+    waitFor($page, '@command-palette-item-action-connect-channel');
     $page->click('@command-palette-item-action-connect-channel');
-    waitForCommandPaletteTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
@@ -239,11 +201,11 @@ test('the shortcut does not open the palette over the post composer', function (
     $this->actingAs(commandPaletteUser('admin'));
 
     $page = visit(route('app.posts.index'));
-    waitForCommandPaletteTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForCommandPaletteTestId($page, 'sidebar-new-post');
+    waitFor($page, '@sidebar-new-post');
     $page->click('@sidebar-new-post');
-    waitForCommandPaletteTestId($page, 'post-composer-dialog');
+    waitFor($page, '@post-composer-dialog');
 
     $page->keys('@post-composer-dialog', 'ControlOrMeta+k');
 

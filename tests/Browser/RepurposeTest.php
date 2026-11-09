@@ -25,32 +25,6 @@ beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
 });
 
-function waitForRepurposeTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForRepurposeCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function repurposeOwnerWithAccounts(): array
 {
     $user = User::factory()->create();
@@ -86,7 +60,7 @@ test('the edit page shows the watched format, the destinations and the settings 
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, 'source-format-select');
+    waitFor($page, '@source-format-select');
 
     $page->assertRoute('app.repurposes.show', ['repurpose' => $repurpose->id])
         ->assertVisible('@repurpose-summary')
@@ -115,7 +89,7 @@ test('a destination is not warned about missing media before there is any', func
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, "channel-type-{$facebook->id}-facebook_reel");
+    waitFor($page, "@channel-type-{$facebook->id}-facebook_reel");
 
     $page->assertVisible("@channel-settings-{$facebook->id}")
         ->assertAttribute("@channel-type-{$facebook->id}-facebook_reel", 'aria-checked', 'true')
@@ -142,21 +116,21 @@ test('the source account is picked from a searchable list and handed back to the
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, 'source-account-select');
+    waitFor($page, '@source-account-select');
 
     $page->assertVisible("@channel-{$facebook->id}")
         ->assertMissing("@channel-{$source->id}")
         ->assertAttribute('@repurpose-source-avatar', 'data-platform', Platform::Instagram->value)
         ->click('@source-account-select');
 
-    waitForRepurposeTestId($page, "source-option-{$facebook->id}");
+    waitFor($page, "@source-option-{$facebook->id}");
 
     $page->assertSee($facebook->display_name)
         ->assertVisible("@source-option-disconnected-{$broken->id}")
         ->assertMissing("@source-option-disconnected-{$source->id}")
         ->click("@source-option-{$facebook->id}");
 
-    waitForRepurposeTestId($page, "channel-{$source->id}");
+    waitFor($page, "@channel-{$source->id}");
 
     $page->assertVisible("@channel-{$source->id}")
         ->assertMissing("@channel-{$facebook->id}")
@@ -176,12 +150,12 @@ test('deleting sits behind the menu instead of on the page', function () {
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, 'repurpose-menu');
+    waitFor($page, '@repurpose-menu');
 
     $page->assertMissing('@delete-repurpose')
         ->click('@repurpose-menu');
 
-    waitForRepurposeTestId($page, 'delete-repurpose');
+    waitFor($page, '@delete-repurpose');
 
     $page->assertVisible('@delete-repurpose')
         ->assertNoJavaScriptErrors();
@@ -206,11 +180,11 @@ test('the activity list reads as what happened, never as a database id', functio
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, 'tab-activity');
+    waitFor($page, '@tab-activity');
 
     $page->click('@tab-activity');
 
-    waitForRepurposeTestId($page, "repurpose-item-{$withoutLink->id}");
+    waitFor($page, "@repurpose-item-{$withoutLink->id}");
 
     $page->assertVisible("@repurpose-item-{$withoutLink->id}")
         ->assertDontSee($withoutLink->source_media_id)
@@ -282,13 +256,13 @@ test('a destination missing its required meta saves anyway but blocks activating
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, 'activate-repurpose');
+    waitFor($page, '@activate-repurpose');
 
     $page->assertVisible('@activate-repurpose')
         ->assertMissing('@save-destinations')
         ->click("@channel-{$tiktok->id}");
 
-    waitForRepurposeTestId($page, 'repurpose-saved');
+    waitFor($page, '@repurpose-saved');
 
     $saved = $repurpose->fresh()->destinations;
 
@@ -317,11 +291,11 @@ test('an autosave the backend rejects says so instead of failing quietly', funct
 
     $page = visit(route('app.repurposes.show', $repurpose));
 
-    waitForRepurposeTestId($page, "channel-{$tiktok->id}");
+    waitFor($page, "@channel-{$tiktok->id}");
 
     $page->click("@channel-{$tiktok->id}");
 
-    waitForRepurposeTestId($page, 'destinations-error');
+    waitFor($page, '@destinations-error');
 
     $page->assertVisible('@destinations-error')
         ->assertSee(trans('repurposes.errors.destinations_required'))
@@ -349,7 +323,7 @@ test('the list shows each repurpose as a row that opens it and the back button r
 
     $page = visit(route('app.repurposes.index'));
 
-    waitForRepurposeTestId($page, "repurpose-row-{$repurpose->id}");
+    waitFor($page, "@repurpose-row-{$repurpose->id}");
 
     $page->assertVisible('@create-repurpose-button')
         ->assertVisible('@header-icon')
@@ -357,12 +331,12 @@ test('the list shows each repurpose as a row that opens it and the back button r
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 1', true)
         ->click("@repurpose-row-{$repurpose->id}");
 
-    waitForRepurposeTestId($page, 'repurpose-back');
+    waitFor($page, '@repurpose-back');
 
     $page->assertRoute('app.repurposes.show', ['repurpose' => $repurpose->id])
         ->click('@repurpose-back');
 
-    waitForRepurposeTestId($page, 'repurposes-table');
+    waitFor($page, '@repurposes-table');
 
     $page->assertRoute('app.repurposes.index')
         ->resize(390, 844)
@@ -378,14 +352,14 @@ test('without any channel the empty state offers to connect one, like the publis
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.repurposes.index'));
-    waitForRepurposeTestId($page, 'repurposes-empty');
+    waitFor($page, '@repurposes-empty');
 
     $page->assertVisible('@repurposes-empty-illustration')
         ->assertSeeIn('@repurposes-empty', __('repurposes.empty.title'))
         ->assertMissing('@repurposes-empty-create')
         ->assertSeeIn('@repurposes-empty-connect', __('channels.connect'))
         ->click('@repurposes-empty-connect');
-    waitForRepurposeTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')
         ->assertNoJavaScriptErrors();
@@ -396,16 +370,16 @@ test('with a source channel and no repurpose the empty state starts a new one', 
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.index'));
-    waitForRepurposeTestId($page, 'repurposes-empty');
+    waitFor($page, '@repurposes-empty');
 
     $page->assertVisible('@repurposes-empty-illustration')
         ->assertMissing('@repurposes-empty-connect')
         ->click('@repurposes-empty-create');
-    waitForRepurposeTestId($page, 'create-repurpose-dialog');
+    waitFor($page, '@create-repurpose-dialog');
 
     $page->assertVisible('@create-repurpose-dialog')
         ->click('[data-testid="create-repurpose-dialog"] [data-testid="source-account-select"] button');
-    waitForRepurposeTestId($page, 'source-account-option');
+    waitFor($page, '@source-account-option');
 
     expect($page->script(<<<'JS'
         [...document.querySelectorAll('[data-testid="source-account-option"]')].map((option) => [
@@ -429,7 +403,7 @@ test('the edit page reads like channel settings: source avatar, status, tabs and
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.show', $repurpose))->resize(1440, 1000);
-    waitForRepurposeTestId($page, 'repurpose-source-avatar');
+    waitFor($page, '@repurpose-source-avatar');
 
     $page->assertAttribute('@repurpose-source-avatar', 'data-platform', Platform::Instagram->value)
         ->assertSeeIn('@repurpose-status', __("repurposes.status.{$repurpose->status->value}"))
@@ -441,7 +415,7 @@ test('the edit page reads like channel settings: source avatar, status, tabs and
     expect($page->script("document.querySelectorAll('[data-testid=\"repurpose-configuration\"] > hr').length"))->toBe(3);
 
     $page->click('@tab-activity');
-    waitForRepurposeTestId($page, 'repurpose-activity-empty');
+    waitFor($page, '@repurpose-activity-empty');
 
     $page->assertAttribute('@tab-activity', 'aria-selected', 'true')
         ->assertVisible('@repurposes-empty-illustration')
@@ -463,18 +437,18 @@ test('a destination row switch adds and removes the destination', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.show', $repurpose));
-    waitForRepurposeTestId($page, "channel-{$youtube->id}");
+    waitFor($page, "@channel-{$youtube->id}");
 
     $page->assertMissing("@channel-settings-{$youtube->id}")
         ->click("@channel-{$youtube->id}");
-    waitForRepurposeTestId($page, "channel-settings-{$youtube->id}");
-    waitForRepurposeTestId($page, 'repurpose-saved');
+    waitFor($page, "@channel-settings-{$youtube->id}");
+    waitFor($page, '@repurpose-saved');
 
     $page->assertAttribute("@channel-{$youtube->id}", 'aria-checked', 'true');
     expect(data_get($repurpose->fresh()->destinations, '0.social_account_id'))->toBe($youtube->id);
 
     $page->click("@channel-{$youtube->id}");
-    waitForRepurposeCondition($page, "!document.querySelector('[data-testid=\"channel-settings-{$youtube->id}\"]')");
+    waitForGone($page, "@channel-settings-{$youtube->id}");
 
     $page->assertAttribute("@channel-{$youtube->id}", 'aria-checked', 'false')
         ->assertNoJavaScriptErrors();
@@ -494,24 +468,20 @@ test('the watched format select and the publishing radio save', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.show', $repurpose));
-    waitForRepurposeTestId($page, 'source-format-select');
+    waitFor($page, '@source-format-select');
 
     $page->click('@source-format-select');
-    waitForRepurposeTestId($page, 'source-format-option-story');
+    waitFor($page, '@source-format-option-story');
     $page->click('@source-format-option-story');
 
-    for ($attempt = 0; $attempt < 50 && $repurpose->fresh()->source_format !== SourceFormat::Story; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $repurpose->fresh()->source_format === SourceFormat::Story);
 
     expect($repurpose->fresh()->source_format)->toBe(SourceFormat::Story);
 
     $page->assertAttribute('@publish-mode-publish', 'aria-checked', 'true')
         ->click('@publish-mode-draft');
 
-    for ($attempt = 0; $attempt < 50 && $repurpose->fresh()->publish_mode !== PublishMode::Draft; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $repurpose->fresh()->publish_mode === PublishMode::Draft);
 
     expect($repurpose->fresh()->publish_mode)->toBe(PublishMode::Draft);
     $page->assertAttribute('@publish-mode-draft', 'aria-checked', 'true')
@@ -529,7 +499,7 @@ test('the list shows each repurpose source and destinations as channel avatars',
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.index'))->resize(1440, 900);
-    waitForRepurposeTestId($page, "repurpose-row-{$repurpose->id}");
+    waitFor($page, "@repurpose-row-{$repurpose->id}");
 
     $page->assertSeeIn("@repurpose-row-{$repurpose->id}", $source->display_name)
         ->assertSeeIn("@repurpose-row-{$repurpose->id}", __('repurposes.formats.reel'));
@@ -556,7 +526,7 @@ test('the destination post types sit centered in their settings panel', function
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.show', $repurpose))->resize(1440, 1000);
-    waitForRepurposeTestId($page, "channel-settings-{$facebook->id}");
+    waitFor($page, "@channel-settings-{$facebook->id}");
 
     expect($page->script(<<<JS
         (() => {
@@ -614,8 +584,8 @@ test('on a phone the header puts the summary and the actions on their own rows',
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.show', $repurpose))->resize(390, 844);
-    waitForRepurposeTestId($page, 'repurpose-summary');
-    waitForRepurposeTestId($page, 'repurpose-lifecycle');
+    waitFor($page, '@repurpose-summary');
+    waitFor($page, '@repurpose-lifecycle');
 
     $layout = $page->script(<<<'JS'
         (() => {

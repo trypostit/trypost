@@ -48,28 +48,14 @@ function seedXDefusingPost(string $content): array
     return [$post, $account];
 }
 
-function waitForXDefusingTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const dialog = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (dialog?.getAttribute('data-state') === 'open'
-                    && dialog.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('the x preview shows the link as it will be published', function () {
     config()->set('trypost.platforms.x.defuse_links', true);
 
     [$post] = seedXDefusingPost('New post: https://acme.com/blog');
 
     $page = visit(route('app.posts.edit', $post));
-    waitForXDefusingTestId($page, 'x-preview-content');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@x-preview-content');
 
     $page->assertSeeIn('@x-preview-content', 'New post: acme(.)com/blog')
         ->assertDontSeeIn('@x-preview-content', 'https://acme.com/blog')
@@ -82,7 +68,8 @@ test('the x preview leaves the link alone when defusing is disabled', function (
     [$post] = seedXDefusingPost('New post: https://acme.com/blog');
 
     $page = visit(route('app.posts.edit', $post));
-    waitForXDefusingTestId($page, 'x-preview-content');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@x-preview-content');
 
     $page->assertSeeIn('@x-preview-content', 'New post: https://acme.com/blog')
         ->assertNoJavaScriptErrors();

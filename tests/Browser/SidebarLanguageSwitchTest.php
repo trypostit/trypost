@@ -7,20 +7,6 @@ use App\Enums\User\Theme;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForSidebarLanguageTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 test('switching language in the sidebar translates the page in place', function () {
     $user = User::factory()->create(['locale' => Locale::English]);
     $workspace = Workspace::factory()->create([
@@ -33,7 +19,7 @@ test('switching language in the sidebar translates the page in place', function 
     $this->actingAs($user);
 
     $page = visit(route('app.calendar'));
-    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspace-menu');
 
     // A full page load would clear this, so it doubles as the no-reload assertion.
     $page->script('window.__notReloaded = true;');
@@ -55,7 +41,7 @@ test('switching language in the sidebar translates the page in place', function 
 
     $japanese = __('sidebar.groups.posts', [], 'ja');
 
-    $page->script("(async () => { for (let i = 0; i < 150; i++) { if (document.body.innerText.includes('{$japanese}')) return; await new Promise((r) => setTimeout(r, 50)); } })();");
+    waitForCondition($page, "document.body.innerText.includes('{$japanese}')");
 
     $page->assertNoJavaScriptErrors();
     $page->assertSee($japanese)
@@ -79,7 +65,7 @@ test('the calendar header follows the language, not the previous one', function 
 
     $week = now()->startOfMonth()->addDays(10)->startOfWeek();
     $page = visit(route('app.calendar', ['view' => 'week', 'week' => $week->toDateString()]));
-    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspace-menu');
 
     $page->script(<<<'JS'
         (async () => {
@@ -96,7 +82,7 @@ test('the calendar header follows the language, not the previous one', function 
         })();
     JS);
 
-    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (window.__header !== undefined) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    waitForCondition($page, 'window.__header !== undefined');
 
     // The month name comes from dayjs on the client, so it is the piece that used
     // to lag one switch behind the interface strings.
@@ -116,7 +102,7 @@ test('switching theme in the sidebar applies it in place and saves it', function
     $this->actingAs($user);
 
     $page = visit(route('app.calendar'));
-    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspace-menu');
 
     $page->script('window.__notReloaded = true;');
 
@@ -140,9 +126,7 @@ test('switching theme in the sidebar applies it in place and saves it', function
 
     expect($page->script('document.documentElement.classList.contains("dark")'))->toBeTrue();
 
-    for ($attempt = 0; $attempt < 30 && $user->refresh()->theme !== Theme::Dark; $attempt++) {
-        $page->script('new Promise((r) => setTimeout(r, 100))');
-    }
+    waitForDatabase($page, fn () => $user->refresh()->theme === Theme::Dark);
 
     expect($user->theme)->toBe(Theme::Dark);
 
@@ -150,9 +134,7 @@ test('switching theme in the sidebar applies it in place and saves it', function
 
     expect($page->script('document.documentElement.classList.contains("dark")'))->toBeFalse();
 
-    for ($attempt = 0; $attempt < 30 && $user->refresh()->theme !== Theme::Light; $attempt++) {
-        $page->script('new Promise((r) => setTimeout(r, 100))');
-    }
+    waitForDatabase($page, fn () => $user->refresh()->theme === Theme::Light);
 
     expect($user->theme)->toBe(Theme::Light);
 
@@ -173,7 +155,7 @@ test('the user menu has a help and support submenu with the support links', func
     $this->actingAs($user);
 
     $page = visit(route('app.calendar'));
-    waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspace-menu');
 
     $links = $page->script(<<<'JS'
         (async () => {
