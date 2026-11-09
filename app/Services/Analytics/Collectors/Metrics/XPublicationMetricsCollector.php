@@ -115,9 +115,9 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 
     /**
      * The post's tweet from a lookup. X leaves a deleted post out of `data` and names it
-     * in `errors` with its documented `resource-not-found` problem, in a 200; a token that
-     * lost access gets 401/403 or `not-authorized-for-resource` instead, so that problem
-     * alone confirms the deletion, with no extra request.
+     * in `errors` with {@see ProblemType::ResourceNotFound}, in a 200; a token that lost
+     * access gets 401/403 or {@see ProblemType::NotAuthorizedForResource} instead, so that
+     * problem alone confirms the deletion, with no extra request.
      */
     private function postTweet(Response $response, string $id, mixed $tweet): mixed
     {

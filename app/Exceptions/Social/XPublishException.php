@@ -13,10 +13,12 @@ class XPublishException extends SocialPublishException
 {
     /**
      * Problem types X documents as caused by the account itself:
-     * not-authorized-for-resource is "No access to private/protected
-     * content". invalid-request (our request), resource-not-found (an id we
-     * sent), client-forbidden (our app's enrollment), usage-capped (our app's
-     * cap) and rate-limit-exceeded (per user or per app) stay reported.
+     * {@see ProblemType::NotAuthorizedForResource} is "No access to
+     * private/protected content". {@see ProblemType::InvalidRequest} (our
+     * request), {@see ProblemType::ResourceNotFound} (an id we sent),
+     * {@see ProblemType::ClientForbidden} (our app's enrollment),
+     * {@see ProblemType::UsageCapped} (our app's cap) and
+     * {@see ProblemType::RateLimitExceeded} (per user or per app) stay reported.
      *
      * @var list<ProblemType>
      */
