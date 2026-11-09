@@ -42,7 +42,7 @@ import {
     postCardPermalink,
     schedulePostCard,
 } from '@/composables/usePostCardActions';
-import { getPostStatusConfig, type StatusConfig } from '@/composables/usePostStatus';
+import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
@@ -142,7 +142,7 @@ const currentStatusConfig = computed(() =>
 
 /** Each sibling's status in the rail; a post the network deleted reads as deleted. */
 const railStatuses = computed<
-    Record<string, Pick<StatusConfig, 'icon' | 'iconClass'> & { labelKey: string }>
+    Record<string, Pick<ReturnType<typeof getPostStatusConfig>, 'icon' | 'iconClass'> & { labelKey: string }>
 >(() =>
     Object.fromEntries(
         siblings.value.map((sibling) => [
