@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\X\ProblemType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
@@ -14,7 +15,6 @@ use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Uri;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -121,17 +121,21 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     private function postTweet(Response $response, string $id, mixed $tweet): mixed
     {
-        $deleted = blank($tweet) && $response->collect('errors')->contains(
-            fn (mixed $error): bool => Uri::of((string) data_get($error, 'type'))->path() === '2/problems/resource-not-found'
-                && data_get($error, 'resource_type') === 'tweet'
-                && (string) data_get($error, 'resource_id') === $id,
-        );
-
-        if ($deleted) {
+        if (blank($tweet) && $response->collect('errors')->contains(fn (array $error): bool => $this->namesDeletedPost($error, $id))) {
             throw AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
         }
 
         return $tweet;
+    }
+
+    /**
+     * @param  array<string, mixed>  $error
+     */
+    private function namesDeletedPost(array $error, string $id): bool
+    {
+        return ProblemType::of($error) === ProblemType::ResourceNotFound
+            && data_get($error, 'resource_type') === 'tweet'
+            && data_get($error, 'resource_id') === $id;
     }
 
     /**
