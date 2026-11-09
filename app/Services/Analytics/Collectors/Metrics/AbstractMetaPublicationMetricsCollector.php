@@ -71,11 +71,19 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         $graph = $account->platform->graphApiUrl();
 
         return $this->readsMissing(
-            fn (): Response => $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']),
+            fn (): Response => $this->readPost($account, $publication, $graph),
             fn (AnalyticsCollectionException $exception): bool => $exception->missingObject,
         ) && $this->stillReads(
             fn (): Response => $this->get($account, "{$graph}/{$account->platform_user_id}/{$this->postsEdge()}", ['fields' => 'id', 'limit' => '1']),
         );
+    }
+
+    /**
+     * The read that answers "object does not exist" once the post is gone.
+     */
+    protected function readPost(SocialAccount $account, AnalyticsPublication $publication, string $graph): Response
+    {
+        return $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']);
     }
 
     protected function recordRefusal(AnalyticsCollectionException $exception): void

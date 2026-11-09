@@ -11,6 +11,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -38,6 +39,19 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
             || ($exception->category === 'permission'
                 && filled($this->refusals)
                 && $this->isReadByVideoId($publication));
+    }
+
+    /**
+     * Graph answers a deleted Page post's own node with #10, which also means a missing
+     * permission, and only its insights edge with "object does not exist".
+     */
+    protected function readPost(SocialAccount $account, AnalyticsPublication $publication, string $graph): Response
+    {
+        if ($this->isReadByVideoId($publication)) {
+            return parent::readPost($account, $publication, $graph);
+        }
+
+        return $this->get($account, "{$graph}/{$publication->remote_id}/insights", ['metric' => 'post_media_view', 'period' => 'lifetime']);
     }
 
     /**

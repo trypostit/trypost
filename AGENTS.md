@@ -1066,7 +1066,9 @@ an `enabled` flag or posts with several channels. Posts created together share
     - YouTube: its own `videos.list` read no longer returns the video.
     - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
       code 100 / subcode 33 for the post, and the posts edge still reads; a
-      story is never checked (it expires).
+      story is never checked (it expires). A Facebook Page post is checked on
+      its insights edge (`readPost()`): Graph answers its own node with #10,
+      which also means a missing permission.
     - X: the documented `resource-not-found` problem naming the post, in a
       200's `errors` or a 404's body; no extra request (X bills each one).
     - Bluesky: `getPosts` leaves it out, its repository answers

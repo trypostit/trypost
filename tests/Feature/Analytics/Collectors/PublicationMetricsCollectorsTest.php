@@ -1091,6 +1091,25 @@ test('a Facebook post is reported deleted even when the Page never granted insig
     expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
 });
 
+test('a Facebook Page post is reported deleted when its insights say it no longer exists, though its own node answers #10', function () {
+    $publication = metaMetricsPublication(Platform::Facebook, [
+        'remote_id' => '17841400000000001_17897891718416700',
+        'content_type' => PublicationContentType::Text,
+    ]);
+    $graph = metaGraphBase(Platform::Facebook);
+    Http::fake([
+        "{$graph}/17841400000000001/published_posts*" => Http::response(['data' => [['id' => '1']]]),
+        "{$graph}/17841400000000001_17897891718416700/insights*" => Http::response(metaMissingObject('17841400000000001_17897891718416700'), 400),
+        '*' => Http::response(['error' => [
+            'message' => "(#10) Object does not exist, cannot be loaded due to missing permission or reviewable feature, or does not support this operation. This endpoint requires the 'pages_read_engagement' permission or the 'Page Public Content Access' feature.",
+            'type' => 'OAuthException',
+            'code' => 10,
+        ]], 400),
+    ]);
+
+    expect(collectFrom($publication))->toThrow(fn (AnalyticsCollectionException $exception): Expectation => expect($exception->deletedOnNetwork)->toBeTrue());
+});
+
 test('a Meta post is not reported deleted when the account posts cannot be read either', function (Platform $platform) {
     $publication = metaMetricsPublication($platform);
     Http::fake(['*' => Http::response(metaMissingObject('17897891718416700'), 400)]);
