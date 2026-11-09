@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Support\Timezone;
 
@@ -53,6 +54,14 @@ test('normalize maps an alias missing from PHP\'s time zone list', function (str
     'Pacific-New' => ['US/Pacific-New', 'America/Los_Angeles'],
 ]);
 
+test('a user and a channel stored with an alias missing from PHP\'s list read their canonical zone', function () {
+    $user = User::factory()->create(['timezone' => 'Canada/East-Saskatchewan']);
+    $channel = SocialAccount::factory()->create(['timezone' => 'Canada/East-Saskatchewan']);
+
+    expect($user->fresh()->timezone)->toBe('America/Regina')
+        ->and($channel->fresh()->timezone)->toBe('America/Regina');
+});
+
 test('registration maps an alias missing from PHP\'s time zone list', function () {
     $this->post(route('register.store'), [
         'name' => 'Ravi',
@@ -100,6 +109,17 @@ test('changing the time zone rejects invalid identifiers', function () {
         ->assertSessionHasErrors('timezone');
 
     expect($user->fresh()->timezone)->toBe('UTC');
+});
+
+test('changing the time zone rejects a legacy alias, whose zone the list offers by its canonical name', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('app.settings.preferences.update'), ['timezone' => 'Asia/Calcutta'])
+        ->assertSessionHasErrors('timezone');
+
+    expect($user->fresh()->timezone)->toBe('UTC')
+        ->and(collect(Timezone::options())->pluck('value'))->toContain('Asia/Kolkata')->not->toContain('Asia/Calcutta');
 });
 
 test('the shared auth user exposes the time zone', function () {

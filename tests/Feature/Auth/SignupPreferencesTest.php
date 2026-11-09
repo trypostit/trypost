@@ -106,6 +106,21 @@ test('github signup with unusable detection values falls back instead of failing
         ->and($user->time_format)->toBe(TimeFormat::TwelveHour);
 });
 
+test('social signup maps a legacy time zone alias to its canonical identifier', function (string $network, string $driver, string $alias, string $canonical) {
+    $this->get(route("auth.{$network}.redirect", ['timezone' => $alias]));
+    signupPreferencesSocialite($driver, "{$network}-alias", "{$network}-alias@example.com");
+
+    $this->get(route("auth.{$network}.callback"))->assertRedirect(route('app.welcome', absolute: false));
+
+    expect(User::query()->where('email', "{$network}-alias@example.com")->sole()->timezone)->toBe($canonical);
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+])->with([
+    'Calcutta' => ['Asia/Calcutta', 'Asia/Kolkata'],
+    'missing from PHP\'s list' => ['Canada/East-Saskatchewan', 'America/Regina'],
+]);
+
 test('an existing user logging in with google does not leave the detection in the session', function () {
     User::factory()->create(['email' => 'returning@example.com', 'google_id' => 'g-returning', 'timezone' => 'Europe/Lisbon']);
 

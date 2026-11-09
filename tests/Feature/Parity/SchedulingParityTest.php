@@ -732,6 +732,31 @@ test('the recurrence ceiling is checked in the channel time zone on every surfac
     expect(schedulingParityRecurrence($post)['interval'])->toBeNull();
 });
 
+test('the recurrence ceiling is checked in the canonical zone of a channel stored with a legacy alias on every surface', function () {
+    $regina = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'timezone' => 'Canada/East-Saskatchewan',
+    ]);
+    $posts = collect(range(1, 3))->map(function () use ($regina) {
+        $post = schedulingParityRecurring($regina, $this->workspace->id, $this->user->id);
+        $post->update(['scheduled_at' => CarbonImmutable::parse('2037-11-30 20:00', 'America/Regina')->utc()]);
+
+        return $post;
+    });
+    $lastMonth = ['interval' => 1, 'frequency' => 'month', 'times' => 1];
+    $expected = ['interval' => 1, 'frequency' => 'month', 'remaining' => 1];
+
+    $this->actingAs($this->user)->patchJson(route('app.posts.recurrence.update', $posts[0]), $lastMonth)->assertRedirect();
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->patchJson(route('api.posts.recurrence.update', $posts[1]), $lastMonth)->assertOk();
+    TryPostServer::actingAs($this->user)->tool(SetPostRecurrenceTool::class, ['post_id' => $posts[2]->id, ...$lastMonth])->assertOk();
+
+    foreach ($posts as $post) {
+        expect(schedulingParityRecurrence($post))->toBe($expected);
+    }
+});
+
 test('a post that is not scheduled cannot get a recurrence on any surface', function () {
     $draft = schedulingParityRecurring($this->account, $this->workspace->id, $this->user->id, Status::Draft);
     $rule = ['interval' => 1, 'frequency' => 'day', 'times' => 2];
@@ -852,6 +877,24 @@ test('updating the posting schedule stores the same schedule and zone on the web
         ->and(schedulingParityStored($web)[0])->toBe('America/Sao_Paulo')
         ->and($response->json('timezone'))->toBe('America/Sao_Paulo')
         ->and($response->json('id'))->toBe($api->id);
+});
+
+test('a legacy time zone alias is refused for a posting schedule on every surface, and nothing is stored', function () {
+    $payload = [
+        'timezone' => 'Asia/Calcutta',
+        'posting_goal' => 2,
+        'posting_schedule' => PostingSchedule::empty()->withTime(2, '11:00')->toArray(),
+    ];
+
+    $this->actingAs($this->user)->putJson(route('app.channels.posting-schedule.update', $this->account), $payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('timezone');
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->putJson(route('api.channels.posting-schedule.update', $this->account), $payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('timezone');
+    auth()->forgetGuards();
+    TryPostServer::actingAs($this->user)->tool(UpdatePostingScheduleTool::class, ['account_id' => $this->account->id, ...$payload])->assertHasErrors();
+
+    expect($this->account->fresh()->timezone)->toBe('UTC');
 });
 
 test('an invalid posting schedule is refused with the web messages on every surface', function () {

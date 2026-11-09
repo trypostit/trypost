@@ -18,15 +18,15 @@ class Timezone
             return self::DEFAULT;
         }
 
-        $canonical = DateTimeZone::listIdentifiers();
+        $canonical = once(fn (): array => array_flip(DateTimeZone::listIdentifiers()));
 
-        if (in_array($value, $canonical, true)) {
+        if (isset($canonical[$value])) {
             return $value;
         }
 
         $mapped = IntlTimeZone::getIanaID($value);
 
-        return is_string($mapped) && in_array($mapped, $canonical, true)
+        return is_string($mapped) && isset($canonical[$mapped])
             ? $mapped
             : self::DEFAULT;
     }
