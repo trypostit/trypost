@@ -112,12 +112,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $slowQueryMicroseconds = config('nightwatch.filtering.slow_query_ms') * 1000;
 
-        Nightwatch::rejectQueries(function (Query $query) use ($slowQueryMicroseconds): bool {
-            $ranOutsideARequest = $this->app->runningInConsole();
-            $isFast = $query->duration < $slowQueryMicroseconds;
-
-            return $ranOutsideARequest && $isFast;
-        });
+        Nightwatch::rejectQueries(fn (Query $query): bool => $this->app->runningInConsole()
+            && $query->duration < $slowQueryMicroseconds);
 
         Nightwatch::rejectCacheEvents(function (CacheEvent $cacheEvent) {
             return in_array($cacheEvent->key, [
