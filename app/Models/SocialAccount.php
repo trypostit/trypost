@@ -44,13 +44,6 @@ class SocialAccount extends Model
     /** @use HasFactory<SocialAccountFactory> */
     use HasFactory, HasUuids;
 
-    /**
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'timezone' => Timezone::DEFAULT,
-    ];
-
     public const int X_LONG_POST_LENGTH = 25000;
 
     /**
@@ -60,6 +53,13 @@ class SocialAccount extends Model
 
     /** The X verification types that show a badge: blue (paid), business (gold) and government (gray). */
     public const array X_VERIFIED_BADGES = ['blue', 'business', 'government'];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
+    ];
 
     protected $fillable = [
         'workspace_id',
