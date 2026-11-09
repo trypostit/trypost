@@ -23,6 +23,7 @@ return [
         'recurring' => 'Yinelenen',
         'publishing' => 'Yayınlanıyor',
         'published' => 'Yayınlandı',
+        'deleted' => 'Silindi',
         'failed' => 'Başarısız',
     ],
     'status' => [

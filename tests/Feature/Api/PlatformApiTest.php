@@ -69,6 +69,8 @@ it('lists the x poll without media capabilities', function () {
     expect($poll)->toMatchArray([
         'max_media_count' => 0,
         'accepts_gif' => false,
+        'accepts_mov' => false,
+        'supports_alt_text' => false,
         'max_image_bytes' => null,
         'max_video_bytes' => null,
         'max_video_duration_sec' => null,

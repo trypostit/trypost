@@ -404,7 +404,7 @@ test('list-content-types-tool shows every media rule a save enforces', function 
 
     $editorOnly = array_flip(['max_files', 'min_files', 'crop_presets', 'platform_label']);
 
-    foreach (ContentType::cases() as $contentType) {
+    foreach (array_filter(ContentType::cases(), fn (ContentType $type): bool => filled($type->compatiblePlatforms())) as $contentType) {
         $rules = array_diff_key($contentType->mediaRules(), $editorOnly);
         $renamed = ['accept_images', 'accept_videos', 'accept_documents', 'requires_media', 'accepts_gif', 'accepts_mov', 'forbids_mixed_media', 'max_image_bytes', 'max_video_bytes', 'max_document_bytes', 'max_video_duration_sec'];
 

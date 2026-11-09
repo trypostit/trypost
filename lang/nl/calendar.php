@@ -23,6 +23,7 @@ return [
         'recurring' => 'Terugkerend',
         'publishing' => 'Publiceren',
         'published' => 'Gepubliceerd',
+        'deleted' => 'Verwijderd',
         'failed' => 'Mislukt',
     ],
     'status' => [

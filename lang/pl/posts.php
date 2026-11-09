@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Wątki postów nie są dostępne w tej sieci.',
             'reply_empty' => 'Odpowiedź w wątku jest pusta.',
             'reply_too_long' => 'Odpowiedź przekracza limit :limit znaków o :over.',
+            'too_many' => '{1} Ten post przyjmuje tylko jeden komentarz.|[0,*] Ten post przyjmuje maksymalnie :max odpowiedzi.',
+            'add_comment' => 'Dodaj komentarz',
+            'comment_placeholder' => 'Dodaj link lub więcej kontekstu',
+            'comment_label' => 'Twój komentarz',
+            'remove_comment' => 'Usuń komentarz',
+            'comment_too_long' => 'Komentarz przekracza limit :limit znaków o :over.',
+            'comment_empty' => 'Komentarz jest pusty.',
+            'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'Zobacz post',
             'edit_labels' => 'Edytuj etykiety',
             'edit_labels_failed' => 'Nie udało się zaktualizować etykiet. Spróbuj ponownie.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Usunięto',
+            'title' => 'Usunięto na :network',
+            'hint' => 'Został usunięty po publikacji, więc jego link i statystyki nie są już dostępne.',
         ],
         'created_by' => 'Utworzone przez :name :when',
         'welcome' => [

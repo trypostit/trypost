@@ -23,6 +23,7 @@ return [
         'recurring' => 'متكرر',
         'publishing' => 'قيد النشر',
         'published' => 'منشور',
+        'deleted' => 'محذوف',
         'failed' => 'فشل',
     ],
     'status' => [

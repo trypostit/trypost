@@ -23,6 +23,7 @@ return [
         'recurring' => 'Recurring',
         'publishing' => 'Publishing',
         'published' => 'Published',
+        'deleted' => 'Deleted',
         'failed' => 'Failed',
     ],
     'status' => [

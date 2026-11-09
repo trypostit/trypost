@@ -16,26 +16,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
-function waitForDarkModeSurfacesTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        new Promise((resolve, reject) => {
-            const started = Date.now();
-            const check = () => {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element && element.getBoundingClientRect().height > 0) {
-                    resolve(true);
-                } else if (Date.now() - started > 10000) {
-                    reject(new Error('Timed out waiting for {$testId}'));
-                } else {
-                    requestAnimationFrame(check);
-                }
-            };
-            check();
-        })
-    JS);
-}
-
 test('in dark mode a dialog is a raised surface, lighter than the page behind it', function () {
     $user = User::factory()->create(['theme' => Theme::Dark]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -46,7 +26,7 @@ test('in dark mode a dialog is a raised surface, lighter than the page behind it
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, 'post-composer-dialog');
+    waitFor($page, '@post-composer-dialog');
 
     $surfaces = $page->script(<<<'JS'
         (() => {
@@ -71,9 +51,9 @@ test('in dark mode the new menu icons stand out from their tiles', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForDarkModeSurfacesTestId($page, 'sidebar-new-idea-icon');
+    waitFor($page, '@sidebar-new-idea-icon');
 
     $contrast = $page->script(<<<'JS'
         (() => {
@@ -102,9 +82,9 @@ test('in dark mode the new button hovers one step lighter, not to the palest vio
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForDarkModeSurfacesTestId($page, 'sidebar-new-menu');
+    waitFor($page, '@sidebar-new-menu');
 
     $colors = $page->script(<<<'JS'
         new Promise((done) => setTimeout(() => {
@@ -139,7 +119,7 @@ test('in dark mode the idea board columns and cards step up from the page', func
     $this->actingAs($user);
 
     $page = visit(route('app.create.ideas.index'))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, "idea-card-{$idea->id}");
+    waitFor($page, "@idea-card-{$idea->id}");
 
     $surfaces = $page->script(<<<JS
         (() => {
@@ -184,7 +164,7 @@ test('in dark mode each insights section is one card outlined against the page p
     $this->actingAs($user);
 
     $page = visit(route('app.insights'))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, 'analytics-summary-followers');
+    waitFor($page, '@analytics-summary-followers');
 
     $surfaces = $page->script(<<<'JS'
         (() => {
@@ -222,9 +202,9 @@ test('in dark mode the connect channel dialog keeps its 8px frame around the inn
     $this->actingAs($user);
 
     $page = visit(route('app.repurposes.index'))->resize(1440, 900);
-    waitForDarkModeSurfacesTestId($page, 'repurposes-empty-connect');
+    waitFor($page, '@repurposes-empty-connect');
     $page->click('@repurposes-empty-connect');
-    waitForDarkModeSurfacesTestId($page, 'connect-channel-telegram');
+    waitFor($page, '@connect-channel-telegram');
 
     $layers = $page->script(<<<'JS'
         (() => {

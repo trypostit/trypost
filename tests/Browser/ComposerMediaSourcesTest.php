@@ -13,35 +13,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 
-/**
- * Poll from the page until `$condition` holds (never sleep(): the test server
- * only ticks while Pest awaits Playwright).
- */
-function waitForComposerMediaSourcesCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
-function waitForComposerMediaSourcesTestId(mixed $page, string $testId, int $rounds = 1): void
-{
-    $visible = "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0";
-
-    for ($round = 0; $round < $rounds && ! $page->script("Boolean({$visible})"); $round++) {
-        waitForComposerMediaSourcesCondition($page, $visible);
-    }
-}
-
 function openComposerForMediaSources(mixed $test): mixed
 {
     $user = User::factory()->create();
@@ -53,7 +24,7 @@ function openComposerForMediaSources(mixed $test): mixed
     $test->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerMediaSourcesTestId($page, 'composer-base-toolbar');
+    waitFor($page, '@composer-base-toolbar');
 
     return $page;
 }
@@ -64,7 +35,7 @@ function chooseComposerMediaSource(mixed $page, string $prefix, string $source):
 
     for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
         $page->click("@{$prefix}-media-source-menu");
-        waitForComposerMediaSourcesCondition($page, $item);
+        waitFor($page, "@media-source-{$source}");
     }
 
     $page->click("@media-source-{$source}");
@@ -149,7 +120,7 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     ]);
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
 
     $page->assertNotPresent('@composer-base-add-media')
         ->assertNotPresent('@composer-base-media-source-main')
@@ -172,7 +143,7 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     JS))->toBe(['heights' => 1, 'centers' => 1, 'icons' => 1]);
 
     $page->click('@composer-base-media-source-menu');
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-list');
+    waitFor($page, '@composer-base-media-source-list');
 
     expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"composer-base-media-source-list\"] [data-testid^=\"media-source-\"]')).map((item) => item.dataset.testid)"))
         ->toBe(['media-source-upload', 'media-source-canva', 'media-source-unsplash']);
@@ -186,7 +157,7 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     JS))->toBeTrue();
 
     $page->click('@media-source-unsplash');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-dialog');
+    waitFor($page, '@unsplash-dialog');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -203,11 +174,11 @@ test('upload from computer in the media menu opens the file picker', function (s
     $this->actingAs($user);
 
     $page = visit(route($route));
-    waitForComposerMediaSourcesTestId($page, "{$prefix}-media-source-menu");
+    waitFor($page, "@{$prefix}-media-source-menu");
     $page->script("HTMLInputElement.prototype.click = function () { if (this.type === 'file') { window.__filePicker = (window.__filePicker ?? 0) + 1; } }; true;");
 
     chooseComposerMediaSource($page, $prefix, 'upload');
-    waitForComposerMediaSourcesCondition($page, 'window.__filePicker === 1');
+    waitForCondition($page, 'window.__filePicker === 1');
 
     expect($page->script('window.__filePicker ?? 0'))->toBe(1);
     $page->assertNoJavaScriptErrors();
@@ -219,20 +190,20 @@ test('picking an unsplash photo from the menu adds a tile and credits the photog
     enableOnlyUnsplashForMediaSources();
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     $page->click('@composer-base-media-source-menu');
-    waitForComposerMediaSourcesTestId($page, 'media-source-unsplash');
+    waitFor($page, '@media-source-unsplash');
     $page->click('@media-source-unsplash');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-dialog');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-photo-0');
+    waitFor($page, '@unsplash-dialog');
+    waitFor($page, '@unsplash-photo-0');
 
     $page->assertSeeIn('@unsplash-dialog', 'Ana Photographer');
     expect($page->script("document.querySelector('[data-testid=\"unsplash-dialog\"] a[href*=\"@sunrise\"]')?.getAttribute('href')"))
         ->toEndWith('@sunrise?utm_source=trypost&utm_medium=referral');
 
     $page->click('@unsplash-photo-0');
-    waitForComposerMediaSourcesTestId($page, 'composer-media-item');
-    waitForComposerMediaSourcesCondition($page, "!document.querySelector('[data-testid=\"unsplash-dialog\"]')");
+    waitFor($page, '@composer-media-item');
+    waitForGone($page, '@unsplash-dialog');
 
     $page->assertPresent('@composer-media-item')
         ->assertNotPresent('@unsplash-dialog')
@@ -250,9 +221,9 @@ test('the unsplash dialog keeps loading pages as the grid scrolls and has no foo
     enableOnlyUnsplashForMediaSources();
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     chooseComposerMediaSource($page, 'composer-base', 'unsplash');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-photo-1');
+    waitFor($page, '@unsplash-photo-1');
 
     $page->assertSeeIn('@unsplash-dialog', 'Bruno Photographer')
         ->assertNotPresent('@unsplash-photo-2')
@@ -266,9 +237,9 @@ test('an unsplash outage shows an error instead of an empty result', function ()
     enableOnlyUnsplashForMediaSources(apiStatus: 403);
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     chooseComposerMediaSource($page, 'composer-base', 'unsplash');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-error');
+    waitFor($page, '@unsplash-error');
 
     $page->assertSeeIn('@unsplash-error', "Unsplash isn't available right now.")
         ->assertNotPresent('@unsplash-empty')
@@ -445,18 +416,18 @@ test('picking a google drive file in a single channel adds a tile to that channe
 
     $page = openComposerForMediaSources($this);
     $account = SocialAccount::query()->sole();
-    waitForComposerMediaSourcesTestId($page, 'composer-add-account');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account');
     $page->click("@composer-account-option-{$account->id}");
-    waitForComposerMediaSourcesTestId($page, "composer-{$account->id}-media-source-menu");
+    waitFor($page, "@composer-{$account->id}-media-source-menu");
     $page->fill("@composer-caption-{$account->id}", 'Drive pick for one channel');
 
     stubGoogleDriveForMediaSources($page);
     $page->click("@composer-{$account->id}-media-source-menu");
-    waitForComposerMediaSourcesTestId($page, 'media-source-google_drive');
+    waitFor($page, '@media-source-google_drive');
     $page->click('@media-source-google_drive');
     finishGoogleDriveSignIn($page);
-    waitForComposerMediaSourcesTestId($page, "composer-{$account->id}-media-item");
+    waitFor($page, "@composer-{$account->id}-media-item");
 
     $page->assertPresent("@composer-{$account->id}-media-item")
         ->assertNoJavaScriptErrors();
@@ -469,13 +440,13 @@ test('the drive picker can be clicked, focused and typed in over the composer di
     $api = enableOnlyGoogleDriveForMediaSources();
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     stubGoogleDriveForMediaSources($page, holdOpen: true);
     chooseComposerMediaSource($page, 'composer-base', 'google_drive');
-    waitForComposerMediaSourcesCondition($page, "!document.querySelector('[data-testid=\"composer-base-media-source-list\"]')");
+    waitForGone($page, '@composer-base-media-source-list');
     finishGoogleDriveSignIn($page);
-    waitForComposerMediaSourcesTestId($page, 'drive-picker-search');
-    waitForComposerMediaSourcesCondition($page, "document.activeElement?.dataset?.testid === 'drive-picker-search'");
+    waitFor($page, '@drive-picker-search');
+    waitForState($page, '@drive-picker-search', 'element === document.activeElement');
 
     expect($page->script('document.activeElement?.dataset?.testid ?? null'))->toBe('drive-picker-search')
         ->and($page->script('getComputedStyle(document.body).pointerEvents'))->not->toBe('none');
@@ -488,7 +459,7 @@ test('the drive picker can be clicked, focused and typed in over the composer di
     $page->assertPresent('@post-composer-dialog');
 
     $page->script('window.__drive.finish()');
-    waitForComposerMediaSourcesTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-media-item');
 
     $page->assertPresent('@post-composer-dialog')
         ->assertPresent('@composer-media-item')
@@ -503,7 +474,7 @@ test('a failed google drive sign-in opens no picker and shows the popup message'
     enableOnlyGoogleDriveForMediaSources();
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     stubGoogleDriveForMediaSources($page);
     chooseComposerMediaSource($page, 'composer-base', 'google_drive');
     $nonce = googleDriveSignInNonce($page);
@@ -516,7 +487,7 @@ test('a failed google drive sign-in opens no picker and shows the popup message'
         }));
         true;
     JS);
-    waitForComposerMediaSourcesCondition($page, "document.body.innerText.includes('TryPost needs access to the file you pick')");
+    waitForCondition($page, "document.body.innerText.includes('TryPost needs access to the file you pick')");
 
     $page->assertSee($message)
         ->assertNotPresent('@composer-media-item')
@@ -538,18 +509,18 @@ test('the real sign-in popup, start to callback, hands the drive token to the co
     ]);
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
     stubGoogleDriveForMediaSources($page);
     $page->script('window.open = (url) => { window.__drive.opened.push(url); window.__drive.openedInClick = window.__drive.inClick; return { closed: true, close() {} }; }; true;');
     chooseComposerMediaSource($page, 'composer-base', 'google_drive');
     $opened = $page->script('window.__drive.opened[0]');
 
     $popup = visit($opened);
-    waitForComposerMediaSourcesTestId($popup, 'media-source-popup');
+    waitFor($popup, '@media-source-popup');
     $popup->assertAttribute('@media-source-popup', 'data-success', 'true')
         ->assertSee(__('integrations.media_source_popup.google_drive_ready'));
 
-    waitForComposerMediaSourcesTestId($page, 'composer-media-item', rounds: 4);
+    waitFor($page, '@composer-media-item');
     $page->assertPresent('@composer-media-item')
         ->assertNoJavaScriptErrors();
 
@@ -562,13 +533,13 @@ test('opening the media sources menu preloads the picker sdk only', function () 
     config()->set('trypost.media_sources.google_drive.picker_sdk', 'data:text/javascript,window.__pickerLoaded=true');
 
     $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
+    waitFor($page, '@composer-base-media-source-menu');
 
     expect($page->script('window.__pickerLoaded ?? false'))->toBeFalse();
 
     $page->click('@composer-base-media-source-menu');
-    waitForComposerMediaSourcesTestId($page, 'media-source-google_drive');
-    waitForComposerMediaSourcesCondition($page, 'window.__pickerLoaded === true');
+    waitFor($page, '@media-source-google_drive');
+    waitForCondition($page, 'window.__pickerLoaded === true');
 
     expect($page->script('window.__pickerLoaded ?? false'))->toBeTrue()
         ->and($page->script("[...document.scripts].some((script) => script.src.includes('accounts.google.com'))"))->toBeFalse();

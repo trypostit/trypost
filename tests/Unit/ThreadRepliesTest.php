@@ -25,8 +25,11 @@ test('thread replies are checked per network', function (Platform $platform, arr
     'media-only reply' => [Platform::X, [['text' => '', 'media' => [['id' => 'image']]]], null],
     'reply object over the limit' => [Platform::X, [['text' => str_repeat('a', 281), 'media' => [['id' => 'image']]]], 'thread_replies.0'],
     'threads cannot chain' => [Platform::Threads, ['second'], 'thread_replies'],
-    'linkedin cannot chain' => [Platform::LinkedIn, ['second'], 'thread_replies'],
-    'empty list ignored' => [Platform::LinkedIn, [], null],
+    'linkedin comment fits' => [Platform::LinkedIn, [str_repeat('a', 3000)], null],
+    'linkedin page comment fits' => [Platform::LinkedInPage, ['Link in the comments'], null],
+    'linkedin comment 3000' => [Platform::LinkedIn, [str_repeat('a', 3001)], 'thread_replies.0'],
+    'linkedin takes one comment' => [Platform::LinkedIn, ['first', 'second'], 'thread_replies'],
+    'empty list ignored' => [Platform::Telegram, [], null],
 ]);
 
 test('a thread violation comes before the network own required meta', function () {
@@ -61,7 +64,33 @@ test('thread_replies has a rule so validated() keeps it', function () {
         ->and(ThreadReplies::supports(Platform::X))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::Mastodon))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::Bluesky))->toBeTrue()
+        ->and(ThreadReplies::supports(Platform::LinkedIn))->toBeTrue()
+        ->and(ThreadReplies::supports(Platform::LinkedInPage))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::Threads))->toBeFalse();
+});
+
+test('a linkedin post takes one comment while the other threads take up to 24 replies', function () {
+    expect(ThreadReplies::maxReplies(Platform::LinkedIn))->toBe(1)
+        ->and(ThreadReplies::maxReplies(Platform::LinkedInPage))->toBe(1)
+        ->and(ThreadReplies::maxReplies(Platform::X))->toBe(24)
+        ->and(ThreadReplies::maxReplies(Platform::Threads))->toBe(0)
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['thread_replies' => ['first', 'second']]))
+        ->toBe(['thread_replies', trans_choice('posts.form.thread.too_many', 1, ['max' => 1])]);
+});
+
+test('a linkedin comment takes no media and its length and empty errors name the comment', function () {
+    $image = ['id' => 'image', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+
+    expect(ThreadReplies::mediaErrors(Platform::LinkedIn, ['thread_replies' => [['text' => 'Link below', 'media' => [$image]]]], null))
+        ->toBe(['thread_replies.0.media' => __('posts.form.warnings.max_files_exceeded', ['max' => 0, 'current' => 1])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['thread_replies' => [str_repeat('a', 3001)]]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.comment_too_long', ['limit' => 3000, 'over' => 1])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => [str_repeat('a', 281)]]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.reply_too_long', ['limit' => 280, 'over' => 1])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['thread_replies' => ['  ']]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.comment_empty')])
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['  ']]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.reply_empty')]);
 });
 
 test('a reply publishes as its network post type and takes that type media rules', function () {
@@ -70,6 +99,8 @@ test('a reply publishes as its network post type and takes that type media rules
     expect(ThreadReplies::replyContentType(Platform::X))->toBe(ContentType::XPost)
         ->and(ThreadReplies::replyContentType(Platform::Bluesky))->toBe(ContentType::BlueskyPost)
         ->and(ThreadReplies::replyContentType(Platform::Mastodon))->toBe(ContentType::MastodonPost)
+        ->and(ThreadReplies::replyContentType(Platform::LinkedIn))->toBe(ContentType::LinkedInComment)
+        ->and(ThreadReplies::replyContentType(Platform::LinkedInPage))->toBe(ContentType::LinkedInComment)
         ->and(ThreadReplies::replyContentType(Platform::Threads))->toBeNull()
         ->and(ThreadReplies::of(['thread_replies' => ['Two', ['text' => 'Three', 'media' => [$image]]]]))->toBe([
             ['text' => 'Two', 'media' => []],

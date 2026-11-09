@@ -51,26 +51,10 @@ function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFe
     return [$post];
 }
 
-/**
- * Polls from the page until `$condition` holds (never sleep(): the test server
- * only ticks while Pest awaits Playwright).
- */
-function waitForMediaEditor(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
 function openMediaEditor(mixed $page, string $accountId, int $index = 0): void
 {
     openMediaEditorPanel($page, $accountId, $index);
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
 }
 
 /**
@@ -79,9 +63,9 @@ function openMediaEditor(mixed $page, string $accountId, int $index = 0): void
  */
 function openMediaEditorPanel(mixed $page, string $accountId, int $index = 0): void
 {
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$accountId}-edit-{$index}\"]')");
+    waitForState($page, "@composer-{$accountId}-edit-{$index}", 'true');
     $page->click("@composer-{$accountId}-edit-{$index}");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"crop-aspect-freeform\"]')");
+    waitForState($page, '@crop-aspect-freeform', 'true');
 }
 
 /**
@@ -109,9 +93,10 @@ function clickMediaEditorStage(mixed $page, float $x, float $y): void
 
 function saveMediaEditorDraft(mixed $page): void
 {
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]') && document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForGone($page, '@media-editor');
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
     $page->click('@composer-save-draft');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 }
 
 test('the media editor keeps its preview and controls separate at every viewport', function (int $width, int $height) {
@@ -303,7 +288,7 @@ test('alt text can be generated with AI for a post image', function () {
 
     $page->click('@media-editor-alt-tab')
         ->click('@media-editor-alt-generate');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-alt-text\"]')?.value.length > 0");
+    waitForState($page, '@media-editor-alt-text', 'element.value.length > 0');
 
     expect($page->script('document.querySelector("[data-testid=media-editor-alt-text]").value'))
         ->toBe('Four coloured squares in a grid.');
@@ -331,13 +316,13 @@ test('center and reset only enable once the geometry changes', function () {
 
     $page->click('@crop-aspect-freeform')
         ->drag('@media-editor-handle-nw', '@media-editor-stage');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-center\"]').disabled === false");
+    waitForState($page, '@media-editor-center', 'element.disabled === false');
 
     expect($isDisabled('media-editor-center'))->toBeFalse()
         ->and($isDisabled('media-editor-reset'))->toBeFalse();
 
     $page->click('@media-editor-reset');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-reset\"]').disabled === true");
+    waitForState($page, '@media-editor-reset', 'element.disabled === true');
 
     expect($isDisabled('media-editor-center'))->toBeTrue()
         ->and($isDisabled('media-editor-reset'))->toBeTrue();
@@ -389,14 +374,14 @@ test('closing with the × discards edits like Cancel', function () {
     $page->click('@media-editor-rotate-right')
         ->assertSee('Apply changes to 1 item')
         ->click('@media-editor-close');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
     $page->assertMissing('@media-editor');
 
     openMediaEditor($page, $post->social_account_id);
     $page->assertDisabled('@media-editor-apply')
         ->assertDisabled('@media-editor-reset')
         ->click('@media-editor-close');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
 
     expect($post->fresh()->media[0]['id'])->toBe('image-1');
     $page->assertNoJavaScriptErrors();
@@ -435,14 +420,8 @@ function openMediaEditorComposer(User $user, array $accounts, array $files): mix
     test()->actingAs($user);
     $fixture = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page = visit(route('app.posts.create'));
-    waitForMediaEditor($page, <<<'JS'
-        (() => {
-            const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-            return sheet?.getAttribute('data-state') === 'open'
-                && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                && document.querySelector('[data-testid="composer-add-account"]')?.getBoundingClientRect().height > 0;
-        })()
-    JS);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->fill('@composer-base-content', 'Editing shared media');
 
     $encodedFiles = json_encode($files);
@@ -469,14 +448,15 @@ function openMediaEditorComposer(User $user, array $accounts, array $files): mix
         })();
     JS);
     $count = count($files);
-    waitForMediaEditor($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === {$count} && !document.querySelector('[data-testid=\"composer-upload-item\"]')");
+    waitForCount($page, '@composer-media-item', $count);
+    waitForGone($page, '@composer-upload-item');
     if ($accounts !== []) {
         $page->click('@composer-add-account');
         foreach ($accounts as $account) {
             $page->click("@composer-account-option-{$account->id}");
         }
         $prefix = count($accounts) === 1 ? "composer-{$accounts[0]->id}" : 'composer';
-        waitForMediaEditor($page, "document.querySelectorAll('[data-testid=\"{$prefix}-media-item\"]').length === {$count}");
+        waitForCount($page, "@{$prefix}-media-item", $count);
     }
 
     return $page;
@@ -549,7 +529,7 @@ test('the ALT button opens the editor on the Alt Text segment', function () {
     $page = openMediaEditorComposer($user, [$instagram], [mediaEditorPng('photo.png')]);
 
     $page->click("@composer-{$instagram->id}-alt-0");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-alt-text\"]')");
+    waitForState($page, '@media-editor-alt-text', 'true');
 
     expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-tab\"]').getAttribute('aria-pressed')"))->toBe('true');
     $page->assertVisible('@media-editor-alt-text')
@@ -561,13 +541,13 @@ test('the ALT button opens the editor on the Alt Text segment', function () {
  */
 function applyMediaEditorAltText(mixed $page, string $prefix, string $altText): void
 {
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"{$prefix}-alt-0\"]')");
+    waitForState($page, "@{$prefix}-alt-0", 'true');
     $page->click("@{$prefix}-alt-0");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-alt-text\"]')");
+    waitForState($page, '@media-editor-alt-text', 'true');
     $page->fill('@media-editor-alt-text', $altText);
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
 }
 
 /**
@@ -587,16 +567,16 @@ test('alt text is offered only once a channel is selected', function () {
 
     expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0', 'composer-edit-0']);
     $page->click('@composer-edit-0');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"crop-aspect-freeform\"]')");
+    waitForState($page, '@crop-aspect-freeform', 'true');
     $page->assertMissing('@media-editor-alt-tab')
         ->click('@media-editor-cancel');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
 
     if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$linkedin->id}\"]'))")) {
         $page->click('@composer-add-account');
     }
     $page->click("@composer-account-option-{$linkedin->id}");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$linkedin->id}-alt-0\"]')");
+    waitForState($page, "@composer-{$linkedin->id}-alt-0", 'true');
 
     expect(mediaEditorTileButtons($page, "composer-{$linkedin->id}", 0))->toBe(["composer-{$linkedin->id}-remove-0", "composer-{$linkedin->id}-alt-0", "composer-{$linkedin->id}-edit-0"]);
     $page->assertNoJavaScriptErrors();
@@ -629,9 +609,9 @@ test('a step 2 alt text stays on its channel and the others keep the shared one'
     applyMediaEditorAltText($page, "composer-{$first->id}", 'First channel description');
 
     $page->click("@composer-account-{$second->id}");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$second->id}-alt-0\"]')");
+    waitForState($page, "@composer-{$second->id}-alt-0", 'true');
     $page->click("@composer-{$second->id}-alt-0");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-alt-text\"]')");
+    waitForState($page, '@media-editor-alt-text', 'true');
     expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Shared description');
     $page->click('@media-editor-cancel');
     saveMediaEditorDraft($page);
@@ -652,18 +632,19 @@ test('a step 1 edit replaces the shared item in place and every post owns its ow
     $secondSrc = mediaEditorTileSrc($page, 'composer', 1);
 
     $page->click('@composer-edit-1');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     $page->click('@media-editor-rotate-right');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]') && document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForGone($page, '@media-editor');
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
 
     expect(mediaEditorTileSrc($page, 'composer', 0))->toBe($firstSrc)
         ->and(mediaEditorTileSrc($page, 'composer', 1))->not->toBe($secondSrc)
         ->and(mediaEditorTileSrc($page, 'composer', 1))->not->toBeNull();
 
     $page->click('@composer-save-draft');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 
     $posts = Post::query()->whereIn('social_account_id', [$first->id, $second->id])->get();
     expect($posts)->toHaveCount(2);
@@ -689,20 +670,21 @@ test('a step 2 edit replaces only that channel\'s item and leaves the shared lis
         ->click("@composer-account-{$first->id}");
     openMediaEditor($page, $first->id);
     $page->click('@media-editor-rotate-right');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]') && document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForGone($page, '@media-editor');
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
 
     expect(mediaEditorTileSrc($page, "composer-{$first->id}", 0))->not->toBe($sharedSrc);
 
     $page->click("@composer-account-{$second->id}");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$second->id}-media-item-0\"]')");
+    waitForState($page, "@composer-{$second->id}-media-item-0", 'true');
     expect(mediaEditorTileSrc($page, "composer-{$second->id}", 0))->toBe($sharedSrc);
 
     $page->click('@composer-back');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-back-confirm-go\"]')");
+    waitForState($page, '@composer-back-confirm-go', 'true');
     $page->click('@composer-back-confirm-go');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-media-item-0\"]')");
+    waitForState($page, '@composer-media-item-0', 'true');
     expect(mediaEditorTileSrc($page, 'composer', 0))->toBe($sharedSrc);
     $page->assertNoJavaScriptErrors();
 });
@@ -731,11 +713,13 @@ test('a failed edit upload shows the inline error and keeps the original tile', 
     JS);
 
     $page->click("@composer-{$linkedin->id}-edit-0");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     $page->click('@media-editor-rotate-right');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
-    waitForMediaEditor($page, "window.__editUploadFailed && document.querySelector('[data-testid=\"composer-{$linkedin->id}-crop-error\"]') && document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForCondition($page, 'window.__editUploadFailed');
+    waitForState($page, "@composer-{$linkedin->id}-crop-error", 'true');
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
 
     expect($page->script('Boolean(window.__editUploadFailed)'))->toBeTrue()
         ->and(mediaEditorTileSrc($page, "composer-{$linkedin->id}", 0))->toBe($originalSrc)
@@ -768,9 +752,9 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$accountId}-edit-0\"]')");
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
     $page->click("@composer-{$accountId}-edit-0");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-cover\"]')");
+    waitForState($page, '@media-editor-cover', 'true');
 
     expect(mediaEditorSegmentIds($page))->toBe(['media-editor-thumbnail-tab'])
         ->and($page->script("document.querySelector('[data-testid=\"media-editor-thumbnail-tab\"]').getAttribute('aria-pressed')"))->toBe('true')
@@ -780,7 +764,7 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
         ->assertSee('Choose a thumbnail')
         ->assertVisible('@media-editor-stage-video')
         ->assertAttribute('@media-editor-thumb-0', 'aria-label', 'Video 1');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-cover\"]')?.max === '3'");
+    waitForState($page, '@media-editor-cover', "element.max === '3'");
 
     expect($page->script("document.querySelector('[data-testid=\"media-editor-cover\"]').max"))->toBe('3');
     $page->script(<<<'JS'
@@ -790,9 +774,9 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
             slider.dispatchEvent(new Event('input', { bubbles: true }));
         })();
     JS);
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
 
-    waitForMediaEditor($page, "Math.abs(document.querySelector('[data-testid=\"media-editor-stage-video\"]')?.currentTime - 2.5) < 0.01");
+    waitForState($page, '@media-editor-stage-video', 'Math.abs(element.currentTime - 2.5) < 0.01');
 
     expect($page->script("document.querySelector('[data-testid=\"media-editor-cover-value\"]').textContent.trim()"))->toBe('0:02.5')
         ->and($page->script("document.querySelector('[data-testid=\"media-editor-cover\"]').getAttribute('aria-valuetext')"))->toBe('2.5 seconds')
@@ -810,7 +794,7 @@ test('a video on an X post shows no pencil', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::XPost);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$accountId}-media-item-0\"]')");
+    waitForState($page, "@composer-{$accountId}-media-item-0", 'true');
 
     $page->assertPresent("@composer-{$accountId}-media-item-0")
         ->assertMissing("@composer-{$accountId}-edit-0")
@@ -823,11 +807,11 @@ test('only a freeform crop can be resized; a chosen ratio only moves', function 
     openMediaEditor($page, $post->social_account_id);
 
     $page->click('@crop-aspect-4-5');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor-handle-nw\"]')");
+    waitForGone($page, '@media-editor-handle-nw');
     $page->assertMissing('@media-editor-handle-nw')
         ->assertPresent('@media-editor-selection')
         ->click('@crop-aspect-freeform');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-handle-nw\"]')");
+    waitForState($page, '@media-editor-handle-nw', 'true');
 
     $page->assertPresent('@media-editor-handle-nw')
         ->assertPresent('@media-editor-handle-se')
@@ -840,10 +824,10 @@ test('filter intensity shows for a filter, not for the original, and sliders fil
     openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-appearance-section');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-filter-sepia\"]')");
+    waitForState($page, '@media-filter-sepia', 'true');
     $page->assertMissing('@media-filter-intensity')
         ->click('@media-filter-sepia');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-filter-intensity\"]')");
+    waitForState($page, '@media-filter-intensity', 'true');
 
     $page->script(<<<'JS'
         (() => {
@@ -856,7 +840,7 @@ test('filter intensity shows for a filter, not for the original, and sliders fil
             set('media-adjust-brightness', 60);
         })()
     JS);
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-adjust-brightness\"]').style.getPropertyValue('--range-to').includes('0.8')");
+    waitForState($page, '@media-adjust-brightness', "element.style.getPropertyValue('--range-to').includes('0.8')");
 
     expect($page->script(<<<'JS'
         (() => {
@@ -873,7 +857,7 @@ test('filter intensity shows for a filter, not for the original, and sliders fil
     ]);
 
     $page->click('@media-filter-original');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-filter-intensity\"]')");
+    waitForGone($page, '@media-filter-intensity');
     $page->assertMissing('@media-filter-intensity')
         ->assertNoJavaScriptErrors();
 });
@@ -896,7 +880,7 @@ test('an image stored on another host is edited through the app, so applying wor
 
     $page->click('@media-editor-rotate-right')
         ->click('@media-editor-apply');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]') || document.querySelector('[data-testid=\"media-editor-error\"]')");
+    waitForGoneOrShown($page, gone: '@media-editor', shown: '@media-editor-error');
 
     $page->assertMissing('@media-editor-error')
         ->assertMissing('@media-editor');
@@ -924,7 +908,7 @@ test('the filter intensity reaches the saved pixels', function (int $intensity) 
     openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-appearance-section')->click('@media-filter-mono');
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-filter-intensity\"]')");
+    waitForState($page, '@media-filter-intensity', 'true');
     setMediaEditorRange($page, 'media-filter-intensity', $intensity);
     $page->click('@media-editor-apply');
     saveMediaEditorDraft($page);

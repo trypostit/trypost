@@ -144,7 +144,9 @@ test('the card shows a skeleton while the series reloads for a new range', funct
         }).observe(document.body, { childList: true, subtree: true });
     JS);
     $page->click('@insights-range-7d');
-    waitForCondition($page, 'new URLSearchParams(location.search).get("range") === "7d" && window.__sawMetricsSkeleton && document.querySelector("[data-testid=insights-metrics-chart]")');
+    waitForQueryParameter($page, 'range', '7d');
+    waitForCondition($page, 'window.__sawMetricsSkeleton');
+    waitForState($page, '@insights-metrics-chart', 'true');
 
     $page->assertScript('window.__sawMetricsSkeleton', true)
         ->assertVisible('@insights-metrics-chart')
@@ -213,7 +215,11 @@ test('presets swap the chart series and the selected preset and period survive a
     $page->click('@insights-post-type-filter');
     waitFor($page, '@insights-post-type-option-instagram_reel');
     $page->click('@insights-post-type-option-instagram_reel');
-    waitForCondition($page, 'new URLSearchParams(location.search).getAll("types[]").includes("instagram_reel") && document.querySelector("[data-testid=insights-metrics-chart]") && document.querySelector("[data-testid=insights-preset-audience_growth]")?.getAttribute("aria-pressed") === "true" && document.querySelector("[data-testid=insights-metrics-mode-both]")?.getAttribute("aria-pressed") === "true" && document.querySelector("[data-testid=insights-metrics-legend-net_followers-previous]")');
+    waitForCondition($page, 'new URLSearchParams(location.search).getAll("types[]").includes("instagram_reel")');
+    waitForState($page, '@insights-metrics-chart', 'true');
+    waitForState($page, '@insights-preset-audience_growth', "element.getAttribute('aria-pressed') === 'true'");
+    waitForState($page, '@insights-metrics-mode-both', "element.getAttribute('aria-pressed') === 'true'");
+    waitForState($page, '@insights-metrics-legend-net_followers-previous', 'true');
 
     $page->assertScript('decodeURIComponent(location.search).includes("instagram_reel")', true)
         ->assertAttribute('@insights-preset-audience_growth', 'aria-pressed', 'true')
@@ -253,7 +259,7 @@ test('the mode toggle shows the comparison period and both periods', function ()
         ->assertAttribute('@insights-metrics-mode-both', 'aria-pressed', 'true')
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-bar]").length > 0', true)
         ->click('@insights-metrics-mode-previous');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-legend-posts-value]")?.textContent.trim() === "1"');
+    waitForState($page, '@insights-metrics-legend-posts-value', "element.textContent.trim() === '1'");
 
     $page->assertSeeIn('@insights-metrics-legend-posts-value', '1')
         ->assertMissing('@insights-metrics-legend-posts-previous')
@@ -268,24 +274,24 @@ test('the insight banner reads the selected chart against the previous period', 
     $page->assertAttribute('@insights-metrics-insight', 'data-insight', 'content_impact.down')
         ->assertSeeIn('@insights-metrics-insight', 'Your content impact dropped this period.')
         ->click('@insights-metric-primary');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-insight]")?.dataset.insight === "posts.up"');
+    waitForState($page, '@insights-metrics-insight', "element.dataset.insight === 'posts.up'");
 
     $page->assertSeeIn('@insights-metrics-insight', 'You posted more than last period.')
         ->click('@insights-preset-audience_growth');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-insight]")?.dataset.insight === "audience.up"');
+    waitForState($page, '@insights-metrics-insight', "element.dataset.insight === 'audience.up'");
 
     $page->assertSeeIn('@insights-metrics-insight', 'Your audience grew this period.')
         ->assertMissing('@insights-metrics-post-totals-note')
         ->click('@insights-metrics-mode-previous');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-mode-previous]")?.getAttribute("aria-pressed") === "true"');
+    waitForState($page, '@insights-metrics-mode-previous', "element.getAttribute('aria-pressed') === 'true'");
 
     $page->assertAttribute('@insights-metrics-insight', 'data-insight', 'audience.up')
         ->click('@insights-metrics-mode-both');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-insight]")?.dataset.insight.startsWith("audience_compared")');
+    waitForState($page, '@insights-metrics-insight', "element.dataset.insight.startsWith('audience_compared')");
 
     $page->assertSeeIn('@insights-metrics-insight', 'Your audience grew')
         ->click('@insights-preset-visibility');
-    waitForCondition($page, 'document.querySelector("[data-testid=insights-metrics-insight]")?.dataset.insight === "visibility.up"');
+    waitForState($page, '@insights-metrics-insight', "element.dataset.insight === 'visibility.up'");
 
     $page->assertSeeIn('@insights-metrics-insight', 'More people discovered you than last period.')
         ->assertNoJavaScriptErrors();
@@ -324,7 +330,7 @@ test('the column chooser hides and adds columns and remembers the choice', funct
 
     $page->assertMissing('@insights-column-impressions')
         ->click('@insights-column-views');
-    waitForCondition($page, '!document.querySelector("[data-testid=insights-sort-views]")');
+    waitForGone($page, '@insights-sort-views');
     $page->click('@insights-column-watch_time_minutes');
     waitFor($page, '@insights-column-head-watch_time_minutes');
 

@@ -66,47 +66,6 @@ function seedLinkCardPreviewPost(
     return [$post, $account];
 }
 
-function waitForLinkCardPreviewTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const dialog = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (dialog?.getAttribute('data-state') === 'open'
-                    && dialog.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForLinkCardPreviewText(mixed $page, string $text): void
-{
-    $encoded = json_encode($text);
-
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelector('[data-testid="link-card-title"]')?.textContent.includes({$encoded})) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForLinkCardPreviewGone(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (!document.querySelector('[data-testid="link-card"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('facebook linkedin and mastodon previews render fetched link cards', function (Platform $platform) {
     $url = "https://93.184.216.34/{$platform->value}";
     Http::fake([$url => Http::response('<meta property="og:title" content="Article card">')]);
@@ -120,8 +79,9 @@ test('facebook linkedin and mastodon previews render fetched link cards', functi
     });
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, 'composer-preview-frame');
-    waitForLinkCardPreviewText($page, 'Article card');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-preview-frame');
+    waitForState($page, '@link-card-title', "element.textContent.includes('Article card')");
 
     $page->assertSeeIn('@link-card-title', 'Article card')
         ->assertPresent('@link-card')
@@ -138,12 +98,13 @@ test('removing a url removes its visible card', function () {
     [$post, $account] = seedLinkCardPreviewPost(Platform::LinkedIn, 'https://93.184.216.34/article');
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, "composer-caption-{$account->id}");
-    waitForLinkCardPreviewText($page, 'Article card');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@composer-caption-{$account->id}");
+    waitForState($page, '@link-card-title', "element.textContent.includes('Article card')");
 
     $page->assertSeeIn('@link-card-title', 'Article card')
         ->clear("@composer-caption-{$account->id}");
-    waitForLinkCardPreviewGone($page);
+    waitForGone($page, '@link-card');
 
     $page->assertMissing('@link-card')
         ->assertNoJavaScriptErrors();
@@ -158,18 +119,19 @@ test('a failed fetch clears the previous card and a later url can recover', func
     [$post, $account] = seedLinkCardPreviewPost(Platform::LinkedIn, 'https://93.184.216.34/article');
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, "composer-caption-{$account->id}");
-    waitForLinkCardPreviewText($page, 'Article card');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@composer-caption-{$account->id}");
+    waitForState($page, '@link-card-title', "element.textContent.includes('Article card')");
 
     $page->assertSeeIn('@link-card-title', 'Article card')
         ->fill("@composer-caption-{$account->id}", 'https://93.184.216.34/broken');
 
     Execution::instance()->waitForExpectation(fn () => Http::assertSentCount(2));
-    waitForLinkCardPreviewGone($page);
+    waitForGone($page, '@link-card');
 
     $page->assertMissing('@link-card')
         ->fill("@composer-caption-{$account->id}", 'https://93.184.216.34/recovered');
-    waitForLinkCardPreviewText($page, 'Recovered card');
+    waitForState($page, '@link-card-title', "element.textContent.includes('Recovered card')");
 
     $page->assertSeeIn('@link-card-title', 'Recovered card')
         ->assertNoJavaScriptErrors();
@@ -192,7 +154,8 @@ test('a pending response cannot overwrite a newer card or revive a removed url',
     try {
         [$post, $account] = seedLinkCardPreviewPost(Platform::LinkedIn, 'https://93.184.216.34/slow');
         $page = visit(route('app.posts.edit', $post));
-        waitForLinkCardPreviewTestId($page, "composer-caption-{$account->id}");
+        waitForOpen($page, '@post-composer-dialog');
+        waitFor($page, "@composer-caption-{$account->id}");
 
         Execution::instance()->waitForExpectation(function () use (&$started) {
             expect($started)->toBeTrue();
@@ -201,7 +164,7 @@ test('a pending response cannot overwrite a newer card or revive a removed url',
         $page->fill("@composer-caption-{$account->id}", $removeUrl ? '' : 'https://93.184.216.34/current');
 
         if (! $removeUrl) {
-            waitForLinkCardPreviewText($page, 'Current card');
+            waitForState($page, '@link-card-title', "element.textContent.includes('Current card')");
             $page->assertSeeIn('@link-card-title', 'Current card');
         }
     } finally {
@@ -234,7 +197,8 @@ test('attached media suppresses fetching until it is removed', function () {
     ]]);
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, "composer-{$account->id}-media-item");
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@composer-{$account->id}-media-item");
 
     $page->assertPresent("@composer-{$account->id}-media-item")
         ->assertMissing('@link-card');
@@ -242,25 +206,13 @@ test('attached media suppresses fetching until it is removed', function () {
     Http::assertNothingSent();
 
     $page->click("@composer-{$account->id}-remove-0");
-    waitForLinkCardPreviewText($page, 'Article card');
+    waitForState($page, '@link-card-title', "element.textContent.includes('Article card')");
 
     $page->assertSeeIn('@link-card-title', 'Article card')
         ->assertNoJavaScriptErrors();
 
     Http::assertSentCount(1);
 });
-
-function waitForLinkCardPreviewMissing(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (!document.querySelector('[data-testid="{$testId}"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
 
 test('the editor link card can be dropped and the post saves without it', function (Platform $platform) {
     $url = 'https://93.184.216.34/article';
@@ -269,12 +221,13 @@ test('the editor link card can be dropped and the post saves without it', functi
     $card = "composer-link-card-{$account->id}";
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, $card);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$card}");
 
     $page->assertSeeIn("@{$card}-title", 'Article card')
         ->assertPresent("@{$card}-replace")
         ->click("@{$card}-remove");
-    waitForLinkCardPreviewMissing($page, $card);
+    waitForGone($page, "@{$card}");
 
     $page->assertMissing("@{$card}")
         ->assertMissing('@link-card')
@@ -294,7 +247,8 @@ test('the threads link card cannot be dropped because threads always shows it', 
     $card = "composer-link-card-{$account->id}";
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, $card);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$card}");
 
     $page->assertPresent("@{$card}-replace")
         ->assertMissing("@{$card}-remove")
@@ -313,10 +267,12 @@ test('replacing the link card with media attaches the card image', function () {
     $card = "composer-link-card-{$account->id}";
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, $card);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$card}");
 
     $page->click("@{$card}-replace");
-    waitForLinkCardPreviewTestId($page, "composer-{$account->id}-media-item-0");
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@composer-{$account->id}-media-item-0");
 
     $page->assertMissing("@{$card}")
         ->assertNoJavaScriptErrors()
@@ -341,21 +297,23 @@ test('the shared step editor shows no link card and the network card does', func
     ]);
 
     $page = visit(route('app.posts.create'));
-    waitForLinkCardPreviewTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
 
     $page->fill('@composer-base-content', "Read {$url}")
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$facebook->id}")
         ->click("@composer-account-option-{$linkedin->id}")
         ->click("@composer-account-{$facebook->id}");
-    waitForLinkCardPreviewText($page, 'Article card');
+    waitForState($page, '@link-card-title', "element.textContent.includes('Article card')");
 
     $page->assertPresent('@composer-next')
         ->assertPresent('@link-card')
         ->assertMissing("@composer-link-card-{$facebook->id}")
         ->assertMissing("@composer-link-card-{$linkedin->id}")
         ->click('@composer-next');
-    waitForLinkCardPreviewTestId($page, "composer-link-card-{$facebook->id}");
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@composer-link-card-{$facebook->id}");
 
     $page->assertSeeIn("@composer-link-card-{$facebook->id}-title", 'Article card')
         ->assertNoJavaScriptErrors();
@@ -372,13 +330,15 @@ test('a dropped link card comes back when the link changes', function () {
     $card = "composer-link-card-{$account->id}";
 
     $page = visit(route('app.posts.edit', $post));
-    waitForLinkCardPreviewTestId($page, $card);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$card}");
 
     $page->click("@{$card}-remove");
-    waitForLinkCardPreviewMissing($page, $card);
+    waitForGone($page, "@{$card}");
 
     $page->fill("@composer-caption-{$account->id}", "Read {$other}");
-    waitForLinkCardPreviewTestId($page, $card);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$card}");
 
     $page->assertSeeIn("@{$card}-title", 'Other card')
         ->assertNoJavaScriptErrors()

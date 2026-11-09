@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Post partially published',
         'post_failed' => 'Post failed',
         'post_deleted' => 'Post deleted',
+        'post_deleted_on_network' => 'Post deleted on network',
+        'post_restored' => 'Post back on network',
     ],
     'event_descriptions' => [
         'post_created' => 'When a new post is created.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'When a post goes live on a channel.',
         'post_failed' => 'When a post fails to publish.',
         'post_deleted' => 'When a post is deleted.',
+        'post_deleted_on_network' => 'When a published post is deleted on its network.',
+        'post_restored' => 'When a post marked deleted is back on its network.',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',

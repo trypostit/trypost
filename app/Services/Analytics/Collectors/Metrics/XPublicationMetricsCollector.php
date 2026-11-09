@@ -6,12 +6,14 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\X\ProblemType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 
 class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
@@ -77,7 +79,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     {
         $response = $this->get($account, config('trypost.platforms.x.api')."/tweets/{$id}", $this->lookupParameters($fields));
 
-        return [$response->json('data'), $response->json('includes.polls.0'), []];
+        return [$this->postTweet($response, $id, $response->json('data')), $response->json('includes.polls.0'), []];
     }
 
     /**
@@ -106,7 +108,34 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             ->values()
             ->all();
 
-        return [$tweets->get($id), $pollOf($tweets->get($id)), $threadPolls];
+        $tweet = $this->postTweet($response, $id, $tweets->get($id));
+
+        return [$tweet, $pollOf($tweet), $threadPolls];
+    }
+
+    /**
+     * The post's tweet from a lookup. X leaves a deleted post out of `data` and names it
+     * in `errors` with {@see ProblemType::ResourceNotFound}, in a 200; a token that lost
+     * access gets 401/403 or {@see ProblemType::NotAuthorizedForResource} instead, so that
+     * problem alone confirms the deletion, with no extra request.
+     */
+    private function postTweet(Response $response, string $id, mixed $tweet): mixed
+    {
+        if (blank($tweet) && $response->collect('errors')->contains(fn (array $error): bool => $this->namesDeletedPost($error, $id))) {
+            throw AnalyticsCollectionException::deletedOnNetwork('X no longer returns this post.');
+        }
+
+        return $tweet;
+    }
+
+    /**
+     * @param  array<string, mixed>  $error
+     */
+    private function namesDeletedPost(array $error, string $id): bool
+    {
+        return ProblemType::of($error) === ProblemType::ResourceNotFound
+            && data_get($error, 'resource_type') === 'tweet'
+            && data_get($error, 'resource_id') === $id;
     }
 
     /**

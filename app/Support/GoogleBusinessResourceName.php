@@ -19,7 +19,7 @@ class GoogleBusinessResourceName
 {
     public static function dashboardUrl(string $resourceName): string
     {
-        return (string) config('trypost.platforms.google_business.dashboard').'/dashboard/l/u'.self::locationId($resourceName);
+        return config('trypost.platforms.google_business.dashboard').'/dashboard/l/u'.self::locationId($resourceName);
     }
 
     public static function toFullLocationName(string $accountName, string $shortLocationName): string

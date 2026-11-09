@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Beitragsthreads sind in diesem Netzwerk nicht verfügbar.',
             'reply_empty' => 'Eine Antwort im Thread ist leer.',
             'reply_too_long' => 'Eine Antwort überschreitet das Limit von :limit Zeichen um :over.',
+            'too_many' => '{1} Dieser Beitrag nimmt nur einen Kommentar an.|[0,*] Dieser Beitrag nimmt bis zu :max Antworten an.',
+            'add_comment' => 'Kommentieren',
+            'comment_placeholder' => 'Füge einen Link oder mehr Kontext hinzu',
+            'comment_label' => 'Dein Kommentar',
+            'remove_comment' => 'Kommentar entfernen',
+            'comment_too_long' => 'Dein Kommentar überschreitet das Limit von :limit Zeichen um :over.',
+            'comment_empty' => 'Dein Kommentar ist leer.',
+            'comment_attachments' => 'LinkedIn-Kommentare können keine Medien enthalten.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'Beitrag ansehen',
             'edit_labels' => 'Labels bearbeiten',
             'edit_labels_failed' => 'Labels konnten nicht aktualisiert werden. Versuche es erneut.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Gelöscht',
+            'title' => 'Auf :network gelöscht',
+            'hint' => 'Er wurde nach der Veröffentlichung entfernt, daher sind Link und Insights nicht mehr verfügbar.',
         ],
         'created_by' => 'Erstellt von :name :when',
         'welcome' => [

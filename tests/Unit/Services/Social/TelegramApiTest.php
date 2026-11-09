@@ -21,9 +21,21 @@ it('builds a file download url', function () {
         ->toBe('https://api.telegram.org/file/botTESTTOKEN/photos/file_1.jpg');
 });
 
-it('trims a trailing slash from the configured host', function () {
-    config(['trypost.platforms.telegram.api' => 'https://api.telegram.org/']);
+it('builds the endpoint from a host configured with a trailing slash', function () {
+    config(['trypost.platforms.telegram.api' => data_get(trypostConfigWith(['TELEGRAM_API' => 'https://api.telegram.org/']), 'platforms.telegram.api')]);
 
     expect(TelegramApi::endpoint('getChat'))
         ->toBe('https://api.telegram.org/botTESTTOKEN/getChat');
+});
+
+it('links to the bot from the deep link host and the bot username', function () {
+    config(['trypost.platforms.telegram.bot_username' => 'TryPostBot']);
+
+    expect(TelegramApi::botUrl())->toBe(config('trypost.platforms.telegram.deep_link').'/TryPostBot');
+});
+
+it('has no bot link while no bot username is configured', function () {
+    config(['trypost.platforms.telegram.bot_username' => null]);
+
+    expect(TelegramApi::botUrl())->toBeNull();
 });

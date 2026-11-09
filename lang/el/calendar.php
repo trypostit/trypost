@@ -23,6 +23,7 @@ return [
         'recurring' => 'Επαναλαμβανόμενη',
         'publishing' => 'Δημοσιεύεται',
         'published' => 'Δημοσιεύτηκε',
+        'deleted' => 'Διαγράφηκε',
         'failed' => 'Απέτυχε',
     ],
     'status' => [

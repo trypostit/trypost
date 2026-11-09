@@ -1050,10 +1050,60 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Two status columns.** `posts.status` is the lifecycle (draft,
   pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
   (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
-  retrying, pending_review, published, failed, rejected). Publishers write
+  retrying, pending_review, published, failed, rejected, deleted). Publishers write
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
+- **Deleted on the network.** `publish_status = deleted` means the network
+  deleted a post it published; `status` stays published. Only a deletion the
+  collector confirms moves the post
+  (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
+  read it already makes. Where the network's "does not exist" answer could also
+  mean lost access, an account-level read (the list its discovery reads) must
+  still work (`readUnlessDeleted()`, `readsMissing()` and `stillReads()` on
+  `AbstractPublicationMetricsCollector`; a read that fails only for now is
+  rethrown so the job retries):
+    - YouTube: its own `videos.list` read no longer returns the video.
+    - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
+      code 100 / subcode 33 for the post, and the posts edge still reads; a
+      story is never checked (it expires). A Facebook Page post is checked on
+      its insights edge (`readPost()`): Graph answers its own node with #10,
+      which also means a missing permission.
+    - X: the documented `resource-not-found` problem naming the post, in the
+      `errors` of the lookup's 200 (single and batch alike, checked against a
+      real deleted post); no extra request (X bills each one).
+    - Bluesky: `getPosts` leaves it out, its repository answers
+      `RecordNotFound`, and `listRecords` still reads.
+    - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also
+      means private), and the account's statuses still read.
+    - Pinterest: 404 or 410 on the Pin analytics and on the Pin, and the Pins
+      list still reads.
+
+  Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
+  deleted from private; LinkedIn, Google Business, Telegram and Discord have no
+  read after publishing (#481).
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
+  the publication's row lock, unless a sync saw the post since the second the
+  read started (`last_seen_at` at or after it; a sync earlier in that second
+  only delays the deletion to the next read);
+  a sync that sees it again restores it (`markPublicationRestored()`, which
+  does not rerun the "just published" side effects) and queues a fresh metrics
+  read so a stale discovery page cannot leave it published until the next day.
+  Marking it deleted sends `post.deleted_on_network`, and restoring it sends
+  `post.restored`, never for a post imported from the network, which sends no
+  webhook at all (`ImportExternalPosts`); both also broadcast
+  `post.platform.status.updated` so an open schedule reloads, imported or not. `Post::isDeletedOnNetwork()` is the rule:
+  `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
+  finalizes as published, and it still counts as published for the posting
+  goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
+  `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
+  sync, the importer's matching, TikTok video ids) keep
+  `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
+  dialog, `isDeletedOnNetwork()` and `postPermalink()`
+  (`lib/postNetwork.ts`) decide the badge and the link, and
+  `getPostCardStatusConfig()` (`usePostStatus.ts`) the status shown; the repurpose
+  activity list labels `publish_status` directly. Insights keep the historical
+  numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)
@@ -1097,13 +1147,24 @@ an `enabled` flag or posts with several channels. Posts created together share
 
 ## Thread replies
 
-- Bluesky, Mastodon and X (`App\Support\ThreadReplies`), up to 24 replies in `meta.thread_replies`. Each reply is measured against the **account's** limit (`SocialAccount::maxContentLength()`), so an X account with long posts gets 25000 per reply; pass the account to `ThreadReplies::violation()` / `PostPlatformMetaRules::requiredMetaViolation()` whenever it is known.
-- Each reply is `{text, media}`, plus `poll` on an X reply that is a poll (see "X polls") (a stored plain string is a text-only reply; `ThreadReplies::of()` normalizes both, `PostPlatformMetaRules::normalize()` stores objects). Its media belongs to that reply only, never to the root: it publishes as `ThreadReplies::replyContentType()` (X → `XPost`, Bluesky → `BlueskyPost`, Mastodon → `MastodonPost`), so it follows that type's media rules (`ThreadReplies::mediaErrors()`, at save and at publish), and a reply needs text or media. The frontend mirror is `THREAD_REPLY_CONTENT_TYPES`. Adding a network means one entry in each map plus a reply callback in its publisher.
+- Bluesky, Mastodon, X and LinkedIn (`App\Support\ThreadReplies`), in `meta.thread_replies`: up to 24 replies, one on LinkedIn (`ThreadReplies::maxReplies()`, mirrored by `threadMaxReplies()`; see "LinkedIn comment"). Each reply is measured against the **account's** limit (`SocialAccount::maxContentLength()`), so an X account with long posts gets 25000 per reply; pass the account to `ThreadReplies::violation()` / `PostPlatformMetaRules::requiredMetaViolation()` whenever it is known.
+- Each reply is `{text, media}`, plus `poll` on an X reply that is a poll (see "X polls") (a stored plain string is a text-only reply; `ThreadReplies::of()` normalizes both, `PostPlatformMetaRules::normalize()` stores objects). Its media belongs to that reply only, never to the root: it publishes as `ThreadReplies::replyContentType()` (X → `XPost`, Bluesky → `BlueskyPost`, Mastodon → `MastodonPost`, LinkedIn profile and page → `LinkedInComment`), so it follows that type's media rules (`ThreadReplies::mediaErrors()`, at save and at publish), and a reply needs text or media. The frontend mirror is `THREAD_REPLY_CONTENT_TYPES`. Adding a network means one entry in each map plus a reply callback in its publisher.
 - Reply media rows are owned by the post like its root media. `SyncOwnedMedia` resolves them from the post's stored `meta.thread_replies` and writes the canonical items back, so write the target's meta **before** calling it; it never deletes a row a reply still uses. Every segment's checkpoint hash covers its media ids.
 - In the composer each post of a thread shows its own media under it; the toolbar, paste, drop and the toolbar upload button add to the active post.
 - X replies go through `POST /2/tweets` with `reply.in_reply_to_tweet_id` on the previous segment. X restricts API replies (February 2026) to posts whose author summoned the replier; replying to your own post is the case that stays allowed. Each reply is billed as a post.
 - Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
 - `posts.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
+
+## LinkedIn comment
+
+A LinkedIn post (profile or page) takes one thread reply, published as a comment from the same profile or page right after the post (#465, owner decision November 2026). There is no "first comment" endpoint or concept of its own: it is the LinkedIn thread, through `ThreadReplies`, `PublishesThreads` and `ThreadProgress` like X, Bluesky and Mastodon. One comment only, so it stays first however the comments are sorted.
+
+- **Reply type:** `ContentType::LinkedInComment` (`linkedin_comment`) is a thread reply's type only: compatible with no platform (`compatiblePlatforms()` is empty), so it is left out of `forPlatform()` and the post type listings and no post is ever stored with it. A comment is **text only** (`maxMediaCount()` 0; the composer turns the media button off with `posts.form.thread.comment_attachments`). The text takes the account's limit (3000), its length error names the comment (`posts.form.thread.comment_too_long`), and it is sent as plain text (a comment's message is not `little`).
+- **Endpoint:** `POST /v2/socialActions/{post URN}/comments` through the publisher's usual client (its `LinkedIn-Version` header is accepted there too). The versioned `/rest/socialActions` needs the Community Management API (403 `partnerApiSocialActions.CREATE`); `/v2/` takes the publish scopes we already hold. Tested on a real page (November 2026): text up to 20000 characters is accepted, a link stays a plain link (LinkedIn draws no card in a comment), and a comment takes one media object at most.
+- **No media (owner decision November 2026):** the API takes an image by URL (`content: [{type: IMAGE, url}]`) and LinkedIn loads it from that URL without copying it, but when LinkedIn cannot fetch the URL it drops the whole comment after answering 201, text included (seen with the `r2.dev` storage URL, while Wikimedia, Giphy and Unsplash URLs stayed). An image uploaded through the Images API (`digitalmediaAsset`), a video and a PDF are accepted but show broken or not at all. Bringing images back needs a URL LinkedIn reliably fetches, tested against the production storage domain.
+- **Failure:** like every thread. The post is checkpointed once it is live, a refused comment fails the publish with `posts.errors.thread_incomplete`, and a retry only comments. A dead token is refreshed once and the thread resumes, never creating the post again.
+- **A post not ready yet:** LinkedIn can answer 404 to a comment sent right after its post (seen on a profile post with an image: "Unable to obtain activity"). A 404 on the comment throws `PlatformUnavailableException` with its own policy (30 seconds, 10 tries), so the job waits in Retrying and resumes from the checkpoint for up to five minutes before failing like any thread.
+- **Composer:** "Add comment" (`posts.form.thread.add_comment`) replaces "Start thread" where replies are comments (`repliesAreComments()`), and the preview shows the comment under the post (`LinkedInPreviewComment`) instead of as a post of its own.
 
 ## X polls
 
@@ -1179,11 +1240,14 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `waitFor($page, '@id')`: an element is mounted and laid out.
     - `waitForGone($page, '@id')`: no element matches.
     - `waitForState($page, '@id', "element.getAttribute('aria-checked') === 'true'")`: an element exists and the expression about `element` is true (attributes, `dataset`, `disabled`, position).
+    - `waitForOpen($page, '@post-composer-dialog')`: a dialog, sheet or popover is open (`data-state`, `open` by default) and done animating in.
     - `waitForText($page, '[role="option"]', 'general')`: any matching element contains the text.
+    - `waitForCount($page, '@composer-media-item', 2)`: that many elements match (`===`, or pass `'>='` / `'>'`).
     - `waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog')`: whichever happens first, so the assertion after it fails at once instead of waiting out the timeout.
     - `waitForPath($page, $path)`: the page is at that path.
     - `waitForCondition($page, $js)`: only for what is not about an element (`location.search`, a `window.__` spy).
-    - Never write `document.querySelector(...)` inside a wait, and never define a per-file `waitFor*` helper. Pest's `Webpage` is `final readonly` and not macroable, which is why these are global functions. Files that still have their own `waitFor*` helpers predate this rule; move them to the shared helpers when touching them (the sweep is tracked in #435). If a wait needs something the helpers cannot express, add a helper to `tests/Pest.php` instead of inlining it.
+    - Each wait gives up after 30 seconds; a slower one (an import that polls the server) passes `seconds:` to `waitFor`, `waitForGone`, `waitForState` or `waitForCondition`.
+    - Never write `document.querySelector(...)` inside a wait, and never define a per-file `waitFor*` helper. Pest's `Webpage` is `final readonly` and not macroable, which is why these are global functions. A helper with a domain name (`waitForComposerReady`) may wrap one condition, built on the shared helpers, never a polling loop of its own. If a wait needs something the helpers cannot express, add a helper to `tests/Pest.php` instead of inlining it.
 - **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. The helpers above poll from the page with `$page->script(...)`, which keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
@@ -1240,6 +1304,7 @@ Whenever Laravel has a helper for something, use it instead of a native PHP func
     - Production code: `config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'`, never the literal URL.
     - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
     - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
+    - Every such URL in `config/trypost.php` goes through its `$url(...)` closure, which drops a trailing slash, so a reader appends the path to `config(...)` and never trims or casts it (`ThirdPartyUrlConfigTest`). A new URL key uses `$url('ENV_NAME', 'https://…')`, not `env()`. A server stored on an account (`SocialAccount::bluesky_service`, `mastodon_instance`) is never trimmed either: Bluesky stores the config value and Mastodon trims the instance when it connects.
 
 ## Social Platform API Documentation (official sources)
 

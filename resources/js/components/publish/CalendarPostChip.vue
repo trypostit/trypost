@@ -9,6 +9,7 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
+    IconTrashX,
 } from '@tabler/icons-vue';
 import { computed, nextTick, ref, type Component } from 'vue';
 
@@ -23,6 +24,7 @@ import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus, ScheduleMode } from '@/types/post';
@@ -100,6 +102,7 @@ type StatusKey =
     | 'recurring'
     | 'publishing'
     | 'published'
+    | 'deleted'
     | 'failed';
 
 interface StatusMarker {
@@ -116,10 +119,15 @@ const STATUS_MARKERS: Record<StatusKey, StatusMarker> = {
     recurring: { icon: IconRepeat, tone: 'text-muted-foreground', testId: 'calendar-post-recurring' },
     publishing: { icon: IconSend, tone: 'text-muted-foreground', testId: 'calendar-post-publishing' },
     published: { icon: IconCircleCheck, tone: 'text-success', testId: 'calendar-post-published' },
+    deleted: { icon: IconTrashX, tone: 'text-destructive', testId: 'calendar-post-deleted' },
     failed: { icon: IconAlertCircle, tone: 'text-destructive', testId: 'calendar-post-failed' },
 };
 
 const statusKey = computed((): StatusKey => {
+    if (isDeletedOnNetwork(props.post)) {
+        return 'deleted';
+    }
+
     const { status, schedule_mode, recurrence_frequency } = props.post;
 
     if (status !== PostStatus.Scheduled) {

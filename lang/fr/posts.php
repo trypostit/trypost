@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Les fils de publications ne sont pas disponibles sur ce réseau.',
             'reply_empty' => 'Une réponse du fil est vide.',
             'reply_too_long' => 'Une réponse dépasse la limite de :limit caractères de :over.',
+            'too_many' => '{1} Cette publication n’accepte qu’un commentaire.|[0,*] Cette publication accepte jusqu’à :max réponses.',
+            'add_comment' => 'Commenter',
+            'comment_placeholder' => 'Ajoutez un lien ou plus de contexte',
+            'comment_label' => 'Votre commentaire',
+            'remove_comment' => 'Retirer le commentaire',
+            'comment_too_long' => 'Votre commentaire dépasse la limite de :limit caractères de :over.',
+            'comment_empty' => 'Votre commentaire est vide.',
+            'comment_attachments' => 'Les commentaires LinkedIn ne peuvent pas contenir de médias.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'Voir le post',
             'edit_labels' => 'Modifier les étiquettes',
             'edit_labels_failed' => 'Impossible de mettre à jour les étiquettes. Réessayez.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Supprimée',
+            'title' => 'Supprimée sur :network',
+            'hint' => 'Elle a été retirée après sa publication : son lien et ses statistiques ne sont plus disponibles.',
         ],
         'created_by' => 'Créé par :name :when',
         'welcome' => [

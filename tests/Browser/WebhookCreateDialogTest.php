@@ -2,38 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\Webhook\EventType;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
-
-function waitForWebhookCreateTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-
-    waitForWebFonts($page);
-}
-
-function waitForWebhookCreateTestIdGone(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                if (! document.querySelector(sel)) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
 
 function webhookCreateDialogAdmin(): User
 {
@@ -52,9 +24,11 @@ test('creating a webhook happens in a centered dialog with cancel before the pri
     $this->actingAs(webhookCreateDialogAdmin());
 
     $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty-create');
+    waitFor($page, '@webhooks-empty-create');
+    waitForWebFonts($page);
     $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-dialog');
+    waitFor($page, '@create-webhook-dialog');
+    waitForWebFonts($page);
 
     $page->assertVisible('@create-webhook-endpoint')
         ->assertVisible('@create-webhook-events-post-created')
@@ -71,29 +45,30 @@ test('creating a webhook happens in a centered dialog with cancel before the pri
         ->assertDisabled('@create-webhook-submit');
 
     $checkedCount = "document.querySelectorAll('[data-testid=\"create-webhook-events\"] [role=\"checkbox\"][data-state=\"checked\"]').length";
+    $events = count(EventType::cases());
 
-    $page->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+    $page->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.select_all'))
         ->assertSeeIn('@create-webhook-events-post-published-description', __('webhooks.event_descriptions.post_published'))
         ->assertSeeIn('@create-webhook-endpoint-help', __('webhooks.create.endpoint_help'))
         ->click('@create-webhook-events-toggle-all')
-        ->assertScript($checkedCount, 6)
-        ->assertSeeIn('@create-webhook-events-count', '6 of 6 selected')
+        ->assertScript($checkedCount, $events)
+        ->assertSeeIn('@create-webhook-events-count', "{$events} of {$events} selected")
         ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.deselect_all'))
         ->assertEnabled('@create-webhook-submit')
         ->click('@create-webhook-events-toggle-all')
         ->assertScript($checkedCount, 0)
-        ->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->assertDisabled('@create-webhook-submit')
         ->click('@create-webhook-events-post-failed-description')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'checked')
-        ->assertSeeIn('@create-webhook-events-count', '1 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "1 of {$events} selected")
         ->click('@create-webhook-events-post-failed-checkbox')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'unchecked')
-        ->assertSeeIn('@create-webhook-events-count', '0 of 6 selected')
+        ->assertSeeIn('@create-webhook-events-count', "0 of {$events} selected")
         ->click('@create-webhook-events-post-published')
         ->click('@cancel-create-webhook');
-    waitForWebhookCreateTestIdGone($page, 'create-webhook-dialog');
+    waitForGone($page, '@create-webhook-dialog');
 
     $page->assertMissing('@create-webhook-dialog')
         ->assertNoJavaScriptErrors();
@@ -106,9 +81,11 @@ test('an invalid endpoint shows an inline error and a valid one opens the new we
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty-create');
+    waitFor($page, '@webhooks-empty-create');
+    waitForWebFonts($page);
     $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-endpoint');
+    waitFor($page, '@create-webhook-endpoint');
+    waitForWebFonts($page);
 
     $page->fill('@create-webhook-endpoint', 'not-a-url')
         ->click('@create-webhook-events-post-published')
@@ -121,18 +98,12 @@ test('an invalid endpoint shows an inline error and a valid one opens the new we
 
     $page->fill('@create-webhook-endpoint', 'https://example.com/hooks')
         ->click('@create-webhook-submit');
-    waitForWebhookCreateTestIdGone($page, 'create-webhook-dialog');
+    waitForGone($page, '@create-webhook-dialog');
 
     $webhook = Webhook::query()->where('workspace_id', $user->current_workspace_id)->sole();
     $showPath = parse_url(route('app.webhooks.show', $webhook), PHP_URL_PATH);
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (location.pathname === '{$showPath}' && document.body.innerText.includes('example.com/hooks')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForPath($page, $showPath);
+    waitForState($page, 'body', "element.innerText.includes('example.com/hooks')");
 
     $page->assertMissing('@create-webhook-dialog')
         ->assertUrlIs(route('app.webhooks.show', $webhook))
@@ -145,7 +116,8 @@ test('a workspace without webhooks shows only the centered illustration with a c
     $this->actingAs(webhookCreateDialogAdmin());
 
     $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty');
+    waitFor($page, '@webhooks-empty');
+    waitForWebFonts($page);
 
     $page->assertVisible('@webhooks-empty-illustration')
         ->assertSeeIn('@webhooks-empty', __('webhooks.empty_title'))

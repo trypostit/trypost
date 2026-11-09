@@ -192,7 +192,7 @@ test('deleting a stage keeps its ideas under unassigned', function () {
     waitFor($page, '@confirm-delete-action');
     $page->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-column-{$stages['todo']->id}\"]')");
+    waitForGone($page, "@idea-column-{$stages['todo']->id}");
 
     $page->assertMissing("@idea-column-{$stages['todo']->id}");
     expect($page->script("!!document.querySelector('[data-testid=\"idea-column-unassigned\"] [data-testid=\"idea-card-{$a->id}\"]')"))->toBeTrue()
@@ -238,7 +238,7 @@ test('selected ideas are deleted in bulk and the selection can be cleared', func
 
     expect(Idea::whereKey([$a->id, $b->id])->exists())->toBeFalse()
         ->and(Idea::whereKey($c->id)->exists())->toBeTrue();
-    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForGone($page, '@ideas-bulk-bar');
     $page->assertMissing('@ideas-bulk-bar');
 
     $page->click("@idea-card-menu-{$c->id}");
@@ -246,7 +246,7 @@ test('selected ideas are deleted in bulk and the selection can be cleared', func
     $page->click("@idea-select-{$c->id}");
     waitFor($page, '@ideas-clear-selection');
     $page->click('@ideas-clear-selection');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForGone($page, '@ideas-bulk-bar');
 
     $page->assertMissing('@ideas-bulk-bar')
         ->assertMissing("@idea-card-checkbox-{$c->id}")
@@ -275,7 +275,7 @@ test('the gallery view lists ideas and filters them by label and stage', functio
     $page->click('@ideas-filter-labels-filter');
     waitFor($page, "@ideas-filter-labels-option-{$label->id}");
     $page->click("@ideas-filter-labels-option-{$label->id}");
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
+    waitForGone($page, "@idea-card-{$loose->id}");
 
     $page->assertVisible("@idea-card-{$tagged->id}")
         ->assertMissing("@idea-card-{$loose->id}")
@@ -285,7 +285,7 @@ test('the gallery view lists ideas and filters them by label and stage', functio
     waitFor($page, "@idea-card-{$loose->id}");
 
     $page->click('@ideas-filter-labels-untagged-checkbox');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$tagged->id}\"]')");
+    waitForGone($page, "@idea-card-{$tagged->id}");
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$tagged->id}");
     expect($page->script('location.search'))->toContain('untagged=1');
@@ -295,12 +295,12 @@ test('the gallery view lists ideas and filters them by label and stage', functio
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertPresent('@ideas-filter-labels-settings');
     $page->keys('@ideas-filter-labels-search', 'Escape');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-labels-search\"]')");
+    waitForGone($page, '@ideas-filter-labels-search');
     $page->click('@ideas-filter-stages-filter');
     waitFor($page, "@ideas-filter-stages-option-{$stages['done']->id}");
     $page->assertScript("document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['done']->id}\"]').getBoundingClientRect().height <= 32", true);
     $page->click("@ideas-filter-stages-option-{$stages['done']->id}");
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$loose->id}\"]')");
+    waitForGone($page, "@idea-card-{$loose->id}");
 
     $page->assertVisible("@idea-card-{$inDone->id}")
         ->assertMissing("@idea-card-{$tagged->id}")
@@ -340,7 +340,7 @@ test('a drop made while a move is in flight is applied after the first move comp
     $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
     waitForCondition($page, 'window.__ideaMoves.length === 1');
     $page->drag("@idea-card-{$b->id}", "@idea-column-{$stages['done']->id}");
-    waitForCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-idea-id=\"{$b->id}\"]')");
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$b->id}\"]", 'true');
 
     expect($page->script('window.__ideaMoves.length'))->toBe(1)
         ->and($a->refresh()->idea_stage_id)->toBe($stages['todo']->id)
@@ -377,7 +377,7 @@ test('move to stage works on a filtered board and appends to the end of the stag
 
     expect($a->refresh()->idea_stage_id)->toBe($stages['done']->id)
         ->and($a->position)->toBeGreaterThan($existing->refresh()->position);
-    waitForCondition($page, "!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-testid=\"idea-card-{$a->id}\"]')");
+    waitForState($page, "@idea-column-{$stages['done']->id} @idea-card-{$a->id}", 'true');
     expect($page->script("!!document.querySelector('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-testid=\"idea-card-{$a->id}\"]')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
@@ -399,7 +399,7 @@ test('changing a filter clears the selection', function () {
     $page->click('@ideas-filter-labels-filter');
     waitFor($page, '@ideas-filter-labels-untagged-checkbox');
     $page->click('@ideas-filter-labels-untagged-checkbox');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-bulk-bar\"]')");
+    waitForGone($page, '@ideas-bulk-bar');
 
     $page->assertMissing('@ideas-bulk-bar')
         ->assertNoJavaScriptErrors();
@@ -469,7 +469,7 @@ test('a lifted placeholder shows where a dragged card lands, in its own column a
 
     expect($c->refresh()->idea_stage_id)->toBe($done)
         ->and(Idea::where('idea_stage_id', $done)->orderBy('position')->pluck('id')->all())->toBe([$d->id, $c->id]);
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-placeholder\"]')");
+    waitForGone($page, '@idea-card-placeholder');
     expect(createIdeasBoardCardSlots($page, $done))->toBe([$d->id, $c->id]);
     $page->assertNoJavaScriptErrors();
 });
@@ -532,7 +532,7 @@ test('a dragged stage leaves a column-sized placeholder where it will land', fun
     waitForDatabase($page, fn (): bool => $stages['done']->refresh()->position < $stages['todo']->refresh()->position);
 
     expect($stages['done']->refresh()->position)->toBeLessThan($stages['todo']->refresh()->position);
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-stage-placeholder\"]')");
+    waitForGone($page, '@idea-stage-placeholder');
     expect(createIdeasBoardStageSlots($page))->toBe([$done, $todo, $progress]);
     $page->assertNoJavaScriptErrors();
 });
@@ -553,7 +553,7 @@ test('the gallery stage filter has an unassigned option that combines with stage
         ->and($page->script("document.querySelector('[data-testid=\"ideas-filter-stages-unassigned\"]').getBoundingClientRect().height"))->toBeLessThanOrEqual(32);
 
     $page->click('@ideas-filter-stages-unassigned-checkbox');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"idea-card-{$inTodo->id}\"]')");
+    waitForGone($page, "@idea-card-{$inTodo->id}");
 
     $page->assertVisible("@idea-card-{$loose->id}")
         ->assertMissing("@idea-card-{$inDone->id}")
@@ -665,7 +665,7 @@ test('on a phone the label filter shows only its icon and the page does not scro
     JS))->toBe(['visibleText' => 0, 'label' => true, 'overflow' => 0, 'boardScrolls' => true]);
 
     $page->resize(1280, 900);
-    waitForCondition($page, "[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')");
+    waitForState($page, '@ideas-filter-labels-filter', "[...element.querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')");
     expect($page->script("[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
@@ -683,7 +683,7 @@ test('scrolling a column loads its next ten ideas and the count comes from the d
     $page->assertSeeIn("@idea-column-count-{$column}", '15');
 
     $page->script("document.querySelector('[data-testid=\"idea-column-scroll-{$column}\"]').scrollTop = 100000");
-    waitForCondition($page, "document.querySelectorAll('[data-testid=\"idea-column-list-{$column}\"] [data-sortable-idea]').length === 15");
+    waitForCount($page, "@idea-column-list-{$column} [data-sortable-idea]", 15);
 
     expect(createIdeasBoardCardSlots($page, $column))->toBe($ideas->pluck('id')->all());
     $page->assertSeeIn("@idea-column-count-{$column}", '15')
@@ -708,7 +708,7 @@ test('dragging a card into a partly loaded column keeps the unloaded ideas in or
         ->and($order->pluck('id')->reject(fn (string $id): bool => $id === $moving->id)->values()->all())->toBe($done->pluck('id')->all())
         ->and(array_slice($order->pluck('id')->all(), 0, count($shown)))->toBe($shown)
         ->and($shown)->toContain($moving->id);
-    waitForCondition($page, "document.querySelector('[data-testid=\"idea-column-count-{$stages['done']->id}\"]').textContent.trim() === '13'");
+    waitForState($page, "@idea-column-count-{$stages['done']->id}", "element.textContent.trim() === '13'");
     $page->assertSeeIn("@idea-column-count-{$stages['done']->id}", '13')
         ->assertNoJavaScriptErrors();
 });
@@ -723,7 +723,7 @@ test('the gallery stage filter search ignores accents and matches each word in a
     $page->click('@ideas-filter-stages-filter');
     waitFor($page, '@ideas-filter-stages-search');
     $page->type('@ideas-filter-stages-search', 'FINAL revisao');
-    waitForCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['todo']->id}\"]')");
+    waitForGone($page, "@ideas-filter-stages-option-{$stages['todo']->id}");
 
     $page->assertPresent("@ideas-filter-stages-option-{$stages['in_progress']->id}")
         ->assertMissing("@ideas-filter-stages-option-{$stages['todo']->id}")

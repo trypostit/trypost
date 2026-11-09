@@ -13,6 +13,7 @@ import type { Component } from 'vue';
 
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import { transform } from '@/lib/helpers';
 import { edit } from '@/routes/app/posts';
 import { PublishStatus, type PublishStatusValue } from '@/types/post';
 import type { RepurposeItem, RepurposeItemPost } from '@/types/repurpose';
@@ -33,12 +34,25 @@ const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }
 
 const detail = (item: RepurposeItem): string | null => item.error ?? null;
 
+/** States whose label is not the plain status name. */
+const POST_STATE_LABEL_KEYS: Partial<Record<PublishStatusValue, string>> = {
+    [PublishStatus.PendingReview]: 'posts.publish.in_google_review',
+    [PublishStatus.Deleted]: 'posts.publish.deleted_on_network.badge',
+};
+
 const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
     post.platform
         ? post.publish_status === PublishStatus.Rejected
             ? PublishStatus.Failed
             : post.publish_status
         : null;
+
+const postStateLabelKey = (post: RepurposeItemPost): string =>
+    transform(
+        postState(post),
+        (state) => POST_STATE_LABEL_KEYS[state] ?? `posts.status.${state}`,
+        '',
+    );
 </script>
 
 <template>
@@ -116,6 +130,7 @@ const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
 
                         <span
                             v-if="postState(post)"
+                            :data-testid="`repurpose-item-post-state-${post.id}`"
                             :class="[
                                 'rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide',
                                 postState(post) === PublishStatus.Failed
@@ -123,11 +138,7 @@ const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
                                     : 'bg-foreground/10 text-foreground/60',
                             ]"
                         >
-                            {{
-                                postState(post) === PublishStatus.PendingReview
-                                    ? $t('posts.publish.in_google_review')
-                                    : $t(`posts.status.${postState(post)}`)
-                            }}
+                            {{ $t(postStateLabelKey(post)) }}
                         </span>
 
                         <IconChevronRight class="size-3.5 text-muted-foreground transition-colors group-hover/post:text-foreground" />

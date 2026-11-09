@@ -8,8 +8,11 @@ use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\Webhook\EventType;
 use App\Events\PostCreated;
+use App\Events\PostNetworkPresenceChanged;
 use App\Events\PostStatusChanged;
+use App\Events\PostStatusUpdated;
 use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Post;
@@ -40,21 +43,36 @@ class PostObserver
         }
     }
 
+    /**
+     * The network side of the post moved: the network deleted it or listed it
+     * again, or it just went live.
+     */
     public function updated(Post $post): void
     {
-        if (! $this->wasJustPublished($post)) {
+        if (! $post->wasChanged('publish_status')) {
             return;
         }
 
-        $this->syncPublicationAnalytics($post);
-        $this->syncPublishingActivity($post);
+        $networkEvent = EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'));
+
+        if (filled($networkEvent)) {
+            $this->announceNetworkPresence($post, $networkEvent);
+
+            return;
+        }
+
+        if ($post->publish_status === PublishStatus::Published && filled($post->platform_post_id)) {
+            $this->syncPublicationAnalytics($post);
+            $this->syncPublishingActivity($post);
+        }
     }
 
-    private function wasJustPublished(Post $post): bool
+    private function announceNetworkPresence(Post $post, EventType $event): void
     {
-        return $post->wasChanged('publish_status')
-            && $post->publish_status === PublishStatus::Published
-            && filled($post->platform_post_id);
+        DB::afterCommit(function () use ($post, $event): void {
+            PostNetworkPresenceChanged::dispatch($post, $event);
+            PostStatusUpdated::dispatch($post);
+        });
     }
 
     /**

@@ -105,8 +105,8 @@ class HandleInertiaRequests extends Middleware
                 )->resolve();
             },
             'legal' => fn (): array => [
-                'terms' => (string) config('trypost.legal.terms_url'),
-                'privacy' => (string) config('trypost.legal.privacy_url'),
+                'terms' => config('trypost.legal.terms_url'),
+                'privacy' => config('trypost.legal.privacy_url'),
             ],
             'languages' => fn (): array => Locale::options(),
             'aiEnabled' => fn (): bool => filled(config('ai.providers.'.config('ai.default').'.key')),

@@ -48,7 +48,7 @@ class InstagramPublisher
         $this->validateContentLength($post);
 
         $account = $post->socialAccount;
-        $this->baseUrl = $account->platform->instagramGraphBaseUrl();
+        $this->baseUrl = $account->platform->graphApiUrl();
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);

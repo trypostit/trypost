@@ -174,9 +174,15 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import {
     newThreadReply,
+    repliesAreComments,
+    replyEmptyKey,
     replyErrorOf,
+    replyTooLongKey,
+    startThreadKey,
+    threadMaxReplies,
     type ThreadReply,
     threadRepliesOf,
+    threadReplyContentType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { pollLimitsOf } from '@/lib/xPoll';
@@ -196,7 +202,6 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    THREAD_MAX_REPLIES,
     THREAD_PLATFORMS,
     THREAD_REPLY_CONTENT_TYPES,
 } from '@/types/network-options';
@@ -523,18 +528,14 @@ watch(sharedStep, (shared) => {
 });
 /** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
-    const reply = activeReply(group);
-
-    if (filled(reply) && filled(reply.poll)) {
-        return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
-    }
-
-    if (filled(reply)) {
-        return 'posts.composer.media_not_supported';
-    }
+    const contentType = transform(
+        activeReply(group),
+        (reply) => threadReplyContentType(group.platform, reply),
+        groupDestination(group).content_type,
+    );
 
     return (
-        MEDIALESS_CONTENT_TYPE_REASONS[groupDestination(group).content_type] ??
+        transform(contentType, (type) => MEDIALESS_CONTENT_TYPE_REASONS[type]) ??
         'posts.composer.media_not_supported'
     );
 };
@@ -1177,7 +1178,11 @@ const setThreadReplies = (
 };
 const addThreadReply = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1186,7 +1191,11 @@ const focusFirstReply = (): void => {
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
     const replies = threadReplies(group);
-    if (replies.length >= THREAD_MAX_REPLIES) return;
+
+    if (replies.length >= threadMaxReplies(group.platform)) {
+        return;
+    }
+
     setThreadReplies(group, [newThreadReply(), ...replies]);
     threadActive.value = 0;
 };
@@ -1351,11 +1360,14 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
+const replyAcceptsMedia = (platform: string): boolean =>
+    getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
+    0;
 const groupAcceptsMedia = (group: NetworkGroup): boolean => {
     const reply = activeReply(group);
 
     if (filled(reply)) {
-        return reply.poll === undefined;
+        return reply.poll === undefined && replyAcceptsMedia(group.platform);
     }
 
     return acceptsMedia(group.key);
@@ -1503,13 +1515,13 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
                 : null;
             if (isBlankText(reply.text) && !reply.media.length) {
                 issues.push({
-                    key: 'posts.form.thread.reply_empty',
+                    key: replyEmptyKey(account.platform),
                     params: {},
                     contentType,
                 });
             } else if (over > 0) {
                 issues.push({
-                    key: 'posts.form.thread.reply_too_long',
+                    key: replyTooLongKey(account.platform),
                     params: { limit: String(limit), over: String(over) },
                     contentType,
                 });
@@ -2745,7 +2757,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                     threadReplies(group)[threadActive] !== undefined
                                 "
                                 :active-reply="threadActive"
-                                :threadable="supportsThread(group)"
+                                :threadable="
+                                    supportsThread(group) &&
+                                    !repliesAreComments(group.platform)
+                                "
                                 :threaded="threadReplies(group).length > 0"
                                 @expand-caption="deselectThread"
                                 @start-thread="startThreadFromCaption(group)"
@@ -2996,7 +3011,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <ThreadRepliesField
                                         v-model:active="threadActive"
                                         :toolbar-target="`composer-${group.anchor.id}-reply-toolbar`"
-                                        :max="THREAD_MAX_REPLIES"
+                                        :max="threadMaxReplies(group.platform)"
+                                        :comment="repliesAreComments(group.platform)"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
                                         :limit="threadReplyLimit(group) ?? Infinity"
@@ -3034,9 +3050,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                             />
                                             <div
                                                 v-else-if="
-                                                    threadActive === index ||
                                                     reply.media.length ||
-                                                    replyHasActivity(group, reply)
+                                                    (replyAcceptsMedia(group.platform) &&
+                                                        (threadActive === index ||
+                                                            replyHasActivity(group, reply)))
                                                 "
                                                 class="flex flex-col gap-2 px-[9px] pt-1"
                                             >
@@ -3151,13 +3168,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                             >
                                                 <IconCirclePlus class="size-4" />
                                                 <span data-single-line>{{
-                                                    $t('posts.form.thread.start')
+                                                    $t(startThreadKey(group.platform))
                                                 }}</span>
                                             </Button>
                                             <Tooltip
                                                 v-else-if="
                                                     threadReplies(group).length <
-                                                    THREAD_MAX_REPLIES
+                                                    threadMaxReplies(group.platform)
                                                 "
                                             >
                                                 <TooltipTrigger as-child>

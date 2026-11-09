@@ -492,6 +492,14 @@ return [
             'unsupported' => 'سلاسل المنشورات غير متاحة على هذه الشبكة.',
             'reply_empty' => 'أحد الردود في السلسلة فارغ.',
             'reply_too_long' => 'أحد الردود يتجاوز حد :limit حرفًا بمقدار :over.',
+            'too_many' => '{1} يقبل هذا المنشور تعليقًا واحدًا فقط.|[0,*] يقبل هذا المنشور حتى :max ردود.',
+            'add_comment' => 'إضافة تعليق',
+            'comment_placeholder' => 'أضف رابطًا أو سياقًا إضافيًا',
+            'comment_label' => 'تعليقك',
+            'remove_comment' => 'إزالة التعليق',
+            'comment_too_long' => 'يتجاوز تعليقك حد :limit حرف بمقدار :over.',
+            'comment_empty' => 'تعليقك فارغ.',
+            'comment_attachments' => 'لا يمكن أن تتضمن تعليقات LinkedIn وسائط.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'عرض المنشور',
             'edit_labels' => 'تعديل التسميات',
             'edit_labels_failed' => 'تعذّر تحديث التسميات. حاول مرة أخرى.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'محذوف',
+            'title' => 'محذوف على :network',
+            'hint' => 'أُزيل بعد نشره، لذلك لم يعد رابطه ولا Insights الخاصة به متاحة.',
         ],
         'created_by' => 'أنشأه :name :when',
         'welcome' => [

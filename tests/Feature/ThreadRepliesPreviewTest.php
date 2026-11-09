@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Post\PostPreviewer;
+use App\Services\Social\ContentSanitizer;
 
 test('previews thread replies with the network sanitizer', function () {
     $post = Post::factory()->bluesky()->create([
@@ -17,6 +19,17 @@ test('previews thread replies with the network sanitizer', function () {
     expect($preview['thread_replies'])->toEqual([
         ['text' => 'Second', 'media' => []],
         ['text' => 'Third', 'media' => [['id' => 'media-1', 'url' => 'https://cdn.test/one.jpg']]],
+    ]);
+});
+
+test('a linkedin preview shows its comment with the linkedin sanitizer', function () {
+    $post = Post::factory()->linkedin()->create([
+        'content' => 'Root',
+        'meta' => ['thread_replies' => ['<p>Read more at <strong>example.com</strong></p>']],
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh())['thread_replies'])->toEqual([
+        ['text' => app(ContentSanitizer::class)->sanitize('<p>Read more at <strong>example.com</strong></p>', Platform::LinkedIn), 'media' => []],
     ]);
 });
 

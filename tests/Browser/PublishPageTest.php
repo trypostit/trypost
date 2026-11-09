@@ -215,14 +215,8 @@ test('saving a queued post edited on a channel page returns to that page and tab
     waitFor($page, '@composer-submit');
     $page->click('@composer-submit');
 
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!new URLSearchParams(location.search).has('edit') && !document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForCondition($page, "!new URLSearchParams(location.search).has('edit')");
+    waitForGone($page, '@post-composer-dialog');
     waitFor($page, "@post-card-{$queued->id}");
 
     expect($page->script('location.pathname'))->toBe(route('app.channels.publish', $channel, absolute: false))
@@ -430,7 +424,7 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
     $page->click('@calendar-menu');
     waitFor($page, '@calendar-menu-content');
-    waitForCondition($page, 'Math.abs(window.innerHeight - document.querySelector(\'[data-testid="calendar-menu-content"]\').getBoundingClientRect().bottom) <= 1');
+    waitForState($page, '@calendar-menu-content', 'Math.abs(window.innerHeight - element.getBoundingClientRect().bottom) <= 1');
 
     $page->assertVisible('@calendar-status-drafts')
         ->assertVisible('@publish-timezone-trigger')
@@ -450,8 +444,8 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
     $page->assertMissing('@calendar-undated-panel');
 
     $page->resize(900, 900);
-    waitForCondition($page, 'Boolean(document.querySelector(\'[data-testid="posts-label-filter"]\')?.getClientRects().length)');
-    waitForCondition($page, '!document.querySelector(\'[data-testid="calendar-status-filter"]\')');
+    waitForState($page, '@posts-label-filter', 'Boolean(element.getClientRects().length)');
+    waitForGone($page, '@calendar-status-filter');
 
     expect($page->script('Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))'))->toBeFalse()
         ->and($page->script('Boolean(document.querySelector(\'[data-testid="calendar-menu"]\')?.getClientRects().length)'))->toBeTrue()
@@ -459,7 +453,7 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
     $page->resize(1600, 900);
 
-    waitForCondition($page, 'Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))');
+    waitForState($page, '@calendar-status-filter', 'true');
 
     $order = $page->script(<<<'JS'
         (() => ['posts-channel-filter', 'posts-label-filter', 'calendar-status-filter', 'publish-timezone-trigger', 'calendar-no-date', 'calendar-menu']
@@ -505,7 +499,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
 
     $page->resize(390, 844);
     waitFor($page, '@publish-tabs-mobile-trigger');
-    waitForCondition($page, '!document.querySelector(\'[data-testid="posts-label-filter"]\')');
+    waitForGone($page, '@posts-label-filter');
 
     $phone = $page->script(<<<'JS'
         (() => {
@@ -528,7 +522,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
 
     $page->click('@publish-menu');
     waitFor($page, '@publish-menu-content');
-    waitForCondition($page, 'Math.abs(window.innerHeight - document.querySelector(\'[data-testid="publish-menu-content"]\').getBoundingClientRect().bottom) <= 1');
+    waitForState($page, '@publish-menu-content', 'Math.abs(window.innerHeight - element.getBoundingClientRect().bottom) <= 1');
 
     $pressed = 'document.querySelector(\'[data-testid="publish-toggle-slots"]\').getAttribute("aria-pressed")';
     $before = $page->script($pressed);
@@ -540,7 +534,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
         ->toBe(route('app.channels.settings', $channel, false));
 
     $page->resize(1280, 800);
-    waitForCondition($page, '!document.querySelector(\'[data-testid="publish-menu-content"]\')');
+    waitForGone($page, '@publish-menu-content');
     waitFor($page, '@publish-timezone-trigger');
 
     $desktop = $page->script(<<<'JS'
@@ -573,7 +567,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
     $page->assertPresent('@publish-tab-sheet-queue-check')
         ->assertMissing('@publish-tab-sheet-drafts-check')
         ->click('@publish-tab-sheet-drafts');
-    waitForCondition($page, 'new URLSearchParams(location.search).get("tab") === "drafts"');
+    waitForQueryParameter($page, 'tab', 'drafts');
 
     $page->assertSeeIn('@publish-tabs-mobile-trigger', trans('posts.publish.tabs.drafts'))
         ->assertMissing('@publish-tabs-sheet');

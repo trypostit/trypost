@@ -8,8 +8,10 @@ use App\Dto\Analytics\MetricValue;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
@@ -26,7 +28,7 @@ class ReadPublicationAnalytics
     {
         $publication = AnalyticsPublication::query()
             ->with('socialAccount')
-            ->available()
+            ->whereIn('availability', [PublicationAvailability::Available, PublicationAvailability::Deleted])
             ->whereBelongsTo($workspace)
             ->whereIn('platform', Platform::analyticsValues())
             ->findOrFail($publicationId);
@@ -91,12 +93,14 @@ class ReadPublicationAnalytics
         }
 
         return $posts->mapWithKeys(function (Post $post) use ($publications, $snapshots): array {
-            if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
-                return [$post->id => $this->unavailable('not_published')];
+            $unpublished = $this->unpublishedReason($post);
+
+            if (filled($unpublished)) {
+                return [$post->id => $this->unavailable($unpublished)];
             }
 
             if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
-                return [$post->id => $this->unavailable('platform_not_supported')];
+                return [$post->id => $this->unavailable(MetricsUnavailableReason::PlatformNotSupported)];
             }
 
             $publication = $publications->get($post->id)?->setRelation(
@@ -106,19 +110,21 @@ class ReadPublicationAnalytics
 
             return [$post->id => $publication
                 ? $this->detail($publication, $snapshots->get($publication->id))
-                : $this->unavailable('not_collected')];
+                : $this->unavailable(MetricsUnavailableReason::NotCollected)];
         })->all();
     }
 
     /** @return array<string, mixed> */
     public function latestFor(Post $post): array
     {
-        if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
-            return $this->unavailable('not_published');
+        $unpublished = $this->unpublishedReason($post);
+
+        if (filled($unpublished)) {
+            return $this->unavailable($unpublished);
         }
 
         if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
-            return $this->unavailable('platform_not_supported');
+            return $this->unavailable(MetricsUnavailableReason::PlatformNotSupported);
         }
 
         $publication = AnalyticsPublication::query()
@@ -129,19 +135,28 @@ class ReadPublicationAnalytics
             ->whereIn('platform', Platform::analyticsValues())
             ->first();
 
-        return $publication ? $this->latestForPublication($publication) : $this->unavailable('not_collected');
+        return $publication ? $this->latestForPublication($publication) : $this->unavailable(MetricsUnavailableReason::NotCollected);
     }
 
     /** @return array<string, mixed> */
     public function latestForPublication(AnalyticsPublication $publication): array
     {
         if (! in_array($publication->platform->value, Platform::analyticsValues(), true)) {
-            return $this->unavailable('platform_not_supported');
+            return $this->unavailable(MetricsUnavailableReason::PlatformNotSupported);
         }
 
         $snapshot = $publication->dailySnapshots()->orderByDesc('date')->first();
 
         return $this->detail($publication, $snapshot);
+    }
+
+    private function unpublishedReason(Post $post): ?MetricsUnavailableReason
+    {
+        return match (true) {
+            $post->isDeletedOnNetwork() => MetricsUnavailableReason::DeletedOnNetwork,
+            $post->publish_status !== PublishStatus::Published || blank($post->platform_post_id) => MetricsUnavailableReason::NotPublished,
+            default => null,
+        };
     }
 
     private function isCollectable(Post $post): bool
@@ -181,7 +196,7 @@ class ReadPublicationAnalytics
                 'content_type' => $publication->content_type->value,
                 'availability' => $publication->availability->value,
                 'provider_published_at' => $publication->provider_published_at?->toIso8601String(),
-                'permalink' => $publication->permalink,
+                'permalink' => $publication->availability->visiblePermalink($publication->permalink),
                 'excerpt' => $publication->excerpt,
                 'preview_metadata' => $publication->preview_metadata,
                 'poll' => data_get($publication->provider_metadata, 'poll'),
@@ -239,11 +254,11 @@ class ReadPublicationAnalytics
     }
 
     /** @return array{available: false, reason: string, publication: null, snapshot: null, metrics: array} */
-    private function unavailable(string $reason): array
+    private function unavailable(MetricsUnavailableReason $reason): array
     {
         return [
             'available' => false,
-            'reason' => $reason,
+            'reason' => $reason->value,
             'publication' => null,
             'snapshot' => null,
             'metrics' => [],

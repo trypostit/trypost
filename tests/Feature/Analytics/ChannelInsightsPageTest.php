@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Analytics\ListChannelPublicationPerformance;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Dto\Analytics\DateRange;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -434,4 +435,22 @@ test('the coverage poll reloads the report without recomputing the available met
                 ->has('report.summary')
                 ->missing('availableMetrics')
                 ->missing('publications')));
+});
+
+test('a publication the network deleted stays in the table without its link', function () {
+    $live = channelInsightsPublication($this->instagram, now('UTC')->subDays(4)->toDateTimeString(), ['reactions_count' => 9]);
+    $deleted = channelInsightsPublication($this->instagram, now('UTC')->subDays(5)->toDateTimeString(), ['reactions_count' => 3], [
+        'availability' => PublicationAvailability::Deleted,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.insights', $this->instagram))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('publications.data', 2)
+            ->where('publications.data.0.id', $live->id)
+            ->where('publications.data.0.permalink', $live->permalink)
+            ->where('publications.data.1.id', $deleted->id)
+            ->where('publications.data.1.permalink', null)
+            ->etc());
 });

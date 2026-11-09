@@ -59,7 +59,7 @@ class BlueskyPublisher
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
 
         // Refresh token if needed
         if ($account->needsProactiveTokenRefresh()) {
@@ -91,7 +91,7 @@ class BlueskyPublisher
     private function liveReply(SocialAccount $account, string $text, array $parent): ?array
     {
         try {
-            $response = $this->socialHttp()->get(config('trypost.platforms.bluesky.public_appview').'/xrpc/'.BlueskyLexicon::GET_POST_THREAD, [
+            $response = $this->socialHttp()->get(BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.public_appview'), BlueskyLexicon::GET_POST_THREAD), [
                 'uri' => (string) data_get($parent, 'uri'),
                 'depth' => 1,
                 'parentHeight' => 0,
@@ -252,7 +252,7 @@ class BlueskyPublisher
     private function createPostRecord(SocialAccount $account, string $service, array $record): array
     {
         $response = $this->socialHttp()->withToken($account->access_token)
-            ->post("{$service}/xrpc/".BlueskyLexicon::CREATE_RECORD, [
+            ->post(BlueskyLexicon::xrpc($service, BlueskyLexicon::CREATE_RECORD), [
                 'repo' => $account->platform_user_id,
                 'collection' => BlueskyLexicon::FEED_POST,
                 'record' => $record,
@@ -359,7 +359,7 @@ class BlueskyPublisher
             $response = $this->socialHttp()->withToken($account->access_token)
                 ->withHeaders(['Content-Type' => $mimeType])
                 ->withBody($stream, $mimeType)
-                ->post("{$service}/xrpc/".BlueskyLexicon::UPLOAD_BLOB);
+                ->post(BlueskyLexicon::xrpc($service, BlueskyLexicon::UPLOAD_BLOB));
 
             if (is_resource($stream)) {
                 fclose($stream);
@@ -541,9 +541,9 @@ class BlueskyPublisher
         }
 
         [$contentType, $extension] = $this->videoUploadFormat($mimeType);
-        $videoService = (string) config('trypost.platforms.bluesky.video_service');
+        $videoService = config('trypost.platforms.bluesky.video_service');
         $name = bin2hex(random_bytes(8)).'.'.$extension;
-        $uploadUrl = "{$videoService}/xrpc/".BlueskyLexicon::VIDEO_UPLOAD
+        $uploadUrl = BlueskyLexicon::xrpc($videoService, BlueskyLexicon::VIDEO_UPLOAD)
             .'?did='.rawurlencode($account->platform_user_id).'&name='.rawurlencode($name);
 
         $response = $this->socialHttp()->withToken($uploadToken)
@@ -596,7 +596,7 @@ class BlueskyPublisher
      */
     private function pollVideoJob(string $statusToken, string $jobId, CarbonInterface $deadline): ?array
     {
-        $statusUrl = (string) config('trypost.platforms.bluesky.video_service').'/xrpc/'.BlueskyLexicon::VIDEO_GET_JOB_STATUS;
+        $statusUrl = BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.video_service'), BlueskyLexicon::VIDEO_GET_JOB_STATUS);
         // Processing usually finishes within seconds. State is checked before
         // sleeping so an already-complete job returns at once. The attempt cap
         // and the wall-clock deadline both bound the loop.
@@ -685,7 +685,7 @@ class BlueskyPublisher
     {
         try {
             $response = $this->socialHttp()->withToken($account->access_token)
-                ->get("{$pds}/xrpc/".BlueskyLexicon::GET_SERVICE_AUTH, [
+                ->get(BlueskyLexicon::xrpc($pds, BlueskyLexicon::GET_SERVICE_AUTH), [
                     'aud' => $aud,
                     'lxm' => $lxm,
                     'exp' => now()->addMinutes(30)->timestamp,
@@ -724,7 +724,7 @@ class BlueskyPublisher
         try {
             $docUrl = null;
             if (str_starts_with($did, 'did:plc:')) {
-                $directory = (string) config('trypost.platforms.bluesky.plc_directory');
+                $directory = config('trypost.platforms.bluesky.plc_directory');
                 $docUrl = "{$directory}/".rawurlencode($did);
             } elseif (str_starts_with($did, 'did:web:')) {
                 // Per the did:web spec, colon-separated segments map to a host
@@ -870,11 +870,11 @@ class BlueskyPublisher
      */
     private function resolveHandleToDid(string $handle): ?string
     {
-        $appView = (string) config('trypost.platforms.bluesky.public_appview');
+        $appView = config('trypost.platforms.bluesky.public_appview');
 
         try {
             $response = $this->socialHttp()->get(
-                "{$appView}/xrpc/".BlueskyLexicon::RESOLVE_HANDLE,
+                BlueskyLexicon::xrpc($appView, BlueskyLexicon::RESOLVE_HANDLE),
                 ['handle' => $handle],
             );
 
@@ -888,7 +888,7 @@ class BlueskyPublisher
 
     private function buildPostUrl(string $handle, string $postId): string
     {
-        $webApp = (string) config('trypost.platforms.bluesky.web_app');
+        $webApp = config('trypost.platforms.bluesky.web_app');
 
         return "{$webApp}/profile/{$handle}/post/{$postId}";
     }

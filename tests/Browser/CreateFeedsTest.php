@@ -14,54 +14,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
-function waitForCreateFeedsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateFeedsCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
- * Dialogs animate in; a click that lands before the animation settles is swallowed.
- */
-function waitForCreateFeedsDialog(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const dialog = document.querySelector('[data-testid="{$testId}"]');
-                if (dialog?.getAttribute('data-state') === 'open'
-                    && dialog.getAnimations().every((animation) => animation.playState !== 'running')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCreateFeedsDatabase(mixed $page, Closure $condition): void
-{
-    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
-}
-
 function createFeedsToastCount(mixed $page): int
 {
     return $page->script("document.querySelectorAll('[data-sonner-toast]').length");
@@ -123,9 +75,9 @@ test('a feed chip opens that feed with only its items', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feeds-chip-feed-{$first->id}");
+    waitFor($page, "@feeds-chip-feed-{$first->id}");
     $page->click("@feeds-chip-feed-{$first->id}");
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
+    waitFor($page, '@feeds-scope-menu');
 
     expect($page->script('window.location.pathname'))->toBe(route('app.create.feeds.show', $first, false));
 
@@ -144,7 +96,7 @@ test('hovering an item reveals its actions and create post opens the composer wi
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feed-item-{$item->id}");
+    waitFor($page, "@feed-item-{$item->id}");
     $item->update(['image_url' => 'https://93.184.216.34/image.png']);
 
     $page->hover("@feed-item-{$item->id}")
@@ -154,8 +106,8 @@ test('hovering an item reveals its actions and create post opens the composer wi
         ->assertVisible("@feed-item-save-idea-{$item->id}");
 
     $page->click("@feed-item-create-post-{$item->id}");
-    waitForCreateFeedsTestId($page, 'composer-base-content');
-    waitForCreateFeedsTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-base-content');
+    waitFor($page, '@composer-media-item');
 
     $page->assertVisible('@post-composer-dialog')
         ->assertValue('@composer-base-content', "Launch notes\n\nhttps://93.184.216.34/launch")
@@ -174,11 +126,11 @@ test('save as idea creates an unassigned idea with the imported image and shows 
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feed-item-{$item->id}");
+    waitFor($page, "@feed-item-{$item->id}");
     $item->update(['image_url' => 'https://93.184.216.34/image.png']);
 
     $page->hover("@feed-item-{$item->id}")->click("@feed-item-save-idea-{$item->id}");
-    waitForCreateFeedsTestId($page, "feed-item-saved-{$item->id}");
+    waitFor($page, "@feed-item-saved-{$item->id}");
 
     $page->assertVisible("@feed-item-saved-{$item->id}")
         ->assertMissing("@feed-item-save-idea-{$item->id}")
@@ -203,58 +155,59 @@ test('the scope menu renames in a dialog, moves into a collection and back, and 
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.show', $feed));
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
+    waitFor($page, '@feeds-scope-menu');
 
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-rename');
+    waitFor($page, '@feeds-rename');
     $page->click('@feeds-rename');
-    waitForCreateFeedsDialog($page, 'feeds-rename-dialog');
+    waitForOpen($page, '@feeds-rename-dialog');
 
     expect($page->script("document.querySelector('[data-testid=\"feeds-rename-dialog-input\"]').value"))->toBe('Original');
 
     $page->type('@feeds-rename-dialog-input', 'Renamed')->click('@feeds-rename-dialog-submit');
-    waitForCreateFeedsCondition($page, "document.querySelector('[data-testid=\"feeds-chip-feed-{$feed->id}\"]')?.textContent.includes('Renamed') && !document.querySelector('[data-testid=\"feeds-rename-dialog\"]')");
+    waitForText($page, "@feeds-chip-feed-{$feed->id}", 'Renamed');
+    waitForGone($page, '@feeds-rename-dialog');
 
     $page->assertSeeIn("@feeds-chip-feed-{$feed->id}", 'Renamed');
     expect($feed->refresh()->custom_title)->toBe('Renamed');
 
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-rename');
+    waitFor($page, '@feeds-rename');
     $page->click('@feeds-rename');
-    waitForCreateFeedsDialog($page, 'feeds-rename-dialog');
+    waitForOpen($page, '@feeds-rename-dialog');
     $page->type('@feeds-rename-dialog-input', 'Discarded')->click('@feeds-rename-dialog-cancel');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-rename-dialog\"]')");
+    waitForGone($page, '@feeds-rename-dialog');
 
     $page->assertSeeIn('@feeds-scope-name', 'Renamed');
     expect($feed->refresh()->custom_title)->toBe('Renamed');
 
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-move-to');
+    waitFor($page, '@feeds-move-to');
     $page->click('@feeds-move-to');
-    waitForCreateFeedsTestId($page, "feeds-move-to-{$collection->id}");
+    waitFor($page, "@feeds-move-to-{$collection->id}");
     $page->click("@feeds-move-to-{$collection->id}");
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-chip-feed-{$feed->id}\"]')");
+    waitForGone($page, "@feeds-chip-feed-{$feed->id}");
 
     expect($feed->refresh()->rss_feed_collection_id)->toBe($collection->id)
         ->and($page->script("!!document.querySelector('[data-testid=\"feeds-collection-chips\"]')"))->toBeFalse();
 
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-move-to');
+    waitFor($page, '@feeds-move-to');
     $page->click('@feeds-move-to');
-    waitForCreateFeedsTestId($page, 'feeds-move-to-none');
+    waitFor($page, '@feeds-move-to-none');
     $page->click('@feeds-move-to-none');
-    waitForCreateFeedsCondition($page, "!!document.querySelector('[data-testid=\"feeds-chips\"] [data-testid=\"feeds-chip-feed-{$feed->id}\"]')");
+    waitForState($page, "@feeds-chips @feeds-chip-feed-{$feed->id}", 'true');
 
     expect($feed->refresh()->rss_feed_collection_id)->toBeNull();
 
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-delete');
+    waitFor($page, '@feeds-delete');
     $page->click('@feeds-delete');
-    waitForCreateFeedsDialog($page, 'confirm-delete-modal');
+    waitForOpen($page, '@confirm-delete-modal');
 
     $page->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action');
-    waitForCreateFeedsCondition($page, "window.location.pathname === '".route('app.create.feeds.index', [], false)."'");
+    waitForPath($page, route('app.create.feeds.index', [], false));
 
     $page->assertMissing("@feeds-chip-feed-{$feed->id}")
         ->assertVisible("@feeds-chip-feed-{$other->id}")
@@ -270,33 +223,33 @@ test('the new menu creates a collection in a dialog and cancel adds nothing', fu
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-new-menu');
+    waitFor($page, '@feeds-new-menu');
 
     $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-new-collection');
+    waitFor($page, '@feeds-new-collection');
 
     $page->assertVisible('@feeds-explore')
         ->assertVisible('@feeds-new-collection');
     expect($page->script("[...document.querySelectorAll('[role=\"menuitem\"]')].length"))->toBe(2);
 
     $page->click('@feeds-new-collection');
-    waitForCreateFeedsDialog($page, 'feeds-new-collection-dialog');
+    waitForOpen($page, '@feeds-new-collection-dialog');
     $page->assertDisabled('@feeds-new-collection-dialog-submit')
         ->type('@feeds-new-collection-dialog-input', 'Research')
         ->click('@feeds-new-collection-dialog-submit');
-    waitForCreateFeedsDatabase($page, fn (): bool => RssFeedCollection::query()->where('workspace_id', $workspace->id)->exists());
+    waitForDatabase($page, fn (): bool => RssFeedCollection::query()->where('workspace_id', $workspace->id)->exists());
 
     $collection = RssFeedCollection::query()->where('workspace_id', $workspace->id)->sole();
-    waitForCreateFeedsTestId($page, "feeds-chip-collection-{$collection->id}");
+    waitFor($page, "@feeds-chip-collection-{$collection->id}");
 
     $page->assertSeeIn("@feeds-chip-collection-{$collection->id}", 'Research');
 
     $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-new-collection');
+    waitFor($page, '@feeds-new-collection');
     $page->click('@feeds-new-collection');
-    waitForCreateFeedsDialog($page, 'feeds-new-collection-dialog');
+    waitForOpen($page, '@feeds-new-collection-dialog');
     $page->type('@feeds-new-collection-dialog-input', 'Nope')->click('@feeds-new-collection-dialog-cancel');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-new-collection-dialog\"]')");
+    waitForGone($page, '@feeds-new-collection-dialog');
 
     $page->assertNoJavaScriptErrors();
     expect(RssFeedCollection::query()->count())->toBe(1)
@@ -313,22 +266,22 @@ test('a collection chip opens a dropdown of its feeds and the label opens the co
     $loose = createFeedsFeed($workspace, ['title' => 'Loose Feed']);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feeds-collection-menu-{$collection->id}");
+    waitFor($page, "@feeds-collection-menu-{$collection->id}");
 
     expect($page->script("[...document.querySelectorAll('[data-testid=\"feeds-chips\"] > [data-testid]')].map((chip) => chip.dataset.testid)"))
         ->toBe(['feeds-chip-all', "feeds-chip-feed-{$outside->id}", "feeds-chip-feed-{$loose->id}", "feeds-collection-chip-{$collection->id}"]);
     $page->click("@feeds-collection-menu-{$collection->id}");
-    waitForCreateFeedsTestId($page, "feeds-collection-menu-item-{$inside->id}");
+    waitFor($page, "@feeds-collection-menu-item-{$inside->id}");
 
     $page->assertVisible("@feeds-collection-menu-item-{$inside->id}")
         ->assertMissing("@feeds-collection-menu-item-{$outside->id}");
 
     $page->click("@feeds-collection-menu-item-{$inside->id}");
-    waitForCreateFeedsCondition($page, "window.location.pathname === '".route('app.create.feeds.show', $inside, false)."'");
-    waitForCreateFeedsTestId($page, "feeds-chip-collection-{$collection->id}");
+    waitForPath($page, route('app.create.feeds.show', $inside, false));
+    waitFor($page, "@feeds-chip-collection-{$collection->id}");
 
     $page->click("@feeds-chip-collection-{$collection->id}");
-    waitForCreateFeedsCondition($page, "window.location.pathname === '".route('app.create.feeds.collections.show', $collection, false)."'");
+    waitForPath($page, route('app.create.feeds.collections.show', $collection, false));
 
     $page->assertNoJavaScriptErrors();
 });
@@ -347,15 +300,15 @@ test('add feed from the collection menu lands the feed in that collection', func
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.collections.show', $collection));
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
+    waitFor($page, '@feeds-scope-menu');
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-add-to-collection');
+    waitFor($page, '@feeds-add-to-collection');
     $page->click('@feeds-add-to-collection');
-    waitForCreateFeedsTestId($page, 'feeds-collection-add-feed');
+    waitFor($page, '@feeds-collection-add-feed');
     $page->click('@feeds-collection-add-feed');
-    waitForCreateFeedsDialog($page, 'feeds-add-dialog');
+    waitForOpen($page, '@feeds-add-dialog');
     $page->type('@feeds-add-url', 'http://93.184.216.34/feed.xml')->click('@feeds-add-submit');
-    waitForCreateFeedsDatabase($page, fn (): bool => RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->exists());
+    waitForDatabase($page, fn (): bool => RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->exists());
 
     expect(RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->sole()->rss_feed_collection_id)->toBe($collection->id);
     $page->assertNoJavaScriptErrors();
@@ -376,15 +329,15 @@ test('explore from the collection menu adds the directory feed into that collect
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.collections.show', $collection));
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
+    waitFor($page, '@feeds-scope-menu');
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-add-to-collection');
+    waitFor($page, '@feeds-add-to-collection');
     $page->click('@feeds-add-to-collection');
-    waitForCreateFeedsTestId($page, 'feeds-collection-explore');
+    waitFor($page, '@feeds-collection-explore');
     $page->click('@feeds-collection-explore');
-    waitForCreateFeedsDialog($page, 'feeds-explore-dialog');
+    waitForOpen($page, '@feeds-explore-dialog');
     $page->click('@feeds-explore-add-0');
-    waitForCreateFeedsTestId($page, 'feeds-explore-remove-0');
+    waitFor($page, '@feeds-explore-remove-0');
 
     expect(RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->sole()->rss_feed_collection_id)->toBe($collection->id);
     $page->assertNoJavaScriptErrors();
@@ -404,9 +357,9 @@ test('the add dialog adds a feed, and shows blocked and duplicate errors inline'
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-new');
+    waitFor($page, '@feeds-new');
     $page->click('@feeds-new');
-    waitForCreateFeedsDialog($page, 'feeds-add-dialog');
+    waitForOpen($page, '@feeds-add-dialog');
 
     $page->assertVisible('@feeds-add-url')
         ->assertDisabled('@feeds-add-submit');
@@ -414,19 +367,19 @@ test('the add dialog adds a feed, and shows blocked and duplicate errors inline'
         ->and($page->script("document.querySelector('[data-testid=\"feeds-add-cancel\"]').compareDocumentPosition(document.querySelector('[data-testid=\"feeds-add-submit\"]')) & Node.DOCUMENT_POSITION_FOLLOWING"))->toBeGreaterThan(0);
 
     $page->type('@feeds-add-url', 'http://127.0.0.1/feed.xml')->click('@feeds-add-submit');
-    waitForCreateFeedsTestId($page, 'feeds-add-error');
+    waitFor($page, '@feeds-add-error');
     $page->assertSeeIn('@feeds-add-error', __('create.feeds.errors.blocked_url'));
 
     $page->clear('@feeds-add-url')->type('@feeds-add-url', 'https://existing.example.com/feed/')->click('@feeds-add-submit');
-    waitForCreateFeedsCondition($page, "document.querySelector('[data-testid=\"feeds-add-error\"]')?.textContent.includes(".json_encode(__('create.feeds.errors.already_added')).')');
+    waitForText($page, '@feeds-add-error', __('create.feeds.errors.already_added'));
     $page->assertSeeIn('@feeds-add-error', __('create.feeds.errors.already_added'));
 
     $page->clear('@feeds-add-url')->type('@feeds-add-url', 'http://93.184.216.34/feed.xml')->click('@feeds-add-submit');
-    waitForCreateFeedsDatabase($page, fn (): bool => RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->exists());
+    waitForDatabase($page, fn (): bool => RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->exists());
 
     $feed = RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->sole();
-    waitForCreateFeedsCondition($page, "window.location.pathname === '".route('app.create.feeds.show', $feed, false)."'");
-    waitForCreateFeedsTestId($page, "feeds-chip-feed-{$feed->id}");
+    waitForPath($page, route('app.create.feeds.show', $feed, false));
+    waitFor($page, "@feeds-chip-feed-{$feed->id}");
 
     $page->assertMissing('@feeds-add-dialog')
         ->assertSeeIn('@feeds-scope-name', 'Fresh Blog')
@@ -448,34 +401,34 @@ test('explore switches categories, adds a directory feed and offers the trash fo
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-new-menu');
+    waitFor($page, '@feeds-new-menu');
     $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-explore');
+    waitFor($page, '@feeds-explore');
     $page->click('@feeds-explore');
-    waitForCreateFeedsDialog($page, 'feeds-explore-dialog');
+    waitForOpen($page, '@feeds-explore-dialog');
 
     $page->assertAttribute('@feeds-explore-category-favorites', 'aria-selected', 'true')
         ->assertVisible('@feeds-explore-grid-favorites');
 
     $page->click('@feeds-explore-add-0');
-    waitForCreateFeedsTestId($page, 'feeds-explore-remove-0');
+    waitFor($page, '@feeds-explore-remove-0');
 
     $page->assertVisible('@feeds-explore-dialog')->assertMissing('@feeds-explore-add-0');
     expect(RssFeed::query()->where('workspace_id', $workspace->id)->where('url', 'http://93.184.216.34/feed.xml')->exists())->toBeTrue()
         ->and(createFeedsToastCount($page))->toBe(0);
 
     $page->click('@feeds-explore-category-tech');
-    waitForCreateFeedsTestId($page, 'feeds-explore-grid-tech');
+    waitFor($page, '@feeds-explore-grid-tech');
 
     $page->assertVisible('@feeds-explore-remove-1')
         ->assertMissing('@feeds-explore-add-1')
         ->assertVisible('@feeds-explore-add-0');
 
     $page->click('@feeds-explore-remove-1');
-    waitForCreateFeedsDialog($page, 'confirm-delete-modal');
+    waitForOpen($page, '@confirm-delete-modal');
     $page->assertMissing('@confirm-delete-input')->click('@confirm-delete-action');
-    waitForCreateFeedsDatabase($page, fn (): bool => ! RssFeed::query()->whereKey($verge->id)->exists());
-    waitForCreateFeedsTestId($page, 'feeds-explore-add-1');
+    waitForDatabase($page, fn (): bool => ! RssFeed::query()->whereKey($verge->id)->exists());
+    waitFor($page, '@feeds-explore-add-1');
 
     $page->assertVisible('@feeds-explore-dialog')
         ->assertVisible('@feeds-explore-add-1')
@@ -491,9 +444,9 @@ test('refresh inside the cooldown keeps the header and shows no toast', function
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-refresh');
+    waitFor($page, '@feeds-refresh');
     $page->click('@feeds-refresh');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-refresh\"]').disabled");
+    waitForState($page, '@feeds-refresh', '!element.disabled');
 
     $page->assertVisible('@feeds-last-refreshed')->assertNoJavaScriptErrors();
     expect(createFeedsToastCount($page))->toBe(0)
@@ -517,23 +470,23 @@ test('explore opened from a feed keeps that feed url, stays there after a direct
 
     $path = route('app.create.feeds.show', $feed, false);
     $page = visit(route('app.create.feeds.show', $feed));
-    waitForCreateFeedsTestId($page, 'feeds-new-menu');
+    waitFor($page, '@feeds-new-menu');
     $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-explore');
+    waitFor($page, '@feeds-explore');
     $page->click('@feeds-explore');
-    waitForCreateFeedsDialog($page, 'feeds-explore-dialog');
+    waitForOpen($page, '@feeds-explore-dialog');
 
     expect($page->script('window.location.pathname'))->toBe($path)
         ->and($page->script('window.location.search'))->toBe('');
 
     $page->click('@feeds-explore-add-0');
-    waitForCreateFeedsTestId($page, 'feeds-explore-remove-0');
+    waitFor($page, '@feeds-explore-remove-0');
 
     expect($page->script('window.location.pathname'))->toBe($path);
     $page->assertSeeIn('@feeds-scope-name', 'Scoped source');
 
     $page->keys('@feeds-explore-dialog', 'Escape');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-explore-dialog\"]')");
+    waitForGone($page, '@feeds-explore-dialog');
 
     expect($page->script('window.location.pathname'))->toBe($path)
         ->and($page->script('window.location.search'))->toBe('');
@@ -547,15 +500,15 @@ test('the add dialog opened from a collection keeps the collection url', functio
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.collections.show', $collection));
-    waitForCreateFeedsTestId($page, 'feeds-new');
+    waitFor($page, '@feeds-new');
     $page->click('@feeds-new');
-    waitForCreateFeedsDialog($page, 'feeds-add-dialog');
+    waitForOpen($page, '@feeds-add-dialog');
 
     expect($page->script('window.location.pathname'))->toBe(route('app.create.feeds.collections.show', $collection, false))
         ->and($page->script('window.location.search'))->toBe('');
 
     $page->click('@feeds-add-cancel');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-add-dialog\"]')");
+    waitForGone($page, '@feeds-add-dialog');
 
     expect($page->script('window.location.search'))->toBe('');
     $page->assertNoJavaScriptErrors();
@@ -567,7 +520,7 @@ test('explore category tabs are a complete tabs pattern with arrow key navigatio
 
     $page = visit(route('app.create.feeds.index'));
     openCreateFeedsExploreFromSplitButton($page);
-    waitForCreateFeedsTestId($page, 'feeds-explore-category-favorites');
+    waitFor($page, '@feeds-explore-category-favorites');
 
     $page->assertAttribute('@feeds-explore-category-favorites', 'tabindex', '0')
         ->assertAttribute('@feeds-explore-grid-favorites', 'role', 'tabpanel')
@@ -575,7 +528,7 @@ test('explore category tabs are a complete tabs pattern with arrow key navigatio
 
     $page->script("document.querySelector('[data-testid=\"feeds-explore-category-favorites\"]').focus()");
     $page->keys('@feeds-explore-category-favorites', 'ArrowRight');
-    waitForCreateFeedsCondition($page, "document.querySelector('[role=\"tab\"][aria-selected=\"true\"]')?.id !== 'feeds-explore-tab-favorites'");
+    waitForCondition($page, "document.querySelector('[role=\"tab\"][aria-selected=\"true\"]')?.id !== 'feeds-explore-tab-favorites'");
 
     expect($page->script("document.activeElement.getAttribute('role')"))->toBe('tab')
         ->and($page->script("document.activeElement.getAttribute('aria-selected')"))->toBe('true')
@@ -594,7 +547,7 @@ test('the feeds page fits a 390px viewport with scrolling chips, a usable split 
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'))->resize(390, 844);
-    waitForCreateFeedsTestId($page, "feed-item-{$item->id}");
+    waitFor($page, "@feed-item-{$item->id}");
 
     expect($page->script('document.documentElement.scrollWidth - window.innerWidth'))->toBeLessThanOrEqual(2)
         ->and($page->script("(() => { const nav = document.querySelector('[data-testid=\"feeds-chips\"]'); return nav.scrollWidth > nav.clientWidth && getComputedStyle(nav).overflowX === 'auto'; })()"))->toBeTrue()
@@ -606,33 +559,33 @@ test('the feeds page fits a 390px viewport with scrolling chips, a usable split 
     expect($page->script("(() => { const r = document.querySelector('[data-testid=\"feed-item-save-idea-{$item->id}\"]').getBoundingClientRect(); return r.right <= window.innerWidth && r.left >= 0; })()"))->toBeTrue();
 
     $page->click('@feeds-new');
-    waitForCreateFeedsDialog($page, 'feeds-add-dialog');
+    waitForOpen($page, '@feeds-add-dialog');
     $page->assertVisible('@feeds-add-url')->assertNoJavaScriptErrors();
 });
 
 function openCreateFeedsExploreFromSplitButton(mixed $page): void
 {
-    waitForCreateFeedsTestId($page, 'feeds-new-menu');
+    waitFor($page, '@feeds-new-menu');
     $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-explore');
+    waitFor($page, '@feeds-explore');
     $page->click('@feeds-explore');
-    waitForCreateFeedsDialog($page, 'feeds-explore-dialog');
+    waitForOpen($page, '@feeds-explore-dialog');
 }
 
 function openCreateFeedsExploreFromCollectionMenu(mixed $page): void
 {
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
+    waitFor($page, '@feeds-scope-menu');
     $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-add-to-collection');
+    waitFor($page, '@feeds-add-to-collection');
     $page->click('@feeds-add-to-collection');
-    waitForCreateFeedsTestId($page, 'feeds-collection-explore');
+    waitFor($page, '@feeds-collection-explore');
     $page->click('@feeds-collection-explore');
-    waitForCreateFeedsDialog($page, 'feeds-explore-dialog');
+    waitForOpen($page, '@feeds-explore-dialog');
 }
 
 function assertCreateFeedsExploreClosed(mixed $page, string $path): void
 {
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-explore-dialog\"]')");
+    waitForGone($page, '@feeds-explore-dialog');
 
     $page->assertMissing('@feeds-explore-dialog');
     expect($page->script('window.location.pathname'))->toBe($path)
@@ -658,15 +611,15 @@ test('explore closes with the close button, escape and an outside click wherever
 
     openCreateFeedsExploreFromSplitButton($page);
     $page->click('@feeds-explore-category-tech');
-    waitForCreateFeedsTestId($page, 'feeds-explore-grid-tech');
+    waitFor($page, '@feeds-explore-grid-tech');
     $page->click('@dialog-close');
     assertCreateFeedsExploreClosed($page, $path);
 
     openCreateFeedsExploreFromCollectionMenu($page);
     $page->click('@feeds-explore-add-0');
-    waitForCreateFeedsTestId($page, 'feeds-explore-remove-0');
+    waitFor($page, '@feeds-explore-remove-0');
     $page->click('@feeds-explore-category-tech');
-    waitForCreateFeedsTestId($page, 'feeds-explore-grid-tech');
+    waitFor($page, '@feeds-explore-grid-tech');
     $page->keys('@feeds-explore-dialog', 'Escape');
     assertCreateFeedsExploreClosed($page, $path);
 
@@ -694,16 +647,16 @@ test('closing explore keeps the item list loading further pages without duplicat
     $scrollToEnd = "document.querySelector('[data-testid=\"feeds-scroll\"]').scrollTop = 100000";
 
     $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-items');
+    waitFor($page, '@feeds-items');
     $page->script($scrollToEnd);
-    waitForCreateFeedsTestId($page, 'feeds-caught-up');
+    waitFor($page, '@feeds-caught-up');
 
     openCreateFeedsExploreFromSplitButton($page);
     $page->click('@dialog-close');
     assertCreateFeedsExploreClosed($page, route('app.create.feeds.index', [], false));
 
     $page->script($scrollToEnd);
-    waitForCreateFeedsCondition($page, "{$articles}.length === 45");
+    waitForCondition($page, "{$articles}.length === 45");
 
     expect($page->script("{$articles}.length"))->toBe(45)
         ->and($page->script("new Set({$articles}.map((article) => article.dataset.testid)).size"))->toBe(45);
@@ -719,7 +672,7 @@ test('the create tabs stay put while the chips scroll away with the feed list', 
     $this->actingAs($user);
 
     $page = visit(route('app.create.feeds.index'))->resize(1280, 700);
-    waitForCreateFeedsTestId($page, 'feeds-items');
+    waitFor($page, '@feeds-items');
 
     $tabsTop = "document.querySelector('[data-testid=\"create-tabs\"]').getBoundingClientRect().top";
     $chipsBottom = "document.querySelector('[data-testid=\"feeds-chips\"]').getBoundingClientRect().bottom";
@@ -727,7 +680,7 @@ test('the create tabs stay put while the chips scroll away with the feed list', 
     $before = $page->script($tabsTop);
 
     $page->script("document.querySelector('[data-testid=\"feeds-scroll\"]').scrollTop = 600");
-    waitForCreateFeedsCondition($page, "document.querySelector('[data-testid=\"feeds-scroll\"]').scrollTop > 0");
+    waitForState($page, '@feeds-scroll', 'element.scrollTop > 0');
 
     expect($page->script($tabsTop))->toBe($before)
         ->and($page->script("{$chipsBottom} <= {$tabsBottom}"))->toBeTrue();

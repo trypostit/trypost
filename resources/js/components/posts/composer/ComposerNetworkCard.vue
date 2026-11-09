@@ -5,6 +5,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import ContentTypeRadioGroup from '@/components/posts/editor/ContentTypeRadioGroup.vue';
 import type { ContentTypeOption } from '@/composables/usePlatformLogo';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
+import { isShiftEnter } from '@/lib/keyboard';
 import {
     CAPTIONLESS_CONTENT_TYPES,
     MEDIALESS_CONTENT_TYPES,
@@ -97,12 +98,7 @@ const onCaptionKeydown = (event: KeyboardEvent): void => {
         return;
     }
 
-    if (
-        props.threadable &&
-        event.key === 'Enter' &&
-        event.shiftKey &&
-        !event.isComposing
-    ) {
+    if (props.threadable && isShiftEnter(event)) {
         event.preventDefault();
         emit('start-thread');
     }

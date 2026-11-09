@@ -6,20 +6,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceSignature;
 
-function waitForSignaturesPageTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function signaturesPageOwner(): array
 {
     $user = User::factory()->create();
@@ -38,7 +24,7 @@ test('the signatures page without signatures shows only the centered illustratio
     $this->actingAs($user);
 
     $page = visit(route('app.signatures.index'));
-    waitForSignaturesPageTestId($page, 'signatures-empty');
+    waitFor($page, '@signatures-empty');
 
     $page->assertVisible('@signatures-empty-illustration')
         ->assertMissing('@header-title')
@@ -56,7 +42,7 @@ test('the signatures page without signatures shows only the centered illustratio
     JS))->toBeTrue();
 
     $page->click('@signatures-empty-create');
-    waitForSignaturesPageTestId($page, 'create-signature-sheet');
+    waitFor($page, '@create-signature-sheet');
 
     $page->assertVisible('@create-signature-sheet')->assertNoJavaScriptErrors();
 });
@@ -67,7 +53,7 @@ test('a signature search without results keeps the header and search and shows t
     $this->actingAs($user);
 
     $page = visit(route('app.signatures.index', ['search' => 'nothing-matches']));
-    waitForSignaturesPageTestId($page, 'empty-state');
+    waitFor($page, '@empty-state');
 
     $page->assertVisible('@header-title')
         ->assertVisible('@create-signature-button')
@@ -85,7 +71,7 @@ test('clearing a signature search never flashes the no signatures state', functi
     $this->actingAs($user);
 
     $page = visit(route('app.signatures.index', ['search' => 'nothing-matches']));
-    waitForSignaturesPageTestId($page, 'header-search-input');
+    waitFor($page, '@header-search-input');
 
     $flashed = $page->script(<<<'JS'
         (async () => {
@@ -114,7 +100,7 @@ test('the signatures empty state is never cut off on a short screen', function (
     $this->actingAs($user);
 
     $page = visit(route('app.signatures.index'));
-    waitForSignaturesPageTestId($page, 'signatures-empty');
+    waitFor($page, '@signatures-empty');
     $page->resize(375, 480);
 
     expect($page->script(<<<'JS'

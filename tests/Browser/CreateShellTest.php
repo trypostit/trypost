@@ -6,31 +6,9 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForCreateShellTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function waitForCreateShellMenuSettled(mixed $page): void
 {
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                const menu = document.querySelector('[data-testid="sidebar-new-menu"]');
-                if (menu && menu.getAnimations({ subtree: true }).every((animation) => animation.playState !== 'running')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForState($page, '@sidebar-new-menu', "element.getAnimations({ subtree: true }).every((animation) => animation.playState !== 'running')");
 }
 
 function createShellUser(): User
@@ -52,9 +30,9 @@ test('the new menu lists its items in order for an admin and each one opens its 
     $this->actingAs(createShellUser());
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-member');
+    waitFor($page, '@sidebar-new-member');
     waitForCreateShellMenuSettled($page);
 
     expect($page->script('[...document.querySelectorAll(\'[data-testid^="sidebar-new-"]:not([data-testid="sidebar-new-menu"]):not([data-testid$="-icon"])\')].map((el) => el.dataset.testid)'))
@@ -62,40 +40,26 @@ test('the new menu lists its items in order for an admin and each one opens its 
     expect($page->script("document.querySelector('[data-testid=\"sidebar-new-menu\"]').getBoundingClientRect().top >= document.querySelector('[data-testid=\"sidebar-new\"]').getBoundingClientRect().bottom"))->toBeTrue();
 
     $page->click('@sidebar-new-channel');
-    waitForCreateShellTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
     $page->assertVisible('@connect-channel-dialog')
         ->keys('@connect-channel-dialog', 'Escape');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (!document.querySelector('[data-testid="connect-channel-dialog"]')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForGone($page, '@connect-channel-dialog');
 
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-member');
+    waitFor($page, '@sidebar-new-member');
     waitForCreateShellMenuSettled($page);
     $page->click('@sidebar-new-member');
-    waitForCreateShellTestId($page, 'invite-member-dialog');
+    waitFor($page, '@invite-member-dialog');
     $page->assertVisible('@invite-member-dialog')
         ->assertVisible('#invite-email')
         ->click('@invite-member-cancel');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (!document.querySelector('[data-testid="invite-member-dialog"]')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForGone($page, '@invite-member-dialog');
 
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-idea');
+    waitFor($page, '@sidebar-new-idea');
     waitForCreateShellMenuSettled($page);
     $page->click('@sidebar-new-idea');
-    waitForCreateShellTestId($page, 'create-header');
+    waitFor($page, '@create-header');
 
     $page->assertVisible('@create-header')
         ->assertScript('location.pathname', parse_url(route('app.create.ideas.create'), PHP_URL_PATH))
@@ -106,11 +70,11 @@ test('the new menu opens the post composer', function () {
     $this->actingAs(createShellUser());
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-post');
+    waitFor($page, '@sidebar-new-post');
     $page->click('@sidebar-new-post');
-    waitForCreateShellTestId($page, 'post-composer-dialog');
+    waitFor($page, '@post-composer-dialog');
 
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
 });
@@ -120,8 +84,8 @@ test('the create nav item links to ideas and the ideas tab is current', function
 
     $page = visit(route('app.create.ideas.index'));
     $href = parse_url(route('app.create.ideas.index'), PHP_URL_PATH);
-    waitForCreateShellTestId($page, "nav-{$href}");
-    waitForCreateShellTestId($page, 'create-tab-ideas');
+    waitFor($page, "[data-testid=\"nav-{$href}\"]");
+    waitFor($page, '@create-tab-ideas');
 
     $page->assertVisible("@nav-{$href}")
         ->assertScript("document.querySelector('[data-testid=\"nav-{$href}\"]').getAttribute('href')", $href)
@@ -139,9 +103,9 @@ test('the new menu hides connect channel and invite member from a member', funct
     $this->actingAs($member->fresh());
 
     $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
+    waitFor($page, '@sidebar-new');
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-idea');
+    waitFor($page, '@sidebar-new-idea');
 
     $page->assertVisible('@sidebar-new-post')
         ->assertMissing('@sidebar-new-channel')
@@ -153,7 +117,7 @@ test('the create tabs border keeps the same padding as the publish page', functi
     $this->actingAs(createShellUser());
 
     $page = visit(route('app.create.ideas.index'))->resize(1440, 900);
-    waitForCreateShellTestId($page, 'create-tabs');
+    waitFor($page, '@create-tabs');
 
     $edges = $page->script(<<<'JS'
         (() => {

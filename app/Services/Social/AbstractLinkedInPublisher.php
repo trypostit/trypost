@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -15,10 +16,13 @@ use App\Models\SocialAccount;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +40,7 @@ use Throwable;
 abstract class AbstractLinkedInPublisher
 {
     use HasSocialHttpClient;
+    use PublishesThreads;
 
     /** Article title must be under 400 characters, description under 4,086. */
     private const int ARTICLE_TITLE_MAX = 399;
@@ -43,6 +48,14 @@ abstract class AbstractLinkedInPublisher
     private const int ARTICLE_DESCRIPTION_MAX = 4085;
 
     private const int ARTICLE_THUMB_TIMEOUT_SECONDS = 10;
+
+    /**
+     * LinkedIn answers 404 to a comment on a post it has not finished making
+     * available, so the comment is retried from the queue for up to five minutes.
+     */
+    private const int COMMENT_RETRY_DELAY_SECONDS = 30;
+
+    private const int COMMENT_MAX_RETRIES = 10;
 
     /**
      * Characters `little` reserves for mentions, hashtags and templates. Any of
@@ -106,12 +119,28 @@ abstract class AbstractLinkedInPublisher
         }
 
         $this->accessToken = $this->account->access_token;
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 
         try {
-            return $this->dispatchByMedia($content, $post);
+            return $this->publishWithComment($post, $content, $rootHash);
         } catch (TokenExpiredException $e) {
-            return $this->retryWithRefresh($post, $content, $e);
+            return $this->retryWithRefresh($post, $content, $rootHash, $e);
         }
+    }
+
+    /**
+     * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
+     */
+    private function publishWithComment(Post $post, ?string $content, string $rootHash): array
+    {
+        return $this->publishThread(
+            $post,
+            $rootHash,
+            fn (): array => $this->dispatchByMedia($content, $post),
+            fn (string $text, Collection $media, array $previous, array $root): array => [
+                'id' => $this->createComment((string) data_get($root, 'id'), $text),
+            ],
+        );
     }
 
     private function dispatchByMedia(?string $content, Post $post): array
@@ -129,7 +158,7 @@ abstract class AbstractLinkedInPublisher
         return $this->publishPost($content, $media, $post->attachesLinkPreview());
     }
 
-    private function retryWithRefresh(Post $post, ?string $content, TokenExpiredException $originalException): array
+    private function retryWithRefresh(Post $post, ?string $content, string $rootHash, TokenExpiredException $originalException): array
     {
         if ($this->hasRetried) {
             throw $originalException;
@@ -140,8 +169,6 @@ abstract class AbstractLinkedInPublisher
         try {
             app(ConnectionVerifier::class)->refreshToken($this->account);
             $this->accessToken = $this->account->access_token;
-
-            return $this->dispatchByMedia($content, $post);
         } catch (Throwable $e) {
             Log::error("{$this->label()} refresh failed during retry", [
                 'account_id' => $this->account->id,
@@ -149,6 +176,8 @@ abstract class AbstractLinkedInPublisher
             ]);
             throw $originalException;
         }
+
+        return $this->publishWithComment($post, $content, $rootHash);
     }
 
     private function publishPost(?string $content, $media, bool $attachArticle): array
@@ -393,6 +422,44 @@ abstract class AbstractLinkedInPublisher
             'id' => $postId ?? 'unknown',
             'url' => $this->postUrl($postId ?: null),
         ];
+    }
+
+    /**
+     * `/v2/` because the versioned `/rest/socialActions` needs the Community
+     * Management API. Text only: LinkedIn drops the whole comment when it
+     * cannot fetch an image URL.
+     *
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/comments-api
+     */
+    private function createComment(string $postUrn, string $text): string
+    {
+        $response = $this->getHttpClient()->post(
+            "{$this->baseUrl()}/v2/socialActions/".rawurlencode($postUrn).'/comments',
+            [
+                'actor' => $this->authorUrn(),
+                'object' => $postUrn,
+                'message' => ['text' => $text],
+            ],
+        );
+
+        if ($response->notFound()) {
+            throw new PlatformUnavailableException(
+                "{$this->label()} post is not ready for its comment yet",
+                $response->status(),
+                retryDelaySeconds: self::COMMENT_RETRY_DELAY_SECONDS,
+                maxRetries: self::COMMENT_MAX_RETRIES,
+            );
+        }
+
+        if ($response->failed()) {
+            Log::error("{$this->label()} comment creation failed", [
+                'status' => $response->status(),
+                'body' => $this->redactResponseBody($response->body()),
+            ]);
+            $this->handleApiError($response);
+        }
+
+        return (string) $response->header('x-restli-id');
     }
 
     /**

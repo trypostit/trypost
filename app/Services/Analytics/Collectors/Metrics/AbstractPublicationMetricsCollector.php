@@ -11,11 +11,14 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
 use Carbon\CarbonImmutable;
+use Closure;
+use Illuminate\Http\Client\Response;
 
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
@@ -30,6 +33,77 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
         }
 
         return $account;
+    }
+
+    /**
+     * Runs the post's read and, when it fails in a way `$confirmsDeletion` confirms,
+     * reports the post deleted on the network instead of the failure.
+     *
+     * @template TResult
+     *
+     * @param  Closure(): TResult  $read
+     * @param  Closure(AnalyticsCollectionException): bool  $confirmsDeletion
+     * @return TResult
+     */
+    protected function readUnlessDeleted(Closure $read, Closure $confirmsDeletion, Platform $platform): mixed
+    {
+        try {
+            return $read();
+        } catch (AnalyticsCollectionException $exception) {
+            if ($confirmsDeletion($exception)) {
+                throw AnalyticsCollectionException::deletedOnNetwork("{$platform->label()} no longer returns this post.");
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Whether the post's own read says it is missing. Confirming a deletion takes
+     * this and {@see self::stillReads()} on the account's posts, the list its
+     * discovery reads, so a token that lost access is never taken for a deleted post.
+     *
+     * @param  Closure(): Response  $read
+     * @param  Closure(AnalyticsCollectionException): bool  $isMissing
+     */
+    protected function readsMissing(Closure $read, Closure $isMissing): bool
+    {
+        try {
+            $read();
+
+            return false;
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowWhenTemporary($exception);
+
+            return $isMissing($exception);
+        }
+    }
+
+    /**
+     * @param  Closure(): Response  $read
+     */
+    protected function stillReads(Closure $read): bool
+    {
+        try {
+            $read();
+
+            return true;
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowWhenTemporary($exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * A confirming read that failed only for now is rethrown, so the job retries
+     * instead of settling the post's read without a confirmation.
+     */
+    private function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
+    {
+        if (in_array($exception->category, ['rate_limited', 'transient'], true)) {
+            throw $exception;
+        }
     }
 
     /**

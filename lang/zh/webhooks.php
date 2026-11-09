@@ -90,6 +90,8 @@ return [
         'post_partially_published' => '帖子部分发布',
         'post_failed' => '帖子失败',
         'post_deleted' => '帖子已删除',
+        'post_deleted_on_network' => '帖子已在网络上删除',
+        'post_restored' => '帖子已回到网络',
     ],
     'event_descriptions' => [
         'post_created' => '创建新帖子时。',
@@ -98,6 +100,8 @@ return [
         'post_published' => '帖子在频道上发布时。',
         'post_failed' => '帖子发布失败时。',
         'post_deleted' => '帖子被删除时。',
+        'post_deleted_on_network' => '已发布的帖子在网络上被删除时。',
+        'post_restored' => '已删除的帖子重新出现在网络上时。',
     ],
     'http_reasons' => [
         'unknown' => '未知',

@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Los hilos de publicaciones no están disponibles en esta red.',
             'reply_empty' => 'Una respuesta del hilo está vacía.',
             'reply_too_long' => 'Una respuesta supera el límite de :limit caracteres en :over.',
+            'too_many' => '{1} Esta publicación admite solo un comentario.|[0,*] Esta publicación admite hasta :max respuestas.',
+            'add_comment' => 'Añadir comentario',
+            'comment_placeholder' => 'Añade un enlace o más contexto',
+            'comment_label' => 'Tu comentario',
+            'remove_comment' => 'Quitar comentario',
+            'comment_too_long' => 'Tu comentario supera el límite de :limit caracteres por :over.',
+            'comment_empty' => 'Tu comentario está vacío.',
+            'comment_attachments' => 'Los comentarios de LinkedIn no admiten archivos multimedia.',
         ],
 
         'pinterest' => [
@@ -1059,6 +1067,11 @@ return [
             'view_post' => 'Ver publicación',
             'edit_labels' => 'Editar etiquetas',
             'edit_labels_failed' => 'No se pudieron actualizar las etiquetas. Inténtalo de nuevo.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Eliminado',
+            'title' => 'Eliminado en :network',
+            'hint' => 'Se eliminó después de publicarse, así que su enlace y sus insights ya no están disponibles.',
         ],
         'created_by' => 'Creado por :name :when',
         'welcome' => [

@@ -80,10 +80,9 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
 
     $page->click('@share-chart-color-green')
         ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true');
-    waitForCondition($page, <<<'JS'
+    waitForState($page, '@share-chart-preview', <<<'JS'
         (() => {
-            const canvas = document.querySelector('[data-testid="share-chart-preview"]');
-            const [r, g, b] = canvas.getContext('2d').getImageData(2, Math.round(canvas.height / 2), 1, 1).data;
+            const [r, g, b] = element.getContext('2d').getImageData(2, Math.round(element.height / 2), 1, 1).data;
 
             return `${r},${g},${b}` === '217,241,209';
         })()

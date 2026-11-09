@@ -319,6 +319,9 @@ const hasActions = computed(
                     />
                 </span>
             </div>
+            <div v-if="$slots['after-actions']" :class="{ 'px-4': isStacked }">
+                <slot name="after-actions" />
+            </div>
         </div>
     </article>
 </template>

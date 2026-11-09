@@ -11,36 +11,6 @@ use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 
 /**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
-function waitForComposerAutosaveTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerAutosaveCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-/**
  * @return array{0: User, 1: Workspace, 2: SocialAccount}
  */
 function composerAutosaveWorkspace(): array
@@ -68,15 +38,15 @@ function composerAutosaveJs(User $user, Workspace $workspace): string
 
 function openComposerForAutosave(mixed $page): void
 {
-    waitForComposerAutosaveTestId($page, 'posts-new-post');
+    waitFor($page, '@posts-new-post');
     $page->click('@posts-new-post');
-    waitForComposerAutosaveTestId($page, 'composer-base-content');
+    waitFor($page, '@composer-base-content');
 }
 
 function closeComposerForAutosave(mixed $page): void
 {
     $page->click('@composer-close');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 }
 
 /**
@@ -118,13 +88,13 @@ test('an unfinished post is offered back and resume restores its text and channe
     expect($page->script("{$draft}.content"))->toBe('Half written idea');
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->assertSeeIn('@composer-resume-preview', 'Half written idea')
         ->assertVisible('@composer-resume-accounts')
         ->assertSeeIn('@composer-resume-discard', 'Discard')
         ->assertSeeIn('@composer-resume-confirm', 'Resume post')
         ->click('@composer-resume-confirm');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="composer-resume-dialog"]\')');
+    waitForGone($page, '@composer-resume-dialog');
 
     $page->assertValue("@composer-caption-{$account->id}", 'Half written idea')
         ->assertVisible("@composer-account-{$account->id}")
@@ -141,9 +111,9 @@ test('discarding the unfinished post clears it so the next open does not ask aga
     closeComposerForAutosave($page);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-discard');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="composer-resume-dialog"]\')');
+    waitForGone($page, '@composer-resume-dialog');
     $page->assertValue('@composer-base-content', '');
 
     $draft = composerAutosaveJs($user, $workspace);
@@ -163,7 +133,7 @@ test('saving a draft clears the unfinished post', function () {
     openComposerForAutosave($page);
     writeUnfinishedPost($page, $account, 'Saved for real');
     $page->click('@composer-save-draft');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
     $draft = composerAutosaveJs($user, $workspace);
@@ -190,7 +160,7 @@ test('editing an existing post never offers the unfinished post', function () {
     closeComposerForAutosave($page);
 
     $edit = $page->navigate(route('app.posts.edit', $post));
-    waitForComposerAutosaveTestId($edit, 'composer-base-content');
+    waitFor($edit, '@composer-base-content');
     $edit->assertValue('@composer-base-content', 'Existing post')
         ->assertMissing('@composer-resume-dialog');
 
@@ -216,10 +186,10 @@ test('resume drops expired temporary uploads and keeps media owned by an idea or
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-{$account->id}-media-item-1");
-    waitForComposerAutosaveCondition($page, "{$draft}?.media?.length === 2");
+    waitFor($page, "@composer-{$account->id}-media-item-1");
+    waitForCondition($page, "{$draft}?.media?.length === 2");
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"composer-{$account->id}-media-item-\"]').length"))->toBe(2)
         ->and($page->script("{$draft}?.media?.map((item) => item.id) ?? null"))->toBe(['fresh-upload', 'owned-media']);
@@ -250,7 +220,7 @@ test('the composer still works when browser storage throws', function () {
     $page->assertMissing('@composer-resume-dialog');
     writeUnfinishedPost($page, $account, 'Still saves');
     $page->click('@composer-save-draft');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::where('workspace_id', $workspace->id)->sole()->content)->toBe('Still saves');
     $page->assertNoJavaScriptErrors();
@@ -273,9 +243,9 @@ test('an idea opened as a post neither prompts nor overwrites the unfinished pos
     seedComposerAutosave($page, $user, $workspace->id, ['content' => 'Original unfinished', 'accountIds' => [$account->id]]);
 
     $page->navigate(route('app.create.ideas.show', $idea));
-    waitForComposerAutosaveTestId($page, 'idea-editor-create-post');
+    waitFor($page, '@idea-editor-create-post');
     $page->click('@idea-editor-create-post');
-    waitForComposerAutosaveCondition($page, 'document.querySelector(\'[data-testid="composer-base-content"]\')?.value === "Hello from the idea"');
+    waitForState($page, '@composer-base-content', "element.value === 'Hello from the idea'");
     $page->assertMissing('@composer-resume-dialog')
         ->fill('@composer-base-content', 'Edited idea text');
     closeComposerForAutosave($page);
@@ -284,7 +254,7 @@ test('an idea opened as a post neither prompts nor overwrites the unfinished pos
 
     $page->navigate(route('app.posts.index'));
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->assertSeeIn('@composer-resume-preview', 'Original unfinished')
         ->assertNoJavaScriptErrors();
 });
@@ -303,9 +273,9 @@ test('a custom date already in the past falls back to the default mode', functio
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'composer-submit');
+    waitFor($page, '@composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('now');
     $page->assertNoJavaScriptErrors();
@@ -326,11 +296,11 @@ test('a failed save keeps the unfinished post and marks a pruned upload on its t
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-{$account->id}-media-item-0");
+    waitFor($page, "@composer-{$account->id}-media-item-0");
     $page->click('@composer-save-draft');
-    waitForComposerAutosaveTestId($page, "composer-{$account->id}-media-error-0");
+    waitFor($page, "@composer-{$account->id}-media-error-0");
 
     $page->assertSeeIn("@composer-{$account->id}-media-error-0", 'This upload expired. Add the file again.')
         ->assertVisible('@post-composer-dialog');
@@ -352,14 +322,14 @@ test('resuming a single channel adopts its own caption as the post text', functi
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-caption-{$account->id}");
-    waitForComposerAutosaveCondition($page, "{$draft}?.content === 'Channel text'");
+    waitFor($page, "@composer-caption-{$account->id}");
+    waitForCondition($page, "{$draft}?.content === 'Channel text'");
 
     $page->assertValue("@composer-caption-{$account->id}", 'Channel text')
         ->fill("@composer-caption-{$account->id}", 'Channel text edited');
-    waitForComposerAutosaveCondition($page, "{$draft}?.content === 'Channel text edited'");
+    waitForCondition($page, "{$draft}?.content === 'Channel text edited'");
 
     expect($page->script("{$draft}.overrides['{$account->id}']?.content ?? null"))->toBeNull();
     $page->assertNoJavaScriptErrors();
@@ -376,11 +346,11 @@ test('logging out removes the user\'s unfinished posts in every workspace, keepi
     setBrowserStorageItem($page, $user, 'emoji.recents', ['🚀']);
     $page->script("localStorage.setItem('trypost:unrelated', 'kept')");
 
-    waitForComposerAutosaveTestId($page, 'sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspace-menu');
     $page->click('@sidebar-workspace-menu');
-    waitForComposerAutosaveTestId($page, 'logout-button');
+    waitFor($page, '@logout-button');
     $page->click('@logout-button');
-    waitForComposerAutosaveCondition($page, "{$draft} === null");
+    waitForCondition($page, "{$draft} === null");
 
     expect(browserStorageItem($page, $user, 'composer.autosave', 'other-workspace'))->toBeNull()
         ->and(browserStorageItem($page, $user, 'emoji.recents'))->toBe(['🚀'])
@@ -404,9 +374,9 @@ test('a restored custom time keeps its moment in the channel zone', function () 
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'composer-submit');
+    waitFor($page, '@composer-submit');
 
     $local = CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo');
     expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
@@ -414,7 +384,7 @@ test('a restored custom time keeps its moment in the channel zone', function () 
         ->and($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom');
 
     $page->click('@composer-submit');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($local->utc()->toIso8601String());
@@ -435,11 +405,11 @@ test('an unfinished post from the old shared editor restores one card per networ
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-caption-{$linkedin->id}");
+    waitFor($page, "@composer-caption-{$linkedin->id}");
 
-    waitForComposerAutosaveCondition($page, "{$draft}?.overrides?.['{$linkedin->id}']?.content !== undefined");
+    waitForCondition($page, "{$draft}?.overrides?.['{$linkedin->id}']?.content !== undefined");
     expect($page->script("{$draft}.overrides"))->toEqual([
         $linkedin->id => ['content' => 'Shared text', 'media' => []],
         $x->id => ['content' => 'X text', 'media' => []],
@@ -474,14 +444,14 @@ test('two pages of one network restore the text of the page that owns one', func
     ]);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-caption-{$first->id}");
+    waitFor($page, "@composer-caption-{$first->id}");
 
     $page->assertValue("@composer-caption-{$first->id}", 'Second page text')
         ->assertNoJavaScriptErrors()
         ->click('@composer-save-draft');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     expect(composerAutosaveSavedContents($workspace))->toEqual([
         $first->id => 'Second page text',
@@ -498,16 +468,16 @@ test('resuming an unfinished post keeps its thread replies', function () {
     openComposerForAutosave($page);
     writeUnfinishedPost($page, $bluesky, 'Thread root');
     $page->click('@thread-start');
-    waitForComposerAutosaveTestId($page, 'thread-reply-0');
+    waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Kept reply');
     $draft = composerAutosaveJs($user, $workspace);
-    waitForComposerAutosaveCondition($page, "{$draft}?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0] === 'Kept reply'");
+    waitForCondition($page, "{$draft}?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0] === 'Kept reply'");
     closeComposerForAutosave($page);
 
     openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
+    waitFor($page, '@composer-resume-dialog');
     $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'thread-reply-collapsed-0');
+    waitFor($page, '@thread-reply-collapsed-0');
 
     $page->assertSeeIn('@thread-reply-collapsed-0', 'Kept reply')
         ->assertValue("@composer-caption-{$bluesky->id}", 'Thread root')

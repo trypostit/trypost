@@ -96,7 +96,7 @@ enum Source: string
             self::GoogleDrive => [
                 'api_key' => (string) config('services.google_media.api_key'),
                 'app_id' => (string) config('services.google_media.app_id'),
-                'picker_sdk' => (string) config('trypost.media_sources.google_drive.picker_sdk'),
+                'picker_sdk' => config('trypost.media_sources.google_drive.picker_sdk'),
             ],
             default => [],
         };

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Services\Social\Telegram\TelegramApi;
 use App\Services\Social\Telegram\TelegramConnectCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,9 +37,7 @@ class TelegramController extends SocialController
             'code' => $code,
             'nonce' => data_get(TelegramConnectCode::decode($code), 'nonce'),
             'bot_username' => config('trypost.platforms.telegram.bot_username'),
-            'bot_url' => filled(config('trypost.platforms.telegram.bot_username'))
-                ? rtrim((string) config('trypost.platforms.telegram.deep_link'), '/').'/'.config('trypost.platforms.telegram.bot_username')
-                : null,
+            'bot_url' => TelegramApi::botUrl(),
             'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }

@@ -492,6 +492,14 @@ return [
             'unsupported' => '此网络不支持帖子串。',
             'reply_empty' => '帖子串中的一条回复为空。',
             'reply_too_long' => '一条回复超出 :limit 字符上限 :over 个字符。',
+            'too_many' => '{1} 此帖子只能添加一条评论。|[0,*] 此帖子最多可添加 :max 条回复。',
+            'add_comment' => '添加评论',
+            'comment_placeholder' => '添加链接或更多背景信息',
+            'comment_label' => '你的评论',
+            'remove_comment' => '移除评论',
+            'comment_too_long' => '你的评论超出 :limit 个字符的限制 :over 个字符。',
+            'comment_empty' => '你的评论是空的。',
+            'comment_attachments' => 'LinkedIn 评论不能包含媒体。',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => '查看帖子',
             'edit_labels' => '编辑标签',
             'edit_labels_failed' => '无法更新标签。请重试。',
+        ],
+        'deleted_on_network' => [
+            'badge' => '已删除',
+            'title' => '已在 :network 删除',
+            'hint' => '该帖子发布后已被删除，链接和 Insights 不再可用。',
         ],
         'created_by' => '创建者：:name :when',
         'welcome' => [

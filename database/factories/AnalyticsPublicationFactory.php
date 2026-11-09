@@ -44,8 +44,8 @@ class AnalyticsPublicationFactory extends Factory
             'account_display_name' => fake()->name(),
             'account_username' => fake()->userName(),
             'account_avatar_url' => fake()->imageUrl(),
-            'first_seen_at' => now(),
-            'last_seen_at' => now(),
+            'first_seen_at' => now()->subHour(),
+            'last_seen_at' => now()->subHour(),
             'provider_synced_at' => now(),
             'provider_metadata' => null,
         ];

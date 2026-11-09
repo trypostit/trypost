@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Sequências de posts não estão disponíveis nesta rede.',
             'reply_empty' => 'Uma resposta da sequência está vazia.',
             'reply_too_long' => 'Uma resposta passa do limite de :limit caracteres em :over.',
+            'too_many' => '{1} Este post aceita só um comentário.|[0,*] Este post aceita até :max respostas.',
+            'add_comment' => 'Comentar',
+            'comment_placeholder' => 'Adicione um link ou mais contexto',
+            'comment_label' => 'Seu comentário',
+            'remove_comment' => 'Remover comentário',
+            'comment_too_long' => 'Seu comentário passa do limite de :limit caracteres em :over.',
+            'comment_empty' => 'Seu comentário está vazio.',
+            'comment_attachments' => 'Comentários no LinkedIn não aceitam mídia.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'Ver post',
             'edit_labels' => 'Editar labels',
             'edit_labels_failed' => 'Não foi possível atualizar as labels. Tente novamente.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Excluído',
+            'title' => 'Excluído no :network',
+            'hint' => 'Foi removido depois de publicado, então o link e os insights dele não estão mais disponíveis.',
         ],
         'created_by' => 'Criado por :name :when',
         'welcome' => [

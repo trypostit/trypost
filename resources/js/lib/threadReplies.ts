@@ -2,7 +2,10 @@ import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { THREAD_REPLY_CONTENT_TYPES } from '@/types/network-options';
+import {
+    THREAD_MAX_REPLIES,
+    THREAD_REPLY_CONTENT_TYPES,
+} from '@/types/network-options';
 import type { XPoll } from '@/types/x';
 
 /**
@@ -23,6 +26,11 @@ export const newThreadReply = (): ThreadReply => ({
     text: '',
     media: [],
 });
+
+export const insertThreadReply = (
+    replies: ThreadReply[],
+    position: number,
+): ThreadReply[] => replies.toSpliced(position, 0, newThreadReply());
 
 /** A reply with nothing in it yet: no text, no media and no poll. */
 export const isBlankThreadReply = ({
@@ -84,4 +92,34 @@ export const threadReplyContentType = (
     }
 
     return THREAD_REPLY_CONTENT_TYPES[platform];
+};
+
+export const threadMaxReplies = (platform: string): number =>
+    THREAD_MAX_REPLIES[platform] ?? 0;
+
+export const repliesAreComments = (platform: string): boolean =>
+    THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;
+
+export const replyTooLongKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_too_long';
+    }
+
+    return 'posts.form.thread.reply_too_long';
+};
+
+export const startThreadKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.add_comment';
+    }
+
+    return 'posts.form.thread.start';
+};
+
+export const replyEmptyKey = (platform: string): string => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_empty';
+    }
+
+    return 'posts.form.thread.reply_empty';
 };

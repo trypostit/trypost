@@ -45,6 +45,13 @@ class PostPlatformMetaRules
     /** Instagram takes up to three collaborators on a feed post, carousel or reel. */
     public const INSTAGRAM_MAX_COLLABORATORS = 3;
 
+    /**
+     * What a post needs before it is scheduled or published, told to MCP
+     * clients by every tool that schedules or publishes, so a new rule is
+     * written here once.
+     */
+    public const SCHEDULING_REQUIREMENTS = 'Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text), an X poll (content_type x_poll) meta.poll with at least 2 options and duration_minutes plus text as its question (a reply poll in meta.thread_replies needs the same, its text being the question); list-content-types-tool lists the TikTok, Pinterest and Discord ones per platform as required_meta. A scheduled or published post also needs text or media; an X poll needs text and takes no media.';
+
     /** An Instagram username, with or without its leading @. */
     public const INSTAGRAM_USERNAME_PATTERN = '/^@?[A-Za-z0-9._]{1,30}$/';
 
@@ -247,7 +254,7 @@ class PostPlatformMetaRules
     public static function documentation(): string
     {
         return implode(' ', [
-            'Per-platform metadata. A thread on X, Bluesky or Mastodon is meta.thread_replies (see below).',
+            'Per-platform metadata. A thread on X, Bluesky or Mastodon, or a comment on LinkedIn, is meta.thread_replies (see below).',
             'TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish; call get-tiktok-creator-info-tool first and pick one of its privacy_level_options, and keep allow_comments/allow_duet/allow_stitch false when it reports them disabled) + flags allow_comments, disclose (commercial content), brand_content_toggle (paid partnership), brand_organic_toggle (your own brand); on tiktok_video also allow_duet, allow_stitch and is_aigc (AI-generated content label), on tiktok_photo also auto_add_music. SELF_ONLY cannot be combined with brand_content_toggle.',
             'Mastodon: spoiler_text (content warning, ≤500; counts toward the 500-character post limit).',
             'Pinterest: board_id (required to publish — call list-pinterest-boards-tool first, or create-pinterest-board-tool), title (≤100), link (destination URL). Pin description comes from the post content; a video pin cover frame is the media item meta.cover_offset_ms.',
@@ -260,7 +267,7 @@ class PostPlatformMetaRules
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
-            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X only; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
+            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X; on LinkedIn (profile and page) a post takes one reply, published as a comment from the same profile or page, text only, up to 3000 characters; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
         ]);
     }
 

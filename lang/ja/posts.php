@@ -492,6 +492,14 @@ return [
             'unsupported' => 'このネットワークでは投稿のスレッドを利用できません。',
             'reply_empty' => 'スレッド内の返信が空です。',
             'reply_too_long' => '返信が:limit文字の上限を:over文字超えています。',
+            'too_many' => '{1} この投稿に追加できるコメントは1件だけです。|[0,*] この投稿には返信を:max件まで追加できます。',
+            'add_comment' => 'コメントを追加',
+            'comment_placeholder' => 'リンクや補足を追加',
+            'comment_label' => 'あなたのコメント',
+            'remove_comment' => 'コメントを削除',
+            'comment_too_long' => 'コメントが:limit文字の上限を:over文字超えています。',
+            'comment_empty' => 'コメントが空です。',
+            'comment_attachments' => 'LinkedInのコメントにはメディアを添付できません。',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => '投稿を表示',
             'edit_labels' => 'ラベルを編集',
             'edit_labels_failed' => 'ラベルを更新できませんでした。もう一度お試しください。',
+        ],
+        'deleted_on_network' => [
+            'badge' => '削除済み',
+            'title' => ':network で削除済み',
+            'hint' => '公開後に削除されたため、リンクと Insights は利用できなくなりました。',
         ],
         'created_by' => '作成者: :name :when',
         'welcome' => [

@@ -89,7 +89,7 @@ test('labels, download hosts and public config', function () {
 
     expect(Source::GoogleDrive->label())->toBe('Google Drive')
         ->and(Source::Canva->downloadHosts())->toBe(['*.canva.com', 'export.example.com'])
-        ->and(Source::GoogleDrive->publicConfig())->toBe(['api_key' => 'key', 'app_id' => 'app', 'picker_sdk' => (string) config('trypost.media_sources.google_drive.picker_sdk')])
+        ->and(Source::GoogleDrive->publicConfig())->toBe(['api_key' => 'key', 'app_id' => 'app', 'picker_sdk' => config('trypost.media_sources.google_drive.picker_sdk')])
         ->and(Source::GooglePhotos->publicConfig())->toBe([])
         ->and(Source::Canva->publicConfig())->toBe([])
         ->and(Source::Unsplash->publicConfig())->toBe([]);

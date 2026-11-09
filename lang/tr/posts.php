@@ -492,6 +492,14 @@ return [
             'unsupported' => 'Gönderi zincirleri bu ağda kullanılamaz.',
             'reply_empty' => 'Zincirdeki bir yanıt boş.',
             'reply_too_long' => 'Bir yanıt :limit karakter sınırını :over aşıyor.',
+            'too_many' => '{1} Bu gönderiye yalnızca bir yorum eklenebilir.|[0,*] Bu gönderiye en fazla :max yanıt eklenebilir.',
+            'add_comment' => 'Yorum ekle',
+            'comment_placeholder' => 'Bir bağlantı veya daha fazla bağlam ekleyin',
+            'comment_label' => 'Yorumunuz',
+            'remove_comment' => 'Yorumu kaldır',
+            'comment_too_long' => 'Yorumunuz :limit karakter sınırını :over karakter aşıyor.',
+            'comment_empty' => 'Yorumunuz boş.',
+            'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => 'Gönderiyi görüntüle',
             'edit_labels' => 'Etiketleri düzenle',
             'edit_labels_failed' => 'Etiketler güncellenemedi. Tekrar deneyin.',
+        ],
+        'deleted_on_network' => [
+            'badge' => 'Silindi',
+            'title' => ':network üzerinde silindi',
+            'hint' => 'Yayınlandıktan sonra kaldırıldı, bu yüzden bağlantısı ve Insights verileri artık kullanılamıyor.',
         ],
         'created_by' => 'Oluşturan: :name :when',
         'welcome' => [

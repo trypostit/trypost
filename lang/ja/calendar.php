@@ -23,6 +23,7 @@ return [
         'recurring' => '繰り返し',
         'publishing' => '公開中',
         'published' => '公開済み',
+        'deleted' => '削除済み',
         'failed' => '失敗',
     ],
     'status' => [

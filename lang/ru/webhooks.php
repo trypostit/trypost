@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Пост частично опубликован',
         'post_failed' => 'Ошибка публикации',
         'post_deleted' => 'Пост удалён',
+        'post_deleted_on_network' => 'Пост удалён в сети',
+        'post_restored' => 'Пост снова в сети',
     ],
     'event_descriptions' => [
         'post_created' => 'Когда создаётся новый пост.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Когда пост публикуется в канале.',
         'post_failed' => 'Когда пост не удаётся опубликовать.',
         'post_deleted' => 'Когда пост удалён.',
+        'post_deleted_on_network' => 'Когда опубликованный пост удалён в сети.',
+        'post_restored' => 'Когда удалённый пост снова появился в сети.',
     ],
     'http_reasons' => [
         'unknown' => 'Неизвестно',

@@ -58,8 +58,8 @@ test('a scheduled instagram feed image that became too wide fails without callin
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 
     Http::assertNotSent(fn (Request $request): bool => $request->method() !== 'GET'
-        && (str_starts_with($request->url(), (string) config('trypost.platforms.instagram.graph_api'))
-            || str_starts_with($request->url(), (string) config('trypost.platforms.instagram-facebook.graph_api'))));
+        && (str_starts_with($request->url(), config('trypost.platforms.instagram.graph_api'))
+            || str_starts_with($request->url(), config('trypost.platforms.instagram-facebook.graph_api'))));
 });
 
 test('a still valid instagram feed image reaches the publisher', function () {

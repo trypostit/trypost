@@ -15,18 +15,6 @@ use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
-function waitForImportedCardTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return list<string>
  */
@@ -102,7 +90,7 @@ test('an imported sent card looks like a sent post and offers only the allowed a
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForImportedCardTestId($page, "post-card-{$post->id}");
+    waitFor($page, "@post-card-{$post->id}");
 
     $page->assertSeeIn("@post-card-{$post->id}", __('posts.content_types.instagram_reel.label'))
         ->assertSeeIn("@post-card-{$post->id}", 'Posted straight from the app')
@@ -123,7 +111,7 @@ test('an imported sent card looks like a sent post and offers only the allowed a
         ->toBe('svg');
 
     $page->script("document.querySelector('[data-testid=\"post-published-via-{$post->id}\"]').dispatchEvent(new PointerEvent('pointermove', {bubbles: true, pointerType: 'mouse'}))");
-    waitForImportedCardTestId($page, "post-published-via-tooltip-{$post->id}");
+    waitFor($page, "@post-published-via-tooltip-{$post->id}");
     $page->assertSeeIn("@post-published-via-tooltip-{$post->id}", __('posts.publish.published_directly_from', ['network' => 'Instagram']));
 
     expect($page->script("document.querySelector('[data-testid=\"post-thumbnail-video-{$post->id}-0\"]').getAttribute('src')"))
@@ -135,12 +123,12 @@ test('an imported sent card looks like a sent post and offers only the allowed a
         ->toBeTrue();
 
     $page->click("@post-card-menu-{$post->id}");
-    waitForImportedCardTestId($page, "post-card-menu-content-{$post->id}");
+    waitFor($page, "@post-card-menu-content-{$post->id}");
 
     expect(importedCardMenuItems($page, $post->id))->toBe(['post-duplicate', 'post-details-open', 'post-share-link', 'post-copy-link']);
 
     $page->click("@post-details-open-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertSeeIn("@post-details-published-via-{$post->id}", 'Instagram')
         ->assertPresent("@post-details-published-via-icon-{$post->id}")
@@ -177,7 +165,7 @@ test('content type badges follow the display rules for each platform', function 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
 
     foreach ($expectations as [$post, $contentType, $showsBadge]) {
-        waitForImportedCardTestId($page, "post-card-{$post->id}");
+        waitFor($page, "@post-card-{$post->id}");
         $page->assertPresent("@post-card-{$post->id}");
 
         if ($showsBadge) {
@@ -232,12 +220,12 @@ test('on a phone an imported sent card hides the published via line and right-al
     JS;
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']))->resize(390, 844);
-    waitForImportedCardTestId($page, "post-actions-{$post->id}");
+    waitFor($page, "@post-actions-{$post->id}");
 
     expect($page->script($measure))->toBe(['viaVisible' => false, 'actionsAtEnd' => true]);
 
     $page->resize(1280, 800);
-    waitForImportedCardTestId($page, "post-published-via-{$post->id}");
+    waitFor($page, "@post-published-via-{$post->id}");
 
     expect($page->script($measure)['viaVisible'])->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -263,16 +251,16 @@ test('on a phone the details dialog of an imported post hides the published via 
     JS;
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']))->resize(390, 844);
-    waitForImportedCardTestId($page, "post-card-menu-{$post->id}");
+    waitFor($page, "@post-card-menu-{$post->id}");
     $page->click("@post-card-menu-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-open-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
-    waitForImportedCardTestId($page, "post-card-menu-details-{$post->id}");
+    waitFor($page, "@post-card-menu-details-{$post->id}");
 
     expect($page->script($measure))->toBe(['viaVisible' => false, 'viewVisible' => true, 'menuAtEnd' => true]);
 
     $page->resize(1280, 800);
-    waitForImportedCardTestId($page, "post-details-view-{$post->id}");
+    waitFor($page, "@post-details-view-{$post->id}");
 
     $desktop = $page->script($measure);
     expect($desktop['viaVisible'])->toBeTrue()
@@ -291,13 +279,13 @@ test('a trypost sent post keeps the created by footer and shows its metrics in i
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForImportedCardTestId($page, "post-card-menu-{$post->id}");
+    waitFor($page, "@post-card-menu-{$post->id}");
     $page->assertSeeIn("@post-created-by-{$post->id}", $user->name)
         ->assertMissing("@post-published-via-{$post->id}");
     $page->click("@post-card-menu-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-open-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertSeeIn("@post-details-created-by-{$post->id}", $user->name)
         ->assertPresent("@post-details-metrics-{$post->id}")
@@ -313,11 +301,11 @@ test('a draft shows no metrics band in its details', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForImportedCardTestId($page, "post-card-menu-{$post->id}");
+    waitFor($page, "@post-card-menu-{$post->id}");
     $page->click("@post-card-menu-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-open-{$post->id}");
+    waitFor($page, "@post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
-    waitForImportedCardTestId($page, "post-details-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
     $page->assertSeeIn("@post-details-created-by-{$post->id}", $user->name)
         ->assertMissing("@post-details-metrics-{$post->id}")
@@ -346,7 +334,7 @@ test('the content type badge has an icon for stories and reels and is hidden for
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
 
     foreach ($expectations as [$post, $label]) {
-        waitForImportedCardTestId($page, "post-card-{$post->id}");
+        waitFor($page, "@post-card-{$post->id}");
 
         if ($label === null) {
             $page->assertMissing("@post-content-type-{$post->id}");

@@ -37,8 +37,18 @@ class TelegramApi
         return "{$base}/file/bot{$token}/{$path}";
     }
 
+    /**
+     * The bot's `t.me` link, or null while no bot username is configured.
+     */
+    public static function botUrl(): ?string
+    {
+        $username = config('trypost.platforms.telegram.bot_username');
+
+        return filled($username) ? config('trypost.platforms.telegram.deep_link')."/{$username}" : null;
+    }
+
     private static function baseUrl(): string
     {
-        return rtrim((string) config('trypost.platforms.telegram.api'), '/');
+        return config('trypost.platforms.telegram.api');
     }
 }

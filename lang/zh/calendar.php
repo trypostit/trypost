@@ -23,6 +23,7 @@ return [
         'recurring' => '重复',
         'publishing' => '发布中',
         'published' => '已发布',
+        'deleted' => '已删除',
         'failed' => '已失败',
     ],
     'status' => [

@@ -492,6 +492,14 @@ return [
             'unsupported' => '이 네트워크에서는 게시물 스레드를 사용할 수 없습니다.',
             'reply_empty' => '스레드의 답글이 비어 있습니다.',
             'reply_too_long' => '답글이 :limit자 제한을 :over자 초과합니다.',
+            'too_many' => '{1} 이 게시물에는 댓글을 하나만 달 수 있습니다.|[0,*] 이 게시물에는 답글을 최대 :max개까지 달 수 있습니다.',
+            'add_comment' => '댓글 추가',
+            'comment_placeholder' => '링크나 추가 설명을 입력하세요',
+            'comment_label' => '내 댓글',
+            'remove_comment' => '댓글 삭제',
+            'comment_too_long' => '댓글이 :limit자 제한을 :over자 초과했습니다.',
+            'comment_empty' => '댓글이 비어 있습니다.',
+            'comment_attachments' => 'LinkedIn 댓글에는 미디어를 첨부할 수 없습니다.',
         ],
 
         'pinterest' => [
@@ -1058,6 +1066,11 @@ return [
             'view_post' => '게시물 보기',
             'edit_labels' => '라벨 편집',
             'edit_labels_failed' => '라벨을 업데이트하지 못했습니다. 다시 시도해 주세요.',
+        ],
+        'deleted_on_network' => [
+            'badge' => '삭제됨',
+            'title' => ':network에서 삭제됨',
+            'hint' => '게시 후 삭제되어 링크와 Insights를 더 이상 사용할 수 없습니다.',
         ],
         'created_by' => '작성자: :name :when',
         'welcome' => [

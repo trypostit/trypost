@@ -27,6 +27,8 @@ enum ContentType: string
     // LinkedIn Page
     case LinkedInPagePost = 'linkedin_page_post';
 
+    case LinkedInComment = 'linkedin_comment';
+
     // Facebook
     case FacebookPost = 'facebook_post';
     case FacebookReel = 'facebook_reel';
@@ -89,6 +91,7 @@ enum ContentType: string
             self::InstagramReel => 'Reel',
             self::InstagramStory => 'Story',
             self::LinkedInPost, self::LinkedInPagePost => 'Post',
+            self::LinkedInComment => 'Comment',
             self::FacebookPost => 'Post',
             self::FacebookReel => 'Reel',
             self::FacebookStory => 'Story',
@@ -124,7 +127,7 @@ enum ContentType: string
     {
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => SocialPlatform::Instagram,
-            self::LinkedInPost => SocialPlatform::LinkedIn,
+            self::LinkedInPost, self::LinkedInComment => SocialPlatform::LinkedIn,
             self::LinkedInPagePost => SocialPlatform::LinkedInPage,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
@@ -214,6 +217,7 @@ enum ContentType: string
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
             self::LinkedInPost, self::LinkedInPagePost => 10,
+            self::LinkedInComment => 0,
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
             self::TikTokVideo => 1,
@@ -287,13 +291,14 @@ enum ContentType: string
     }
 
     /**
-     * Every network we publish to accepts QuickTime/MOV. Bluesky's stored
-     * embed lexicon is `video/mp4`, but its video service accepts MOV
-     * (`video/quicktime`) and transcodes it — same list as the official app.
+     * Every type that takes video accepts QuickTime/MOV: every network we
+     * publish to does. Bluesky's stored embed lexicon is `video/mp4`, but its
+     * video service accepts MOV (`video/quicktime`) and transcodes it — same
+     * list as the official app.
      */
     public function acceptsMov(): bool
     {
-        return true;
+        return $this->supportsVideo();
     }
 
     /**
@@ -487,7 +492,7 @@ enum ContentType: string
             self::ThreadsPost, self::ThreadsGhostPost => ['1:1', '4:5', '1.91:1'],
             self::BlueskyPost, self::MastodonPost => ['1:1', '16:9'],
             self::GoogleBusinessPost => ['4:3', '1:1'],
-            self::TelegramPost, self::DiscordMessage => self::defaultCropPresets(),
+            self::TelegramPost, self::DiscordMessage, self::LinkedInComment => self::defaultCropPresets(),
         };
     }
 
@@ -506,7 +511,7 @@ enum ContentType: string
      */
     public function supportsAltText(): bool
     {
-        return $this->platform()->supportsAltText();
+        return $this->supportsImage() && $this->platform()->supportsAltText();
     }
 
     /**
@@ -682,7 +687,7 @@ enum ContentType: string
             'captionless' => $this->isCaptionless(),
             'document_must_be_alone' => $this->supportsDocument(),
             'supports_thread_replies' => ThreadReplies::supports($this->platform()),
-            'max_thread_replies' => ThreadReplies::supports($this->platform()) ? ThreadReplies::MAX_REPLIES : null,
+            'max_thread_replies' => ThreadReplies::supports($this->platform()) ? ThreadReplies::maxReplies($this->platform()) : null,
         ];
     }
 
@@ -732,6 +737,7 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => true,
             self::LinkedInPost, self::LinkedInPagePost => true,
+            self::LinkedInComment => false,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => true,
             self::TikTokVideo => true,
             self::TikTokPhoto => false,
@@ -761,6 +767,7 @@ enum ContentType: string
             self::ThreadsGhostPost => false,
             self::XPoll => false,
             self::PinterestVideoPin => false,
+            self::LinkedInComment => false,
             default => true,
         };
     }
@@ -811,7 +818,7 @@ enum ContentType: string
     public function requiresMedia(): bool
     {
         return match ($this) {
-            self::LinkedInPost, self::LinkedInPagePost => false,
+            self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment => false,
             self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost => false,
             self::BlueskyPost => false,
@@ -834,11 +841,10 @@ enum ContentType: string
      */
     public function compatiblePlatforms(): array
     {
-        $primary = $this->platform();
-
-        return match ($primary) {
-            SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
-            default => [$primary],
+        return match (true) {
+            $this === self::LinkedInComment => [],
+            $this->platform() === SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
+            default => [$this->platform()],
         };
     }
 
@@ -867,14 +873,9 @@ enum ContentType: string
      */
     public static function forPlatform(SocialPlatform $platform): array
     {
-        $effective = match ($platform) {
-            SocialPlatform::InstagramFacebook => SocialPlatform::Instagram,
-            default => $platform,
-        };
-
         return array_filter(
             self::cases(),
-            fn (self $type) => $type->platform() === $effective
+            fn (self $type) => $type->isCompatibleWith($platform)
         );
     }
 
