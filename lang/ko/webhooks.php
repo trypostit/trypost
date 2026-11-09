@@ -90,6 +90,8 @@ return [
         'post_partially_published' => '부분 게시됨',
         'post_failed' => '게시 실패',
         'post_deleted' => '게시물 삭제됨',
+        'post_deleted_on_network' => '네트워크에서 게시물 삭제됨',
+        'post_restored' => '게시물이 네트워크에 복귀함',
     ],
     'event_descriptions' => [
         'post_created' => '새 게시물이 생성될 때.',
@@ -98,6 +100,8 @@ return [
         'post_published' => '게시물이 채널에 게시될 때.',
         'post_failed' => '게시물 게시에 실패할 때.',
         'post_deleted' => '게시물이 삭제될 때.',
+        'post_deleted_on_network' => '게시된 게시물이 네트워크에서 삭제될 때.',
+        'post_restored' => '삭제된 게시물이 네트워크에 다시 표시될 때.',
     ],
     'http_reasons' => [
         'unknown' => '알 수 없음',

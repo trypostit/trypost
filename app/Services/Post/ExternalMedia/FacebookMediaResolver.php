@@ -13,7 +13,7 @@ class FacebookMediaResolver extends AbstractMediaResolver
 
     public function files(SocialAccount $account, AnalyticsPublication $publication): array
     {
-        $api = (string) config('trypost.platforms.facebook.graph_api');
+        $api = config('trypost.platforms.facebook.graph_api');
         $attachment = (array) data_get($this->getJson($account, "{$api}/{$publication->remote_id}", ['fields' => self::FIELDS]), 'attachments.data.0', []);
         $items = data_get($attachment, 'subattachments.data') ?: [$attachment];
 

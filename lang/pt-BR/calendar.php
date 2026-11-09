@@ -23,6 +23,7 @@ return [
         'recurring' => 'Recorrente',
         'publishing' => 'Publicando',
         'published' => 'Publicado',
+        'deleted' => 'Excluído',
         'failed' => 'Falhou',
     ],
     'status' => [

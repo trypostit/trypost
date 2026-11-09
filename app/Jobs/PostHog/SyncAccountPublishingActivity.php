@@ -67,7 +67,7 @@ class SyncAccountPublishingActivity implements ShouldBeUniqueUntilProcessing, Sh
 
         $latestPublication = $account->posts()
             ->createdInTryPost()
-            ->publicationPublished()
+            ->wentOut()
             ->whereNotNull('posts.published_at')
             ->latest('posts.published_at')
             ->latest('posts.publication_updated_at')

@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
+import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,10 @@ import {
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
-import type { PublicationAnalyticsDetail } from '@/types/analytics';
+import {
+    PublicationAvailability,
+    type PublicationAnalyticsDetail,
+} from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
 import { PostStatus } from '@/types/post';
 
@@ -37,6 +41,10 @@ const open = defineModel<boolean>('open', { required: true });
 const publication = computed(() => props.detail.publication);
 
 const status = getPostStatusConfig(PostStatus.Published);
+
+const isDeletedOnNetwork = computed(
+    () => publication.value.availability === PublicationAvailability.Deleted,
+);
 
 const accountName = computed(
     () =>
@@ -79,7 +87,12 @@ const openMediaPreview = (): void => {
                         class="flex flex-wrap items-center gap-2"
                         as="div"
                     >
+                        <PostDeletedOnNetworkBadge
+                            v-if="isDeletedOnNetwork"
+                            :data-testid="`publication-details-deleted-on-network-${publication.id}`"
+                        />
                         <Badge
+                            v-else
                             :variant="status.variant"
                             class="h-6 gap-1 px-2 [&>svg]:size-4"
                         >

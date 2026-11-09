@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Enums\Notification\Type;
-use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PostHog\TrackPostFailed;
 use App\Jobs\PostHog\TrackPostPublished;
@@ -53,7 +52,7 @@ class FinalizePostPublication
                 return null;
             }
 
-            $successful = $post->publish_status === PublishStatus::Published;
+            $successful = $post->publish_status->wentOut();
 
             if ($successful) {
                 $post->markAsPublished();

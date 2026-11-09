@@ -429,12 +429,19 @@ class SocialAccount extends Model
     }
 
     /**
-     * Base URL of the Mastodon instance this account lives on, without a
-     * trailing slash.
+     * The Bluesky server (PDS) this account signed in through.
      */
-    public function mastodonInstance(): string
+    protected function blueskyService(): Attribute
     {
-        return rtrim((string) data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')), '/');
+        return Attribute::get(fn (): string => data_get($this->meta, 'service') ?? config('trypost.platforms.bluesky.default_service'));
+    }
+
+    /**
+     * The Mastodon instance this account lives on.
+     */
+    protected function mastodonInstance(): Attribute
+    {
+        return Attribute::get(fn (): string => data_get($this->meta, 'instance') ?? config('trypost.platforms.mastodon.default_instance'));
     }
 
     /**

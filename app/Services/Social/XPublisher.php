@@ -483,7 +483,7 @@ class XPublisher
 
         // Videos/GIFs (and any finalize that reports processing_info) must finish
         // before we attach the media_id to a tweet — otherwise X returns
-        // invalid-request / invalid media IDs.
+        // ProblemType::InvalidRequest / invalid media IDs.
         $processingInfo = data_get($finalizeData, 'data.processing_info')
             ?? data_get($finalizeData, 'processing_info');
 

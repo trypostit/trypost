@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'ラベルを編集',
             'edit_labels_failed' => 'ラベルを更新できませんでした。もう一度お試しください。',
         ],
+        'deleted_on_network' => [
+            'badge' => '削除済み',
+            'title' => ':network で削除済み',
+            'hint' => '公開後に削除されたため、リンクと Insights は利用できなくなりました。',
+        ],
         'created_by' => '作成者: :name :when',
         'welcome' => [
             'title' => 'TryPostへようこそ 👋',

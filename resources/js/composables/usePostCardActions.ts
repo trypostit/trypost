@@ -7,6 +7,8 @@ import { duplicate as duplicatePost } from '@/actions/App/Http/Controllers/App/P
 import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/PostLabelController';
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { filled } from '@/lib/helpers';
+import { postPermalink } from '@/lib/postNetwork';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
 import type {
@@ -80,14 +82,16 @@ export const duplicatePostCard = (post: PostCard): void => {
 
 /** Opens the composer with the sent post's link and every channel of the workspace. */
 export const sharePostCardLink = (post: PostCard): void => {
-    if (!post.platform_url) return;
+    const permalink = postPermalink(post);
+
+    if (!filled(permalink)) return;
 
     const channels = (usePage().props.channels as SidebarChannel[] | undefined) ?? [];
 
     openPostComposer({
         socialAccountIds: channels.map((channel) => channel.id),
         draft: {
-            content: post.platform_url,
+            content: permalink,
             media: [],
             scheduled_at: null,
             label_ids: [],
@@ -96,8 +100,10 @@ export const sharePostCardLink = (post: PostCard): void => {
 };
 
 export const copyPostCardLink = (post: PostCard): void => {
-    if (post.platform_url) {
-        void copyToClipboard(post.platform_url, undefined, {
+    const permalink = postPermalink(post);
+
+    if (filled(permalink)) {
+        void copyToClipboard(permalink, undefined, {
             showSuccessToast: false,
         });
     }

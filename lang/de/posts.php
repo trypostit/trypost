@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Labels bearbeiten',
             'edit_labels_failed' => 'Labels konnten nicht aktualisiert werden. Versuche es erneut.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Gelöscht',
+            'title' => 'Auf :network gelöscht',
+            'hint' => 'Er wurde nach der Veröffentlichung entfernt, daher sind Link und Insights nicht mehr verfügbar.',
+        ],
         'created_by' => 'Erstellt von :name :when',
         'welcome' => [
             'title' => 'Willkommen bei TryPost 👋',

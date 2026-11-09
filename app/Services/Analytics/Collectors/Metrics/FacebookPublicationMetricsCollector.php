@@ -11,7 +11,9 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Each read is optional on its own: Page insights are refused for small Pages,
@@ -20,15 +22,54 @@ use Illuminate\Support\Facades\Log;
  */
 class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
 {
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function postsEdge(): string
     {
-        $this->refusals = [];
+        return 'published_posts';
+    }
+
+    /**
+     * A post read by its bare video id makes no other read of the post, so a
+     * permission refusal there may hide a deleted video: the confirmation reads it.
+     * Only once its reads were refused, never when the Page did not grant reading
+     * it at all, since nothing was read then.
+     */
+    protected function mayBeDeleted(AnalyticsCollectionException $exception, AnalyticsPublication $publication): bool
+    {
+        return parent::mayBeDeleted($exception, $publication)
+            || ($exception->category === 'permission'
+                && filled($this->refusals)
+                && $this->isReadByVideoId($publication));
+    }
+
+    /**
+     * Graph answers a deleted Page post's own node with #10, which also means a missing
+     * permission, and only its insights edge with "object does not exist".
+     */
+    protected function readPost(SocialAccount $account, AnalyticsPublication $publication, string $graph): Response
+    {
+        if ($this->isReadByVideoId($publication)) {
+            return parent::readPost($account, $publication, $graph);
+        }
+
+        return $this->get($account, "{$graph}/{$publication->remote_id}/insights", ['metric' => 'post_media_view', 'period' => 'lifetime']);
+    }
+
+    /**
+     * A Page post id is `{page id}_{post id}`; a video or reel is known by its bare id.
+     */
+    private function isReadByVideoId(AnalyticsPublication $publication): bool
+    {
+        return ! Str::contains($publication->remote_id, '_');
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    {
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
-        $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+        $graph = $account->platform->graphApiUrl();
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, 'video_id');
-        $isVideo = ! $isStory && (filled($videoId) || ! str_contains($publication->remote_id, '_'));
+        $isVideo = ! $isStory && (filled($videoId) || $this->isReadByVideoId($publication));
         $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->remote_id;
         $edge = $isVideo ? 'video_insights' : 'insights';
         $fields = match (true) {
@@ -46,7 +87,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
             $this->refusals[] = 'permission';
         }
 
-        if (! $isStory && str_contains($publication->remote_id, '_')) {
+        if (! $isStory && ! $this->isReadByVideoId($publication)) {
             $post = "{$graph}/{$publication->remote_id}";
             $details = array_merge(
                 $this->optional($account, $post, ['fields' => 'reactions.limit(0).summary(total_count),shares']),
@@ -104,7 +145,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
                 throw $exception;
             }
 
-            $this->refusals[] = $exception->category;
+            $this->recordRefusal($exception);
             Log::info('analytics.facebook_read_refused', [
                 'path' => parse_url($url, PHP_URL_PATH),
                 'category' => $exception->category,

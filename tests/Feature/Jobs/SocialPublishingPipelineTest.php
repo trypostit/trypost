@@ -169,7 +169,7 @@ test('instagram does not duplicate a captionless publication after losing its me
     ]);
     $account = $target->socialAccount;
     $account->update(['scopes' => [...$account->scopes, 'instagram_basic', 'instagram_business_basic']]);
-    $base = $platform->instagramGraphBaseUrl();
+    $base = $platform->graphApiUrl();
     $story = $contentType === ContentType::InstagramStory;
     $discovered = [[
         'id' => 'media-123',

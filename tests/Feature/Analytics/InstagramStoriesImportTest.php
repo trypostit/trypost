@@ -46,7 +46,7 @@ beforeEach(function () {
  */
 function fakeInstagramHistory(SocialAccount $account, array $media, array $stories): void
 {
-    $graph = $account->platform->instagramGraphBaseUrl();
+    $graph = $account->platform->graphApiUrl();
 
     Http::fake([
         "{$graph}/{$account->platform_user_id}/media*" => Http::response(['data' => $media]),
@@ -203,7 +203,7 @@ test('story metrics are scheduled once however many runs see the story', functio
 
 test('a stories permission error does not stop the feed page', function () {
     $account = SocialAccount::factory()->instagram()->create();
-    $graph = $account->platform->instagramGraphBaseUrl();
+    $graph = $account->platform->graphApiUrl();
     Http::fake([
         "{$graph}/{$account->platform_user_id}/media*" => Http::response(['data' => [
             ['id' => 'feed-1', 'media_type' => 'IMAGE', 'timestamp' => '2026-09-28T12:00:00+0000'],

@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Редагувати мітки',
             'edit_labels_failed' => 'Не вдалося оновити мітки. Спробуйте ще раз.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Видалено',
+            'title' => 'Видалено в :network',
+            'hint' => 'Його видалили після публікації, тому посилання та Insights більше недоступні.',
+        ],
         'created_by' => 'Створено: :name :when',
         'welcome' => [
             'title' => 'Вітаємо в TryPost 👋',

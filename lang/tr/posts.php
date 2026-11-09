@@ -1067,6 +1067,11 @@ return [
             'edit_labels' => 'Etiketleri düzenle',
             'edit_labels_failed' => 'Etiketler güncellenemedi. Tekrar deneyin.',
         ],
+        'deleted_on_network' => [
+            'badge' => 'Silindi',
+            'title' => ':network üzerinde silindi',
+            'hint' => 'Yayınlandıktan sonra kaldırıldı, bu yüzden bağlantısı ve Insights verileri artık kullanılamıyor.',
+        ],
         'created_by' => 'Oluşturan: :name :when',
         'welcome' => [
             'title' => 'TryPost\'a hoş geldin 👋',

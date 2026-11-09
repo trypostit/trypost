@@ -35,7 +35,7 @@ class DiscordClient
 
     public function baseUrl(): string
     {
-        return (string) config('trypost.platforms.discord.api');
+        return config('trypost.platforms.discord.api');
     }
 
     /**

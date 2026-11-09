@@ -17,6 +17,8 @@ class AnalyticsCollectionException extends Exception
         string $message,
         public readonly ?CarbonImmutable $retryAt = null,
         public readonly bool $gone = false,
+        public readonly bool $missingObject = false,
+        public readonly bool $deletedOnNetwork = false,
     ) {
         parent::__construct($message);
     }
@@ -31,9 +33,13 @@ class AnalyticsCollectionException extends Exception
         return new self('malformed', $message);
     }
 
-    public static function gone(string $message): self
+    /**
+     * The collector confirmed the network deleted the post, so the post itself is
+     * marked deleted, not only its publication (a bare 404 or 410 is only `gone`).
+     */
+    public static function deletedOnNetwork(string $message): self
     {
-        return new self('malformed', $message, gone: true);
+        return new self('malformed', $message, gone: true, deletedOnNetwork: true);
     }
 
     /**
@@ -53,7 +59,11 @@ class AnalyticsCollectionException extends Exception
         }
     }
 
-    public static function fromResponse(Response $response, string $operation): self
+    /**
+     * `$missingObject` is set by a collector that recognises the network's documented
+     * "this post does not exist" answer, to confirm a deletion before reporting it.
+     */
+    public static function fromResponse(Response $response, string $operation, bool $missingObject = false): self
     {
         $reason = (string) data_get($response->json(), 'error.errors.0.reason', '');
         $category = match (true) {
@@ -70,6 +80,7 @@ class AnalyticsCollectionException extends Exception
             "{$operation} failed with HTTP {$response->status()}",
             RetryAfter::from($response),
             in_array($response->status(), [404, 410], true),
+            $missingObject,
         );
     }
 }

@@ -17,6 +17,7 @@ export const PublishStatus = {
     Retrying: 'retrying',
     Rejected: 'rejected',
     PendingReview: 'pending_review',
+    Deleted: 'deleted',
 } as const;
 
 export type PublishStatusValue = (typeof PublishStatus)[keyof typeof PublishStatus];

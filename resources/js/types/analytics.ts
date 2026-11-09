@@ -287,6 +287,21 @@ export interface PublicationThreadPoll extends PublicationPoll {
     reply: number;
 }
 
+export const PublicationAvailability = {
+    Available: 'available',
+    Deleted: 'deleted',
+    Unavailable: 'unavailable',
+} as const;
+
+export type PublicationAvailabilityValue =
+    (typeof PublicationAvailability)[keyof typeof PublicationAvailability];
+
+export type MetricsUnavailableReason =
+    | 'not_published'
+    | 'deleted_on_network'
+    | 'platform_not_supported'
+    | 'not_collected';
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;
@@ -297,7 +312,7 @@ export interface PublicationAnalyticsDetail {
         platform: string;
         origin: string;
         content_type: string;
-        availability: string;
+        availability: PublicationAvailabilityValue;
         provider_published_at: string | null;
         permalink: string | null;
         excerpt: string | null;

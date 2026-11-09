@@ -23,6 +23,7 @@ return [
         'recurring' => '반복',
         'publishing' => '게시 중',
         'published' => '게시됨',
+        'deleted' => '삭제됨',
         'failed' => '실패',
     ],
     'status' => [

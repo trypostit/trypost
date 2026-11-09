@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Followers;
 
 use App\Dto\Analytics\AccountDailyObservation;
 use App\Models\SocialAccount;
+use App\Services\Social\BlueskyLexicon;
 use Carbon\CarbonImmutable;
 
 class BlueskyFollowerCollector extends AbstractFollowerCollector
@@ -14,7 +15,7 @@ class BlueskyFollowerCollector extends AbstractFollowerCollector
     {
         $response = $this->get(
             $account,
-            config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.actor.getProfile',
+            BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.public_appview'), BlueskyLexicon::GET_PROFILE),
             ['actor' => $account->platform_user_id],
         );
 

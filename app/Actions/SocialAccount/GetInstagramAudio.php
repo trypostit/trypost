@@ -35,7 +35,7 @@ class GetInstagramAudio
 
                 $response = Http::connectTimeout(3)
                     ->timeout(8)
-                    ->get("{$account->platform->instagramGraphBaseUrl()}/{$audioId}", [
+                    ->get("{$account->platform->graphApiUrl()}/{$audioId}", [
                         'user_id' => $account->platform_user_id,
                         'access_token' => $account->access_token,
                     ])

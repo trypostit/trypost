@@ -16,7 +16,7 @@ beforeEach(function () {
 
 function managedPagesGraphApi(): string
 {
-    return (string) config('trypost.platforms.facebook.graph_api');
+    return config('trypost.platforms.facebook.graph_api');
 }
 
 function managedPagesWalk(array $extraFakes = [], array $granted = ['business_management']): ManagedPageList

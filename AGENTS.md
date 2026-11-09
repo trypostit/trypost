@@ -1050,10 +1050,60 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Two status columns.** `posts.status` is the lifecycle (draft,
   pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
   (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
-  retrying, pending_review, published, failed, rejected). Publishers write
+  retrying, pending_review, published, failed, rejected, deleted). Publishers write
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
+- **Deleted on the network.** `publish_status = deleted` means the network
+  deleted a post it published; `status` stays published. Only a deletion the
+  collector confirms moves the post
+  (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
+  read it already makes. Where the network's "does not exist" answer could also
+  mean lost access, an account-level read (the list its discovery reads) must
+  still work (`readUnlessDeleted()`, `readsMissing()` and `stillReads()` on
+  `AbstractPublicationMetricsCollector`; a read that fails only for now is
+  rethrown so the job retries):
+    - YouTube: its own `videos.list` read no longer returns the video.
+    - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
+      code 100 / subcode 33 for the post, and the posts edge still reads; a
+      story is never checked (it expires). A Facebook Page post is checked on
+      its insights edge (`readPost()`): Graph answers its own node with #10,
+      which also means a missing permission.
+    - X: the documented `resource-not-found` problem naming the post, in the
+      `errors` of the lookup's 200 (single and batch alike, checked against a
+      real deleted post); no extra request (X bills each one).
+    - Bluesky: `getPosts` leaves it out, its repository answers
+      `RecordNotFound`, and `listRecords` still reads.
+    - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also
+      means private), and the account's statuses still read.
+    - Pinterest: 404 or 410 on the Pin analytics and on the Pin, and the Pins
+      list still reads.
+
+  Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
+  deleted from private; LinkedIn, Google Business, Telegram and Discord have no
+  read after publishing (#481).
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
+  the publication's row lock, unless a sync saw the post since the second the
+  read started (`last_seen_at` at or after it; a sync earlier in that second
+  only delays the deletion to the next read);
+  a sync that sees it again restores it (`markPublicationRestored()`, which
+  does not rerun the "just published" side effects) and queues a fresh metrics
+  read so a stale discovery page cannot leave it published until the next day.
+  Marking it deleted sends `post.deleted_on_network`, and restoring it sends
+  `post.restored`, never for a post imported from the network, which sends no
+  webhook at all (`ImportExternalPosts`); both also broadcast
+  `post.platform.status.updated` so an open schedule reloads, imported or not. `Post::isDeletedOnNetwork()` is the rule:
+  `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
+  finalizes as published, and it still counts as published for the posting
+  goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
+  `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
+  sync, the importer's matching, TikTok video ids) keep
+  `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
+  dialog, `isDeletedOnNetwork()` and `postPermalink()`
+  (`lib/postNetwork.ts`) decide the badge and the link, and
+  `getPostCardStatusConfig()` (`usePostStatus.ts`) the status shown; the repurpose
+  activity list labels `publish_status` directly. Insights keep the historical
+  numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)
@@ -1251,6 +1301,7 @@ Whenever Laravel has a helper for something, use it instead of a native PHP func
     - Production code: `config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'`, never the literal URL.
     - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
     - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
+    - Every such URL in `config/trypost.php` goes through its `$url(...)` closure, which drops a trailing slash, so a reader appends the path to `config(...)` and never trims or casts it (`ThirdPartyUrlConfigTest`). A new URL key uses `$url('ENV_NAME', 'https://…')`, not `env()`. A server stored on an account (`SocialAccount::bluesky_service`, `mastodon_instance`) is never trimmed either: Bluesky stores the config value and Mastodon trims the instance when it connects.
 
 ## Social Platform API Documentation (official sources)
 

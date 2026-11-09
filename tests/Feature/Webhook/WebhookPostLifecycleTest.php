@@ -12,10 +12,12 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\Webhook\EventType;
 use App\Events\PostCreated;
 use App\Events\PostDeleted;
+use App\Events\PostNetworkPresenceChanged;
 use App\Events\PostStatusChanged;
 use App\Jobs\DispatchWebhook;
 use App\Listeners\Webhook\SendPostCreatedWebhook;
 use App\Listeners\Webhook\SendPostDeletedWebhook;
+use App\Listeners\Webhook\SendPostNetworkPresenceWebhook;
 use App\Listeners\Webhook\SendPostStatusWebhook;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -72,6 +74,7 @@ test('webhook listeners are registered for the post lifecycle events', function 
     Event::assertListening(PostCreated::class, SendPostCreatedWebhook::class);
     Event::assertListening(PostStatusChanged::class, SendPostStatusWebhook::class);
     Event::assertListening(PostDeleted::class, SendPostDeletedWebhook::class);
+    Event::assertListening(PostNetworkPresenceChanged::class, SendPostNetworkPresenceWebhook::class);
 });
 
 test('creating a channel post queues a post.created webhook', function () {

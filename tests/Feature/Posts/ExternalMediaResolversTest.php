@@ -12,10 +12,9 @@ use App\Services\Post\ExternalMedia\BlueskyMediaResolver;
 use App\Services\Post\ExternalMedia\CoverOnlyResolver;
 use App\Services\Post\ExternalMedia\ExternalMediaResolverFactory;
 use App\Services\Post\ExternalMedia\FacebookMediaResolver;
-use App\Services\Post\ExternalMedia\InstagramMediaResolver;
 use App\Services\Post\ExternalMedia\MastodonMediaResolver;
+use App\Services\Post\ExternalMedia\MetaCarouselResolver;
 use App\Services\Post\ExternalMedia\PinterestMediaResolver;
-use App\Services\Post\ExternalMedia\ThreadsMediaResolver;
 use App\Services\Post\ExternalMedia\XMediaResolver;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
@@ -50,9 +49,9 @@ function resolvedUrls(array $files): array
 test('the factory picks one resolver per network', function (Platform $platform, string $resolver) {
     expect(app(ExternalMediaResolverFactory::class)->for($platform))->toBeInstanceOf($resolver);
 })->with([
-    [Platform::Instagram, InstagramMediaResolver::class],
-    [Platform::InstagramFacebook, InstagramMediaResolver::class],
-    [Platform::Threads, ThreadsMediaResolver::class],
+    [Platform::Instagram, MetaCarouselResolver::class],
+    [Platform::InstagramFacebook, MetaCarouselResolver::class],
+    [Platform::Threads, MetaCarouselResolver::class],
     [Platform::Facebook, FacebookMediaResolver::class],
     [Platform::TikTok, CoverOnlyResolver::class],
     [Platform::YouTube, CoverOnlyResolver::class],
@@ -69,7 +68,7 @@ test('instagram returns carousel children in order and drops items without a fil
         ]],
     ])]);
 
-    $files = app(InstagramMediaResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-carousel']));
+    $files = app(MetaCarouselResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-carousel']));
 
     expect(resolvedUrls($files))->toBe(['https://scontent.example.test/a.jpg', 'https://scontent.example.test/b.mp4']);
     Http::assertSent(fn ($request): bool => str_contains((string) $request['fields'], 'children{media_type,media_url}'));
@@ -82,7 +81,7 @@ test('instagram through facebook uses the facebook graph host for a single reel'
         'media_url' => 'https://scontent.example.test/reel.mp4',
     ])]);
 
-    $files = app(InstagramMediaResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-reel']));
+    $files = app(MetaCarouselResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-reel']));
 
     expect(resolvedUrls($files))->toBe(['https://scontent.example.test/reel.mp4']);
 });
@@ -91,7 +90,7 @@ test('instagram media with copyrighted audio exposes no file', function () {
     $account = SocialAccount::factory()->instagram()->create();
     Http::fake([config('trypost.platforms.instagram.graph_api').'/ig-music*' => Http::response(['media_type' => 'VIDEO'])]);
 
-    expect(app(InstagramMediaResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-music'])))->toBe([]);
+    expect(app(MetaCarouselResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'ig-music'])))->toBe([]);
 });
 
 test('threads returns carousel children in order', function () {
@@ -104,7 +103,7 @@ test('threads returns carousel children in order', function () {
         ]],
     ])]);
 
-    $files = app(ThreadsMediaResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'th-1']));
+    $files = app(MetaCarouselResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'th-1']));
 
     expect(resolvedUrls($files))->toBe(['https://scontent.example.test/t1.jpg', 'https://scontent.example.test/t2.jpg']);
 });
@@ -163,7 +162,7 @@ test('a graph error surfaces as a request exception', function () {
     $account = SocialAccount::factory()->instagram()->create();
     Http::fake([config('trypost.platforms.instagram.graph_api').'/*' => Http::response(['error' => ['code' => 4]], 429)]);
 
-    expect(fn () => app(InstagramMediaResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'x'])))
+    expect(fn () => app(MetaCarouselResolver::class)->files($account, resolverPublication($account, ['remote_id' => 'x'])))
         ->toThrow(RequestException::class);
 });
 
@@ -201,7 +200,7 @@ test('the factory covers the open networks', function (Platform $platform, strin
 
 test('mastodon returns image video and gifv attachments in order', function () {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read']]);
-    $instance = $account->mastodonInstance();
+    $instance = $account->mastodon_instance;
     Http::fake(["{$instance}/api/v1/statuses/1100" => Http::response(['media_attachments' => [
         ['type' => 'image', 'url' => 'https://files.example.test/a.png'],
         ['type' => 'audio', 'url' => 'https://files.example.test/b.mp3'],
@@ -217,7 +216,7 @@ test('mastodon returns image video and gifv attachments in order', function () {
 
 test('mastodon reads a public status without a token when the account lacks a read scope', function () {
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['write:statuses'], 'meta' => []]);
-    $instance = rtrim((string) config('trypost.platforms.mastodon.default_instance'), '/');
+    $instance = config('trypost.platforms.mastodon.default_instance');
     Http::fake(["{$instance}/api/v1/statuses/1200" => Http::response(['media_attachments' => [
         ['type' => 'image', 'url' => 'https://files.example.test/d.png'],
     ]])]);
@@ -230,7 +229,7 @@ test('mastodon reads a public status without a token when the account lacks a re
 
 test('bluesky returns full size images and nothing for a video', function () {
     $account = SocialAccount::factory()->bluesky()->create();
-    $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $appView = config('trypost.platforms.bluesky.public_appview');
     Http::fake(["{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::sequence()
         ->push(['posts' => [['embed' => ['images' => [
             ['fullsize' => 'https://cdn.bsky.example.test/1.jpg'],

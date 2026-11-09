@@ -23,6 +23,7 @@ return [
         'recurring' => 'Повторяется',
         'publishing' => 'Публикуется',
         'published' => 'Опубликован',
+        'deleted' => 'Удалён',
         'failed' => 'Ошибка',
     ],
     'status' => [

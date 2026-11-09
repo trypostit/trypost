@@ -7,6 +7,7 @@ namespace App\Support\Analytics;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Uri;
 
 /**
  * Queue rate limits for analytics jobs, keyed where each network enforces its limit.
@@ -57,8 +58,8 @@ class AnalyticsRateLimits
         return match ($account->platform) {
             Platform::X => Limit::perMinute(600)->by("{$network}:app"),
             Platform::TikTok => Limit::perMinute(500)->by("{$network}:app"),
-            Platform::Bluesky => Limit::perMinute(500)->by("{$network}:pds:".parse_url((string) data_get($account->meta, 'service', config('trypost.platforms.bluesky.default_service')), PHP_URL_HOST)),
-            Platform::Mastodon => Limit::perMinute(50)->by("{$network}:instance:{$account->mastodonInstance()}"),
+            Platform::Bluesky => Limit::perMinute(500)->by("{$network}:pds:".Uri::of($account->bluesky_service)->host()),
+            Platform::Mastodon => Limit::perMinute(50)->by("{$network}:instance:{$account->mastodon_instance}"),
             default => null,
         };
     }

@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Пост частково опубліковано',
         'post_failed' => 'Помилка публікації',
         'post_deleted' => 'Пост видалено',
+        'post_deleted_on_network' => 'Пост видалено в мережі',
+        'post_restored' => 'Пост знову в мережі',
     ],
     'event_descriptions' => [
         'post_created' => 'Коли створено новий пост.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Коли пост опубліковано в каналі.',
         'post_failed' => 'Коли пост не вдалося опублікувати.',
         'post_deleted' => 'Коли пост видалено.',
+        'post_deleted_on_network' => 'Коли опублікований пост видалено в мережі.',
+        'post_restored' => 'Коли видалений пост знову з’явився в мережі.',
     ],
     'http_reasons' => [
         'unknown' => 'Невідомо',
