@@ -9,6 +9,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
+use App\Services\Social\Mastodon\MastodonApi;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
@@ -21,7 +22,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
         $response = $this->readUnlessDeleted(
             fn (): Response => $this->get(
                 $account,
-                "{$account->mastodon_instance}/api/v1/statuses/{$publication->remote_id}",
+                MastodonApi::url($account->mastodon_instance, "statuses/{$publication->remote_id}"),
                 authenticated: $account->canReadMastodonStatuses(),
             ),
             fn (AnalyticsCollectionException $exception): bool => $exception->gone && $this->confirmsDeletion($account),
@@ -45,7 +46,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
     private function confirmsDeletion(SocialAccount $account): bool
     {
         return $account->canReadMastodonStatuses() && $this->stillReads(
-            fn (): Response => $this->get($account, "{$account->mastodon_instance}/api/v1/accounts/{$account->platform_user_id}/statuses", ['limit' => 1]),
+            fn (): Response => $this->get($account, MastodonApi::url($account->mastodon_instance, "accounts/{$account->platform_user_id}/statuses"), ['limit' => 1]),
         );
     }
 }

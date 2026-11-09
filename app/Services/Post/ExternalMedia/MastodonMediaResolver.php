@@ -6,6 +6,7 @@ namespace App\Services\Post\ExternalMedia;
 
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
+use App\Services\Social\Mastodon\MastodonApi;
 
 class MastodonMediaResolver extends AbstractMediaResolver
 {
@@ -15,7 +16,7 @@ class MastodonMediaResolver extends AbstractMediaResolver
     {
         $status = $this->getJson(
             $account,
-            "{$account->mastodon_instance}/api/v1/statuses/{$publication->remote_id}",
+            MastodonApi::url($account->mastodon_instance, "statuses/{$publication->remote_id}"),
             authenticated: $account->canReadMastodonStatuses(),
         );
 

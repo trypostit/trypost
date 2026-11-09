@@ -15,6 +15,7 @@ use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
+use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -124,7 +125,7 @@ class MastodonPublisher
     {
         $response = $this->socialHttp()->withToken($account->access_token)
             ->withHeaders(['Idempotency-Key' => $idempotencyKey])
-            ->post("{$instance}/api/v1/statuses", $payload);
+            ->post(MastodonApi::url($instance, 'statuses'), $payload);
 
         if ($response->failed()) {
             Log::error('Mastodon post failed', [
@@ -188,7 +189,7 @@ class MastodonPublisher
             }
 
             try {
-                $response = $request->post("{$instance}/api/v1/media");
+                $response = $request->post(MastodonApi::url($instance, 'media'));
             } catch (ConnectionException $e) {
                 throw new PlatformUnavailableException("Mastodon media upload failed to connect: {$e->getMessage()}");
             } finally {

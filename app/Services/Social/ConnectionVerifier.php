@@ -21,6 +21,7 @@ use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use App\Services\Social\Mastodon\MastodonApi;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
 use App\Support\GoogleBusinessResourceName;
@@ -873,7 +874,7 @@ class ConnectionVerifier
         $instance = $account->mastodon_instance;
 
         $response = Http::withToken($account->access_token)
-            ->get("{$instance}/api/v1/accounts/verify_credentials");
+            ->get(MastodonApi::url($instance, 'accounts/verify_credentials'));
 
         // 403 here (unlike a publish-time 403 on the write-scoped /statuses
         // endpoint) means even read access is gone — verify_credentials is
