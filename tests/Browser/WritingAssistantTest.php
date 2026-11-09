@@ -153,7 +153,7 @@ test('switching channel after a suggestion resets the panel and never writes to 
     $page->click("@composer-account-option-{$linkedIn->id}");
     waitFor($page, "@composer-account-option-{$x->id}");
     $page->click("@composer-account-option-{$x->id}");
-    waitFor($page, '@composer-customization');
+    waitFor($page, "@composer-account-{$linkedIn->id}");
     $page->click("@composer-account-{$linkedIn->id}")
         ->click('@composer-ai-assistant');
     waitFor($page, '@writing-assistant-panel');
