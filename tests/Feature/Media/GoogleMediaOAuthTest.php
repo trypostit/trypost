@@ -73,7 +73,7 @@ function googleMediaTokenUrl(): string
 
 function googleMediaPhotosApi(): string
 {
-    return rtrim((string) config('trypost.media_sources.google_photos.api'), '/').'/v1';
+    return (string) config('trypost.media_sources.google_photos.api').'/v1';
 }
 
 /**

@@ -46,7 +46,7 @@ function fullPostRouter(): Closure
         $discord = config('trypost.platforms.discord.api');
         $telegram = config('trypost.platforms.telegram.api');
         $google = config('trypost.platforms.google_business.local_posts_api');
-        $youtube = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+        $youtube = (string) config('trypost.platforms.youtube.data_api');
 
         return match (true) {
             str_contains($url, 'storage/') && str_ends_with($url, '.mp4') => Http::response(str_repeat("\x00\xff", 2048), 200, ['Content-Type' => 'video/mp4']),

@@ -173,7 +173,7 @@ class UnsplashService
 
     private function website(): string
     {
-        $website = rtrim((string) config('trypost.media_sources.unsplash.website'), '/');
+        $website = (string) config('trypost.media_sources.unsplash.website');
 
         return "{$website}/";
     }

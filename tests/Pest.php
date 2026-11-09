@@ -932,3 +932,27 @@ function recordCanvasDrawing(mixed $page): void
         })();
     JS);
 }
+
+/**
+ * Loads config/trypost.php again with the given environment, the way the
+ * framework reads it at boot and when it builds the config cache.
+ *
+ * @param  array<string, string>  $environment
+ * @return array<string, mixed>
+ */
+function trypostConfigWith(array $environment): array
+{
+    foreach ($environment as $key => $value) {
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
+
+    try {
+        return require config_path('trypost.php');
+    } finally {
+        foreach (array_keys($environment) as $key) {
+            putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+        }
+    }
+}

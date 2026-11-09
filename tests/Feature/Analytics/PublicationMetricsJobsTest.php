@@ -663,7 +663,7 @@ test('a deletion X, Bluesky, Mastodon or Pinterest confirms moves the post', fun
         'resource_id' => $publication->remote_id,
     ]]])]],
     'bluesky' => [Platform::Bluesky, [], fn (AnalyticsPublication $publication, SocialAccount $account): array => [
-        rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+        (string) config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
         "{$account->bluesky_service}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound'], 400),
         "{$account->bluesky_service}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => []]),
     ]],
@@ -672,7 +672,7 @@ test('a deletion X, Bluesky, Mastodon or Pinterest confirms moves the post', fun
         "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([]),
     ]],
     'pinterest' => [Platform::Pinterest, ['pins:read', 'boards:read'], function (AnalyticsPublication $publication): array {
-        $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+        $api = (string) config('trypost.platforms.pinterest.api');
 
         return [
             "{$api}/pins/{$publication->remote_id}*" => Http::response(['code' => 2], 404),

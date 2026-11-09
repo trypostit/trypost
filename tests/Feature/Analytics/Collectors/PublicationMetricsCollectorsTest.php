@@ -154,8 +154,8 @@ test('pinterest preserves its rolling window basis', function () {
 });
 
 test('youtube falls back to current video statistics before Analytics has processed a new video', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response([
             'columnHeaders' => [['name' => 'views'], ['name' => 'likes']],
@@ -286,7 +286,7 @@ test('an unsupported optional Instagram insight does not discard base metrics', 
 });
 
 test('an imported Facebook video fetches video insights through its attachment target', function () {
-    $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+    $graph = (string) config('trypost.platforms.facebook.graph_api');
     $account = SocialAccount::factory()->facebook()->create();
     Http::fake([
         "{$graph}/{$account->platform_user_id}/published_posts*" => Http::response(['data' => [[
@@ -401,8 +401,8 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
 
 test('a youtube video the cache could not keep is read from the response, never reported deleted', function () {
     config()->set('cache.default', 'null');
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [['name' => 'views']], 'rows' => []]),
         "{$dataApi}/videos*" => Http::response(['items' => [['id' => 'video-live', 'statistics' => ['viewCount' => '12']]]]),
@@ -422,8 +422,8 @@ test('a youtube video the cache could not keep is read from the response, never 
 });
 
 test('a youtube video missing from another batch is read again before it is reported deleted', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [['name' => 'views']], 'rows' => []]),
         "{$dataApi}/videos*" => Http::sequence()
@@ -448,8 +448,8 @@ test('a youtube video missing from another batch is read again before it is repo
 
 test('a youtube video cached as missing is read again before it is reported deleted', function () {
     $date = CarbonImmutable::today('UTC');
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     $account = SocialAccount::factory()->create(['platform' => Platform::YouTube]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
@@ -471,8 +471,8 @@ test('a youtube video cached as missing is read again before it is reported dele
 });
 
 test('youtube collects current statistics and every Analytics metric for a short', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response([
             'kind' => 'youtubeAnalytics#resultTable',
@@ -520,8 +520,8 @@ test('youtube collects current statistics and every Analytics metric for a short
 });
 
 test('youtube keeps current video statistics when Analytics refuses the report', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response(['error' => [
             'code' => 403,
@@ -551,8 +551,8 @@ test('youtube keeps current video statistics when Analytics refuses the report',
 });
 
 test('an expired youtube token is refreshed before publication metrics are requested', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         config('trypost.platforms.youtube.oauth_api').'/token' => Http::response([
             'access_token' => 'fresh-token',
@@ -638,7 +638,7 @@ test('mastodon reads a public status without a token that lacks read scope', fun
 ]);
 
 test('facebook keeps public post counts when Page insights are not available', function () {
-    $graph = rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+    $graph = (string) config('trypost.platforms.facebook.graph_api');
     $account = SocialAccount::factory()->facebook()->create();
     Http::fake([
         "{$graph}/page_post/insights*" => Http::response(['error' => [
@@ -671,7 +671,7 @@ test('facebook keeps public post counts when Page insights are not available', f
 });
 
 test('pinterest requests only documented pin metric types and keeps lifetime comments and reactions', function () {
-    $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+    $api = (string) config('trypost.platforms.pinterest.api');
     Http::fake(["{$api}/pins/*/analytics*" => Http::response(['all' => [
         'daily_metrics' => [],
         'summary_metrics' => ['IMPRESSION' => 240, 'SAVE' => 20, 'PIN_CLICK' => 37, 'OUTBOUND_CLICK' => 3, 'SAVE_RATE' => 0.0833],
@@ -743,7 +743,7 @@ test('facebook reports permission and logs the Graph code when every read is ref
     Log::spy();
     $account = SocialAccount::factory()->facebook()->createQuietly();
     Http::fake([
-        rtrim((string) config('trypost.platforms.facebook.graph_api'), '/').'/page_post/insights*' => Http::response(['error' => [
+        (string) config('trypost.platforms.facebook.graph_api').'/page_post/insights*' => Http::response(['error' => [
             'message' => '(#100) The value must be a valid insights metric',
             'type' => 'OAuthException',
             'code' => 100,
@@ -910,8 +910,8 @@ test('an Instagram story collects profile metrics and its navigation breakdown',
 });
 
 test('youtube reads statistics for every due video of the channel in one videos call', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response(['columnHeaders' => [], 'rows' => []]),
         "{$dataApi}/videos*" => fn (Request $request) => Http::response(['items' => collect(explode(',', (string) $request['id']))
@@ -940,8 +940,8 @@ test('youtube reads statistics for every due video of the channel in one videos 
 });
 
 test('youtube keeps current video statistics when Analytics rejects the report as malformed', function () {
-    $analyticsApi = rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/');
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $analyticsApi = (string) config('trypost.platforms.youtube.analytics_api');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake([
         "{$analyticsApi}/reports*" => Http::response(['error' => [
             'code' => 400,
@@ -970,7 +970,7 @@ test('youtube keeps current video statistics when Analytics rejects the report a
 });
 
 test('youtube reports a video it no longer returns as gone', function () {
-    $dataApi = rtrim((string) config('trypost.platforms.youtube.data_api'), '/');
+    $dataApi = (string) config('trypost.platforms.youtube.data_api');
     Http::fake(["{$dataApi}/videos*" => Http::response(['items' => []])]);
     $account = SocialAccount::factory()->youtube()->create();
     $publication = AnalyticsPublication::factory()->create([
@@ -1021,8 +1021,8 @@ function metaGraphBase(Platform $platform): string
 {
     return match ($platform) {
         Platform::Instagram, Platform::InstagramFacebook => $platform->instagramGraphBaseUrl(),
-        Platform::Facebook => rtrim((string) config('trypost.platforms.facebook.graph_api'), '/'),
-        Platform::Threads => rtrim((string) config('trypost.platforms.threads.graph_api'), '/'),
+        Platform::Facebook => (string) config('trypost.platforms.facebook.graph_api'),
+        Platform::Threads => (string) config('trypost.platforms.threads.graph_api'),
     };
 }
 
@@ -1299,7 +1299,7 @@ test('an X post read with its reply polls is reported deleted when the lookup na
 
 test('a Bluesky post the AppView returns is read once, with no deletion check', function () {
     $publication = networkPublication(SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']), '3kpost');
-    $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $appView = (string) config('trypost.platforms.bluesky.public_appview');
     Http::fake(["{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => [['likeCount' => 2, 'replyCount' => 1]]])]);
 
     collectFrom($publication)();
@@ -1311,7 +1311,7 @@ test('a Bluesky post its repository no longer holds is reported deleted while th
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $account->update(['meta' => [...$account->meta, 'service' => $service ?? data_get($account->meta, 'service')]]);
     $publication = networkPublication($account, '3kpost');
-    $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $appView = (string) config('trypost.platforms.bluesky.public_appview');
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
         "{$pds}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound', 'message' => 'Could not locate record'], 400),
@@ -1338,7 +1338,7 @@ test('a Bluesky post its repository no longer holds is reported deleted while th
 test('a Bluesky post the AppView hides, or one whose repository cannot be read, is not reported deleted', function (array $record, array $list) {
     $account = SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']);
     $publication = networkPublication($account, '3kpost');
-    $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+    $appView = (string) config('trypost.platforms.bluesky.public_appview');
     $pds = $account->bluesky_service;
     Http::fake([
         "{$appView}/xrpc/app.bsky.feed.getPosts*" => Http::response(['posts' => []]),
@@ -1400,7 +1400,7 @@ test('a deletion check that fails only for now is retried before anything is rep
     'pinterest Pins fail on the server' => [
         fn (): SocialAccount => SocialAccount::factory()->pinterest()->create(),
         fn (): array => [
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins?*' => Http::response([], 503),
+            (string) config('trypost.platforms.pinterest.api').'/pins?*' => Http::response([], 503),
             '*' => Http::response(['code' => 2], 404),
         ],
         'transient',
@@ -1408,7 +1408,7 @@ test('a deletion check that fails only for now is retried before anything is rep
     'pinterest Pin read is rate limited' => [
         fn (): SocialAccount => SocialAccount::factory()->pinterest()->create(),
         fn (): array => [
-            rtrim((string) config('trypost.platforms.pinterest.api'), '/').'/pins/113000000000000001/analytics*' => Http::response(['code' => 2], 404),
+            (string) config('trypost.platforms.pinterest.api').'/pins/113000000000000001/analytics*' => Http::response(['code' => 2], 404),
             '*' => Http::response([], 429),
         ],
         'rate_limited',
@@ -1416,7 +1416,7 @@ test('a deletion check that fails only for now is retried before anything is rep
     'bluesky record read fails on the server' => [
         fn (): SocialAccount => SocialAccount::factory()->bluesky()->create(['platform_user_id' => 'did:plc:trypost']),
         fn (SocialAccount $account): array => [
-            rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+            (string) config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
             '*' => Http::response([], 503),
         ],
         'transient',
@@ -1425,7 +1425,7 @@ test('a deletion check that fails only for now is retried before anything is rep
 
 test('a Pinterest Pin the account no longer has is reported deleted while its Pins still read', function () {
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');
-    $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+    $api = (string) config('trypost.platforms.pinterest.api');
     Http::fake([
         "{$api}/pins/900000000000000001*" => Http::response(['code' => 2, 'message' => 'Pin not found.'], 404),
         "{$api}/pins?page_size=1" => Http::response(['items' => [['id' => '900000000000000002']]]),
@@ -1436,7 +1436,7 @@ test('a Pinterest Pin the account no longer has is reported deleted while its Pi
 
 test('a Pinterest Pin that still reads, is refused, or whose Pins do not read, is not reported deleted', function (array $pin, array $pins) {
     $publication = networkPublication(SocialAccount::factory()->pinterest()->create(), '900000000000000001');
-    $api = rtrim((string) config('trypost.platforms.pinterest.api'), '/');
+    $api = (string) config('trypost.platforms.pinterest.api');
     Http::fake([
         "{$api}/pins/900000000000000001/analytics*" => Http::response(['code' => 2], 404),
         "{$api}/pins/900000000000000001" => Http::response(...$pin),

@@ -1297,6 +1297,7 @@ Whenever Laravel has a helper for something, use it instead of a native PHP func
     - Production code: `config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'`, never the literal URL.
     - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
     - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
+    - Every such URL in `config/trypost.php` goes through its `$url(...)` closure, which drops a trailing slash, so a reader appends the path to `(string) config(...)` and never trims it (`ThirdPartyUrlConfigTest`). A new URL key uses `$url('ENV_NAME', 'https://…')`, not `env()`. The only trims left are on values stored on an account (`SocialAccount::bluesky_service`, `mastodon_instance`).
 
 ## Social Platform API Documentation (official sources)
 

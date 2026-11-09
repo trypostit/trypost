@@ -23,7 +23,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
 {
     protected function graphBaseUrl(SocialAccount $account): string
     {
-        return rtrim((string) config('trypost.platforms.facebook.graph_api'), '/');
+        return (string) config('trypost.platforms.facebook.graph_api');
     }
 
     protected function postsEdge(): string

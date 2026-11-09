@@ -84,7 +84,7 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
      */
     private function hydrate(SocialAccount $account, Collection $uris): Collection
     {
-        $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+        $appView = (string) config('trypost.platforms.bluesky.public_appview');
         $posts = collect();
 
         foreach ($uris->chunk(self::HYDRATION_BATCH_SIZE) as $batch) {

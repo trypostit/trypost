@@ -299,7 +299,10 @@ test('google drive is not importable or offered with only the login google clien
 });
 
 test('the drive url is built only from the configured host and a plain id', function () {
-    config()->set('trypost.media_sources.google_drive.api', 'https://drive.example.test/drive/v3/');
+    config()->set('trypost.media_sources.google_drive.api', data_get(
+        trypostConfigWith(['GOOGLE_DRIVE_API_URL' => 'https://drive.example.test/drive/v3/']),
+        'media_sources.google_drive.api',
+    ));
 
     $file = GoogleDriveFiles::toRemoteFile('token', ['id' => 'abc-1_2', 'name' => 'a.png']);
 

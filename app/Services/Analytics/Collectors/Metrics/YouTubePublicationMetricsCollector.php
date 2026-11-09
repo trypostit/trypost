@@ -101,7 +101,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             ->values();
 
         $videos = collect((array) $this->get($account,
-            rtrim((string) config('trypost.platforms.youtube.data_api'), '/').'/videos',
+            (string) config('trypost.platforms.youtube.data_api').'/videos',
             ['part' => 'statistics', 'id' => $ids->implode(',')],
         )->json('items', []))->filter(fn (mixed $video): bool => is_array($video))->keyBy('id');
 
@@ -135,7 +135,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
 
         try {
             $response = $this->get($account,
-                rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/').'/reports',
+                (string) config('trypost.platforms.youtube.analytics_api').'/reports',
                 [
                     'ids' => 'channel==MINE',
                     'startDate' => $publication->provider_published_at->toDateString(),

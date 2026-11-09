@@ -21,8 +21,8 @@ it('builds a file download url', function () {
         ->toBe('https://api.telegram.org/file/botTESTTOKEN/photos/file_1.jpg');
 });
 
-it('trims a trailing slash from the configured host', function () {
-    config(['trypost.platforms.telegram.api' => 'https://api.telegram.org/']);
+it('builds the endpoint from a host configured with a trailing slash', function () {
+    config(['trypost.platforms.telegram.api' => data_get(trypostConfigWith(['TELEGRAM_API' => 'https://api.telegram.org/']), 'platforms.telegram.api')]);
 
     expect(TelegramApi::endpoint('getChat'))
         ->toBe('https://api.telegram.org/botTESTTOKEN/getChat');
