@@ -10,6 +10,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
@@ -26,7 +27,7 @@ class ReadPublicationAnalytics
     {
         $publication = AnalyticsPublication::query()
             ->with('socialAccount')
-            ->available()
+            ->whereIn('availability', [PublicationAvailability::Available, PublicationAvailability::Deleted])
             ->whereBelongsTo($workspace)
             ->whereIn('platform', Platform::analyticsValues())
             ->findOrFail($publicationId);
@@ -194,7 +195,7 @@ class ReadPublicationAnalytics
                 'content_type' => $publication->content_type->value,
                 'availability' => $publication->availability->value,
                 'provider_published_at' => $publication->provider_published_at?->toIso8601String(),
-                'permalink' => $publication->permalink,
+                'permalink' => $publication->availability->visiblePermalink($publication->permalink),
                 'excerpt' => $publication->excerpt,
                 'preview_metadata' => $publication->preview_metadata,
                 'poll' => data_get($publication->provider_metadata, 'poll'),

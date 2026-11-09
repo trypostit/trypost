@@ -23,6 +23,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -516,4 +517,27 @@ test('top posts drop the link of a publication the network deleted', function ()
     expect(data_get($top->get($live->id), 'permalink'))->toBe($live->permalink)
         ->and($top->has($deleted->id))->toBeTrue()
         ->and(data_get($top->get($deleted->id), 'permalink'))->toBeNull();
+});
+
+test('publication detail opens a publication the network deleted, without its link', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $publication = analyticsReportPublication($account, now('UTC')->subDays(3)->toDateTimeString(), 5, 1, 6, 100);
+    $publication->update(['availability' => PublicationAvailability::Deleted]);
+
+    $detail = app(ReadPublicationAnalytics::class)->latestForWorkspacePublication($workspace, $publication->id);
+
+    expect(data_get($detail, 'publication.availability'))->toBe(PublicationAvailability::Deleted->value)
+        ->and(data_get($detail, 'publication.permalink'))->toBeNull()
+        ->and(data_get($detail, 'metrics'))->not->toBeEmpty();
+});
+
+test('publication detail never opens a publication that is no longer available', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $publication = analyticsReportPublication($account, now('UTC')->subDays(3)->toDateTimeString(), 5, 1, 6, 100);
+    $publication->update(['availability' => PublicationAvailability::Unavailable]);
+
+    expect(fn () => app(ReadPublicationAnalytics::class)->latestForWorkspacePublication($workspace, $publication->id))
+        ->toThrow(ModelNotFoundException::class);
 });
