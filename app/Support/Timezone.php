@@ -6,6 +6,7 @@ namespace App\Support;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Illuminate\Support\Collection;
 use IntlTimeZone;
 
 class Timezone
@@ -14,21 +15,27 @@ class Timezone
 
     public static function normalize(?string $value): string
     {
-        if (! is_string($value)) {
+        if (blank($value)) {
             return self::DEFAULT;
         }
 
-        $canonical = DateTimeZone::listIdentifiers();
+        $canonical = once(fn (): Collection => collect(DateTimeZone::listIdentifiers())->flip());
 
-        if (in_array($value, $canonical, true)) {
-            return $value;
-        }
+        return collect([$value, IntlTimeZone::getIanaID($value)])
+            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone), self::DEFAULT);
+    }
 
-        $mapped = IntlTimeZone::getIanaID($value);
+    /**
+     * A stored zone made safe to compute with: its canonical identifier, or the
+     * zone itself when PHP knows it without one (Etc/GMT+10), so a zone PHP
+     * understands never shifts to UTC; only one it does not know is replaced.
+     */
+    public static function usable(string $value): string
+    {
+        $known = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
+        $normalized = self::normalize($value);
 
-        return is_string($mapped) && in_array($mapped, $canonical, true)
-            ? $mapped
-            : self::DEFAULT;
+        return $normalized === self::DEFAULT && $known->has($value) ? $value : $normalized;
     }
 
     /**

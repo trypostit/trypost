@@ -63,6 +63,13 @@ test('without an authenticated user the workspace owner time zone is used', func
     expect(connectLinkedIn($workspace)->fresh()->timezone)->toBe('Asia/Tokyo');
 });
 
+test('a new channel takes the canonical zone of a connecting user stored with a legacy alias', function () {
+    [, $workspace] = channelDefaultsWorkspace();
+    $this->actingAs(User::factory()->create(['timezone' => 'Canada/East-Saskatchewan']));
+
+    expect(connectLinkedIn($workspace)->fresh()->timezone)->toBe('America/Regina');
+});
+
 test('reconnecting keeps a customized schedule, goal and time zone', function () {
     [$owner, $workspace] = channelDefaultsWorkspace();
     $this->actingAs($owner);

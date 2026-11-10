@@ -20,6 +20,7 @@ use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
 use App\Support\GoogleBusinessResourceName;
+use App\Support\Timezone;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -52,6 +53,13 @@ class SocialAccount extends Model
 
     /** The X verification types that show a badge: blue (paid), business (gold) and government (gray). */
     public const array X_VERIFIED_BADGES = ['blue', 'business', 'government'];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
+    ];
 
     protected $fillable = [
         'workspace_id',
@@ -358,6 +366,17 @@ class SocialAccount extends Model
     {
         return $this->is_token_expired
             || ($this->platform->extendsAccessTokenOnRefresh() && $this->is_token_expiring_soon);
+    }
+
+    /**
+     * The stored zone read as its canonical identifier, so an alias the tz
+     * database renamed after it was saved never reaches Carbon.
+     */
+    protected function timezone(): Attribute
+    {
+        return Attribute::make(
+            get: fn (string $value): string => Timezone::usable($value),
+        );
     }
 
     protected function avatarUrl(): Attribute

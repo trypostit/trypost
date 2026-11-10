@@ -449,6 +449,37 @@ test('an invalid time zone and an oversized queue window fall back safely', func
                 ->where('queue.queueDays', 14)));
 });
 
+test('a legacy tz alias and a user stored with one show the canonical zone', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tz' => 'Canada/East-Saskatchewan']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+
+    $this->user->update(['timezone' => 'Canada/East-Saskatchewan']);
+
+    $this->get(route('app.posts.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+});
+
+test('the weekly counts of a channel stored with a legacy alias follow its canonical zone', function () {
+    $mondayNight = CarbonImmutable::now('UTC')->next(CarbonImmutable::MONDAY)->setTime(3, 0);
+    $this->travelTo($mondayNight);
+    $this->channel->update(['timezone' => 'Canada/East-Saskatchewan']);
+    $this->user->update(['week_starts_on' => WeekStart::Monday]);
+
+    publishPagePost($this->channel, PostStatus::Published, [], [
+        'publish_status' => PlatformStatus::Published,
+        'published_at' => $mondayNight->subHours(15),
+    ]);
+    publishPagePost($this->channel, PostStatus::Scheduled, ['scheduled_at' => $mondayNight->addHours(2)]);
+    publishPagePost($this->channel, PostStatus::Scheduled, ['scheduled_at' => $mondayNight->addHours(4)]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.publish', $this->channel))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('channel.sent_this_week', 1)
+            ->where('channel.scheduled_this_week', 1));
+});
+
 test('sent this week still counts a post the network deleted afterwards', function () {
     foreach ([PlatformStatus::Published, PlatformStatus::Deleted] as $publishStatus) {
         publishPagePost($this->channel, PostStatus::Published, [], [

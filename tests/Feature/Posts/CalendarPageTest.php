@@ -104,6 +104,20 @@ test('the tz query re-buckets the calendar and moves the range boundaries', func
             ->has('posts.2026-10-07', 1));
 });
 
+test('a legacy tz alias shows its canonical zone', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month', 'tz' => 'Canada/East-Saskatchewan']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+});
+
+test('a user stored with a legacy alias sees the calendar in its canonical zone', function () {
+    $this->user->update(['timezone' => 'Canada/East-Saskatchewan']);
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+});
+
 test('an unknown tz falls back to the user time zone', function () {
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'month', 'tz' => 'Mars/Olympus']))

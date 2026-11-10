@@ -577,8 +577,9 @@ test('a label created from the empty label picker of the global composer is list
         ->click('@composer-label-empty-create');
     waitForComposerReady($page, 'composer-label-new-name');
     $page->fill('@composer-label-new-name', 'Launch')
-        ->click('@submit-composer-label-new')
-        ->assertSeeIn('@composer-tags-trigger', 'Launch')
+        ->click('@submit-composer-label-new');
+    waitForText($page, '@composer-tags-trigger', 'Launch');
+    $page->assertSeeIn('@composer-tags-trigger', 'Launch')
         ->assertValue("@composer-caption-{$account->id}", 'Draft text');
 
     $label = $workspace->labels()->sole();
@@ -608,8 +609,9 @@ test('a label created while editing a post on the publish page is listed and sel
         ->click('@composer-label-empty-create');
     waitForComposerReady($page, 'composer-label-new-name');
     $page->fill('@composer-label-new-name', 'Launch')
-        ->click('@submit-composer-label-new')
-        ->assertSeeIn('@composer-tags-trigger', 'Launch')
+        ->click('@submit-composer-label-new');
+    waitForText($page, '@composer-tags-trigger', 'Launch');
+    $page->assertSeeIn('@composer-tags-trigger', 'Launch')
         ->assertValue("@composer-caption-{$account->id}", 'Edited text')
         ->assertNoJavaScriptErrors();
 });

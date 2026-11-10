@@ -391,6 +391,18 @@ test('approval emails name the canonical zone of a legacy alias', function () {
     expect((new PostApproved($post->id, $approver, $author))->render())->toContain('October 7, 2026 20:30 (Asia/Kolkata)');
 });
 
+test('approval emails name the canonical zone of an alias missing from PHP\'s list', function () {
+    $author = User::factory()->create(['timezone' => 'Canada/East-Saskatchewan', 'time_format' => TimeFormat::TwentyFourHour]);
+    $approver = User::factory()->create(['account_id' => $author->account_id]);
+    $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id]);
+    $post = approvalEmailPost($workspace, $author, Platform::LinkedIn, 'Acme Inc', [
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now('UTC')->addDay()->setTime(15, 0),
+    ]);
+
+    expect((new PostApproved($post->id, $approver, $author))->render())->toContain('09:00 (America/Regina)');
+});
+
 test('the email layout carries the recipient locale and direction', function (Locale $locale, string $direction) {
     $account = Account::factory()->create(['name' => 'Acme Co']);
     $invite = Invite::factory()->create([

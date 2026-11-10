@@ -298,6 +298,24 @@ test('the series follows the channel time zone across daylight saving changes', 
     'lisbon, spring forward' => ['Europe/Lisbon', '2027-03-24 10:00', '2027-03-24 10:05', '2027-03-31 10:00'],
 ]);
 
+test('the series follows the canonical zone of a channel stored with a legacy alias', function () {
+    $year = now('UTC')->year + 1;
+    $this->channel->update(['timezone' => 'Canada/East-Saskatchewan']);
+    $start = CarbonImmutable::parse("{$year}-01-30 20:00", 'America/Regina');
+    $this->travelTo($start->addMinutes(5));
+    $post = recurringPost($this->channel, $this->user, [
+        'scheduled_at' => $start->utc(),
+        'recurrence_interval' => 1,
+        'recurrence_frequency' => RecurrenceFrequency::Month,
+        'recurrence_remaining' => 2,
+    ]);
+
+    publishRecurringPost($post);
+
+    expect(nextOccurrence($post)->scheduled_at->setTimezone('America/Regina')->format('Y-m-d H:i'))
+        ->toBe(CarbonImmutable::parse("{$year}-02-01", 'America/Regina')->endOfMonth()->format('Y-m-d').' 20:00');
+});
+
 test('the last occurrence carries no rule and ends the series', function () {
     $post = recurringPost($this->channel, $this->user, [
         'scheduled_at' => now()->subMinute(),
