@@ -159,12 +159,11 @@ const toggleReaction = async (
     emoji: string,
     reacted: boolean,
 ) => {
-    const route = reacted ? removeReaction : addReaction;
-    const response = await request(
-        route.url({ post: props.postId, note: note.id }),
-        reacted ? 'DELETE' : 'PUT',
-        { emoji },
-    );
+    const { url, method } = (reacted ? removeReaction : addReaction)({
+        post: props.postId,
+        note: note.id,
+    });
+    const response = await request(url, method, { emoji });
 
     if (!response.ok) {
         return;

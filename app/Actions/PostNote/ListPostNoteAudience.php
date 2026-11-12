@@ -14,10 +14,11 @@ use Illuminate\Support\Str;
 final class ListPostNoteAudience
 {
     /**
-     * The members who see the post's notes, by name (sorted in PHP so both
-     * database engines give the same order): every member of its workspace, and on a pending request only the approvers and the member
-     * who asked. They are the people a note may mention and email; `$except`
-     * leaves one out (nobody mentions themselves).
+     * The members who see the post's notes: every member of its workspace,
+     * and on a pending request only the approvers and the member who asked.
+     * They are the people a note may mention and email; `$except` leaves one
+     * out (nobody mentions themselves). Sorted by name in PHP, ignoring case
+     * and accents, so PostgreSQL and MySQL give the same order.
      *
      * @return Collection<int, User>
      */

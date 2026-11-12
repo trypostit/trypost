@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  */
 class SingleEmoji implements ValidationRule
 {
-    public const MAX_CODE_POINTS = 16;
+    private const MAX_CODE_POINTS = 16;
 
     private const PATTERN = '/^(?:\p{Regional_Indicator}{2}|[0-9#*]\x{FE0F}?\x{20E3}|\p{Extended_Pictographic})/u';
 

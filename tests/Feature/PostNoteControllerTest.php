@@ -9,6 +9,7 @@ use App\Mail\PostNoteAdded;
 use App\Mail\PostNoteMentioned;
 use App\Models\Post;
 use App\Models\PostNote;
+use App\Models\PostNoteReaction;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
@@ -181,6 +182,42 @@ test('the member who asked for approval of someone else post is a participant of
     Mail::assertQueuedCount(2);
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($requester->email));
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
+});
+
+test('everyone in the workspace but you can be mentioned on a draft, sorted by name ignoring case and accents', function () {
+    $carla = workspaceMember($this->workspace, 'approval', ['name' => 'Carla']);
+    $bruno = workspaceMember($this->workspace, 'member', ['name' => 'bruno']);
+    $alvaro = workspaceMember($this->workspace, 'admin', ['name' => 'Álvaro']);
+    workspaceOutsider($this->workspace);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.notes.mentionables.index', $this->post))
+        ->assertOk()
+        ->assertExactJson([
+            ['id' => $alvaro->id, 'name' => 'Álvaro', 'photo_url' => $alvaro->photo_url],
+            ['id' => $bruno->id, 'name' => 'bruno', 'photo_url' => $bruno->photo_url],
+            ['id' => $carla->id, 'name' => 'Carla', 'photo_url' => $carla->photo_url],
+        ]);
+});
+
+test('reactions go with their note and with the member who reacted', function () {
+    $teammate = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
+    PostNoteReaction::factory()->create(['post_note_id' => $note->id, 'user_id' => $this->user->id]);
+    PostNoteReaction::factory()->create(['post_note_id' => $note->id, 'user_id' => $teammate->id]);
+
+    $teammate->delete();
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.notes.index', $this->post))
+        ->assertOk()
+        ->assertJsonPath('data.0.reactions.0.count', 1);
+
+    $this->actingAs($this->user)
+        ->deleteJson(route('app.posts.notes.destroy', [$this->post, $note]))
+        ->assertNoContent();
+
+    expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
 test('store emails the workspace owner when a member adds a note', function () {

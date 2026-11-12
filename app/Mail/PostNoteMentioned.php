@@ -35,15 +35,16 @@ class PostNoteMentioned extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $post = $this->note->post;
+        $noteBody = PostNoteMentions::toPlainText($this->note->body);
 
         return new Content(
             view: 'mail.post-note-mentioned',
             with: [
                 'title' => __('mail.post_note_mentioned.title', ['author' => $this->author->name]),
-                'previewText' => Str::limit(PostNoteMentions::toPlainText($this->note->body), 100),
+                'previewText' => Str::limit($noteBody, 100),
                 'authorName' => $this->author->name,
                 'workspaceName' => $post->workspace->name,
-                'noteBody' => PostNoteMentions::toPlainText($this->note->body),
+                'noteBody' => $noteBody,
                 'postExcerpt' => PostExcerpt::from($post->content, 200),
                 'channel' => $post->loadMissing('socialAccount')->hasDestination() ? $post : null,
                 'url' => route('app.posts.edit', ['post' => $post, 'comment' => $this->note->id]),

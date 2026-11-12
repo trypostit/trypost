@@ -75,7 +75,7 @@ test('a note mentions a teammate picked from the list and takes reactions', func
     expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
-test('the mention list works from the keyboard, says when nobody matches, and an edit keeps the mentions', function () {
+test('the mention list works from the keyboard, says when nobody matches, an edit keeps the mentions and Esc cancels it', function () {
     Mail::fake();
 
     $user = User::factory()->create(['name' => 'Paulo Castellano']);
@@ -126,10 +126,17 @@ test('the mention list works from the keyboard, says when nobody matches, and an
 
     $page->append('@note-edit-input', ' and @an');
     waitForText($page, '@note-mention-option', 'Ana Souza');
-    $page->keys('@note-edit-input', 'Enter');
+    $page->keys('@note-edit-input', 'Tab');
     waitForGone($page, '@note-mention-list');
     $page->click('@note-edit-save');
     waitForCount($page, '@note-mention', 2);
+
+    $page->click('@note-actions');
+    $page->click('@note-edit');
+    waitFor($page, '@note-edit-input');
+    $page->append('@note-edit-input', ' discarded');
+    $page->keys('@note-edit-input', 'Escape');
+    waitForGone($page, '@note-edit-input');
 
     $page->assertNoJavaScriptErrors();
 

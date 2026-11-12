@@ -154,6 +154,21 @@ test('the mention email renders the note with its mentions as names', function (
     $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
+test('the post note email shows mentions as names', function () {
+    $author = User::factory()->create();
+    $mentioned = User::factory()->create(['name' => 'Bia Lima']);
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $author->id,
+        'body' => "Ask @[Bia Lima](user:{$mentioned->id}) first",
+    ]);
+
+    (new PostNoteAdded($note, $author))
+        ->assertSeeInHtml('Ask @Bia Lima first')
+        ->assertDontSeeInHtml("user:{$mentioned->id}", false);
+});
+
 test('the post note email falls back when the post has no text and no channel', function () {
     $author = User::factory()->create();
     $post = Post::factory()->create(['user_id' => $author->id, 'content' => '']);
