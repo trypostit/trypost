@@ -16,9 +16,8 @@ use Illuminate\Support\Str;
  */
 final class PostNoteMentions
 {
-    private const PATTERN = '/@\[([^\]\n]{1,255})\]\(user:([0-9a-fA-F-]{36})\)/u';
-
-    private const EVERYONE = '/@\[[^\]\n]{1,255}\]\(everyone\)/u';
+    /** A mention of a person (group 2 holds their id) or of everyone (no group 2); the same pattern as `noteMentions.ts`. */
+    private const PATTERN = '/@\[([^\]\n]{1,255})\]\((?:user:([0-9a-fA-F-]{36})|everyone)\)/u';
 
     /**
      * The unique user ids mentioned in the body, in order of appearance.
@@ -42,7 +41,9 @@ final class PostNoteMentions
      */
     public static function mentionsEveryone(?string $body): bool
     {
-        return Str::isMatch(self::EVERYONE, (string) $body);
+        preg_match_all(self::PATTERN, (string) $body, $matches);
+
+        return collect($matches[2])->contains(fn (string $id): bool => blank($id));
     }
 
     /**
@@ -55,6 +56,10 @@ final class PostNoteMentions
     public static function withCurrentNames(string $body, Collection $people): string
     {
         return Str::replaceMatches(self::PATTERN, function (array $match) use ($people): string {
+            if (blank(data_get($match, 2))) {
+                return $match[0];
+            }
+
             $person = $people->firstWhere('id', Str::lower($match[2]));
 
             if (blank($person)) {
@@ -75,9 +80,10 @@ final class PostNoteMentions
     {
         $everyone = __('notes.mention_everyone.word');
 
-        return Str::of((string) $body)
-            ->replaceMatches(self::EVERYONE, fn (): string => "@{$everyone}")
-            ->replaceMatches(self::PATTERN, '@$1')
-            ->value();
+        return Str::replaceMatches(
+            self::PATTERN,
+            fn (array $match): string => filled(data_get($match, 2)) ? "@{$match[1]}" : "@{$everyone}",
+            (string) $body,
+        );
     }
 }

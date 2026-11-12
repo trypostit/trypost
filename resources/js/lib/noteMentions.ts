@@ -5,7 +5,7 @@
  * `PostNoteMentionsParityTest`. The composer shows a mention as `@Name` and
  * turns it back into markup when the body is saved.
  */
-import { filled } from '@/lib/helpers';
+import { filled, isUuid } from '@/lib/helpers';
 import type { MentionedPerson, PostNoteMentionQuery } from '@/types/post-note';
 
 type NoteBodySegment =
@@ -18,9 +18,6 @@ export const EVERYONE_ID = 'everyone';
 
 const MENTION_PATTERN =
     /@\[([^\]\n]{1,255})\]\((?:user:([0-9a-fA-F-]{36})|everyone)\)/gu;
-
-const UUID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A name as it goes inside the markup: no brackets or line breaks. */
 const markupName = (name: string): string =>
@@ -90,7 +87,7 @@ export const mentionedPeople = (
             return [{ id: EVERYONE_ID, name: everyoneWord }];
         }
 
-        if (segment.kind === 'mention' && UUID_PATTERN.test(segment.userId)) {
+        if (segment.kind === 'mention' && isUuid(segment.userId)) {
             return [{ id: segment.userId.toLowerCase(), name: segment.name }];
         }
 
