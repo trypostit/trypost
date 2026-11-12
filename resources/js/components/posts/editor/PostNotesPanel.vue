@@ -2,7 +2,14 @@
 import type { InfiniteScrollRef } from '@inertiajs/core';
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onMounted,
+    ref,
+    watch,
+    type ComponentPublicInstance,
+} from 'vue';
 
 import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
@@ -75,6 +82,19 @@ const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
 const notesList = ref<HTMLOListElement | null>(null);
+const noteElements = new Map<string, Element>();
+
+/** Keeps each rendered note's element by id, for scrolling to a linked note. */
+const trackNote = (
+    noteId: string,
+    element: Element | ComponentPublicInstance | null,
+): void => {
+    if (element instanceof Element) {
+        noteElements.set(noteId, element);
+    } else {
+        noteElements.delete(noteId);
+    }
+};
 const infiniteScroll = ref<InfiniteScrollRef | null>(null);
 const composerInput = ref<InstanceType<typeof PostNoteEditor> | null>(
     null,
@@ -214,12 +234,10 @@ const loadOlderNotes = (): Promise<boolean> =>
     });
 
 /** The note's element, loading older pages until it shows up or none are left. */
-const findNote = async (noteId: string): Promise<HTMLElement | null> => {
+const findNote = async (noteId: string): Promise<Element | null> => {
     await nextTick();
 
-    const element = scrollContainer.value?.querySelector<HTMLElement>(
-        `[data-note-id="${noteId}"]`,
-    );
+    const element = noteElements.get(noteId);
 
     if (element) {
         return element;
@@ -301,6 +319,7 @@ onMounted(focusLinkedNote);
                     <li
                         v-for="note in notes"
                         :key="note.id"
+                        :ref="(element) => trackNote(note.id, element)"
                         class="relative pb-3 last:pb-0 [&:not(:last-child)]:before:absolute [&:not(:last-child)]:before:start-[13.5px] [&:not(:last-child)]:before:top-9 [&:not(:last-child)]:before:bottom-1 [&:not(:last-child)]:before:w-px [&:not(:last-child)]:before:bg-border-strong"
                     >
                         <PostNoteItem

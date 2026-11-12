@@ -283,9 +283,9 @@ test('the mention list follows the caret and the mouse, and narrows to a longer 
 
     $page->fill('@note-input', 'hello @an');
     waitForOpen($page, '@note-mention-list');
-    $page->keys('@note-input', 'Home');
+    $page->keys('@note-input', ['ArrowLeft', 'ArrowLeft', 'ArrowLeft']);
     waitForGone($page, '@note-mention-list');
-    $page->keys('@note-input', 'End');
+    $page->keys('@note-input', ['ArrowRight', 'ArrowRight', 'ArrowRight']);
     waitForOpen($page, '@note-mention-list');
     $page->keys('@note-input', 'Escape');
     waitForGone($page, '@note-mention-list');

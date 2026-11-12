@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { IconUsers } from '@tabler/icons-vue';
-import { Extension } from '@tiptap/core';
-import Document from '@tiptap/extension-document';
-import HardBreak from '@tiptap/extension-hard-break';
-import Mention from '@tiptap/extension-mention';
-import Paragraph from '@tiptap/extension-paragraph';
-import Text from '@tiptap/extension-text';
-import { Placeholder } from '@tiptap/extensions';
 import type { SuggestionProps } from '@tiptap/suggestion';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, useAttrs, useId, watch } from 'vue';
 
+import { plainTextExtensions } from '@/components/tiptap/editor';
+import { NoteBody, noteBodyOf } from '@/components/tiptap/plugins/noteBody';
+import { NoteKeys } from '@/components/tiptap/plugins/noteKeys';
 import { Avatar } from '@/components/ui/avatar';
 import {
     Popover,
@@ -19,7 +15,7 @@ import {
     PopoverContent,
 } from '@/components/ui/popover';
 import { blank, filled, isString } from '@/lib/helpers';
-import { docToNoteBody, EVERYONE_ID, noteBodyToDoc } from '@/lib/noteMentions';
+import { EVERYONE_ID } from '@/lib/noteMentions';
 import { filterBySearch } from '@/lib/search';
 import type { MentionedPerson, PostNoteMentionable } from '@/types/post-note';
 
@@ -27,7 +23,7 @@ import type { MentionedPerson, PostNoteMentionable } from '@/types/post-note';
  * The note editor: typing `@` lists everyone on the post (`@all` in the
  * reader's language) and the teammates who can be mentioned; picking one
  * inserts a mention chip that keeps the person's id. The model is the body to
- * store, with mentions as markup (`lib/noteMentions.ts`). Enter submits and
+ * store, with mentions as markup (the `NoteBody` plugin). Enter submits and
  * Shift+Enter breaks the line; Esc closes the list, then cancels. Attributes
  * (class, test id, aria label) go to the editable element.
  */
@@ -188,51 +184,16 @@ const onSearchKeydown = (event: KeyboardEvent): boolean => {
     return false;
 };
 
-/** Enter submits and Esc cancels, unless the `@` search is open. */
-const NoteKeys = Extension.create({
-    name: 'noteKeys',
-    addKeyboardShortcuts: () => ({
-        Enter: () => {
-            if (listOpen.value) {
-                return false;
-            }
-
-            emit('submit');
-
-            return true;
-        },
-        Escape: () => {
-            if (filled(search.value)) {
-                return false;
-            }
-
-            emit('cancel');
-
-            return true;
-        },
-    }),
-});
-
 const editor = useEditor({
-    content: noteBodyToDoc(body.value, mentionLabel),
     extensions: [
-        Document,
-        Paragraph,
-        Text,
-        HardBreak,
-        Placeholder.configure({ placeholder: () => props.placeholder }),
-        Mention.configure({
-            renderText: ({ node }) => `@${node.attrs.label}`,
-            renderHTML: ({ node }) => [
-                'span',
-                {
-                    class: 'rounded-sm bg-primary-subtle px-0.5 font-medium text-foreground',
-                    'data-testid': 'note-input-mention',
-                },
-                `@${node.attrs.label}`,
-            ],
+        ...plainTextExtensions(() => props.placeholder),
+        NoteBody.configure({
+            label: mentionLabel,
+            chipAttributes: {
+                class: 'rounded-sm bg-primary-subtle px-0.5 font-medium text-foreground',
+                'data-testid': 'note-input-mention',
+            },
             suggestion: {
-                char: '@',
                 allowSpaces: true,
                 items: () => [],
                 render: () => ({
@@ -243,7 +204,12 @@ const editor = useEditor({
                 }),
             },
         }),
-        NoteKeys,
+        NoteKeys.configure({
+            onSubmit: () => emit('submit'),
+            onCancel: () => emit('cancel'),
+            submitBlocked: () => listOpen.value,
+            cancelBlocked: () => filled(search.value),
+        }),
     ],
     editorProps: {
         attributes: () => ({
@@ -265,19 +231,25 @@ const editor = useEditor({
                 : {}),
         }),
     },
-    onUpdate: ({ editor: current }) => {
-        body.value = docToNoteBody(current.getJSON());
+    onCreate: ({ editor: created }) => {
+        created.commands.setNoteBody(body.value);
     },
+    onUpdate: ({ editor: current }) => {
+        body.value = noteBodyOf(current);
+    },
+});
+
+/** The editable element's combobox attributes follow the list, which is not part of the document. */
+watch([listOpen, highlighted, matches], () => {
+    editor.value?.view.setProps({});
 });
 
 /** The parent replaced the body (reset after sending, another note to edit). */
 watch(body, (stored) => {
     const current = editor.value;
 
-    if (current && stored !== docToNoteBody(current.getJSON())) {
-        current.commands.setContent(noteBodyToDoc(stored, mentionLabel), {
-            emitUpdate: false,
-        });
+    if (current && stored !== noteBodyOf(current)) {
+        current.commands.setNoteBody(stored);
     }
 });
 

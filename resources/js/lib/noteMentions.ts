@@ -2,8 +2,8 @@
  * Mentions inside a note body, by id only: a person is written `@[user:{uuid}]`
  * and everyone who sees the post `@[everyone]`. Names never live in the body;
  * the note's `mentions` carry them. Mirror of `App\Support\PostNoteMentions`,
- * kept equal by `PostNoteMentionsParityTest`. The note editor holds mentions as
- * nodes and reads and writes the body through `noteBodyToDoc` / `docToNoteBody`.
+ * kept equal by `PostNoteMentionsParityTest`. The note editor loads a body
+ * through `noteBodyToDoc` and stores it through the `NoteBody` TipTap plugin.
  */
 import type { JSONContent } from '@tiptap/core';
 
@@ -81,21 +81,3 @@ export const noteBodyToDoc = (
         },
     ],
 });
-
-/** The editor's document as the body to store: paragraphs and line breaks become new lines. */
-export const docToNoteBody = (doc: JSONContent): string =>
-    (doc.content ?? [])
-        .map((paragraph) =>
-            (paragraph.content ?? [])
-                .map((node) => {
-                    if (node.type === 'mention') {
-                        return node.attrs?.id === EVERYONE_ID
-                            ? '@[everyone]'
-                            : `@[user:${node.attrs?.id}]`;
-                    }
-
-                    return node.type === 'hardBreak' ? '\n' : (node.text ?? '');
-                })
-                .join(''),
-        )
-        .join('\n');
