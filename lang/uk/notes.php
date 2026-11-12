@@ -18,6 +18,7 @@ return [
     'load_more' => 'Завантажити старіші нотатки',
     'react' => 'Додати реакцію',
     'no_mentionables' => 'Нікого з команди не знайдено',
+    'mention_unknown' => 'невідомий',
     'mention_everyone' => [
         'word' => 'всі',
         'description' => 'Усі в цій публікації',

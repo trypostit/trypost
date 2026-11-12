@@ -141,8 +141,9 @@ test('the mention email renders the note with its mentions as names', function (
     $note = PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $author->id,
-        'body' => "@[Bia Lima](user:{$mentioned->id}) can you check?",
+        'body' => "@[user:{$mentioned->id}] can you check?",
     ]);
+    $note->mentions()->attach($mentioned);
 
     $mailable = (new PostNoteMentioned($note, $author))->locale($locale->value);
 
@@ -161,8 +162,9 @@ test('the post note email shows mentions as names', function () {
     $note = PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $author->id,
-        'body' => "Ask @[Bia Lima](user:{$mentioned->id}) first",
+        'body' => "Ask @[user:{$mentioned->id}] first",
     ]);
+    $note->mentions()->attach($mentioned);
 
     (new PostNoteAdded($note, $author))
         ->assertSeeInHtml('Ask @Bia Lima first')
@@ -172,15 +174,31 @@ test('the post note email shows mentions as names', function () {
 test('the mention email names everyone in the recipient\'s language', function (Locale $locale, string $word) {
     $author = User::factory()->create();
     $post = Post::factory()->create(['user_id' => $author->id]);
-    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => '@[all](everyone) please review']);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => '@[everyone] please review']);
 
     (new PostNoteMentioned($note, $author))->locale($locale->value)
         ->assertSeeInHtml("@{$word} please review")
-        ->assertDontSeeInHtml('(everyone)', false);
+        ->assertDontSeeInHtml('@[everyone]', false);
 })->with([
     [Locale::English, 'all'],
     [Locale::PortugueseBrazil, 'todos'],
 ]);
+
+test('a mention of someone no longer there reads as unknown in the email', function () {
+    $author = User::factory()->create();
+    $gone = User::factory()->create();
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => "Ask @[user:{$gone->id}] first"]);
+    $note->mentions()->attach($gone);
+
+    $gone->delete();
+
+    $unknown = __('notes.mention_unknown');
+
+    (new PostNoteAdded($note->fresh(), $author))
+        ->assertSeeInHtml("Ask @{$unknown} first")
+        ->assertDontSeeInHtml("user:{$gone->id}", false);
+});
 
 test('the post note email falls back when the post has no text and no channel', function () {
     $author = User::factory()->create();

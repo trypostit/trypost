@@ -18,6 +18,7 @@ return [
     'load_more' => 'Carregar notas antigas',
     'react' => 'Adicionar reação',
     'no_mentionables' => 'Ninguém da equipe encontrado',
+    'mention_unknown' => 'desconhecido',
     'mention_everyone' => [
         'word' => 'todos',
         'description' => 'Todos nesta publicação',

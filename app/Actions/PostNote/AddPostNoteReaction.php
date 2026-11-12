@@ -23,6 +23,6 @@ final class AddPostNoteReaction
             PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated');
         }
 
-        return $note->load(['user.avatarMedia', 'reactions.user']);
+        return $note->load(PostNote::DISPLAY_RELATIONS);
     }
 }

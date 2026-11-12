@@ -1,12 +1,10 @@
 [
-    "@[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) can you check?",
-    "(@[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)) and cc:@[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)",
-    "@[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) and @[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e1f) both",
-    "@[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) before @[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e1f)",
-    "@[all](everyone) please review",
+    "@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f] can you check?",
+    "(@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]) and cc:@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]",
+    "@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f] and @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e1f] both",
+    "@[everyone] please review",
     "Plain @Ana and me@example.com stay text",
-    "@[all](everyone) and @all-hands stays text",
-    "@[山田](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)さん、確認お願いします",
-    "@[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) and @Ana-Lima stays text",
-    "First line\nSecond line with @[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)\n\nAfter a blank line"
+    "@[everyone] and @all-hands stays text",
+    "@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]さん、確認お願いします",
+    "First line\nSecond line with @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]\n\nAfter a blank line"
 ]

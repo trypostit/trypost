@@ -76,7 +76,7 @@ test('the api and mcp note lists paginate newest first with the app page size an
     TryPostServer::actingAs($this->user)->tool(ListPostNotesTool::class, ['post_id' => $this->post->id, 'page' => 2])->assertOk()->assertStructuredContent(parityMcpPage('notes', $second));
 
     expect([...collect($first->json('data'))->pluck('id'), ...collect($second->json('data'))->pluck('id')])->toBe($notes->pluck('id')->all())
-        ->and(array_keys($first->json('data.0')))->toBe(['id', 'post_id', 'body', 'reactions', 'author', 'created_at', 'updated_at'])
+        ->and(array_keys($first->json('data.0')))->toBe(['id', 'post_id', 'body', 'mentions', 'reactions', 'author', 'created_at', 'updated_at'])
         ->and(array_keys($first->json('data.0.author')))->toBe(['id', 'name', 'photo_url']);
 });
 
@@ -249,7 +249,7 @@ test('a note added through the api on a pending request emails the requester and
     ]);
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.notes.store', $pending), [
-        'body' => "Pricing changes Friday @[{$approver->name}](user:{$approver->id}) @[{$bystander->name}](user:{$bystander->id})",
+        'body' => "Pricing changes Friday @[user:{$approver->id}] @[user:{$bystander->id}]",
     ])->assertCreated();
 
     expect(pendingNoteRecipients())->toBe([$requester->email])
@@ -270,7 +270,7 @@ test('a note added through mcp by the requester on their pending request mention
 
     TryPostServer::actingAs($requester)->tool(CreatePostNoteTool::class, [
         'post_id' => $pending->id,
-        'body' => "Ready for review @[{$approver->name}](user:{$approver->id}) @[{$bystander->name}](user:{$bystander->id})",
+        'body' => "Ready for review @[user:{$approver->id}] @[user:{$bystander->id}]",
     ])->assertOk();
 
     expect(pendingNoteRecipients())->toBe([])
@@ -436,7 +436,7 @@ test('an edit through the api and mcp emails only the teammates it mentions for 
     $alreadyMentioned = workspaceMember($this->workspace);
     $apiMention = workspaceMember($this->workspace);
     $mcpMention = workspaceMember($this->workspace);
-    $mention = fn (User $user): string => "@[{$user->name}](user:{$user->id})";
+    $mention = fn (User $user): string => "@[user:{$user->id}]";
     $apiNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "{$mention($alreadyMentioned)} ping"]);
     $mcpNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "{$mention($alreadyMentioned)} ping"]);
 

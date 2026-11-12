@@ -20,12 +20,13 @@ final class UpdatePostNote
         $previousBody = $note->body;
         $audience = ListPostNoteAudience::execute($post);
 
-        $note->update(['body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), $audience)]);
+        $note->update(['body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience)]);
+        $note->mentions()->sync(PostNoteMentions::extract($note->body));
 
         NotifyPostNoteRecipients::edited($note, $author, $previousBody, $audience);
 
         PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated');
 
-        return $note->load(['user.avatarMedia', 'reactions.user']);
+        return $note->load(PostNote::DISPLAY_RELATIONS);
     }
 }

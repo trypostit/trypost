@@ -35,7 +35,7 @@ class PostNoteMentioned extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $post = $this->note->post;
-        $noteBody = PostNoteMentions::toPlainText($this->note->body);
+        $noteBody = PostNoteMentions::toPlainText($this->note->body, $this->note->mentions);
 
         return new Content(
             view: 'mail.post-note-mentioned',

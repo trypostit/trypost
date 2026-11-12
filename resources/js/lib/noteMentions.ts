@@ -1,38 +1,23 @@
 /**
- * Mentions inside a note body: a person is written `@[Display Name](user:{uuid})`
- * and everyone who sees the post `@[word](everyone)`, shown in each reader's
- * language. Mirror of `App\Support\PostNoteMentions`, kept equal by
- * `PostNoteMentionsParityTest`. The note editor holds mentions as nodes and
- * reads and writes this markup through `noteBodyToDoc` / `docToNoteBody`.
+ * Mentions inside a note body, by id only: a person is written `@[user:{uuid}]`
+ * and everyone who sees the post `@[everyone]`. Names never live in the body;
+ * the note's `mentions` carry them. Mirror of `App\Support\PostNoteMentions`,
+ * kept equal by `PostNoteMentionsParityTest`. The note editor holds mentions as
+ * nodes and reads and writes the body through `noteBodyToDoc` / `docToNoteBody`.
  */
 import type { JSONContent } from '@tiptap/core';
 
 import { filled, isEmpty, isUuid } from '@/lib/helpers';
-import type { MentionedPerson } from '@/types/post-note';
 
 type NoteBodySegment =
     | { kind: 'text'; text: string }
-    | { kind: 'mention'; name: string; userId: string }
+    | { kind: 'mention'; userId: string }
     | { kind: 'everyone' };
 
 /** The id a mention of everyone carries in the editor; it is never a user id. */
 export const EVERYONE_ID = 'everyone';
 
-const MENTION_PATTERN =
-    /@\[([^\]\n]{1,255})\]\((?:user:([0-9a-fA-F-]{36})|everyone)\)/gu;
-
-/**
- * A name as it goes inside the markup: brackets become spaces, whitespace is
- * squished, and a name left empty reads `?`.
- */
-export const markupName = (name: string): string =>
-    name.replace(/[[\]]/g, ' ').replace(/\s+/g, ' ').trim() || '?';
-
-/** The markup stored for a mention. */
-export const mentionMarkup = (person: MentionedPerson): string =>
-    person.id === EVERYONE_ID
-        ? `@[${markupName(person.name)}](everyone)`
-        : `@[${markupName(person.name)}](user:${person.id})`;
+const MENTION_PATTERN = /@\[(?:user:([0-9a-fA-F-]{36})|everyone)\]/gu;
 
 /** The body split into text and mentions, in order. */
 export const parseNoteBody = (body: string): NoteBodySegment[] => {
@@ -47,8 +32,8 @@ export const parseNoteBody = (body: string): NoteBodySegment[] => {
         }
 
         segments.push(
-            filled(match[2])
-                ? { kind: 'mention', name: match[1], userId: match[2] }
+            filled(match[1])
+                ? { kind: 'mention', userId: match[1].toLowerCase() }
                 : { kind: 'everyone' },
         );
         last = start + match[0].length;
@@ -61,54 +46,41 @@ export const parseNoteBody = (body: string): NoteBodySegment[] => {
     return segments;
 };
 
+/** Text as the editor holds it: a line break for each new line. */
+const textNodes = (text: string): JSONContent[] =>
+    text
+        .split('\n')
+        .flatMap((line, index): JSONContent[] => [
+            ...(index > 0 ? [{ type: 'hardBreak' }] : []),
+            ...(isEmpty(line) ? [] : [{ type: 'text', text: line }]),
+        ]);
+
 /**
- * A stored body as the editor's document: one paragraph, a line break for
- * each new line, a mention node for each mention (everyone labelled with the
- * reader's word). Markup naming no valid id stays text.
+ * A stored body as the editor's document: one paragraph with a mention node
+ * for each mention, labelled by `label(id)` (`EVERYONE_ID` for everyone).
+ * Markup naming no valid id stays text.
  */
 export const noteBodyToDoc = (
     body: string,
-    everyoneWord: string,
+    label: (id: string) => string,
 ): JSONContent => ({
     type: 'doc',
     content: [
         {
             type: 'paragraph',
             content: parseNoteBody(body).flatMap((segment): JSONContent[] => {
-                if (segment.kind === 'everyone') {
-                    return [
-                        {
-                            type: 'mention',
-                            attrs: { id: EVERYONE_ID, label: everyoneWord },
-                        },
-                    ];
+                if (segment.kind === 'text') {
+                    return textNodes(segment.text);
                 }
 
-                if (segment.kind === 'mention' && isUuid(segment.userId)) {
-                    return [
-                        {
-                            type: 'mention',
-                            attrs: {
-                                id: segment.userId.toLowerCase(),
-                                label: segment.name,
-                            },
-                        },
-                    ];
+                const id =
+                    segment.kind === 'everyone' ? EVERYONE_ID : segment.userId;
+
+                if (id !== EVERYONE_ID && !isUuid(id)) {
+                    return textNodes(`@[user:${id}]`);
                 }
 
-                const text =
-                    segment.kind === 'text'
-                        ? segment.text
-                        : `@[${segment.name}](user:${segment.userId})`;
-
-                return text
-                    .split('\n')
-                    .flatMap((line, index): JSONContent[] => [
-                        ...(index > 0 ? [{ type: 'hardBreak' }] : []),
-                        ...(isEmpty(line)
-                            ? []
-                            : [{ type: 'text', text: line }]),
-                    ]);
+                return [{ type: 'mention', attrs: { id, label: label(id) } }];
             }),
         },
     ],
@@ -121,10 +93,9 @@ export const docToNoteBody = (doc: JSONContent): string =>
             (paragraph.content ?? [])
                 .map((node) => {
                     if (node.type === 'mention') {
-                        return mentionMarkup({
-                            id: String(node.attrs?.id),
-                            name: String(node.attrs?.label ?? ''),
-                        });
+                        return node.attrs?.id === EVERYONE_ID
+                            ? '@[everyone]'
+                            : `@[user:${node.attrs?.id}]`;
                     }
 
                     return node.type === 'hardBreak' ? '\n' : (node.text ?? '');

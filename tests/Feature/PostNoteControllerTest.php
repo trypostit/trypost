@@ -117,7 +117,7 @@ test('a mentioned member gets the mention email instead of the note email', func
 
     $this->actingAs($writer)
         ->postJson(route('app.posts.notes.store', $this->post), [
-            'body' => "@[{$mentioned->name}](user:{$mentioned->id}) and @[{$outsider->name}](user:{$outsider->id}) and @[Me](user:{$writer->id}) take a look",
+            'body' => "@[user:{$mentioned->id}] and @[user:{$outsider->id}] and @[user:{$writer->id}] take a look",
         ])
         ->assertCreated();
 
@@ -135,12 +135,12 @@ test('editing a note emails only the people it mentions for the first time', fun
     $note = PostNote::factory()->create([
         'post_id' => $this->post->id,
         'user_id' => $this->user->id,
-        'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) ping",
+        'body' => "@[user:{$alreadyMentioned->id}] ping",
     ]);
 
     $this->actingAs($this->user)
         ->putJson(route('app.posts.notes.update', [$this->post, $note]), [
-            'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) and @[{$newlyMentioned->name}](user:{$newlyMentioned->id}) ping",
+            'body' => "@[user:{$alreadyMentioned->id}] and @[user:{$newlyMentioned->id}] ping",
         ])
         ->assertOk();
 
@@ -156,7 +156,7 @@ test('an edit that mentions yourself or someone outside the workspace emails nob
 
     $this->actingAs($this->user)
         ->putJson(route('app.posts.notes.update', [$this->post, $note]), [
-            'body' => "@[Me](user:{$this->user->id}) @[{$outsider->name}](user:{$outsider->id}) ping",
+            'body' => "@[user:{$this->user->id}] @[user:{$outsider->id}] ping",
         ])
         ->assertOk();
 
@@ -234,7 +234,7 @@ test('@all emails a mention to everyone who sees the post but the author, and no
     workspaceOutsider($this->workspace);
 
     $this->actingAs($writer)
-        ->postJson(route('app.posts.notes.store', $this->post), ['body' => '@[todos](everyone) take a look'])
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => '@[everyone] take a look'])
         ->assertCreated();
 
     Mail::assertQueuedCount(2);
@@ -257,7 +257,7 @@ test('@all on a pending request reaches only the approvers and the member who as
     ]);
 
     $this->actingAs($approver)
-        ->postJson(route('app.posts.notes.store', $pending), ['body' => '@[all](everyone) ready?'])
+        ->postJson(route('app.posts.notes.store', $pending), ['body' => '@[everyone] ready?'])
         ->assertCreated();
 
     Mail::assertQueuedCount(2);
@@ -274,41 +274,44 @@ test('an edit that adds @all emails only the people it had not mentioned yet', f
     $note = PostNote::factory()->create([
         'post_id' => $this->post->id,
         'user_id' => $this->user->id,
-        'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) ping",
+        'body' => "@[user:{$alreadyMentioned->id}] ping",
     ]);
 
     $this->actingAs($this->user)
-        ->putJson(route('app.posts.notes.update', [$this->post, $note]), ['body' => '@[all](everyone) ping'])
+        ->putJson(route('app.posts.notes.update', [$this->post, $note]), ['body' => '@[everyone] ping'])
         ->assertOk();
 
     Mail::assertQueuedCount(1);
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($newlyMentioned->email));
 });
 
-test('a saved mention carries the person\'s real name, and a mention of someone outside the post becomes plain text', function () {
+test('a note keeps only the mentions of people who see the post, and shows them with their current name', function () {
     $teammate = workspaceMember($this->workspace, 'member', ['name' => 'Bia Lima']);
     $outsider = workspaceOutsider($this->workspace);
 
     $created = $this->actingAs($this->user)
         ->postJson(route('app.posts.notes.store', $this->post), [
-            'body' => "@[The boss](user:{$teammate->id}) and @[Someone](user:{$outsider->id})",
+            'body' => "@[user:{$teammate->id}] and @[user:{$outsider->id}] @[everyone]",
         ])
-        ->assertCreated();
-
-    expect(PostNote::query()->sole()->body)->toBe("@[Bia Lima](user:{$teammate->id}) and @Someone");
-
-    $this->actingAs($this->user)
-        ->putJson(route('app.posts.notes.update', [$this->post, $created->json('id')]), [
-            'body' => "@[Fake](user:{$teammate->id}) again",
-        ])
-        ->assertOk()
-        ->assertJsonPath('body', "@[Bia Lima](user:{$teammate->id}) again");
-
-    $teammate->update(['name' => '[] ']);
-    $this->actingAs($this->user)
-        ->postJson(route('app.posts.notes.store', $this->post), ['body' => "@[Bia](user:{$teammate->id}) hi"])
         ->assertCreated()
-        ->assertJsonPath('body', "@[?](user:{$teammate->id}) hi");
+        ->assertJsonPath('mentions', [['id' => $teammate->id, 'name' => 'Bia Lima']]);
+
+    $note = PostNote::query()->sole();
+    expect($note->body)->toBe("@[user:{$teammate->id}] and  @[everyone]")
+        ->and($note->mentions()->pluck('users.id')->all())->toBe([$teammate->id]);
+
+    $teammate->update(['name' => 'Bia Souza']);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.notes.index', $this->post))
+        ->assertJsonPath('data.0.mentions', [['id' => $teammate->id, 'name' => 'Bia Souza']]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $created->json('id')]), ['body' => 'no mention now'])
+        ->assertOk()
+        ->assertJsonPath('mentions', []);
+
+    expect($note->mentions()->count())->toBe(0);
 });
 
 test('store emails the workspace owner when a member adds a note', function () {
@@ -339,7 +342,7 @@ test('a note on a pending request emails and mentions only the approvers and the
 
     $this->actingAs($approver)
         ->postJson(route('app.posts.notes.store', $pending), [
-            'body' => "Pricing changes Friday, @[{$bystander->name}](user:{$bystander->id}) @[{$this->user->name}](user:{$this->user->id})",
+            'body' => "Pricing changes Friday, @[user:{$bystander->id}] @[user:{$this->user->id}]",
         ])
         ->assertCreated();
 
@@ -357,7 +360,7 @@ test('store respects a member who turned note emails off', function () {
     PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $member->id]);
 
     $this->actingAs($this->user)
-        ->postJson(route('app.posts.notes.store', $this->post), ['body' => "Hello @[{$member->name}](user:{$member->id})"])
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => "Hello @[user:{$member->id}]"])
         ->assertCreated();
 
     Mail::assertNothingQueued();

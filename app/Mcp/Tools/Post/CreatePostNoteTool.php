@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Add a note (an internal team comment, never published to the network) to a post, as the connected user. To mention a member, write @[Name](user:id) with an id from list-post-note-mentionables-tool; to mention everyone who sees the post, write @[all](everyone). The server writes each mention with the person\'s current name, and a mention of someone who cannot see the post becomes plain text. Emails: each mentioned member gets a mention email; the post\'s other participants (its author, the member who asked for approval and everyone who already wrote a note on it) get a new-note email; nobody else is emailed, and each member\'s notification settings apply. Everyone with the post open sees the note at once. On a post pending approval, only the approvers and the member who asked can see its notes. Returns the new note.')]
+#[Description('Add a note (an internal team comment, never published to the network) to a post, as the connected user. To mention a member, write @[user:id] with an id from list-post-note-mentionables-tool; to mention everyone who sees the post, write @[everyone]. A mention of someone who cannot see the post is removed. Emails: each mentioned member gets a mention email; the post\'s other participants (its author, the member who asked for approval and everyone who already wrote a note on it) get a new-note email; nobody else is emailed, and each member\'s notification settings apply. Everyone with the post open sees the note at once. On a post pending approval, only the approvers and the member who asked can see its notes. Returns the new note with mentions [{id, name}].')]
 class CreatePostNoteTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -55,7 +55,7 @@ class CreatePostNoteTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
-            'body' => $schema->string()->required()->description('The note text (max 2000 characters). Mention a teammate with @[Name](user:id), or everyone with @[all](everyone).'),
+            'body' => $schema->string()->required()->description('The note text (max 2000 characters). Mention a teammate with @[user:id], or everyone with @[everyone].'),
         ];
     }
 }

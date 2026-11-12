@@ -18,6 +18,7 @@ return [
     'load_more' => 'Daha eski notları yükle',
     'react' => 'Tepki ekle',
     'no_mentionables' => 'Eşleşen ekip üyesi yok',
+    'mention_unknown' => 'bilinmeyen',
     'mention_everyone' => [
         'word' => 'herkes',
         'description' => 'Bu gönderideki herkes',

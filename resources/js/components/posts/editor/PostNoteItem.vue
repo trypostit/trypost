@@ -165,6 +165,7 @@ const requestPeople = () => {
                     v-model="editBody"
                     :people="mentionables"
                     :current-user-id="currentUserId"
+                    :mentions="note.mentions"
                     class="max-h-28 min-h-0 w-full overflow-y-auto rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
                     @submit="saveEdit"
@@ -195,6 +196,7 @@ const requestPeople = () => {
             <template v-else>
                 <NoteBody
                     :body="note.body"
+                    :mentions="note.mentions"
                     :people="mentionables"
                     class="mt-0.5 leading-relaxed text-foreground"
                     @need-people="requestPeople"

@@ -18,6 +18,7 @@ return [
     'load_more' => 'Ältere Notizen laden',
     'react' => 'Reaktion hinzufügen',
     'no_mentionables' => 'Kein Teammitglied gefunden',
+    'mention_unknown' => 'unbekannt',
     'mention_everyone' => [
         'word' => 'alle',
         'description' => 'Alle bei diesem Beitrag',

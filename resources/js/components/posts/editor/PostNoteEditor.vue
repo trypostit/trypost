@@ -21,7 +21,7 @@ import {
 import { blank, filled, isString } from '@/lib/helpers';
 import { docToNoteBody, EVERYONE_ID, noteBodyToDoc } from '@/lib/noteMentions';
 import { filterBySearch } from '@/lib/search';
-import type { PostNoteMentionable } from '@/types/post-note';
+import type { MentionedPerson, PostNoteMentionable } from '@/types/post-note';
 
 /**
  * The note editor: typing `@` lists everyone on the post (`@all` in the
@@ -39,9 +39,11 @@ const props = withDefaults(
     defineProps<{
         people: PostNoteMentionable[] | null;
         currentUserId: string;
+        mentions?: MentionedPerson[];
         placeholder?: string;
     }>(),
     {
+        mentions: () => [],
         placeholder: '',
     },
 );
@@ -62,6 +64,15 @@ type Option =
 
 const everyoneWord = wTrans('notes.mention_everyone.word');
 const everyoneDescription = wTrans('notes.mention_everyone.description');
+const unknownWord = wTrans('notes.mention_unknown');
+
+/** The name a mention chip shows for an id: everyone's word, or the person's name. */
+const mentionLabel = (id: string): string =>
+    id === EVERYONE_ID
+        ? everyoneWord.value
+        : (props.mentions.find((person) => person.id === id)?.name ??
+          props.people?.find((person) => person.id === id)?.name ??
+          unknownWord.value);
 
 /** The open `@` search: what was typed after it and how to insert a pick. */
 const search = ref<{
@@ -200,7 +211,7 @@ const NoteKeys = Extension.create({
 });
 
 const editor = useEditor({
-    content: noteBodyToDoc(body.value, everyoneWord.value),
+    content: noteBodyToDoc(body.value, mentionLabel),
     extensions: [
         Document,
         Paragraph,
@@ -261,7 +272,7 @@ watch(body, (stored) => {
     const current = editor.value;
 
     if (current && stored !== docToNoteBody(current.getJSON())) {
-        current.commands.setContent(noteBodyToDoc(stored, everyoneWord.value), {
+        current.commands.setContent(noteBodyToDoc(stored, mentionLabel), {
             emitUpdate: false,
         });
     }

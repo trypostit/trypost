@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api;
 
 use App\Actions\PostNote\SummarizePostNoteReactions;
 use App\Models\PostNote;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,7 +16,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PostNoteResource extends JsonResource
 {
     /**
-     * @return array{id: string, post_id: string, body: string, reactions: list<array{emoji: string, count: int, users: list<array{id: string, name: string}>}>, author: array{id: string, name: string|null, photo_url: string|null}|null, created_at: string, updated_at: string}
+     * @return array{id: string, post_id: string, body: string, mentions: list<array{id: string, name: string}>, reactions: list<array{emoji: string, count: int, users: list<array{id: string, name: string}>}>, author: array{id: string, name: string|null, photo_url: string|null}|null, created_at: string, updated_at: string}
      */
     public function toArray(Request $request): array
     {
@@ -23,6 +24,7 @@ class PostNoteResource extends JsonResource
             'id' => $this->id,
             'post_id' => $this->post_id,
             'body' => $this->body,
+            'mentions' => $this->mentions->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name])->values()->all(),
             'reactions' => SummarizePostNoteReactions::execute($this->resource),
             'author' => $this->user === null ? null : [
                 'id' => $this->user->id,

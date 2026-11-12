@@ -18,6 +18,7 @@ return [
     'load_more' => 'Загрузить старые заметки',
     'react' => 'Добавить реакцию',
     'no_mentionables' => 'Никто из команды не найден',
+    'mention_unknown' => 'неизвестный',
     'mention_everyone' => [
         'word' => 'все',
         'description' => 'Все в этой публикации',

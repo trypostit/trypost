@@ -18,6 +18,7 @@ return [
     'load_more' => '이전 메모 불러오기',
     'react' => '반응 추가',
     'no_mentionables' => '일치하는 팀원이 없습니다',
+    'mention_unknown' => '알 수 없음',
     'mention_everyone' => [
         'word' => '모두',
         'description' => '이 게시물의 모든 사람',

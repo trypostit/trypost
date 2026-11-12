@@ -9,15 +9,16 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
- * Mentions inside a note body: a person is written `@[Display Name](user:{uuid})`
- * and everyone who sees the post `@[word](everyone)`, read in each reader's
- * language (`notes.mention_everyone.word`). Mirrored by
+ * Mentions inside a note body, by id only: a person is written `@[user:{uuid}]`
+ * and everyone who sees the post `@[everyone]`. Names are never stored in the
+ * body; they come from the note's `mentions` and are read in each reader's
+ * language for everyone (`notes.mention_everyone.word`). Mirrored by
  * `resources/js/lib/noteMentions.ts` and kept equal by `PostNoteMentionsParityTest`.
  */
 final class PostNoteMentions
 {
-    /** A mention of a person (group 2 holds their id) or of everyone (no group 2); the same pattern as `noteMentions.ts`. */
-    private const PATTERN = '/@\[([^\]\n]{1,255})\]\((?:user:([0-9a-fA-F-]{36})|everyone)\)/u';
+    /** A mention of a person (group 1 holds their id) or of everyone (no group 1); the same pattern as `noteMentions.ts`. */
+    private const PATTERN = '/@\[(?:user:([0-9a-fA-F-]{36})|everyone)\]/u';
 
     /**
      * The unique user ids mentioned in the body, in order of appearance.
@@ -29,7 +30,7 @@ final class PostNoteMentions
     {
         preg_match_all(self::PATTERN, (string) $body, $matches);
 
-        return collect($matches[2])
+        return collect($matches[1])
             ->filter(fn (string $id): bool => Str::isUuid($id))
             ->map(fn (string $id): string => Str::lower($id))
             ->unique()
@@ -43,59 +44,44 @@ final class PostNoteMentions
     {
         preg_match_all(self::PATTERN, (string) $body, $matches);
 
-        return collect($matches[2])->contains(fn (string $id): bool => blank($id));
+        return collect($matches[1])->contains(fn (string $id): bool => blank($id));
     }
 
     /**
-     * The body with each mention naming the person as they are called now,
-     * so a note cannot show a name other than theirs. A mention of someone
-     * outside `$people` becomes plain text.
+     * The body without its mentions of anyone outside `$people` (the members who
+     * see the post), so a note never names someone it cannot reach.
      *
      * @param  Collection<int, User>  $people
      */
-    public static function withCurrentNames(string $body, Collection $people): string
+    public static function withoutMentionsOutside(string $body, Collection $people): string
     {
-        return Str::replaceMatches(self::PATTERN, function (array $match) use ($people): string {
-            if (blank(data_get($match, 2))) {
-                return $match[0];
-            }
-
-            $person = $people->firstWhere('id', Str::lower($match[2]));
-
-            if (blank($person)) {
-                return "@{$match[1]}";
-            }
-
-            $name = self::markupName($person->name);
-
-            return "@[{$name}](user:{$person->id})";
-        }, $body);
-    }
-
-    /**
-     * A name as it goes inside the markup: brackets become spaces, whitespace is
-     * squished, and a name left empty reads `?`. Same rule as `markupName()` in
-     * `noteMentions.ts`.
-     */
-    public static function markupName(string $name): string
-    {
-        $name = Str::squish(Str::replace(['[', ']'], ' ', $name));
-
-        return filled($name) ? $name : '?';
+        return Str::replaceMatches(
+            self::PATTERN,
+            fn (array $match): string => blank(data_get($match, 1)) || $people->contains('id', Str::lower($match[1])) ? $match[0] : '',
+            $body,
+        );
     }
 
     /**
      * The body as people read it, in the current locale: each mention becomes
-     * `@Name`, and everyone the locale's word for it.
+     * `@Name` from `$people` (the word for someone no longer there when the
+     * person is gone), and everyone the locale's word for it.
+     *
+     * @param  Collection<int, User>  $people
      */
-    public static function toPlainText(?string $body): string
+    public static function toPlainText(?string $body, Collection $people): string
     {
         $everyone = __('notes.mention_everyone.word');
+        $unknown = __('notes.mention_unknown');
 
-        return Str::replaceMatches(
-            self::PATTERN,
-            fn (array $match): string => filled(data_get($match, 2)) ? "@{$match[1]}" : "@{$everyone}",
-            (string) $body,
-        );
+        return Str::replaceMatches(self::PATTERN, function (array $match) use ($people, $everyone, $unknown): string {
+            if (blank(data_get($match, 1))) {
+                return "@{$everyone}";
+            }
+
+            $name = $people->firstWhere('id', Str::lower($match[1]))?->name ?? $unknown;
+
+            return "@{$name}";
+        }, (string) $body);
     }
 }

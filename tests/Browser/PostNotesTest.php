@@ -56,7 +56,7 @@ test('a note mentions a teammate picked from the list and takes reactions', func
     waitForText($page, '@note-mention', '@Bia Lima');
 
     expect(PostNote::query()->where('post_id', $post->id)->value('body'))
-        ->toBe("Please check the @image, @[Bia Lima](user:{$teammate->id})");
+        ->toBe("Please check the @image, @[user:{$teammate->id}]");
 
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
     Mail::assertNotQueued(PostNoteAdded::class);
@@ -120,7 +120,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     waitFor($page, '@note-mention');
 
     $note = PostNote::query()->where('post_id', $post->id)->sole();
-    expect($note->body)->toBe("@[Bia Lima](user:{$bia->id}) hi @zzz");
+    expect($note->body)->toBe("@[user:{$bia->id}] hi @zzz");
 
     $page->click('@note-actions');
     $page->click('@note-edit');
@@ -143,7 +143,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
 
     $page->assertNoJavaScriptErrors();
 
-    expect($note->fresh()->body)->toBe("@[Bia Lima](user:{$bia->id}) hi @zzz and @[Ana Souza](user:{$ana->id})");
+    expect($note->fresh()->body)->toBe("@[user:{$bia->id}] hi @zzz and @[user:{$ana->id}]");
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($ana->email));
 });
 
@@ -165,8 +165,8 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $user->id,
-        'body' => "@[Ana Souza](user:{$admin->id}) @[Bia Lima](user:{$member->id}) @[Caio Former](user:{$formerMember->id}) @[Paulo Castellano](user:{$user->id})",
-    ]);
+        'body' => "@[user:{$admin->id}] @[user:{$member->id}] @[user:{$formerMember->id}] @[user:{$user->id}]",
+    ])->mentions()->attach([$admin->id, $member->id, $formerMember->id, $user->id]);
 
     $this->actingAs($user);
 
@@ -176,6 +176,7 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     $page->click("@post-notes-trigger-{$post->id}");
     waitForOpen($page, "@post-notes-section-{$post->id}");
     waitForCount($page, '@note-mention', 4);
+    waitForText($page, '@note-body', '@Ana Souza @Bia Lima @Caio Former @Paulo Castellano');
 
     $tokyoTimes = json_encode([now('Asia/Tokyo')->format('H:i'), now('Asia/Tokyo')->addMinute()->format('H:i')]);
 
@@ -241,7 +242,7 @@ test('@all is offered first in the mention list, in the reader\'s language, and 
     waitForText($page, '@note-mention-everyone', '@todos');
     $page->assertNoJavaScriptErrors();
 
-    expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('Revisem @[todos](everyone)');
+    expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('Revisem @[everyone]');
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
 });
 

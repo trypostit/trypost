@@ -16,11 +16,12 @@ export interface PostNote {
     user_id: string;
     created_at: string;
     updated_at: string;
+    mentions: MentionedPerson[];
     reactions: PostNoteReaction[];
     user: PostNoteAuthor;
 }
 
-/** Someone a note mentions, as the composer knows them: a member, or everyone (`EVERYONE_ID`). */
+/** A member a note mentions, with their current name; the body holds only the id. */
 export interface MentionedPerson {
     id: string;
     name: string;
