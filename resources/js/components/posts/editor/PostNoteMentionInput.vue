@@ -10,18 +10,22 @@ import {
     PopoverContent,
 } from '@/components/ui/popover';
 import { blank, filled } from '@/lib/helpers';
-import type { MentionedPerson } from '@/lib/noteMentions';
 import {
     EVERYONE_ID,
     insertMention,
-    isPickedMentionAt,
     mentionedPeople,
+    mentionLabel,
     mentionQueryAt,
+    pickedMentionAt,
     plainNoteBody,
     withMentionMarkup,
 } from '@/lib/noteMentions';
 import { filterBySearch } from '@/lib/search';
-import type { PostNoteMentionable } from '@/types/post-note';
+import type {
+    MentionedPerson,
+    PostNoteMentionable,
+    PostNoteMentionQuery,
+} from '@/types/post-note';
 
 /**
  * A note textarea where typing `@` lists the teammates who can be mentioned,
@@ -59,7 +63,7 @@ const everyoneDescription = wTrans('notes.mention_everyone.description');
 const draft = ref(plainNoteBody(body.value, everyoneWord.value));
 const picked = shallowRef(mentionedPeople(body.value, everyoneWord.value));
 const textarea = ref<HTMLTextAreaElement | null>(null);
-const query = ref<{ start: number; query: string } | null>(null);
+const query = ref<PostNoteMentionQuery | null>(null);
 const highlighted = ref(0);
 
 const matches = computed(() =>
@@ -107,6 +111,11 @@ const closeList = () => {
     highlighted.value = 0;
 };
 
+/**
+ * Reads the `@query` at the caret again: after typing, moving the caret or
+ * focusing the field. A picked `@Name` is a finished mention unless what
+ * follows it still finds someone (`@Ana L` searches for Ana Lima).
+ */
 const updateQuery = () => {
     const element = textarea.value;
 
@@ -116,10 +125,7 @@ const updateQuery = () => {
 
     const found = mentionQueryAt(element.value, element.selectionStart);
 
-    if (
-        !filled(found) ||
-        isPickedMentionAt(element.value, found.start, picked.value)
-    ) {
+    if (!filled(found)) {
         closeList();
 
         return;
@@ -129,13 +135,46 @@ const updateQuery = () => {
         emit('needPeople');
     }
 
+    if (
+        found.start !== query.value?.start ||
+        found.query !== query.value?.query
+    ) {
+        highlighted.value = 0;
+    }
+
     query.value = found;
-    highlighted.value = 0;
+
+    const finished = pickedMentionAt(element.value, found.start, picked.value);
+
+    if (
+        filled(finished) &&
+        (blank(found.query.slice(mentionLabel(finished).length - 1).trim()) ||
+            blank(matches.value))
+    ) {
+        closeList();
+    }
 };
 
 const onInput = (event: Event) => {
     draft.value = (event.target as HTMLTextAreaElement).value;
+    picked.value = picked.value.filter((person) =>
+        draft.value.includes(mentionLabel(person)),
+    );
     syncModel();
+    updateQuery();
+};
+
+/** Keys the open list handles itself; any other key may have moved the caret. */
+const LIST_KEYS = ['ArrowUp', 'ArrowDown', 'Enter', 'Tab'];
+
+const onKeyup = (event: KeyboardEvent) => {
+    if (
+        event.key === 'Escape' ||
+        (listOpen.value && LIST_KEYS.includes(event.key))
+    ) {
+        return;
+    }
+
     updateQuery();
 };
 
@@ -207,9 +246,11 @@ const onKeydown = (event: KeyboardEvent) => {
         event.preventDefault();
         event.stopPropagation();
 
-        if (filled(query.value)) {
-            closeList();
-        } else {
+        const wasOpen = listOpen.value;
+
+        closeList();
+
+        if (!wasOpen) {
             emit('cancel');
         }
 
@@ -244,7 +285,9 @@ defineExpose({ focus });
                 :aria-activedescendant="activeOptionId"
                 @input="onInput"
                 @keydown="onKeydown"
+                @keyup="onKeyup"
                 @click="updateQuery"
+                @focus="updateQuery"
                 @blur="closeList"
             />
         </PopoverAnchor>

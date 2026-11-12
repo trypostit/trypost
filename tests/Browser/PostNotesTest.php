@@ -104,7 +104,9 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     waitForOpen($page, '@note-mention-list');
     waitForCount($page, '@note-mention-option', 2);
     waitForState($page, '@note-input', "element.getAttribute('aria-expanded') === 'true'");
-    $page->keys('@note-input', ['ArrowDown', 'ArrowDown', 'Enter']);
+    $page->keys('@note-input', ['ArrowDown', 'ArrowDown']);
+    waitForState($page, '@note-mention-list [aria-selected=true]', "element.textContent.includes('Bia Lima')");
+    $page->keys('@note-input', 'Enter');
     waitForGone($page, '@note-mention-list');
     $page->assertValue('@note-input', '@Bia Lima ');
 
@@ -243,6 +245,53 @@ test('@all is offered first in the mention list, in the reader\'s language, and 
 
     expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('Revisem @[todos](everyone)');
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
+});
+
+test('the mention list follows the caret, and a picked name still lets you search a longer one', function () {
+    $user = User::factory()->create(['name' => 'Paulo Castellano']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    workspaceMember($workspace, 'member', ['name' => 'Ana']);
+    workspaceMember($workspace, 'member', ['name' => 'Ana Lima']);
+
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForOpen($page, "@post-notes-section-{$post->id}");
+
+    $page->fill('@note-input', '@Ana');
+    waitForOpen($page, '@note-mention-list');
+    waitForCount($page, '@note-mention-option', 2);
+    $page->keys('@note-input', 'Enter');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', '@Ana ');
+
+    $page->append('@note-input', 'L');
+    waitForOpen($page, '@note-mention-list');
+    waitForCount($page, '@note-mention-option', 1);
+    waitForText($page, '@note-mention-option', 'Ana Lima');
+    $page->keys('@note-input', 'Enter');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', '@Ana Lima ');
+
+    $page->fill('@note-input', 'hello @an');
+    waitForOpen($page, '@note-mention-list');
+    $page->keys('@note-input', 'Home');
+    waitForGone($page, '@note-mention-list');
+    $page->keys('@note-input', 'End');
+    waitForOpen($page, '@note-mention-list');
+    $page->keys('@note-input', 'Escape');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', 'hello @an')
+        ->assertNoJavaScriptErrors();
+
+    expect(PostNote::query()->count())->toBe(0);
 });
 
 test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {

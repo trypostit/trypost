@@ -287,6 +287,7 @@ watch(
     () => {
         notes.value = [];
         mentionables.value = null;
+        loadingMentionables = false;
         currentPage.value = 1;
         void loadNotes(1);
     },

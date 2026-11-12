@@ -59,7 +59,7 @@ class RemovePostNoteReactionTool extends Tool
             'emoji' => ['required', 'string', new SingleEmoji],
         ]);
 
-        return Response::structured((new PostNoteResource(RemovePostNoteReaction::execute($note, $request->user(), data_get($validated, 'emoji'))))->resolve());
+        return Response::structured((new PostNoteResource(RemovePostNoteReaction::execute($post, $note, $request->user(), data_get($validated, 'emoji'))))->resolve());
     }
 
     public function schema(JsonSchema $schema): array

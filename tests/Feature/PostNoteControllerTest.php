@@ -184,17 +184,21 @@ test('the member who asked for approval of someone else post is a participant of
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
 });
 
-test('everyone in the workspace is listed on a draft, the viewer included, sorted by name ignoring case and accents, with their time zone', function () {
+test('everyone in the workspace is listed on a draft, the viewer included, sorted by name ignoring case and accents (names without a Latin form first, by their own text), with their time zone', function () {
     $this->user->update(['name' => 'Diego', 'timezone' => 'Europe/Lisbon']);
     $carla = workspaceMember($this->workspace, 'approval', ['name' => 'Carla']);
     $bruno = workspaceMember($this->workspace, 'member', ['name' => 'bruno', 'timezone' => 'Asia/Tokyo']);
     $alvaro = workspaceMember($this->workspace, 'admin', ['name' => 'Álvaro', 'timezone' => 'America/Sao_Paulo']);
+    $yamada = workspaceMember($this->workspace, 'member', ['name' => '山田']);
+    $zenin = workspaceMember($this->workspace, 'member', ['name' => '全員']);
     workspaceOutsider($this->workspace);
 
     $this->actingAs($carla)
         ->getJson(route('app.posts.notes.mentionables.index', $this->post))
         ->assertOk()
         ->assertExactJson([
+            ['id' => $zenin->id, 'name' => '全員', 'photo_url' => $zenin->photo_url, 'timezone' => $zenin->timezone],
+            ['id' => $yamada->id, 'name' => '山田', 'photo_url' => $yamada->photo_url, 'timezone' => $yamada->timezone],
             ['id' => $alvaro->id, 'name' => 'Álvaro', 'photo_url' => $alvaro->photo_url, 'timezone' => 'America/Sao_Paulo'],
             ['id' => $bruno->id, 'name' => 'bruno', 'photo_url' => $bruno->photo_url, 'timezone' => 'Asia/Tokyo'],
             ['id' => $carla->id, 'name' => 'Carla', 'photo_url' => $carla->photo_url, 'timezone' => $carla->timezone],

@@ -22,7 +22,7 @@ registerHooks({
             : nextResolve(specifier, context),
 });
 
-const { mentionedIds, mentionedPeople, mentionsEveryone, plainNoteBody, withMentionMarkup } = await import(
+const { EVERYONE_ID, mentionedPeople, parseNoteBody, plainNoteBody, withMentionMarkup } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/noteMentions.ts')).href
 );
 
@@ -33,7 +33,17 @@ console.log(
         corpus.map((body) =>
             mode === 'round-trip'
                 ? withMentionMarkup(plainNoteBody(body, 'all'), mentionedPeople(body, 'all'))
-                : { ids: mentionedIds(body), everyone: mentionsEveryone(body), plain: plainNoteBody(body, 'all') },
+                : {
+                      ids: [
+                          ...new Set(
+                              mentionedPeople(body, '')
+                                  .filter((person: { id: string }) => person.id !== EVERYONE_ID)
+                                  .map((person: { id: string }) => person.id),
+                          ),
+                      ],
+                      everyone: parseNoteBody(body).some((segment: { kind: string }) => segment.kind === 'everyone'),
+                      plain: plainNoteBody(body, 'all'),
+                  },
         ),
     ),
 );

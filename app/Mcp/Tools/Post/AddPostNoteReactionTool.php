@@ -59,7 +59,7 @@ class AddPostNoteReactionTool extends Tool
             'emoji' => ['required', 'string', new SingleEmoji],
         ]);
 
-        return Response::structured((new PostNoteResource(AddPostNoteReaction::execute($note, $request->user(), data_get($validated, 'emoji'))))->resolve());
+        return Response::structured((new PostNoteResource(AddPostNoteReaction::execute($post, $note, $request->user(), data_get($validated, 'emoji'))))->resolve());
     }
 
     public function schema(JsonSchema $schema): array

@@ -19,14 +19,14 @@ class PostNoteReactionController extends Controller
     {
         $this->authorizeReactions($post, $note);
 
-        return PostNoteResource::make(AddPostNoteReaction::execute($note, $request->user(), $request->validated('emoji')));
+        return PostNoteResource::make(AddPostNoteReaction::execute($post, $note, $request->user(), $request->validated('emoji')));
     }
 
     public function destroy(DestroyPostNoteReactionRequest $request, Post $post, PostNote $note): PostNoteResource
     {
         $this->authorizeReactions($post, $note);
 
-        return PostNoteResource::make(RemovePostNoteReaction::execute($note, $request->user(), $request->validated('emoji')));
+        return PostNoteResource::make(RemovePostNoteReaction::execute($post, $note, $request->user(), $request->validated('emoji')));
     }
 
     private function authorizeReactions(Post $post, PostNote $note): void

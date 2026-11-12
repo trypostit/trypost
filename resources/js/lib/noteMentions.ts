@@ -6,13 +6,12 @@
  * turns it back into markup when the body is saved.
  */
 import { filled } from '@/lib/helpers';
+import type { MentionedPerson, PostNoteMentionQuery } from '@/types/post-note';
 
-export type NoteBodySegment =
+type NoteBodySegment =
     | { kind: 'text'; text: string }
     | { kind: 'mention'; name: string; userId: string }
     | { kind: 'everyone' };
-
-export type MentionedPerson = { id: string; name: string };
 
 /** The id a picked `@all` carries in the composer; it is never a user id. */
 export const EVERYONE_ID = 'everyone';
@@ -27,8 +26,23 @@ const UUID_PATTERN =
 const markupName = (name: string): string =>
     name.replace(/[[\]\n]/g, ' ').trim();
 
+/**
+ * What may not follow a mention for it to count: a letter (unless Chinese,
+ * Japanese or Korean, written without spaces), a digit, `_` or `-`. So
+ * `@all-hands` stays text while `@山田さん` is a mention of 山田.
+ */
+const CONTINUES_NAME =
+    '[\\p{N}_-]|[^\\P{L}\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}]';
+
+const continuesName = (text: string): boolean =>
+    new RegExp(`^(?:${CONTINUES_NAME})`, 'u').test(text);
+
 const escapeRegExp = (text: string): string =>
     text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** How a mention reads in the composer: `@Name`. */
+export const mentionLabel = (person: MentionedPerson): string =>
+    `@${markupName(person.name)}`;
 
 /** The markup stored for a mention. */
 export const mentionMarkup = (person: MentionedPerson): string =>
@@ -63,10 +77,6 @@ export const parseNoteBody = (body: string): NoteBodySegment[] => {
     return segments;
 };
 
-/** Whether the body mentions everyone who sees the post. */
-export const mentionsEveryone = (body: string): boolean =>
-    parseNoteBody(body).some((segment) => segment.kind === 'everyone');
-
 /**
  * The people the body mentions, in order of appearance, a person once per
  * mention; `@all` comes back as `everyoneWord`, the reader's word for it.
@@ -86,15 +96,6 @@ export const mentionedPeople = (
 
         return [];
     });
-
-/** The ids the body mentions, once each, in order of first mention. */
-export const mentionedIds = (body: string): string[] => [
-    ...new Set(
-        mentionedPeople(body, '')
-            .filter((person) => person.id !== EVERYONE_ID)
-            .map((person) => person.id),
-    ),
-];
 
 /** The body as people read it: each mention becomes `@Name`. */
 export const plainNoteBody = (body: string, everyoneWord: string): string =>
@@ -136,7 +137,10 @@ export const withMentionMarkup = (
     const used = new Map<string, number>();
 
     return text.replace(
-        new RegExp(`(^|[^\\p{L}\\p{N}_@])@(${names})(?![\\p{L}\\p{N}_])`, 'gu'),
+        new RegExp(
+            `(^|[^\\p{L}\\p{N}_@])@(${names})(?!${CONTINUES_NAME})`,
+            'gu',
+        ),
         (_match, before: string, name: string) => {
             const named = byName.get(name) ?? [];
             const turn = used.get(name) ?? 0;
@@ -149,23 +153,30 @@ export const withMentionMarkup = (
 };
 
 /**
- * Whether the `@` at `start` begins the `@Name` of a picked person, so what
- * follows it is a finished mention and not a search.
+ * The picked person whose `@Name` the `@` at `start` begins, if any: what
+ * follows it is a finished mention rather than a search. The longest name
+ * wins, so `@Ana Lima` is Ana Lima even when Ana was picked too.
  */
-export const isPickedMentionAt = (
+export const pickedMentionAt = (
     text: string,
     start: number,
     people: readonly MentionedPerson[],
-): boolean =>
-    text.charAt(start) === '@' &&
-    people.some((person) => {
-        const name = markupName(person.name);
+): MentionedPerson | undefined =>
+    text.charAt(start) === '@'
+        ? [...people]
+              .sort(
+                  (a, b) =>
+                      markupName(b.name).length - markupName(a.name).length,
+              )
+              .find((person) => {
+                  const name = markupName(person.name);
 
-        return (
-            text.startsWith(name, start + 1) &&
-            !/^[\p{L}\p{N}_]/u.test(text.slice(start + 1 + name.length))
-        );
-    });
+                  return (
+                      text.startsWith(name, start + 1) &&
+                      !continuesName(text.slice(start + 1 + name.length))
+                  );
+              })
+        : undefined;
 
 /**
  * The `@query` typed right before the caret, if any: an `@` at the start or
@@ -175,7 +186,7 @@ export const isPickedMentionAt = (
 export const mentionQueryAt = (
     text: string,
     caret: number,
-): { start: number; query: string } | null => {
+): PostNoteMentionQuery | null => {
     const match = /(^|\s)@([^@\n]{0,40})$/u.exec(text.slice(0, caret));
 
     if (!filled(match)) {

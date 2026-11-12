@@ -18,10 +18,11 @@ final class UpdatePostNote
     public static function execute(Post $post, PostNote $note, User $author, array $data): PostNote
     {
         $previousBody = $note->body;
+        $audience = ListPostNoteAudience::execute($post);
 
-        $note->update(['body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), ListPostNoteAudience::execute($post))]);
+        $note->update(['body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), $audience)]);
 
-        NotifyPostNoteRecipients::edited($note, $author, $previousBody);
+        NotifyPostNoteRecipients::edited($note, $author, $previousBody, $audience);
 
         PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated');
 

@@ -17,14 +17,16 @@ final class CreatePostNote
      */
     public static function execute(Post $post, User $author, array $data): PostNote
     {
+        $audience = ListPostNoteAudience::execute($post);
+
         $note = $post->notes()->create([
             'user_id' => $author->id,
-            'body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), ListPostNoteAudience::execute($post)),
+            'body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), $audience),
         ]);
 
         $note->load(['user.avatarMedia', 'reactions.user']);
 
-        NotifyPostNoteRecipients::created($note, $author);
+        NotifyPostNoteRecipients::created($note, $author, $audience);
         PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created');
 
         return $note;

@@ -16,11 +16,11 @@ class PostNoteReactionController extends Controller
 {
     public function update(UpdatePostNoteReactionRequest $request, Post $post, PostNote $note): PostNoteResource
     {
-        return new PostNoteResource(AddPostNoteReaction::execute($note, $request->user(), $request->validated('emoji')));
+        return new PostNoteResource(AddPostNoteReaction::execute($post, $note, $request->user(), $request->validated('emoji')));
     }
 
     public function destroy(DestroyPostNoteReactionRequest $request, Post $post, PostNote $note): PostNoteResource
     {
-        return new PostNoteResource(RemovePostNoteReaction::execute($note, $request->user(), $request->validated('emoji')));
+        return new PostNoteResource(RemovePostNoteReaction::execute($post, $note, $request->user(), $request->validated('emoji')));
     }
 }
