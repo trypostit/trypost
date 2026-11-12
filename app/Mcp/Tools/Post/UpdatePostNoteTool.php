@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Edit the text of a note on a post. Only the note author can edit it. Only teammates the edit mentions for the first time (@[Name](user:id)) are emailed.')]
+#[Description('Edit the text of a note on a post. Only the note author can edit it. Only teammates the edit adds as mentions (@[Name](user:id), or everyone with @[all](everyone)) are emailed.')]
 class UpdatePostNoteTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -62,7 +62,7 @@ class UpdatePostNoteTool extends Tool
             'body' => ['required', 'string', 'max:2000'],
         ]);
 
-        return Response::structured((new PostNoteResource(UpdatePostNote::execute($post, $note, $validated)))->resolve());
+        return Response::structured((new PostNoteResource(UpdatePostNote::execute($post, $note, $request->user(), $validated)))->resolve());
     }
 
     public function schema(JsonSchema $schema): array
@@ -70,7 +70,7 @@ class UpdatePostNoteTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
             'note_id' => $schema->string()->required()->description('The UUID of the note, from list-post-notes-tool.'),
-            'body' => $schema->string()->required()->description('The new note text (max 2000 characters). Mention a teammate with @[Name](user:id).'),
+            'body' => $schema->string()->required()->description('The new note text (max 2000 characters). Mention a teammate with @[Name](user:id), or everyone with @[all](everyone).'),
         ];
     }
 }

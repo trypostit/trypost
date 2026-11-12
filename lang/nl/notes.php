@@ -18,6 +18,10 @@ return [
     'load_more' => 'Oudere notities laden',
     'react' => 'Reactie toevoegen',
     'no_mentionables' => 'Geen teamlid gevonden',
+    'mention_everyone' => [
+        'word' => 'iedereen',
+        'description' => 'Iedereen bij dit bericht',
+    ],
     'mention_card' => [
         'local_time' => ':time lokale tijd',
     ],

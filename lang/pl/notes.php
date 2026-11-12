@@ -18,6 +18,10 @@ return [
     'load_more' => 'Wczytaj starsze notatki',
     'react' => 'Dodaj reakcję',
     'no_mentionables' => 'Brak pasujących członków zespołu',
+    'mention_everyone' => [
+        'word' => 'wszyscy',
+        'description' => 'Wszyscy przy tym poście',
+    ],
     'mention_card' => [
         'local_time' => ':time czasu lokalnego',
     ],

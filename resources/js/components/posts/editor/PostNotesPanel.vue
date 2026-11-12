@@ -142,11 +142,12 @@ const loadMentionables = async () => {
     }
 
     loadingMentionables = true;
+    const postId = props.postId;
 
     try {
-        const response = await request(fetchMentionables.url(props.postId));
+        const response = await request(fetchMentionables.url(postId));
 
-        if (response.ok) {
+        if (response.ok && postId === props.postId) {
             mentionables.value = await response.json();
         }
     } finally {

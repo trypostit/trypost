@@ -1,7 +1,9 @@
 /**
- * Prints what `lib/noteMentions.ts` reads from each body of a corpus (the
- * mentioned ids and the plain text), so `PostNoteMentionsParityTest.php` can
- * compare them with `App\Support\PostNoteMentions` on the server.
+ * Prints what `lib/noteMentions.ts` reads from each body of a corpus, so
+ * `PostNoteMentionsParityTest.php` can compare it with `App\Support\PostNoteMentions`
+ * on the server: the mentioned ids, whether everyone is mentioned and the plain
+ * text (with `all` as the word for everyone). With `round-trip` it prints each
+ * body after the composer shows it as `@Name` and stores it again.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
  * onto `resources/js/**.ts`.
@@ -11,7 +13,7 @@ import { registerHooks } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const [resourcesDir, corpusFile] = process.argv.slice(2);
+const [resourcesDir, corpusFile, mode] = process.argv.slice(2);
 
 registerHooks({
     resolve: (specifier, context, nextResolve) =>
@@ -20,7 +22,7 @@ registerHooks({
             : nextResolve(specifier, context),
 });
 
-const { mentionedPeople, plainNoteBody } = await import(
+const { mentionedIds, mentionedPeople, mentionsEveryone, plainNoteBody, withMentionMarkup } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/noteMentions.ts')).href
 );
 
@@ -28,9 +30,10 @@ const corpus = JSON.parse(fs.readFileSync(corpusFile, 'utf8')) as string[];
 
 console.log(
     JSON.stringify(
-        corpus.map((body) => ({
-            ids: mentionedPeople(body).map((person: { id: string }) => person.id),
-            plain: plainNoteBody(body),
-        })),
+        corpus.map((body) =>
+            mode === 'round-trip'
+                ? withMentionMarkup(plainNoteBody(body, 'all'), mentionedPeople(body, 'all'))
+                : { ids: mentionedIds(body), everyone: mentionsEveryone(body), plain: plainNoteBody(body, 'all') },
+        ),
     ),
 );

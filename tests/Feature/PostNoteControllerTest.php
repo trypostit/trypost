@@ -222,6 +222,85 @@ test('reactions go with their note and with the member who reacted', function ()
     expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
+test('@all emails a mention to everyone who sees the post but the author, and no note email', function () {
+    Mail::fake();
+
+    $writer = workspaceMember($this->workspace);
+    $teammate = workspaceMember($this->workspace);
+    workspaceOutsider($this->workspace);
+
+    $this->actingAs($writer)
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => '@[todos](everyone) take a look'])
+        ->assertCreated();
+
+    Mail::assertQueuedCount(2);
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($this->user->email));
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
+    Mail::assertNotQueued(PostNoteAdded::class);
+});
+
+test('@all on a pending request reaches only the approvers and the member who asked', function () {
+    Mail::fake();
+
+    $requester = workspaceMember($this->workspace, 'approval');
+    $bystander = workspaceMember($this->workspace, 'approval');
+    $approver = workspaceMember($this->workspace);
+    $pending = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $requester->id,
+        'status' => PostStatus::PendingApproval,
+        'approval_requested_by' => $requester->id,
+    ]);
+
+    $this->actingAs($approver)
+        ->postJson(route('app.posts.notes.store', $pending), ['body' => '@[all](everyone) ready?'])
+        ->assertCreated();
+
+    Mail::assertQueuedCount(2);
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($this->user->email));
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($requester->email));
+    Mail::assertNotQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($bystander->email));
+});
+
+test('an edit that adds @all emails only the people it had not mentioned yet', function () {
+    Mail::fake();
+
+    $alreadyMentioned = workspaceMember($this->workspace);
+    $newlyMentioned = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create([
+        'post_id' => $this->post->id,
+        'user_id' => $this->user->id,
+        'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) ping",
+    ]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $note]), ['body' => '@[all](everyone) ping'])
+        ->assertOk();
+
+    Mail::assertQueuedCount(1);
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($newlyMentioned->email));
+});
+
+test('a saved mention carries the person\'s real name, and a mention of someone outside the post becomes plain text', function () {
+    $teammate = workspaceMember($this->workspace, 'member', ['name' => 'Bia Lima']);
+    $outsider = workspaceOutsider($this->workspace);
+
+    $created = $this->actingAs($this->user)
+        ->postJson(route('app.posts.notes.store', $this->post), [
+            'body' => "@[The boss](user:{$teammate->id}) and @[Someone](user:{$outsider->id})",
+        ])
+        ->assertCreated();
+
+    expect(PostNote::query()->sole()->body)->toBe("@[Bia Lima](user:{$teammate->id}) and @Someone");
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $created->json('id')]), [
+            'body' => "@[Fake](user:{$teammate->id}) again",
+        ])
+        ->assertOk()
+        ->assertJsonPath('body', "@[Bia Lima](user:{$teammate->id}) again");
+});
+
 test('store emails the workspace owner when a member adds a note', function () {
     Mail::fake();
 

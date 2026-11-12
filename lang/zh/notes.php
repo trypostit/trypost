@@ -18,6 +18,10 @@ return [
     'load_more' => '加载更早的备注',
     'react' => '添加回应',
     'no_mentionables' => '没有匹配的成员',
+    'mention_everyone' => [
+        'word' => '所有人',
+        'description' => '此帖子的所有人',
+    ],
     'mention_card' => [
         'local_time' => '当地时间 :time',
     ],

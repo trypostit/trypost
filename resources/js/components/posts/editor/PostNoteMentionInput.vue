@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { IconUsers } from '@tabler/icons-vue';
+import { wTrans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, shallowRef, useId, watch } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -8,7 +10,9 @@ import {
     PopoverContent,
 } from '@/components/ui/popover';
 import { blank, filled } from '@/lib/helpers';
+import type { MentionedPerson } from '@/lib/noteMentions';
 import {
+    EVERYONE_ID,
     insertMention,
     isPickedMentionAt,
     mentionedPeople,
@@ -20,7 +24,8 @@ import { filterBySearch } from '@/lib/search';
 import type { PostNoteMentionable } from '@/types/post-note';
 
 /**
- * A note textarea where typing `@` lists the teammates who can be mentioned;
+ * A note textarea where typing `@` lists the teammates who can be mentioned,
+ * after an option for everyone on the post (`@all` in the reader's language);
  * picking one inserts `@Name`. The model is the body to store, where each
  * picked `@Name` becomes `@[Name](user:{id})`; the textarea only shows names.
  * Enter submits (Shift+Enter breaks the line); Esc closes the list, then
@@ -44,21 +49,37 @@ const emit = defineEmits<{
 
 const body = defineModel<string>({ required: true });
 
-const draft = ref(plainNoteBody(body.value));
-const picked = shallowRef(mentionedPeople(body.value));
+type Option =
+    | { kind: 'everyone' }
+    | { kind: 'person'; person: PostNoteMentionable };
+
+const everyoneWord = wTrans('notes.mention_everyone.word');
+const everyoneDescription = wTrans('notes.mention_everyone.description');
+
+const draft = ref(plainNoteBody(body.value, everyoneWord.value));
+const picked = shallowRef(mentionedPeople(body.value, everyoneWord.value));
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const query = ref<{ start: number; query: string } | null>(null);
 const highlighted = ref(0);
 
 const matches = computed(() =>
-    filterBySearch(
-        (props.people ?? []).filter(
-            (person) => person.id !== props.currentUserId,
-        ),
+    filterBySearch<Option>(
+        [
+            { kind: 'everyone' },
+            ...(props.people ?? [])
+                .filter((person) => person.id !== props.currentUserId)
+                .map((person): Option => ({ kind: 'person', person })),
+        ],
         query.value?.query,
-        (person) => [person.name],
+        (option) =>
+            option.kind === 'everyone'
+                ? [everyoneWord.value, everyoneDescription.value]
+                : [option.person.name],
     ).slice(0, MAX_LISTED),
 );
+
+const optionKey = (option: Option) =>
+    option.kind === 'everyone' ? EVERYONE_ID : option.person.id;
 
 const listOpen = computed(() => filled(query.value) && filled(props.people));
 
@@ -76,8 +97,8 @@ const syncModel = () => {
 
 watch(body, (stored) => {
     if (stored !== withMentionMarkup(draft.value, picked.value)) {
-        draft.value = plainNoteBody(stored);
-        picked.value = mentionedPeople(stored);
+        draft.value = plainNoteBody(stored, everyoneWord.value);
+        picked.value = mentionedPeople(stored, everyoneWord.value);
     }
 });
 
@@ -118,13 +139,18 @@ const onInput = (event: Event) => {
     updateQuery();
 };
 
-const pick = async (person: PostNoteMentionable) => {
+const pick = async (option: Option) => {
     const element = textarea.value;
     const found = query.value;
 
     if (!element || !found) {
         return;
     }
+
+    const person: MentionedPerson =
+        option.kind === 'everyone'
+            ? { id: EVERYONE_ID, name: everyoneWord.value }
+            : { id: option.person.id, name: option.person.name };
 
     const result = insertMention(
         draft.value,
@@ -135,7 +161,7 @@ const pick = async (person: PostNoteMentionable) => {
     draft.value = result.text;
 
     if (!picked.value.some((known) => known.id === person.id)) {
-        picked.value = [...picked.value, { id: person.id, name: person.name }];
+        picked.value = [...picked.value, person];
     }
 
     syncModel();
@@ -238,23 +264,44 @@ defineExpose({ focus });
             </p>
             <ul v-else :id="listId" role="listbox" class="flex flex-col">
                 <li
-                    v-for="(person, index) in matches"
+                    v-for="(option, index) in matches"
                     :id="optionId(index)"
-                    :key="person.id"
+                    :key="optionKey(option)"
                     role="option"
                     :aria-selected="index === highlighted"
                     class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
                     :class="{ 'bg-accent': index === highlighted }"
-                    data-testid="note-mention-option"
-                    @mousedown.prevent="pick(person)"
+                    :data-testid="
+                        option.kind === 'everyone'
+                            ? 'note-mention-option-everyone'
+                            : 'note-mention-option'
+                    "
+                    @mousedown.prevent="pick(option)"
                     @mouseenter="highlight(index)"
                 >
-                    <Avatar
-                        :src="person.photo_url"
-                        :name="person.name"
-                        class="size-5 shrink-0 text-[10px]"
-                    />
-                    <span class="truncate">{{ person.name }}</span>
+                    <template v-if="option.kind === 'everyone'">
+                        <span
+                            class="grid size-5 shrink-0 place-items-center self-start rounded-full bg-primary-subtle text-primary-text"
+                        >
+                            <IconUsers class="size-3" />
+                        </span>
+                        <span class="grid min-w-0">
+                            <span class="font-medium"
+                                >@{{ $t('notes.mention_everyone.word') }}</span
+                            >
+                            <span class="text-xs text-muted-foreground">{{
+                                $t('notes.mention_everyone.description')
+                            }}</span>
+                        </span>
+                    </template>
+                    <template v-else>
+                        <Avatar
+                            :src="option.person.photo_url"
+                            :name="option.person.name"
+                            class="size-5 shrink-0 text-[10px]"
+                        />
+                        <span class="truncate">{{ option.person.name }}</span>
+                    </template>
                 </li>
             </ul>
         </PopoverContent>

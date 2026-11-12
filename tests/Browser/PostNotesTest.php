@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Mail\PostNoteAdded;
 use App\Mail\PostNoteMentioned;
 use App\Models\Post;
@@ -103,7 +104,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     waitForOpen($page, '@note-mention-list');
     waitForCount($page, '@note-mention-option', 2);
     waitForState($page, '@note-input', "element.getAttribute('aria-expanded') === 'true'");
-    $page->keys('@note-input', ['ArrowDown', 'Enter']);
+    $page->keys('@note-input', ['ArrowDown', 'ArrowDown', 'Enter']);
     waitForGone($page, '@note-mention-list');
     $page->assertValue('@note-input', '@Bia Lima ');
 
@@ -182,7 +183,7 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     waitFor($page, '@note-mention-card-time');
     waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$photoUrl}");
     $page->assertSeeIn('@note-mention-card-name', 'Ana Souza');
-    waitForCondition($page, "{$tokyoTimes}.some((time) => document.querySelector('[data-testid=note-mention-card-time]').textContent.includes(time + ' local time'))");
+    waitForState($page, '@note-mention-card-time', "{$tokyoTimes}.some((time) => element.textContent.includes(time + ' local time'))");
 
     $page->hover('@note-body');
     waitForGone($page, '@note-mention-card');
@@ -204,6 +205,44 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$myPhotoUrl}");
     $page->assertVisible('@note-mention-card-time')
         ->assertNoJavaScriptErrors();
+});
+
+test('@all is offered first in the mention list, in the reader\'s language, and mentions everyone on the post', function () {
+    Mail::fake();
+
+    $user = User::factory()->create(['name' => 'Paulo Castellano', 'locale' => Locale::PortugueseBrazil]);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $teammate = workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
+
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForOpen($page, "@post-notes-section-{$post->id}");
+
+    $page->fill('@note-input', '@');
+    waitForOpen($page, '@note-mention-list');
+    waitForState($page, '[data-testid=note-mention-list] [role=option]', "element.dataset.testid === 'note-mention-option-everyone' && element.textContent.includes('@todos')");
+
+    $page->fill('@note-input', 'Revisem @tod');
+    waitForCount($page, '@note-mention-option', 0);
+    $page->keys('@note-input', 'Enter');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', 'Revisem @todos ');
+
+    $page->keys('@note-input', 'Enter');
+    waitFor($page, '@note-mention-everyone');
+    $page->assertSeeIn('@note-mention-everyone', '@todos')
+        ->assertNoJavaScriptErrors();
+
+    expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('Revisem @[todos](everyone)');
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
 });
 
 test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {

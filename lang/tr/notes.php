@@ -18,6 +18,10 @@ return [
     'load_more' => 'Daha eski notları yükle',
     'react' => 'Tepki ekle',
     'no_mentionables' => 'Eşleşen ekip üyesi yok',
+    'mention_everyone' => [
+        'word' => 'herkes',
+        'description' => 'Bu gönderideki herkes',
+    ],
     'mention_card' => [
         'local_time' => 'Yerel saat :time',
     ],

@@ -18,6 +18,10 @@ return [
     'load_more' => 'تحميل الملاحظات الأقدم',
     'react' => 'إضافة تفاعل',
     'no_mentionables' => 'لا يوجد عضو مطابق',
+    'mention_everyone' => [
+        'word' => 'الجميع',
+        'description' => 'كل من في هذا المنشور',
+    ],
     'mention_card' => [
         'local_time' => ':time بالتوقيت المحلي',
     ],

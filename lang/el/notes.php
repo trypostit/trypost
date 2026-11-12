@@ -18,6 +18,10 @@ return [
     'load_more' => 'Φόρτωση παλαιότερων σημειώσεων',
     'react' => 'Προσθήκη αντίδρασης',
     'no_mentionables' => 'Κανένα μέλος δεν ταιριάζει',
+    'mention_everyone' => [
+        'word' => 'όλοι',
+        'description' => 'Όλοι σε αυτή τη δημοσίευση',
+    ],
     'mention_card' => [
         'local_time' => ':time τοπική ώρα',
     ],

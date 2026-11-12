@@ -18,6 +18,10 @@ return [
     'load_more' => 'Carregar notas antigas',
     'react' => 'Adicionar reação',
     'no_mentionables' => 'Ninguém da equipe encontrado',
+    'mention_everyone' => [
+        'word' => 'todos',
+        'description' => 'Todos nesta publicação',
+    ],
     'mention_card' => [
         'local_time' => ':time no horário local',
     ],

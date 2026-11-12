@@ -169,6 +169,19 @@ test('the post note email shows mentions as names', function () {
         ->assertDontSeeInHtml("user:{$mentioned->id}", false);
 });
 
+test('the mention email names everyone in the recipient\'s language', function (Locale $locale, string $word) {
+    $author = User::factory()->create();
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => '@[all](everyone) please review']);
+
+    (new PostNoteMentioned($note, $author))->locale($locale->value)
+        ->assertSeeInHtml("@{$word} please review")
+        ->assertDontSeeInHtml('(everyone)', false);
+})->with([
+    [Locale::English, 'all'],
+    [Locale::PortugueseBrazil, 'todos'],
+]);
+
 test('the post note email falls back when the post has no text and no channel', function () {
     $author = User::factory()->create();
     $post = Post::factory()->create(['user_id' => $author->id, 'content' => '']);

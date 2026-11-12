@@ -25,10 +25,6 @@ final class ListPostNoteAudience
     {
         $workspace = $post->workspace;
 
-        if (blank($workspace)) {
-            return new Collection;
-        }
-
         $isPending = $post->status === Status::PendingApproval;
         $requesterId = $isPending ? $post->approvalRequester()?->id : null;
 

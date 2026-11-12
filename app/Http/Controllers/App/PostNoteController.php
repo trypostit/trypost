@@ -42,7 +42,7 @@ class PostNoteController extends Controller
         $this->authorizeNotes($post);
         $this->authorize('update', $note);
 
-        return PostNoteResource::make(UpdatePostNote::execute($post, $note, $request->validated()));
+        return PostNoteResource::make(UpdatePostNote::execute($post, $note, $request->user(), $request->validated()));
     }
 
     public function destroy(Post $post, PostNote $note): JsonResponse

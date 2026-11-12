@@ -18,6 +18,10 @@ return [
     'load_more' => '過去のメモを読み込む',
     'react' => 'リアクションを追加',
     'no_mentionables' => '一致するメンバーがいません',
+    'mention_everyone' => [
+        'word' => '全員',
+        'description' => 'この投稿の全員',
+    ],
     'mention_card' => [
         'local_time' => '現地時間 :time',
     ],

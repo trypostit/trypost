@@ -18,6 +18,10 @@ return [
     'load_more' => 'Carica note meno recenti',
     'react' => 'Aggiungi reazione',
     'no_mentionables' => 'Nessun membro corrisponde',
+    'mention_everyone' => [
+        'word' => 'tutti',
+        'description' => 'Tutti su questo post',
+    ],
     'mention_card' => [
         'local_time' => ':time ora locale',
     ],

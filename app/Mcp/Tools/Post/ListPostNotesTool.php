@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the notes (internal team comments) on a post, newest first. Notes are never published to the network. Each note has its body (mentions read @[Name](user:id)), its reactions ([{emoji, count, users}]) and its author (id, name, photo_url). Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
+#[Description('List the notes (internal team comments) on a post, newest first. Notes are never published to the network. Each note has its body (mentions read @[Name](user:id), and @[all](everyone) for everyone), its reactions ([{emoji, count, users}]) and its author (id, name, photo_url). Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
 class ListPostNotesTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;

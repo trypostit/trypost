@@ -18,6 +18,10 @@ return [
     'load_more' => 'Cargar notas anteriores',
     'react' => 'Añadir reacción',
     'no_mentionables' => 'Nadie del equipo coincide',
+    'mention_everyone' => [
+        'word' => 'todos',
+        'description' => 'Todos en esta publicación',
+    ],
     'mention_card' => [
         'local_time' => ':time hora local',
     ],

@@ -18,6 +18,10 @@ return [
     'load_more' => 'Load older notes',
     'react' => 'Add reaction',
     'no_mentionables' => 'No teammate matches',
+    'mention_everyone' => [
+        'word' => 'all',
+        'description' => 'Everyone on this post',
+    ],
     'mention_card' => [
         'local_time' => ':time local time',
     ],

@@ -18,6 +18,10 @@ return [
     'load_more' => 'Ältere Notizen laden',
     'react' => 'Reaktion hinzufügen',
     'no_mentionables' => 'Kein Teammitglied gefunden',
+    'mention_everyone' => [
+        'word' => 'alle',
+        'description' => 'Alle bei diesem Beitrag',
+    ],
     'mention_card' => [
         'local_time' => ':time Ortszeit',
     ],

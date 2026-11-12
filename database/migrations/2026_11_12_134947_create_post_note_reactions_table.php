@@ -17,7 +17,7 @@ return new class extends Migration
             $emoji = $table->string('emoji', 64);
             $table->timestamps();
 
-            if (Schema::getConnection()->getDriverName() === 'mysql') {
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
                 $emoji->collation('utf8mb4_bin');
             }
 

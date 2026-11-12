@@ -18,6 +18,10 @@ return [
     'load_more' => 'Charger les notes plus anciennes',
     'react' => 'Ajouter une réaction',
     'no_mentionables' => 'Aucun membre ne correspond',
+    'mention_everyone' => [
+        'word' => 'tous',
+        'description' => 'Tout le monde sur cette publication',
+    ],
     'mention_card' => [
         'local_time' => ':time heure locale',
     ],

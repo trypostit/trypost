@@ -28,8 +28,14 @@ const requestPeople = () => {
         data-testid="note-body"
     >
         <template v-for="(segment, index) in segments" :key="index">
+            <span
+                v-if="segment.kind === 'everyone'"
+                class="rounded-sm bg-primary-subtle px-0.5 font-medium text-foreground"
+                data-testid="note-mention-everyone"
+                >@{{ $t('notes.mention_everyone.word') }}</span
+            >
             <PostNoteMention
-                v-if="segment.kind === 'mention'"
+                v-else-if="segment.kind === 'mention'"
                 :name="segment.name"
                 :user-id="segment.userId"
                 :people="people"

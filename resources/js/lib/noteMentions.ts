@@ -1,6 +1,7 @@
 /**
- * Mentions inside a note body, written as `@[Display Name](user:{uuid})`.
- * Mirror of `App\Support\PostNoteMentions`, kept equal by
+ * Mentions inside a note body: a person is written `@[Display Name](user:{uuid})`
+ * and everyone who sees the post `@[word](everyone)`, shown in each reader's
+ * language. Mirror of `App\Support\PostNoteMentions`, kept equal by
  * `PostNoteMentionsParityTest`. The composer shows a mention as `@Name` and
  * turns it back into markup when the body is saved.
  */
@@ -8,11 +9,16 @@ import { filled } from '@/lib/helpers';
 
 export type NoteBodySegment =
     | { kind: 'text'; text: string }
-    | { kind: 'mention'; name: string; userId: string };
+    | { kind: 'mention'; name: string; userId: string }
+    | { kind: 'everyone' };
 
 export type MentionedPerson = { id: string; name: string };
 
-const MENTION_PATTERN = /@\[([^\]\n]{1,255})\]\(user:([0-9a-fA-F-]{36})\)/gu;
+/** The id a picked `@all` carries in the composer; it is never a user id. */
+export const EVERYONE_ID = 'everyone';
+
+const MENTION_PATTERN =
+    /@\[([^\]\n]{1,255})\]\((?:user:([0-9a-fA-F-]{36})|everyone)\)/gu;
 
 const UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -26,7 +32,9 @@ const escapeRegExp = (text: string): string =>
 
 /** The markup stored for a mention. */
 export const mentionMarkup = (person: MentionedPerson): string =>
-    `@[${markupName(person.name)}](user:${person.id})`;
+    person.id === EVERYONE_ID
+        ? `@[${markupName(person.name)}](everyone)`
+        : `@[${markupName(person.name)}](user:${person.id})`;
 
 /** The body split into text and mentions, in order. */
 export const parseNoteBody = (body: string): NoteBodySegment[] => {
@@ -40,7 +48,11 @@ export const parseNoteBody = (body: string): NoteBodySegment[] => {
             segments.push({ kind: 'text', text: body.slice(last, start) });
         }
 
-        segments.push({ kind: 'mention', name: match[1], userId: match[2] });
+        segments.push(
+            filled(match[2])
+                ? { kind: 'mention', name: match[1], userId: match[2] }
+                : { kind: 'everyone' },
+        );
         last = start + match[0].length;
     }
 
@@ -51,53 +63,90 @@ export const parseNoteBody = (body: string): NoteBodySegment[] => {
     return segments;
 };
 
-/** The people the body mentions, once each, in order of first mention. */
-export const mentionedPeople = (body: string): MentionedPerson[] => {
-    const people = new Map<string, MentionedPerson>();
+/** Whether the body mentions everyone who sees the post. */
+export const mentionsEveryone = (body: string): boolean =>
+    parseNoteBody(body).some((segment) => segment.kind === 'everyone');
 
-    for (const segment of parseNoteBody(body)) {
-        if (
-            segment.kind === 'mention' &&
-            UUID_PATTERN.test(segment.userId) &&
-            !people.has(segment.userId.toLowerCase())
-        ) {
-            people.set(segment.userId.toLowerCase(), {
-                id: segment.userId.toLowerCase(),
-                name: segment.name,
-            });
+/**
+ * The people the body mentions, in order of appearance, a person once per
+ * mention; `@all` comes back as `everyoneWord`, the reader's word for it.
+ */
+export const mentionedPeople = (
+    body: string,
+    everyoneWord: string,
+): MentionedPerson[] =>
+    parseNoteBody(body).flatMap((segment): MentionedPerson[] => {
+        if (segment.kind === 'everyone') {
+            return [{ id: EVERYONE_ID, name: everyoneWord }];
         }
-    }
 
-    return [...people.values()];
-};
+        if (segment.kind === 'mention' && UUID_PATTERN.test(segment.userId)) {
+            return [{ id: segment.userId.toLowerCase(), name: segment.name }];
+        }
+
+        return [];
+    });
+
+/** The ids the body mentions, once each, in order of first mention. */
+export const mentionedIds = (body: string): string[] => [
+    ...new Set(
+        mentionedPeople(body, '')
+            .filter((person) => person.id !== EVERYONE_ID)
+            .map((person) => person.id),
+    ),
+];
 
 /** The body as people read it: each mention becomes `@Name`. */
-export const plainNoteBody = (body: string): string =>
-    body.replace(MENTION_PATTERN, (_match, name: string) => `@${name}`);
+export const plainNoteBody = (body: string, everyoneWord: string): string =>
+    body.replace(
+        MENTION_PATTERN,
+        (_match, name: string, userId: string | undefined) =>
+            `@${filled(userId) ? name : everyoneWord}`,
+    );
 
 /**
  * The text typed in the composer (where a mention reads `@Name`) as the body
- * to store: each `@Name` of a picked person, standing alone, becomes their
- * markup. Longer names go first so `@Ana Lima` wins over `@Ana`.
+ * to store: each `@Name` of a picked person, not glued to a word before it,
+ * becomes their markup. Longer names go first so `@Ana Lima` wins over `@Ana`;
+ * people who share a name take its mentions in the order they were mentioned.
  */
 export const withMentionMarkup = (
     text: string,
     people: readonly MentionedPerson[],
-): string =>
-    [...people]
-        .sort((a, b) => markupName(b.name).length - markupName(a.name).length)
-        .reduce(
-            (body, person) =>
-                body.replace(
-                    new RegExp(
-                        `(^|\\s)@${escapeRegExp(markupName(person.name))}(?![\\p{L}\\p{N}_])`,
-                        'gu',
-                    ),
-                    (_match, before: string) =>
-                        `${before}${mentionMarkup(person)}`,
-                ),
-            text,
-        );
+): string => {
+    const byName = new Map<string, MentionedPerson[]>();
+
+    for (const person of people) {
+        const name = markupName(person.name);
+        const named = byName.get(name) ?? [];
+
+        if (!named.some((known) => known.id === person.id)) {
+            byName.set(name, [...named, person]);
+        }
+    }
+
+    if (byName.size === 0) {
+        return text;
+    }
+
+    const names = [...byName.keys()]
+        .sort((a, b) => b.length - a.length)
+        .map(escapeRegExp)
+        .join('|');
+    const used = new Map<string, number>();
+
+    return text.replace(
+        new RegExp(`(^|[^\\p{L}\\p{N}_@])@(${names})(?![\\p{L}\\p{N}_])`, 'gu'),
+        (_match, before: string, name: string) => {
+            const named = byName.get(name) ?? [];
+            const turn = used.get(name) ?? 0;
+
+            used.set(name, turn + 1);
+
+            return `${before}${mentionMarkup(named[Math.min(turn, named.length - 1)])}`;
+        },
+    );
+};
 
 /**
  * Whether the `@` at `start` begins the `@Name` of a picked person, so what

@@ -37,7 +37,7 @@ class PostNoteController extends Controller
 
     public function update(UpdatePostNoteRequest $request, Post $post, PostNote $note): PostNoteResource
     {
-        return new PostNoteResource(UpdatePostNote::execute($post, $note, $request->validated()));
+        return new PostNoteResource(UpdatePostNote::execute($post, $note, $request->user(), $request->validated()));
     }
 
     public function destroy(Post $post, PostNote $note): JsonResponse

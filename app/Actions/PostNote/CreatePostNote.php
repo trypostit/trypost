@@ -8,6 +8,7 @@ use App\Events\PostNoteChanged;
 use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\User;
+use App\Support\PostNoteMentions;
 
 final class CreatePostNote
 {
@@ -18,12 +19,12 @@ final class CreatePostNote
     {
         $note = $post->notes()->create([
             'user_id' => $author->id,
-            'body' => data_get($data, 'body'),
+            'body' => PostNoteMentions::withCurrentNames((string) data_get($data, 'body'), ListPostNoteAudience::execute($post)),
         ]);
 
         $note->load(['user.avatarMedia', 'reactions.user']);
 
-        NotifyPostNoteRecipients::created($note);
+        NotifyPostNoteRecipients::created($note, $author);
         PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created');
 
         return $note;

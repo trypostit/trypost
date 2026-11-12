@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Add a note (internal team comment) to a post. Notes are never published to the network. Mention a teammate with @[Name](user:id), ids from list-post-note-mentionables-tool: they get an email. The post\'s other participants (its author, the member who asked for approval and everyone who wrote a note on it) get an email about the new note. On a post pending approval, only the approvers and the member who asked see notes.')]
+#[Description('Add a note (internal team comment) to a post. Notes are never published to the network. Mention a teammate with @[Name](user:id), ids from list-post-note-mentionables-tool, or everyone who sees the post with @[all](everyone): they get an email. The post\'s other participants (its author, the member who asked for approval and everyone who wrote a note on it) get an email about the new note. On a post pending approval, only the approvers and the member who asked see notes.')]
 class CreatePostNoteTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -55,7 +55,7 @@ class CreatePostNoteTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
-            'body' => $schema->string()->required()->description('The note text (max 2000 characters). Mention a teammate with @[Name](user:id).'),
+            'body' => $schema->string()->required()->description('The note text (max 2000 characters). Mention a teammate with @[Name](user:id), or everyone with @[all](everyone).'),
         ];
     }
 }
