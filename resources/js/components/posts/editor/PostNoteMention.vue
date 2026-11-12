@@ -67,6 +67,7 @@ const onOpenChange = (open: boolean) => {
             >
         </HoverCardTrigger>
         <HoverCardContent
+            side="top"
             align="start"
             class="w-auto max-w-72 min-w-56 rounded-xl border-0 p-3 shadow-md dark:border dark:border-border"
             data-testid="note-mention-card"
