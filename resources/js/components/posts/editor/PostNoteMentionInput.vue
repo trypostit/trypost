@@ -251,7 +251,7 @@ defineExpose({ focus });
         <PopoverContent
             side="top"
             align="start"
-            class="w-64 p-1"
+            class="w-max max-w-[calc(100vw-2rem)] min-w-64 p-1"
             data-testid="note-mention-list"
             @open-auto-focus.prevent
             @close-auto-focus.prevent
@@ -281,18 +281,16 @@ defineExpose({ focus });
                 >
                     <template v-if="option.kind === 'everyone'">
                         <span
-                            class="grid size-8 shrink-0 place-items-center rounded-full bg-primary-strong text-primary-strong-foreground"
+                            class="grid size-5 shrink-0 place-items-center rounded-full bg-primary-strong text-primary-strong-foreground"
                         >
-                            <IconUsers class="size-4" />
+                            <IconUsers class="size-3" />
                         </span>
-                        <span class="grid min-w-0">
-                            <span class="font-medium"
-                                >@{{ $t('notes.mention_everyone.word') }}</span
-                            >
-                            <span class="text-xs text-muted-foreground">{{
-                                $t('notes.mention_everyone.description')
-                            }}</span>
-                        </span>
+                        <span class="font-medium whitespace-nowrap"
+                            >@{{ $t('notes.mention_everyone.word') }}</span
+                        >
+                        <span class="whitespace-nowrap text-muted-foreground">{{
+                            $t('notes.mention_everyone.description')
+                        }}</span>
                     </template>
                     <template v-else>
                         <Avatar
