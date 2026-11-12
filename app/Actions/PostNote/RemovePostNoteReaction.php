@@ -18,9 +18,7 @@ final class RemovePostNoteReaction
     {
         $removed = $note->reactions()->where('user_id', $user->id)->where('emoji', $emoji)->delete();
 
-        if ($removed > 0) {
-            PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated');
-        }
+        PostNoteChanged::dispatchIf($removed > 0, $post->id, $post->workspace_id, 'updated');
 
         return $note->load(PostNote::DISPLAY_RELATIONS);
     }

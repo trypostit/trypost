@@ -58,9 +58,11 @@ const body = defineModel<string>({ required: true });
 
 const attrs = useAttrs();
 
-type Option =
+/** A row of the `@` list: everyone on the post, or one teammate. */
+type Option = { id: string; label: string } & (
     | { kind: 'everyone' }
-    | { kind: 'person'; person: PostNoteMentionable };
+    | { kind: 'person'; person: PostNoteMentionable }
+);
 
 const everyoneWord = wTrans('notes.mention_everyone.word');
 const everyoneDescription = wTrans('notes.mention_everyone.description');
@@ -70,30 +72,38 @@ const unknownWord = wTrans('notes.mention_unknown');
 const mentionLabel = (id: string): string =>
     id === EVERYONE_ID
         ? everyoneWord.value
-        : (props.mentions.find((person) => person.id === id)?.name ??
-          props.people?.find((person) => person.id === id)?.name ??
-          unknownWord.value);
+        : ([...props.mentions, ...(props.people ?? [])].find(
+              (person) => person.id === id,
+          )?.name ?? unknownWord.value);
 
 /** The open `@` search: what was typed after it and how to insert a pick. */
 const search = ref<{
     query: string;
-    insert: (person: { id: string; label: string }) => void;
+    insert: (mention: { id: string; label: string }) => void;
 } | null>(null);
 const highlighted = ref(0);
 
+/** Everyone first, then every teammate but the writer. */
+const options = computed((): Option[] => [
+    { kind: 'everyone', id: EVERYONE_ID, label: everyoneWord.value },
+    ...(props.people ?? [])
+        .filter((person) => person.id !== props.currentUserId)
+        .map(
+            (person): Option => ({
+                kind: 'person',
+                id: person.id,
+                label: person.name,
+                person,
+            }),
+        ),
+]);
+
+/** The options the typed query finds, searched in memory (the people load once). */
 const matches = computed(() =>
-    filterBySearch<Option>(
-        [
-            { kind: 'everyone' },
-            ...(props.people ?? [])
-                .filter((person) => person.id !== props.currentUserId)
-                .map((person): Option => ({ kind: 'person', person })),
-        ],
-        search.value?.query,
-        (option) =>
-            option.kind === 'everyone'
-                ? [everyoneWord.value, everyoneDescription.value]
-                : [option.person.name],
+    filterBySearch(options.value, search.value?.query, (option) =>
+        option.kind === 'everyone'
+            ? [option.label, everyoneDescription.value]
+            : [option.label],
     ).slice(0, MAX_LISTED),
 );
 
@@ -108,15 +118,8 @@ const listOpen = computed(
 const listId = useId();
 const optionId = (index: number) => `${listId}-${index}`;
 
-const optionKey = (option: Option) =>
-    option.kind === 'everyone' ? EVERYONE_ID : option.person.id;
-
-const pick = (option: Option) => {
-    search.value?.insert(
-        option.kind === 'everyone'
-            ? { id: EVERYONE_ID, label: everyoneWord.value }
-            : { id: option.person.id, label: option.person.name },
-    );
+const pick = ({ id, label }: Option) => {
+    search.value?.insert({ id, label });
 };
 
 /**
@@ -308,7 +311,7 @@ defineExpose({ focus });
                 <li
                     v-for="(option, index) in matches"
                     :id="optionId(index)"
-                    :key="optionKey(option)"
+                    :key="option.id"
                     role="option"
                     :aria-selected="index === highlighted"
                     class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
@@ -328,7 +331,7 @@ defineExpose({ focus });
                             <IconUsers class="size-3" />
                         </span>
                         <span class="font-medium whitespace-nowrap"
-                            >@{{ $t('notes.mention_everyone.word') }}</span
+                            >@{{ option.label }}</span
                         >
                         <span class="whitespace-nowrap text-muted-foreground">{{
                             $t('notes.mention_everyone.description')
@@ -337,10 +340,10 @@ defineExpose({ focus });
                     <template v-else>
                         <Avatar
                             :src="option.person.photo_url"
-                            :name="option.person.name"
+                            :name="option.label"
                             class="size-5 shrink-0 text-[10px]"
                         />
-                        <span class="truncate">{{ option.person.name }}</span>
+                        <span class="truncate">{{ option.label }}</span>
                     </template>
                 </li>
             </ul>

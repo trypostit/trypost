@@ -7,7 +7,7 @@
  */
 import type { JSONContent } from '@tiptap/core';
 
-import { filled, isEmpty, isUuid } from '@/lib/helpers';
+import { filled, isEmpty } from '@/lib/helpers';
 
 type NoteBodySegment =
     | { kind: 'text'; text: string }
@@ -17,7 +17,8 @@ type NoteBodySegment =
 /** The id a mention of everyone carries in the editor; it is never a user id. */
 export const EVERYONE_ID = 'everyone';
 
-const MENTION_PATTERN = /@\[(?:user:([0-9a-fA-F-]{36})|everyone)\]/gu;
+const MENTION_PATTERN =
+    /@\[(?:user:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|everyone)\]/gu;
 
 /** The body split into text and mentions, in order. */
 export const parseNoteBody = (body: string): NoteBodySegment[] => {
@@ -58,7 +59,6 @@ const textNodes = (text: string): JSONContent[] =>
 /**
  * A stored body as the editor's document: one paragraph with a mention node
  * for each mention, labelled by `label(id)` (`EVERYONE_ID` for everyone).
- * Markup naming no valid id stays text.
  */
 export const noteBodyToDoc = (
     body: string,
@@ -75,10 +75,6 @@ export const noteBodyToDoc = (
 
                 const id =
                     segment.kind === 'everyone' ? EVERYONE_ID : segment.userId;
-
-                if (id !== EVERYONE_ID && !isUuid(id)) {
-                    return textNodes(`@[user:${id}]`);
-                }
 
                 return [{ type: 'mention', attrs: { id, label: label(id) } }];
             }),

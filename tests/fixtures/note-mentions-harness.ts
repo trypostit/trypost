@@ -25,7 +25,6 @@ registerHooks({
 const load = async (file: string) => import(pathToFileURL(path.join(path.resolve(resourcesDir), file)).href);
 
 const { docToNoteBody, noteBodyToDoc, parseNoteBody } = await load('lib/noteMentions.ts');
-const { isUuid } = await load('lib/helpers.ts');
 
 type Segment = { kind: 'text'; text: string } | { kind: 'mention'; userId: string } | { kind: 'everyone' };
 
@@ -36,7 +35,7 @@ const read = (body: string) => {
         ids: [
             ...new Set(
                 segments.flatMap((segment) =>
-                    segment.kind === 'mention' && isUuid(segment.userId) ? [segment.userId.toLowerCase()] : [],
+                    segment.kind === 'mention' ? [segment.userId] : [],
                 ),
             ),
         ],

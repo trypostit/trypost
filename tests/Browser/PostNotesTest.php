@@ -100,6 +100,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     $page->click("@post-notes-trigger-{$post->id}");
     waitFor($page, '@note-input');
 
+    $page->hover('@note-input');
     $page->fill('@note-input', '@');
     waitForOpen($page, '@note-mention-list');
     waitForCount($page, '@note-mention-option', 2);
@@ -481,7 +482,7 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     $page->hover('@note-item')->click('@note-actions');
     waitFor($page, '@note-edit');
     $page->click('@note-edit');
-    waitFor($page, '@note-edit-input');
+    waitForEditorText($page, '@note-edit-input', "First line\nSecond line\nThird line");
     $page->fill('@note-edit-input', 'Edited note')
         ->click('@note-edit-save');
     waitForGone($page, '@note-edit-input');

@@ -17,21 +17,20 @@ use Illuminate\Support\Str;
  */
 final class PostNoteMentions
 {
-    /** A mention of a person (group 1 holds their id) or of everyone (no group 1); the same pattern as `noteMentions.ts`. */
-    private const PATTERN = '/@\[(?:user:([0-9a-fA-F-]{36})|everyone)\]/u';
+    /** A mention of a person (group 1 holds their uuid) or of everyone (no group 1); the same pattern as `noteMentions.ts`. */
+    private const PATTERN = '/@\[(?:user:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|everyone)\]/u';
+
+    private const EVERYONE = '@[everyone]';
 
     /**
      * The unique user ids mentioned in the body, in order of appearance.
-     * Markup whose id is not a uuid names nobody and is left out.
      *
      * @return Collection<int, string>
      */
     public static function extract(?string $body): Collection
     {
-        preg_match_all(self::PATTERN, (string) $body, $matches);
-
-        return collect($matches[1])
-            ->filter(fn (string $id): bool => Str::isUuid($id))
+        return Str::matchAll(self::PATTERN, (string) $body)
+            ->filter()
             ->map(fn (string $id): string => Str::lower($id))
             ->unique()
             ->values();
@@ -42,9 +41,7 @@ final class PostNoteMentions
      */
     public static function mentionsEveryone(?string $body): bool
     {
-        preg_match_all(self::PATTERN, (string) $body, $matches);
-
-        return collect($matches[1])->contains(fn (string $id): bool => blank($id));
+        return Str::contains((string) $body, self::EVERYONE);
     }
 
     /**

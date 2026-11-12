@@ -56,10 +56,3 @@ export const transform = <T, R, F = null>(
 /** Laravel's `Number::clamp()`: the value kept between `min` and `max`. */
 export const clamp = (value: number, min: number, max: number): number =>
     Math.min(Math.max(value, min), max);
-
-/** Laravel's `Str::isUuid()` (no version given): a UUID of any version, in either case. */
-export const isUuid = (value: unknown): value is string =>
-    isString(value) &&
-    /^[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}$/.test(
-        value,
-    );

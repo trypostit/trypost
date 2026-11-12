@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -13,6 +13,7 @@ import {
     InputGroupButton,
 } from '@/components/ui/input-group';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
+import { blank, filled } from '@/lib/helpers';
 import {
     destroy as destroyNote,
     index as fetchNotes,
@@ -48,16 +49,20 @@ const emit = defineEmits<{
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
 
-const csrfToken =
-    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        ?.content ?? '';
+const notesHttp = useHttp<{ page: number }, PaginatedResponse>({ page: 1 });
+const sendHttp = useHttp<{ body: string }, PostNote>({ body: '' });
+const noteHttp = useHttp<{ body: string }, PostNote>({ body: '' });
+const deleteHttp = useHttp({});
+const reactionHttp = useHttp<{ emoji: string }, PostNote>({ emoji: '' });
+const mentionablesHttp = useHttp<
+    Record<string, never>,
+    PostNoteMentionable[]
+>({});
 
 const notes = ref<PostNote[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const lastPage = ref(1);
-const loading = ref(false);
-const sending = ref(false);
 
 const newBody = ref('');
 const highlightedId = ref<string | null>(null);
@@ -67,24 +72,11 @@ const composerInput = ref<InstanceType<typeof PostNoteEditor> | null>(
     null,
 );
 const mentionables = ref<PostNoteMentionable[] | null>(null);
-let loadingMentionables = false;
 
 watch(total, (count) => emit('count', count));
 
 const hasOlderNotes = computed(() => currentPage.value < lastPage.value);
-const canSend = computed(() => newBody.value.trim() !== '' && !sending.value);
-
-const request = (url: string, method = 'GET', body?: object) =>
-    fetch(url, {
-        method,
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-    });
+const canSend = computed(() => filled(newBody.value) && !sendHttp.processing);
 
 const scrollToBottom = () => {
     if (scrollContainer.value) {
@@ -93,32 +85,27 @@ const scrollToBottom = () => {
 };
 
 const loadNotes = async (page = 1) => {
-    loading.value = true;
+    notesHttp.page = page;
 
-    try {
-        const response = await request(
-            fetchNotes.url(props.postId, { query: { page } }),
-        );
+    const response = await notesHttp
+        .get(fetchNotes.url(props.postId))
+        .catch(() => null);
 
-        if (!response.ok) {
-            return;
-        }
+    if (!filled(response)) {
+        return;
+    }
 
-        const data: PaginatedResponse = await response.json();
-        const chronological = [...data.data].reverse();
-        currentPage.value = data.meta.current_page;
-        lastPage.value = data.meta.last_page;
-        total.value = data.meta.total;
+    const chronological = [...response.data].reverse();
+    currentPage.value = response.meta.current_page;
+    lastPage.value = response.meta.last_page;
+    total.value = response.meta.total;
 
-        if (page === 1) {
-            notes.value = chronological;
-            await nextTick();
-            scrollToBottom();
-        } else {
-            notes.value = [...chronological, ...notes.value];
-        }
-    } finally {
-        loading.value = false;
+    if (page === 1) {
+        notes.value = chronological;
+        await nextTick();
+        scrollToBottom();
+    } else {
+        notes.value = [...chronological, ...notes.value];
     }
 };
 
@@ -127,7 +114,7 @@ usePostEcho(props.postId, '.post.note.changed', () => {
 });
 
 const loadOlderNotes = () => {
-    if (hasOlderNotes.value && !loading.value) {
+    if (hasOlderNotes.value && !notesHttp.processing) {
         void loadNotes(currentPage.value + 1);
     }
 };
@@ -136,22 +123,19 @@ const focusComposer = () => {
     composerInput.value?.focus();
 };
 
+/** The people a note can mention, loaded once per post when the first `@` is typed. */
 const loadMentionables = async () => {
-    if (mentionables.value !== null || loadingMentionables) {
+    if (mentionables.value !== null || mentionablesHttp.processing) {
         return;
     }
 
-    loadingMentionables = true;
     const postId = props.postId;
+    const people = await mentionablesHttp
+        .get(fetchMentionables.url(postId))
+        .catch(() => null);
 
-    try {
-        const response = await request(fetchMentionables.url(postId));
-
-        if (response.ok && postId === props.postId) {
-            mentionables.value = await response.json();
-        }
-    } finally {
-        loadingMentionables = false;
+    if (people && postId === props.postId) {
+        mentionables.value = people;
     }
 };
 
@@ -160,79 +144,67 @@ const toggleReaction = async (
     emoji: string,
     reacted: boolean,
 ) => {
-    const { url, method } = (reacted ? removeReaction : addReaction)({
-        post: props.postId,
-        note: note.id,
-    });
-    const response = await request(url, method, { emoji });
+    reactionHttp.emoji = emoji;
 
-    if (!response.ok) {
-        return;
+    const updated = await reactionHttp
+        .submit((reacted ? removeReaction : addReaction)({
+            post: props.postId,
+            note: note.id,
+        }))
+        .catch(() => null);
+
+    if (filled(updated)) {
+        note.reactions = updated.reactions;
     }
-
-    const updated: PostNote = await response.json();
-    note.reactions = updated.reactions;
 };
 
 const sendNote = async () => {
     const body = newBody.value.trim();
 
-    if (!body || sending.value) {
+    if (blank(body) || sendHttp.processing) {
         return;
     }
 
-    sending.value = true;
+    sendHttp.body = body;
 
-    try {
-        const response = await request(storeNote.url(props.postId), 'POST', {
-            body,
-        });
+    const created = await sendHttp
+        .post(storeNote.url(props.postId))
+        .catch(() => null);
 
-        if (!response.ok) {
-            return;
-        }
-
-        const created: PostNote = await response.json();
-        notes.value.push(created);
-
-        total.value++;
-        newBody.value = '';
-        await nextTick();
-        scrollToBottom();
-        focusComposer();
-    } finally {
-        sending.value = false;
+    if (!filled(created)) {
+        return;
     }
+
+    notes.value.push(created);
+    total.value++;
+    newBody.value = '';
+    await nextTick();
+    scrollToBottom();
+    focusComposer();
 };
 
 const saveNote = async (note: PostNote, body: string) => {
-    const response = await request(
-        updateNote.url({ post: props.postId, note: note.id }),
-        'PUT',
-        { body },
-    );
+    noteHttp.body = body;
 
-    if (!response.ok) {
-        return;
+    const updated = await noteHttp
+        .put(updateNote.url({ post: props.postId, note: note.id }))
+        .catch(() => null);
+
+    if (filled(updated)) {
+        Object.assign(note, updated);
     }
-
-    const updated: PostNote = await response.json();
-    note.body = updated.body;
-    note.updated_at = updated.updated_at;
 };
 
 const deleteNote = async (note: PostNote) => {
-    const response = await request(
-        destroyNote.url({ post: props.postId, note: note.id }),
-        'DELETE',
-    );
+    const deleted = await deleteHttp
+        .delete(destroyNote.url({ post: props.postId, note: note.id }))
+        .then(() => true)
+        .catch(() => false);
 
-    if (!response.ok) {
-        return;
+    if (deleted) {
+        notes.value = notes.value.filter((item) => item.id !== note.id);
+        total.value = Math.max(0, total.value - 1);
     }
-
-    notes.value = notes.value.filter((item) => item.id !== note.id);
-    total.value = Math.max(0, total.value - 1);
 };
 
 const focusNote = async (noteId: string) => {
@@ -286,8 +258,8 @@ watch(
     () => props.postId,
     () => {
         notes.value = [];
+        mentionablesHttp.cancel();
         mentionables.value = null;
-        loadingMentionables = false;
         currentPage.value = 1;
         void loadNotes(1);
     },
@@ -307,11 +279,11 @@ watch(
                     variant="ghost"
                     size="sm"
                     class="-ms-2 text-muted-foreground"
-                    :disabled="loading"
+                    :disabled="notesHttp.processing"
                     @click="loadOlderNotes"
                 >
                     <IconLoader2
-                        v-if="loading"
+                        v-if="notesHttp.processing"
                         class="size-3.5 animate-spin"
                     />
                     {{ $t('notes.load_more') }}
@@ -319,7 +291,7 @@ watch(
             </div>
 
             <div
-                v-if="loading && notes.length === 0"
+                v-if="notesHttp.processing && blank(notes)"
                 class="flex items-center gap-3 py-1"
             >
                 <IconLoader2
@@ -328,7 +300,7 @@ watch(
             </div>
 
             <p
-                v-else-if="notes.length === 0"
+                v-else-if="blank(notes)"
                 class="py-1 text-sm text-muted-foreground"
                 data-testid="notes-empty"
             >
@@ -394,7 +366,7 @@ watch(
                         @click="sendNote"
                     >
                         <IconLoader2
-                            v-if="sending"
+                            v-if="sendHttp.processing"
                             class="size-3.5 animate-spin"
                         />
                         <IconArrowUp v-else class="size-3.5" />
