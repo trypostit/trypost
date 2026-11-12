@@ -779,6 +779,17 @@ function jsSelector(string $selector): string
 }
 
 /**
+ * Wait until the note editor matching the selector shows that text, trimmed.
+ * The editor is a contenteditable, so it has no value to assert.
+ */
+function waitForEditorText(mixed $page, string $selector, string $text): void
+{
+    $text = json_encode($text, JSON_THROW_ON_ERROR);
+
+    waitForState($page, $selector, "element.innerText.trim() === {$text}");
+}
+
+/**
  * Wait until an element matching the selector exists and the expression,
  * written about `element`, is true: "element.getAttribute('aria-checked') === 'true'".
  */

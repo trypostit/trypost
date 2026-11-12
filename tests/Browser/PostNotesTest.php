@@ -47,13 +47,13 @@ test('a note mentions a teammate picked from the list and takes reactions', func
     $page->assertScript('(() => { const list = document.querySelector("[data-testid=note-mention-list]").getBoundingClientRect(); return list.top >= 0 && list.bottom <= window.innerHeight; })()', true);
     $page->click('@note-mention-option');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', 'Please check the @image, @Bia Lima ');
+    waitForEditorText($page, '@note-input', 'Please check the @image, @Bia Lima');
 
     $page->click('@note-send');
     waitFor($page, '@note-mention');
 
-    $page->assertSeeIn('@note-body', 'Please check the @image, @Bia Lima')
-        ->assertSeeIn('@note-mention', '@Bia Lima');
+    waitForText($page, '@note-body', 'Please check the @image, @Bia Lima');
+    waitForText($page, '@note-mention', '@Bia Lima');
 
     expect(PostNote::query()->where('post_id', $post->id)->value('body'))
         ->toBe("Please check the @image, @[Bia Lima](user:{$teammate->id})");
@@ -108,14 +108,13 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     waitForState($page, '@note-mention-list [aria-selected=true]', "element.textContent.includes('Bia Lima')");
     $page->keys('@note-input', 'Enter');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', '@Bia Lima ');
+    waitForEditorText($page, '@note-input', '@Bia Lima');
 
-    $page->append('@note-input', 'hi @zzz');
+    $page->typeSlowly('@note-input', 'hi @zzz', 10);
     waitForText($page, '@note-mention-list', 'No teammate matches');
     $page->keys('@note-input', 'Escape');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', '@Bia Lima hi @zzz')
-        ->assertVisible('@note-input');
+    waitForEditorText($page, '@note-input', '@Bia Lima hi @zzz');
 
     $page->keys('@note-input', 'Enter');
     waitFor($page, '@note-mention');
@@ -126,9 +125,9 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     $page->click('@note-actions');
     $page->click('@note-edit');
     waitFor($page, '@note-edit-input');
-    $page->assertValue('@note-edit-input', '@Bia Lima hi @zzz');
+    waitForEditorText($page, '@note-edit-input', '@Bia Lima hi @zzz');
 
-    $page->append('@note-edit-input', ' and @an');
+    $page->typeSlowly('@note-edit-input', ' and @an', 10);
     waitForText($page, '@note-mention-option', 'Ana Souza');
     $page->keys('@note-edit-input', 'Tab');
     waitForGone($page, '@note-mention-list');
@@ -138,7 +137,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     $page->click('@note-actions');
     $page->click('@note-edit');
     waitFor($page, '@note-edit-input');
-    $page->append('@note-edit-input', ' discarded');
+    $page->typeSlowly('@note-edit-input', ' discarded', 10);
     $page->keys('@note-edit-input', 'Escape');
     waitForGone($page, '@note-edit-input');
 
@@ -184,7 +183,7 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     waitForOpen($page, '@note-mention-card');
     waitFor($page, '@note-mention-card-time');
     waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$photoUrl}");
-    $page->assertSeeIn('@note-mention-card-name', 'Ana Souza');
+    waitForText($page, '@note-mention-card-name', 'Ana Souza');
     waitForState($page, '@note-mention-card-time', "{$tokyoTimes}.some((time) => element.textContent.includes(time + ' local time'))");
 
     $page->hover('@note-body');
@@ -236,18 +235,17 @@ test('@all is offered first in the mention list, in the reader\'s language, and 
     waitForCount($page, '@note-mention-option', 0);
     $page->keys('@note-input', 'Enter');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', 'Revisem @todos ');
+    waitForEditorText($page, '@note-input', 'Revisem @todos');
 
     $page->keys('@note-input', 'Enter');
-    waitFor($page, '@note-mention-everyone');
-    $page->assertSeeIn('@note-mention-everyone', '@todos')
-        ->assertNoJavaScriptErrors();
+    waitForText($page, '@note-mention-everyone', '@todos');
+    $page->assertNoJavaScriptErrors();
 
     expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('Revisem @[todos](everyone)');
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
 });
 
-test('the mention list follows the caret, and a picked name still lets you search a longer one', function () {
+test('the mention list follows the caret and the mouse, and narrows to a longer name as you type', function () {
     $user = User::factory()->create(['name' => 'Paulo Castellano']);
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -268,17 +266,17 @@ test('the mention list follows the caret, and a picked name still lets you searc
     $page->fill('@note-input', '@Ana');
     waitForOpen($page, '@note-mention-list');
     waitForCount($page, '@note-mention-option', 2);
-    $page->keys('@note-input', 'Enter');
-    waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', '@Ana ');
 
-    $page->append('@note-input', 'L');
-    waitForOpen($page, '@note-mention-list');
+    $page->hover('[data-testid=note-mention-option]:nth-child(1)');
+    $page->hover('[data-testid=note-mention-option]:nth-child(2)');
+    waitForState($page, '@note-mention-list [aria-selected=true]', "element.textContent.includes('Ana Lima')");
+
+    $page->typeSlowly('@note-input', ' L', 10);
     waitForCount($page, '@note-mention-option', 1);
     waitForText($page, '@note-mention-option', 'Ana Lima');
     $page->keys('@note-input', 'Enter');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', '@Ana Lima ');
+    waitForEditorText($page, '@note-input', '@Ana Lima');
 
     $page->fill('@note-input', 'hello @an');
     waitForOpen($page, '@note-mention-list');
@@ -288,8 +286,9 @@ test('the mention list follows the caret, and a picked name still lets you searc
     waitForOpen($page, '@note-mention-list');
     $page->keys('@note-input', 'Escape');
     waitForGone($page, '@note-mention-list');
-    $page->assertValue('@note-input', 'hello @an')
-        ->assertNoJavaScriptErrors();
+    waitForEditorText($page, '@note-input', 'hello @an');
+
+    $page->assertNoJavaScriptErrors();
 
     expect(PostNote::query()->count())->toBe(0);
 });
@@ -327,8 +326,8 @@ test('the note composer enables send only with text and sends on Enter but not S
     $page->assertEnabled('@note-send');
 
     $page->keys('@note-input', ['Shift+Enter']);
-
-    expect($page->script("document.querySelector('[data-testid=\"note-input\"]').value"))->toBe("First line\n");
+    waitFor($page, '@note-input br');
+    waitForEditorText($page, '@note-input', 'First line');
     expect(PostNote::query()->where('post_id', $post->id)->exists())->toBeFalse();
 
     $page->keys('@note-input', ['Enter']);
@@ -336,7 +335,6 @@ test('the note composer enables send only with text and sends on Enter but not S
     waitForText($page, "@post-notes-count-{$post->id}", '1');
 
     $page->assertSeeIn('@note-body', 'First line')
-        ->assertValue('@note-input', '')
         ->assertDisabled('@note-send')
         ->assertSeeIn("@post-notes-count-{$post->id}", '1')
         ->assertVisible("@post-notes-filled-icon-{$post->id}")
@@ -465,7 +463,11 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     waitFor($page, '@note-input');
 
     $singleLine = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
-    $page->fill('@note-input', "First line\nSecond line\nThird line");
+    $page->fill('@note-input', 'First line');
+    $page->keys('@note-input', ['Shift+Enter']);
+    $page->typeSlowly('@note-input', 'Second line', 10);
+    $page->keys('@note-input', ['Shift+Enter']);
+    $page->typeSlowly('@note-input', 'Third line', 10);
     $grown = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
     expect($grown)->toBeGreaterThan($singleLine);
 

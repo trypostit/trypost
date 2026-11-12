@@ -7,5 +7,6 @@
     "Plain @Ana and me@example.com stay text",
     "@[all](everyone) and @all-hands stays text",
     "@[山田](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)さん、確認お願いします",
-    "@[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) and @Ana-Lima stays text"
+    "@[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) and @Ana-Lima stays text",
+    "First line\nSecond line with @[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)\n\nAfter a blank line"
 ]

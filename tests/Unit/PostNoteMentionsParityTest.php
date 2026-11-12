@@ -39,8 +39,18 @@ test('the composer reads mentions in a note body the way the server does', funct
     expect(noteMentionsHarness($corpusPath))->toBe($server);
 });
 
-test('a body shown as @Name in the composer and stored again keeps every mention', function () {
+test('a body opened in the note editor and stored again keeps every mention', function () {
     $corpusPath = base_path('tests/fixtures/note-mentions-round-trip.json');
 
     expect(noteMentionsHarness($corpusPath, 'round-trip'))->toBe(File::json($corpusPath, JSON_THROW_ON_ERROR));
+});
+
+test('a name goes inside a mention the same way on both sides', function () {
+    $corpusPath = base_path('tests/fixtures/note-mentions-names.json');
+
+    $server = collect(File::json($corpusPath, JSON_THROW_ON_ERROR))
+        ->map(fn (string $name): string => PostNoteMentions::markupName($name))
+        ->all();
+
+    expect(noteMentionsHarness($corpusPath, 'names'))->toBe($server);
 });

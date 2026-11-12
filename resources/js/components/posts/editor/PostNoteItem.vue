@@ -3,7 +3,7 @@ import { IconDots, IconPencil, IconTrash } from '@tabler/icons-vue';
 import { computed, nextTick, ref } from 'vue';
 
 import NoteBody from '@/components/NoteBody.vue';
-import PostNoteMentionInput from '@/components/posts/editor/PostNoteMentionInput.vue';
+import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteReactions from '@/components/posts/editor/PostNoteReactions.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ const viewTimezone = useViewTimezone();
 
 const editing = ref(false);
 const editBody = ref('');
-const editInput = ref<InstanceType<typeof PostNoteMentionInput> | null>(null);
+const editInput = ref<InstanceType<typeof PostNoteEditor> | null>(null);
 const editContainer = ref<HTMLDivElement | null>(null);
 
 const isOwn = computed(() => props.note.user_id === props.currentUserId);
@@ -160,12 +160,12 @@ const requestPeople = () => {
                 ref="editContainer"
                 class="mt-1 flex flex-col gap-2"
             >
-                <PostNoteMentionInput
+                <PostNoteEditor
                     ref="editInput"
                     v-model="editBody"
                     :people="mentionables"
                     :current-user-id="currentUserId"
-                    class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    class="max-h-28 min-h-0 w-full overflow-y-auto rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
                     @submit="saveEdit"
                     @cancel="cancelEdit"

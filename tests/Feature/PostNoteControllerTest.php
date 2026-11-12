@@ -303,6 +303,12 @@ test('a saved mention carries the person\'s real name, and a mention of someone 
         ])
         ->assertOk()
         ->assertJsonPath('body', "@[Bia Lima](user:{$teammate->id}) again");
+
+    $teammate->update(['name' => '[] ']);
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => "@[Bia](user:{$teammate->id}) hi"])
+        ->assertCreated()
+        ->assertJsonPath('body', "@[?](user:{$teammate->id}) hi");
 });
 
 test('store emails the workspace owner when a member adds a note', function () {

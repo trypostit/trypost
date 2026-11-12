@@ -66,10 +66,22 @@ final class PostNoteMentions
                 return "@{$match[1]}";
             }
 
-            $name = Str::of($person->name)->replace(['[', ']', "\n"], ' ')->trim();
+            $name = self::markupName($person->name);
 
             return "@[{$name}](user:{$person->id})";
         }, $body);
+    }
+
+    /**
+     * A name as it goes inside the markup: brackets become spaces, whitespace is
+     * squished, and a name left empty reads `?`. Same rule as `markupName()` in
+     * `noteMentions.ts`.
+     */
+    public static function markupName(string $name): string
+    {
+        $name = Str::squish(Str::replace(['[', ']'], ' ', $name));
+
+        return filled($name) ? $name : '?';
     }
 
     /**

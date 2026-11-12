@@ -26,12 +26,6 @@ export interface MentionedPerson {
     name: string;
 }
 
-/** The `@query` being typed in a note: where its `@` sits and what follows it. */
-export interface PostNoteMentionQuery {
-    start: number;
-    query: string;
-}
-
 /** A member a note may mention, with what the mention card shows. */
 export interface PostNoteMentionable {
     id: string;

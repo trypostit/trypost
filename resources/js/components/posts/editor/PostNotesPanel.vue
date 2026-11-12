@@ -3,8 +3,8 @@ import { usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
+import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
-import PostNoteMentionInput from '@/components/posts/editor/PostNoteMentionInput.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,7 +63,7 @@ const newBody = ref('');
 const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
-const composerInput = ref<InstanceType<typeof PostNoteMentionInput> | null>(
+const composerInput = ref<InstanceType<typeof PostNoteEditor> | null>(
     null,
 );
 const mentionables = ref<PostNoteMentionable[] | null>(null);
@@ -370,7 +370,7 @@ watch(
                 class="min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
                 data-testid="note-composer"
             >
-                <PostNoteMentionInput
+                <PostNoteEditor
                     ref="composerInput"
                     v-model="newBody"
                     :people="mentionables"
@@ -378,7 +378,7 @@ watch(
                     :placeholder="$t('notes.placeholder')"
                     :aria-label="$t('notes.placeholder')"
                     data-slot="input-group-control"
-                    class="field-sizing-content flex max-h-28 min-h-0 w-full flex-1 resize-none bg-transparent py-[7px] ps-4 pe-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
+                    class="max-h-28 min-h-0 w-full overflow-y-auto bg-transparent py-[7px] ps-4 pe-2 text-sm leading-5"
                     data-testid="note-input"
                     @submit="sendNote"
                     @need-people="loadMentionables"
