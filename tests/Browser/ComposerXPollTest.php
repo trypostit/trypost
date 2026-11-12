@@ -454,7 +454,7 @@ test('a poll picked while x was the only network turns back into a post when ano
     $page->click("@composer-account-option-{$linkedIn->id}")
         ->click('@composer-header');
     waitForGone($page, "@composer-account-option-{$linkedIn->id}");
-    waitFor($page, '@composer-file-input');
+    waitForState($page, '@composer-file-input', 'true');
     $page->fill('@composer-base-content', 'Tabs or spaces?');
     $page->script(<<<JS
         (() => {
@@ -513,7 +513,7 @@ test('poll is disabled while a file is still uploading to the card', function ()
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $uploadUrl = route('app.media.store-chunked', absolute: false);
     $page = openXPollComposer($post);
-    waitFor($page, "@composer-{$id}-file-input");
+    waitForState($page, "@composer-{$id}-file-input", 'true');
 
     $page->script(<<<JS
         (() => {

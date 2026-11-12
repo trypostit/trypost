@@ -471,7 +471,7 @@ test('resuming an unfinished post keeps its thread replies', function () {
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Kept reply');
     $draft = composerAutosaveJs($user, $workspace);
-    waitForCondition($page, "{$draft}?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0] === 'Kept reply'");
+    waitForCondition($page, "{$draft}?.overrides?.['{$bluesky->id}']?.meta?.thread_replies?.[0]?.text === 'Kept reply'");
     closeComposerForAutosave($page);
 
     openComposerForAutosave($page);

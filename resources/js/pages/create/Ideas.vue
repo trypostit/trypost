@@ -251,12 +251,6 @@ const moveIdea = (
     );
     const card = cards.get(ideaId);
 
-    if (moving.value) {
-        queuedMove.value = { ideaId, toStageId, orderedIdeaIds };
-
-        return;
-    }
-
     if (!card) {
         return;
     }
@@ -274,6 +268,13 @@ const moveIdea = (
     next[toKey] = orderedIdeaIds
         .map((id) => cards.get(id))
         .filter((candidate): candidate is IdeaCard => candidate !== undefined);
+
+    if (moving.value) {
+        localColumns.value = next;
+        queuedMove.value = { ideaId, toStageId, orderedIdeaIds };
+
+        return;
+    }
 
     const rollback = (message: string): void => {
         queuedMove.value = null;

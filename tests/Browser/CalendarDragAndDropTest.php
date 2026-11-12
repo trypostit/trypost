@@ -1696,6 +1696,7 @@ function calendarDragHoldRequests(mixed $page): void
     $page->script(<<<'JS'
         (() => {
             window.__heldRequests = [];
+            window.__answeredRequests = 0;
             const open = XMLHttpRequest.prototype.open;
             const send = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.open = function (method, ...rest) {
@@ -1708,6 +1709,7 @@ function calendarDragHoldRequests(mixed $page): void
                     return send.call(this, body);
                 }
 
+                this.addEventListener('loadend', () => { window.__answeredRequests++; });
                 window.__heldRequests.push(() => send.call(this, body));
             };
             window.__releaseHeldRequests = () => window.__heldRequests.splice(0).forEach((release) => release());
@@ -2684,27 +2686,14 @@ test('an older move answered after a newer one keeps both cards where they were 
     waitForCondition($page, 'window.__heldRequests.length === 2');
 
     $page->script('window.__heldRequests[1]()');
-    waitFor($page, '@calendar-reschedule-success-toast');
-    $page->script(<<<'JS'
-        (() => {
-            window.__heldReloads = [];
-            const send = XMLHttpRequest.prototype.send;
-            XMLHttpRequest.prototype.send = function (body) {
-                if (this.__method !== 'GET') {
-                    return send.call(this, body);
-                }
-
-                window.__heldReloads.push(() => send.call(this, body));
-            };
-        })()
-    JS);
-    $page->script('window.__heldRequests[0]()');
-    waitForCondition($page, 'window.__heldReloads.length === 1');
+    waitForCondition($page, 'window.__answeredRequests === 1');
 
     expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13");
 
-    $page->script('window.__heldReloads.splice(0).forEach((release) => release())');
+    $page->script('window.__heldRequests[0]()');
+    waitForCondition($page, 'window.__answeredRequests === 2');
     waitForGone($page, '@calendar-grid[aria-busy]');
+    waitForCount($page, '@calendar-reschedule-success-toast', 2);
     waitFor($page, "@calendar-slot-{$key}-13 @calendar-post-{$first->id}");
     waitFor($page, "@calendar-slot-{$key}-14 @calendar-post-{$second->id}");
 
@@ -2827,7 +2816,7 @@ test('an older move refused by the server and answered after a newer one still s
     waitForCondition($page, 'window.__heldRequests.length === 2');
 
     $page->script('window.__heldRequests[1]()');
-    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForCondition($page, 'window.__answeredRequests === 1');
     $first->forceFill(['status' => PostStatus::PendingApproval])->saveQuietly();
     $page->script('window.__heldRequests[0]()');
     waitFor($page, '@calendar-reschedule-error-toast');

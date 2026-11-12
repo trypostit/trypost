@@ -728,7 +728,8 @@ function waitForWebFonts(mixed $page): void
 
 /**
  * Wait until a JavaScript expression is true in the page, for up to 30
- * seconds (longer for a slow import or a fallback that polls the server).
+ * seconds (longer for a slow import or a fallback that polls the server),
+ * and fail the test when it never is: every wait is also an assertion.
  * Assertions do not wait for the SPA to paint, and a blocking sleep() would
  * starve the server that serves the page, so the page polls.
  */
@@ -736,14 +737,18 @@ function waitForCondition(mixed $page, string $condition, int $seconds = 30): vo
 {
     $attempts = $seconds * 20;
 
-    $page->script(<<<JS
+    $met = $page->script(<<<JS
         (async () => {
             for (let i = 0; i < {$attempts}; i++) {
-                if ({$condition}) return;
+                if ({$condition}) return true;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
+
+            return false;
         })();
     JS);
+
+    expect($met)->toBeTrue("Waited {$seconds}s for: {$condition}");
 }
 
 /**

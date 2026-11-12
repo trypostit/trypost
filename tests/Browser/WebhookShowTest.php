@@ -148,10 +148,14 @@ test('the actions menu pauses, edits and deletes the webhook after a plain confi
 
 test('send test event pings the endpoint from the header and from the empty deliveries state', function () {
     [$user, $webhook] = webhookShowFixture();
+    $pings = 0;
     $this->mock(WebhookService::class)
         ->shouldReceive('ping')
         ->twice()
-        ->with('https://hooks.example.com/trypost/inbound', Mockery::type('string'));
+        ->with('https://hooks.example.com/trypost/inbound', Mockery::type('string'))
+        ->andReturnUsing(function () use (&$pings): void {
+            $pings++;
+        });
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
@@ -174,9 +178,10 @@ test('send test event pings the endpoint from the header and from the empty deli
     JS))->toBe([true, true]);
 
     $page->click('@send-test-webhook');
-    waitForCount($page, '[data-sonner-toast]', 2, '>=');
+    waitForDatabase($page, fn (): bool => $pings === 2);
 
-    $page->assertNoJavaScriptErrors();
+    $page->assertSee(__('webhooks.flash.tested'))->assertNoJavaScriptErrors();
+    expect($pings)->toBe(2);
 });
 
 test('a live delivery update never shows the same delivery twice', function () {

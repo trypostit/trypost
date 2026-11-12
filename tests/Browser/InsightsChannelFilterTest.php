@@ -155,10 +155,10 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
         ->assertNoJavaScriptErrors();
 
     $page->resize(390, 844);
-    waitFor($page, '@insights-range-custom');
+    waitFor($page, '@insights-range-mobile-trigger');
 
-    $page->assertScript('(() => { const group = document.querySelector("[data-testid=insights-range-presets] [role=group]"); return group.scrollWidth <= group.clientWidth + 1; })()', true)
-        ->assertScript('document.querySelector("[data-testid=insights-range-custom]").getBoundingClientRect().right <= window.innerWidth', true)
+    $page->assertMissing('@insights-range-custom')
+        ->assertScript('document.querySelector("[data-testid=insights-range-mobile-trigger]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.querySelector("[data-testid=analytics-channel-filter]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
         ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-account-name]")).every((name) => name.offsetParent === null)', true)

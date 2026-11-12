@@ -237,7 +237,7 @@ test('the instagram step offers the instagram login and facebook cards side by s
     $page->assertSeeIn('@instagram-connect-standalone-requirements', trans('accounts.instagram_connect.convert_hint'))
         ->assertVisible('@instagram-connect-facebook-requirements')
         ->click('@instagram-connect-facebook-requirements-toggle');
-    waitForGone($page, '@instagram-connect-facebook-requirements');
+    waitForState($page, '@instagram-connect-facebook-requirements', 'element.hidden');
     $page->assertMissing('@instagram-connect-facebook-requirements')
         ->assertVisible('@instagram-connect-standalone-requirements');
 

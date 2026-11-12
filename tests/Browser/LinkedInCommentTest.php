@@ -80,7 +80,7 @@ test('shift enter breaks the line in a linkedin caption and comment instead of o
     waitFor($page, $caption);
 
     $page->keys($caption, 'End')->keys($caption, 'Shift+Enter');
-    waitForState($page, $caption, "element.innerHTML.includes('<br')");
+    waitForState($page, $caption, "element.value.includes('\\n')");
 
     $page->assertMissing('@thread-reply-0')
         ->assertPresent('@thread-start')

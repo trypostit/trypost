@@ -148,7 +148,7 @@ test('a long labels list starts at the top and scrolls normally', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
-    waitFor($page, "@label-row-{$label->id}");
+    waitFor($page, '[data-testid^="label-row-"]');
 
     expect($page->script(<<<'JS'
         (() => {
