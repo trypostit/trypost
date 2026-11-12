@@ -164,6 +164,7 @@ const requestPeople = () => {
                     ref="editInput"
                     v-model="editBody"
                     :people="mentionables"
+                    :current-user-id="currentUserId"
                     class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
                     @submit="saveEdit"
@@ -194,7 +195,9 @@ const requestPeople = () => {
             <template v-else>
                 <NoteBody
                     :body="note.body"
+                    :people="mentionables"
                     class="mt-0.5 leading-relaxed text-foreground"
+                    @need-people="requestPeople"
                 />
                 <PostNoteReactions
                     :reactions="note.reactions"

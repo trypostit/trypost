@@ -18,6 +18,10 @@ return [
     'load_more' => 'Charger les notes plus anciennes',
     'react' => 'Ajouter une réaction',
     'no_mentionables' => 'Aucun membre ne correspond',
+    'mention_card' => [
+        'admin' => 'Administrateur',
+        'local_time' => ':time heure locale',
+    ],
     'errors' => [
         'invalid_emoji' => 'Choisissez un seul emoji.',
     ],

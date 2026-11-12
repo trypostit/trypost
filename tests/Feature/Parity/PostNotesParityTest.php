@@ -454,7 +454,8 @@ test('an edit through the api and mcp emails only the teammates it mentions for 
         ->and(pendingNoteRecipients())->toBe([]);
 });
 
-test('the web, the api and mcp list the same people to mention: who sees the post, without you', function () {
+test('the web, the api and mcp list the same people to mention: who sees the post, the viewer included', function () {
+    $this->user->update(['name' => 'Diego Owner']);
     $requester = workspaceMember($this->workspace, 'approval', ['name' => 'Bia Requester']);
     workspaceMember($this->workspace, 'approval', ['name' => 'Caio Bystander']);
     $approver = workspaceMember($this->workspace, 'member', ['name' => 'Ana Approver']);
@@ -465,22 +466,18 @@ test('the web, the api and mcp list the same people to mention: who sees the pos
         'approval_requested_by' => $requester->id,
     ]);
 
-    $web = $this->actingAs($this->user)->getJson(route('app.posts.notes.mentionables.index', $pending))->assertOk();
+    $web = $this->actingAs($requester)->getJson(route('app.posts.notes.mentionables.index', $pending))->assertOk();
     auth()->forgetGuards();
     $api = $this->withHeaders(parityApi($this->token))->getJson(route('api.posts.notes.mentionables.index', $pending))->assertOk();
     auth()->forgetGuards();
 
-    expect(collect($web->json())->pluck('id')->all())->toBe([$approver->id, $requester->id])
+    expect(collect($web->json())->pluck('id')->all())->toBe([$approver->id, $requester->id, $this->user->id])
         ->and($api->json())->toBe($web->json())
-        ->and(array_keys($web->json('0')))->toBe(['id', 'name', 'photo_url']);
+        ->and(array_keys($web->json('0')))->toBe(['id', 'name', 'photo_url', 'timezone', 'is_admin']);
 
-    TryPostServer::actingAs($this->user)->tool(ListPostNoteMentionablesTool::class, ['post_id' => $pending->id])
-        ->assertOk()
-        ->assertStructuredContent(['mentionables' => $web->json()]);
     TryPostServer::actingAs($requester)->tool(ListPostNoteMentionablesTool::class, ['post_id' => $pending->id])
         ->assertOk()
-        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('mentionables', 2)
-            ->where('mentionables', fn ($people): bool => collect($people)->pluck('id')->sort()->values()->all() === collect([$approver->id, $this->user->id])->sort()->values()->all()));
+        ->assertStructuredContent(['mentionables' => $web->json()]);
 });
 
 /**

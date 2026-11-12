@@ -18,6 +18,10 @@ return [
     'load_more' => '加载更早的备注',
     'react' => '添加回应',
     'no_mentionables' => '没有匹配的成员',
+    'mention_card' => [
+        'admin' => '管理员',
+        'local_time' => '当地时间 :time',
+    ],
     'errors' => [
         'invalid_emoji' => '请选择一个表情符号。',
     ],

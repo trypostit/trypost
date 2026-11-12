@@ -20,9 +20,11 @@ export interface PostNote {
     user: PostNoteAuthor;
 }
 
-/** A member a note may mention. */
+/** A member a note may mention, with what the mention card shows. */
 export interface PostNoteMentionable {
     id: string;
     name: string;
     photo_url: string | null;
+    timezone: string;
+    is_admin: boolean;
 }

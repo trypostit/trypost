@@ -10,6 +10,7 @@ use App\Models\PostNoteReaction;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 
 test('a note mentions a teammate picked from the list and takes reactions', function () {
@@ -142,6 +143,71 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
 
     expect($note->fresh()->body)->toBe("@[Bia Lima](user:{$bia->id}) hi @zzz and @[Ana Souza](user:{$ana->id})");
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($ana->email));
+});
+
+test('hovering a mention shows who it is, yourself included: photo, name, admin and their local time', function () {
+    $user = User::factory()->create(['name' => 'Paulo Castellano', 'time_format' => '24h']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $admin = workspaceMember($workspace, 'admin', ['name' => 'Ana Souza', 'timezone' => 'Asia/Tokyo']);
+    $member = workspaceMember($workspace, 'member', ['name' => 'Bia Lima', 'timezone' => 'America/Sao_Paulo']);
+    $formerMember = User::factory()->create(['name' => 'Caio Former']);
+    $admin->addMedia(UploadedFile::fake()->image('avatar.jpg', 64, 64), 'avatar');
+    $user->addMedia(UploadedFile::fake()->image('me.jpg', 64, 64), 'avatar');
+    $photoUrl = json_encode($admin->fresh()->photo_url);
+    $myPhotoUrl = json_encode($user->fresh()->photo_url);
+
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $user->id,
+        'body' => "@[Ana Souza](user:{$admin->id}) @[Bia Lima](user:{$member->id}) @[Caio Former](user:{$formerMember->id}) @[Paulo Castellano](user:{$user->id})",
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForOpen($page, "@post-notes-section-{$post->id}");
+    waitForCount($page, '@note-mention', 4);
+
+    $tokyoTimes = json_encode([now('Asia/Tokyo')->format('H:i'), now('Asia/Tokyo')->addMinute()->format('H:i')]);
+
+    $page->hover('[data-testid=note-mention]:nth-child(1)');
+    waitForOpen($page, '@note-mention-card');
+    waitFor($page, '@note-mention-card-time');
+    waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$photoUrl}");
+    $page->assertSeeIn('@note-mention-card-name', 'Ana Souza')
+        ->assertSeeIn('@note-mention-card-admin', 'Admin');
+    waitForCondition($page, "{$tokyoTimes}.some((time) => document.querySelector('[data-testid=note-mention-card-time]').textContent.includes(time + ' local time'))");
+
+    $page->hover('@note-body');
+    waitForGone($page, '@note-mention-card');
+    $page->hover('[data-testid=note-mention]:nth-child(2)');
+    waitForText($page, '@note-mention-card-name', 'Bia Lima');
+    waitFor($page, '@note-mention-card-time');
+    $page->assertMissing('@note-mention-card-admin')
+        ->assertMissing('@note-mention-card img');
+
+    $page->hover('@note-body');
+    waitForGone($page, '@note-mention-card');
+    $page->hover('[data-testid=note-mention]:nth-child(3)');
+    waitForText($page, '@note-mention-card-name', 'Caio Former');
+    $page->assertMissing('@note-mention-card-time')
+        ->assertMissing('@note-mention-card-admin');
+
+    $page->hover('@note-body');
+    waitForGone($page, '@note-mention-card');
+    $page->hover('[data-testid=note-mention]:nth-child(4)');
+    waitForText($page, '@note-mention-card-name', 'Paulo Castellano');
+    waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$myPhotoUrl}");
+    $page->assertVisible('@note-mention-card-time')
+        ->assertSeeIn('@note-mention-card-admin', 'Admin')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {

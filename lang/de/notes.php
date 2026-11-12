@@ -18,6 +18,10 @@ return [
     'load_more' => 'Ältere Notizen laden',
     'react' => 'Reaktion hinzufügen',
     'no_mentionables' => 'Kein Teammitglied gefunden',
+    'mention_card' => [
+        'admin' => 'Admin',
+        'local_time' => ':time Ortszeit',
+    ],
     'errors' => [
         'invalid_emoji' => 'Wähle ein einzelnes Emoji.',
     ],

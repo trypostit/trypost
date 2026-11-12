@@ -18,6 +18,10 @@ return [
     'load_more' => 'Daha eski notları yükle',
     'react' => 'Tepki ekle',
     'no_mentionables' => 'Eşleşen ekip üyesi yok',
+    'mention_card' => [
+        'admin' => 'Yönetici',
+        'local_time' => 'Yerel saat :time',
+    ],
     'errors' => [
         'invalid_emoji' => 'Tek bir emoji seç.',
     ],

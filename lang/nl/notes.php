@@ -18,6 +18,10 @@ return [
     'load_more' => 'Oudere notities laden',
     'react' => 'Reactie toevoegen',
     'no_mentionables' => 'Geen teamlid gevonden',
+    'mention_card' => [
+        'admin' => 'Beheerder',
+        'local_time' => ':time lokale tijd',
+    ],
     'errors' => [
         'invalid_emoji' => 'Kies één emoji.',
     ],

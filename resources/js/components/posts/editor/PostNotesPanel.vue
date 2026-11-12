@@ -372,6 +372,7 @@ watch(
                     ref="composerInput"
                     v-model="newBody"
                     :people="mentionables"
+                    :current-user-id="currentUserId"
                     :placeholder="$t('notes.placeholder')"
                     :aria-label="$t('notes.placeholder')"
                     data-slot="input-group-control"

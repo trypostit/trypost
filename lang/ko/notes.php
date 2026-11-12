@@ -18,6 +18,10 @@ return [
     'load_more' => '이전 메모 불러오기',
     'react' => '반응 추가',
     'no_mentionables' => '일치하는 팀원이 없습니다',
+    'mention_card' => [
+        'admin' => '관리자',
+        'local_time' => '현지 시간 :time',
+    ],
     'errors' => [
         'invalid_emoji' => '이모지를 하나만 선택하세요.',
     ],

@@ -18,6 +18,10 @@ return [
     'load_more' => 'Φόρτωση παλαιότερων σημειώσεων',
     'react' => 'Προσθήκη αντίδρασης',
     'no_mentionables' => 'Κανένα μέλος δεν ταιριάζει',
+    'mention_card' => [
+        'admin' => 'Διαχειριστής',
+        'local_time' => ':time τοπική ώρα',
+    ],
     'errors' => [
         'invalid_emoji' => 'Επιλέξτε ένα μόνο emoji.',
     ],

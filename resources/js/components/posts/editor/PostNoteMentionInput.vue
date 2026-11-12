@@ -24,7 +24,8 @@ import type { PostNoteMentionable } from '@/types/post-note';
  * picking one inserts `@Name`. The model is the body to store, where each
  * picked `@Name` becomes `@[Name](user:{id})`; the textarea only shows names.
  * Enter submits (Shift+Enter breaks the line); Esc closes the list, then
- * cancels. Attributes (class, placeholder, test id) go to the textarea.
+ * cancels. The list leaves out the viewer: nobody mentions themselves.
+ * Attributes (class, placeholder, test id) go to the textarea.
  */
 defineOptions({ inheritAttrs: false });
 
@@ -32,6 +33,7 @@ const MAX_LISTED = 8;
 
 const props = defineProps<{
     people: PostNoteMentionable[] | null;
+    currentUserId: string;
 }>();
 
 const emit = defineEmits<{
@@ -49,9 +51,13 @@ const query = ref<{ start: number; query: string } | null>(null);
 const highlighted = ref(0);
 
 const matches = computed(() =>
-    filterBySearch(props.people ?? [], query.value?.query, (person) => [
-        person.name,
-    ]).slice(0, MAX_LISTED),
+    filterBySearch(
+        (props.people ?? []).filter(
+            (person) => person.id !== props.currentUserId,
+        ),
+        query.value?.query,
+        (person) => [person.name],
+    ).slice(0, MAX_LISTED),
 );
 
 const listOpen = computed(() => filled(query.value) && filled(props.people));

@@ -18,6 +18,10 @@ return [
     'load_more' => 'تحميل الملاحظات الأقدم',
     'react' => 'إضافة تفاعل',
     'no_mentionables' => 'لا يوجد عضو مطابق',
+    'mention_card' => [
+        'admin' => 'مشرف',
+        'local_time' => ':time بالتوقيت المحلي',
+    ],
     'errors' => [
         'invalid_emoji' => 'اختر رمزًا تعبيريًا واحدًا.',
     ],
