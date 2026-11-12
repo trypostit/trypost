@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Edit the text of a note on a post. Only the note\'s author can edit it. Mentions work as in create-post-note-tool: @[user:id] for a member, @[everyone] for everyone who sees the post. Only the people this edit adds as mentions are emailed, not those the note already mentioned. Returns the updated note with its mentions and reactions.')]
+#[Description('Edit the text of a note on a post. Only the note\'s author can edit it. Mentions work as in create-post-note-tool: @[user:id] for a member, @[everyone] for everyone who sees the post; a mention of someone who cannot see the post is removed. Only the people this edit adds as mentions are emailed, not those the note already mentioned. Everyone with the post open sees the change at once. Returns the updated note with mentions [{id, name}] and reactions.')]
 class UpdatePostNoteTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;

@@ -54,6 +54,30 @@ test('a note added on the web, the api and mcp is stored the same way with the a
     ]);
 });
 
+test('the api and mcp store a mention by its id in lower case, drop one of someone outside and return the names', function () {
+    $teammate = workspaceMember($this->workspace, 'member', ['name' => 'Bia Lima']);
+    $outsider = workspaceOutsider($this->workspace);
+    $upperId = Str::upper($teammate->id);
+    $body = "@[user:{$upperId}] and @[user:{$outsider->id}]";
+    $mentions = [['id' => $teammate->id, 'name' => 'Bia Lima']];
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.notes.store', $this->post), ['body' => $body])
+        ->assertCreated()
+        ->assertJsonPath('body', "@[user:{$upperId}] and ")
+        ->assertJsonPath('mentions', $mentions);
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostNoteTool::class, ['post_id' => $this->post->id, 'body' => $body])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('body', "@[user:{$upperId}] and ")->where('mentions', $mentions)->etc());
+
+    $notes = PostNote::query()->where('post_id', $this->post->id)->get();
+
+    expect($notes)->toHaveCount(2)
+        ->and($notes->map(fn (PostNote $note): array => $note->mentions()->pluck('users.id')->all())->all())->toBe([[$teammate->id], [$teammate->id]]);
+});
+
 test('the api and mcp note lists paginate newest first with the app page size and expose only safe author fields', function () {
     config(['app.pagination.default' => 2]);
     $notes = collect(range(1, 3))->map(fn (int $minutes): PostNote => PostNote::factory()->create([

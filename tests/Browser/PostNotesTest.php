@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 test('a note mentions a teammate picked from the list and takes reactions', function () {
     Mail::fake();
@@ -391,6 +392,29 @@ test('a note created an hour ago reads as past for a user whose zone is not the 
 
     expect(trim((string) $page->script('document.querySelector(\'[data-testid="note-created-at"]\').textContent')))
         ->toBe('an hour ago');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a mention of someone who no longer exists reads as unknown in the note and in its edit', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $goneId = Str::uuid()->toString();
+    $unknown = __('notes.mention_unknown');
+    PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $user->id, 'body' => "ask @[user:{$goneId}]"]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForText($page, '@note-body', "ask @{$unknown}");
+
+    $page->click('@note-actions');
+    $page->click('@note-edit');
+    waitForEditorText($page, '@note-edit-input', "ask @{$unknown}");
+
     $page->assertNoJavaScriptErrors();
 });
 

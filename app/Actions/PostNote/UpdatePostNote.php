@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\User;
 use App\Support\PostNoteMentions;
+use Illuminate\Support\Facades\DB;
 
 final class UpdatePostNote
 {
@@ -20,8 +21,10 @@ final class UpdatePostNote
         $previousBody = $note->body;
         $audience = ListPostNoteAudience::execute($post);
 
-        $note->update(['body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience)]);
-        $note->mentions()->sync(PostNoteMentions::extract($note->body));
+        DB::transaction(function () use ($note, $data, $audience): void {
+            $note->update(['body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience)]);
+            $note->mentions()->sync(PostNoteMentions::extract($note->body));
+        });
 
         NotifyPostNoteRecipients::edited($note, $author, $previousBody, $audience);
 

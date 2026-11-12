@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\User;
 use App\Support\PostNoteMentions;
+use Illuminate\Support\Facades\DB;
 
 final class CreatePostNote
 {
@@ -19,12 +20,17 @@ final class CreatePostNote
     {
         $audience = ListPostNoteAudience::execute($post);
 
-        $note = $post->notes()->create([
-            'user_id' => $author->id,
-            'body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience),
-        ]);
+        $note = DB::transaction(function () use ($post, $author, $data, $audience): PostNote {
+            $note = $post->notes()->create([
+                'user_id' => $author->id,
+                'body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience),
+            ]);
 
-        $note->mentions()->sync(PostNoteMentions::extract($note->body));
+            $note->mentions()->sync(PostNoteMentions::extract($note->body));
+
+            return $note;
+        });
+
         $note->load(PostNote::DISPLAY_RELATIONS);
 
         NotifyPostNoteRecipients::created($note, $author, $audience);

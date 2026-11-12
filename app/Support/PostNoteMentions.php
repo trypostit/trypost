@@ -54,7 +54,11 @@ final class PostNoteMentions
     {
         return Str::replaceMatches(
             self::PATTERN,
-            fn (array $match): string => blank(data_get($match, 1)) || $people->contains('id', Str::lower($match[1])) ? $match[0] : '',
+            function (array $match) use ($people): string {
+                $id = data_get($match, 1);
+
+                return blank($id) || $people->contains('id', Str::lower($id)) ? $match[0] : '';
+            },
             $body,
         );
     }
@@ -72,11 +76,11 @@ final class PostNoteMentions
         $unknown = __('notes.mention_unknown');
 
         return Str::replaceMatches(self::PATTERN, function (array $match) use ($people, $everyone, $unknown): string {
-            if (blank(data_get($match, 1))) {
-                return "@{$everyone}";
-            }
-
-            $name = $people->firstWhere('id', Str::lower($match[1]))?->name ?? $unknown;
+            $name = transform(
+                data_get($match, 1),
+                fn (string $id): string => $people->firstWhere('id', Str::lower($id))?->name ?? $unknown,
+                $everyone,
+            );
 
             return "@{$name}";
         }, (string) $body);

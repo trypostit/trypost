@@ -32,9 +32,7 @@ const emit = defineEmits<{
 const openedAt = ref(dayjs.utc());
 
 const person = computed(() =>
-    props.people?.find(
-        (candidate) => candidate.id === props.userId.toLowerCase(),
-    ),
+    props.people?.find((candidate) => candidate.id === props.userId),
 );
 
 const localTime = computed(() =>

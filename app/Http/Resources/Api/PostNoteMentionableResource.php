@@ -9,8 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A member a note may mention, written in the body as `@[name](user:id)`,
- * with what the mention card shows.
+ * A member a note may mention, written in the body as `@[user:id]`, with
+ * what the mention card shows.
  *
  * @mixin User
  */
