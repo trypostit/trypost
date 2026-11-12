@@ -544,7 +544,10 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     waitFor($page, '@note-edit');
     $page->click('@note-edit');
     waitForEditorText($page, '@note-edit-input', "First line\nSecond line\nThird line");
-    $page->fill('@note-edit-input', 'Edited note')
+    $page->keys('@note-edit-input', 'ControlOrMeta+a');
+    $page->typeSlowly('@note-edit-input', 'Edited note', 10);
+    waitForEditorText($page, '@note-edit-input', 'Edited note');
+    $page->assertScript("document.querySelector('[data-testid=\"note-edit-input\"]').innerText.trim()", 'Edited note')
         ->click('@note-edit-save');
     waitForGone($page, '@note-edit-input');
     waitForText($page, '@note-body', 'Edited note');
