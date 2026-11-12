@@ -89,6 +89,8 @@ return [
     'mcp.authorize.cancel' => 9,
     'mcp.authorize.select_workspace' => 28,
     'mcp.subtitle' => 45,
+    'notes.mention_everyone.description' => 35,
+    'notes.mention_everyone.word' => 8,
     'notes.title' => 10,
     'posts.approvals.approve' => 10,
     'posts.approvals.reject' => 9,
