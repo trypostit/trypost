@@ -1,0 +1,12 @@
+[
+    "No mention here",
+    "@[Ana Lima](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) can you check?",
+    "@[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) and @[Ana again](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) once",
+    "Uppercase id @[Bia](user:0198D0AA-1B2C-7D3E-8F40-5A6B7C8D9E1F)",
+    "Not a uuid @[Caio](user:0198d0aa-1b2c-7d3e-8f40-zzzzzzzzzzzz)",
+    "Broken @[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f",
+    "Line\n@[Bia Souza](user:0198D0AA-1B2C-7D3E-8F40-5A6B7C8D9E1F), and emoji 🎉 @[José](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)",
+    "Plain @Ana without markup",
+    "Brackets @[Ana [x]](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) stay text",
+    "Empty name @[](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f)"
+]

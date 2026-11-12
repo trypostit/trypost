@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -19,9 +20,9 @@ final class PostNoteMentions
      * The unique user ids mentioned in the body, in order of appearance.
      * Markup whose id is not a uuid names nobody and is left out.
      *
-     * @return list<string>
+     * @return Collection<int, string>
      */
-    public static function extract(?string $body): array
+    public static function extract(?string $body): Collection
     {
         preg_match_all(self::PATTERN, (string) $body, $matches);
 
@@ -29,8 +30,7 @@ final class PostNoteMentions
             ->filter(fn (string $id): bool => Str::isUuid($id))
             ->map(fn (string $id): string => Str::lower($id))
             ->unique()
-            ->values()
-            ->all();
+            ->values();
     }
 
     /**
@@ -38,6 +38,6 @@ final class PostNoteMentions
      */
     public static function toPlainText(?string $body): string
     {
-        return (string) preg_replace(self::PATTERN, '@$1', (string) $body);
+        return Str::replaceMatches(self::PATTERN, '@$1', (string) $body);
     }
 }

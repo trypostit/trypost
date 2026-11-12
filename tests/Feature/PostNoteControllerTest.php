@@ -147,6 +147,42 @@ test('editing a note emails only the people it mentions for the first time', fun
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($newlyMentioned->email));
 });
 
+test('an edit that mentions yourself or someone outside the workspace emails nobody', function () {
+    Mail::fake();
+
+    $outsider = workspaceOutsider($this->workspace);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => 'ping']);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $note]), [
+            'body' => "@[Me](user:{$this->user->id}) @[{$outsider->name}](user:{$outsider->id}) ping",
+        ])
+        ->assertOk();
+
+    Mail::assertNothingQueued();
+});
+
+test('the member who asked for approval of someone else post is a participant of its notes', function () {
+    Mail::fake();
+
+    $requester = workspaceMember($this->workspace, 'approval');
+    $approver = workspaceMember($this->workspace);
+    $pending = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::PendingApproval,
+        'approval_requested_by' => $requester->id,
+    ]);
+
+    $this->actingAs($approver)
+        ->postJson(route('app.posts.notes.store', $pending), ['body' => 'Swap the image first'])
+        ->assertCreated();
+
+    Mail::assertQueuedCount(2);
+    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($requester->email));
+    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
+});
+
 test('store emails the workspace owner when a member adds a note', function () {
     Mail::fake();
 

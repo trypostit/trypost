@@ -14,7 +14,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { blank } from '@/lib/helpers';
+import { blank, transform } from '@/lib/helpers';
 import type { PostNoteReaction } from '@/types/post-note';
 
 /**
@@ -50,7 +50,7 @@ const pick = (emoji: string) => {
         (reaction) => reaction.emoji === emoji,
     );
 
-    emit('toggle', emoji, existing ? hasReacted(existing) : false);
+    emit('toggle', emoji, transform(existing, hasReacted, false));
 };
 </script>
 
@@ -95,7 +95,6 @@ const pick = (emoji: string) => {
                             blank(reactions),
                     }"
                     :aria-label="$t('notes.react')"
-                    :title="$t('notes.react')"
                     data-testid="note-react"
                 >
                     <IconMoodPlus class="size-4" />

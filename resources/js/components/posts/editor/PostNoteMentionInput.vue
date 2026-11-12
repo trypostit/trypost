@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, useId, watch } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import {
@@ -7,7 +7,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import {
     insertMention,
     isPickedMentionAt,
@@ -54,7 +54,15 @@ const matches = computed(() =>
     ]).slice(0, MAX_LISTED),
 );
 
-const listOpen = computed(() => query.value !== null && filled(props.people));
+const listOpen = computed(() => filled(query.value) && filled(props.people));
+
+const listId = useId();
+const optionId = (index: number) => `${listId}-${index}`;
+const activeOptionId = computed(() =>
+    listOpen.value && filled(matches.value)
+        ? optionId(highlighted.value)
+        : undefined,
+);
 
 const syncModel = () => {
     body.value = withMentionMarkup(draft.value, picked.value);
@@ -81,7 +89,10 @@ const updateQuery = () => {
 
     const found = mentionQueryAt(element.value, element.selectionStart);
 
-    if (!found || isPickedMentionAt(element.value, found.start, picked.value)) {
+    if (
+        !filled(found) ||
+        isPickedMentionAt(element.value, found.start, picked.value)
+    ) {
         closeList();
 
         return;
@@ -164,7 +175,7 @@ const onKeydown = (event: KeyboardEvent) => {
         event.preventDefault();
         event.stopPropagation();
 
-        if (query.value !== null) {
+        if (filled(query.value)) {
             closeList();
         } else {
             emit('cancel');
@@ -194,6 +205,11 @@ defineExpose({ focus });
                 v-bind="$attrs"
                 :value="draft"
                 rows="1"
+                role="combobox"
+                aria-autocomplete="list"
+                :aria-expanded="listOpen"
+                :aria-controls="listOpen ? listId : undefined"
+                :aria-activedescendant="activeOptionId"
                 @input="onInput"
                 @keydown="onKeydown"
                 @click="updateQuery"
@@ -209,14 +225,15 @@ defineExpose({ focus });
             @close-auto-focus.prevent
         >
             <p
-                v-if="matches.length === 0"
+                v-if="blank(matches)"
                 class="px-2 py-1.5 text-sm text-muted-foreground"
             >
                 {{ $t('notes.no_mentionables') }}
             </p>
-            <ul v-else role="listbox" class="flex flex-col">
+            <ul v-else :id="listId" role="listbox" class="flex flex-col">
                 <li
                     v-for="(person, index) in matches"
+                    :id="optionId(index)"
                     :key="person.id"
                     role="option"
                     :aria-selected="index === highlighted"

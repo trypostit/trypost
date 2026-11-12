@@ -12,6 +12,7 @@ use App\Models\PostNote;
 use App\Models\User;
 use App\Support\PostNoteMentions;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * Who hears about a note, among the members who see it (ListPostNoteAudience),
@@ -29,10 +30,10 @@ final class NotifyPostNoteRecipients
             return;
         }
 
-        $audience = ListPostNoteAudience::execute($note->post);
+        $post = $note->post;
+        $audience = ListPostNoteAudience::execute($post);
         $mentioned = self::mention($note, $author, $audience, PostNoteMentions::extract($note->body));
 
-        $post = $note->post;
         $participantIds = $post->notes()
             ->whereNotNull('user_id')
             ->distinct()
@@ -56,7 +57,7 @@ final class NotifyPostNoteRecipients
     public static function edited(PostNote $note, string $previousBody): void
     {
         $author = $note->user;
-        $newIds = array_diff(PostNoteMentions::extract($note->body), PostNoteMentions::extract($previousBody));
+        $newIds = PostNoteMentions::extract($note->body)->diff(PostNoteMentions::extract($previousBody));
 
         if (! $author instanceof User || blank($newIds)) {
             return;
@@ -67,13 +68,13 @@ final class NotifyPostNoteRecipients
 
     /**
      * @param  Collection<int, User>  $audience
-     * @param  array<int, string>  $ids
+     * @param  SupportCollection<int, string>  $ids
      * @return Collection<int, User>
      */
-    private static function mention(PostNote $note, User $author, Collection $audience, array $ids): Collection
+    private static function mention(PostNote $note, User $author, Collection $audience, SupportCollection $ids): Collection
     {
         $mentioned = $audience
-            ->filter(fn (User $member): bool => $member->id !== $author->id && in_array($member->id, $ids, true))
+            ->filter(fn (User $member): bool => $member->id !== $author->id && $ids->contains($member->id))
             ->values();
 
         $mentioned->each(fn (User $member) => SendNotification::dispatch(

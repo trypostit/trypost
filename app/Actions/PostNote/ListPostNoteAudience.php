@@ -7,13 +7,15 @@ namespace App\Actions\PostNote;
 use App\Enums\Post\Status;
 use App\Models\Post;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Str;
 
 final class ListPostNoteAudience
 {
     /**
-     * The members who see the post's notes, by name: every member of its
-     * workspace, and on a pending request only the approvers and the member
+     * The members who see the post's notes, by name (sorted in PHP so both
+     * database engines give the same order): every member of its workspace, and on a pending request only the approvers and the member
      * who asked. They are the people a note may mention and email; `$except`
      * leaves one out (nobody mentions themselves).
      *
@@ -23,7 +25,7 @@ final class ListPostNoteAudience
     {
         $workspace = $post->workspace;
 
-        if ($workspace === null) {
+        if (blank($workspace)) {
             return new Collection;
         }
 
@@ -32,9 +34,9 @@ final class ListPostNoteAudience
 
         return $workspace->members()
             ->with(['account', 'avatarMedia'])
-            ->orderBy('users.name')
-            ->when($except !== null, fn ($query) => $query->whereKeyNot($except->id))
+            ->when(filled($except), fn (Builder $query): Builder => $query->whereKeyNot($except->id))
             ->get()
+            ->sortBy(fn (User $member): string => Str::lower(Str::ascii($member->name)))
             ->when($isPending, fn (Collection $members): Collection => $members->filter(
                 fn (User $member): bool => $member->id === $requesterId || $member->publishesDirectlyThrough($workspace, $member->pivot),
             ))

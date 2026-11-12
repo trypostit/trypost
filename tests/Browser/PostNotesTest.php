@@ -75,6 +75,68 @@ test('a note mentions a teammate picked from the list and takes reactions', func
     expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
+test('the mention list works from the keyboard, says when nobody matches, and an edit keeps the mentions', function () {
+    Mail::fake();
+
+    $user = User::factory()->create(['name' => 'Paulo Castellano']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $ana = User::factory()->create(['name' => 'Ana Souza']);
+    $bia = User::factory()->create(['name' => 'Bia Lima']);
+    $workspace->members()->attach($ana->id, membershipPivot('member'));
+    $workspace->members()->attach($bia->id, membershipPivot('member'));
+
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@note-input');
+
+    $page->fill('@note-input', '@');
+    waitForOpen($page, '@note-mention-list');
+    waitForCount($page, '@note-mention-option', 2);
+    waitForState($page, '@note-input', "element.getAttribute('aria-expanded') === 'true'");
+    $page->keys('@note-input', ['ArrowDown', 'Enter']);
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', '@Bia Lima ');
+
+    $page->append('@note-input', 'hi @zzz');
+    waitForText($page, '@note-mention-list', 'No teammate matches');
+    $page->keys('@note-input', 'Escape');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', '@Bia Lima hi @zzz')
+        ->assertVisible('@note-input');
+
+    $page->keys('@note-input', 'Enter');
+    waitFor($page, '@note-mention');
+
+    $note = PostNote::query()->where('post_id', $post->id)->sole();
+    expect($note->body)->toBe("@[Bia Lima](user:{$bia->id}) hi @zzz");
+
+    $page->click('@note-actions');
+    $page->click('@note-edit');
+    waitFor($page, '@note-edit-input');
+    $page->assertValue('@note-edit-input', '@Bia Lima hi @zzz');
+
+    $page->append('@note-edit-input', ' and @an');
+    waitForText($page, '@note-mention-option', 'Ana Souza');
+    $page->keys('@note-edit-input', 'Enter');
+    waitForGone($page, '@note-mention-list');
+    $page->click('@note-edit-save');
+    waitForCount($page, '@note-mention', 2);
+
+    $page->assertNoJavaScriptErrors();
+
+    expect($note->fresh()->body)->toBe("@[Bia Lima](user:{$bia->id}) hi @zzz and @[Ana Souza](user:{$ana->id})");
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($ana->email));
+});
+
 test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {
     Mail::fake();
 

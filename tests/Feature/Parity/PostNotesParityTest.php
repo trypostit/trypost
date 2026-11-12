@@ -17,6 +17,7 @@ use App\Mcp\Tools\Post\UpdatePostNoteTool;
 use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\PostNoteReaction;
+use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Event;
@@ -328,7 +329,18 @@ test('reactions added and removed on the web, the api and mcp are stored once pe
 test('the web, the api and mcp refuse a reaction that is not exactly one emoji', function () {
     $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
 
-    foreach ([[], ['emoji' => ''], ['emoji' => 'a'], ['emoji' => '👍👍'], ['emoji' => ['👍']]] as $payload) {
+    $invalid = [
+        [],
+        ['emoji' => ''],
+        ['emoji' => 'a'],
+        ['emoji' => '👍👍'],
+        ['emoji' => ['👍']],
+        ['emoji' => "a\u{20E3}"],
+        ['emoji' => "\u{1F1E7}"],
+        ['emoji' => '👍'.str_repeat("\u{0301}", 80)],
+    ];
+
+    foreach ($invalid as $payload) {
         $this->actingAs($this->user)->putJson(route('app.posts.notes.reactions.update', [$this->post, $note]), $payload)->assertUnprocessable()->assertJsonValidationErrors('emoji');
         auth()->forgetGuards();
         $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.notes.reactions.update', [$this->post, $note]), $payload)->assertUnprocessable()->assertJsonValidationErrors('emoji');
@@ -337,6 +349,109 @@ test('the web, the api and mcp refuse a reaction that is not exactly one emoji',
     }
 
     expect(PostNoteReaction::query()->count())->toBe(0);
+});
+
+test('every kind of emoji is a reaction on the web, the api and mcp', function (string $emoji) {
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
+    $admin = workspaceMember($this->workspace, 'admin');
+    $member = workspaceMember($this->workspace);
+
+    $this->actingAs($this->user)->putJson(route('app.posts.notes.reactions.update', [$this->post, $note]), ['emoji' => $emoji])->assertOk();
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi(passportToken($admin, $this->workspace)))->putJson(route('api.posts.notes.reactions.update', [$this->post, $note]), ['emoji' => $emoji])->assertOk();
+    auth()->forgetGuards();
+    TryPostServer::actingAs($member)->tool(AddPostNoteReactionTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id, 'emoji' => $emoji])->assertOk();
+
+    expect(PostNoteReaction::query()->pluck('emoji')->all())->toBe([$emoji, $emoji, $emoji]);
+})->with([
+    'pictograph' => '👍',
+    'variation selector' => '❤️',
+    'skin tone' => '👍🏽',
+    'joined pictographs' => '👨‍👩‍👧‍👦',
+    'flag' => '🇧🇷',
+    'subdivision flag' => '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+    'keycap' => '1️⃣',
+]);
+
+test('taking back a reaction you do not have changes nothing on the web, the api and mcp', function () {
+    Event::fake([PostNoteChanged::class]);
+    $teammate = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $teammate->id]);
+    PostNoteReaction::factory()->create(['post_note_id' => $note->id, 'user_id' => $teammate->id, 'emoji' => '👍']);
+
+    $this->actingAs($this->user)->deleteJson(route('app.posts.notes.reactions.destroy', [$this->post, $note]), ['emoji' => '👍'])
+        ->assertOk()
+        ->assertJsonPath('reactions.0.count', 1);
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->deleteJson(route('api.posts.notes.reactions.destroy', [$this->post, $note]), ['emoji' => '👍'])->assertOk();
+    auth()->forgetGuards();
+    TryPostServer::actingAs($this->user)->tool(RemovePostNoteReactionTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id, 'emoji' => '👍'])->assertOk();
+
+    expect(PostNoteReaction::query()->sole()->user_id)->toBe($teammate->id);
+    Event::assertNotDispatched(PostNoteChanged::class);
+});
+
+test('reactions on a note of another post are not found on the web, the api and mcp', function () {
+    $otherPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $note = PostNote::factory()->create(['post_id' => $otherPost->id, 'user_id' => $this->user->id]);
+
+    $this->actingAs($this->user)->putJson(route('app.posts.notes.reactions.update', [$this->post, $note]), ['emoji' => '👍'])->assertNotFound();
+    $this->actingAs($this->user)->deleteJson(route('app.posts.notes.reactions.destroy', [$this->post, $note]), ['emoji' => '👍'])->assertNotFound();
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.notes.reactions.update', [$this->post, $note]), ['emoji' => '👍'])->assertNotFound();
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->deleteJson(route('api.posts.notes.reactions.destroy', [$this->post, $note]), ['emoji' => '👍'])->assertNotFound();
+    auth()->forgetGuards();
+    TryPostServer::actingAs($this->user)->tool(AddPostNoteReactionTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id, 'emoji' => '👍'])->assertHasErrors(['Note not found.']);
+    TryPostServer::actingAs($this->user)->tool(RemovePostNoteReactionTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id, 'emoji' => '👍'])->assertHasErrors(['Note not found.']);
+
+    expect(PostNoteReaction::query()->count())->toBe(0);
+});
+
+test('a member who cannot see a pending request cannot react to its notes or list who to mention, on the web and mcp', function () {
+    $requester = workspaceMember($this->workspace, 'approval');
+    $bystander = workspaceMember($this->workspace, 'approval');
+    $pending = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $requester->id,
+        'status' => Status::PendingApproval,
+        'approval_requested_by' => $requester->id,
+    ]);
+    $note = PostNote::factory()->create(['post_id' => $pending->id, 'user_id' => $this->user->id]);
+
+    $this->actingAs($bystander)->getJson(route('app.posts.notes.mentionables.index', $pending))->assertNotFound();
+    $this->actingAs($bystander)->putJson(route('app.posts.notes.reactions.update', [$pending, $note]), ['emoji' => '👍'])->assertNotFound();
+    $this->actingAs($bystander)->deleteJson(route('app.posts.notes.reactions.destroy', [$pending, $note]), ['emoji' => '👍'])->assertNotFound();
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($bystander)->tool(ListPostNoteMentionablesTool::class, ['post_id' => $pending->id])->assertHasErrors(['Post not found.']);
+    TryPostServer::actingAs($bystander)->tool(AddPostNoteReactionTool::class, ['post_id' => $pending->id, 'note_id' => $note->id, 'emoji' => '👍'])->assertHasErrors(['Post not found.']);
+    TryPostServer::actingAs($bystander)->tool(RemovePostNoteReactionTool::class, ['post_id' => $pending->id, 'note_id' => $note->id, 'emoji' => '👍'])->assertHasErrors(['Post not found.']);
+
+    expect(PostNoteReaction::query()->count())->toBe(0);
+});
+
+test('an edit through the api and mcp emails only the teammates it mentions for the first time', function () {
+    Mail::fake();
+    $alreadyMentioned = workspaceMember($this->workspace);
+    $apiMention = workspaceMember($this->workspace);
+    $mcpMention = workspaceMember($this->workspace);
+    $mention = fn (User $user): string => "@[{$user->name}](user:{$user->id})";
+    $apiNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "{$mention($alreadyMentioned)} ping"]);
+    $mcpNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "{$mention($alreadyMentioned)} ping"]);
+
+    $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.notes.update', [$this->post, $apiNote]), [
+        'body' => "{$mention($alreadyMentioned)} {$mention($apiMention)} ping",
+    ])->assertOk();
+    auth()->forgetGuards();
+    TryPostServer::actingAs($this->user)->tool(UpdatePostNoteTool::class, [
+        'post_id' => $this->post->id,
+        'note_id' => $mcpNote->id,
+        'body' => "{$mention($alreadyMentioned)} {$mention($mcpMention)} ping",
+    ])->assertOk();
+
+    expect(noteRecipients(PostNoteMentioned::class))->toBe([$apiMention->email, $mcpMention->email])
+        ->and(pendingNoteRecipients())->toBe([]);
 });
 
 test('the web, the api and mcp list the same people to mention: who sees the post, without you', function () {
