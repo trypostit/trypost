@@ -418,31 +418,34 @@ test('a mention of someone who no longer exists reads as unknown in the note and
     $page->assertNoJavaScriptErrors();
 });
 
-test('older notes load above the thread, and a link to an older note loads its page and highlights it', function () {
-    config(['app.pagination.default' => 2]);
+test('scrolling up the thread loads older notes, and a link to an older note loads its page and highlights it', function () {
+    config(['app.pagination.default' => 8]);
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
-    $notes = collect(['Oldest note', 'Middle note', 'Newest note'])->map(fn (string $body, int $index): PostNote => PostNote::factory()->create([
+    $notes = collect(range(1, 10))->map(fn (int $number): PostNote => PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $user->id,
-        'body' => $body,
-        'created_at' => now()->subMinutes(3 - $index),
+        'body' => $number === 1 ? 'The very first note' : "Note number {$number}",
+        'created_at' => now()->subMinutes(20 - $number),
+        'updated_at' => now()->subMinutes(20 - $number),
     ]));
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
     waitFor($page, "@post-notes-trigger-{$post->id}");
     $page->click("@post-notes-trigger-{$post->id}");
-    waitForCount($page, '@note-item', 2);
-    $page->assertDontSeeIn('@notes-list', 'Oldest note');
-    $page->click('@notes-load-older');
-    waitForGone($page, '@notes-load-older');
-    $page->assertSeeIn('@notes-list', 'Oldest note')
-        ->assertMissing('@notes-load-older')
+    waitForCount($page, '@note-item', 8);
+    $page->assertSeeIn('@notes-list', 'Note number 10')
+        ->assertDontSeeIn('@notes-list', 'The very first note');
+
+    $page->script("document.querySelector('[data-testid=\"notes-list\"]').scrollTop = 0");
+    waitForCount($page, '@note-item', 10);
+    $page->assertCount('@note-item', 10)
+        ->assertSeeIn('@notes-list', 'The very first note')
         ->assertNoJavaScriptErrors();
 
     $oldest = "[data-note-id=\"{$notes->first()->id}\"]";

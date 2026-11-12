@@ -21,6 +21,14 @@ export interface PostNote {
     user: PostNoteAuthor;
 }
 
+/** A page of a post's notes, newest first, as the publish page sends it (`postNotes`). */
+export interface PostNotesPage {
+    data: PostNote[];
+    meta: {
+        total: number;
+    };
+}
+
 /** A member a note mentions, with their current name; the body holds only the id. */
 export interface MentionedPerson {
     id: string;

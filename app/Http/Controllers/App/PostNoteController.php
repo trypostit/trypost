@@ -6,7 +6,6 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\PostNote\CreatePostNote;
 use App\Actions\PostNote\DeletePostNote;
-use App\Actions\PostNote\ListPostNotes;
 use App\Actions\PostNote\UpdatePostNote;
 use App\Http\Requests\App\PostNote\StorePostNoteRequest;
 use App\Http\Requests\App\PostNote\UpdatePostNoteRequest;
@@ -14,18 +13,10 @@ use App\Http\Resources\App\PostNoteResource;
 use App\Models\Post;
 use App\Models\PostNote;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
 class PostNoteController extends Controller
 {
-    public function index(Post $post): AnonymousResourceCollection
-    {
-        $this->authorizeNotes($post);
-
-        return PostNoteResource::collection(ListPostNotes::execute($post));
-    }
-
     public function store(StorePostNoteRequest $request, Post $post): JsonResponse
     {
         $this->authorizeNotes($post);

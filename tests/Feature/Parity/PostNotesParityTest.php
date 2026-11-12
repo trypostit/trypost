@@ -166,7 +166,7 @@ test('a post of another workspace is not found on the web, the api and mcp', fun
     $foreignPost = Post::factory()->draft()->create(['workspace_id' => $other['workspace']->id, 'user_id' => $other['user']->id]);
     $foreignNote = PostNote::factory()->create(['post_id' => $foreignPost->id, 'user_id' => $other['user']->id, 'body' => 'Original']);
 
-    $this->actingAs($this->user)->getJson(route('app.posts.notes.index', $foreignPost))->assertNotFound();
+    expect($this->actingAs($this->user)->get(route('app.posts.index', ['notes' => $foreignPost->id]))->inertiaProps('postNotes'))->toBeNull();
     $this->actingAs($this->user)->postJson(route('app.posts.notes.store', $foreignPost), ['body' => 'Hijacked'])->assertNotFound();
     auth()->forgetGuards();
 
@@ -207,7 +207,7 @@ test('a member who cannot see another member pending request gets not found on t
     ]);
     PostNote::factory()->create(['post_id' => $pending->id, 'user_id' => $this->user->id]);
 
-    $this->actingAs($bystander)->getJson(route('app.posts.notes.index', $pending))->assertNotFound();
+    expect($this->actingAs($bystander)->get(route('app.posts.index', ['notes' => $pending->id]))->inertiaProps('postNotes'))->toBeNull();
     $this->actingAs($bystander)->postJson(route('app.posts.notes.store', $pending), ['body' => 'Peek'])->assertNotFound();
     auth()->forgetGuards();
 
@@ -251,7 +251,7 @@ test('the mcp note tools refuse ids that are not uuids with a validation error',
 test('a user outside the workspace cannot read or add notes on the web or mcp', function () {
     $outsider = workspaceOutsider($this->workspace);
 
-    $this->actingAs($outsider)->getJson(route('app.posts.notes.index', $this->post))->assertForbidden();
+    $this->actingAs($outsider)->get(route('app.posts.index', ['notes' => $this->post->id]))->assertForbidden();
     auth()->forgetGuards();
 
     TryPostServer::actingAs($outsider)->tool(ListPostNotesTool::class, ['post_id' => $this->post->id])->assertHasErrors([$this->unauthorized]);

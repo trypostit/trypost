@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useHttp, usePage } from '@inertiajs/vue3';
+import type { InfiniteScrollRef } from '@inertiajs/core';
+import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import {
     InputGroup,
     InputGroupAddon,
@@ -16,7 +16,6 @@ import { usePostEcho } from '@/composables/echo/usePostEcho';
 import { blank, filled } from '@/lib/helpers';
 import {
     destroy as destroyNote,
-    index as fetchNotes,
     store as storeNote,
     update as updateNote,
 } from '@/routes/app/posts/notes';
@@ -25,17 +24,19 @@ import {
     destroy as removeReaction,
     update as addReaction,
 } from '@/routes/app/posts/notes/reactions';
-import type { PostNote, PostNoteMentionable } from '@/types/post-note';
+import type { SharedData } from '@/types';
+import type {
+    PostNote,
+    PostNoteMentionable,
+    PostNotesPage,
+} from '@/types/post-note';
 
-interface PaginatedResponse {
-    data: PostNote[];
-    meta: {
-        current_page: number;
-        last_page: number;
-        total: number;
-    };
-}
-
+/**
+ * The notes thread of the post whose notes the page has open: the notes come
+ * from the page's `postNotes` scroll prop (newest first, shown oldest first),
+ * and scrolling up loads older pages through `<InfiniteScroll reverse>`.
+ * Every change reloads the newest page.
+ */
 const props = defineProps<{
     postId: string;
     currentUserId: string;
@@ -46,10 +47,14 @@ const emit = defineEmits<{
     count: [total: number];
 }>();
 
-const page = usePage();
+const page = usePage<
+    SharedData & {
+        openPostNotesId?: string | null;
+        postNotes?: PostNotesPage | null;
+    }
+>();
 const currentUser = computed(() => page.props.auth.user);
 
-const notesHttp = useHttp<{ page: number }, PaginatedResponse>({ page: 1 });
 const sendHttp = useHttp<{ body: string }, PostNote>({ body: '' });
 const noteHttp = useHttp<{ body: string }, PostNote>({ body: '' });
 const deleteHttp = useHttp({});
@@ -59,23 +64,32 @@ const mentionablesHttp = useHttp<
     PostNoteMentionable[]
 >({});
 
-const notes = ref<PostNote[]>([]);
-const total = ref(0);
-const currentPage = ref(1);
-const lastPage = ref(1);
+/** This post's page of notes, once the page has loaded it. */
+const thread = computed(() =>
+    page.props.openPostNotesId === props.postId ? page.props.postNotes : null,
+);
+const notes = computed(() => [...(thread.value?.data ?? [])].reverse());
 
 const newBody = ref('');
 const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
+const notesList = ref<HTMLOListElement | null>(null);
+const infiniteScroll = ref<InfiniteScrollRef | null>(null);
 const composerInput = ref<InstanceType<typeof PostNoteEditor> | null>(
     null,
 );
 const mentionables = ref<PostNoteMentionable[] | null>(null);
 
-watch(total, (count) => emit('count', count));
+watch(
+    () => thread.value?.meta.total,
+    (total) => {
+        if (filled(total)) {
+            emit('count', total);
+        }
+    },
+);
 
-const hasOlderNotes = computed(() => currentPage.value < lastPage.value);
 const canSend = computed(() => filled(newBody.value) && !sendHttp.processing);
 
 const scrollToBottom = () => {
@@ -84,71 +98,39 @@ const scrollToBottom = () => {
     }
 };
 
-/** One page of notes, oldest first, keeping the pagination in step; null when it fails. */
-const fetchNotesPage = async (page: number): Promise<PostNote[] | null> => {
-    notesHttp.page = page;
-
-    const response = await notesHttp
-        .get(fetchNotes.url(props.postId))
-        .catch(() => null);
-
-    if (!filled(response)) {
-        return null;
-    }
-
-    currentPage.value = response.meta.current_page;
-    lastPage.value = response.meta.last_page;
-    total.value = response.meta.total;
-
-    return [...response.data].reverse();
-};
-
-/** Replaces the thread with its newest notes and scrolls to the last one. */
-const loadLatestNotes = async () => {
-    const latest = await fetchNotesPage(1);
-
-    if (latest) {
-        notes.value = latest;
-        await nextTick();
-        scrollToBottom();
-    }
-};
-
-/** Puts the next older page above the thread; false when there is none or it fails. */
-const loadOlderNotes = async (): Promise<boolean> => {
-    if (!hasOlderNotes.value) {
-        return false;
-    }
-
-    const older = await fetchNotesPage(currentPage.value + 1);
-
-    if (older) {
-        notes.value = [...older, ...notes.value];
-    }
-
-    return filled(older);
-};
+/** Loads the newest page again, dropping older pages, and scrolls to the last note. */
+const reloadNotes = (): Promise<void> =>
+    new Promise((resolve) => {
+        router.reload({
+            only: ['postNotes'],
+            reset: ['postNotes'],
+            onFinish: async () => {
+                await nextTick();
+                scrollToBottom();
+                resolve();
+            },
+        });
+    });
 
 usePostEcho(props.postId, '.post.note.changed', () => {
-    void loadLatestNotes();
+    void reloadNotes();
 });
 
 const focusComposer = () => {
     composerInput.value?.focus();
 };
 
-/** The people a note can mention, loaded once per post when the first `@` is typed. */
+/** The people a note can mention, loaded once when the first `@` is typed. */
 const loadMentionables = async () => {
     if (mentionables.value !== null || mentionablesHttp.processing) {
         return;
     }
 
-    const postId = props.postId;
     const people = await mentionablesHttp
-        .get(fetchMentionables.url(postId))
+        .get(fetchMentionables.url(props.postId))
         .catch(() => null);
 
-    if (people && postId === props.postId) {
+    if (people) {
         mentionables.value = people;
     }
 };
@@ -189,11 +171,8 @@ const sendNote = async () => {
         return;
     }
 
-    notes.value.push(created);
-    total.value++;
     newBody.value = '';
-    await nextTick();
-    scrollToBottom();
+    await reloadNotes();
     focusComposer();
 };
 
@@ -216,10 +195,23 @@ const deleteNote = async (note: PostNote) => {
         .catch(() => false);
 
     if (deleted) {
-        notes.value = notes.value.filter((item) => item.id !== note.id);
-        total.value = Math.max(0, total.value - 1);
+        await reloadNotes();
     }
 };
+
+/** Loads the next older page; false when there is none. */
+const loadOlderNotes = (): Promise<boolean> =>
+    new Promise((resolve) => {
+        const scroll = infiniteScroll.value;
+
+        if (!scroll?.hasNext()) {
+            resolve(false);
+
+            return;
+        }
+
+        scroll.fetchNext({ onFinish: () => resolve(true) });
+    });
 
 /** The note's element, loading older pages until it shows up or none are left. */
 const findNote = async (noteId: string): Promise<HTMLElement | null> => {
@@ -252,33 +244,16 @@ const focusNote = async (noteId: string) => {
     }, 4000);
 };
 
-onMounted(async () => {
-    await loadLatestNotes();
-
-    if (props.highlightNoteId) {
-        await focusNote(props.highlightNoteId);
+/** Opens on the linked note once the thread has loaded, and again when the link changes. */
+const focusLinkedNote = () => {
+    if (filled(thread.value) && filled(props.highlightNoteId)) {
+        void focusNote(props.highlightNoteId);
     }
-});
+};
 
-watch(
-    () => props.highlightNoteId,
-    (noteId) => {
-        if (noteId) {
-            void focusNote(noteId);
-        }
-    },
-);
-
-watch(
-    () => props.postId,
-    () => {
-        notes.value = [];
-        mentionablesHttp.cancel();
-        mentionables.value = null;
-        currentPage.value = 1;
-        void loadLatestNotes();
-    },
-);
+watch(() => filled(thread.value), focusLinkedNote);
+watch(() => props.highlightNoteId, focusLinkedNote);
+onMounted(focusLinkedNote);
 </script>
 
 <template>
@@ -288,28 +263,7 @@ watch(
             class="-mx-2 max-h-80 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-2"
             data-testid="notes-list"
         >
-            <div v-if="hasOlderNotes" class="flex justify-start pb-2">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="-ms-2 text-muted-foreground"
-                    :disabled="notesHttp.processing"
-                    data-testid="notes-load-older"
-                    @click="loadOlderNotes"
-                >
-                    <IconLoader2
-                        v-if="notesHttp.processing"
-                        class="size-3.5 animate-spin"
-                    />
-                    {{ $t('notes.load_more') }}
-                </Button>
-            </div>
-
-            <div
-                v-if="notesHttp.processing && blank(notes)"
-                class="flex items-center gap-3 py-1"
-            >
+            <div v-if="blank(thread)" class="flex items-center gap-3 py-1">
                 <IconLoader2
                     class="size-4 animate-spin text-muted-foreground"
                 />
@@ -323,27 +277,48 @@ watch(
                 {{ $t('notes.empty') }}
             </p>
 
-            <ol v-else class="flex flex-col">
-                <li
-                    v-for="note in notes"
-                    :key="note.id"
-                    class="relative pb-3 last:pb-0 [&:not(:last-child)]:before:absolute [&:not(:last-child)]:before:start-[13.5px] [&:not(:last-child)]:before:top-9 [&:not(:last-child)]:before:bottom-1 [&:not(:last-child)]:before:w-px [&:not(:last-child)]:before:bg-border-strong"
-                >
-                    <PostNoteItem
-                        :note="note"
-                        :current-user-id="currentUserId"
-                        :mentionables="mentionables"
-                        :highlighted="highlightedId === note.id"
-                        @save="saveNote(note, $event)"
-                        @delete="deleteNote(note)"
-                        @react="
-                            (emoji, reacted) =>
-                                toggleReaction(note, emoji, reacted)
-                        "
-                        @need-people="loadMentionables"
-                    />
-                </li>
-            </ol>
+            <InfiniteScroll
+                v-else
+                ref="infiniteScroll"
+                data="postNotes"
+                reverse
+                preserve-url
+                :items-element="() => notesList"
+            >
+                <template #next="{ loading }">
+                    <div
+                        v-if="loading"
+                        class="flex justify-center pb-2"
+                        data-testid="notes-loading-older"
+                    >
+                        <IconLoader2
+                            class="size-4 animate-spin text-muted-foreground"
+                        />
+                    </div>
+                </template>
+
+                <ol ref="notesList" class="flex flex-col">
+                    <li
+                        v-for="note in notes"
+                        :key="note.id"
+                        class="relative pb-3 last:pb-0 [&:not(:last-child)]:before:absolute [&:not(:last-child)]:before:start-[13.5px] [&:not(:last-child)]:before:top-9 [&:not(:last-child)]:before:bottom-1 [&:not(:last-child)]:before:w-px [&:not(:last-child)]:before:bg-border-strong"
+                    >
+                        <PostNoteItem
+                            :note="note"
+                            :current-user-id="currentUserId"
+                            :mentionables="mentionables"
+                            :highlighted="highlightedId === note.id"
+                            @save="saveNote(note, $event)"
+                            @delete="deleteNote(note)"
+                            @react="
+                                (emoji, reacted) =>
+                                    toggleReaction(note, emoji, reacted)
+                            "
+                            @need-people="loadMentionables"
+                        />
+                    </li>
+                </ol>
+            </InfiniteScroll>
         </div>
 
         <div class="flex shrink-0 items-end gap-3">

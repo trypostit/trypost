@@ -13,11 +13,11 @@ final class ListPostNotes
     /**
      * @return LengthAwarePaginator<int, PostNote>
      */
-    public static function execute(Post $post, ?int $page = null): LengthAwarePaginator
+    public static function execute(Post $post, ?int $page = null, string $pageName = 'page'): LengthAwarePaginator
     {
         return $post->notes()
             ->with(PostNote::DISPLAY_RELATIONS)
             ->latest()
-            ->paginate((int) config('app.pagination.default'), page: $page);
+            ->paginate((int) config('app.pagination.default'), pageName: $pageName, page: $page);
     }
 }

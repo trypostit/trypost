@@ -277,7 +277,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->name('app.posts.ai.alt-text');
 
     Route::get('posts/{post}/notes/mentionables', [PostNoteMentionableController::class, 'index'])->name('app.posts.notes.mentionables.index');
-    Route::get('posts/{post}/notes', [PostNoteController::class, 'index'])->name('app.posts.notes.index');
     Route::post('posts/{post}/notes', [PostNoteController::class, 'store'])->name('app.posts.notes.store');
     Route::put('posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('app.posts.notes.update');
     Route::delete('posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('app.posts.notes.destroy');

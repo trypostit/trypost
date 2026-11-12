@@ -10,6 +10,14 @@ use Illuminate\Support\Str;
 final class RequestIds
 {
     /**
+     * The value when it is a uuid, else null.
+     */
+    public static function uuid(mixed $value): ?string
+    {
+        return is_string($value) && Str::isUuid($value) ? $value : null;
+    }
+
+    /**
      * @param  Collection<int, mixed>  $values
      * @return list<string>
      */

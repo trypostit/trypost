@@ -6,6 +6,7 @@ namespace App\Actions\Post;
 
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\Queue\BuildQueueTimeline;
+use App\Actions\PostNote\BuildPostNotesProps;
 use App\Actions\SocialAccount\CountPostsScheduledThisWeek;
 use App\Actions\SocialAccount\CountPostsSentThisWeek;
 use App\Enums\Post\ScheduleMode;
@@ -84,8 +85,8 @@ class BuildPublishPageProps
 
         $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
 
-        $openPostNotesId = self::uuidQuery($request, 'notes');
-        $openPostDetailsId = self::uuidQuery($request, 'post');
+        $openPostNotesId = RequestIds::uuid($request->query('notes'));
+        $openPostDetailsId = RequestIds::uuid($request->query('post'));
         $focusedPostId = $openPostNotesId ?? $openPostDetailsId;
 
         $resolveTab = fn (mixed $requested, ?string $focusedId): string => self::tab($requested, $focusedId ? (clone $basePosts)->whereKey($focusedId)->visiblePendingApprovalsFor($requester)->value('status') : null);
@@ -143,9 +144,8 @@ class BuildPublishPageProps
             ...$props,
             'openComposer' => $editPost !== null,
             'openComposerAssistant' => $request->boolean('assistant'),
-            'openPostNotesId' => $openPostNotesId,
+            ...BuildPostNotesProps::handle($request, $workspace),
             'openPostDetailsId' => $openPostDetailsId,
-            'highlightNoteId' => is_string($request->query('note')) ? $request->query('note') : null,
             'authUserId' => $user->id,
             'editPost' => $editPost,
         ];
@@ -226,13 +226,6 @@ class BuildPublishPageProps
             ->first(fn (mixed $value): bool => is_string($value) && Str::isUuid($value));
 
         return $resolveTab(data_get($query, 'tab'), $focusedId) === $tab;
-    }
-
-    private static function uuidQuery(Request $request, string $key): ?string
-    {
-        $value = $request->query($key);
-
-        return is_string($value) && Str::isUuid($value) ? $value : null;
     }
 
     private static function tab(mixed $requested, ?PostStatus $focusedPostStatus): string

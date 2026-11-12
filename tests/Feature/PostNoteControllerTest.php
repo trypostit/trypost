@@ -28,7 +28,7 @@ beforeEach(function () {
     ]);
 });
 
-test('index returns every note of the post, newest first', function () {
+test('the publish page sends the notes of the post it has open, newest first and a page at a time', function () {
     $older = PostNote::factory()->create([
         'post_id' => $this->post->id,
         'user_id' => $this->user->id,
@@ -39,14 +39,23 @@ test('index returns every note of the post, newest first', function () {
         'user_id' => $this->user->id,
     ]);
 
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.notes.index', $this->post));
+    $notes = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id]))
+        ->assertOk()
+        ->inertiaProps('postNotes');
 
-    $response->assertOk();
-    $response->assertJsonCount(2, 'data');
-    $response->assertJsonPath('data.0.id', $newer->id);
-    $response->assertJsonPath('data.1.id', $older->id);
-    $response->assertJsonPath('data.0.user.id', $this->user->id);
+    expect(collect(data_get($notes, 'data'))->pluck('id')->all())->toBe([$newer->id, $older->id])
+        ->and(data_get($notes, 'data.0.user.id'))->toBe($this->user->id)
+        ->and(data_get($notes, 'meta.total'))->toBe(2);
+
+    config(['app.pagination.default' => 1]);
+
+    $olderPage = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id, 'notes_page' => 2]))
+        ->inertiaProps('postNotes.data');
+
+    expect(collect($olderPage)->pluck('id')->all())->toBe([$older->id])
+        ->and($this->actingAs($this->user)->get(route('app.posts.index'))->inertiaProps('postNotes'))->toBeNull();
 });
 
 test('store creates a comment', function () {
@@ -214,10 +223,9 @@ test('reactions go with their note and with the member who reacted', function ()
 
     $teammate->delete();
 
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.notes.index', $this->post))
-        ->assertOk()
-        ->assertJsonPath('data.0.reactions.0.count', 1);
+    expect($this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id]))
+        ->inertiaProps('postNotes.data.0.reactions.0.count'))->toBe(1);
 
     $this->actingAs($this->user)
         ->deleteJson(route('app.posts.notes.destroy', [$this->post, $note]))
@@ -302,9 +310,9 @@ test('a note keeps only the mentions of people who see the post, and shows them 
 
     $teammate->update(['name' => 'Bia Souza']);
 
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.notes.index', $this->post))
-        ->assertJsonPath('data.0.mentions', [['id' => $teammate->id, 'name' => 'Bia Souza']]);
+    expect($this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id]))
+        ->inertiaProps('postNotes.data.0.mentions'))->toBe([['id' => $teammate->id, 'name' => 'Bia Souza']]);
 
     $this->actingAs($this->user)
         ->putJson(route('app.posts.notes.update', [$this->post, $created->json('id')]), ['body' => 'no mention now'])
@@ -492,9 +500,9 @@ test('notes expose only the author id, name and photo', function () {
     ]);
     PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
 
-    $index = $this->actingAs($this->user)
-        ->getJson(route('app.posts.notes.index', $this->post))
-        ->assertOk();
+    $listed = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id]))
+        ->inertiaProps('postNotes.data');
     $store = $this->actingAs($this->user)
         ->postJson(route('app.posts.notes.store', $this->post), ['body' => 'Hi'])
         ->assertCreated();
@@ -502,19 +510,17 @@ test('notes expose only the author id, name and photo', function () {
         ->putJson(route('app.posts.notes.update', [$this->post, $store->json('id')]), ['body' => 'Edited'])
         ->assertOk();
 
-    foreach ([$index->json('data.0.user'), $store->json('user'), $update->json('user')] as $author) {
+    foreach ([data_get($listed, '0.user'), $store->json('user'), $update->json('user')] as $author) {
         expect(array_keys($author))->toEqualCanonicalizing(['id', 'name', 'photo_url'])
             ->and($author['id'])->toBe($this->user->id);
     }
 
-    foreach ([$index, $store, $update] as $response) {
+    foreach ([json_encode($listed), $store->getContent(), $update->getContent()] as $content) {
         foreach (['email', 'registration_ip', 'google_id', 'github_id', 'utm_source', 'persona', '203.0.113.7', $this->user->email] as $leak) {
-            expect($response->getContent())->not->toContain($leak);
+            expect($content)->not->toContain($leak);
         }
     }
 
-    expect($index->json('meta.current_page'))->toBe(1)
-        ->and($index->json('meta.last_page'))->toBe(1);
 });
 
 test('a member who needs approval cannot see notes of another member pending request', function () {
@@ -528,7 +534,7 @@ test('a member who needs approval cannot see notes of another member pending req
     ]);
     $note = PostNote::factory()->create(['post_id' => $pending->id, 'user_id' => $other->id]);
 
-    $this->actingAs($other)->getJson(route('app.posts.notes.index', $pending))->assertNotFound();
+    expect($this->actingAs($other)->get(route('app.posts.index', ['notes' => $pending->id]))->inertiaProps('postNotes'))->toBeNull();
     $this->actingAs($other)->postJson(route('app.posts.notes.store', $pending), ['body' => 'Hi'])->assertNotFound();
     $this->actingAs($other)->putJson(route('app.posts.notes.update', [$pending, $note]), ['body' => 'Hi'])->assertNotFound();
     $this->actingAs($other)->deleteJson(route('app.posts.notes.destroy', [$pending, $note]))->assertNotFound();
@@ -539,6 +545,6 @@ test('a member who needs approval cannot see notes of another member pending req
 test('a user outside the workspace cannot read or add notes', function () {
     $outsider = workspaceOutsider($this->workspace);
 
-    $this->actingAs($outsider)->getJson(route('app.posts.notes.index', $this->post))->assertForbidden();
+    $this->actingAs($outsider)->get(route('app.posts.index', ['notes' => $this->post->id]))->assertForbidden();
     $this->actingAs($outsider)->postJson(route('app.posts.notes.store', $this->post), ['body' => 'Hi'])->assertForbidden();
 });

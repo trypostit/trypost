@@ -187,8 +187,25 @@ watch(
 );
 
 watch(openPostNotesId, (id) => {
-    if (id === props.post.id) notesOpen.value = true;
+    notesOpen.value = id === props.post.id;
 });
+
+/**
+ * Opens or closes this post's notes: the page keeps one thread open (`?notes=`)
+ * and reloads only its props, so opening another post's notes closes this one.
+ */
+const setNotesOpen = (open: boolean): void => {
+    notesOpen.value = open;
+    router.reload({
+        data: {
+            notes: open ? props.post.id : undefined,
+            note: undefined,
+        },
+        only: ['openPostNotesId', 'highlightNoteId', 'postNotes'],
+        reset: ['postNotes'],
+        replace: true,
+    });
+};
 
 const setNoteCount = (count: number): void => {
     noteCount.value = count;
@@ -524,7 +541,7 @@ defineExpose({ openDetails });
             </Badge>
         </div>
 
-        <Collapsible v-model:open="notesOpen" as-child>
+        <Collapsible :open="notesOpen" as-child @update:open="setNotesOpen">
             <article
                 class="min-w-0 overflow-hidden rounded-xl border border-border-strong bg-card"
             >
