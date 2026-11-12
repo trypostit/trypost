@@ -19,7 +19,6 @@ return [
     'react' => 'Add reaction',
     'no_mentionables' => 'No teammate matches',
     'mention_card' => [
-        'admin' => 'Admin',
         'local_time' => ':time local time',
     ],
     'errors' => [

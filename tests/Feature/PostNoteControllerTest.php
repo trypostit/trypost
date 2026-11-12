@@ -184,7 +184,7 @@ test('the member who asked for approval of someone else post is a participant of
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
 });
 
-test('everyone in the workspace is listed on a draft, the viewer included, sorted by name ignoring case and accents, with their time zone and whether they are an admin', function () {
+test('everyone in the workspace is listed on a draft, the viewer included, sorted by name ignoring case and accents, with their time zone', function () {
     $this->user->update(['name' => 'Diego', 'timezone' => 'Europe/Lisbon']);
     $carla = workspaceMember($this->workspace, 'approval', ['name' => 'Carla']);
     $bruno = workspaceMember($this->workspace, 'member', ['name' => 'bruno', 'timezone' => 'Asia/Tokyo']);
@@ -195,10 +195,10 @@ test('everyone in the workspace is listed on a draft, the viewer included, sorte
         ->getJson(route('app.posts.notes.mentionables.index', $this->post))
         ->assertOk()
         ->assertExactJson([
-            ['id' => $alvaro->id, 'name' => 'Álvaro', 'photo_url' => $alvaro->photo_url, 'timezone' => 'America/Sao_Paulo', 'is_admin' => true],
-            ['id' => $bruno->id, 'name' => 'bruno', 'photo_url' => $bruno->photo_url, 'timezone' => 'Asia/Tokyo', 'is_admin' => false],
-            ['id' => $carla->id, 'name' => 'Carla', 'photo_url' => $carla->photo_url, 'timezone' => $carla->timezone, 'is_admin' => false],
-            ['id' => $this->user->id, 'name' => 'Diego', 'photo_url' => $this->user->photo_url, 'timezone' => 'Europe/Lisbon', 'is_admin' => true],
+            ['id' => $alvaro->id, 'name' => 'Álvaro', 'photo_url' => $alvaro->photo_url, 'timezone' => 'America/Sao_Paulo'],
+            ['id' => $bruno->id, 'name' => 'bruno', 'photo_url' => $bruno->photo_url, 'timezone' => 'Asia/Tokyo'],
+            ['id' => $carla->id, 'name' => 'Carla', 'photo_url' => $carla->photo_url, 'timezone' => $carla->timezone],
+            ['id' => $this->user->id, 'name' => 'Diego', 'photo_url' => $this->user->photo_url, 'timezone' => 'Europe/Lisbon'],
         ]);
 });
 

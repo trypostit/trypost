@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the members who see a post, you included: the people a note on it may mention. Returns [{id, name, photo_url, timezone, is_admin}]. Mention someone in a note body as @[Name](user:id).')]
+#[Description('List the members who see a post, you included: the people a note on it may mention. Returns [{id, name, photo_url, timezone}]. Mention someone in a note body as @[Name](user:id).')]
 class ListPostNoteMentionablesTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;

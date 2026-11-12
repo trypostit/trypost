@@ -19,7 +19,6 @@ return [
     'react' => 'Ajouter une réaction',
     'no_mentionables' => 'Aucun membre ne correspond',
     'mention_card' => [
-        'admin' => 'Administrateur',
         'local_time' => ':time heure locale',
     ],
     'errors' => [

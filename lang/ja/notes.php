@@ -19,7 +19,6 @@ return [
     'react' => 'リアクションを追加',
     'no_mentionables' => '一致するメンバーがいません',
     'mention_card' => [
-        'admin' => '管理者',
         'local_time' => '現地時間 :time',
     ],
     'errors' => [

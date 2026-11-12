@@ -19,7 +19,6 @@ return [
     'react' => 'Tepki ekle',
     'no_mentionables' => 'Eşleşen ekip üyesi yok',
     'mention_card' => [
-        'admin' => 'Yönetici',
         'local_time' => 'Yerel saat :time',
     ],
     'errors' => [

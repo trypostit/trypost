@@ -19,7 +19,6 @@ return [
     'react' => 'Adicionar reação',
     'no_mentionables' => 'Ninguém da equipe encontrado',
     'mention_card' => [
-        'admin' => 'Administrador',
         'local_time' => ':time no horário local',
     ],
     'errors' => [

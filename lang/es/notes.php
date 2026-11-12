@@ -19,7 +19,6 @@ return [
     'react' => 'Añadir reacción',
     'no_mentionables' => 'Nadie del equipo coincide',
     'mention_card' => [
-        'admin' => 'Administrador',
         'local_time' => ':time hora local',
     ],
     'errors' => [

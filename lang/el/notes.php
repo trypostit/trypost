@@ -19,7 +19,6 @@ return [
     'react' => 'Προσθήκη αντίδρασης',
     'no_mentionables' => 'Κανένα μέλος δεν ταιριάζει',
     'mention_card' => [
-        'admin' => 'Διαχειριστής',
         'local_time' => ':time τοπική ώρα',
     ],
     'errors' => [

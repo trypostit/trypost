@@ -140,21 +140,6 @@ trait HasWorkspace
             && ((bool) $pivot->is_admin || ! (bool) $pivot->requires_approval);
     }
 
-    /**
-     * The admin rule for an already-loaded membership pivot: the owner is
-     * always an admin.
-     */
-    public function isAdminThrough(Workspace $workspace, ?Pivot $pivot): bool
-    {
-        if ($this->ownsAccountOf($workspace)) {
-            return true;
-        }
-
-        return $pivot !== null
-            && $workspace->account_id === $this->account_id
-            && (bool) $pivot->is_admin;
-    }
-
     private function workspacePivot(Workspace $workspace): ?Pivot
     {
         if ($workspace->account_id !== $this->account_id) {

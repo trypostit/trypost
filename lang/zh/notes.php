@@ -19,7 +19,6 @@ return [
     'react' => '添加回应',
     'no_mentionables' => '没有匹配的成员',
     'mention_card' => [
-        'admin' => '管理员',
         'local_time' => '当地时间 :time',
     ],
     'errors' => [

@@ -26,5 +26,4 @@ export interface PostNoteMentionable {
     name: string;
     photo_url: string | null;
     timezone: string;
-    is_admin: boolean;
 }

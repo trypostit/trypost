@@ -145,7 +145,7 @@ test('the mention list works from the keyboard, says when nobody matches, an edi
     Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($ana->email));
 });
 
-test('hovering a mention shows who it is, yourself included: photo, name, admin and their local time', function () {
+test('hovering a mention shows who it is, yourself included: photo, name and their local time', function () {
     $user = User::factory()->create(['name' => 'Paulo Castellano', 'time_format' => '24h']);
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -181,8 +181,7 @@ test('hovering a mention shows who it is, yourself included: photo, name, admin 
     waitForOpen($page, '@note-mention-card');
     waitFor($page, '@note-mention-card-time');
     waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$photoUrl}");
-    $page->assertSeeIn('@note-mention-card-name', 'Ana Souza')
-        ->assertSeeIn('@note-mention-card-admin', 'Admin');
+    $page->assertSeeIn('@note-mention-card-name', 'Ana Souza');
     waitForCondition($page, "{$tokyoTimes}.some((time) => document.querySelector('[data-testid=note-mention-card-time]').textContent.includes(time + ' local time'))");
 
     $page->hover('@note-body');
@@ -190,15 +189,13 @@ test('hovering a mention shows who it is, yourself included: photo, name, admin 
     $page->hover('[data-testid=note-mention]:nth-child(2)');
     waitForText($page, '@note-mention-card-name', 'Bia Lima');
     waitFor($page, '@note-mention-card-time');
-    $page->assertMissing('@note-mention-card-admin')
-        ->assertMissing('@note-mention-card img');
+    $page->assertMissing('@note-mention-card img');
 
     $page->hover('@note-body');
     waitForGone($page, '@note-mention-card');
     $page->hover('[data-testid=note-mention]:nth-child(3)');
     waitForText($page, '@note-mention-card-name', 'Caio Former');
-    $page->assertMissing('@note-mention-card-time')
-        ->assertMissing('@note-mention-card-admin');
+    $page->assertMissing('@note-mention-card-time');
 
     $page->hover('@note-body');
     waitForGone($page, '@note-mention-card');
@@ -206,7 +203,6 @@ test('hovering a mention shows who it is, yourself included: photo, name, admin 
     waitForText($page, '@note-mention-card-name', 'Paulo Castellano');
     waitForState($page, '@note-mention-card img', "element.getAttribute('src') === {$myPhotoUrl}");
     $page->assertVisible('@note-mention-card-time')
-        ->assertSeeIn('@note-mention-card-admin', 'Admin')
         ->assertNoJavaScriptErrors();
 });
 

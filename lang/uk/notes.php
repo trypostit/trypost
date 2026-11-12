@@ -19,7 +19,6 @@ return [
     'react' => 'Додати реакцію',
     'no_mentionables' => 'Нікого з команди не знайдено',
     'mention_card' => [
-        'admin' => 'Адміністратор',
         'local_time' => ':time за місцевим часом',
     ],
     'errors' => [

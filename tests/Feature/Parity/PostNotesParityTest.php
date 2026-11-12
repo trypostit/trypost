@@ -473,7 +473,7 @@ test('the web, the api and mcp list the same people to mention: who sees the pos
 
     expect(collect($web->json())->pluck('id')->all())->toBe([$approver->id, $requester->id, $this->user->id])
         ->and($api->json())->toBe($web->json())
-        ->and(array_keys($web->json('0')))->toBe(['id', 'name', 'photo_url', 'timezone', 'is_admin']);
+        ->and(array_keys($web->json('0')))->toBe(['id', 'name', 'photo_url', 'timezone']);
 
     TryPostServer::actingAs($requester)->tool(ListPostNoteMentionablesTool::class, ['post_id' => $pending->id])
         ->assertOk()

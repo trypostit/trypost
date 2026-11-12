@@ -19,7 +19,6 @@ return [
     'react' => 'إضافة تفاعل',
     'no_mentionables' => 'لا يوجد عضو مطابق',
     'mention_card' => [
-        'admin' => 'مشرف',
         'local_time' => ':time بالتوقيت المحلي',
     ],
     'errors' => [

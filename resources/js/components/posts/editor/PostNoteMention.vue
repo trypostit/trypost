@@ -3,7 +3,6 @@ import { IconClock } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
     HoverCard,
     HoverCardContent,
@@ -16,7 +15,7 @@ import type { PostNoteMentionable } from '@/types/post-note';
 
 /**
  * A mention in a note, as `@Name`. Hovering or focusing it shows who it is:
- * photo, name, whether they are an admin and their local time. The people
+ * photo, name and their local time. The people
  * load the first time a card opens; someone no longer on the post shows by
  * name only.
  */
@@ -79,25 +78,15 @@ const onOpenChange = (open: boolean) => {
                     class="size-10 shrink-0 rounded-lg"
                     fallback-class="bg-primary-subtle text-sm font-bold text-primary-text"
                 />
-                <div class="grid min-w-0 gap-0.5">
-                    <div class="flex min-w-0 items-center gap-2">
-                        <span
-                            class="truncate text-sm leading-5 font-semibold text-foreground"
-                            data-testid="note-mention-card-name"
-                            >{{ person?.name ?? name }}</span
-                        >
-                        <Badge
-                            v-if="person?.is_admin"
-                            variant="secondary"
-                            class="shrink-0"
-                            data-testid="note-mention-card-admin"
-                        >
-                            {{ $t('notes.mention_card.admin') }}
-                        </Badge>
-                    </div>
+                <div class="grid min-w-0">
+                    <span
+                        class="truncate text-sm leading-5 font-semibold text-foreground"
+                        data-testid="note-mention-card-name"
+                        >{{ person?.name ?? name }}</span
+                    >
                     <span
                         v-if="filled(localTime)"
-                        class="flex items-center gap-1 text-xs text-muted-foreground"
+                        class="flex items-center gap-1 text-xs leading-4 text-muted-foreground"
                         data-testid="note-mention-card-time"
                     >
                         <IconClock class="size-3.5 shrink-0" />

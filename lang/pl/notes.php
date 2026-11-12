@@ -19,7 +19,6 @@ return [
     'react' => 'Dodaj reakcję',
     'no_mentionables' => 'Brak pasujących członków zespołu',
     'mention_card' => [
-        'admin' => 'Administrator',
         'local_time' => ':time czasu lokalnego',
     ],
     'errors' => [
