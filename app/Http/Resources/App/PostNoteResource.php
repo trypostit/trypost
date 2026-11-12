@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\App;
 
+use App\Actions\PostNote\SummarizePostNoteReactions;
 use App\Models\PostNote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,7 +23,7 @@ class PostNoteResource extends JsonResource
             'id' => $this->id,
             'body' => $this->body,
             'user_id' => $this->user_id,
-            'reactions' => $this->reactionSummary(),
+            'reactions' => SummarizePostNoteReactions::execute($this->resource),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'user' => $this->user === null ? null : [
