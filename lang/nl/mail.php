@@ -61,6 +61,8 @@ return [
         'post_title' => 'Bericht',
         'post_without_text' => 'Dit bericht heeft nog geen tekst.',
         'button' => 'Notitie bekijken',
+        'mention_everyone' => 'iedereen',
+        'mention_unknown' => 'onbekend',
     ],
     'post_note_mentioned' => [
         'subject' => ':author heeft je genoemd in een notitie',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Bericht',
         'post_without_text' => 'Dit bericht heeft nog geen tekst.',
         'button' => 'Notitie bekijken',
+        'mention_everyone' => 'iedereen',
+        'mention_unknown' => 'onbekend',
     ],
     'post_approval_requested' => [
         'subject' => ':name vraagt je een bericht goed te keuren',

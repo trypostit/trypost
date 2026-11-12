@@ -61,6 +61,8 @@ return [
         'post_title' => 'Post',
         'post_without_text' => 'Ten post nie ma jeszcze tekstu.',
         'button' => 'Zobacz notatkę',
+        'mention_everyone' => 'wszyscy',
+        'mention_unknown' => 'nieznany',
     ],
     'post_note_mentioned' => [
         'subject' => ':author wspomniał(a) o Tobie w notatce',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Post',
         'post_without_text' => 'Ten post nie ma jeszcze tekstu.',
         'button' => 'Zobacz notatkę',
+        'mention_everyone' => 'wszyscy',
+        'mention_unknown' => 'nieznany',
     ],
     'post_approval_requested' => [
         'subject' => ':name prosi o zatwierdzenie posta',

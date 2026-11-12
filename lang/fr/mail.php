@@ -61,6 +61,8 @@ return [
         'post_title' => 'Publication',
         'post_without_text' => 'Cette publication n\'a pas encore de texte.',
         'button' => 'Voir la note',
+        'mention_everyone' => 'tous',
+        'mention_unknown' => 'inconnu',
     ],
     'post_note_mentioned' => [
         'subject' => ':author vous a mentionné dans une note',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Publication',
         'post_without_text' => 'Cette publication n\'a pas encore de texte.',
         'button' => 'Voir la note',
+        'mention_everyone' => 'tous',
+        'mention_unknown' => 'inconnu',
     ],
     'post_approval_requested' => [
         'subject' => ':name vous demande d\'approuver une publication',

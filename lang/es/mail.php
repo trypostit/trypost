@@ -61,6 +61,8 @@ return [
         'post_title' => 'Publicación',
         'post_without_text' => 'Esta publicación aún no tiene texto.',
         'button' => 'Ver nota',
+        'mention_everyone' => 'todos',
+        'mention_unknown' => 'desconocido',
     ],
     'post_note_mentioned' => [
         'subject' => ':author te mencionó en una nota',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Publicación',
         'post_without_text' => 'Esta publicación aún no tiene texto.',
         'button' => 'Ver nota',
+        'mention_everyone' => 'todos',
+        'mention_unknown' => 'desconocido',
     ],
     'post_approval_requested' => [
         'subject' => ':name te pidió aprobar una publicación',

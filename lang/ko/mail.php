@@ -61,6 +61,8 @@ return [
         'post_title' => '게시물',
         'post_without_text' => '이 게시물에는 아직 텍스트가 없습니다.',
         'button' => '메모 보기',
+        'mention_everyone' => '모두',
+        'mention_unknown' => '알 수 없음',
     ],
     'post_note_mentioned' => [
         'subject' => ':author님이 메모에서 회원님을 언급했습니다',
@@ -70,6 +72,8 @@ return [
         'post_title' => '게시물',
         'post_without_text' => '이 게시물에는 아직 텍스트가 없습니다.',
         'button' => '메모 보기',
+        'mention_everyone' => '모두',
+        'mention_unknown' => '알 수 없음',
     ],
     'post_approval_requested' => [
         'subject' => ':name님이 게시물 승인을 요청했습니다',

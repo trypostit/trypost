@@ -61,6 +61,8 @@ return [
         'post_title' => 'Post',
         'post_without_text' => 'This post has no text yet.',
         'button' => 'View note',
+        'mention_everyone' => 'all',
+        'mention_unknown' => 'unknown',
     ],
     'post_note_mentioned' => [
         'subject' => ':author mentioned you in a note',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Post',
         'post_without_text' => 'This post has no text yet.',
         'button' => 'View note',
+        'mention_everyone' => 'all',
+        'mention_unknown' => 'unknown',
     ],
     'post_approval_requested' => [
         'subject' => ':name asked you to approve a post',

@@ -61,6 +61,8 @@ return [
         'post_title' => 'Δημοσίευση',
         'post_without_text' => 'Αυτή η δημοσίευση δεν έχει ακόμη κείμενο.',
         'button' => 'Προβολή σημείωσης',
+        'mention_everyone' => 'όλοι',
+        'mention_unknown' => 'άγνωστος',
     ],
     'post_note_mentioned' => [
         'subject' => 'Ο/Η :author σας ανέφερε σε μια σημείωση',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Δημοσίευση',
         'post_without_text' => 'Αυτή η δημοσίευση δεν έχει ακόμη κείμενο.',
         'button' => 'Προβολή σημείωσης',
+        'mention_everyone' => 'όλοι',
+        'mention_unknown' => 'άγνωστος',
     ],
     'post_approval_requested' => [
         'subject' => 'Ο/Η :name σας ζήτησε να εγκρίνετε μια ανάρτηση',

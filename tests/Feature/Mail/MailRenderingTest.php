@@ -193,7 +193,7 @@ test('a mention of someone no longer there reads as unknown in the email', funct
 
     $gone->delete();
 
-    $unknown = __('notes.mention_unknown');
+    $unknown = __('mail.post_note_added.mention_unknown');
 
     (new PostNoteAdded($note->fresh(), $author))
         ->assertSeeInHtml("Ask @{$unknown} first")

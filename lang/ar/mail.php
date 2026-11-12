@@ -61,6 +61,8 @@ return [
         'post_title' => 'المنشور',
         'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
         'button' => 'عرض الملاحظة',
+        'mention_everyone' => 'الجميع',
+        'mention_unknown' => 'غير معروف',
     ],
     'post_note_mentioned' => [
         'subject' => 'أشار إليك :author في ملاحظة',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'المنشور',
         'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
         'button' => 'عرض الملاحظة',
+        'mention_everyone' => 'الجميع',
+        'mention_unknown' => 'غير معروف',
     ],
     'post_approval_requested' => [
         'subject' => ':name طلب منك الموافقة على منشور',

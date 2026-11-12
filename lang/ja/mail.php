@@ -61,6 +61,8 @@ return [
         'post_title' => '投稿',
         'post_without_text' => 'この投稿にはまだテキストがありません。',
         'button' => 'メモを見る',
+        'mention_everyone' => '全員',
+        'mention_unknown' => '不明',
     ],
     'post_note_mentioned' => [
         'subject' => ':author さんがメモであなたをメンションしました',
@@ -70,6 +72,8 @@ return [
         'post_title' => '投稿',
         'post_without_text' => 'この投稿にはまだテキストがありません。',
         'button' => 'メモを見る',
+        'mention_everyone' => '全員',
+        'mention_unknown' => '不明',
     ],
     'post_approval_requested' => [
         'subject' => ':nameさんが投稿の承認を依頼しました',

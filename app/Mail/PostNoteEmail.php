@@ -39,7 +39,12 @@ abstract class PostNoteEmail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $post = $this->note->post;
-        $noteBody = PostNoteMentions::toPlainText($this->note->body, $this->note->mentions);
+        $noteBody = PostNoteMentions::toPlainText(
+            $this->note->body,
+            $this->note->mentions,
+            everyone: __("mail.{$this->copyKey()}.mention_everyone"),
+            unknown: __("mail.{$this->copyKey()}.mention_unknown"),
+        );
 
         return new Content(
             view: "mail.{$this->template()}",

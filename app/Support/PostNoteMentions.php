@@ -11,8 +11,8 @@ use Illuminate\Support\Str;
 /**
  * Mentions inside a note body, by id only: a person is written `@[user:{uuid}]`
  * and everyone who sees the post `@[everyone]`. Names are never stored in the
- * body; they come from the note's `mentions` and are read in each reader's
- * language for everyone (`notes.mention_everyone.word`). Mirrored by
+ * body; they come from the note's `mentions`, and everyone is read in each
+ * reader's language. Mirrored by
  * `resources/js/lib/noteMentions.ts` and kept equal by `PostNoteMentionsParityTest`.
  */
 final class PostNoteMentions
@@ -64,17 +64,13 @@ final class PostNoteMentions
     }
 
     /**
-     * The body as people read it, in the current locale: each mention becomes
-     * `@Name` from `$people` (the word for someone no longer there when the
-     * person is gone), and everyone the locale's word for it.
+     * The body as people read it: each mention becomes `@Name` from `$people`
+     * (`@{$unknown}` when the person is gone), and everyone `@{$everyone}`.
      *
      * @param  Collection<int, User>  $people
      */
-    public static function toPlainText(?string $body, Collection $people): string
+    public static function toPlainText(?string $body, Collection $people, string $everyone, string $unknown): string
     {
-        $everyone = __('notes.mention_everyone.word');
-        $unknown = __('notes.mention_unknown');
-
         return Str::replaceMatches(self::PATTERN, function (array $match) use ($people, $everyone, $unknown): string {
             $name = transform(
                 data_get($match, 1),

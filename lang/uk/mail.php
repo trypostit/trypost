@@ -61,6 +61,8 @@ return [
         'post_title' => 'Публікація',
         'post_without_text' => 'У цій публікації ще немає тексту.',
         'button' => 'Переглянути нотатку',
+        'mention_everyone' => 'всі',
+        'mention_unknown' => 'невідомий',
     ],
     'post_note_mentioned' => [
         'subject' => ':author згадав(ла) вас у нотатці',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Публікація',
         'post_without_text' => 'У цій публікації ще немає тексту.',
         'button' => 'Переглянути нотатку',
+        'mention_everyone' => 'всі',
+        'mention_unknown' => 'невідомий',
     ],
     'post_approval_requested' => [
         'subject' => ':name просить схвалити публікацію',

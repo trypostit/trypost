@@ -61,6 +61,8 @@ return [
         'post_title' => 'Публикация',
         'post_without_text' => 'В этой публикации пока нет текста.',
         'button' => 'Открыть заметку',
+        'mention_everyone' => 'все',
+        'mention_unknown' => 'неизвестный',
     ],
     'post_note_mentioned' => [
         'subject' => ':author упомянул(а) вас в заметке',
@@ -70,6 +72,8 @@ return [
         'post_title' => 'Публикация',
         'post_without_text' => 'В этой публикации пока нет текста.',
         'button' => 'Открыть заметку',
+        'mention_everyone' => 'все',
+        'mention_unknown' => 'неизвестный',
     ],
     'post_approval_requested' => [
         'subject' => ':name просит одобрить публикацию',

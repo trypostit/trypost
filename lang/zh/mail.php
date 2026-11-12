@@ -61,6 +61,8 @@ return [
         'post_title' => '帖子',
         'post_without_text' => '这篇帖子还没有文字。',
         'button' => '查看备注',
+        'mention_everyone' => '所有人',
+        'mention_unknown' => '未知',
     ],
     'post_note_mentioned' => [
         'subject' => ':author 在备注中提到了你',
@@ -70,6 +72,8 @@ return [
         'post_title' => '帖子',
         'post_without_text' => '这篇帖子还没有文字。',
         'button' => '查看备注',
+        'mention_everyone' => '所有人',
+        'mention_unknown' => '未知',
     ],
     'post_approval_requested' => [
         'subject' => ':name 请你审批一条帖子',
