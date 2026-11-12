@@ -69,40 +69,46 @@ const onOpenChange = (open: boolean) => {
         </HoverCardTrigger>
         <HoverCardContent
             align="start"
-            class="w-72 rounded-xl p-4"
+            class="w-auto max-w-72 min-w-56 rounded-xl border-0 p-3 shadow-md dark:border dark:border-border"
             data-testid="note-mention-card"
         >
-            <div class="flex items-center gap-3">
+            <div class="flex min-w-0 items-center gap-3">
                 <Avatar
                     :src="person?.photo_url"
                     :name="person?.name ?? name"
-                    class="size-12 shrink-0 rounded-lg text-sm"
+                    class="size-10 shrink-0 rounded-lg"
+                    fallback-class="bg-primary-subtle text-sm font-bold text-primary-text"
                 />
-                <div class="min-w-0">
-                    <p
-                        class="truncate text-sm font-semibold text-foreground"
-                        data-testid="note-mention-card-name"
+                <div class="grid min-w-0 gap-0.5">
+                    <div class="flex min-w-0 items-center gap-2">
+                        <span
+                            class="truncate text-sm leading-5 font-semibold text-foreground"
+                            data-testid="note-mention-card-name"
+                            >{{ person?.name ?? name }}</span
+                        >
+                        <Badge
+                            v-if="person?.is_admin"
+                            variant="secondary"
+                            class="shrink-0"
+                            data-testid="note-mention-card-admin"
+                        >
+                            {{ $t('notes.mention_card.admin') }}
+                        </Badge>
+                    </div>
+                    <span
+                        v-if="filled(localTime)"
+                        class="flex items-center gap-1 text-xs text-muted-foreground"
+                        data-testid="note-mention-card-time"
                     >
-                        {{ person?.name ?? name }}
-                    </p>
-                    <Badge
-                        v-if="person?.is_admin"
-                        variant="secondary"
-                        class="mt-1"
-                        data-testid="note-mention-card-admin"
-                    >
-                        {{ $t('notes.mention_card.admin') }}
-                    </Badge>
+                        <IconClock class="size-3.5 shrink-0" />
+                        {{
+                            $t('notes.mention_card.local_time', {
+                                time: localTime,
+                            })
+                        }}
+                    </span>
                 </div>
             </div>
-            <p
-                v-if="filled(localTime)"
-                class="mt-3 flex items-center gap-2 text-sm text-muted-foreground"
-                data-testid="note-mention-card-time"
-            >
-                <IconClock class="size-4 shrink-0" />
-                {{ $t('notes.mention_card.local_time', { time: localTime }) }}
-            </p>
         </HoverCardContent>
     </HoverCard>
 </template>
