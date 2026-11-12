@@ -16,4 +16,9 @@ return [
     'empty' => 'Brak notatek. Widzi je tylko Twój zespół.',
     'actions' => 'Akcje notatki',
     'load_more' => 'Wczytaj starsze notatki',
+    'react' => 'Dodaj reakcję',
+    'no_mentionables' => 'Brak pasujących członków zespołu',
+    'errors' => [
+        'invalid_emoji' => 'Wybierz jedno emoji.',
+    ],
 ];

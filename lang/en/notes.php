@@ -16,4 +16,9 @@ return [
     'empty' => 'No notes yet. Only your team sees them.',
     'actions' => 'Note actions',
     'load_more' => 'Load older notes',
+    'react' => 'Add reaction',
+    'no_mentionables' => 'No teammate matches',
+    'errors' => [
+        'invalid_emoji' => 'Pick a single emoji.',
+    ],
 ];

@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'この投稿にはまだテキストがありません。',
         'button' => 'メモを見る',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author さんがメモであなたをメンションしました',
+        'title' => ':author さんがあなたをメンションしました',
+        'heading' => 'メモであなたがメンションされました',
+        'body' => ':author さんがワークスペース :workspace の投稿のメモであなたをメンションしました。',
+        'post_title' => '投稿',
+        'post_without_text' => 'この投稿にはまだテキストがありません。',
+        'button' => 'メモを見る',
+    ],
     'post_approval_requested' => [
         'subject' => ':nameさんが投稿の承認を依頼しました',
         'title' => '承認が必要な投稿があります',

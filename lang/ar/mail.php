@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
         'button' => 'عرض الملاحظة',
     ],
+    'post_note_mentioned' => [
+        'subject' => 'أشار إليك :author في ملاحظة',
+        'title' => 'أشار إليك :author',
+        'heading' => 'تمت الإشارة إليك في ملاحظة',
+        'body' => 'أشار إليك :author في ملاحظة على منشور في مساحة العمل :workspace.',
+        'post_title' => 'المنشور',
+        'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
+        'button' => 'عرض الملاحظة',
+    ],
     'post_approval_requested' => [
         'subject' => ':name طلب منك الموافقة على منشور',
         'title' => 'منشور يحتاج إلى موافقتك',

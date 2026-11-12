@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Dieser Beitrag hat noch keinen Text.',
         'button' => 'Notiz ansehen',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author hat dich in einer Notiz erwähnt',
+        'title' => ':author hat dich erwähnt',
+        'heading' => 'Du wurdest in einer Notiz erwähnt',
+        'body' => ':author hat dich in einer Notiz zu einem Beitrag im Workspace :workspace erwähnt.',
+        'post_title' => 'Beitrag',
+        'post_without_text' => 'Dieser Beitrag hat noch keinen Text.',
+        'button' => 'Notiz ansehen',
+    ],
     'post_approval_requested' => [
         'subject' => ':name bittet dich um Freigabe eines Beitrags',
         'title' => 'Ein Beitrag braucht deine Freigabe',

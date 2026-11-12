@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PostNoteResource extends JsonResource
 {
     /**
-     * @return array{id: string, body: string, user_id: string, created_at: mixed, updated_at: mixed, user: array{id: string, name: string|null, photo_url: string|null}|null}
+     * @return array{id: string, body: string, user_id: string, created_at: mixed, updated_at: mixed, reactions: list<array{emoji: string, count: int, users: list<array{id: string, name: string}>}>, user: array{id: string, name: string|null, photo_url: string|null}|null}
      */
     public function toArray(Request $request): array
     {
@@ -22,6 +22,7 @@ class PostNoteResource extends JsonResource
             'id' => $this->id,
             'body' => $this->body,
             'user_id' => $this->user_id,
+            'reactions' => $this->reactionSummary(),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'user' => $this->user === null ? null : [

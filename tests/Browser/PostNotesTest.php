@@ -3,14 +3,16 @@
 declare(strict_types=1);
 
 use App\Mail\PostNoteAdded;
+use App\Mail\PostNoteMentioned;
 use App\Models\Post;
 use App\Models\PostNote;
+use App\Models\PostNoteReaction;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Mail;
 
-test('adding a note from the popover shows it and emails the other members', function () {
+test('a note mentions a teammate picked from the list and takes reactions', function () {
     Mail::fake();
 
     $user = User::factory()->create();
@@ -18,7 +20,7 @@ test('adding a note from the popover shows it and emails the other members', fun
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $teammate = User::factory()->create();
+    $teammate = User::factory()->create(['name' => 'Bia Lima']);
     $workspace->members()->attach($teammate->id, membershipPivot('member'));
 
     $post = Post::factory()->create([
@@ -37,23 +39,40 @@ test('adding a note from the popover shows it and emails the other members', fun
 
     $page->assertScript('(() => { const field = document.querySelector("[data-testid=note-composer]").getBoundingClientRect(); const send = document.querySelector("[data-testid=note-send]").getBoundingClientRect(); return Math.abs((field.top + field.height / 2) - (send.top + send.height / 2)) <= 1 && send.right <= field.right; })()', true);
 
-    $page->fill('@note-input', 'Please check the @image before Friday');
+    $page->fill('@note-input', 'Please check the @image, @bi');
+    waitForOpen($page, '@note-mention-list');
+    waitForText($page, '@note-mention-option', 'Bia Lima');
+    $page->assertScript('(() => { const list = document.querySelector("[data-testid=note-mention-list]").getBoundingClientRect(); return list.top >= 0 && list.bottom <= window.innerHeight; })()', true);
+    $page->click('@note-mention-option');
+    waitForGone($page, '@note-mention-list');
+    $page->assertValue('@note-input', 'Please check the @image, @Bia Lima ');
+
     $page->click('@note-send');
-    waitFor($page, '@note-body');
+    waitFor($page, '@note-mention');
 
-    $page->assertScript('(() => { const list = document.querySelector("[data-testid=notes-list]"); return list.scrollWidth <= list.clientWidth; })()', true);
-
-    $page->assertSeeIn('@note-body', 'Please check the @image before Friday')
-        ->assertVisible('@note-actions')
-        ->assertMissing('@note-react')
-        ->assertMissing('@note-reply')
-        ->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@note-body', 'Please check the @image, @Bia Lima')
+        ->assertSeeIn('@note-mention', '@Bia Lima');
 
     expect(PostNote::query()->where('post_id', $post->id)->value('body'))
-        ->toBe('Please check the @image before Friday');
+        ->toBe("Please check the @image, @[Bia Lima](user:{$teammate->id})");
 
-    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($teammate->email));
-    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($user->email));
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($teammate->email));
+    Mail::assertNotQueued(PostNoteAdded::class);
+
+    $page->click('@note-react');
+    waitForOpen($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
+    $page->click('@emoji-picker-option');
+    waitFor($page, '[data-testid^=note-reaction-]');
+    waitForState($page, '[data-testid^=note-reaction-]', "element.getAttribute('aria-pressed') === 'true' && element.textContent.includes('1')");
+
+    expect(PostNoteReaction::query()->where('user_id', $user->id)->count())->toBe(1);
+
+    $page->click('[data-testid^=note-reaction-]');
+    waitForGone($page, '[data-testid^=note-reaction-]');
+
+    $page->assertNoJavaScriptErrors();
+
+    expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
 test('the note composer enables send only with text and sends on Enter but not Shift+Enter', function () {

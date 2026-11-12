@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Cette publication n\'a pas encore de texte.',
         'button' => 'Voir la note',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author vous a mentionné dans une note',
+        'title' => ':author vous a mentionné',
+        'heading' => 'Vous avez été mentionné dans une note',
+        'body' => ':author vous a mentionné dans une note sur une publication de l\'espace de travail :workspace.',
+        'post_title' => 'Publication',
+        'post_without_text' => 'Cette publication n\'a pas encore de texte.',
+        'button' => 'Voir la note',
+    ],
     'post_approval_requested' => [
         'subject' => ':name vous demande d\'approuver une publication',
         'title' => 'Une publication attend votre approbation',

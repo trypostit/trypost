@@ -21,9 +21,9 @@ final class CreatePostNote
             'body' => data_get($data, 'body'),
         ]);
 
-        $note->load('user.avatarMedia');
+        $note->load(['user.avatarMedia', 'reactions.user']);
 
-        NotifyPostNoteAdded::execute($note);
+        NotifyPostNoteRecipients::created($note);
         PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created');
 
         return $note;

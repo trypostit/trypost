@@ -16,4 +16,9 @@ return [
     'empty' => 'Noch keine Notizen. Nur dein Team sieht sie.',
     'actions' => 'Notizaktionen',
     'load_more' => 'Ältere Notizen laden',
+    'react' => 'Reaktion hinzufügen',
+    'no_mentionables' => 'Kein Teammitglied gefunden',
+    'errors' => [
+        'invalid_emoji' => 'Wähle ein einzelnes Emoji.',
+    ],
 ];

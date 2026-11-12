@@ -16,4 +16,9 @@ return [
     'empty' => 'Nog geen notities. Alleen je team ziet ze.',
     'actions' => 'Notitieacties',
     'load_more' => 'Oudere notities laden',
+    'react' => 'Reactie toevoegen',
+    'no_mentionables' => 'Geen teamlid gevonden',
+    'errors' => [
+        'invalid_emoji' => 'Kies één emoji.',
+    ],
 ];

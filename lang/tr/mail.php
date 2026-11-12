@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Bu gönderinin henüz metni yok.',
         'button' => 'Notu görüntüle',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author bir notta senden bahsetti',
+        'title' => ':author senden bahsetti',
+        'heading' => 'Bir notta senden bahsedildi',
+        'body' => ':author, :workspace çalışma alanındaki bir gönderinin notunda senden bahsetti.',
+        'post_title' => 'Gönderi',
+        'post_without_text' => 'Bu gönderinin henüz metni yok.',
+        'button' => 'Notu görüntüle',
+    ],
     'post_approval_requested' => [
         'subject' => ':name bir gönderi için onayınızı istedi',
         'title' => 'Bir gönderi onayınızı bekliyor',

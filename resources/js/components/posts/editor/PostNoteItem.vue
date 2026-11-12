@@ -3,6 +3,8 @@ import { IconDots, IconPencil, IconTrash } from '@tabler/icons-vue';
 import { computed, nextTick, ref } from 'vue';
 
 import NoteBody from '@/components/NoteBody.vue';
+import PostNoteMentionInput from '@/components/posts/editor/PostNoteMentionInput.vue';
+import PostNoteReactions from '@/components/posts/editor/PostNoteReactions.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +16,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useViewTimezone } from '@/composables/useViewTimezone';
 import date from '@/date';
-import type { PostNote } from '@/types/post-note';
+import type { PostNote, PostNoteMentionable } from '@/types/post-note';
 
 const props = withDefaults(
     defineProps<{
         note: PostNote;
         currentUserId: string;
+        mentionables: PostNoteMentionable[] | null;
         highlighted?: boolean;
     }>(),
     {
@@ -30,13 +33,16 @@ const props = withDefaults(
 const emit = defineEmits<{
     save: [body: string];
     delete: [];
+    react: [emoji: string, reacted: boolean];
+    needPeople: [];
 }>();
 
 const viewTimezone = useViewTimezone();
 
 const editing = ref(false);
 const editBody = ref('');
-const editInput = ref<HTMLTextAreaElement | null>(null);
+const editInput = ref<InstanceType<typeof PostNoteMentionInput> | null>(null);
+const editContainer = ref<HTMLDivElement | null>(null);
 
 const isOwn = computed(() => props.note.user_id === props.currentUserId);
 const wasEdited = computed(
@@ -48,7 +54,7 @@ const startEdit = async () => {
     editing.value = true;
     await nextTick();
     editInput.value?.focus();
-    editInput.value?.parentElement?.scrollIntoView({ block: 'nearest' });
+    editContainer.value?.scrollIntoView({ block: 'nearest' });
 };
 
 const cancelEdit = () => {
@@ -67,18 +73,12 @@ const saveEdit = () => {
     cancelEdit();
 };
 
-const handleEditKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-        event.stopPropagation();
-        cancelEdit();
+const react = (emoji: string, reacted: boolean) => {
+    emit('react', emoji, reacted);
+};
 
-        return;
-    }
-
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-        event.preventDefault();
-        saveEdit();
-    }
+const requestPeople = () => {
+    emit('needPeople');
 };
 </script>
 
@@ -155,14 +155,20 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                 </div>
             </div>
 
-            <div v-if="editing" class="mt-1 flex flex-col gap-2">
-                <textarea
+            <div
+                v-if="editing"
+                ref="editContainer"
+                class="mt-1 flex flex-col gap-2"
+            >
+                <PostNoteMentionInput
                     ref="editInput"
                     v-model="editBody"
-                    rows="1"
+                    :people="mentionables"
                     class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
-                    @keydown="handleEditKeydown"
+                    @submit="saveEdit"
+                    @cancel="cancelEdit"
+                    @need-people="requestPeople"
                 />
                 <div class="flex items-center justify-end gap-1.5">
                     <Button
@@ -185,11 +191,17 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                 </div>
             </div>
 
-            <NoteBody
-                v-else
-                :body="note.body"
-                class="mt-0.5 leading-relaxed text-foreground"
-            />
+            <template v-else>
+                <NoteBody
+                    :body="note.body"
+                    class="mt-0.5 leading-relaxed text-foreground"
+                />
+                <PostNoteReactions
+                    :reactions="note.reactions"
+                    :current-user-id="currentUserId"
+                    @toggle="react"
+                />
+            </template>
         </div>
     </div>
 </template>

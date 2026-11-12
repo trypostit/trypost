@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'This post has no text yet.',
         'button' => 'View note',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author mentioned you in a note',
+        'title' => ':author mentioned you',
+        'heading' => 'You were mentioned in a note',
+        'body' => ':author mentioned you in a note on a post in the :workspace workspace.',
+        'post_title' => 'Post',
+        'post_without_text' => 'This post has no text yet.',
+        'button' => 'View note',
+    ],
     'post_approval_requested' => [
         'subject' => ':name asked you to approve a post',
         'title' => 'A post needs your approval',

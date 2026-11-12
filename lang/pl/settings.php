@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Konto rozłączone',
         'account_disconnected_description' => 'Otrzymuj e-mail, gdy konto społecznościowe zostanie rozłączone',
         'post_note_added' => 'Nowa notatka do posta',
-        'post_note_added_description' => 'Otrzymuj e-mail, gdy członek zespołu doda notatkę do posta',
+        'post_note_added_description' => 'Otrzymuj e-mail, gdy członek zespołu wspomni o Tobie w notatce lub doda notatkę do posta, który utworzono lub skomentowano z Twojego konta',
         'collaboration' => 'Współpraca',
         'collaboration_description' => 'Otrzymuj e-maile o prośbach o zatwierdzenie oraz zatwierdzonych lub odrzuconych postach',
         'save_failed' => 'Nie udało się zapisać preferencji powiadomień. Spróbuj ponownie.',

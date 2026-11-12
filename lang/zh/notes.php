@@ -16,4 +16,9 @@ return [
     'empty' => '暂无备注。只有你的团队能看到。',
     'actions' => '备注操作',
     'load_more' => '加载更早的备注',
+    'react' => '添加回应',
+    'no_mentionables' => '没有匹配的成员',
+    'errors' => [
+        'invalid_emoji' => '请选择一个表情符号。',
+    ],
 ];

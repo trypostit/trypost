@@ -62,6 +62,15 @@ return [
         'post_without_text' => '이 게시물에는 아직 텍스트가 없습니다.',
         'button' => '메모 보기',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author님이 메모에서 회원님을 언급했습니다',
+        'title' => ':author님이 회원님을 언급했습니다',
+        'heading' => '메모에서 언급되었습니다',
+        'body' => ':author님이 :workspace 워크스페이스의 게시물 메모에서 회원님을 언급했습니다.',
+        'post_title' => '게시물',
+        'post_without_text' => '이 게시물에는 아직 텍스트가 없습니다.',
+        'button' => '메모 보기',
+    ],
     'post_approval_requested' => [
         'subject' => ':name님이 게시물 승인을 요청했습니다',
         'title' => '승인이 필요한 게시물이 있습니다',

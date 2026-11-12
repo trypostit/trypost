@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Compte déconnecté',
         'account_disconnected_description' => 'Recevez un e-mail lorsqu\'un compte social est déconnecté',
         'post_note_added' => 'Nouvelle note sur une publication',
-        'post_note_added_description' => 'Recevoir un e-mail quand un membre de l\'équipe ajoute une note à une publication',
+        'post_note_added_description' => 'Recevoir un e-mail quand un membre de l\'équipe vous mentionne dans une note ou ajoute une note à une publication que vous avez créée ou commentée',
         'collaboration' => 'Collaboration',
         'collaboration_description' => 'Recevez des e-mails sur les demandes d\'approbation et les publications approuvées ou refusées',
         'save_failed' => 'Impossible d’enregistrer les préférences de notification. Veuillez réessayer.',

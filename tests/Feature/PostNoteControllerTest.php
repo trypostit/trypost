@@ -6,6 +6,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Events\PostNoteChanged;
 use App\Jobs\SendNotification;
 use App\Mail\PostNoteAdded;
+use App\Mail\PostNoteMentioned;
 use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\User;
@@ -84,30 +85,66 @@ test('note changes broadcast to the post and its workspace', function () {
         ]);
 });
 
-test('store emails every workspace member except the author', function () {
+test('store emails the post participants, not the rest of the workspace', function () {
     Mail::fake();
 
-    $admin = User::factory()->create();
-    $member = User::factory()->create();
-    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
-    $this->workspace->members()->attach($member->id, membershipPivot('member'));
+    $writer = workspaceMember($this->workspace);
+    $earlierNoteAuthor = workspaceMember($this->workspace);
+    $bystander = workspaceMember($this->workspace);
+    PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $earlierNoteAuthor->id]);
 
-    $outsider = User::factory()->create();
-    Workspace::factory()->create(['user_id' => $outsider->id])->members()->attach($outsider->id, membershipPivot('admin'));
-
-    $this->actingAs($this->user)
+    $this->actingAs($writer)
         ->postJson(route('app.posts.notes.store', $this->post), ['body' => "Can someone review?\nThanks"])
         ->assertCreated();
 
-    $note = PostNote::query()->sole();
+    $note = PostNote::query()->where('user_id', $writer->id)->sole();
 
     Mail::assertQueuedCount(2);
-    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($admin->email)
+    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email)
         && $mail->note->is($note)
-        && $mail->author->is($this->user));
-    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($member->email));
-    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
-    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($outsider->email));
+        && $mail->author->is($writer));
+    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($earlierNoteAuthor->email));
+    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($bystander->email));
+});
+
+test('a mentioned member gets the mention email instead of the note email', function () {
+    Mail::fake();
+
+    $writer = workspaceMember($this->workspace);
+    $mentioned = workspaceMember($this->workspace);
+    $outsider = workspaceOutsider($this->workspace);
+
+    $this->actingAs($writer)
+        ->postJson(route('app.posts.notes.store', $this->post), [
+            'body' => "@[{$mentioned->name}](user:{$mentioned->id}) and @[{$outsider->name}](user:{$outsider->id}) and @[Me](user:{$writer->id}) take a look",
+        ])
+        ->assertCreated();
+
+    Mail::assertQueuedCount(2);
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($mentioned->email) && $mail->author->is($writer));
+    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
+    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($mentioned->email));
+});
+
+test('editing a note emails only the people it mentions for the first time', function () {
+    Mail::fake();
+
+    $alreadyMentioned = workspaceMember($this->workspace);
+    $newlyMentioned = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create([
+        'post_id' => $this->post->id,
+        'user_id' => $this->user->id,
+        'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) ping",
+    ]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $note]), [
+            'body' => "@[{$alreadyMentioned->name}](user:{$alreadyMentioned->id}) and @[{$newlyMentioned->name}](user:{$newlyMentioned->id}) ping",
+        ])
+        ->assertOk();
+
+    Mail::assertQueuedCount(1);
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($newlyMentioned->email));
 });
 
 test('store emails the workspace owner when a member adds a note', function () {
@@ -123,7 +160,7 @@ test('store emails the workspace owner when a member adds a note', function () {
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
 });
 
-test('a note on a pending request emails only the approvers and the requester', function () {
+test('a note on a pending request emails and mentions only the approvers and the requester', function () {
     Mail::fake();
 
     $requester = workspaceMember($this->workspace, 'approval');
@@ -137,24 +174,26 @@ test('a note on a pending request emails only the approvers and the requester', 
     ]);
 
     $this->actingAs($approver)
-        ->postJson(route('app.posts.notes.store', $pending), ['body' => 'Pricing changes Friday'])
+        ->postJson(route('app.posts.notes.store', $pending), [
+            'body' => "Pricing changes Friday, @[{$bystander->name}](user:{$bystander->id}) @[{$this->user->name}](user:{$this->user->id})",
+        ])
         ->assertCreated();
 
     Mail::assertQueuedCount(2);
-    Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($this->user->email));
+    Mail::assertQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($this->user->email));
     Mail::assertQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($requester->email));
-    Mail::assertNotQueued(PostNoteAdded::class, fn (PostNoteAdded $mail) => $mail->hasTo($bystander->email));
+    Mail::assertNotQueued(PostNoteMentioned::class, fn (PostNoteMentioned $mail) => $mail->hasTo($bystander->email));
 });
 
 test('store respects a member who turned note emails off', function () {
     Mail::fake();
 
-    $member = User::factory()->create();
-    $this->workspace->members()->attach($member->id, membershipPivot('member'));
+    $member = workspaceMember($this->workspace);
     $member->notificationPreference()->create(['post_note_added' => false]);
+    PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $member->id]);
 
     $this->actingAs($this->user)
-        ->postJson(route('app.posts.notes.store', $this->post), ['body' => 'Hello'])
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => "Hello @[{$member->name}](user:{$member->id})"])
         ->assertCreated();
 
     Mail::assertNothingQueued();

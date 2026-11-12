@@ -62,6 +62,15 @@ return [
         'post_without_text' => '这篇帖子还没有文字。',
         'button' => '查看备注',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author 在备注中提到了你',
+        'title' => ':author 提到了你',
+        'heading' => '有人在备注中提到了你',
+        'body' => ':author 在工作区 :workspace 的一篇帖子备注中提到了你。',
+        'post_title' => '帖子',
+        'post_without_text' => '这篇帖子还没有文字。',
+        'button' => '查看备注',
+    ],
     'post_approval_requested' => [
         'subject' => ':name 请你审批一条帖子',
         'title' => '有帖子需要你的审批',

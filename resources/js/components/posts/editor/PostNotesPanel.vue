@@ -4,13 +4,13 @@ import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
+import PostNoteMentionInput from '@/components/posts/editor/PostNoteMentionInput.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
     InputGroup,
     InputGroupAddon,
     InputGroupButton,
-    InputGroupTextarea,
 } from '@/components/ui/input-group';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import {
@@ -19,7 +19,12 @@ import {
     store as storeNote,
     update as updateNote,
 } from '@/routes/app/posts/notes';
-import type { PostNote } from '@/types/post-note';
+import { index as fetchMentionables } from '@/routes/app/posts/notes/mentionables';
+import {
+    destroy as removeReaction,
+    update as addReaction,
+} from '@/routes/app/posts/notes/reactions';
+import type { PostNote, PostNoteMentionable } from '@/types/post-note';
 
 interface PaginatedResponse {
     data: PostNote[];
@@ -58,7 +63,11 @@ const newBody = ref('');
 const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
-const composerInput = ref<{ $el: HTMLTextAreaElement } | null>(null);
+const composerInput = ref<InstanceType<typeof PostNoteMentionInput> | null>(
+    null,
+);
+const mentionables = ref<PostNoteMentionable[] | null>(null);
+let loadingMentionables = false;
 
 watch(total, (count) => emit('count', count));
 
@@ -124,7 +133,45 @@ const loadOlderNotes = () => {
 };
 
 const focusComposer = () => {
-    composerInput.value?.$el.focus();
+    composerInput.value?.focus();
+};
+
+const loadMentionables = async () => {
+    if (mentionables.value !== null || loadingMentionables) {
+        return;
+    }
+
+    loadingMentionables = true;
+
+    try {
+        const response = await request(fetchMentionables.url(props.postId));
+
+        if (response.ok) {
+            mentionables.value = await response.json();
+        }
+    } finally {
+        loadingMentionables = false;
+    }
+};
+
+const toggleReaction = async (
+    note: PostNote,
+    emoji: string,
+    reacted: boolean,
+) => {
+    const route = reacted ? removeReaction : addReaction;
+    const response = await request(
+        route.url({ post: props.postId, note: note.id }),
+        reacted ? 'DELETE' : 'PUT',
+        { emoji },
+    );
+
+    if (!response.ok) {
+        return;
+    }
+
+    const updated: PostNote = await response.json();
+    note.reactions = updated.reactions;
 };
 
 const sendNote = async () => {
@@ -188,13 +235,6 @@ const deleteNote = async (note: PostNote) => {
     total.value = Math.max(0, total.value - 1);
 };
 
-const handleComposerKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-        event.preventDefault();
-        void sendNote();
-    }
-};
-
 const focusNote = async (noteId: string) => {
     await nextTick();
     const selector = `[data-note-id="${noteId}"]`;
@@ -246,6 +286,7 @@ watch(
     () => props.postId,
     () => {
         notes.value = [];
+        mentionables.value = null;
         currentPage.value = 1;
         void loadNotes(1);
     },
@@ -302,9 +343,15 @@ watch(
                     <PostNoteItem
                         :note="note"
                         :current-user-id="currentUserId"
+                        :mentionables="mentionables"
                         :highlighted="highlightedId === note.id"
                         @save="saveNote(note, $event)"
                         @delete="deleteNote(note)"
+                        @react="
+                            (emoji, reacted) =>
+                                toggleReaction(note, emoji, reacted)
+                        "
+                        @need-people="loadMentionables"
                     />
                 </li>
             </ol>
@@ -322,15 +369,17 @@ watch(
                 class="min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
                 data-testid="note-composer"
             >
-                <InputGroupTextarea
+                <PostNoteMentionInput
                     ref="composerInput"
                     v-model="newBody"
-                    rows="1"
+                    :people="mentionables"
                     :placeholder="$t('notes.placeholder')"
                     :aria-label="$t('notes.placeholder')"
-                    class="max-h-28 min-h-0 py-[7px] ps-4 leading-5"
+                    data-slot="input-group-control"
+                    class="field-sizing-content flex max-h-28 min-h-0 w-full flex-1 resize-none bg-transparent py-[7px] ps-4 pe-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
                     data-testid="note-input"
-                    @keydown="handleComposerKeydown"
+                    @submit="sendNote"
+                    @need-people="loadMentionables"
                 />
                 <InputGroupAddon align="inline-end" class="pb-1.5">
                     <InputGroupButton

@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Ten post nie ma jeszcze tekstu.',
         'button' => 'Zobacz notatkę',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author wspomniał(a) o Tobie w notatce',
+        'title' => ':author wspomniał(a) o Tobie',
+        'heading' => 'Wspomniano o Tobie w notatce',
+        'body' => ':author wspomniał(a) o Tobie w notatce do posta w przestrzeni roboczej :workspace.',
+        'post_title' => 'Post',
+        'post_without_text' => 'Ten post nie ma jeszcze tekstu.',
+        'button' => 'Zobacz notatkę',
+    ],
     'post_approval_requested' => [
         'subject' => ':name prosi o zatwierdzenie posta',
         'title' => 'Post czeka na Twoje zatwierdzenie',

@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Questo post non ha ancora testo.',
         'button' => 'Vedi nota',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author ti ha menzionato in una nota',
+        'title' => ':author ti ha menzionato',
+        'heading' => 'Sei stato menzionato in una nota',
+        'body' => ':author ti ha menzionato in una nota su un post nel workspace :workspace.',
+        'post_title' => 'Post',
+        'post_without_text' => 'Questo post non ha ancora testo.',
+        'button' => 'Vedi nota',
+    ],
     'post_approval_requested' => [
         'subject' => ':name ti ha chiesto di approvare un post',
         'title' => 'Un post richiede la tua approvazione',

@@ -4,11 +4,25 @@ export interface PostNoteAuthor {
     photo_url?: string | null;
 }
 
+export interface PostNoteReaction {
+    emoji: string;
+    count: number;
+    users: { id: string; name: string }[];
+}
+
 export interface PostNote {
     id: string;
     body: string;
     user_id: string;
     created_at: string;
     updated_at: string;
+    reactions: PostNoteReaction[];
     user: PostNoteAuthor;
+}
+
+/** A member a note may mention. */
+export interface PostNoteMentionable {
+    id: string;
+    name: string;
+    photo_url: string | null;
 }

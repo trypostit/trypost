@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Hesap bağlantısı kesildi',
         'account_disconnected_description' => 'Bir sosyal hesabın bağlantısı kesildiğinde bir e-posta alın',
         'post_note_added' => 'Bir gönderide yeni not',
-        'post_note_added_description' => 'Bir ekip üyesi bir gönderiye not eklediğinde e-posta al',
+        'post_note_added_description' => 'Bir ekip üyesi bir notta senden bahsettiğinde veya oluşturduğun ya da not yazdığın bir gönderiye not eklediğinde e-posta al',
         'collaboration' => 'İş birliği',
         'collaboration_description' => 'Onay istekleri ile onaylanan veya reddedilen gönderiler hakkında e-posta alın',
         'save_failed' => 'Bildirim tercihleri kaydedilemedi. Lütfen tekrar deneyin.',

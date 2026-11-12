@@ -10,6 +10,7 @@ use App\Enums\User\TimeFormat;
 use App\Mail\PostApprovalRequested;
 use App\Mail\PostApproved;
 use App\Mail\PostNoteAdded;
+use App\Mail\PostNoteMentioned;
 use App\Mail\PostRejected;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Mail\WorkspaceInvite;
@@ -129,6 +130,27 @@ test('the post note email renders the note, the post and its channel', function 
     $mailable->assertSeeInHtml('Launch day is here');
     $mailable->assertSeeInHtml('LinkedIn');
     $mailable->assertSeeInHtml(asset('images/accounts/linkedin.png'));
+    $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
+})->with([Locale::English, Locale::PortugueseBrazil]);
+
+test('the mention email renders the note with its mentions as names', function (Locale $locale) {
+    $author = User::factory()->create(['name' => 'Ana Author']);
+    $mentioned = User::factory()->create(['name' => 'Bia Lima']);
+    $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id, 'name' => 'Acme Workspace']);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $author->id]);
+    $note = PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $author->id,
+        'body' => "@[Bia Lima](user:{$mentioned->id}) can you check?",
+    ]);
+
+    $mailable = (new PostNoteMentioned($note, $author))->locale($locale->value);
+
+    $mailable->assertHasSubject(__('mail.post_note_mentioned.subject', ['author' => 'Ana Author'], $locale->value));
+    $mailable->assertSeeInHtml(__('mail.post_note_mentioned.heading', [], $locale->value));
+    $mailable->assertSeeInHtml(e(__('mail.post_note_mentioned.body', ['author' => 'Ana Author', 'workspace' => 'Acme Workspace'], $locale->value)), false);
+    $mailable->assertSeeInHtml('@Bia Lima can you check?');
+    $mailable->assertDontSeeInHtml("user:{$mentioned->id}", false);
     $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 

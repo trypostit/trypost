@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\PostApprovalController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostNoteController;
+use App\Http\Controllers\Api\PostNoteMentionableController;
+use App\Http\Controllers\Api\PostNoteReactionController;
 use App\Http\Controllers\Api\PostRecurrenceController;
 use App\Http\Controllers\Api\RepurposeController;
 use App\Http\Controllers\Api\SignatureController;
@@ -53,10 +55,13 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::post('/posts/{post}/media/from-url', [PostController::class, 'attachMediaFromUrl'])->name('api.posts.attach-media-from-url');
     Route::get('/posts/{post}/metrics', [PostController::class, 'metrics'])->name('api.posts.metrics');
     Route::get('/posts/{post}/preview', [PostController::class, 'preview'])->name('api.posts.preview');
+    Route::get('/posts/{post}/notes/mentionables', [PostNoteMentionableController::class, 'index'])->name('api.posts.notes.mentionables.index');
     Route::get('/posts/{post}/notes', [PostNoteController::class, 'index'])->name('api.posts.notes.index');
     Route::post('/posts/{post}/notes', [PostNoteController::class, 'store'])->name('api.posts.notes.store');
     Route::put('/posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('api.posts.notes.update');
     Route::delete('/posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('api.posts.notes.destroy');
+    Route::put('/posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'update'])->name('api.posts.notes.reactions.update');
+    Route::delete('/posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'destroy'])->name('api.posts.notes.reactions.destroy');
     Route::post('/posts/{post}/approve', [PostApprovalController::class, 'approve'])->name('api.posts.approve');
     Route::post('/posts/{post}/reject', [PostApprovalController::class, 'reject'])->name('api.posts.reject');
 

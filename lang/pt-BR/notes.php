@@ -16,4 +16,9 @@ return [
     'empty' => 'Nenhuma nota ainda. Só a sua equipe vê as notas.',
     'actions' => 'Ações da nota',
     'load_more' => 'Carregar notas antigas',
+    'react' => 'Adicionar reação',
+    'no_mentionables' => 'Ninguém da equipe encontrado',
+    'errors' => [
+        'invalid_emoji' => 'Escolha um único emoji.',
+    ],
 ];

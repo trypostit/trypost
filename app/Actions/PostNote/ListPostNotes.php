@@ -16,7 +16,7 @@ final class ListPostNotes
     public static function execute(Post $post, ?int $page = null): LengthAwarePaginator
     {
         return $post->notes()
-            ->with('user.avatarMedia')
+            ->with(['user.avatarMedia', 'reactions.user'])
             ->latest()
             ->paginate((int) config('app.pagination.default'), page: $page);
     }

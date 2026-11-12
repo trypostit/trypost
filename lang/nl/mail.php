@@ -62,6 +62,15 @@ return [
         'post_without_text' => 'Dit bericht heeft nog geen tekst.',
         'button' => 'Notitie bekijken',
     ],
+    'post_note_mentioned' => [
+        'subject' => ':author heeft je genoemd in een notitie',
+        'title' => ':author heeft je genoemd',
+        'heading' => 'Je bent genoemd in een notitie',
+        'body' => ':author heeft je genoemd in een notitie bij een bericht in de workspace :workspace.',
+        'post_title' => 'Bericht',
+        'post_without_text' => 'Dit bericht heeft nog geen tekst.',
+        'button' => 'Notitie bekijken',
+    ],
     'post_approval_requested' => [
         'subject' => ':name vraagt je een bericht goed te keuren',
         'title' => 'Een bericht wacht op je goedkeuring',

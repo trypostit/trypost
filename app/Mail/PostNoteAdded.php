@@ -7,6 +7,7 @@ namespace App\Mail;
 use App\Models\PostNote;
 use App\Models\User;
 use App\Support\Mail\PostExcerpt;
+use App\Support\PostNoteMentions;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -39,10 +40,10 @@ class PostNoteAdded extends Mailable implements ShouldQueue
             view: 'mail.post-note-added',
             with: [
                 'title' => __('mail.post_note_added.title', ['author' => $this->author->name]),
-                'previewText' => Str::limit((string) $this->note->body, 100),
+                'previewText' => Str::limit(PostNoteMentions::toPlainText($this->note->body), 100),
                 'authorName' => $this->author->name,
                 'workspaceName' => $post->workspace->name,
-                'noteBody' => (string) $this->note->body,
+                'noteBody' => PostNoteMentions::toPlainText($this->note->body),
                 'postExcerpt' => PostExcerpt::from($post->content, 200),
                 'channel' => $post->loadMissing('socialAccount')->hasDestination() ? $post : null,
                 'url' => route('app.posts.edit', ['post' => $post, 'comment' => $this->note->id]),

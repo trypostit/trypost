@@ -16,4 +16,9 @@ return [
     'empty' => '아직 메모가 없습니다. 팀원만 볼 수 있습니다.',
     'actions' => '메모 작업',
     'load_more' => '이전 메모 불러오기',
+    'react' => '반응 추가',
+    'no_mentionables' => '일치하는 팀원이 없습니다',
+    'errors' => [
+        'invalid_emoji' => '이모지를 하나만 선택하세요.',
+    ],
 ];
