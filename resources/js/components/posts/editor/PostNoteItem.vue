@@ -87,6 +87,7 @@ const requestPeople = () => {
         :data-note-id="note.id"
         class="group/note relative -mx-2 flex gap-3 rounded-lg px-2 py-1 transition-colors"
         :class="{ 'bg-primary-subtle': highlighted }"
+        :data-highlighted="highlighted"
         data-testid="note-item"
     >
         <Avatar

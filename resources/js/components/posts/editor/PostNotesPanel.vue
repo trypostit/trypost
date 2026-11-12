@@ -84,7 +84,8 @@ const scrollToBottom = () => {
     }
 };
 
-const loadNotes = async (page = 1) => {
+/** One page of notes, oldest first, keeping the pagination in step; null when it fails. */
+const fetchNotesPage = async (page: number): Promise<PostNote[] | null> => {
     notesHttp.page = page;
 
     const response = await notesHttp
@@ -92,32 +93,45 @@ const loadNotes = async (page = 1) => {
         .catch(() => null);
 
     if (!filled(response)) {
-        return;
+        return null;
     }
 
-    const chronological = [...response.data].reverse();
     currentPage.value = response.meta.current_page;
     lastPage.value = response.meta.last_page;
     total.value = response.meta.total;
 
-    if (page === 1) {
-        notes.value = chronological;
+    return [...response.data].reverse();
+};
+
+/** Replaces the thread with its newest notes and scrolls to the last one. */
+const loadLatestNotes = async () => {
+    const latest = await fetchNotesPage(1);
+
+    if (latest) {
+        notes.value = latest;
         await nextTick();
         scrollToBottom();
-    } else {
-        notes.value = [...chronological, ...notes.value];
     }
+};
+
+/** Puts the next older page above the thread; false when there is none or it fails. */
+const loadOlderNotes = async (): Promise<boolean> => {
+    if (!hasOlderNotes.value) {
+        return false;
+    }
+
+    const older = await fetchNotesPage(currentPage.value + 1);
+
+    if (older) {
+        notes.value = [...older, ...notes.value];
+    }
+
+    return filled(older);
 };
 
 usePostEcho(props.postId, '.post.note.changed', () => {
-    void loadNotes(1);
+    void loadLatestNotes();
 });
-
-const loadOlderNotes = () => {
-    if (hasOlderNotes.value && !notesHttp.processing) {
-        void loadNotes(currentPage.value + 1);
-    }
-};
 
 const focusComposer = () => {
     composerInput.value?.focus();
@@ -207,22 +221,23 @@ const deleteNote = async (note: PostNote) => {
     }
 };
 
-const focusNote = async (noteId: string) => {
+/** The note's element, loading older pages until it shows up or none are left. */
+const findNote = async (noteId: string): Promise<HTMLElement | null> => {
     await nextTick();
-    const selector = `[data-note-id="${noteId}"]`;
-    let element = scrollContainer.value?.querySelector<HTMLElement>(selector);
 
-    while (!element && hasOlderNotes.value) {
-        const previousPage = currentPage.value;
-        await loadNotes(currentPage.value + 1);
+    const element = scrollContainer.value?.querySelector<HTMLElement>(
+        `[data-note-id="${noteId}"]`,
+    );
 
-        if (currentPage.value === previousPage) {
-            break;
-        }
-
-        await nextTick();
-        element = scrollContainer.value?.querySelector<HTMLElement>(selector);
+    if (element) {
+        return element;
     }
+
+    return (await loadOlderNotes()) ? findNote(noteId) : null;
+};
+
+const focusNote = async (noteId: string) => {
+    const element = await findNote(noteId);
 
     if (!element) {
         return;
@@ -238,7 +253,7 @@ const focusNote = async (noteId: string) => {
 };
 
 onMounted(async () => {
-    await loadNotes(1);
+    await loadLatestNotes();
 
     if (props.highlightNoteId) {
         await focusNote(props.highlightNoteId);
@@ -261,7 +276,7 @@ watch(
         mentionablesHttp.cancel();
         mentionables.value = null;
         currentPage.value = 1;
-        void loadNotes(1);
+        void loadLatestNotes();
     },
 );
 </script>
@@ -280,6 +295,7 @@ watch(
                     size="sm"
                     class="-ms-2 text-muted-foreground"
                     :disabled="notesHttp.processing"
+                    data-testid="notes-load-older"
                     @click="loadOlderNotes"
                 >
                     <IconLoader2
