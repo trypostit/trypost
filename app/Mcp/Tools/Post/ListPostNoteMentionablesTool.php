@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the members who see a post, you included: the people a note on it may mention. Returns [{id, name, photo_url, timezone}]. Mention someone in a note body as @[Name](user:id), or everyone as @[all](everyone).')]
+#[Description('List the members who can see a post, the connected user included: the people a note on it can mention. Returns [{id, name, photo_url, timezone}], timezone being an IANA name (e.g. America/Sao_Paulo) to tell someone\'s local time. Mention one of them in a note body as @[Name](user:id), or all of them as @[all](everyone). On a post pending approval, only the approvers and the member who asked are listed.')]
 class ListPostNoteMentionablesTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;

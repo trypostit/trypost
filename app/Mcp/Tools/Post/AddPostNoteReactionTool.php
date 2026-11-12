@@ -25,7 +25,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('React to a note on a post with one emoji, as you. Reacting again with the same emoji changes nothing. Returns the note with its reactions.')]
+#[Description('React to a note on a post with one emoji, as the connected user. Any single emoji works, a skin tone, flag or keycap included. Reacting again with the same emoji changes nothing. Nobody is emailed; everyone with the post open sees the reaction at once. Take it back with remove-post-note-reaction-tool. Returns the note with its reactions [{emoji, count, users [{id, name}]}].')]
 class AddPostNoteReactionTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -66,8 +66,8 @@ class AddPostNoteReactionTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
-            'note_id' => $schema->string()->required()->description('The UUID of the note.'),
-            'emoji' => $schema->string()->required()->description('The emoji to react with, exactly one (e.g. 👍).'),
+            'note_id' => $schema->string()->required()->description('The UUID of the note, from list-post-notes-tool.'),
+            'emoji' => $schema->string()->required()->description('The emoji to react with, exactly one (e.g. 👍, 👀, 🇧🇷).'),
         ];
     }
 }

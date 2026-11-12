@@ -25,7 +25,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Take back your reaction with that emoji on a note of a post. Returns the note with its reactions.')]
+#[Description('Take back the connected user\'s reaction with that emoji on a note of a post. Only your own reaction is removed; when you had not reacted with that emoji, nothing changes. Returns the note with its reactions [{emoji, count, users [{id, name}]}].')]
 class RemovePostNoteReactionTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -66,7 +66,7 @@ class RemovePostNoteReactionTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
-            'note_id' => $schema->string()->required()->description('The UUID of the note.'),
+            'note_id' => $schema->string()->required()->description('The UUID of the note, from list-post-notes-tool.'),
             'emoji' => $schema->string()->required()->description('The emoji of your reaction to remove.'),
         ];
     }
