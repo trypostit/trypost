@@ -104,6 +104,24 @@ test('the api and mcp note lists paginate newest first with the app page size an
         ->and(array_keys($first->json('data.0.author')))->toBe(['id', 'name', 'photo_url']);
 });
 
+test('the web and the api show one note the same way, with its mentions and reactions', function () {
+    $teammate = workspaceMember($this->workspace, 'member', ['name' => 'Bia Lima']);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "Ask @[user:{$teammate->id}]"]);
+    $note->mentions()->attach($teammate);
+    PostNoteReaction::factory()->create(['post_note_id' => $note->id, 'user_id' => $teammate->id, 'emoji' => '👍']);
+
+    $web = $this->actingAs($this->user)->getJson(route('app.posts.notes.show', [$this->post, $note]))->assertOk();
+    auth()->forgetGuards();
+    $api = $this->withHeaders(parityApi($this->token))->getJson(route('api.posts.notes.show', [$this->post, $note]))->assertOk();
+
+    foreach ([$web, $api] as $response) {
+        expect($response->json('id'))->toBe($note->id)
+            ->and($response->json('mentions'))->toBe([['id' => $teammate->id, 'name' => 'Bia Lima']])
+            ->and($response->json('reactions.0.emoji'))->toBe('👍')
+            ->and($response->json('reactions.0.count'))->toBe(1);
+    }
+});
+
 test('the author edits and deletes their own note through the api and mcp', function () {
     $apiNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
     $mcpNote = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id]);
@@ -154,6 +172,10 @@ test('a note of another post is not found on the web, the api and mcp', function
     auth()->forgetGuards();
     $this->withHeaders(parityApi($this->token))->deleteJson(route('api.posts.notes.destroy', [$this->post, $note]))->assertNotFound();
     auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->getJson(route('api.posts.notes.show', [$this->post, $note]))->assertNotFound();
+    auth()->forgetGuards();
+    $this->actingAs($this->user)->getJson(route('app.posts.notes.show', [$this->post, $note]))->assertNotFound();
+    auth()->forgetGuards();
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostNoteTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id, 'body' => 'Moved'])->assertHasErrors(['Note not found.']);
     TryPostServer::actingAs($this->user)->tool(DeletePostNoteTool::class, ['post_id' => $this->post->id, 'note_id' => $note->id])->assertHasErrors(['Note not found.']);
@@ -167,11 +189,24 @@ test('a post of another workspace is not found on the web, the api and mcp', fun
     $foreignNote = PostNote::factory()->create(['post_id' => $foreignPost->id, 'user_id' => $other['user']->id, 'body' => 'Original']);
 
     expect($this->actingAs($this->user)->get(route('app.posts.index', ['notes' => $foreignPost->id]))->inertiaProps('postNotes'))->toBeNull();
-    $this->actingAs($this->user)->postJson(route('app.posts.notes.store', $foreignPost), ['body' => 'Hijacked'])->assertNotFound();
     auth()->forgetGuards();
+
+    $webCalls = [
+        ['POST', route('app.posts.notes.store', $foreignPost), ['body' => 'Hijacked']],
+        ['GET', route('app.posts.notes.show', [$foreignPost, $foreignNote]), []],
+        ['GET', route('app.posts.notes.mentionables.index', $foreignPost), []],
+        ['PUT', route('app.posts.notes.reactions.update', [$foreignPost, $foreignNote]), ['emoji' => '👍']],
+        ['DELETE', route('app.posts.notes.reactions.destroy', [$foreignPost, $foreignNote]), ['emoji' => '👍']],
+    ];
+
+    foreach ($webCalls as [$method, $url, $body]) {
+        $this->actingAs($this->user)->json($method, $url, $body)->assertNotFound();
+        auth()->forgetGuards();
+    }
 
     $calls = [
         ['GET', route('api.posts.notes.index', $foreignPost), []],
+        ['GET', route('api.posts.notes.show', [$foreignPost, $foreignNote]), []],
         ['POST', route('api.posts.notes.store', $foreignPost), ['body' => 'Hijacked']],
         ['PUT', route('api.posts.notes.update', [$foreignPost, $foreignNote]), ['body' => 'Hijacked']],
         ['DELETE', route('api.posts.notes.destroy', [$foreignPost, $foreignNote]), []],
@@ -432,7 +467,7 @@ test('reactions on a note of another post are not found on the web, the api and 
     expect(PostNoteReaction::query()->count())->toBe(0);
 });
 
-test('a member who cannot see a pending request cannot react to its notes or list who to mention, on the web and mcp', function () {
+test('a member who cannot see a pending request cannot read, react to its notes or list who to mention, on the web and mcp', function () {
     $requester = workspaceMember($this->workspace, 'approval');
     $bystander = workspaceMember($this->workspace, 'approval');
     $pending = Post::factory()->create([
@@ -444,6 +479,7 @@ test('a member who cannot see a pending request cannot react to its notes or lis
     $note = PostNote::factory()->create(['post_id' => $pending->id, 'user_id' => $this->user->id]);
 
     $this->actingAs($bystander)->getJson(route('app.posts.notes.mentionables.index', $pending))->assertNotFound();
+    $this->actingAs($bystander)->getJson(route('app.posts.notes.show', [$pending, $note]))->assertNotFound();
     $this->actingAs($bystander)->putJson(route('app.posts.notes.reactions.update', [$pending, $note]), ['emoji' => '👍'])->assertNotFound();
     $this->actingAs($bystander)->deleteJson(route('app.posts.notes.reactions.destroy', [$pending, $note]), ['emoji' => '👍'])->assertNotFound();
     auth()->forgetGuards();

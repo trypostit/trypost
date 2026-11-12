@@ -232,11 +232,13 @@ const listReload = computed(() => ({
 }));
 
 const moving = ref(false);
-const queuedMove = ref<{
-    ideaId: string;
-    toStageId: string | null;
-    orderedIdeaIds: string[];
-} | null>(null);
+
+/**
+ * Moves made while one is saving: shown at once, then sent in order after it,
+ * each with its column's order as the board shows it then (a later drop may
+ * have joined that column since).
+ */
+const queuedMoves: { ideaId: string; toStageId: string | null }[] = [];
 
 const moveIdea = (
     ideaId: string,
@@ -271,13 +273,13 @@ const moveIdea = (
 
     if (moving.value) {
         localColumns.value = next;
-        queuedMove.value = { ideaId, toStageId, orderedIdeaIds };
+        queuedMoves.push({ ideaId, toStageId });
 
         return;
     }
 
     const rollback = (message: string): void => {
-        queuedMove.value = null;
+        queuedMoves.length = 0;
         localColumns.value = snapshot;
         toast.error(message, { testId: 'ideas-move-error-toast' });
         router.reload({ only: BOARD_PROPS, reset: columnPaths() });
@@ -300,14 +302,16 @@ const moveIdea = (
             onFinish: () => {
                 moving.value = false;
 
-                const queued = queuedMove.value;
-                queuedMove.value = null;
+                const queued = queuedMoves.shift();
 
                 if (queued) {
                     moveIdea(
                         queued.ideaId,
                         queued.toStageId,
-                        queued.orderedIdeaIds,
+                        (
+                            localColumns.value[columnKey(queued.toStageId)] ??
+                            []
+                        ).map((card) => card.id),
                     );
                 }
             },

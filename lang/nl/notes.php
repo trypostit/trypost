@@ -15,7 +15,6 @@ return [
     'send' => 'Verzenden',
     'empty' => 'Nog geen notities. Alleen je team ziet ze.',
     'actions' => 'Notitieacties',
-    'load_more' => 'Oudere notities laden',
     'react' => 'Reactie toevoegen',
     'no_mentionables' => 'Geen teamlid gevonden',
     'mention_unknown' => 'onbekend',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => 'Kies één emoji.',
+        'not_saved' => 'Je notitie kon niet worden opgeslagen. Probeer het opnieuw.',
+        'too_long' => 'Notities mogen maximaal :max tekens bevatten.',
     ],
 ];

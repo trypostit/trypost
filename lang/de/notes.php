@@ -15,7 +15,6 @@ return [
     'send' => 'Senden',
     'empty' => 'Noch keine Notizen. Nur dein Team sieht sie.',
     'actions' => 'Notizaktionen',
-    'load_more' => 'Ältere Notizen laden',
     'react' => 'Reaktion hinzufügen',
     'no_mentionables' => 'Kein Teammitglied gefunden',
     'mention_unknown' => 'unbekannt',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => 'Wähle ein einzelnes Emoji.',
+        'not_saved' => 'Deine Notiz konnte nicht gespeichert werden. Versuch es noch einmal.',
+        'too_long' => 'Notizen können bis zu :max Zeichen haben.',
     ],
 ];

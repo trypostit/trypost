@@ -15,7 +15,6 @@ return [
     'send' => 'Enviar',
     'empty' => 'Todavía no hay notas. Solo tu equipo las ve.',
     'actions' => 'Acciones de la nota',
-    'load_more' => 'Cargar notas anteriores',
     'react' => 'Añadir reacción',
     'no_mentionables' => 'Nadie del equipo coincide',
     'mention_unknown' => 'desconocido',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => 'Elige un solo emoji.',
+        'not_saved' => 'No se pudo guardar tu nota. Inténtalo de nuevo.',
+        'too_long' => 'Las notas pueden tener hasta :max caracteres.',
     ],
 ];

@@ -15,7 +15,6 @@ return [
     'send' => 'Wyślij',
     'empty' => 'Brak notatek. Widzi je tylko Twój zespół.',
     'actions' => 'Akcje notatki',
-    'load_more' => 'Wczytaj starsze notatki',
     'react' => 'Dodaj reakcję',
     'no_mentionables' => 'Brak pasujących członków zespołu',
     'mention_unknown' => 'nieznany',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => 'Wybierz jedno emoji.',
+        'not_saved' => 'Nie udało się zapisać notatki. Spróbuj ponownie.',
+        'too_long' => 'Notatka może mieć maksymalnie :max znaków.',
     ],
 ];

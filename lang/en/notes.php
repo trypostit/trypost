@@ -15,7 +15,6 @@ return [
     'send' => 'Send',
     'empty' => 'No notes yet. Only your team sees them.',
     'actions' => 'Note actions',
-    'load_more' => 'Load older notes',
     'react' => 'Add reaction',
     'no_mentionables' => 'No teammate matches',
     'mention_unknown' => 'unknown',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => 'Pick a single emoji.',
+        'not_saved' => 'Couldn\'t save your note. Try again.',
+        'too_long' => 'Notes can have up to :max characters.',
     ],
 ];

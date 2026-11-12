@@ -28,7 +28,7 @@ final class UpdatePostNote
 
         NotifyPostNoteRecipients::edited($note, $author, $previousBody, $audience);
 
-        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated');
+        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'updated', $note->id);
 
         return $note->load(PostNote::DISPLAY_RELATIONS);
     }

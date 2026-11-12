@@ -12,9 +12,12 @@ use App\Models\PostNote;
 use App\Models\PostNoteReaction;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\WorkerOptions;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
@@ -81,15 +84,25 @@ test('store creates a comment', function () {
     );
 });
 
-test('note changes broadcast to the post and its workspace', function () {
-    $event = new PostNoteChanged($this->post->id, $this->workspace->id, 'updated');
+test('every note change broadcasts to the post and its workspace, naming the note', function () {
+    Event::fake([PostNoteChanged::class]);
+    $this->actingAs($this->user);
 
-    expect($event->broadcastAs())->toBe('post.note.changed')
-        ->and($event->broadcastWith())->toBe([
-            'post_id' => $this->post->id,
-            'change' => 'updated',
-        ])
-        ->and(array_map(strval(...), $event->broadcastOn()))->toBe([
+    $note = PostNote::query()->findOrFail($this->postJson(route('app.posts.notes.store', $this->post), ['body' => 'First'])->json('id'));
+    $this->putJson(route('app.posts.notes.update', [$this->post, $note]), ['body' => 'Edited'])->assertOk();
+    $this->putJson(route('app.posts.notes.reactions.update', [$this->post, $note]), ['emoji' => '👍'])->assertOk();
+    $this->deleteJson(route('app.posts.notes.reactions.destroy', [$this->post, $note]), ['emoji' => '👍'])->assertOk();
+    $this->deleteJson(route('app.posts.notes.destroy', [$this->post, $note]))->assertNoContent();
+
+    $changes = [];
+    Event::assertDispatched(PostNoteChanged::class, function (PostNoteChanged $event) use (&$changes, $note): bool {
+        $changes[] = $event->broadcastWith();
+
+        return $event->noteId === $note->id;
+    });
+
+    expect($changes)->toBe(array_map(fn (string $change): array => ['post_id' => $this->post->id, 'note_id' => $note->id, 'change' => $change], ['created', 'updated', 'updated', 'updated', 'deleted']))
+        ->and(array_map(strval(...), (new PostNoteChanged($this->post->id, $this->workspace->id, 'updated', $note->id))->broadcastOn()))->toBe([
             "private-post.{$this->post->id}",
             "private-workspace.{$this->workspace->id}",
         ]);
@@ -444,6 +457,75 @@ test('cannot update other user comment', function () {
         ]);
 
     $response->assertForbidden();
+});
+
+test('an email about a note deleted before it goes out is dropped instead of failing', function (int $jobsBeforeDeleting) {
+    config()->set('queue.default', 'database');
+    Queue::swap(Queue::getFacadeRoot()->queue);
+    $worker = app('queue.worker');
+    $options = new WorkerOptions(sleep: 0, maxTries: 1);
+    $failed = [];
+    Queue::failing(function (JobFailed $event) use (&$failed): void {
+        $failed[] = $event->job->resolveName();
+    });
+
+    $this->actingAs(workspaceMember($this->workspace))
+        ->postJson(route('app.posts.notes.store', $this->post), ['body' => 'Tpyo'])
+        ->assertCreated();
+
+    for ($job = 0; $job < $jobsBeforeDeleting; $job++) {
+        $worker->runNextJob('database', 'default', $options);
+    }
+
+    PostNote::query()->sole()->delete();
+    $worker->runNextJob('database', 'default', $options);
+
+    expect(Queue::connection('database')->size('default'))->toBe(0)
+        ->and($failed)->toBe([]);
+})->with([
+    'before the notification job runs' => [0],
+    'between the notification job and the email it queues' => [1],
+]);
+
+test('a link with a malformed note or post id opens the page without a thread', function (mixed $notes, mixed $note) {
+    $page = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $notes, 'note' => $note]))
+        ->assertOk();
+
+    expect($page->inertiaProps('openPostNotesId'))->toBeNull()
+        ->and($page->inertiaProps('highlightNoteId'))->toBeNull()
+        ->and($page->inertiaProps('postNotes'))->toBeNull();
+})->with([
+    'not a uuid' => ['abc', 'abc'],
+    'an array' => [['x'], ['y']],
+    'a uuid of nothing' => [fn (): string => Str::uuid()->toString(), null],
+]);
+
+test('an edit drops the mention of someone who no longer sees the post', function () {
+    $teammate = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "Ask @[user:{$teammate->id}]"]);
+    $note->mentions()->attach($teammate);
+    $this->workspace->members()->detach($teammate);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.notes.update', [$this->post, $note]), ['body' => "Ask @[user:{$teammate->id}] again"])
+        ->assertOk()
+        ->assertJsonPath('mentions', []);
+
+    expect($note->fresh()->body)->toBe('Ask  again')
+        ->and($note->mentions()->count())->toBe(0);
+});
+
+test('deleting a note takes its reactions and mentions with it', function () {
+    $teammate = workspaceMember($this->workspace);
+    $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "Ask @[user:{$teammate->id}]"]);
+    $note->mentions()->attach($teammate);
+    PostNoteReaction::factory()->create(['post_note_id' => $note->id, 'user_id' => $teammate->id, 'emoji' => '👍']);
+
+    $this->actingAs($this->user)->deleteJson(route('app.posts.notes.destroy', [$this->post, $note]))->assertNoContent();
+
+    expect(PostNoteReaction::query()->count())->toBe(0);
+    $this->assertDatabaseCount('post_note_mentions', 0);
 });
 
 test('delete own comment', function () {

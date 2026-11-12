@@ -753,13 +753,16 @@ function waitForCondition(mixed $page, string $condition, int $seconds = 30): vo
 
 /**
  * Wait until a condition the test reads on the server (a row in the database)
- * holds, letting the page's own requests land between tries.
+ * holds, letting the page's own requests land between tries, and fail the
+ * test when it never does.
  */
 function waitForDatabase(mixed $page, Closure $condition): void
 {
     for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
         $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
     }
+
+    expect($condition())->toBeTrue('Waited 5s for a condition on the server.');
 }
 
 /**

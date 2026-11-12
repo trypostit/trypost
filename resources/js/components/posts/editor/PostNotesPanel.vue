@@ -2,6 +2,7 @@
 import type { InfiniteScrollRef } from '@inertiajs/core';
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import {
     computed,
     nextTick,
@@ -10,6 +11,7 @@ import {
     watch,
     type ComponentPublicInstance,
 } from 'vue';
+import { toast } from 'vue-sonner';
 
 import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
@@ -23,6 +25,7 @@ import { usePostEcho } from '@/composables/echo/usePostEcho';
 import { blank, filled } from '@/lib/helpers';
 import {
     destroy as destroyNote,
+    show as showNote,
     store as storeNote,
     update as updateNote,
 } from '@/routes/app/posts/notes';
@@ -41,8 +44,10 @@ import type {
 /**
  * The notes thread of the post whose notes the page has open: the notes come
  * from the page's `postNotes` scroll prop (newest first, shown oldest first),
- * and scrolling up loads older pages through `<InfiniteScroll reverse>`.
- * Every change reloads the newest page.
+ * and scrolling up loads older pages through `<InfiniteScroll reverse>`. A
+ * change touches only its note, from the request's answer or from the
+ * `post.note.changed` broadcast (which names the note), so older pages and
+ * the scroll stay where they are.
  */
 const props = defineProps<{
     postId: string;
@@ -64,6 +69,7 @@ const currentUser = computed(() => page.props.auth.user);
 
 const sendHttp = useHttp<{ body: string }, PostNote>({ body: '' });
 const noteHttp = useHttp<{ body: string }, PostNote>({ body: '' });
+const fetchHttp = useHttp<Record<string, never>, PostNote>({});
 const deleteHttp = useHttp({});
 const reactionHttp = useHttp<{ emoji: string }, PostNote>({ emoji: '' });
 const mentionablesHttp = useHttp<
@@ -71,11 +77,17 @@ const mentionablesHttp = useHttp<
     PostNoteMentionable[]
 >({});
 
-/** This post's page of notes, once the page has loaded it. */
+/** This post's notes as the page holds them (newest first), once loaded. */
 const thread = computed(() =>
     page.props.openPostNotesId === props.postId ? page.props.postNotes : null,
 );
-const notes = computed(() => [...(thread.value?.data ?? [])].reverse());
+
+/** Oldest first, each note once: a page loaded after a new note can repeat the last one. */
+const notes = computed(() => [
+    ...new Map(
+        [...(thread.value?.data ?? [])].reverse().map((note) => [note.id, note]),
+    ).values(),
+]);
 
 const newBody = ref('');
 const highlightedId = ref<string | null>(null);
@@ -118,23 +130,83 @@ const scrollToBottom = () => {
     }
 };
 
-/** Loads the newest page again, dropping older pages, and scrolls to the last note. */
-const reloadNotes = (): Promise<void> =>
-    new Promise((resolve) => {
-        router.reload({
-            only: ['postNotes'],
-            reset: ['postNotes'],
-            onFinish: async () => {
-                await nextTick();
-                scrollToBottom();
-                resolve();
-            },
-        });
-    });
+/** Whether the list shows its last note, so a new one should keep it in view. */
+const isAtBottom = (): boolean => {
+    const container = scrollContainer.value;
 
-usePostEcho(props.postId, '.post.note.changed', () => {
-    void reloadNotes();
-});
+    return (
+        !container ||
+        container.scrollHeight - container.scrollTop - container.clientHeight < 48
+    );
+};
+
+/** Puts a note in the thread: replaces it where it is, or adds it as the newest. */
+const putNote = async (note: PostNote): Promise<void> => {
+    const loaded = thread.value;
+
+    if (!loaded) {
+        return;
+    }
+
+    const index = loaded.data.findIndex((item) => item.id === note.id);
+
+    if (index >= 0) {
+        loaded.data[index] = note;
+
+        return;
+    }
+
+    const follow = isAtBottom();
+
+    loaded.data.unshift(note);
+    loaded.meta.total++;
+
+    if (follow) {
+        await nextTick();
+        scrollToBottom();
+    }
+};
+
+const dropNote = (noteId: string): void => {
+    const loaded = thread.value;
+    const index = loaded?.data.findIndex((item) => item.id === noteId) ?? -1;
+
+    if (loaded && index >= 0) {
+        loaded.data.splice(index, 1);
+        loaded.meta.total--;
+    }
+};
+
+const failed = (message?: string): void => {
+    toast.error(message ?? trans('notes.errors.not_saved'), {
+        testId: 'note-error-toast',
+    });
+};
+
+/** Another member (or this page) changed a note: refresh that note alone. */
+usePostEcho<{ note_id: string | null; change: string }>(
+    props.postId,
+    '.post.note.changed',
+    async ({ note_id: noteId, change }) => {
+        if (!filled(noteId)) {
+            return;
+        }
+
+        if (change === 'deleted') {
+            dropNote(noteId);
+
+            return;
+        }
+
+        const note = await fetchHttp
+            .get(showNote.url({ post: props.postId, note: noteId }))
+            .catch(() => null);
+
+        if (filled(note)) {
+            await putNote(note);
+        }
+    },
+);
 
 const focusComposer = () => {
     composerInput.value?.focus();
@@ -170,7 +242,9 @@ const toggleReaction = async (
         .catch(() => null);
 
     if (filled(updated)) {
-        note.reactions = updated.reactions;
+        await putNote(updated);
+    } else {
+        failed(reactionHttp.errors.emoji);
     }
 };
 
@@ -188,15 +262,26 @@ const sendNote = async () => {
         .catch(() => null);
 
     if (!filled(created)) {
+        failed(sendHttp.errors.body);
+
         return;
     }
 
-    newBody.value = '';
-    await reloadNotes();
+    if (newBody.value.trim() === body) {
+        newBody.value = '';
+    }
+
+    await putNote(created);
+    scrollToBottom();
     focusComposer();
 };
 
-const saveNote = async (note: PostNote, body: string) => {
+/** Saves an edit; `done(false)` keeps the editor open with the text. */
+const saveNote = async (
+    note: PostNote,
+    body: string,
+    done: (saved: boolean) => void,
+) => {
     noteHttp.body = body;
 
     const updated = await noteHttp
@@ -204,8 +289,12 @@ const saveNote = async (note: PostNote, body: string) => {
         .catch(() => null);
 
     if (filled(updated)) {
-        Object.assign(note, updated);
+        await putNote(updated);
+    } else {
+        failed(noteHttp.errors.body);
     }
+
+    done(filled(updated));
 };
 
 const deleteNote = async (note: PostNote) => {
@@ -215,11 +304,16 @@ const deleteNote = async (note: PostNote) => {
         .catch(() => false);
 
     if (deleted) {
-        await reloadNotes();
+        dropNote(note.id);
+    } else {
+        failed();
     }
 };
 
-/** Loads the next older page; false when there is none. */
+/**
+ * Loads the next older page; false when there is none or it fails. It settles
+ * when the next visit finishes, which also covers a load the scroll started.
+ */
 const loadOlderNotes = (): Promise<boolean> =>
     new Promise((resolve) => {
         const scroll = infiniteScroll.value;
@@ -230,7 +324,12 @@ const loadOlderNotes = (): Promise<boolean> =>
             return;
         }
 
-        scroll.fetchNext({ onFinish: () => resolve(true) });
+        const stop = router.on('finish', (event) => {
+            stop();
+            resolve(event.detail.visit.completed);
+        });
+
+        scroll.fetchNext();
     });
 
 /** The note's element, loading older pages until it shows up or none are left. */
@@ -327,7 +426,7 @@ onMounted(focusLinkedNote);
                             :current-user-id="currentUserId"
                             :mentionables="mentionables"
                             :highlighted="highlightedId === note.id"
-                            @save="saveNote(note, $event)"
+                            @save="(body, done) => saveNote(note, body, done)"
                             @delete="deleteNote(note)"
                             @react="
                                 (emoji, reacted) =>

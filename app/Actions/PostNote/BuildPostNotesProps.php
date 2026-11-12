@@ -30,12 +30,12 @@ final class BuildPostNotesProps
     {
         $postId = RequestIds::uuid($request->query('notes'));
         $post = transform($postId, fn (string $id): ?Post => $workspace->posts()->find($id));
-        $canRead = $post !== null
+        $canRead = filled($post)
             && Gate::forUser($request->user())->allows('view', $post)
             && Gate::forUser($request->user())->allows('createPost', $workspace);
 
         return [
-            'openPostNotesId' => $postId,
+            'openPostNotesId' => $canRead ? $postId : null,
             'highlightNoteId' => RequestIds::uuid($request->query('note')),
             'postNotes' => $canRead
                 ? Inertia::scroll(fn () => PostNoteResource::collection(ListPostNotes::execute($post, pageName: self::PAGE_NAME)))

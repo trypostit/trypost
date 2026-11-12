@@ -14,10 +14,16 @@ use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
+/**
+ * Emails one member about something that happened. A job whose user or
+ * subject (a note deleted before its email went out) is gone is dropped.
+ */
+#[DeleteWhenMissingModels]
 class SendNotification implements ShouldQueue
 {
     use Queueable {

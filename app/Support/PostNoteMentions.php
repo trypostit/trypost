@@ -57,7 +57,7 @@ final class PostNoteMentions
             function (array $match) use ($people): string {
                 $id = data_get($match, 1);
 
-                return blank($id) || $people->contains('id', Str::lower($id)) ? $match[0] : '';
+                return blank($id) || $people->contains('id', Str::lower($id)) ? data_get($match, 0) : '';
             },
             $body,
         );

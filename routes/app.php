@@ -278,6 +278,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::get('posts/{post}/notes/mentionables', [PostNoteMentionableController::class, 'index'])->name('app.posts.notes.mentionables.index');
     Route::post('posts/{post}/notes', [PostNoteController::class, 'store'])->name('app.posts.notes.store');
+    Route::get('posts/{post}/notes/{note}', [PostNoteController::class, 'show'])->name('app.posts.notes.show');
     Route::put('posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('app.posts.notes.update');
     Route::delete('posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('app.posts.notes.destroy');
     Route::put('posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'update'])->name('app.posts.notes.reactions.update');

@@ -13,13 +13,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 
 /**
  * An email about a note: the note, its author and the post it is on. Each
  * email names its Maizzle template, whose slug also names its `mail.*` block.
+ * It is dropped when the note was deleted before it went out.
  */
+#[DeleteWhenMissingModels]
 abstract class PostNoteEmail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;

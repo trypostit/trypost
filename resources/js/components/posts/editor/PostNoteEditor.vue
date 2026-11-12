@@ -64,13 +64,26 @@ const everyoneWord = wTrans('notes.mention_everyone.word');
 const everyoneDescription = wTrans('notes.mention_everyone.description');
 const unknownWord = wTrans('notes.mention_unknown');
 
-/** The name a mention chip shows for an id: everyone's word, or the person's name. */
-const mentionLabel = (id: string): string =>
-    id === EVERYONE_ID
-        ? everyoneWord.value
-        : ([...props.mentions, ...(props.people ?? [])].find(
-              (person) => person.id === id,
-          )?.name ?? unknownWord.value);
+/**
+ * The name a mention chip shows for an id: everyone's word, or the person's
+ * name. A person not known yet (a pasted mention before the people loaded)
+ * asks for the people and reads as unknown until they arrive.
+ */
+const mentionLabel = (id: string): string => {
+    if (id === EVERYONE_ID) {
+        return everyoneWord.value;
+    }
+
+    const name = [...props.mentions, ...(props.people ?? [])].find(
+        (person) => person.id === id,
+    )?.name;
+
+    if (!name && props.people === null) {
+        emit('needPeople');
+    }
+
+    return name ?? unknownWord.value;
+};
 
 /** The open `@` search: what was typed after it and how to insert a pick. */
 const search = ref<{
@@ -207,7 +220,7 @@ const editor = useEditor({
         NoteKeys.configure({
             onSubmit: () => emit('submit'),
             onCancel: () => emit('cancel'),
-            submitBlocked: () => listOpen.value,
+            submitBlocked: () => listOpen.value && filled(matches.value),
             cancelBlocked: () => filled(search.value),
         }),
     ],
@@ -225,9 +238,11 @@ const editor = useEditor({
             'aria-multiline': 'true',
             'aria-autocomplete': 'list',
             'aria-expanded': String(listOpen.value),
-            ...(listOpen.value ? { 'aria-controls': listId } : {}),
             ...(listOpen.value && filled(matches.value)
-                ? { 'aria-activedescendant': optionId(highlighted.value) }
+                ? {
+                      'aria-controls': listId,
+                      'aria-activedescendant': optionId(highlighted.value),
+                  }
                 : {}),
         }),
     },
@@ -243,6 +258,36 @@ const editor = useEditor({
 watch([listOpen, highlighted, matches], () => {
     editor.value?.view.setProps({});
 });
+
+/** Once the people load, chips that could not be named yet take their names. */
+watch(
+    () => props.people,
+    () => {
+        const current = editor.value;
+
+        if (!current) {
+            return;
+        }
+
+        const { tr } = current.state;
+
+        current.state.doc.descendants((node, position) => {
+            if (node.type.name !== 'mention') {
+                return;
+            }
+
+            const label = mentionLabel(node.attrs.id);
+
+            if (label !== node.attrs.label) {
+                tr.setNodeMarkup(position, undefined, { ...node.attrs, label });
+            }
+        });
+
+        if (tr.docChanged) {
+            current.view.dispatch(tr);
+        }
+    },
+);
 
 /** The parent replaced the body (reset after sending, another note to edit). */
 watch(body, (stored) => {

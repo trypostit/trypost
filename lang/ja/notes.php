@@ -15,7 +15,6 @@ return [
     'send' => '送信',
     'empty' => 'まだメモがありません。チームメンバーだけが見られます。',
     'actions' => 'メモの操作',
-    'load_more' => '過去のメモを読み込む',
     'react' => 'リアクションを追加',
     'no_mentionables' => '一致するメンバーがいません',
     'mention_unknown' => '不明',
@@ -28,5 +27,7 @@ return [
     ],
     'errors' => [
         'invalid_emoji' => '絵文字を1つ選んでください。',
+        'not_saved' => 'メモを保存できませんでした。もう一度お試しください。',
+        'too_long' => 'メモは最大 :max 文字までです。',
     ],
 ];

@@ -34,7 +34,7 @@ final class CreatePostNote
         $note->load(PostNote::DISPLAY_RELATIONS);
 
         NotifyPostNoteRecipients::created($note, $author, $audience);
-        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created');
+        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created', $note->id);
 
         return $note;
     }

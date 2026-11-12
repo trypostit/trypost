@@ -17,7 +17,8 @@ type NoteBodySegment =
 /** The id a mention of everyone carries in the editor; it is never a user id. */
 export const EVERYONE_ID = 'everyone';
 
-const MENTION_PATTERN =
+/** A mention of a person (group 1 holds their uuid) or of everyone. */
+export const MENTION_PATTERN =
     /@\[(?:user:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|everyone)\]/gu;
 
 /** The body split into text and mentions, in order. */

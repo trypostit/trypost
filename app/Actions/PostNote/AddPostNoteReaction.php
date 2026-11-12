@@ -19,7 +19,7 @@ final class AddPostNoteReaction
     {
         $reaction = $note->reactions()->createOrFirst(['user_id' => $user->id, 'emoji' => $emoji]);
 
-        PostNoteChanged::dispatchIf($reaction->wasRecentlyCreated, $post->id, $post->workspace_id, 'updated');
+        PostNoteChanged::dispatchIf($reaction->wasRecentlyCreated, $post->id, $post->workspace_id, 'updated', $note->id);
 
         return $note->load(PostNote::DISPLAY_RELATIONS);
     }

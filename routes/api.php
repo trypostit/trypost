@@ -58,6 +58,7 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::get('/posts/{post}/notes/mentionables', [PostNoteMentionableController::class, 'index'])->name('api.posts.notes.mentionables.index');
     Route::get('/posts/{post}/notes', [PostNoteController::class, 'index'])->name('api.posts.notes.index');
     Route::post('/posts/{post}/notes', [PostNoteController::class, 'store'])->name('api.posts.notes.store');
+    Route::get('/posts/{post}/notes/{note}', [PostNoteController::class, 'show'])->name('api.posts.notes.show');
     Route::put('/posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('api.posts.notes.update');
     Route::delete('/posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('api.posts.notes.destroy');
     Route::put('/posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'update'])->name('api.posts.notes.reactions.update');

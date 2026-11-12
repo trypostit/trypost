@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useViewTimezone } from '@/composables/useViewTimezone';
 import date from '@/date';
+import { blank } from '@/lib/helpers';
 import type { PostNote, PostNoteMentionable } from '@/types/post-note';
 
 const props = withDefaults(
@@ -31,7 +32,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-    save: [body: string];
+    save: [body: string, done: (saved: boolean) => void];
     delete: [];
     react: [emoji: string, reacted: boolean];
     needPeople: [];
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const viewTimezone = useViewTimezone();
 
 const editing = ref(false);
+const saving = ref(false);
 const editBody = ref('');
 const editInput = ref<InstanceType<typeof PostNoteEditor> | null>(null);
 const editContainer = ref<HTMLDivElement | null>(null);
@@ -62,15 +64,22 @@ const cancelEdit = () => {
     editBody.value = '';
 };
 
+/** Keeps the editor open, with the text, until the server takes the edit. */
 const saveEdit = () => {
     const body = editBody.value.trim();
 
-    if (!body) {
+    if (blank(body) || saving.value) {
         return;
     }
 
-    emit('save', body);
-    cancelEdit();
+    saving.value = true;
+    emit('save', body, (saved) => {
+        saving.value = false;
+
+        if (saved) {
+            cancelEdit();
+        }
+    });
 };
 
 const react = (emoji: string, reacted: boolean) => {
@@ -167,6 +176,7 @@ const requestPeople = () => {
                     :people="mentionables"
                     :current-user-id="currentUserId"
                     :mentions="note.mentions"
+                    :aria-label="$t('notes.edit')"
                     class="max-h-28 min-h-0 w-full overflow-y-auto rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
                     @submit="saveEdit"
@@ -185,7 +195,8 @@ const requestPeople = () => {
                     <Button
                         type="button"
                         size="sm"
-                        :disabled="!editBody.trim()"
+                        :disabled="blank(editBody)"
+                        :loading="saving"
                         data-testid="note-edit-save"
                         @click="saveEdit"
                     >

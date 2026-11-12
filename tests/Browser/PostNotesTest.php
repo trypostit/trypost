@@ -235,7 +235,9 @@ test('@all is offered first in the mention list, in the reader\'s language, and 
     waitForState($page, '[data-testid=note-mention-list] [role=option]', "element.dataset.testid === 'note-mention-option-everyone' && element.textContent.includes('@todos')");
 
     $page->fill('@note-input', 'Revisem @tod');
-    waitForCount($page, '@note-mention-option', 0);
+    waitForCount($page, '[data-testid=note-mention-list] [role=option]', 1);
+    $page->assertCount('@note-mention-option', 0)
+        ->assertVisible('@note-mention-option-everyone');
     $page->keys('@note-input', 'Enter');
     waitForGone($page, '@note-mention-list');
     waitForEditorText($page, '@note-input', 'Revisem @todos');
@@ -343,7 +345,7 @@ test('the note composer enables send only with text and sends on Enter but not S
         ->assertVisible("@post-notes-filled-icon-{$post->id}")
         ->assertNoJavaScriptErrors();
 
-    expect(PostNote::query()->where('post_id', $post->id)->value('body'))->toBe('First line');
+    expect(PostNote::query()->where('post_id', $post->id)->pluck('body')->all())->toBe(['First line']);
 });
 
 test('a note timestamp follows the display zone of the list', function () {
@@ -418,7 +420,8 @@ test('a mention of someone who no longer exists reads as unknown in the note and
     $page->assertNoJavaScriptErrors();
 });
 
-test('scrolling up the thread loads older notes, and a link to an older note loads its page and highlights it', function () {
+test('scrolling up the thread loads older notes, reacting or sending keeps them, and a link to an older note loads its pages and highlights it', function () {
+    Mail::fake();
     config(['app.pagination.default' => 8]);
 
     $user = User::factory()->create();
@@ -426,26 +429,40 @@ test('scrolling up the thread loads older notes, and a link to an older note loa
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
-    $notes = collect(range(1, 10))->map(fn (int $number): PostNote => PostNote::factory()->create([
+    $notes = collect(range(1, 20))->map(fn (int $number): PostNote => PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $user->id,
         'body' => $number === 1 ? 'The very first note' : "Note number {$number}",
-        'created_at' => now()->subMinutes(20 - $number),
-        'updated_at' => now()->subMinutes(20 - $number),
+        'created_at' => now()->subMinutes(30 - $number),
+        'updated_at' => now()->subMinutes(30 - $number),
     ]));
+    $olderNote = $notes[5];
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
     waitFor($page, "@post-notes-trigger-{$post->id}");
     $page->click("@post-notes-trigger-{$post->id}");
     waitForCount($page, '@note-item', 8);
-    $page->assertSeeIn('@notes-list', 'Note number 10')
-        ->assertDontSeeIn('@notes-list', 'The very first note');
+    $page->assertSeeIn('@notes-list', 'Note number 20')
+        ->assertDontSeeIn('@notes-list', 'Note number 6');
 
     $page->script("document.querySelector('[data-testid=\"notes-list\"]').scrollTop = 0");
-    waitForCount($page, '@note-item', 10);
-    $page->assertCount('@note-item', 10)
-        ->assertSeeIn('@notes-list', 'The very first note')
+    waitForCount($page, '@note-item', 16, '>=');
+    $page->assertSeeIn('@notes-list', 'Note number 6');
+
+    $olderNoteSelector = "[data-note-id=\"{$olderNote->id}\"]";
+    $page->hover($olderNoteSelector)->click("{$olderNoteSelector} [data-testid=note-react]");
+    waitForOpen($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
+    $page->click('@emoji-picker-option');
+    waitFor($page, "{$olderNoteSelector} [data-testid^=note-reaction-]");
+    $loaded = $page->script("document.querySelectorAll('[data-testid=\"note-item\"]').length");
+    expect($loaded)->toBeGreaterThanOrEqual(16);
+
+    $page->fill('@note-input', 'A brand new note');
+    $page->keys('@note-input', 'Enter');
+    waitForCount($page, '@note-item', $loaded + 1);
+    $page->assertSeeIn('@notes-list', 'A brand new note')
+        ->assertSeeIn('@notes-list', 'Note number 6')
         ->assertNoJavaScriptErrors();
 
     $oldest = "[data-note-id=\"{$notes->first()->id}\"]";
@@ -453,6 +470,111 @@ test('scrolling up the thread loads older notes, and a link to an older note loa
     waitForState($linked, $oldest, "element.dataset.highlighted === 'true'");
     $linked->assertAttribute($oldest, 'data-highlighted', 'true')
         ->assertNoJavaScriptErrors();
+});
+
+test('opening another post notes closes the open thread, and closing a thread clears it from the link', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    [$first, $second] = collect(['First post', 'Second post'])->map(function (string $content) use ($workspace, $user): Post {
+        $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => $content]);
+        PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $user->id, 'body' => "A note on {$content}"]);
+
+        return $post;
+    })->all();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$first->id}");
+    $page->click("@post-notes-trigger-{$first->id}");
+    waitForText($page, "@post-notes-section-{$first->id} @note-body", 'A note on First post');
+    waitForQueryParameter($page, 'notes', $first->id);
+
+    $page->click("@post-notes-trigger-{$second->id}");
+    waitForText($page, "@post-notes-section-{$second->id} @note-body", 'A note on Second post');
+    waitForQueryParameter($page, 'notes', $second->id);
+    waitForState($page, "@post-notes-trigger-{$first->id}", "element.dataset.state === 'closed'");
+    $page->assertAttribute("@post-notes-trigger-{$first->id}", 'data-state', 'closed');
+
+    $page->click("@post-notes-trigger-{$second->id}");
+    waitForCondition($page, "!new URLSearchParams(location.search).has('notes')");
+    waitForState($page, "@post-notes-trigger-{$second->id}", "element.dataset.state === 'closed'");
+    $page->assertAttribute("@post-notes-trigger-{$second->id}", 'data-state', 'closed')
+        ->assertNoJavaScriptErrors();
+});
+
+test('Enter sends while the mention list finds nobody, and pasted mention markup becomes a named chip', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $bia = workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@note-input');
+
+    $page->script(<<<JS
+        (() => {
+            const editor = document.querySelector('[data-testid="note-input"]');
+            const clipboard = new DataTransfer();
+            editor.focus();
+            clipboard.setData('text/plain', 'Ask @[user:{$bia->id}] now');
+            editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true, cancelable: true }));
+        })()
+    JS);
+    waitForText($page, '@note-input-mention', '@Bia Lima');
+    waitForEditorText($page, '@note-input', 'Ask @Bia Lima now');
+
+    $page->keys('@note-input', 'Enter');
+    waitFor($page, '@note-mention');
+    $page->assertSeeIn('@note-body', 'Bia Lima');
+
+    $page->hover('@note-input');
+    $page->typeSlowly('@note-input', 'hi @zzz', 10);
+    waitForText($page, '@note-mention-list', 'No teammate matches');
+    $page->keys('@note-input', 'Enter');
+    waitForCount($page, '@note-item', 2);
+    $page->assertNoJavaScriptErrors();
+
+    expect(PostNote::query()->orderBy('created_at')->orderBy('id')->pluck('body')->all())
+        ->toBe(["Ask @[user:{$bia->id}] now", 'hi @zzz']);
+});
+
+test('an edit the server refuses keeps the editor open with the text and says why', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $user->id, 'body' => 'Short note']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@note-item');
+    $page->hover('@note-item')->click('@note-actions');
+    waitFor($page, '@note-edit');
+    $page->click('@note-edit');
+    waitForEditorText($page, '@note-edit-input', 'Short note');
+
+    $page->keys('@note-edit-input', 'ControlOrMeta+a');
+    $page->script("document.execCommand('insertText', false, 'a'.repeat(2001))");
+    waitForState($page, '@note-edit-input', 'element.innerText.trim().length === 2001');
+    $page->click('@note-edit-save');
+    waitFor($page, '@note-error-toast');
+
+    $page->assertSeeIn('@note-error-toast', __('notes.errors.too_long', ['max' => 2000]))
+        ->assertVisible('@note-edit-input')
+        ->assertScript("document.querySelector('[data-testid=\"note-edit-input\"]').innerText.trim().length", 2001)
+        ->assertNoJavaScriptErrors();
+    expect($note->fresh()->body)->toBe('Short note');
 });
 
 test('the notes toggle says whether it shows or hides the notes', function () {

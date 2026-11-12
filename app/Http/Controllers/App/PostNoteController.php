@@ -26,6 +26,15 @@ class PostNoteController extends Controller
         return PostNoteResource::make($note)->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
+    public function show(Post $post, PostNote $note): PostNoteResource
+    {
+        abort_unless($note->post_id === $post->id, Response::HTTP_NOT_FOUND);
+
+        $this->authorizeNotes($post);
+
+        return PostNoteResource::make($note->load(PostNote::DISPLAY_RELATIONS));
+    }
+
     public function update(UpdatePostNoteRequest $request, Post $post, PostNote $note): PostNoteResource
     {
         abort_unless($note->post_id === $post->id, Response::HTTP_NOT_FOUND);
