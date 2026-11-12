@@ -281,9 +281,9 @@ defineExpose({ focus });
                 >
                     <template v-if="option.kind === 'everyone'">
                         <span
-                            class="grid size-5 shrink-0 place-items-center self-start rounded-full bg-primary-subtle text-primary-text"
+                            class="grid size-8 shrink-0 place-items-center rounded-full bg-primary-strong text-primary-strong-foreground"
                         >
-                            <IconUsers class="size-3" />
+                            <IconUsers class="size-4" />
                         </span>
                         <span class="grid min-w-0">
                             <span class="font-medium"
