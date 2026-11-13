@@ -205,3 +205,9 @@ export const htmlToPlainText = (html: string): string => {
 
     return text.replace(/\n{3,}/g, '\n\n').trim();
 };
+
+/** Resolves once the browser has laid out and painted the current changes. */
+export const afterPaint = (): Promise<void> =>
+    new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );

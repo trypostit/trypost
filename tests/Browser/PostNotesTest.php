@@ -656,6 +656,35 @@ test('a note opened in the editor and saved unchanged keeps every line and menti
     expect($note->fresh()->body)->toBe($body);
 });
 
+test('editing the last note of a long thread scrolls its Save button into view', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $notes = collect(range(1, 10))->map(fn (int $number): PostNote => PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $user->id,
+        'body' => "Note number {$number}",
+        'created_at' => now()->subMinutes(20 - $number),
+        'updated_at' => now()->subMinutes(20 - $number),
+    ]));
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForCount($page, '@note-item', 10);
+
+    $last = "[data-note-id=\"{$notes->last()->id}\"]";
+    $page->hover($last)->click("{$last} [data-testid=note-actions]");
+    waitFor($page, '@note-edit');
+    $page->click('@note-edit');
+    waitForState($page, '@note-edit-save', "(() => { const list = document.querySelector('[data-testid=notes-list]').getBoundingClientRect(); const save = element.getBoundingClientRect(); return save.top >= list.top - 1 && save.bottom <= list.bottom + 1; })()");
+    $page->assertNoJavaScriptErrors();
+});
+
 test('an edit the server refuses keeps the editor open with the text and says why', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);

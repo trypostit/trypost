@@ -17,6 +17,7 @@ import {
 import { useViewTimezone } from '@/composables/useViewTimezone';
 import date from '@/date';
 import { blank } from '@/lib/helpers';
+import { afterPaint } from '@/lib/utils';
 import type { PostNote, PostNoteMentionable } from '@/types/post-note';
 
 const props = withDefaults(
@@ -56,6 +57,7 @@ const startEdit = async () => {
     editing.value = true;
     await nextTick();
     editInput.value?.focus();
+    await afterPaint();
     editContainer.value?.scrollIntoView({ block: 'nearest' });
 };
 

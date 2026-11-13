@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/input-group';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
 import { blank, filled } from '@/lib/helpers';
+import { afterPaint } from '@/lib/utils';
 import {
     destroy as destroyNote,
     show as showNote,
@@ -351,12 +352,6 @@ const findNote = async (noteId: string): Promise<Element | null> => {
 
     return (await loadOlderNotes()) ? findNote(noteId) : null;
 };
-
-/** Resolves once the browser has laid out and painted the current changes. */
-const afterPaint = (): Promise<void> =>
-    new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-    );
 
 /**
  * Scrolls to a note and highlights it. The scroll waits for the page to settle:
