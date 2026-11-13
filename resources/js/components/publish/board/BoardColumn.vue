@@ -6,6 +6,7 @@ import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import PostBoardCard from '@/components/publish/board/PostBoardCard.vue';
 import { blank } from '@/lib/helpers';
+import { formatNumberCompact } from '@/lib/utils';
 import type { BoardColumnMeta, BoardGroup } from '@/types/board';
 import { channelName } from '@/types/channel';
 import type { ScrollPostCards } from '@/types/publish';
@@ -85,8 +86,9 @@ const ownName = computed((): string | null => {
             </h2>
             <span
                 class="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-secondary px-1 text-xs leading-[18px] font-medium text-muted-foreground"
+                :title="count >= 1000 ? String(count) : undefined"
                 :data-testid="`board-column-count-${column.key}`"
-                >{{ count }}</span
+                >{{ formatNumberCompact(count) }}</span
             >
         </header>
 

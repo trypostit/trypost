@@ -10,6 +10,10 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 function boardInsideViewport(): string
 {
@@ -268,4 +272,29 @@ test('a video thumbnail loads only once its card comes near the screen', functio
     waitFor($page, "@board-card-thumbnail-{$video->id} video");
 
     $page->assertNoJavaScriptErrors();
+});
+
+test('a thousand posts or more show as a short count on the board column and the list tab', function () {
+    $published = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
+    $row = Arr::except((array) DB::table('posts')->where('id', $published->id)->first(), ['id']);
+
+    collect(range(1, 1199))
+        ->map(fn (): array => [...$row, 'id' => (string) Str::uuid()])
+        ->chunk(200)
+        ->each(fn (Collection $rows) => DB::table('posts')->insert($rows->all()));
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitForText($page, '@board-column-count-published', '1.2K');
+
+    $page->assertAttribute('@board-column-count-published', 'title', '1200')
+        ->assertSeeIn('@board-column-count-draft', '1')
+        ->assertNoJavaScriptErrors();
+
+    $list = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForText($list, '@publish-tab-count-sent', '1.2K');
+
+    $list->assertSeeIn('@publish-tab-count-drafts', '1')
+        ->assertNoJavaScriptErrors();
 });
