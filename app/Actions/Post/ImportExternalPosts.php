@@ -147,6 +147,31 @@ class ImportExternalPosts
     }
 
     /**
+     * Links an unlinked discovery to the TryPost post it is, or merges it into
+     * that post's publication. False when it is not a post TryPost published.
+     */
+    public static function mergeIntoTryPost(SocialAccount $account, string $publicationId): bool
+    {
+        return DB::transaction(function () use ($account, $publicationId): bool {
+            $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
+
+            if (blank($publication) || filled($publication->post_id)) {
+                return false;
+            }
+
+            $existing = self::tryPostTarget($account, $publication);
+
+            if ($existing === null) {
+                return false;
+            }
+
+            self::linkToTryPost($existing, $publication);
+
+            return true;
+        });
+    }
+
+    /**
      * A discovery of a post TryPost published. When the post is already tracked
      * under another remote id (a Facebook video or reel saved under its video id
      * and discovered under its Page post id), the discovery is merged into that
@@ -165,7 +190,7 @@ class ImportExternalPosts
         app(UpsertAnalyticsPublication::class)->reconcileRemoteId($tracked, $publication->remote_id);
     }
 
-    private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
+    public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
     {
         $remoteIds = collect([
             $publication->remote_id,
