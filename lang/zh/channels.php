@@ -185,6 +185,7 @@ return [
         ],
         'posting_times_per_week' => '每周 :count 次',
         'no_results' => '没有符合搜索的频道。',
+        'connection_lost' => '此频道已断开连接',
     ],
 
     'settings_page' => [

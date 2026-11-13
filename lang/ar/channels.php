@@ -185,6 +185,7 @@ return [
         ],
         'posting_times_per_week' => ':count في الأسبوع',
         'no_results' => 'لا توجد قنوات تطابق بحثك.',
+        'connection_lost' => 'فقدت هذه القناة الاتصال',
     ],
 
     'settings_page' => [

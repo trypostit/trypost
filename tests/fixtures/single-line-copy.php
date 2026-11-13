@@ -76,6 +76,7 @@ return [
     'channels.goal_dialog.description' => 57,
     'channels.link_facebook_page' => 35,
     'channels.list.columns.channel' => 7,
+    'channels.list.connection_lost' => 40,
     'channels.list.columns.posting_times' => 13,
     'channels.list.columns.this_week' => 17,
     'channels.list.columns.timezone' => 15,

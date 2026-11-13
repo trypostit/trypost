@@ -185,6 +185,7 @@ return [
         ],
         'posting_times_per_week' => ':count в неделю',
         'no_results' => 'Нет каналов по вашему запросу.',
+        'connection_lost' => 'Канал потерял подключение',
     ],
 
     'settings_page' => [

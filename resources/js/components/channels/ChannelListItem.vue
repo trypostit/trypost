@@ -22,6 +22,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { filled } from '@/lib/helpers';
@@ -91,11 +96,11 @@ const networkLine = computed((): string => {
                 </p>
                 <p
                     v-if="lost"
-                    class="flex min-w-0 items-start gap-1.5 text-sm text-destructive"
+                    class="flex min-w-0 items-start gap-1 text-sm text-destructive"
                     :data-testid="`channel-connection-lost-${channel.id}`"
                 >
-                    <IconAlertCircle class="mt-0.5 size-4 shrink-0" />
-                    <span>{{ $t('channels.connection_lost_hint') }}</span>
+                    <IconAlertCircle class="mt-[3px] size-3.5 shrink-0" />
+                    <span>{{ $t('channels.list.connection_lost') }}</span>
                 </p>
                 <p
                     v-else
@@ -162,17 +167,26 @@ const networkLine = computed((): string => {
         </div>
 
         <div class="flex shrink-0 items-center justify-end gap-1 max-md:order-2">
-            <Button
-                v-if="lost"
-                size="sm"
-                class="max-md:hidden"
-                :data-testid="`channel-reconnect-${channel.id}`"
-                @click="emit('reconnect', channel)"
-            >
-                <IconRefresh class="size-4" />
-                {{ $t('channels.reconnect') }}
-            </Button>
-            <Button v-else as-child variant="ghost" size="icon">
+            <Tooltip v-if="lost">
+                <TooltipTrigger as-child>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="max-md:hidden"
+                        :aria-label="$t('channels.reconnect')"
+                        :data-testid="`channel-reconnect-${channel.id}`"
+                        @click="emit('reconnect', channel)"
+                    >
+                        <IconRefresh class="size-4 text-destructive" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                    :data-testid="`channel-reconnect-tooltip-${channel.id}`"
+                >
+                    {{ $t('channels.reconnect') }}
+                </TooltipContent>
+            </Tooltip>
+            <Button as-child variant="ghost" size="icon">
                 <Link
                     :href="settingsRoute.url(channel.id)"
                     :aria-label="$t('channels.settings')"
