@@ -171,7 +171,7 @@ class UpsertAnalyticsPublication
                     'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
                     'last_seen_at' => collect([$current->last_seen_at, $discovered->last_seen_at])->filter()->max(),
                     ...($movePost ? [] : [
-                        'content_type' => $discovered->content_type,
+                        'content_type' => $discovered->content_type === PublicationContentType::Unknown ? $current->content_type : $discovered->content_type,
                         'provider_content_type' => $discovered->provider_content_type ?? $current->provider_content_type,
                     ]),
                 ]);

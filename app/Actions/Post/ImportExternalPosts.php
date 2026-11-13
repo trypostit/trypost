@@ -198,7 +198,8 @@ class ImportExternalPosts
 
     /**
      * The Page post TryPost created when it published a Facebook video or photo:
-     * the only publication of the channel carrying that media, published within
+     * the only available publication of the channel carrying that media (a
+     * Page post deleted on the network no longer counts), published within
      * OWN_PAGE_POST_WINDOW_MINUTES of the post. Any doubt (a second Page post
      * sharing the media, or one published long after) leaves it unlinked.
      */
@@ -212,6 +213,7 @@ class ImportExternalPosts
         }
 
         return AnalyticsPublication::query()
+            ->available()
             ->where('social_account_id', $publication->social_account_id)
             ->where(fn (Builder $query): Builder => $query
                 ->whereIn('provider_metadata->video_id', $mediaIds)

@@ -263,6 +263,18 @@ test('a facebook video already tracked by its trypost publication is merged into
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
 });
 
+test('a merge keeps the trypost type when discovery could not tell it', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'content_type' => PublicationContentType::Reel]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'content_type' => PublicationContentType::Unknown, 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($tracked->fresh()->content_type)->toBe(PublicationContentType::Reel);
+});
+
 test('a merged facebook video stays one publication when it syncs and is discovered again', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
@@ -321,6 +333,18 @@ test('a facebook video carried by two page posts links neither, tracked or not',
         ->and($tryPost->analyticsPublication?->remote_id)->toBe($tracked ? 'video-9' : null)
         ->and(Post::query()->imported()->exists())->toBeFalse();
 })->with(['tracked' => true, 'not tracked yet' => false]);
+
+test('a page post deleted on the network no longer shares a facebook video', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subMinute(), 'availability' => PublicationAvailability::Deleted, 'provider_metadata' => ['video_id' => 'video-9']]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1');
+});
 
 test('a facebook page post published long after the trypost post is not its own', function (bool $tracked) {
     $account = SocialAccount::factory()->facebook()->create();

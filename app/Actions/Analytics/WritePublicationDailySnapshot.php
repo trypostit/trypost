@@ -9,10 +9,12 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\ExposureKind;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +90,7 @@ class WritePublicationDailySnapshot
     {
         [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
         [$readable, $unreadable] = collect($newer->metrics ?? [])
-            ->map(fn (mixed $stored, string $key): ?MetricValue => MetricValue::fromStored($key, $stored))
+            ->map(fn (mixed $stored, string $key): ?MetricValue => self::storedMetric($key, $stored))
             ->partition(fn (?MetricValue $metric): bool => filled($metric));
 
         $metrics = $this->mergeMetrics(
@@ -102,6 +104,55 @@ class WritePublicationDailySnapshot
             'metrics' => $metrics ?: null,
             ...$this->scalarProjections($metrics),
         ])->save();
+    }
+
+    /**
+     * A metric as stored in a daily snapshot's `metrics` under `$key`, or null
+     * when the stored entry is not one this version can read back.
+     */
+    private static function storedMetric(string $key, mixed $stored): ?MetricValue
+    {
+        $text = fn (string $field): string => is_string(data_get($stored, $field)) ? data_get($stored, $field) : '';
+        $metricKey = MetricKey::tryFrom($key);
+        $unit = MetricUnit::tryFrom($text('unit'));
+        $timeBasis = MetricTimeBasis::tryFrom($text('time_basis'));
+        $precision = MetricPrecision::tryFrom($text('precision'));
+        $availability = MetricAvailability::tryFrom($text('availability'));
+        $value = filled(data_get($stored, 'value')) ? data_get($stored, 'value') : null;
+        $providerMetric = filled(data_get($stored, 'provider_metric')) ? data_get($stored, 'provider_metric') : null;
+        $periodStart = self::storedDate(data_get($stored, 'period_start'));
+        $periodEnd = self::storedDate(data_get($stored, 'period_end'));
+
+        if (blank($metricKey) || blank($unit) || blank($timeBasis) || blank($precision) || blank($availability)
+            || (filled($value) && ! is_int($value) && ! is_float($value))
+            || (filled($providerMetric) && ! is_string($providerMetric))
+            || $periodStart === false || $periodEnd === false) {
+            return null;
+        }
+
+        return new MetricValue(
+            key: $metricKey,
+            value: $value,
+            unit: $unit,
+            timeBasis: $timeBasis,
+            precision: $precision,
+            availability: $availability,
+            providerMetric: $providerMetric,
+            periodStart: $periodStart,
+            periodEnd: $periodEnd,
+        );
+    }
+
+    /**
+     * A stored period date: null when none, false when it cannot be read.
+     */
+    private static function storedDate(mixed $stored): CarbonImmutable|false|null
+    {
+        if (blank($stored)) {
+            return null;
+        }
+
+        return is_string($stored) ? rescue(fn (): CarbonImmutable => CarbonImmutable::parse($stored), false, report: false) : false;
     }
 
     /**

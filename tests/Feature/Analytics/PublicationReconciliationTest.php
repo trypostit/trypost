@@ -81,23 +81,24 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
         'platform_post_id' => 'v_pub_provisional',
     ]);
     $provisional = app(SyncTryPostPublication::class)->handle($post);
+    $publishedAt = now('UTC')->subDays(2)->startOfHour()->toImmutable();
     $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
-        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        publishedAt: $publishedAt,
         contentType: PublicationContentType::Video,
         permalink: 'https://www.tiktok.com/@example/video/123456789',
     ));
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $provisional->id,
-        'date' => '2026-09-21',
-        'collected_at' => '2026-09-21 10:00:00',
+        'date' => $publishedAt->addDay()->toDateString(),
+        'collected_at' => $publishedAt->addDay()->setTime(10, 0),
         'metrics' => storedMetrics(['views' => 5]),
         'views_count' => 5,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $discovered->id,
-        'date' => '2026-09-21',
-        'collected_at' => '2026-09-21 12:00:00',
+        'date' => $publishedAt->addDay()->toDateString(),
+        'collected_at' => $publishedAt->addDay()->setTime(12, 0),
         'metrics' => storedMetrics(['views' => 12]),
         'views_count' => 12,
     ]);
@@ -113,7 +114,7 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
 
     app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
-        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        publishedAt: $publishedAt,
         contentType: PublicationContentType::Video,
     ));
     expect(AnalyticsPublication::query()->count())->toBe(1);
