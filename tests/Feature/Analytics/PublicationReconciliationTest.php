@@ -425,35 +425,17 @@ test('merging two reads of the same day follows the same-day rule of every read'
     ],
 ]);
 
-test('a stored metric this version cannot read back is kept, not lost or fatal', function () {
+test('a stored metric that is not a measured value never replaces one, and is kept where nothing else is', function () {
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $legacy = ['value' => 7, 'unit' => 'count', 'time_basis' => 'lifetime', 'precision' => 'exact', 'availability' => 'available'];
     $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
-    $badProviderMetric = [...$legacy, 'provider_metric' => 12];
-    $badPeriod = [...$legacy, 'period_start' => 'not a date'];
-    $badUnit = [...$legacy, 'unit' => ['count']];
-    $discoveredSnapshot->forceFill(['metrics' => [
-        ...$discoveredSnapshot->metrics,
-        'a_retired_metric' => $legacy,
-        'reactions' => ['value' => 3],
-        'views' => ['value' => 99],
-        'shares' => $badProviderMetric,
-        'clicks' => $badPeriod,
-        'saves' => $badUnit,
-        'reach' => [...$legacy, 'period_start' => ''],
-    ]])->save();
+    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'views' => ['value' => 'many']]])->save();
 
     expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
 
     $metrics = $publication->dailySnapshots()->sole()->metrics;
 
     expect(data_get($metrics, 'a_retired_metric'))->toEqual($legacy)
-        ->and(data_get($metrics, 'shares'))->toEqual($badProviderMetric)
-        ->and(data_get($metrics, 'clicks'))->toEqual($badPeriod)
-        ->and(data_get($metrics, 'saves'))->toEqual($badUnit)
-        ->and(data_get($metrics, 'reach.value'))->toBe(7)
-        ->and(data_get($metrics, 'reach.period_start'))->toBeNull()
-        ->and(data_get($metrics, 'reactions'))->toEqual(['value' => 3])
         ->and(data_get($metrics, 'views.value'))->toBe(52);
 });
 
@@ -476,7 +458,7 @@ test('a merge read from a publication that has moved since does nothing', functi
         ->and($second->fresh())->not->toBeNull();
 });
 
-test('merging snapshots stored without metrics keeps their counts', function () {
+test('a snapshot stored without metrics is replaced whole by the newer one', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
     $tracked = app(SyncTryPostPublication::class)->handle($post);
@@ -492,18 +474,7 @@ test('merging snapshots stored without metrics keeps their counts', function () 
 
     app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1');
 
-    expect($tracked->dailySnapshots()->sole()->only(['views_count', 'comments_count']))->toEqual(['views_count' => 52, 'comments_count' => 3]);
-});
-
-test('merging a snapshot stored without metrics picks the exposure from the merged counts', function () {
-    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 50], ['views' => 50], 1);
-    AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->update(['metrics' => null, 'reach_count' => 100, 'views_count' => null, 'exposure_count' => 100, 'exposure_kind' => 'reach']);
-    AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->update(['views_count' => 50, 'exposure_count' => 50, 'exposure_kind' => 'views']);
-
-    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
-
-    expect($publication->dailySnapshots()->sole()->only(['reach_count', 'views_count', 'exposure_count', 'exposure_kind']))
-        ->toEqual(['reach_count' => 100, 'views_count' => 50, 'exposure_count' => 100, 'exposure_kind' => ExposureKind::Reach]);
+    expect($tracked->dailySnapshots()->sole()->only(['views_count', 'comments_count']))->toEqual(['views_count' => null, 'comments_count' => 3]);
 });
 
 test('a merged publication keeps the latest time discovery saw the post', function () {

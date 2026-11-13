@@ -21,6 +21,7 @@ use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -132,7 +133,9 @@ class ImportExternalPosts
             $target = self::tryPostTarget($account, $publication);
 
             if (filled($target)) {
-                if (! self::linkToPost($target, $publication) && $target->platform_post_id !== $publication->remote_id) {
+                if (! self::linkToPost($target, $publication)
+                    && $target->platform_post_id !== $publication->remote_id
+                    && $publication->provider_published_at->between(...self::ownPagePostWindow($target))) {
                     self::reportUnlinkedPagePost($publication, $target);
                 }
 
@@ -176,9 +179,11 @@ class ImportExternalPosts
     }
 
     /**
-     * A Page post carrying a TryPost post's media that was not taken for that
-     * post's own (another Page post shares the media, or it was published far
-     * from the post): left out of the import, reported once a day.
+     * A Page post carrying a TryPost post's media, published within its window,
+     * that was not taken for the post's own (another Page post there shares the
+     * media, or the tracked publication could not take the merge): left out of
+     * the import, reported once a day. A Page post sharing the media later is
+     * expected and not reported.
      */
     private static function reportUnlinkedPagePost(AnalyticsPublication $publication, Post $post): void
     {
@@ -231,11 +236,7 @@ class ImportExternalPosts
             return false;
         }
 
-        $publishedAt = $post->published_at ?? $post->publication_updated_at ?? $post->updated_at;
-        $window = [
-            $publishedAt->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
-            $publishedAt->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
-        ];
+        $window = self::ownPagePostWindow($post);
 
         if (! $publication->provider_published_at->between(...$window)) {
             return false;
@@ -248,6 +249,22 @@ class ImportExternalPosts
             ->where(fn (Builder $query): Builder => collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
                 ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $query))
             ->count() === 1;
+    }
+
+    /**
+     * The times a TryPost post's own Page post may carry: OWN_PAGE_POST_WINDOW_MINUTES
+     * around its publication, placed as tryPost() places it.
+     *
+     * @return array{0: CarbonInterface, 1: CarbonInterface}
+     */
+    private static function ownPagePostWindow(Post $post): array
+    {
+        $publishedAt = $post->published_at ?? $post->publication_updated_at ?? $post->updated_at;
+
+        return [
+            $publishedAt->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+            $publishedAt->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+        ];
     }
 
     /**

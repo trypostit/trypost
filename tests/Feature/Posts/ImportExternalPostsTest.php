@@ -371,18 +371,22 @@ test('a page post sharing a facebook video days later does not stop the trypost 
         ->and(Post::query()->imported()->exists())->toBeFalse();
 });
 
-test('a page post left unlinked is reported once a day', function () {
+test('an ambiguous page post is reported once a day, and a later share is not', function () {
     Log::spy();
     $account = SocialAccount::factory()->facebook()->create();
-    Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);
-    $later = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);
+    externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $first = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subDays(2)->addMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $second = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subDays(2)->addMinutes(2), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-3', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
 
     ImportExternalPosts::execute($account);
     ImportExternalPosts::execute($account);
 
-    Log::shouldHaveReceived('warning')
-        ->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on(fn (array $context): bool => $context['analytics_publication_id'] === $later->id))
-        ->once();
+    $reported = fn (AnalyticsPublication $publication): Closure => fn (array $context): bool => $context['analytics_publication_id'] === $publication->id;
+    Log::shouldHaveReceived('warning')->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($first)))->once();
+    Log::shouldHaveReceived('warning')->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($second)))->once();
+    Log::shouldNotHaveReceived('warning', ['Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($share))]);
 });
 
 test('a facebook page post published long after the trypost post is not its own', function (bool $tracked) {
