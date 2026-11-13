@@ -3,6 +3,7 @@ import { IconPlayerPlayFilled } from '@tabler/icons-vue';
 import { computed, nextTick, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
@@ -89,6 +90,10 @@ const openLabel = computed(() =>
     [channelLabel.value, time.value, limitText(text.value, 100)]
         .filter(Boolean)
         .join(' · '),
+);
+
+const isPending = computed(
+    () => props.post.status === PostStatus.PendingApproval,
 );
 
 const hasMenu = computed(
@@ -204,6 +209,14 @@ const hasMenu = computed(
                 :labels="post.labels"
                 :test-key="`board-${post.id}`"
             />
+        </div>
+
+        <div
+            v-if="isPending"
+            class="relative z-10 flex flex-wrap gap-2"
+            :data-testid="`board-card-approval-${post.id}`"
+        >
+            <PostApprovalActions :post="post" :test-key="`board-${post.id}`" />
         </div>
 
         <div v-if="hasMenu" class="absolute top-2 end-2 z-10">

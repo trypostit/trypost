@@ -18,11 +18,9 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
-    IconX,
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
 
-import { reject as rejectPostRoute } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import { edit as editPostRoute } from '@/actions/App/Http/Controllers/App/PostController';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
@@ -30,7 +28,7 @@ import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostNotesPanel from '@/components/posts/editor/PostNotesPanel.vue';
 import PostScheduleModeBadge from '@/components/posts/PostScheduleModeBadge.vue';
 import AddToQueueButton from '@/components/publish/AddToQueueButton.vue';
-import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
+import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
@@ -66,8 +64,6 @@ import {
     editPostCardUrlKey,
     schedulePostCard,
     sharePostCardLink,
-    toastFirstError,
-    usePostCardReload,
 } from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -125,8 +121,7 @@ const emit = defineEmits<{
 const MAX_THUMBNAILS = 4;
 
 const page = usePage();
-const { canApprove, canCreatePost, canPublishDirectly } =
-    useWorkspaceAbilities();
+const { canCreatePost, canPublishDirectly } = useWorkspaceAbilities();
 const deletePost = inject(deletePostCardKey, () => {});
 const editUrl = inject(editPostCardUrlKey, (post: PostCard) =>
     editPostRoute.url(post.id),
@@ -352,23 +347,6 @@ const showStatus = computed(
 );
 
 const hasFailure = computed(() => props.post.status === PostStatus.Failed);
-
-const approvalReload = usePostCardReload({
-    only: ['posts', 'counts', 'queue', 'hasData'],
-    reset: ['posts'],
-});
-
-const rejectPost = (): void => {
-    router.put(
-        rejectPostRoute.url(props.post.id),
-        {},
-        { ...approvalReload(), preserveScroll: true, onError: toastFirstError },
-    );
-};
-
-const revertRequest = (): void => {
-    schedulePostCard(props.post.id, 'draft', approvalReload());
-};
 
 const recurrence = computed(() =>
     props.post.status === PostStatus.Scheduled && props.post.scheduled_at
@@ -868,27 +846,11 @@ defineExpose({ openDetails, runMenuAction: onMenuSelect });
                                 }}
                             </TooltipContent>
                         </Tooltip>
-                        <template v-if="isPending && canApprove">
-                            <ApprovePostButton :post="post" :test-key="post.id" />
-                            <Button
-                                variant="outline"
-                                class="text-destructive-text"
-                                :data-testid="`post-reject-${post.id}`"
-                                @click="rejectPost"
-                            >
-                                <IconX class="size-4" />
-                                {{ $t('posts.approvals.reject') }}
-                            </Button>
-                        </template>
-                        <Button
-                            v-else-if="isPending"
-                            variant="outline"
-                            :data-testid="`post-revert-${post.id}`"
-                            @click="revertRequest"
-                        >
-                            <IconX class="size-4" />
-                            {{ $t('posts.approvals.revert') }}
-                        </Button>
+                        <PostApprovalActions
+                            v-if="isPending"
+                            :post="post"
+                            :test-key="post.id"
+                        />
                         <AddToQueueButton
                             v-if="canCreatePost && tab === 'drafts' && account"
                             :post="post"

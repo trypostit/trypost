@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Models\Post;
@@ -173,5 +174,42 @@ test('a card action reloads the columns, so a tagged card moves to its tag', fun
     waitForText($page, "@board-column-count-label_{$alpha->id}", '1');
 
     expect($this->draft->labels()->pluck('workspace_labels.id')->all())->toBe([$alpha->id]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('an approver approves a pending post from its board card', function () {
+    $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create([
+        'user_id' => $this->user->id,
+        'content' => '<p>Ready for review</p>',
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-approvals @board-card-{$pending->id}");
+
+    $page->click("@post-approve-board-{$pending->id}");
+
+    waitFor($page, "@board-column-scheduled @board-card-{$pending->id}");
+    waitForGone($page, "@board-column-approvals @board-card-{$pending->id}");
+
+    expect($pending->fresh()->status)->toBe(PostStatus::Scheduled);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('an approver rejects a pending post from its board card', function () {
+    $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-approvals @board-card-{$pending->id}");
+
+    $page->click("@post-reject-board-{$pending->id}");
+
+    waitFor($page, "@board-column-draft @board-card-{$pending->id}");
+    waitForGone($page, "@board-column-approvals @board-card-{$pending->id}");
+
+    expect($pending->fresh()->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
 });
