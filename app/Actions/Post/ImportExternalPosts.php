@@ -198,23 +198,32 @@ class ImportExternalPosts
 
     /**
      * The Page post TryPost created when it published a Facebook video or photo:
-     * the only available publication of the channel carrying that media (a
-     * Page post deleted on the network no longer counts), published within
-     * OWN_PAGE_POST_WINDOW_MINUTES of the post. Any doubt (a second Page post
-     * sharing the media, or one published long after) leaves it unlinked.
+     * published within OWN_PAGE_POST_WINDOW_MINUTES of the post, and the only
+     * available publication of the channel carrying that media in that window
+     * (a Page post deleted on the network no longer counts). Any doubt leaves
+     * it unlinked; a Page post sharing the media later stays one of its own.
      */
     private static function isOwnPagePost(Post $post, AnalyticsPublication $publication): bool
     {
         $mediaIds = self::facebookMediaIds($publication);
 
-        if (blank($mediaIds) || blank($post->published_at)
-            || abs($post->published_at->diffInMinutes($publication->provider_published_at)) > self::OWN_PAGE_POST_WINDOW_MINUTES) {
+        if (blank($mediaIds) || blank($post->published_at)) {
+            return false;
+        }
+
+        $window = [
+            $post->published_at->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+            $post->published_at->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+        ];
+
+        if (! $publication->provider_published_at->between(...$window)) {
             return false;
         }
 
         return AnalyticsPublication::query()
             ->available()
             ->where('social_account_id', $publication->social_account_id)
+            ->whereBetween('provider_published_at', $window)
             ->where(fn (Builder $query): Builder => $query
                 ->whereIn('provider_metadata->video_id', $mediaIds)
                 ->orWhereIn('provider_metadata->photo_id', $mediaIds))
