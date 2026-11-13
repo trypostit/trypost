@@ -99,6 +99,7 @@ const props = withDefaults(
         post: PostCard;
         tab: PublishTab;
         displayTimezone: string;
+        canMoveToTop?: boolean;
         canMoveUp?: boolean;
         canMoveDown?: boolean;
         draggable?: boolean;
@@ -106,6 +107,7 @@ const props = withDefaults(
         movable?: boolean;
     }>(),
     {
+        canMoveToTop: false,
         canMoveUp: false,
         canMoveDown: false,
         draggable: false,
@@ -946,6 +948,7 @@ defineExpose({ openDetails });
                             v-if="canCreatePost && !isPublishing"
                             :post="post"
                             :test-key="post.id"
+                            :can-move-to-top="canMoveToTop"
                             :can-move-up="canMoveUp"
                             :can-move-down="canMoveDown"
                             :movable="movable"

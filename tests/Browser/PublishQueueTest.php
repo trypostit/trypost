@@ -214,6 +214,42 @@ test('move up from the card menu moves a queued post into the free posting time 
     $page->assertNoJavaScriptErrors();
 });
 
+test('move to top is disabled for the first post of the queue and enabled below it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $second = publishQueuePost($user, $channel);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    $page->click("@post-card-menu-{$first->id}");
+    waitForState($page, "@post-move-top-{$first->id}", "element.getAttribute('data-disabled') !== null");
+    $page->assertAttribute("@post-move-top-{$first->id}", 'data-disabled', '')
+        ->keys("@post-move-top-{$first->id}", 'Escape');
+    waitForGone($page, "@post-move-top-{$first->id}");
+
+    $page->click("@post-card-menu-{$second->id}");
+    waitFor($page, "@post-move-top-{$second->id}");
+    $page->assertAttributeMissing("@post-move-top-{$second->id}", 'data-disabled')
+        ->assertNoJavaScriptErrors();
+});
+
+test('move to top is enabled when a free posting time comes before the post', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $post = publishQueuePost($user, $channel);
+    $freed = $first->scheduled_at;
+    $first->delete();
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freed));
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-move-top-{$post->id}");
+
+    $page->assertAttributeMissing("@post-move-top-{$post->id}", 'data-disabled')
+        ->assertNoJavaScriptErrors();
+});
+
 test('dragging a queued post above another reorders the queue', function () {
     [$user, , $channel] = publishQueueSetup();
     $a = publishQueuePost($user, $channel);

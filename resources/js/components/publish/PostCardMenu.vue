@@ -34,12 +34,19 @@ const props = withDefaults(
     defineProps<{
         post: PostCard;
         testKey: string;
+        canMoveToTop?: boolean;
         canMoveUp?: boolean;
         canMoveDown?: boolean;
         movable?: boolean;
         details?: boolean;
     }>(),
-    { canMoveUp: false, canMoveDown: false, movable: true, details: true },
+    {
+        canMoveToTop: false,
+        canMoveUp: false,
+        canMoveDown: false,
+        movable: true,
+        details: true,
+    },
 );
 
 const emit = defineEmits<{ select: [action: PostCardMenuAction] }>();
@@ -145,6 +152,7 @@ const isQueued = computed(
                     <template v-if="isQueued">
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
+                            :disabled="!canMoveToTop"
                             :data-testid="`post-move-top-${testKey}`"
                             @click="emit('select', 'move_top')"
                         >

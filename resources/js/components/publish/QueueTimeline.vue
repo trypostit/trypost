@@ -61,7 +61,8 @@ type QueueStep =
     | { kind: 'post'; postId: string }
     | { kind: 'slot'; slot: QueueSlotTarget };
 
-interface QueueNeighbours {
+interface QueueMoves {
+    hasStepAbove: boolean;
     up?: QueueStep;
     down?: QueueStep;
 }
@@ -87,7 +88,6 @@ const isQueuedPost = (item: QueueItem): boolean => {
 };
 
 const isFreeSlot = (item: QueueItem): boolean =>
-    props.slotDrop &&
     item.type === 'slot' &&
     blank(item.post_id) &&
     isMovable(item);
@@ -138,15 +138,21 @@ const channelOf = computed<Record<string, string>>(() =>
     ),
 );
 
-const neighbours = computed<Record<string, QueueNeighbours>>(() => {
-    const byPost: Record<string, QueueNeighbours> = {};
+const stepsToMoveThrough = (steps: QueueStep[]): QueueStep[] =>
+    props.slotDrop ? steps : steps.filter((step) => step.kind === 'post');
+
+const moves = computed<Record<string, QueueMoves>>(() => {
+    const byPost: Record<string, QueueMoves> = {};
 
     for (const steps of Object.values(channelSteps.value)) {
-        steps.forEach((step, index) => {
+        const path = stepsToMoveThrough(steps);
+
+        path.forEach((step, index) => {
             if (step.kind === 'post') {
                 byPost[step.postId] = {
-                    up: steps[index - 1],
-                    down: steps[index + 1],
+                    hasStepAbove: steps[0] !== step,
+                    up: path[index - 1],
+                    down: path[index + 1],
                 };
             }
         });
@@ -158,8 +164,11 @@ const neighbours = computed<Record<string, QueueNeighbours>>(() => {
 const positions = computed<Record<string, QueuePostPosition>>(() => {
     const byPost: Record<string, QueuePostPosition> = {};
 
-    for (const [postId, { up, down }] of Object.entries(neighbours.value)) {
+    for (const [postId, { hasStepAbove, up, down }] of Object.entries(
+        moves.value,
+    )) {
         byPost[postId] = {
+            canMoveToTop: !props.reorderable || hasStepAbove,
             canMoveUp: props.reorderable && filled(up),
             canMoveDown: props.reorderable && filled(down),
         };
@@ -222,7 +231,7 @@ const onMove = (post: PostCard, direction: PostCardMove): void => {
         return;
     }
 
-    const neighbour = neighbours.value[post.id]?.[direction];
+    const neighbour = moves.value[post.id]?.[direction];
 
     if (neighbour?.kind === 'slot') {
         emit('moveToSlot', post.id, neighbour.slot);
