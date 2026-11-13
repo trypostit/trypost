@@ -7,7 +7,6 @@ return [
     'description' => 'Gérez les canaux de cet espace.',
     'connect' => 'Connecter un canal',
     'settings' => 'Paramètres du canal',
-    'manage' => 'Gérer les canaux',
     'publish' => 'Publier',
     'insights' => 'Insights',
     'new_post' => 'Nouvelle publication dans ce canal',
