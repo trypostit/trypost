@@ -45,6 +45,12 @@ class ImportExternalPosts
     private const int MIN_TRUNCATED_MATCH_LENGTH = 20;
 
     /**
+     * How far from the TryPost post a Facebook Page post carrying its video or
+     * photo may be published and still be its own (production: under 4 minutes).
+     */
+    private const int OWN_PAGE_POST_WINDOW_MINUTES = 120;
+
+    /**
      * @return list<string>
      */
     public static function execute(SocialAccount $account): array
@@ -198,16 +204,15 @@ class ImportExternalPosts
     /**
      * The Page post TryPost created when it published a Facebook video or photo:
      * the only publication of the channel carrying that media, published within
-     * the match window of the post. Any doubt (a second Page post sharing the
-     * media, or one published long after) leaves it unlinked.
+     * OWN_PAGE_POST_WINDOW_MINUTES of the post. Any doubt (a second Page post
+     * sharing the media, or one published long after) leaves it unlinked.
      */
     private static function isOwnPagePost(Post $post, AnalyticsPublication $publication): bool
     {
-        $window = (int) config('trypost.external_posts.match_window_minutes');
         $mediaIds = self::facebookMediaIds($publication);
 
-        if ($window < 1 || blank($mediaIds) || blank($post->published_at)
-            || abs($post->published_at->diffInMinutes($publication->provider_published_at)) > $window) {
+        if (blank($mediaIds) || blank($post->published_at)
+            || abs($post->published_at->diffInMinutes($publication->provider_published_at)) > self::OWN_PAGE_POST_WINDOW_MINUTES) {
             return false;
         }
 

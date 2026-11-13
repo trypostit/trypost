@@ -474,6 +474,17 @@ test('a merge read from a publication that has moved since does nothing', functi
         ->and($second->fresh())->not->toBeNull();
 });
 
+test('a merged publication keeps the latest time discovery saw the post', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    $seenAt = now()->subMinutes(5)->startOfSecond();
+    $publication->forceFill(['last_seen_at' => now()->subDays(3)])->save();
+    AnalyticsPublication::query()->whereKeyNot($publication->id)->update(['last_seen_at' => $seenAt]);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    expect($publication->fresh()->last_seen_at->toIso8601String())->toBe($seenAt->toIso8601String());
+});
+
 test('a discovery under another analytics key is not merged and the publication keeps its id', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);

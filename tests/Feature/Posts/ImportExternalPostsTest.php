@@ -207,6 +207,17 @@ test('a facebook post links the trypost video it carries by video id', function 
         ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });
 
+test('turning text matching off keeps linking a facebook post by the media it carries', function () {
+    config()->set('trypost.external_posts.match_window_minutes', 0);
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($tryPost->id);
+});
+
 test('a facebook video already tracked by its trypost publication is merged into it', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
