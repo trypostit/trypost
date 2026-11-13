@@ -40,9 +40,8 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         $verb = $dryRun ? 'Would link' : 'Linked';
 
         AnalyticsPublication::query()
+            ->linkable()
             ->where('platform', Platform::Facebook)
-            ->whereNull('post_id')
-            ->whereNull('post_dismissed_at')
             ->where(fn (Builder $query): Builder => $query
                 ->whereNotNull('provider_metadata->video_id')
                 ->orWhereNotNull('provider_metadata->photo_id'))

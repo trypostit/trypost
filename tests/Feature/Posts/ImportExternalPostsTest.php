@@ -277,8 +277,48 @@ test('a merged facebook video stays one publication when it syncs and is discove
         ->and($publication->remote_id)->toBe('page_post-1')
         ->and($publication->post_id)->toBe($tryPost->id)
         ->and($publication->origin)->toBe(PublicationOrigin::TryPost)
+        ->and($publication->permalink)->toBe('https://www.facebook.com/reel/video-9/')
+        ->and($publication->provider_content_type)->toBe('video_inline')
+        ->and($publication->content_type)->toBe(PublicationContentType::Reel)
+        ->and($publication->provider_published_at->toIso8601String())->toBe($discovered->publishedAt->toIso8601String())
         ->and(Post::query()->imported()->count())->toBe(0)
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
+});
+
+test('a share met before the trypost page post is never linked, whether or not the post is tracked yet', function (bool $tracked) {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+
+    if ($tracked) {
+        externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    }
+
+    $original = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHours(3), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($share->fresh()->post_id)->toBeNull()
+        ->and($tryPost->analyticsPublication()->sole()->remote_id)->toBe('page_post-1')
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+
+    if (! $tracked) {
+        expect($original->fresh()->post_id)->toBe($tryPost->id);
+    }
+})->with(['tracked' => true, 'not tracked yet' => false]);
+
+test('two page posts carrying a facebook video in the same second link neither', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $publishedAt = now()->subHour();
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => $publishedAt, 'provider_metadata' => ['video_id' => 'video-9']]);
+    externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => $publishedAt, 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('video-9')
+        ->and(Post::query()->imported()->exists())->toBeFalse();
 });
 
 test('another page post sharing a merged facebook video stays a publication of its own', function () {

@@ -312,6 +312,7 @@ class UpsertAnalyticsPublication
                 ...$identityFields,
                 'first_seen_at' => $now,
             ]);
+            $keepsDiscovery = self::keepsDiscovery($publication, $origin, $providerPostId);
 
             $values = [
                 'social_account_id' => $liveAccount?->id
@@ -319,19 +320,19 @@ class UpsertAnalyticsPublication
                 'post_id' => $postId ?? $publication->post_id,
                 'platform_user_id' => $identity->platformUserId,
                 'platform' => $identity->platform,
-                'provider_published_at' => $providerPublishedAt,
+                'provider_published_at' => $keepsDiscovery ? $publication->provider_published_at : $providerPublishedAt,
                 'origin' => $origin === PublicationOrigin::TryPost
                     ? PublicationOrigin::TryPost
                     : ($publication->origin ?? PublicationOrigin::External),
-                'content_type' => $contentTypeReported || ! $publication->exists ? $contentType : $publication->content_type,
+                'content_type' => ($contentTypeReported || ! $publication->exists) && ! $keepsDiscovery ? $contentType : $publication->content_type,
                 'availability' => PublicationAvailability::Available,
                 'last_seen_at' => $now,
                 'provider_synced_at' => $providerSyncedAt ?? $publication->provider_synced_at,
             ];
 
             foreach ([
-                'provider_content_type' => $providerContentType,
-                'permalink' => $permalink,
+                'provider_content_type' => $keepsDiscovery ? null : $providerContentType,
+                'permalink' => $keepsDiscovery ? null : $permalink,
                 'excerpt' => $excerpt,
                 'preview_metadata' => $previewMetadata,
                 'provider_metadata' => self::providerMetadataAfterDiscovery($publication, $providerMetadata),
@@ -354,6 +355,19 @@ class UpsertAnalyticsPublication
 
             return $publication->refresh();
         });
+    }
+
+    /**
+     * A TryPost write that found its publication under another remote id (a
+     * Facebook video kept on its video id by the post, merged under its Page
+     * post id) keeps what discovery reported about the network's post: its
+     * link, time and type.
+     */
+    private static function keepsDiscovery(AnalyticsPublication $publication, PublicationOrigin $origin, string $providerPostId): bool
+    {
+        return $origin === PublicationOrigin::TryPost
+            && $publication->exists
+            && $publication->remote_id !== $providerPostId;
     }
 
     /**

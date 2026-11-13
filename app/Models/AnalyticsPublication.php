@@ -91,4 +91,20 @@ class AnalyticsPublication extends Model
     {
         return $query->where('availability', PublicationAvailability::Available);
     }
+
+    /**
+     * Available, linked to no post and not dismissed: what the import may link
+     * or turn into a post.
+     */
+    public function scopeLinkable(Builder $query): Builder
+    {
+        return $query->available()->whereNull('post_id')->whereNull('post_dismissed_at');
+    }
+
+    public function isLinkable(): bool
+    {
+        return $this->availability === PublicationAvailability::Available
+            && blank($this->post_id)
+            && blank($this->post_dismissed_at);
+    }
 }

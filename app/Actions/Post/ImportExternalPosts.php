@@ -119,7 +119,7 @@ class ImportExternalPosts
         return DB::transaction(function () use ($account, $publicationId): ?string {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if (blank($publication) || filled($publication->post_id) || filled($publication->post_dismissed_at)) {
+            if (blank($publication) || ! $publication->isLinkable()) {
                 return null;
             }
 
@@ -147,16 +147,16 @@ class ImportExternalPosts
     }
 
     /**
-     * Links an unlinked publication to the post TryPost published, the way the
-     * import does. Returns that post, or null when it is not a post TryPost
-     * published or there was nothing to link.
+     * Links a publication to the post TryPost published, the way the import
+     * does. Returns that post, or null when it is not a post TryPost published
+     * or it was left as it is.
      */
     public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
     {
         return DB::transaction(function () use ($account, $publicationId): ?Post {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if (blank($publication) || filled($publication->post_id) || filled($publication->post_dismissed_at)) {
+            if (blank($publication) || ! $publication->isLinkable()) {
                 return null;
             }
 
@@ -171,13 +171,18 @@ class ImportExternalPosts
      * post is already tracked under another remote id (a video or reel saved
      * under its video id, a photo under its photo id, discovered under the Page
      * post id), the publication is merged into the tracked one, so Insights
-     * counts the post once. Only while the tracked publication still sits on the
-     * post's own id, and only for the first Page post carrying that media, the
-     * one TryPost published: a later Page post sharing the same video stays a
-     * publication of its own. Any other network keeps the tracked publication.
+     * counts the post once, and only while the tracked one still sits on the
+     * post's own id. A Facebook publication is linked only when it is the first
+     * Page post carrying that media, the one TryPost published: a later Page
+     * post sharing the same video stays a publication of its own. Any other
+     * network keeps the tracked publication.
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
+        if (self::hasEarlierDiscoveryOfSameMedia($publication)) {
+            return false;
+        }
+
         if (blank($post->analyticsPublication)) {
             $publication->update(['post_id' => $post->id]);
 
@@ -186,41 +191,50 @@ class ImportExternalPosts
 
         return $post->platform === Platform::Facebook
             && $post->analyticsPublication->remote_id === $post->platform_post_id
-            && ! self::hasEarlierDiscoveryOfSameMedia($publication)
             && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
     }
 
     /**
-     * Another unlinked Page post of the same channel, published before this one,
-     * carrying the same Facebook video or photo.
+     * Another publication of the same channel, published before this one or in
+     * the same second, carrying the same Facebook video or photo. Whatever its
+     * state: when in doubt, nothing is linked.
      */
     private static function hasEarlierDiscoveryOfSameMedia(AnalyticsPublication $publication): bool
     {
-        $mediaIds = collect(['video_id', 'photo_id'])
-            ->map(fn (string $key): mixed => data_get($publication->provider_metadata, $key))
-            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
-            ->values();
+        $mediaIds = self::facebookMediaIds($publication);
 
-        return AnalyticsPublication::query()
-            ->available()
+        return filled($mediaIds) && AnalyticsPublication::query()
             ->where('social_account_id', $publication->social_account_id)
             ->whereKeyNot($publication->id)
-            ->whereNull('post_id')
-            ->whereNull('post_dismissed_at')
-            ->where('provider_published_at', '<', $publication->provider_published_at)
+            ->where('provider_published_at', '<=', $publication->provider_published_at)
             ->where(fn (Builder $query): Builder => $query
                 ->whereIn('provider_metadata->video_id', $mediaIds)
                 ->orWhereIn('provider_metadata->photo_id', $mediaIds))
             ->exists();
     }
 
-    public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
+    /**
+     * The Facebook video or photo a Page post carries, which TryPost may have
+     * saved as the post's id.
+     *
+     * @return list<string>
+     */
+    private static function facebookMediaIds(AnalyticsPublication $publication): array
     {
-        $remoteIds = collect([
-            $publication->remote_id,
-            $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'video_id') : null,
-            $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'photo_id') : null,
-        ])->filter(fn (mixed $id): bool => is_string($id) && filled($id))->values()->all();
+        if ($publication->platform !== Platform::Facebook) {
+            return [];
+        }
+
+        return collect(['video_id', 'photo_id'])
+            ->map(fn (string $key): mixed => data_get($publication->provider_metadata, $key))
+            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
+            ->values()
+            ->all();
+    }
+
+    private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
+    {
+        $remoteIds = [$publication->remote_id, ...self::facebookMediaIds($publication)];
 
         return Post::query()
             ->where('social_account_id', $account->id)

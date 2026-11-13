@@ -37,8 +37,14 @@ final readonly class MetricValue
         $precision = MetricPrecision::tryFrom((string) data_get($stored, 'precision'));
         $availability = MetricAvailability::tryFrom((string) data_get($stored, 'availability'));
         $value = data_get($stored, 'value');
+        $providerMetric = data_get($stored, 'provider_metric');
+        $periodStart = self::storedDate(data_get($stored, 'period_start'));
+        $periodEnd = self::storedDate(data_get($stored, 'period_end'));
 
-        if (blank($metricKey) || blank($unit) || blank($timeBasis) || blank($precision) || blank($availability) || ! (is_null($value) || is_int($value) || is_float($value))) {
+        if (blank($metricKey) || blank($unit) || blank($timeBasis) || blank($precision) || blank($availability)
+            || ! (is_null($value) || is_int($value) || is_float($value))
+            || ! (is_null($providerMetric) || is_string($providerMetric))
+            || $periodStart === false || $periodEnd === false) {
             return null;
         }
 
@@ -49,10 +55,22 @@ final readonly class MetricValue
             timeBasis: $timeBasis,
             precision: $precision,
             availability: $availability,
-            providerMetric: data_get($stored, 'provider_metric'),
-            periodStart: transform(data_get($stored, 'period_start'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),
-            periodEnd: transform(data_get($stored, 'period_end'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),
+            providerMetric: $providerMetric,
+            periodStart: $periodStart,
+            periodEnd: $periodEnd,
         );
+    }
+
+    /**
+     * A stored period date: null when none, false when it cannot be read.
+     */
+    private static function storedDate(mixed $stored): CarbonImmutable|false|null
+    {
+        if (is_null($stored)) {
+            return null;
+        }
+
+        return is_string($stored) ? rescue(fn (): CarbonImmutable => CarbonImmutable::parse($stored), false, report: false) : false;
     }
 
     /**

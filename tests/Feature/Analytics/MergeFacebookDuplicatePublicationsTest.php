@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Models\AnalyticsPublication;
@@ -105,9 +106,9 @@ test('a dry run counts exactly what a run links', function () {
         ->and($share->fresh()->post_id)->toBeNull();
 });
 
-test('a dismissed publication is left alone, as the import leaves it', function () {
+test('a dismissed or deleted publication is left alone, as the import leaves it', function (array $state) {
     [, , $tracked, $discovered] = facebookReelCountedTwice();
-    $discovered->forceFill(['post_dismissed_at' => now()])->save();
+    $discovered->forceFill($state)->save();
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
         ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
@@ -115,4 +116,7 @@ test('a dismissed publication is left alone, as the import leaves it', function 
 
     expect($discovered->fresh())->not->toBeNull()
         ->and($tracked->fresh()->remote_id)->toBe('media-9');
-});
+})->with([
+    'dismissed' => [['post_dismissed_at' => now()]],
+    'deleted on the network' => [['availability' => PublicationAvailability::Deleted]],
+]);

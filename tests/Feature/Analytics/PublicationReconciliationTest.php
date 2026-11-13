@@ -427,13 +427,24 @@ test('a stored metric this version cannot read back is kept, not lost or fatal',
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $legacy = ['value' => 7, 'unit' => 'count', 'time_basis' => 'lifetime', 'precision' => 'exact', 'availability' => 'available'];
     $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
-    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'reactions' => ['value' => 3], 'views' => ['value' => 99]]])->save();
+    $badProviderMetric = [...$legacy, 'provider_metric' => 12];
+    $badPeriod = [...$legacy, 'period_start' => 'not a date'];
+    $discoveredSnapshot->forceFill(['metrics' => [
+        ...$discoveredSnapshot->metrics,
+        'a_retired_metric' => $legacy,
+        'reactions' => ['value' => 3],
+        'views' => ['value' => 99],
+        'shares' => $badProviderMetric,
+        'clicks' => $badPeriod,
+    ]])->save();
 
     expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
 
     $metrics = $publication->dailySnapshots()->sole()->metrics;
 
     expect(data_get($metrics, 'a_retired_metric'))->toEqual($legacy)
+        ->and(data_get($metrics, 'shares'))->toEqual($badProviderMetric)
+        ->and(data_get($metrics, 'clicks'))->toEqual($badPeriod)
         ->and(data_get($metrics, 'reactions'))->toEqual(['value' => 3])
         ->and(data_get($metrics, 'views.value'))->toBe(52);
 });
