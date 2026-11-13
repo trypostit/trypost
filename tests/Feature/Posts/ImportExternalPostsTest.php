@@ -371,6 +371,20 @@ test('a page post sharing a facebook video days later does not stop the trypost 
         ->and(Post::query()->imported()->exists())->toBeFalse();
 });
 
+test('a page post left unlinked is reported once a day', function () {
+    Log::spy();
+    $account = SocialAccount::factory()->facebook()->create();
+    Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);
+    $later = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    Log::shouldHaveReceived('warning')
+        ->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on(fn (array $context): bool => $context['analytics_publication_id'] === $later->id))
+        ->once();
+});
+
 test('a facebook page post published long after the trypost post is not its own', function (bool $tracked) {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);

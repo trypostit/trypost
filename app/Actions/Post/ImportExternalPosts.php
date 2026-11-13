@@ -132,7 +132,9 @@ class ImportExternalPosts
             $target = self::tryPostTarget($account, $publication);
 
             if (filled($target)) {
-                self::linkToPost($target, $publication);
+                if (! self::linkToPost($target, $publication) && $target->platform_post_id !== $publication->remote_id) {
+                    self::reportUnlinkedPagePost($publication, $target);
+                }
 
                 return null;
             }
@@ -153,9 +155,10 @@ class ImportExternalPosts
     }
 
     /**
-     * Links a publication to the post TryPost published, by the rules the import
-     * follows. Returns that post, or null when it is not a post TryPost
-     * published or it was left as it is.
+     * Links a publication to the post TryPost published, by the linking rules of
+     * the import, whatever its age (the import itself only looks at the newest
+     * publications within the history retention). Returns that post, or null
+     * when it is not a post TryPost published or it was left as it is.
      */
     public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
     {
@@ -170,6 +173,23 @@ class ImportExternalPosts
 
             return filled($target) && self::linkToPost($target, $publication) ? $target : null;
         });
+    }
+
+    /**
+     * A Page post carrying a TryPost post's media that was not taken for that
+     * post's own (another Page post shares the media, or it was published far
+     * from the post): left out of the import, reported once a day.
+     */
+    private static function reportUnlinkedPagePost(AnalyticsPublication $publication, Post $post): void
+    {
+        if (! Cache::add("import-external-posts:unlinked-page-post:{$publication->id}", true, now()->addDay())) {
+            return;
+        }
+
+        Log::warning('Facebook Page post carrying a TryPost media was left unlinked.', [
+            'analytics_publication_id' => $publication->id,
+            'post_id' => $post->id,
+        ]);
     }
 
     /**

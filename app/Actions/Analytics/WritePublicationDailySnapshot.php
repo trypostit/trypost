@@ -84,9 +84,11 @@ class WritePublicationDailySnapshot
      * Folds a same-day snapshot of another publication into `$kept` (one post
      * stored twice, being merged) by the rule every same-day read follows: the
      * newer read applied over the older one. A stored entry this version cannot
-     * read back is kept as it is where the older read has nothing under its key,
-     * and a column the merged metrics leave empty keeps the newer read's value,
-     * else the older one's.
+     * read back is kept as it is where the older read has nothing under its key.
+     * The columns come from the merged metrics when both reads stored them;
+     * otherwise each column is the newer read's, else the older one's, and the
+     * exposure is picked from them as exposure() picks it (reach, impressions,
+     * then views).
      */
     public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
     {
@@ -104,10 +106,27 @@ class WritePublicationDailySnapshot
             'collected_at' => $newer->collected_at,
             'provider_observed_at' => $newer->provider_observed_at ?? $older->provider_observed_at,
             'metrics' => $metrics ?: null,
-            ...collect($this->scalarProjections($metrics))
-                ->map(fn (mixed $value, string $column): mixed => $value ?? data_get($newer, $column) ?? data_get($older, $column))
-                ->all(),
+            ...(filled($older->metrics) && filled($newer->metrics)
+                ? $this->scalarProjections($metrics)
+                : $this->combinedColumns($newer, $older)),
         ])->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function combinedColumns(AnalyticsPublicationDailySnapshot $newer, AnalyticsPublicationDailySnapshot $older): array
+    {
+        $columns = collect(array_keys($this->scalarProjections([])))
+            ->mapWithKeys(fn (string $column): array => [$column => data_get($newer, $column) ?? data_get($older, $column)]);
+        $exposure = collect(['reach_count' => ExposureKind::Reach, 'impressions_count' => ExposureKind::Impressions, 'views_count' => ExposureKind::Views])
+            ->filter(fn (ExposureKind $kind, string $column): bool => filled($columns->get($column)));
+
+        return [
+            ...$columns->all(),
+            'exposure_count' => transform($exposure->keys()->first(), fn (string $column): mixed => $columns->get($column)),
+            'exposure_kind' => $exposure->first()?->value,
+        ];
     }
 
     /**

@@ -22,7 +22,7 @@ use Throwable;
 #[Signature('analytics:merge-facebook-duplicates
     {--force : Run without confirmation in production}
     {--dry-run : Count the duplicates without changing anything}')]
-#[Description('Merge each Facebook video, reel or photo stored twice in Insights into the publication of its TryPost post')]
+#[Description('Link each Facebook Page post carrying a TryPost video or photo to its TryPost post, merging the duplicate, over the whole history')]
 class MergeFacebookDuplicatePublicationsCommand extends Command
 {
     use ConfirmableTrait;

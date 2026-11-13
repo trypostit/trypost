@@ -495,6 +495,17 @@ test('merging snapshots stored without metrics keeps their counts', function () 
     expect($tracked->dailySnapshots()->sole()->only(['views_count', 'comments_count']))->toEqual(['views_count' => 52, 'comments_count' => 3]);
 });
 
+test('merging a snapshot stored without metrics picks the exposure from the merged counts', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 50], ['views' => 50], 1);
+    AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->update(['metrics' => null, 'reach_count' => 100, 'views_count' => null, 'exposure_count' => 100, 'exposure_kind' => 'reach']);
+    AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->update(['views_count' => 50, 'exposure_count' => 50, 'exposure_kind' => 'views']);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    expect($publication->dailySnapshots()->sole()->only(['reach_count', 'views_count', 'exposure_count', 'exposure_kind']))
+        ->toEqual(['reach_count' => 100, 'views_count' => 50, 'exposure_count' => 100, 'exposure_kind' => ExposureKind::Reach]);
+});
+
 test('a merged publication keeps the latest time discovery saw the post', function () {
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $seenAt = now()->subMinutes(5)->startOfSecond();
