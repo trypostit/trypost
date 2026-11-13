@@ -83,10 +83,9 @@ const confirmTime = (value: string): void => {
         <PopoverTrigger as-child>
             <Button
                 variant="outline"
-                class="text-success-text"
                 :data-testid="`post-approve-${testKey}`"
             >
-                <IconCheck class="size-4" />
+                <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
                 {{ $t(labelKey) }}
             </Button>
         </PopoverTrigger>
@@ -118,11 +117,10 @@ const confirmTime = (value: string): void => {
     <Button
         v-else
         variant="outline"
-        class="text-success-text"
         :data-testid="`post-approve-${testKey}`"
         @click="send({})"
     >
-        <IconCheck class="size-4" />
+        <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
         {{ $t(labelKey) }}
     </Button>
 </template>

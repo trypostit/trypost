@@ -48,11 +48,13 @@ const revertRequest = (): void => {
             <ApprovePostButton :post="post" :test-key="testKey" />
             <Button
                 variant="outline"
-                class="text-destructive-text"
                 :data-testid="`post-reject-${testKey}`"
                 @click="rejectPost"
             >
-                <IconX class="size-4" />
+                <IconX
+                    class="-mx-0.5 size-4 text-destructive-text"
+                    stroke-width="2.25"
+                />
                 {{ $t('posts.approvals.reject') }}
             </Button>
         </template>
@@ -62,7 +64,10 @@ const revertRequest = (): void => {
             :data-testid="`post-revert-${testKey}`"
             @click="revertRequest"
         >
-            <IconX class="size-4" />
+            <IconX
+                class="-mx-0.5 size-4 text-muted-foreground"
+                stroke-width="2.25"
+            />
             {{ $t('posts.approvals.revert') }}
         </Button>
     </div>
