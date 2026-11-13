@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Reddet',
         'revert' => 'Onay isteğini geri al',
         'requested' => 'Onay istendi',
+        'toasts' => [
+            'scheduled' => 'Gönderi onaylandı ve planlandı',
+            'queued' => 'Gönderi onaylandı ve kuyruğa eklendi',
+            'publishing' => 'Gönderi onaylandı, şimdi yayınlanıyor',
+            'rejected' => 'Gönderi reddedildi ve taslaklara taşındı',
+        ],
         'errors' => [
             'not_pending' => 'Bu gönderi artık onay beklemiyor.',
             'time_passed' => 'İstenen saat geçti. Yeni bir saat seçin.',

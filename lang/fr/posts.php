@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Refuser',
         'revert' => 'Annuler la demande d\'approbation',
         'requested' => 'Approbation demandée',
+        'toasts' => [
+            'scheduled' => 'Publication approuvée et programmée',
+            'queued' => 'Publication approuvée et ajoutée à la file',
+            'publishing' => 'Publication approuvée, en cours de publication',
+            'rejected' => 'Publication refusée et remise en brouillon',
+        ],
         'errors' => [
             'not_pending' => 'Cette publication n\'attend plus d\'approbation.',
             'time_passed' => 'L\'heure demandée est passée. Choisissez une nouvelle heure.',

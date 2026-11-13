@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Afwijzen',
         'revert' => 'Goedkeuringsverzoek intrekken',
         'requested' => 'Goedkeuring aangevraagd',
+        'toasts' => [
+            'scheduled' => 'Post goedgekeurd en ingepland',
+            'queued' => 'Post goedgekeurd en aan de wachtrij toegevoegd',
+            'publishing' => 'Post goedgekeurd, wordt nu gepubliceerd',
+            'rejected' => 'Post afgewezen en naar concepten verplaatst',
+        ],
         'errors' => [
             'not_pending' => 'Dit bericht wacht niet meer op goedkeuring.',
             'time_passed' => 'Het gevraagde tijdstip is voorbij. Kies een nieuw tijdstip.',

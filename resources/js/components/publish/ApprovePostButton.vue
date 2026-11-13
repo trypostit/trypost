@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { IconCheck, IconSend } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import { approve } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import ComposerSchedulePicker from '@/components/posts/composer/ComposerSchedulePicker.vue';
@@ -17,6 +19,7 @@ import {
 } from '@/composables/usePostCardActions';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { blank } from '@/lib/helpers';
 import { userTimezone } from '@/preferences';
 import { ScheduleMode } from '@/types/post';
 import type { PostCard } from '@/types/publish';
@@ -62,12 +65,29 @@ const labelKey = computed(() => {
         : 'posts.approvals.schedule';
 });
 
+/** What the approval did, named after the button the approver clicked. */
+const approvedMessageKey = (payload: {
+    scheduled_at?: string;
+    publish_now?: true;
+}): string => {
+    if (payload.publish_now) {
+        return 'posts.approvals.toasts.publishing';
+    }
+
+    return isQueued.value && blank(payload.scheduled_at)
+        ? 'posts.approvals.toasts.queued'
+        : 'posts.approvals.toasts.scheduled';
+};
+
 const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
     router.put(approve.url(props.post.id), payload, {
         ...reload(),
         preserveScroll: true,
         onSuccess: () => {
             pickerOpen.value = false;
+            toast.success(trans(approvedMessageKey(payload)), {
+                testId: 'post-approval-toast',
+            });
         },
         onError: toastFirstError,
     });

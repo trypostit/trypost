@@ -1133,6 +1133,12 @@ return [
         'reject' => '拒绝',
         'revert' => '撤回审批请求',
         'requested' => '已提交审批请求',
+        'toasts' => [
+            'scheduled' => '帖子已批准并已排期',
+            'queued' => '帖子已批准并已加入队列',
+            'publishing' => '帖子已批准，正在发布',
+            'rejected' => '帖子已拒绝并移回草稿',
+        ],
         'errors' => [
             'not_pending' => '该帖子已不再等待审批。',
             'time_passed' => '请求的时间已过，请选择新的时间。',

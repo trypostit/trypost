@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Reject',
         'revert' => 'Revert approval request',
         'requested' => 'Approval requested',
+        'toasts' => [
+            'scheduled' => 'Post approved and scheduled',
+            'queued' => 'Post approved and added to queue',
+            'publishing' => 'Post approved and publishing now',
+            'rejected' => 'Post rejected and moved to drafts',
+        ],
         'errors' => [
             'not_pending' => 'This post is no longer waiting for approval.',
             'time_passed' => 'The requested time has passed. Choose a new time.',

@@ -1134,6 +1134,12 @@ return [
         'reject' => 'Rechazar',
         'revert' => 'Retirar solicitud de aprobación',
         'requested' => 'Aprobación solicitada',
+        'toasts' => [
+            'scheduled' => 'Publicación aprobada y programada',
+            'queued' => 'Publicación aprobada y añadida a la cola',
+            'publishing' => 'Publicación aprobada, publicándose ahora',
+            'rejected' => 'Publicación rechazada y movida a borradores',
+        ],
         'errors' => [
             'not_pending' => 'Esta publicación ya no está pendiente de aprobación.',
             'time_passed' => 'La hora solicitada ya pasó. Elige una nueva hora.',

@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Rifiuta',
         'revert' => 'Ritira richiesta di approvazione',
         'requested' => 'Approvazione richiesta',
+        'toasts' => [
+            'scheduled' => 'Post approvato e programmato',
+            'queued' => 'Post approvato e aggiunto alla coda',
+            'publishing' => 'Post approvato, pubblicazione in corso',
+            'rejected' => 'Post rifiutato e spostato nelle bozze',
+        ],
         'errors' => [
             'not_pending' => 'Questo post non è più in attesa di approvazione.',
             'time_passed' => 'L\'orario richiesto è passato. Scegli un nuovo orario.',

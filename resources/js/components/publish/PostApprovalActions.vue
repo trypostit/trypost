@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { IconX } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
+import { toast } from 'vue-sonner';
 
 import { reject as rejectPostRoute } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
@@ -33,7 +35,16 @@ const rejectPost = (): void => {
     router.put(
         rejectPostRoute.url(props.post.id),
         {},
-        { ...approvalReload(), preserveScroll: true, onError: toastFirstError },
+        {
+            ...approvalReload(),
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success(trans('posts.approvals.toasts.rejected'), {
+                    testId: 'post-approval-toast',
+                });
+            },
+            onError: toastFirstError,
+        },
     );
 };
 

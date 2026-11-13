@@ -193,6 +193,8 @@ test('an approver approves a pending post from its board card', function () {
     waitFor($page, "@board-column-scheduled @board-card-{$pending->id}");
     waitForGone($page, "@board-column-approvals @board-card-{$pending->id}");
 
+    waitForText($page, '@post-approval-toast', __('posts.approvals.toasts.scheduled'));
+
     expect($pending->fresh()->status)->toBe(PostStatus::Scheduled);
     $page->assertNoJavaScriptErrors();
 });
@@ -209,6 +211,8 @@ test('an approver rejects a pending post from its board card', function () {
 
     waitFor($page, "@board-column-draft @board-card-{$pending->id}");
     waitForGone($page, "@board-column-approvals @board-card-{$pending->id}");
+
+    waitForText($page, '@post-approval-toast', __('posts.approvals.toasts.rejected'));
 
     expect($pending->fresh()->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();

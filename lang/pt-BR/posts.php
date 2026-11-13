@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Rejeitar',
         'revert' => 'Desfazer pedido de aprovação',
         'requested' => 'Aprovação solicitada',
+        'toasts' => [
+            'scheduled' => 'Post aprovado e agendado',
+            'queued' => 'Post aprovado e adicionado à fila',
+            'publishing' => 'Post aprovado e publicando agora',
+            'rejected' => 'Post rejeitado e movido para rascunhos',
+        ],
         'errors' => [
             'not_pending' => 'Este post não está mais aguardando aprovação.',
             'time_passed' => 'O horário pedido já passou. Escolha um novo horário.',

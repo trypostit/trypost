@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Ablehnen',
         'revert' => 'Freigabeanfrage zurückziehen',
         'requested' => 'Freigabe angefragt',
+        'toasts' => [
+            'scheduled' => 'Beitrag freigegeben und geplant',
+            'queued' => 'Beitrag freigegeben und zur Warteschlange hinzugefügt',
+            'publishing' => 'Beitrag freigegeben, wird jetzt veröffentlicht',
+            'rejected' => 'Beitrag abgelehnt und zu den Entwürfen verschoben',
+        ],
         'errors' => [
             'not_pending' => 'Dieser Beitrag wartet nicht mehr auf Freigabe.',
             'time_passed' => 'Der gewünschte Zeitpunkt ist vorbei. Wähle einen neuen.',

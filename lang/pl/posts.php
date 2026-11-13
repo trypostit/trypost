@@ -1133,6 +1133,12 @@ return [
         'reject' => 'Odrzuć',
         'revert' => 'Wycofaj prośbę o zatwierdzenie',
         'requested' => 'Wysłano prośbę o zatwierdzenie',
+        'toasts' => [
+            'scheduled' => 'Post zatwierdzony i zaplanowany',
+            'queued' => 'Post zatwierdzony i dodany do kolejki',
+            'publishing' => 'Post zatwierdzony, trwa publikacja',
+            'rejected' => 'Post odrzucony i przeniesiony do szkiców',
+        ],
         'errors' => [
             'not_pending' => 'Ten post nie czeka już na zatwierdzenie.',
             'time_passed' => 'Wybrany czas minął. Wybierz nowy czas.',
