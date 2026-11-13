@@ -352,6 +352,17 @@ const findNote = async (noteId: string): Promise<Element | null> => {
     return (await loadOlderNotes()) ? findNote(noteId) : null;
 };
 
+/** Resolves once the browser has laid out and painted the current changes. */
+const afterPaint = (): Promise<void> =>
+    new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+
+/**
+ * Scrolls to a note and highlights it. The scroll waits for the page to settle:
+ * `<InfiniteScroll reverse>` keeps the reader's place after loading an older
+ * page, which would otherwise scroll the note back out of view.
+ */
 const focusNote = async (noteId: string) => {
     const element = await findNote(noteId);
 
@@ -359,6 +370,7 @@ const focusNote = async (noteId: string) => {
         return;
     }
 
+    await afterPaint();
     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     highlightedId.value = noteId;
     setTimeout(() => {

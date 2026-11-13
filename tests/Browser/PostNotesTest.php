@@ -468,6 +468,7 @@ test('scrolling up the thread loads older notes, reacting or sending keeps them,
     $oldest = "[data-note-id=\"{$notes->first()->id}\"]";
     $linked = visit(route('app.posts.edit', ['post' => $post, 'comment' => $notes->first()->id]));
     waitForState($linked, $oldest, "element.dataset.highlighted === 'true'");
+    waitForState($linked, $oldest, "(() => { const list = document.querySelector('[data-testid=notes-list]').getBoundingClientRect(); const note = element.getBoundingClientRect(); return note.top >= list.top - 1 && note.bottom <= list.bottom + 1; })()");
     $linked->assertAttribute($oldest, 'data-highlighted', 'true')
         ->assertNoJavaScriptErrors();
 });
