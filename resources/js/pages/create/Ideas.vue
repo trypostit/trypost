@@ -331,6 +331,11 @@ const moveIdea = (
 
                 return false;
             },
+            onNetworkError: () => {
+                rollback(trans('create.ideas.errors.move_failed'));
+
+                return false;
+            },
         },
     );
 };
@@ -363,6 +368,11 @@ const reorderColumns = (orderedStageIds: string[]): void => {
                         trans('create.ideas.errors.move_failed'),
                 ),
             onHttpException: () => {
+                rollback(trans('create.ideas.errors.move_failed'));
+
+                return false;
+            },
+            onNetworkError: () => {
                 rollback(trans('create.ideas.errors.move_failed'));
 
                 return false;

@@ -153,6 +153,31 @@ test('dragging a card onto an empty column moves it there', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a move that cannot reach the server says so and puts the card back', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-{$a->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function () {
+                XMLHttpRequest.prototype.send = send;
+                this.dispatchEvent(new ProgressEvent('error'));
+                this.dispatchEvent(new ProgressEvent('loadend'));
+            };
+        })()
+    JS);
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
+    waitFor($page, '@ideas-move-error-toast');
+    waitFor($page, "@idea-column-{$stages['todo']->id} @idea-card-{$a->id}");
+
+    $page->assertNoJavaScriptErrors();
+    expect($a->refresh()->idea_stage_id)->toBe($stages['todo']->id);
+});
+
 test('a new stage is created on enter and nothing is created on escape', function () {
     [$user, $workspace] = createIdeasBoardSetup();
     $this->actingAs($user);
