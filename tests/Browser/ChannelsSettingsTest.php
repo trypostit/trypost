@@ -111,11 +111,8 @@ test('a channel with a lost connection shows the disconnected dot in the list an
         ->assertVisible("@channel-reconnect-{$lost->id}")
         ->assertVisible("@channel-settings-{$lost->id}")
         ->assertMissing("@channel-connection-lost-{$healthy->id}")
-        ->assertMissing("@channel-reconnect-{$healthy->id}");
-
-    $page->hover("@channel-reconnect-{$lost->id}");
-    waitFor($page, "@channel-reconnect-tooltip-{$lost->id}");
-    $page->assertSeeIn("@channel-reconnect-tooltip-{$lost->id}", __('channels.reconnect'))
+        ->assertMissing("@channel-reconnect-{$healthy->id}")
+        ->assertSeeIn("@channel-reconnect-{$lost->id}", __('channels.reconnect'))
         ->assertNoJavaScriptErrors();
 
     $page = visit(route('app.channels.publish', $lost));

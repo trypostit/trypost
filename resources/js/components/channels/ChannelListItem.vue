@@ -22,11 +22,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { filled } from '@/lib/helpers';
@@ -167,25 +162,17 @@ const networkLine = computed((): string => {
         </div>
 
         <div class="flex shrink-0 items-center justify-end gap-1 max-md:order-2">
-            <Tooltip v-if="lost">
-                <TooltipTrigger as-child>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="max-md:hidden"
-                        :aria-label="$t('channels.reconnect')"
-                        :data-testid="`channel-reconnect-${channel.id}`"
-                        @click="emit('reconnect', channel)"
-                    >
-                        <IconRefresh class="size-4 text-destructive" />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent
-                    :data-testid="`channel-reconnect-tooltip-${channel.id}`"
-                >
-                    {{ $t('channels.reconnect') }}
-                </TooltipContent>
-            </Tooltip>
+            <Button
+                v-if="lost"
+                variant="destructive"
+                size="sm"
+                class="max-md:hidden"
+                :data-testid="`channel-reconnect-${channel.id}`"
+                @click="emit('reconnect', channel)"
+            >
+                <IconRefresh class="size-4" />
+                {{ $t('channels.reconnect') }}
+            </Button>
             <Button as-child variant="ghost" size="icon">
                 <Link
                     :href="settingsRoute.url(channel.id)"
@@ -250,6 +237,7 @@ const networkLine = computed((): string => {
 
         <Button
             v-if="lost"
+            variant="destructive"
             size="sm"
             class="col-span-2 order-4 md:hidden"
             :data-testid="`channel-reconnect-phone-${channel.id}`"

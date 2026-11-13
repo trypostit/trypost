@@ -5,4 +5,4 @@
  * not shift the columns of the others.
  */
 export const CHANNEL_LIST_COLUMNS =
-    'md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_8.75rem]';
+    'md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_13rem]';
