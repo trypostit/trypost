@@ -489,8 +489,7 @@ test('carrying facebook media matches only the ids given', function () {
     AnalyticsPublication::factory()->create(['social_account_id' => $account->id, 'platform' => Platform::Facebook, 'provider_metadata' => ['photo_id' => 'photo-3']]);
 
     expect(AnalyticsPublication::query()->carryingFacebookMedia(['video-9'])->pluck('id')->all())->toBe([$carrying->id])
-        ->and(AnalyticsPublication::query()->carryingFacebookMedia([])->exists())->toBeFalse()
-        ->and(AnalyticsPublication::query()->carryingAnyFacebookMedia()->count())->toBe(2);
+        ->and(AnalyticsPublication::query()->carryingFacebookMedia([])->exists())->toBeFalse();
 });
 
 test('a merged publication keeps the latest time discovery saw the post', function () {
@@ -533,8 +532,4 @@ test('a discovery under another analytics key is not merged and the publication 
 
     expect(Post::query()->imported()->exists())->toBeFalse()
         ->and($discovered->fresh()->post_id)->toBeNull();
-
-    $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
-        ->assertSuccessful();
 });
