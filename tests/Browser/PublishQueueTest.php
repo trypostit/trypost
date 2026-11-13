@@ -455,6 +455,26 @@ function publishQueueCustomPost(User $user, SocialAccount $channel, CarbonInterf
     return $post;
 }
 
+test('move up from the card menu moves a custom-time post into the free posting time before it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [$freeAbove, $slot] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $custom = publishQueueCustomPost($user, $channel, $slot);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freeAbove));
+    $page->click("@post-card-menu-{$custom->id}");
+    waitFor($page, "@post-move-top-{$custom->id}");
+    $page->assertAttributeMissing("@post-move-top-{$custom->id}", 'data-disabled')
+        ->assertAttributeMissing("@post-move-down-{$custom->id}", 'data-disabled')
+        ->click("@post-move-up-{$custom->id}");
+    waitForDatabase($page, fn () => $custom->refresh()->scheduled_at->equalTo($freeAbove));
+
+    expect($custom->refresh()->scheduled_at->equalTo($freeAbove))->toBeTrue()
+        ->and($custom->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
 function publishQueueFollows(mixed $page, string $firstTestId, string $secondTestId): bool
 {
     return (bool) $page->script("(document.querySelector('[data-testid=\"{$firstTestId}\"]').compareDocumentPosition(document.querySelector('[data-testid=\"{$secondTestId}\"]')) & Node.DOCUMENT_POSITION_FOLLOWING) > 0");

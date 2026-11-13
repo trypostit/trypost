@@ -58,7 +58,7 @@ const { register, registerSlot, dropIndicator, slotDropKey } =
     });
 
 type QueueStep =
-    | { kind: 'post'; postId: string }
+    | { kind: 'queued' | 'custom'; postId: string }
     | { kind: 'slot'; slot: QueueSlotTarget };
 
 interface QueueMoves {
@@ -77,25 +77,21 @@ const isMovable = (item: QueueItem): boolean =>
 const postOf = (item: QueueItem): PostCard | undefined =>
     filled(item.post_id) ? props.posts[item.post_id] : undefined;
 
-const isQueuedPost = (item: QueueItem): boolean => {
-    const post = postOf(item);
-
-    return (
-        post?.status === PostStatus.Scheduled &&
-        post.schedule_mode === ScheduleMode.Queue &&
-        isMovable(item)
-    );
-};
-
 const isFreeSlot = (item: QueueItem): boolean =>
-    item.type === 'slot' &&
-    blank(item.post_id) &&
-    isMovable(item);
+    item.type === 'slot' && blank(item.post_id) && isMovable(item);
 
 const toStep = (item: QueueItem): QueueStep | null => {
-    if (filled(item.post_id)) {
-        return isQueuedPost(item)
-            ? { kind: 'post', postId: item.post_id }
+    const post = postOf(item);
+
+    if (post) {
+        return post.status === PostStatus.Scheduled && isMovable(item)
+            ? {
+                  kind:
+                      post.schedule_mode === ScheduleMode.Queue
+                          ? 'queued'
+                          : 'custom',
+                  postId: post.id,
+              }
             : null;
     }
 
@@ -119,7 +115,7 @@ const channelSteps = computed<Record<string, QueueStep[]>>(() => {
 });
 
 const queuedPostIds = (steps: QueueStep[]): string[] =>
-    steps.flatMap((step) => (step.kind === 'post' ? [step.postId] : []));
+    steps.flatMap((step) => (step.kind === 'queued' ? [step.postId] : []));
 
 const channelQueues = computed<Record<string, string[]>>(() =>
     Object.fromEntries(
@@ -138,23 +134,37 @@ const channelOf = computed<Record<string, string>>(() =>
     ),
 );
 
-const stepsToMoveThrough = (steps: QueueStep[]): QueueStep[] =>
-    props.slotDrop ? steps : steps.filter((step) => step.kind === 'post');
+const movesToSlots = computed<boolean>(
+    () => props.slotDrop && props.reorderable,
+);
+
+const isMovableStep = (step: QueueStep): boolean =>
+    step.kind === 'queued' || (step.kind === 'custom' && movesToSlots.value);
+
+const canTake = (step: QueueStep, target: QueueStep): boolean =>
+    target.kind === 'slot'
+        ? props.slotDrop
+        : step.kind === 'queued' && target.kind === 'queued';
 
 const moves = computed<Record<string, QueueMoves>>(() => {
     const byPost: Record<string, QueueMoves> = {};
 
     for (const steps of Object.values(channelSteps.value)) {
-        const path = stepsToMoveThrough(steps);
-
-        path.forEach((step, index) => {
-            if (step.kind === 'post') {
-                byPost[step.postId] = {
-                    hasStepAbove: steps[0] !== step,
-                    up: path[index - 1],
-                    down: path[index + 1],
-                };
+        steps.forEach((step, index) => {
+            if (step.kind === 'slot' || !isMovableStep(step)) {
+                return;
             }
+
+            const above = steps.slice(0, index);
+            const below = steps.slice(index + 1);
+            const reachable = (target: QueueStep): boolean =>
+                canTake(step, target);
+
+            byPost[step.postId] = {
+                hasStepAbove: above.some((target) => target.kind !== 'custom'),
+                up: above.findLast(reachable),
+                down: below.find(reachable),
+            };
         });
     }
 
@@ -184,32 +194,23 @@ const draggables = computed<Record<string, SortableQueueItem>>(() => {
 
     const draggable: Record<string, SortableQueueItem> = {};
 
-    for (const [channelId, ids] of Object.entries(channelQueues.value)) {
-        if (ids.length > 1 || props.slotDrop) {
-            for (const postId of ids) {
-                draggable[postId] = { postId, channelId, queued: true };
+    for (const [channelId, steps] of Object.entries(channelSteps.value)) {
+        const sortable = props.slotDrop || queuedPostIds(steps).length > 1;
+
+        for (const step of steps) {
+            if (step.kind === 'queued' && sortable) {
+                draggable[step.postId] = {
+                    postId: step.postId,
+                    channelId,
+                    queued: true,
+                };
+            } else if (step.kind === 'custom' && props.slotDrop) {
+                draggable[step.postId] = {
+                    postId: step.postId,
+                    channelId,
+                    queued: false,
+                };
             }
-        }
-    }
-
-    if (!props.slotDrop) {
-        return draggable;
-    }
-
-    for (const item of items.value) {
-        const post = postOf(item);
-
-        if (
-            post &&
-            !(post.id in draggable) &&
-            post.status === PostStatus.Scheduled &&
-            isMovable(item)
-        ) {
-            draggable[post.id] = {
-                postId: post.id,
-                channelId: item.channel_id,
-                queued: false,
-            };
         }
     }
 
@@ -235,7 +236,7 @@ const onMove = (post: PostCard, direction: PostCardMove): void => {
 
     if (neighbour?.kind === 'slot') {
         emit('moveToSlot', post.id, neighbour.slot);
-    } else if (neighbour?.kind === 'post') {
+    } else if (neighbour?.kind === 'queued') {
         swapQueuedPosts(post.id, neighbour.postId);
     }
 };

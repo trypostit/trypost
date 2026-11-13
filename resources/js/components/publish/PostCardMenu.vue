@@ -27,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { postPermalink } from '@/lib/postNetwork';
 import { isRecurring } from '@/lib/recurrence';
-import { PostStatus, ScheduleMode } from '@/types/post';
+import { PostStatus } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
 
 const props = withDefaults(
@@ -60,11 +60,10 @@ const isDraft = computed(() => props.post.status === PostStatus.Draft);
 const canRecur = computed(
     () => isScheduled.value && props.post.scheduled_at !== null,
 );
-const isQueued = computed(
+const isMovable = computed(
     () =>
         canPublishDirectly.value &&
         isScheduled.value &&
-        props.post.schedule_mode === ScheduleMode.Queue &&
         props.movable !== false,
 );
 </script>
@@ -149,7 +148,7 @@ const isQueued = computed(
                             {{ $t('posts.publish.actions.copy_link') }}
                         </DropdownMenuItem>
                     </template>
-                    <template v-if="isQueued">
+                    <template v-if="isMovable">
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             :disabled="!canMoveToTop"
