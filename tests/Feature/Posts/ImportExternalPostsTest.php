@@ -17,6 +17,7 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
@@ -202,21 +203,48 @@ test('a facebook post links the trypost video it carries by video id', function 
         ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });
 
-test('a facebook video already tracked by its trypost publication is left unlinked', function () {
+test('a facebook video already tracked by its trypost publication is merged into it', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
         'platform_post_id' => 'video-9',
     ]);
-    externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id]);
+    $tracked = externalPublication($account, [
+        'remote_id' => 'video-9',
+        'post_id' => $tryPost->id,
+        'origin' => PublicationOrigin::TryPost,
+        'content_type' => PublicationContentType::Reel,
+    ]);
     $external = externalPublication($account, [
         'remote_id' => 'page_post-1',
+        'permalink' => 'https://www.facebook.com/reel/video-9',
+        'content_type' => PublicationContentType::Reel,
         'provider_metadata' => ['video_id' => 'video-9'],
     ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $tracked->id,
+        'date' => today()->subDay(),
+        'views_count' => 200,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $external->id,
+        'date' => today(),
+        'views_count' => 234,
+        'comments_count' => 0,
+    ]);
 
-    ImportExternalPosts::execute($account);
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($external->fresh())->toBeNull()
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->count())->toBe(1);
 
-    expect(Post::query()->imported()->count())->toBe(0)
-        ->and($external->fresh()->post_id)->toBeNull();
+    $merged = $tracked->fresh();
+
+    expect($merged->remote_id)->toBe('page_post-1')
+        ->and($merged->post_id)->toBe($tryPost->id)
+        ->and($merged->provider_metadata)->toEqual(['video_id' => 'video-9'])
+        ->and($merged->dailySnapshots()->orderBy('date')->pluck('views_count')->all())->toBe([200, 234])
+        ->and($tryPost->fresh()->platform_post_id)->toBe('page_post-1')
+        ->and($tryPost->fresh()->platform_url)->toBe('https://www.facebook.com/reel/video-9');
 });
 
 test('a facebook photo discovered under its feed post id does not duplicate the original', function (bool $tracked) {
@@ -251,7 +279,12 @@ test('a facebook photo discovered under its feed post id does not duplicate the 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_id)->toBe($tracked ? null : $original->id);
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->sole()->post_id)->toBe($original->id);
+
+    if ($tracked) {
+        expect($publication->fresh())->toBeNull()
+            ->and($original->fresh()->platform_post_id)->toBe('page_post-1');
+    }
 
     Http::assertSentCount(1);
 })->with(['untracked original' => false, 'tracked original' => true]);

@@ -126,9 +126,7 @@ class ImportExternalPosts
             $existing = self::tryPostTarget($account, $publication);
 
             if ($existing !== null) {
-                if (! AnalyticsPublication::query()->where('post_id', $existing->id)->exists()) {
-                    $publication->update(['post_id' => $existing->id]);
-                }
+                self::linkToTryPost($existing, $publication);
 
                 return null;
             }
@@ -146,6 +144,25 @@ class ImportExternalPosts
 
             return $post->id;
         });
+    }
+
+    /**
+     * A discovery of a post TryPost published. When the post is already tracked
+     * under another remote id (a Facebook video or reel saved under its video id
+     * and discovered under its Page post id), the discovery is merged into that
+     * publication, so Insights counts the post once.
+     */
+    private static function linkToTryPost(Post $post, AnalyticsPublication $publication): void
+    {
+        $tracked = $post->analyticsPublication;
+
+        if ($tracked === null) {
+            $publication->update(['post_id' => $post->id]);
+
+            return;
+        }
+
+        app(UpsertAnalyticsPublication::class)->reconcileRemoteId($tracked, $publication->remote_id);
     }
 
     private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
