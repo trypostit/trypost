@@ -380,7 +380,7 @@ class UpsertAnalyticsPublication
         return $origin === PublicationOrigin::TryPost
             && $publication->exists
             && $publication->remote_id !== $providerPostId
-            && in_array($providerPostId, Arr::only($publication->provider_metadata ?? [], ['video_id', 'photo_id']), true);
+            && in_array($providerPostId, Arr::only($publication->provider_metadata ?? [], AnalyticsPublication::FACEBOOK_MEDIA_KEYS), true);
     }
 
     /**

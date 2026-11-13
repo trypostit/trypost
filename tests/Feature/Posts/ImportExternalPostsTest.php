@@ -334,6 +334,17 @@ test('a facebook video carried by two page posts links neither, tracked or not',
         ->and(Post::query()->imported()->exists())->toBeFalse();
 })->with(['tracked' => true, 'not tracked yet' => false]);
 
+test('a trypost post without a published time is placed by its publication clock', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tryPost->forceFill(['published_at' => null, 'publication_updated_at' => now()->subMinutes(2)])->saveQuietly();
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($tryPost->id);
+});
+
 test('a page post deleted on the network no longer shares a facebook video', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);

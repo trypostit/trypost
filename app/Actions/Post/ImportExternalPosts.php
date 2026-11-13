@@ -207,13 +207,14 @@ class ImportExternalPosts
     {
         $mediaIds = self::facebookMediaIds($publication);
 
-        if (blank($mediaIds) || blank($post->published_at)) {
+        if (blank($mediaIds)) {
             return false;
         }
 
+        $publishedAt = $post->published_at ?? $post->publication_updated_at ?? $post->updated_at;
         $window = [
-            $post->published_at->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
-            $post->published_at->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+            $publishedAt->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+            $publishedAt->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
         ];
 
         if (! $publication->provider_published_at->between(...$window)) {
@@ -224,9 +225,8 @@ class ImportExternalPosts
             ->available()
             ->where('social_account_id', $publication->social_account_id)
             ->whereBetween('provider_published_at', $window)
-            ->where(fn (Builder $query): Builder => $query
-                ->whereIn('provider_metadata->video_id', $mediaIds)
-                ->orWhereIn('provider_metadata->photo_id', $mediaIds))
+            ->where(fn (Builder $query): Builder => collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
+                ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $query))
             ->count() === 1;
     }
 
@@ -242,7 +242,7 @@ class ImportExternalPosts
             return [];
         }
 
-        return collect(['video_id', 'photo_id'])
+        return collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
             ->map(fn (string $key): mixed => data_get($publication->provider_metadata, $key))
             ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
             ->values()

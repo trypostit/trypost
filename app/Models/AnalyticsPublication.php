@@ -87,6 +87,15 @@ class AnalyticsPublication extends Model
         return $this->hasMany(AnalyticsPublicationDailySnapshot::class, 'publication_id');
     }
 
+    /**
+     * The `provider_metadata` keys under which Facebook discovery reports the
+     * video or photo a Page post carries, which TryPost may have saved as the
+     * post's id.
+     *
+     * @var list<string>
+     */
+    public const array FACEBOOK_MEDIA_KEYS = ['video_id', 'photo_id'];
+
     public function scopeAvailable(Builder $query): Builder
     {
         return $query->where('availability', PublicationAvailability::Available);

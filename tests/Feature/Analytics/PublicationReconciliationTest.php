@@ -476,6 +476,25 @@ test('a merge read from a publication that has moved since does nothing', functi
         ->and($second->fresh())->not->toBeNull();
 });
 
+test('merging snapshots stored without metrics keeps their counts', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = app(SyncTryPostPublication::class)->handle($post);
+    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'page_post-1',
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $collectedAt = now()->subHours(3);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $tracked->id, 'date' => $collectedAt->toDateString(), 'collected_at' => $collectedAt, 'views_count' => 52]);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $discovered->id, 'date' => $collectedAt->toDateString(), 'collected_at' => $collectedAt->addHour(), 'comments_count' => 3]);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1');
+
+    expect($tracked->dailySnapshots()->sole()->only(['views_count', 'comments_count']))->toEqual(['views_count' => 52, 'comments_count' => 3]);
+});
+
 test('a merged publication keeps the latest time discovery saw the post', function () {
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $seenAt = now()->subMinutes(5)->startOfSecond();

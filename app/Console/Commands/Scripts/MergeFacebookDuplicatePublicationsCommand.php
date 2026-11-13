@@ -42,9 +42,8 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         AnalyticsPublication::query()
             ->linkable()
             ->where('platform', Platform::Facebook)
-            ->where(fn (Builder $query): Builder => $query
-                ->whereNotNull('provider_metadata->video_id')
-                ->orWhereNotNull('provider_metadata->photo_id'))
+            ->where(fn (Builder $query): Builder => collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
+                ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereNotNull("provider_metadata->{$key}"), $query))
             ->with('socialAccount')
             ->lazyById()
             ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked, &$failed): void {
