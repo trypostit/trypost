@@ -1,17 +1,21 @@
 /**
- * A note in the editor: mention chips that read back as the stored markup
- * (`@[user:{id}]`, `@[everyone]`), so `noteBodyOf(editor)` is the body to
- * store. `setNoteParts(parts)` loads a note from the parts the server sends
- * (`lib/noteMentions.ts`). A copied chip reads `@Name`.
+ * A note in the editor. It opens from the parts the server sends
+ * (`setNoteParts`, see `App\Support\PostNoteMentions::parts`) and reads back
+ * as the body to store (`noteBodyOf`): each mention chip as its markup
+ * (`@[user:{id}]`, `@[everyone]`) and each line break as a new line. A copied
+ * chip reads `@Name`.
  */
-import { Extension, type Editor } from '@tiptap/core';
+import { Extension, type Editor, type JSONContent } from '@tiptap/core';
 import Mention from '@tiptap/extension-mention';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin } from '@tiptap/pm/state';
 import type { SuggestionOptions } from '@tiptap/suggestion';
 
-import { EVERYONE_ID, noteDoc } from '@/lib/noteMentions';
+import { isEmpty } from '@/lib/helpers';
 import type { PostNotePart } from '@/types/post-note';
+
+/** The id a chip of everyone carries; it is never a user id. */
+export const EVERYONE_ID = 'everyone';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
@@ -36,6 +40,43 @@ interface NoteBodyOptions {
 /** A copied chip as people read it, and a line break as a new line. */
 const clipboardText = (leaf: ProseMirrorNode): string =>
     leaf.type.name === 'mention' ? `@${leaf.attrs.label}` : '\n';
+
+/** Text as the editor holds it: a line break is its own node, not a `\n` in the text. */
+const textNodes = (text: string): JSONContent[] =>
+    text
+        .split('\n')
+        .flatMap((line, index): JSONContent[] => [
+            ...(index > 0 ? [{ type: 'hardBreak' }] : []),
+            ...(isEmpty(line) ? [] : [{ type: 'text', text: line }]),
+        ]);
+
+/** A note's parts as the editor's document: one paragraph of text, line breaks and chips. */
+const noteDoc = (
+    parts: PostNotePart[],
+    labels: { everyone: string; unknown: string },
+): JSONContent => ({
+    type: 'doc',
+    content: [
+        {
+            type: 'paragraph',
+            content: parts.flatMap((part): JSONContent[] => {
+                if (part.type === 'text') {
+                    return textNodes(part.text);
+                }
+
+                return [
+                    {
+                        type: 'mention',
+                        attrs:
+                            part.type === 'everyone'
+                                ? { id: EVERYONE_ID, label: labels.everyone }
+                                : { id: part.id, label: part.name ?? labels.unknown },
+                    },
+                ];
+            }),
+        },
+    ],
+});
 
 /** A mention as the body stores it. */
 const mentionMarkup = (id: string): string =>

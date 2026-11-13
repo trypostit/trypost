@@ -18,8 +18,13 @@ use Illuminate\Support\Str;
  */
 final class PostNoteMentions
 {
+    private const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
     /** A mention of a person (group 1 holds their uuid) or of everyone (no group 1). */
-    private const PATTERN = '/@\[(?:user:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|everyone)\]/u';
+    private const PATTERN = '/@\[(?:user:('.self::UUID.')|everyone)\]/u';
+
+    /** The same mentions, captured whole, to split a body around them. */
+    private const SPLIT = '/(@\[(?:user:'.self::UUID.'|everyone)\])/u';
 
     private const EVERYONE = '@[everyone]';
 
@@ -74,30 +79,13 @@ final class PostNoteMentions
      */
     public static function parts(string $body, Collection $people): array
     {
-        preg_match_all(self::PATTERN, $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
-
-        $parts = [];
-        $position = 0;
-
-        foreach ($matches as $match) {
-            [$markup, $offset] = data_get($match, 0);
-            $id = transform(data_get($match, '1.0'), fn (string $id): string => Str::lower($id));
-
-            if ($offset > $position) {
-                $parts[] = ['type' => 'text', 'text' => substr($body, $position, $offset - $position)];
-            }
-
-            $parts[] = blank($id)
-                ? ['type' => 'everyone']
-                : ['type' => 'mention', 'id' => $id, 'name' => $people->firstWhere('id', $id)?->name];
-            $position = $offset + strlen($markup);
-        }
-
-        if ($position < strlen($body)) {
-            $parts[] = ['type' => 'text', 'text' => substr($body, $position)];
-        }
-
-        return $parts;
+        return collect(preg_split(self::SPLIT, $body, flags: PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY))
+            ->map(fn (string $piece): array => match (true) {
+                $piece === self::EVERYONE => ['type' => 'everyone'],
+                filled($id = self::extract($piece)->first()) => ['type' => 'mention', 'id' => $id, 'name' => $people->firstWhere('id', $id)?->name],
+                default => ['type' => 'text', 'text' => $piece],
+            })
+            ->all();
     }
 
     /**
@@ -108,14 +96,12 @@ final class PostNoteMentions
      */
     public static function toPlainText(?string $body, Collection $people, string $everyone, string $unknown): string
     {
-        return Str::replaceMatches(self::PATTERN, function (array $match) use ($people, $everyone, $unknown): string {
-            $name = transform(
-                data_get($match, 1),
-                fn (string $id): string => $people->firstWhere('id', Str::lower($id))?->name ?? $unknown,
-                $everyone,
-            );
-
-            return "@{$name}";
-        }, (string) $body);
+        return collect(self::parts((string) $body, $people))
+            ->map(fn (array $part): string => match (data_get($part, 'type')) {
+                'text' => data_get($part, 'text'),
+                'everyone' => "@{$everyone}",
+                default => '@'.(data_get($part, 'name') ?? $unknown),
+            })
+            ->implode('');
     }
 }

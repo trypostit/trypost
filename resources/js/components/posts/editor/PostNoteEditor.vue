@@ -6,7 +6,11 @@ import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, useAttrs, useId, watch } from 'vue';
 
 import { plainTextExtensions } from '@/components/tiptap/editor';
-import { NoteBody, noteBodyOf } from '@/components/tiptap/plugins/noteBody';
+import {
+    EVERYONE_ID,
+    NoteBody,
+    noteBodyOf,
+} from '@/components/tiptap/plugins/noteBody';
 import { NoteKeys } from '@/components/tiptap/plugins/noteKeys';
 import { Avatar } from '@/components/ui/avatar';
 import {
@@ -15,7 +19,6 @@ import {
     PopoverContent,
 } from '@/components/ui/popover';
 import { blank, filled, isString } from '@/lib/helpers';
-import { EVERYONE_ID } from '@/lib/noteMentions';
 import { filterBySearch } from '@/lib/search';
 import type { PostNoteMentionable, PostNotePart } from '@/types/post-note';
 
