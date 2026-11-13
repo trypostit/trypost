@@ -16,12 +16,13 @@ use Inertia\ScrollProp;
 /**
  * The notes thread the publish page shows: the post whose notes are
  * open (`?notes=`), the note a link points at (`?note=`) and the notes
- * themselves, newest first and a page at a time for `<InfiniteScroll reverse>`.
+ * themselves, newest first and a page at a time by cursor for
+ * `<InfiniteScroll reverse>`, with their `meta.total`.
  * Opening, closing and every change to the thread reload only these props.
  */
 final class BuildPostNotesProps
 {
-    public const PAGE_NAME = 'notes_page';
+    public const CURSOR_NAME = 'notes_cursor';
 
     /**
      * @return array{openPostNotesId: string|null, highlightNoteId: string|null, postNotes: ScrollProp|null}
@@ -38,7 +39,8 @@ final class BuildPostNotesProps
             'openPostNotesId' => $canRead ? $postId : null,
             'highlightNoteId' => RequestIds::uuid($request->query('note')),
             'postNotes' => $canRead
-                ? Inertia::scroll(fn () => PostNoteResource::collection(ListPostNotes::execute($post, pageName: self::PAGE_NAME)))
+                ? Inertia::scroll(fn () => PostNoteResource::collection(ListPostNotes::thread($post, self::CURSOR_NAME))
+                    ->additional(['meta' => ['total' => $post->notes()->count()]]))
                 : null,
         ];
     }

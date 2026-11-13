@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\PostNote\BuildPostNotesProps;
 use App\Enums\Post\Status as PostStatus;
 use App\Events\PostNoteChanged;
 use App\Jobs\SendNotification;
@@ -31,34 +32,37 @@ beforeEach(function () {
     ]);
 });
 
-test('the publish page sends the notes of the post it has open, newest first and a page at a time', function () {
-    $older = PostNote::factory()->create([
+test('the publish page sends the notes of the post it has open, newest first and a page at a time by cursor', function () {
+    [$oldest, $middle, $newest] = collect([3, 2, 1])->map(fn (int $hours): PostNote => PostNote::factory()->create([
         'post_id' => $this->post->id,
         'user_id' => $this->user->id,
-        'created_at' => now()->subHour(),
-    ]);
-    $newer = PostNote::factory()->create([
-        'post_id' => $this->post->id,
-        'user_id' => $this->user->id,
-    ]);
+        'created_at' => now()->subHours($hours),
+    ]))->all();
 
     $notes = $this->actingAs($this->user)
         ->get(route('app.posts.index', ['notes' => $this->post->id]))
         ->assertOk()
         ->inertiaProps('postNotes');
 
-    expect(collect(data_get($notes, 'data'))->pluck('id')->all())->toBe([$newer->id, $older->id])
+    expect(collect(data_get($notes, 'data'))->pluck('id')->all())->toBe([$newest->id, $middle->id, $oldest->id])
         ->and(data_get($notes, 'data.0.user.id'))->toBe($this->user->id)
-        ->and(data_get($notes, 'meta.total'))->toBe(2);
+        ->and(data_get($notes, 'meta.total'))->toBe(3)
+        ->and($this->actingAs($this->user)->get(route('app.posts.index'))->inertiaProps('postNotes'))->toBeNull();
 
     config(['app.pagination.default' => 1]);
 
-    $olderPage = $this->actingAs($this->user)
-        ->get(route('app.posts.index', ['notes' => $this->post->id, 'notes_page' => 2]))
-        ->inertiaProps('postNotes.data');
+    $firstPage = $this->actingAs($this->user)->get(route('app.posts.index', ['notes' => $this->post->id]));
+    $scroll = data_get($firstPage->viewData('page'), 'scrollProps.postNotes');
+    $newest->delete();
 
-    expect(collect($olderPage)->pluck('id')->all())->toBe([$older->id])
-        ->and($this->actingAs($this->user)->get(route('app.posts.index'))->inertiaProps('postNotes'))->toBeNull();
+    $olderPage = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id, data_get($scroll, 'pageName') => data_get($scroll, 'nextPage')]))
+        ->inertiaProps('postNotes');
+
+    expect(collect(data_get($firstPage->inertiaProps('postNotes'), 'data'))->pluck('id')->all())->toBe([$newest->id])
+        ->and(data_get($scroll, 'pageName'))->toBe(BuildPostNotesProps::CURSOR_NAME)
+        ->and(collect(data_get($olderPage, 'data'))->pluck('id')->all())->toBe([$middle->id])
+        ->and(data_get($olderPage, 'meta.total'))->toBe(2);
 });
 
 test('store creates a comment', function () {

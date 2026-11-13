@@ -597,6 +597,38 @@ test('Enter sends while the mention list finds nobody', function () {
     expect(PostNote::query()->pluck('body')->all())->toBe(['hi @zzz']);
 });
 
+test('a note opened in the editor and saved unchanged keeps every line and mention', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $bia = workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
+    $ana = workspaceMember($workspace, 'member', ['name' => 'Ana Souza']);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $body = "(@[user:{$bia->id}]) and cc:@[user:{$ana->id}]\n\n@[everyone] さん、@[user:{$bia->id}]確認お願いします";
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $user->id, 'body' => $body]);
+    $note->mentions()->attach([$bia->id, $ana->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@note-item');
+    $page->hover('@note-item')->click('@note-actions');
+    waitFor($page, '@note-edit');
+    $page->click('@note-edit');
+    waitForCount($page, '@note-edit-input [data-testid=note-input-mention]', 4);
+    expect($page->script("[...document.querySelectorAll('[data-testid=\"note-edit-input\"] [data-testid=\"note-input-mention\"]')].map((chip) => chip.textContent)"))
+        ->toBe(['@Bia Lima', '@Ana Souza', '@'.__('notes.mention_everyone.word'), '@Bia Lima']);
+
+    $page->click('@note-edit-save');
+    waitForGone($page, '@note-edit-input');
+    $page->assertNoJavaScriptErrors();
+
+    expect($note->fresh()->body)->toBe($body);
+});
+
 test('an edit the server refuses keeps the editor open with the text and says why', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
