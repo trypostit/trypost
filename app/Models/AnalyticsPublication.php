@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Arr;
 
 class AnalyticsPublication extends Model
 {
@@ -118,8 +119,11 @@ class AnalyticsPublication extends Model
      */
     public function scopeCarryingFacebookMedia(Builder $query, array $mediaIds): Builder
     {
-        return $query->where(fn (Builder $carrying): Builder => collect(self::FACEBOOK_MEDIA_KEYS)
-            ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $carrying));
+        return $query->where(function (Builder $carrying) use ($mediaIds): void {
+            foreach (self::FACEBOOK_MEDIA_KEYS as $key) {
+                $carrying->orWhereIn("provider_metadata->{$key}", $mediaIds);
+            }
+        });
     }
 
     /**
@@ -127,8 +131,29 @@ class AnalyticsPublication extends Model
      */
     public function scopeCarryingAnyFacebookMedia(Builder $query): Builder
     {
-        return $query->where(fn (Builder $carrying): Builder => collect(self::FACEBOOK_MEDIA_KEYS)
-            ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereNotNull("provider_metadata->{$key}"), $carrying));
+        return $query->where(function (Builder $carrying): void {
+            foreach (self::FACEBOOK_MEDIA_KEYS as $key) {
+                $carrying->orWhereNotNull("provider_metadata->{$key}");
+            }
+        });
+    }
+
+    /**
+     * The Facebook video or photo this publication carries, which TryPost may
+     * have saved as its post's id.
+     *
+     * @return list<string>
+     */
+    public function facebookMediaIds(): array
+    {
+        if ($this->platform !== Platform::Facebook) {
+            return [];
+        }
+
+        return collect(Arr::only($this->provider_metadata ?? [], self::FACEBOOK_MEDIA_KEYS))
+            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
+            ->values()
+            ->all();
     }
 
     public function isLinkable(): bool

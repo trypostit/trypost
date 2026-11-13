@@ -494,6 +494,16 @@ test('another page post sharing a merged facebook video stays a publication of i
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
 });
 
+test('another network never links a post by a media id in its metadata', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);
+    $publication = externalPublication($account, ['remote_id' => 'ig-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'media-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->not->toBe($tryPost->id);
+});
+
 test('a publication of another network tracked under another id is left to that publication', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);

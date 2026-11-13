@@ -97,7 +97,22 @@ class UpsertAnalyticsPublication
      */
     public function reconcileRemoteId(AnalyticsPublication $publication, string $remoteId): void
     {
-        $this->moveToRemoteId($publication, $remoteId, movePost: true);
+        DB::transaction(function () use ($publication, $remoteId): void {
+            $current = $this->lockedToMove($publication, $remoteId);
+
+            if (blank($current)) {
+                return;
+            }
+
+            transform($this->lockedDiscovery($current, $remoteId), fn (AnalyticsPublication $discovered) => $this->absorb($current, $discovered));
+            $this->moveTo($current, $remoteId, $publication);
+
+            Post::query()->whereKey($current->post_id)->toBase()->update([
+                'platform_post_id' => $remoteId,
+                'platform_url' => $current->permalink,
+                'publication_updated_at' => now(),
+            ]);
+        });
     }
 
     /**
@@ -111,88 +126,98 @@ class UpsertAnalyticsPublication
      */
     public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): bool
     {
-        return $this->moveToRemoteId($publication, $remoteId, movePost: false);
-    }
+        return DB::transaction(function () use ($publication, $remoteId): bool {
+            $current = $this->lockedToMove($publication, $remoteId);
+            $discovered = filled($current) && $this->sitsOnItsPost($current) ? $this->lockedDiscovery($current, $remoteId) : null;
 
-    private function moveToRemoteId(AnalyticsPublication $publication, string $remoteId, bool $movePost): bool
-    {
-        return DB::transaction(function () use ($movePost, $publication, $remoteId): bool {
-            $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
-
-            if ($current->remote_id === $remoteId || ! $current->post_id) {
+            if (blank($discovered)) {
                 return false;
             }
 
-            if (! $movePost && ($current->availability !== PublicationAvailability::Available
-                || Post::query()->whereKey($current->post_id)->value('platform_post_id') !== $current->remote_id)) {
-                return false;
-            }
-
-            $discovered = AnalyticsPublication::query()
-                ->where('workspace_id', $current->workspace_id)
-                ->where('social_account_key', $current->social_account_key)
-                ->where('network', $current->network)
-                ->where('remote_id', $remoteId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $movePost && blank($discovered)) {
-                return false;
-            }
-
-            if ($discovered) {
-                if ($discovered->post_id && $discovered->post_id !== $current->post_id) {
-                    $this->deleteImportedPost($discovered->post_id);
-                }
-
-                $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
-                    $existing = $current->dailySnapshots()
-                        ->where('date', $snapshot->date->toDateString())
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $existing) {
-                        $snapshot->update(['publication_id' => $current->id]);
-
-                        return;
-                    }
-
-                    $this->snapshots->combine($existing, $snapshot);
-
-                    $snapshot->delete();
-                });
-
-                $current->fill([
-                    'permalink' => $discovered->permalink ?? $current->permalink,
-                    'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
-                    'provider_metadata' => self::providerMetadataAfterDiscovery($current, $discovered->provider_metadata),
-                    'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
-                    'excerpt' => $discovered->excerpt ?? $current->excerpt,
-                    'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
-                    'last_seen_at' => collect([$current->last_seen_at, $discovered->last_seen_at])->filter()->max(),
-                    ...($movePost ? [] : [
-                        'content_type' => $discovered->content_type === PublicationContentType::Unknown ? $current->content_type : $discovered->content_type,
-                        'provider_content_type' => $discovered->provider_content_type ?? $current->provider_content_type,
-                    ]),
-                ]);
-                $discovered->delete();
-            }
-
-            $current->remote_id = $remoteId;
-            $current->save();
-
-            if ($movePost) {
-                Post::query()->whereKey($current->post_id)->toBase()->update([
-                    'platform_post_id' => $remoteId,
-                    'platform_url' => $current->permalink,
-                    'publication_updated_at' => now(),
-                ]);
-            }
-
-            $publication->setRawAttributes($current->getAttributes(), true);
+            $this->absorb($current, $discovered);
+            $current->fill([
+                'content_type' => $discovered->content_type === PublicationContentType::Unknown ? $current->content_type : $discovered->content_type,
+                'provider_content_type' => $discovered->provider_content_type ?? $current->provider_content_type,
+            ]);
+            $this->moveTo($current, $remoteId, $publication);
 
             return true;
         });
+    }
+
+    /**
+     * The publication read again under its lock, or null when it already sits
+     * on `$remoteId` or belongs to no post.
+     */
+    private function lockedToMove(AnalyticsPublication $publication, string $remoteId): ?AnalyticsPublication
+    {
+        $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
+
+        return $current->remote_id === $remoteId || blank($current->post_id) ? null : $current;
+    }
+
+    private function sitsOnItsPost(AnalyticsPublication $current): bool
+    {
+        return $current->availability === PublicationAvailability::Available
+            && Post::query()->whereKey($current->post_id)->value('platform_post_id') === $current->remote_id;
+    }
+
+    private function lockedDiscovery(AnalyticsPublication $current, string $remoteId): ?AnalyticsPublication
+    {
+        return AnalyticsPublication::query()
+            ->where('workspace_id', $current->workspace_id)
+            ->where('social_account_key', $current->social_account_key)
+            ->where('network', $current->network)
+            ->where('remote_id', $remoteId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Folds the discovery into the publication: its daily snapshots (a day both
+     * hold is combined by the same-day rule), what it reported about the post,
+     * and then removes it, with the post imported from it if any.
+     */
+    private function absorb(AnalyticsPublication $current, AnalyticsPublication $discovered): void
+    {
+        if (filled($discovered->post_id) && $discovered->post_id !== $current->post_id) {
+            $this->deleteImportedPost($discovered->post_id);
+        }
+
+        $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
+            $existing = $current->dailySnapshots()
+                ->where('date', $snapshot->date->toDateString())
+                ->lockForUpdate()
+                ->first();
+
+            if (blank($existing)) {
+                $snapshot->update(['publication_id' => $current->id]);
+
+                return;
+            }
+
+            $this->snapshots->combine($existing, $snapshot);
+            $snapshot->delete();
+        });
+
+        $current->fill([
+            'permalink' => $discovered->permalink ?? $current->permalink,
+            'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
+            'provider_metadata' => self::providerMetadataAfterDiscovery($current, $discovered->provider_metadata),
+            'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
+            'excerpt' => $discovered->excerpt ?? $current->excerpt,
+            'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
+            'last_seen_at' => collect([$current->last_seen_at, $discovered->last_seen_at])->filter()->max(),
+        ]);
+        $discovered->delete();
+    }
+
+    private function moveTo(AnalyticsPublication $current, string $remoteId, AnalyticsPublication $publication): void
+    {
+        $current->remote_id = $remoteId;
+        $current->save();
+
+        $publication->setRawAttributes($current->getAttributes(), true);
     }
 
     private function deleteImportedPost(string $postId): void
@@ -379,7 +404,7 @@ class UpsertAnalyticsPublication
     {
         return $origin === PublicationOrigin::TryPost
             && $publication->remote_id !== $providerPostId
-            && in_array($providerPostId, Arr::only($publication->provider_metadata ?? [], AnalyticsPublication::FACEBOOK_MEDIA_KEYS), true);
+            && in_array($providerPostId, $publication->facebookMediaIds(), true);
     }
 
     /**

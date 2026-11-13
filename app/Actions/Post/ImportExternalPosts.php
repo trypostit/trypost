@@ -133,10 +133,8 @@ class ImportExternalPosts
             $target = self::tryPostTarget($account, $publication);
 
             if (filled($target)) {
-                if (! self::linkToPost($target, $publication)
-                    && $target->platform_post_id !== $publication->remote_id
-                    && $publication->provider_published_at->between(...self::ownPagePostWindow($target))) {
-                    self::reportUnlinkedPagePost($publication, $target);
+                if (! self::linkToPost($target, $publication)) {
+                    self::reportUnlinkedPagePost($target, $publication);
                 }
 
                 return null;
@@ -185,9 +183,12 @@ class ImportExternalPosts
      * the import, reported once a day. A Page post sharing the media later is
      * expected and not reported.
      */
-    private static function reportUnlinkedPagePost(AnalyticsPublication $publication, Post $post): void
+    private static function reportUnlinkedPagePost(Post $post, AnalyticsPublication $publication): void
     {
-        if (! Cache::add("import-external-posts:unlinked-page-post:{$publication->id}", true, now()->addDay())) {
+        $ambiguous = $post->platform_post_id !== $publication->remote_id
+            && $publication->provider_published_at->between(...self::ownPagePostWindow($post));
+
+        if (! $ambiguous || ! Cache::add("import-external-posts:unlinked-page-post:{$publication->id}", true, now()->addDay())) {
             return;
         }
 
@@ -230,7 +231,7 @@ class ImportExternalPosts
      */
     private static function isOwnPagePost(Post $post, AnalyticsPublication $publication): bool
     {
-        $mediaIds = self::facebookMediaIds($publication);
+        $mediaIds = $publication->facebookMediaIds();
 
         if (blank($mediaIds)) {
             return false;
@@ -267,37 +268,25 @@ class ImportExternalPosts
     }
 
     /**
-     * The Facebook video or photo a Page post carries, which TryPost may have
-     * saved as the post's id.
-     *
-     * @return list<string>
-     */
-    private static function facebookMediaIds(AnalyticsPublication $publication): array
-    {
-        if ($publication->platform !== Platform::Facebook) {
-            return [];
-        }
-
-        return collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
-            ->map(fn (string $key): mixed => data_get($publication->provider_metadata, $key))
-            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
-            ->values()
-            ->all();
-    }
-
-    /**
      * The post TryPost published under the publication's own id, else under the
      * Facebook video or photo it carries.
      */
     private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
     {
-        $published = fn (array $ids): ?Post => blank($ids) ? null : Post::query()
+        return self::postPublishedUnder($account, [$publication->remote_id])
+            ?? self::postPublishedUnder($account, $publication->facebookMediaIds());
+    }
+
+    /**
+     * @param  list<string>  $ids
+     */
+    private static function postPublishedUnder(SocialAccount $account, array $ids): ?Post
+    {
+        return blank($ids) ? null : Post::query()
             ->where('social_account_id', $account->id)
             ->whereIn('platform_post_id', $ids)
             ->where('workspace_id', $account->workspace_id)
             ->first();
-
-        return $published([$publication->remote_id]) ?? $published(self::facebookMediaIds($publication));
     }
 
     /**
