@@ -16,13 +16,16 @@ import { Platform } from '@/types/platform';
 import type {
     AvailablePlatform,
     ConnectedAccount,
+    PostingGoalProgress,
 } from '@/types/social-account';
 
+type ChannelWithGoal = ConnectedAccount & PostingGoalProgress;
+
 const props = defineProps<{
-    connectedChannels: ConnectedAccount[];
+    connectedChannels: ChannelWithGoal[];
 }>();
 
-const channels = computed<ConnectedAccount[]>(() =>
+const channels = computed<ChannelWithGoal[]>(() =>
     orderChannels(props.connectedChannels),
 );
 
@@ -75,6 +78,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                     <ChannelListItem
                         :channel="channel"
                         :can-link-facebook="canLinkFacebook(channel)"
+                        :goal="channel"
                         @reconnect="reconnectChannel"
                         @link-facebook="linkFacebook"
                         @disconnect="disconnectChannel"

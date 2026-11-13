@@ -7,6 +7,7 @@ return [
     'description' => 'Manage this workspace\'s connected channels.',
     'connect' => 'Connect channel',
     'settings' => 'Channel settings',
+    'set_goal' => 'Set a posting goal',
     'publish' => 'Publish',
     'insights' => 'Insights',
     'new_post' => 'New post in this channel',

@@ -199,3 +199,31 @@ test('an instagram login channel offers to link a facebook page, which reconnect
         ->and($page->script('new URL(window.__connectUrl).pathname'))->toBe((string) parse_url(route('app.social.instagram-facebook.connect'), PHP_URL_PATH));
     $page->assertNoJavaScriptErrors();
 });
+
+test('each channel row shows its weekly posting goal, or a link to set one', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $withGoal = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id, 'posting_goal' => 5]);
+    $withoutGoal = SocialAccount::factory()->create(['workspace_id' => $user->current_workspace_id, 'platform' => Platform::X, 'posting_goal' => null]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-goal-{$withGoal->id}-progress");
+
+    $page->assertSeeIn("@channel-goal-{$withGoal->id}-progress", '0/5');
+
+    $page->click("@channel-goal-{$withGoal->id}-progress");
+    waitForOpen($page, "@channel-goal-{$withGoal->id}-popover");
+    waitForState(
+        $page,
+        "@channel-goal-{$withGoal->id}-popover",
+        'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().right <= window.innerWidth + 1 && element.getBoundingClientRect().bottom <= window.innerHeight + 1',
+    );
+    $page->keys("@channel-goal-{$withGoal->id}-popover", 'Escape');
+    waitForGone($page, "@channel-goal-{$withGoal->id}-popover");
+
+    $page->click("@channel-goal-set-{$withoutGoal->id}");
+    waitForPath($page, route('app.channels.settings', $withoutGoal, absolute: false));
+
+    $page->assertNoJavaScriptErrors();
+});

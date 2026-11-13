@@ -7,6 +7,7 @@ return [
     'description' => '이 워크스페이스의 채널을 관리하세요.',
     'connect' => '채널 연결',
     'settings' => '채널 설정',
+    'set_goal' => '게시 목표 설정',
     'publish' => '게시',
     'insights' => 'Insights',
     'new_post' => '이 채널에 새 게시물 작성',

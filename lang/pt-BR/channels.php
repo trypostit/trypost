@@ -7,6 +7,7 @@ return [
     'description' => 'Gerencie os canais deste workspace.',
     'connect' => 'Conectar canal',
     'settings' => 'Configurações do canal',
+    'set_goal' => 'Definir meta de postagem',
     'publish' => 'Publicar',
     'insights' => 'Insights',
     'new_post' => 'Novo post neste canal',

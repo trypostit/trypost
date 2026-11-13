@@ -12,6 +12,7 @@ import {
 import { computed } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import GoalProgress from '@/components/publish/GoalProgress.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -26,6 +27,7 @@ import {
     accountTypeKey,
     isConnectionLost,
     type ConnectedAccount,
+    type PostingGoalProgress,
 } from '@/types/social-account';
 
 const props = withDefaults(
@@ -33,10 +35,12 @@ const props = withDefaults(
         channel: ConnectedAccount;
         showSettings?: boolean;
         canLinkFacebook?: boolean;
+        goal?: PostingGoalProgress | null;
     }>(),
     {
         showSettings: true,
         canLinkFacebook: false,
+        goal: null,
     },
 );
 
@@ -82,13 +86,35 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                 <IconAlertCircle class="size-4 shrink-0" />
                 <span class="truncate">{{ $t('channels.connection_lost_hint') }}</span>
             </p>
-            <p v-else class="truncate text-sm text-muted-foreground">
-                {{
+            <div
+                v-else
+                class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground"
+            >
+                <span class="truncate">{{
                     typeKey
                         ? $t(typeKey)
                         : getPlatformLabel(channel.platform)
-                }}
-            </p>
+                }}</span>
+                <template v-if="goal">
+                    <span aria-hidden="true">·</span>
+                    <GoalProgress
+                        v-if="goal.posting_goal !== null"
+                        :channel-id="channel.id"
+                        :sent="goal.sent_this_week"
+                        :scheduled="goal.scheduled_this_week"
+                        :goal="goal.posting_goal"
+                        :test-id="`channel-goal-${channel.id}`"
+                    />
+                    <Link
+                        v-else
+                        :href="settingsRoute.url(channel.id)"
+                        class="truncate rounded-md transition-control hover:text-foreground"
+                        :data-testid="`channel-goal-set-${channel.id}`"
+                    >
+                        {{ $t('channels.set_goal') }}
+                    </Link>
+                </template>
+            </div>
         </div>
 
         <Button

@@ -12,6 +12,13 @@ export interface AvailablePlatform {
     connect_methods?: string[];
 }
 
+/** Where a channel stands on its weekly posting goal this week; no goal is null. */
+export interface PostingGoalProgress {
+    posting_goal: number | null;
+    sent_this_week: number;
+    scheduled_this_week: number;
+}
+
 export interface ConnectedAccount {
     id: string;
     platform: string;

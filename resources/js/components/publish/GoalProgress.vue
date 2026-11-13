@@ -11,12 +11,16 @@ import {
 } from '@/components/ui/popover';
 import { settings } from '@/routes/app/channels';
 
-const props = defineProps<{
-    channelId: string;
-    sent: number;
-    scheduled: number;
-    goal: number;
-}>();
+const props = withDefaults(
+    defineProps<{
+        channelId: string;
+        sent: number;
+        scheduled: number;
+        goal: number;
+        testId?: string;
+    }>(),
+    { testId: 'publish-goal' },
+);
 
 const percent = computed(() =>
     Math.min(100, Math.round((props.sent / Math.max(props.goal, 1)) * 100)),
@@ -33,13 +37,13 @@ const toDo = computed(() =>
             <button
                 type="button"
                 class="flex max-w-full min-w-0 items-center gap-1 rounded-md text-sm text-muted-foreground transition-control hover:text-foreground data-[state=open]:text-foreground"
-                data-testid="publish-goal-progress"
+                :data-testid="`${testId}-progress`"
             >
             <svg
                 viewBox="0 0 14 14"
                 class="size-3.5 shrink-0 -rotate-90"
                 aria-hidden="true"
-                data-testid="publish-goal-pie"
+                :data-testid="`${testId}-pie`"
                 :data-percent="percent"
             >
                 <circle
@@ -73,7 +77,7 @@ const toDo = computed(() =>
         <PopoverContent
             align="start"
             class="w-auto min-w-64 p-0"
-            data-testid="publish-goal-popover"
+            :data-testid="`${testId}-popover`"
         >
             <div class="flex items-start justify-between gap-4 px-4 py-3">
                 <div class="min-w-0">
@@ -99,7 +103,7 @@ const toDo = computed(() =>
                     <Link
                         :href="settings.url(channelId)"
                         :aria-label="$t('posts.publish.goal_popover.edit')"
-                        data-testid="publish-goal-edit"
+                        :data-testid="`${testId}-edit`"
                     >
                         <IconPencil class="size-4" />
                     </Link>
@@ -107,7 +111,7 @@ const toDo = computed(() =>
             </div>
             <div
                 class="flex items-center gap-2 border-t border-border px-4 py-3 text-sm whitespace-nowrap text-muted-foreground"
-                data-testid="publish-goal-summary"
+                :data-testid="`${testId}-summary`"
             >
                 <span
                     ><span class="font-emphasis text-foreground">{{ sent }}</span>

@@ -66,6 +66,45 @@ test('accounts index lists every account of the same network', function () {
     );
 });
 
+test('accounts index sends each channel posting goal and where this week stands', function () {
+    $this->travelTo(now('UTC')->next('Wednesday')->setTime(12, 0));
+
+    $withGoal = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'timezone' => 'UTC',
+        'posting_goal' => 5,
+    ]);
+    $withoutGoal = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::X,
+        'timezone' => 'UTC',
+        'posting_goal' => null,
+    ]);
+
+    Post::factory()->forAccount($withGoal)->published()->create(['published_at' => now()->subHour()]);
+    Post::factory()->forAccount($withGoal)->scheduled()->create(['scheduled_at' => now()->addHour()]);
+    Post::factory()->forAccount($withoutGoal)->published()->create(['published_at' => now()->subHour()]);
+
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('settings/workspace/Channels', false)
+        ->where('connectedChannels', function ($accounts) use ($withGoal, $withoutGoal): bool {
+            $byId = collect($accounts)->keyBy('id');
+
+            expect(data_get($byId, "{$withGoal->id}.posting_goal"))->toBe(5)
+                ->and(data_get($byId, "{$withGoal->id}.sent_this_week"))->toBe(1)
+                ->and(data_get($byId, "{$withGoal->id}.scheduled_this_week"))->toBe(1)
+                ->and(data_get($byId, "{$withoutGoal->id}.posting_goal"))->toBeNull()
+                ->and(data_get($byId, "{$withoutGoal->id}.sent_this_week"))->toBe(0);
+
+            return true;
+        })
+    );
+});
+
 test('a connected linkedin page account is still returned so it surfaces under the linkedin card', function () {
     SocialAccount::factory()->linkedinPage()->create([
         'workspace_id' => $this->workspace->id,

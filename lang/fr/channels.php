@@ -7,6 +7,7 @@ return [
     'description' => 'Gérez les canaux de cet espace.',
     'connect' => 'Connecter un canal',
     'settings' => 'Paramètres du canal',
+    'set_goal' => 'Définir un objectif de publication',
     'publish' => 'Publier',
     'insights' => 'Insights',
     'new_post' => 'Nouvelle publication dans ce canal',
