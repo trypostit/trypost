@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
+use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PublicationContentType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
@@ -68,7 +69,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
         $graph = $account->platform->graphApiUrl();
         $isStory = $publication->content_type === PublicationContentType::Story;
-        $videoId = data_get($publication->provider_metadata, 'video_id');
+        $videoId = data_get($publication->provider_metadata, FacebookMediaKey::Video->value);
         $isVideo = ! $isStory && (filled($videoId) || $this->isReadByVideoId($publication));
         $insightsId = $isVideo && filled($videoId) ? $videoId : $publication->remote_id;
         $edge = $isVideo ? 'video_insights' : 'insights';

@@ -36,7 +36,10 @@ class UpsertAnalyticsPublication
      */
     private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
-    public function __construct(private readonly ResolveAnalyticsAccountKey $accountKeys) {}
+    public function __construct(
+        private readonly ResolveAnalyticsAccountKey $accountKeys,
+        private readonly WritePublicationDailySnapshot $snapshots,
+    ) {}
 
     public function external(
         SocialAccount $account,
@@ -88,75 +91,133 @@ class UpsertAnalyticsPublication
         );
     }
 
+    /**
+     * Moves a TryPost publication to the id the network reports, merging the
+     * discovery already stored under it, and moves the post to that id too.
+     */
     public function reconcileRemoteId(AnalyticsPublication $publication, string $remoteId): void
     {
         DB::transaction(function () use ($publication, $remoteId): void {
-            $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
+            $current = $this->lockedToMove($publication, $remoteId);
 
-            if ($current->remote_id === $remoteId || ! $current->post_id) {
+            if (blank($current)) {
                 return;
             }
 
-            $discovered = AnalyticsPublication::query()
-                ->where('workspace_id', $current->workspace_id)
-                ->where('social_account_key', $current->social_account_key)
-                ->where('network', $current->network)
-                ->where('remote_id', $remoteId)
-                ->lockForUpdate()
-                ->first();
-
-            if ($discovered) {
-                if ($discovered->post_id && $discovered->post_id !== $current->post_id) {
-                    $this->deleteImportedPost($discovered->post_id);
-                }
-
-                $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
-                    $existing = $current->dailySnapshots()
-                        ->where('date', $snapshot->date->toDateString())
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $existing) {
-                        $snapshot->update(['publication_id' => $current->id]);
-
-                        return;
-                    }
-
-                    if ($snapshot->collected_at->greaterThan($existing->collected_at)) {
-                        $existing->fill($snapshot->only([
-                            'collected_at', 'provider_observed_at', 'metrics',
-                            'reactions_count', 'comments_count', 'shares_count', 'saves_count',
-                            'views_count', 'impressions_count', 'reach_count',
-                            'engagement_count', 'exposure_count', 'exposure_kind',
-                            'watch_time_milliseconds', 'average_watch_time_milliseconds',
-                        ]))->save();
-                    }
-
-                    $snapshot->delete();
-                });
-
-                $current->fill([
-                    'permalink' => $discovered->permalink ?? $current->permalink,
-                    'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
-                    'provider_metadata' => self::providerMetadataAfterDiscovery($current, $discovered->provider_metadata),
-                    'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
-                    'excerpt' => $discovered->excerpt ?? $current->excerpt,
-                    'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
-                ]);
-                $discovered->delete();
-            }
-
-            $current->remote_id = $remoteId;
-            $current->save();
+            transform($this->lockedDiscovery($current, $remoteId), fn (AnalyticsPublication $discovered) => $this->absorb($current, $discovered));
+            $this->moveTo($current, $remoteId, $publication);
 
             Post::query()->whereKey($current->post_id)->toBase()->update([
                 'platform_post_id' => $remoteId,
                 'platform_url' => $current->permalink,
                 'publication_updated_at' => now(),
             ]);
-
-            $publication->setRawAttributes($current->getAttributes(), true);
         });
+    }
+
+    /**
+     * Merges the discovery stored under `$remoteId` into a TryPost publication
+     * that the network reports under another id, while the post keeps the id it
+     * was published under: a Facebook video or reel is known by its video id to
+     * the post (repurpose skips what TryPost published by that id) and by its
+     * Page post id to discovery. Only into a publication still available and
+     * on the post's own id, both checked under its lock. False when nothing
+     * was merged.
+     */
+    public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): bool
+    {
+        return DB::transaction(function () use ($publication, $remoteId): bool {
+            $current = $this->lockedToMove($publication, $remoteId);
+            $discovered = filled($current) && $this->sitsOnItsPost($current) ? $this->lockedDiscovery($current, $remoteId) : null;
+
+            if (blank($discovered)) {
+                return false;
+            }
+
+            $this->absorb($current, $discovered);
+            $current->fill([
+                'content_type' => $discovered->content_type === PublicationContentType::Unknown ? $current->content_type : $discovered->content_type,
+                'provider_content_type' => $discovered->provider_content_type ?? $current->provider_content_type,
+            ]);
+            $this->moveTo($current, $remoteId, $publication);
+
+            return true;
+        });
+    }
+
+    /**
+     * The publication read again under its lock, or null when it already sits
+     * on `$remoteId` or belongs to no post.
+     */
+    private function lockedToMove(AnalyticsPublication $publication, string $remoteId): ?AnalyticsPublication
+    {
+        $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
+
+        return $current->remote_id === $remoteId || blank($current->post_id) ? null : $current;
+    }
+
+    private function sitsOnItsPost(AnalyticsPublication $current): bool
+    {
+        return $current->availability === PublicationAvailability::Available
+            && Post::query()->whereKey($current->post_id)->value('platform_post_id') === $current->remote_id;
+    }
+
+    private function lockedDiscovery(AnalyticsPublication $current, string $remoteId): ?AnalyticsPublication
+    {
+        return AnalyticsPublication::query()
+            ->where('workspace_id', $current->workspace_id)
+            ->where('social_account_key', $current->social_account_key)
+            ->where('network', $current->network)
+            ->where('remote_id', $remoteId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Folds the discovery into the publication: its daily snapshots (a day both
+     * hold is combined by the same-day rule), what it reported about the post,
+     * and then removes it, with the post imported from it if any.
+     */
+    private function absorb(AnalyticsPublication $current, AnalyticsPublication $discovered): void
+    {
+        if (filled($discovered->post_id) && $discovered->post_id !== $current->post_id) {
+            $this->deleteImportedPost($discovered->post_id);
+        }
+
+        $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
+            $existing = $current->dailySnapshots()
+                ->where('date', $snapshot->date->toDateString())
+                ->lockForUpdate()
+                ->first();
+
+            if (blank($existing)) {
+                $snapshot->update(['publication_id' => $current->id]);
+
+                return;
+            }
+
+            $this->snapshots->combine($existing, $snapshot);
+            $snapshot->delete();
+        });
+
+        $current->fill([
+            'permalink' => $discovered->permalink ?? $current->permalink,
+            'preview_metadata' => $discovered->preview_metadata ?? $current->preview_metadata,
+            'provider_metadata' => self::providerMetadataAfterDiscovery($current, $discovered->provider_metadata),
+            'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
+            'excerpt' => $discovered->excerpt ?? $current->excerpt,
+            'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
+            'last_seen_at' => collect([$current->last_seen_at, $discovered->last_seen_at])->filter()->max(),
+        ]);
+        $discovered->delete();
+    }
+
+    private function moveTo(AnalyticsPublication $current, string $remoteId, AnalyticsPublication $publication): void
+    {
+        $current->remote_id = $remoteId;
+        $current->save();
+
+        $publication->setRawAttributes($current->getAttributes(), true);
     }
 
     private function deleteImportedPost(string $postId): void
@@ -288,6 +349,7 @@ class UpsertAnalyticsPublication
                 ...$identityFields,
                 'first_seen_at' => $now,
             ]);
+            $keepsDiscovery = self::keepsDiscovery($publication, $origin, $providerPostId);
 
             $values = [
                 'social_account_id' => $liveAccount?->id
@@ -295,20 +357,20 @@ class UpsertAnalyticsPublication
                 'post_id' => $postId ?? $publication->post_id,
                 'platform_user_id' => $identity->platformUserId,
                 'platform' => $identity->platform,
-                'provider_published_at' => $providerPublishedAt,
+                'provider_published_at' => $keepsDiscovery ? $publication->provider_published_at : $providerPublishedAt,
                 'origin' => $origin === PublicationOrigin::TryPost
                     ? PublicationOrigin::TryPost
                     : ($publication->origin ?? PublicationOrigin::External),
-                'content_type' => $contentTypeReported || ! $publication->exists ? $contentType : $publication->content_type,
+                'content_type' => ($contentTypeReported || ! $publication->exists) && ! $keepsDiscovery ? $contentType : $publication->content_type,
                 'availability' => PublicationAvailability::Available,
                 'last_seen_at' => $now,
                 'provider_synced_at' => $providerSyncedAt ?? $publication->provider_synced_at,
             ];
 
             foreach ([
-                'provider_content_type' => $providerContentType,
-                'permalink' => $permalink,
-                'excerpt' => $excerpt,
+                'provider_content_type' => $keepsDiscovery ? null : $providerContentType,
+                'permalink' => $keepsDiscovery ? null : $permalink,
+                'excerpt' => $keepsDiscovery ? null : $excerpt,
                 'preview_metadata' => $previewMetadata,
                 'provider_metadata' => self::providerMetadataAfterDiscovery($publication, $providerMetadata),
                 'account_display_name' => $identity->accountDisplayName,
@@ -330,6 +392,19 @@ class UpsertAnalyticsPublication
 
             return $publication->refresh();
         });
+    }
+
+    /**
+     * A TryPost write that found its publication under the Page post carrying
+     * the post's Facebook video or photo (the post kept on its media id, the
+     * publication merged under its Page post id) keeps what discovery reported
+     * about that Page post: its link, time, type and text.
+     */
+    private static function keepsDiscovery(AnalyticsPublication $publication, PublicationOrigin $origin, string $providerPostId): bool
+    {
+        return $origin === PublicationOrigin::TryPost
+            && $publication->remote_id !== $providerPostId
+            && in_array($providerPostId, $publication->facebookMediaIds(), true);
     }
 
     /**

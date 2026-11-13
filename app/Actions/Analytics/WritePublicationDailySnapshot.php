@@ -59,7 +59,9 @@ class WritePublicationDailySnapshot
                 }
             }
 
-            $metrics = $this->mergeMetrics($snapshot->metrics ?? [], $observation->metrics);
+            $metrics = $this->mergeMetrics($snapshot->metrics ?? [], collect($observation->metrics)
+                ->mapWithKeys(fn (MetricValue $metric): array => [$metric->key->value => $metric->toArray()])
+                ->all());
 
             $snapshot->fill([
                 'collected_at' => $observation->collectedAt ?? now(),
@@ -75,6 +77,35 @@ class WritePublicationDailySnapshot
 
             return $snapshot->refresh();
         });
+    }
+
+    /**
+     * Folds a same-day snapshot of another publication into `$kept` (one post
+     * stored twice, being merged) by the rule every same-day read follows: the
+     * newer read's metrics merged over the older one's, the columns projected
+     * from the result. A snapshot stored without metrics brought nothing to
+     * merge, so the other one is kept whole, as a read that brings nothing
+     * keeps what is stored.
+     */
+    public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
+    {
+        [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
+
+        if (blank($older->metrics) || blank($newer->metrics)) {
+            $whole = blank($newer->metrics) && filled($older->metrics) ? $older : $newer;
+            $kept->fill($whole->only(['collected_at', 'provider_observed_at', 'metrics', ...array_keys($this->scalarProjections([]))]))->save();
+
+            return;
+        }
+
+        $metrics = $this->mergeMetrics($older->metrics, $newer->metrics);
+
+        $kept->fill([
+            'collected_at' => $newer->collected_at,
+            'provider_observed_at' => $newer->provider_observed_at ?? $older->provider_observed_at,
+            'metrics' => $metrics,
+            ...$this->scalarProjections($metrics),
+        ])->save();
     }
 
     /**
@@ -99,27 +130,26 @@ class WritePublicationDailySnapshot
      * value so a partial read (one call refused) cannot undercut a fuller one.
      *
      * @param  array<string, array<string, mixed>>  $existing
-     * @param  list<MetricValue>  $incoming
+     * @param  array<string, array<string, mixed>>  $incoming  Stored metrics (MetricValue::toArray()) keyed by their key
      * @return array<string, array<string, mixed>>
      */
     private function mergeMetrics(array $existing, array $incoming): array
     {
-        foreach ($incoming as $metric) {
-            $key = $metric->key->value;
+        foreach ($incoming as $key => $metric) {
             $current = data_get($existing, $key);
             $currentIsMeasured = data_get($current, 'availability') === MetricAvailability::Available->value
                 && is_numeric(data_get($current, 'value'));
-            $incomingIsMeasured = $metric->availability === MetricAvailability::Available
-                && $metric->value !== null;
+            $incomingIsMeasured = data_get($metric, 'availability') === MetricAvailability::Available->value
+                && is_numeric(data_get($metric, 'value'));
 
             $wouldLowerLifetimeCount = $incomingIsMeasured && $currentIsMeasured
-                && $metric->unit === MetricUnit::Count
-                && $metric->timeBasis === MetricTimeBasis::Lifetime
+                && data_get($metric, 'unit') === MetricUnit::Count->value
+                && data_get($metric, 'time_basis') === MetricTimeBasis::Lifetime->value
                 && data_get($current, 'time_basis', MetricTimeBasis::Lifetime->value) === MetricTimeBasis::Lifetime->value
-                && $metric->value < data_get($current, 'value');
+                && data_get($metric, 'value') < data_get($current, 'value');
 
             if (($incomingIsMeasured || ! $currentIsMeasured) && ! $wouldLowerLifetimeCount) {
-                $existing[$key] = $metric->toArray();
+                $existing[$key] = $metric;
             }
         }
 

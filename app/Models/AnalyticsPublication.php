@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
@@ -90,5 +91,67 @@ class AnalyticsPublication extends Model
     public function scopeAvailable(Builder $query): Builder
     {
         return $query->where('availability', PublicationAvailability::Available);
+    }
+
+    /**
+     * Available, linked to no post and not dismissed: what the import may link
+     * or turn into a post.
+     */
+    public function scopeLinkable(Builder $query): Builder
+    {
+        return $query->available()->whereNull('post_id')->whereNull('post_dismissed_at');
+    }
+
+    /**
+     * Carrying one of `$mediaIds` as its Facebook video or photo; an empty list
+     * matches nothing.
+     *
+     * @param  list<string>  $mediaIds
+     */
+    public function scopeCarryingFacebookMedia(Builder $query, array $mediaIds): Builder
+    {
+        return $query->where(function (Builder $carrying) use ($mediaIds): void {
+            foreach (FacebookMediaKey::cases() as $key) {
+                $carrying->orWhereIn("provider_metadata->{$key->value}", $mediaIds);
+            }
+        });
+    }
+
+    /**
+     * Carrying a Facebook video or photo, whichever.
+     */
+    public function scopeCarryingAnyFacebookMedia(Builder $query): Builder
+    {
+        return $query->where(function (Builder $carrying): void {
+            foreach (FacebookMediaKey::cases() as $key) {
+                $carrying->orWhereNotNull("provider_metadata->{$key->value}");
+            }
+        });
+    }
+
+    /**
+     * The Facebook video or photo this publication carries, which TryPost may
+     * have saved as its post's id.
+     *
+     * @return list<string>
+     */
+    public function facebookMediaIds(): array
+    {
+        if ($this->platform !== Platform::Facebook) {
+            return [];
+        }
+
+        return collect(FacebookMediaKey::cases())
+            ->map(fn (FacebookMediaKey $key): mixed => data_get($this->provider_metadata, $key->value))
+            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
+            ->values()
+            ->all();
+    }
+
+    public function isLinkable(): bool
+    {
+        return $this->availability === PublicationAvailability::Available
+            && blank($this->post_id)
+            && blank($this->post_dismissed_at);
     }
 }

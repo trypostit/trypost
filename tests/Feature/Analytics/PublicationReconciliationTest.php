@@ -6,6 +6,14 @@ use App\Actions\Analytics\SyncTryPostPublication;
 use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
+use App\Dto\Analytics\MetricValue;
+use App\Enums\Analytics\ExposureKind;
+use App\Enums\Analytics\MetricAvailability;
+use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\MetricPrecision;
+use App\Enums\Analytics\MetricTimeBasis;
+use App\Enums\Analytics\MetricUnit;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\PublishStatus as Status;
@@ -23,6 +31,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Queue::fake();
@@ -72,22 +81,25 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
         'platform_post_id' => 'v_pub_provisional',
     ]);
     $provisional = app(SyncTryPostPublication::class)->handle($post);
+    $publishedAt = now('UTC')->subDays(2)->startOfHour()->toImmutable();
     $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
-        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        publishedAt: $publishedAt,
         contentType: PublicationContentType::Video,
         permalink: 'https://www.tiktok.com/@example/video/123456789',
     ));
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $provisional->id,
-        'date' => '2026-09-21',
-        'collected_at' => '2026-09-21 10:00:00',
+        'date' => $publishedAt->addDay()->toDateString(),
+        'collected_at' => $publishedAt->addDay()->setTime(10, 0),
+        'metrics' => storedMetrics(['views' => 5]),
         'views_count' => 5,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $discovered->id,
-        'date' => '2026-09-21',
-        'collected_at' => '2026-09-21 12:00:00',
+        'date' => $publishedAt->addDay()->toDateString(),
+        'collected_at' => $publishedAt->addDay()->setTime(12, 0),
+        'metrics' => storedMetrics(['views' => 12]),
         'views_count' => 12,
     ]);
 
@@ -102,7 +114,7 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
 
     app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
-        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        publishedAt: $publishedAt,
         contentType: PublicationContentType::Video,
     ));
     expect(AnalyticsPublication::query()->count())->toBe(1);
@@ -333,4 +345,196 @@ test('a network that reports the type still corrects the type TryPost published'
     ));
 
     expect(AnalyticsPublication::sole()->content_type)->toBe(PublicationContentType::Reel);
+});
+
+/**
+ * @param  array<string, int|null>  $counts
+ * @return array<string, array<string, mixed>>
+ */
+function storedMetrics(array $counts): array
+{
+    return collect($counts)->mapWithKeys(fn (?int $value, string $key): array => [$key => (new MetricValue(
+        key: MetricKey::from($key),
+        value: $value,
+        unit: MetricUnit::Count,
+        timeBasis: MetricTimeBasis::Lifetime,
+        precision: MetricPrecision::Exact,
+        availability: filled($value) ? MetricAvailability::Available : MetricAvailability::Unavailable,
+    ))->toArray()])->all();
+}
+
+/**
+ * @param  array<string, int|null>  $trackedCounts
+ * @param  array<string, int|null>  $discoveredCounts
+ * @return array{0: AnalyticsPublication, 1: Post}
+ */
+function facebookVideoReadTwiceOnOneDay(array $trackedCounts, array $discoveredCounts, int $discoveredHoursLater): array
+{
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = app(SyncTryPostPublication::class)->handle($post);
+    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'page_post-1',
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $collectedAt = now()->subHours(3);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $tracked->id,
+        'date' => $collectedAt->toDateString(),
+        'collected_at' => $collectedAt->addHour(),
+        'metrics' => storedMetrics($trackedCounts),
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $discovered->id,
+        'date' => $collectedAt->toDateString(),
+        'collected_at' => $collectedAt->addHour()->addHours($discoveredHoursLater),
+        'metrics' => storedMetrics($discoveredCounts),
+    ]);
+
+    return [$tracked, $post];
+}
+
+test('merging two reads of the same day follows the same-day rule of every read', function (array $tracked, array $discovered, int $discoveredHoursLater, array $expected) {
+    [$publication, $post] = facebookVideoReadTwiceOnOneDay($tracked, $discovered, $discoveredHoursLater);
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
+
+    $snapshot = $publication->dailySnapshots()->sole();
+
+    expect($snapshot->only(array_keys($expected)))->toEqual($expected)
+        ->and($publication->fresh()->remote_id)->toBe('page_post-1')
+        ->and($post->fresh()->platform_post_id)->toBe('video-9');
+})->with([
+    'the older read measured comments the newer did not' => [
+        ['views' => 52, 'comments' => null], ['views' => 50, 'comments' => 3], -1,
+        ['views_count' => 52, 'comments_count' => 3],
+    ],
+    'a newer read never lowers a lifetime count' => [
+        ['reactions' => 12, 'comments' => 3], ['reactions' => 5, 'comments' => null], 1,
+        ['reactions_count' => 12, 'comments_count' => 3],
+    ],
+    'a newer read raises a lifetime count' => [
+        ['views' => 50], ['views' => 58], 1,
+        ['views_count' => 58],
+    ],
+    'engagement and exposure come from the merged metrics' => [
+        ['views' => 52, 'engagements' => 5], ['reach' => 40, 'engagements' => 16], -1,
+        ['engagement_count' => 16, 'exposure_count' => 40, 'exposure_kind' => ExposureKind::Reach],
+    ],
+]);
+
+test('a stored metric that is not a measured value never replaces one, and is kept where nothing else is', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    $legacy = ['value' => 7, 'unit' => 'count', 'time_basis' => 'lifetime', 'precision' => 'exact', 'availability' => 'available'];
+    $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
+    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'views' => ['value' => 'many']]])->save();
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
+
+    $metrics = $publication->dailySnapshots()->sole()->metrics;
+
+    expect(data_get($metrics, 'a_retired_metric'))->toEqual($legacy)
+        ->and(data_get($metrics, 'views.value'))->toBe(52);
+});
+
+test('a merge read from a publication that has moved since does nothing', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $stale = app(SyncTryPostPublication::class)->handle($post);
+    $discovery = fn (string $id): AnalyticsPublication => app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: $id,
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $discovery('page_post-1');
+    $second = $discovery('page_post-2');
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($stale->replicate()->setRawAttributes($stale->getAttributes()), 'page_post-1'))->toBeTrue()
+        ->and(app(UpsertAnalyticsPublication::class)->mergeDiscovery($stale, 'page_post-2'))->toBeFalse()
+        ->and($stale->fresh()->remote_id)->toBe('page_post-1')
+        ->and($second->fresh())->not->toBeNull();
+});
+
+test('a snapshot stored without metrics brings nothing to the merge', function (bool $newerHasMetrics) {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52, 'comments' => 3], ['views' => 50], 1);
+    $withoutMetrics = $newerHasMetrics ? $publication->id : null;
+    AnalyticsPublicationDailySnapshot::query()
+        ->when($withoutMetrics, fn ($query) => $query->where('publication_id', $withoutMetrics), fn ($query) => $query->whereNot('publication_id', $publication->id))
+        ->update(['metrics' => null]);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    $snapshot = $publication->dailySnapshots()->sole();
+
+    expect(data_get($snapshot->metrics, 'views.value'))->toBe($newerHasMetrics ? 50 : 52)
+        ->and(data_get($snapshot->metrics, 'comments.value'))->toBe($newerHasMetrics ? null : 3);
+})->with(['the older one has none' => true, 'the newer one has none' => false]);
+
+test('a merge of two snapshots stored without metrics keeps the newer one', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    AnalyticsPublicationDailySnapshot::query()->update(['metrics' => null]);
+    $newer = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole()->collected_at;
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    expect($publication->dailySnapshots()->sole()->collected_at->toIso8601String())->toBe($newer->toIso8601String());
+});
+
+test('carrying facebook media matches only the ids given', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $carrying = AnalyticsPublication::factory()->create(['social_account_id' => $account->id, 'platform' => Platform::Facebook, 'provider_metadata' => ['video_id' => 'video-9']]);
+    AnalyticsPublication::factory()->create(['social_account_id' => $account->id, 'platform' => Platform::Facebook, 'provider_metadata' => ['photo_id' => 'photo-3']]);
+
+    expect(AnalyticsPublication::query()->carryingFacebookMedia(['video-9'])->pluck('id')->all())->toBe([$carrying->id])
+        ->and(AnalyticsPublication::query()->carryingFacebookMedia([])->exists())->toBeFalse()
+        ->and(AnalyticsPublication::query()->carryingAnyFacebookMedia()->count())->toBe(2);
+});
+
+test('a merged publication keeps the latest time discovery saw the post', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    $seenAt = now()->subMinutes(5)->startOfSecond();
+    $publication->forceFill(['last_seen_at' => now()->subDays(3)])->save();
+    AnalyticsPublication::query()->whereKeyNot($publication->id)->update(['last_seen_at' => $seenAt]);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    expect($publication->fresh()->last_seen_at->toIso8601String())->toBe($seenAt->toIso8601String());
+});
+
+test('a merge into a publication marked deleted since it was read does nothing', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    AnalyticsPublication::query()->whereKey($publication->id)->update(['availability' => PublicationAvailability::Deleted]);
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeFalse()
+        ->and($publication->fresh()->remote_id)->toBe('video-9')
+        ->and(AnalyticsPublication::query()->where('remote_id', 'page_post-1')->exists())->toBeTrue();
+});
+
+test('a discovery under another analytics key is not merged and the publication keeps its id', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = app(SyncTryPostPublication::class)->handle($post);
+    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'page_post-1',
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $discovered->forceFill(['social_account_key' => (string) Str::uuid7()])->save();
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1'))->toBeFalse()
+        ->and($tracked->fresh()->remote_id)->toBe('video-9')
+        ->and($discovered->fresh())->not->toBeNull();
+
+    ImportExternalPosts::execute($account);
+
+    expect(Post::query()->imported()->exists())->toBeFalse()
+        ->and($discovered->fresh()->post_id)->toBeNull();
+
+    $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
+        ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
+        ->assertSuccessful();
 });

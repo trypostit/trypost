@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\SyncTryPostPublication as SyncTryPostPublicationAction;
 use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Post\ImportExternalPosts;
+use App\Dto\Analytics\DiscoveredPublication;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
@@ -17,6 +20,7 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
@@ -193,6 +197,7 @@ test('a facebook post links the trypost video it carries by video id', function 
     ]);
     $publication = externalPublication($account, [
         'remote_id' => 'page_post-1',
+        'provider_published_at' => now()->subMinute(),
         'provider_metadata' => ['video_id' => 'video-9'],
     ]);
 
@@ -202,21 +207,313 @@ test('a facebook post links the trypost video it carries by video id', function 
         ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });
 
-test('a facebook video already tracked by its trypost publication is left unlinked', function () {
+test('turning text matching off keeps linking a facebook post by the media it carries', function () {
+    config()->set('trypost.external_posts.match_window_minutes', 0);
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($tryPost->id);
+});
+
+test('a facebook video already tracked by its trypost publication is merged into it', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
         'platform_post_id' => 'video-9',
     ]);
-    externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id]);
+    $tracked = externalPublication($account, [
+        'remote_id' => 'video-9',
+        'post_id' => $tryPost->id,
+        'origin' => PublicationOrigin::TryPost,
+        'content_type' => PublicationContentType::Video,
+    ]);
     $external = externalPublication($account, [
         'remote_id' => 'page_post-1',
+        'provider_published_at' => now()->subMinute(),
+        'permalink' => 'https://www.facebook.com/reel/video-9',
+        'content_type' => PublicationContentType::Reel,
         'provider_metadata' => ['video_id' => 'video-9'],
     ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $tracked->id,
+        'date' => today()->subDay(),
+        'views_count' => 200,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $external->id,
+        'date' => today(),
+        'views_count' => 234,
+        'comments_count' => 0,
+    ]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($external->fresh())->toBeNull()
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->count())->toBe(1);
+
+    $merged = $tracked->fresh();
+
+    expect($merged->remote_id)->toBe('page_post-1')
+        ->and($merged->content_type)->toBe(PublicationContentType::Reel)
+        ->and($merged->post_id)->toBe($tryPost->id)
+        ->and($merged->provider_metadata)->toEqual(['video_id' => 'video-9'])
+        ->and($merged->dailySnapshots()->orderBy('date')->pluck('views_count')->all())->toBe([200, 234])
+        ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
+});
+
+test('a merge keeps the trypost type when discovery could not tell it', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'content_type' => PublicationContentType::Reel]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'content_type' => PublicationContentType::Unknown, 'provider_metadata' => ['video_id' => 'video-9']]);
 
     ImportExternalPosts::execute($account);
 
-    expect(Post::query()->imported()->count())->toBe(0)
-        ->and($external->fresh()->post_id)->toBeNull();
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($tracked->fresh()->content_type)->toBe(PublicationContentType::Reel);
+});
+
+test('a merged facebook video stays one publication when it syncs and is discovered again', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
+        'platform_post_id' => 'video-9',
+        'content' => 'The caption written in TryPost',
+    ]);
+    $tracked = app(SyncTryPostPublicationAction::class)->handle($tryPost);
+    $discovered = new DiscoveredPublication(
+        providerPostId: 'page_post-1',
+        publishedAt: now()->subHour()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerContentType: 'video_inline',
+        permalink: 'https://www.facebook.com/reel/video-9/',
+        excerpt: 'The caption on the Page',
+        previewMetadata: null,
+        providerMetadata: ['video_id' => 'video-9'],
+    );
+    app(UpsertAnalyticsPublication::class)->external($account, $discovered);
+
+    ImportExternalPosts::execute($account);
+    app(UpsertAnalyticsPublication::class)->external($account, $discovered);
+    app(SyncTryPostPublicationAction::class)->handle($tryPost->fresh());
+    ImportExternalPosts::execute($account);
+
+    $publication = AnalyticsPublication::query()->where('social_account_id', $account->id)->sole();
+
+    expect($publication->id)->toBe($tracked->id)
+        ->and($publication->remote_id)->toBe('page_post-1')
+        ->and($publication->post_id)->toBe($tryPost->id)
+        ->and($publication->origin)->toBe(PublicationOrigin::TryPost)
+        ->and($publication->permalink)->toBe('https://www.facebook.com/reel/video-9/')
+        ->and($publication->provider_content_type)->toBe('video_inline')
+        ->and($publication->excerpt)->toBe('The caption on the Page')
+        ->and($publication->content_type)->toBe(PublicationContentType::Reel)
+        ->and($publication->provider_published_at->toIso8601String())->toBe($discovered->publishedAt->toIso8601String())
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
+});
+
+test('a facebook video carried by two page posts links neither, tracked or not', function (bool $tracked) {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+
+    if ($tracked) {
+        externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    }
+
+    $original = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinutes(2), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    expect($original->fresh()->post_id)->toBeNull()
+        ->and($share->fresh()->post_id)->toBeNull()
+        ->and($tryPost->analyticsPublication?->remote_id)->toBe($tracked ? 'video-9' : null)
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+})->with(['tracked' => true, 'not tracked yet' => false]);
+
+test('a trypost post without a published time is placed by its publication clock', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tryPost->forceFill(['published_at' => null, 'publication_updated_at' => now()->subMinutes(2)])->saveQuietly();
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($tryPost->id);
+});
+
+test('a page post deleted on the network no longer shares a facebook video', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subMinute(), 'availability' => PublicationAvailability::Deleted, 'provider_metadata' => ['video_id' => 'video-9']]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1');
+});
+
+test('a page post sharing a facebook video days later does not stop the trypost one from merging', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(3)]);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subDays(3)->addMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($share->fresh()->post_id)->toBeNull()
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+});
+
+test('an ambiguous page post is reported once a day, and a later share is not', function () {
+    Log::spy();
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);
+    externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $first = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subDays(2)->addMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $second = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subDays(2)->addMinutes(2), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-3', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    $reported = fn (AnalyticsPublication $publication): Closure => fn (array $context): bool => $context['analytics_publication_id'] === $publication->id;
+    Log::shouldHaveReceived('warning')->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($first)))->once();
+    Log::shouldHaveReceived('warning')->with('Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($second)))->once();
+    Log::shouldNotHaveReceived('warning', ['Facebook Page post carrying a TryPost media was left unlinked.', Mockery::on($reported($share))]);
+});
+
+test('a facebook page post published long after the trypost post is not its own', function (bool $tracked) {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9', 'published_at' => now()->subDays(2)]);
+
+    if ($tracked) {
+        externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    }
+
+    $later = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($later->fresh()->post_id)->toBeNull()
+        ->and($tryPost->analyticsPublication?->remote_id)->toBe($tracked ? 'video-9' : null)
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+})->with(['tracked' => true, 'not tracked yet' => false]);
+
+test('a facebook publication tracked as deleted is not merged into', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'availability' => PublicationAvailability::Deleted]);
+    $discovered = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('video-9')
+        ->and($discovered->fresh())->not->toBeNull()
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+});
+
+test('a facebook post matched by its own id links whatever else carries its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-2']);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHours(3), 'provider_metadata' => ['photo_id' => 'photo-9']]);
+    $own = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['photo_id' => 'photo-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($own->fresh()->post_id)->toBe($tryPost->id);
+});
+
+test('a trypost sync rewrites the link of a facebook publication that does not carry its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-2', 'platform_url' => 'https://www.facebook.com/page_post-2']);
+    $tracked = externalPublication($account, ['remote_id' => 'page_post-1', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'permalink' => 'https://www.facebook.com/page_post-1']);
+
+    app(SyncTryPostPublicationAction::class)->handle($tryPost);
+
+    expect($tracked->fresh()->permalink)->toBe('https://www.facebook.com/page_post-2');
+});
+
+test('a facebook publication links the post published under its own id before one sharing its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $byMedia = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $byId = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-1']);
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($byId->id)
+        ->and($byMedia->fresh()->analyticsPublication)->toBeNull();
+});
+
+test('a trypost sync rewrites the link of another network\'s publication found by its post', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9', 'platform_url' => 'https://www.instagram.com/p/media-9/']);
+    $tracked = externalPublication($account, ['remote_id' => 'container-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'permalink' => 'https://example.com/old']);
+
+    app(SyncTryPostPublicationAction::class)->handle($tryPost);
+
+    expect($tracked->fresh()->permalink)->toBe('https://www.instagram.com/p/media-9/');
+});
+
+test('two page posts carrying a facebook video in the same second link neither', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $publishedAt = now()->subHour();
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => $publishedAt, 'provider_metadata' => ['video_id' => 'video-9']]);
+    externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => $publishedAt, 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('video-9')
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+});
+
+test('another page post sharing a merged facebook video stays a publication of its own', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+    ImportExternalPosts::execute($account);
+    $repost = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($repost->fresh())->not->toBeNull()
+        ->and($repost->fresh()->post_id)->toBeNull()
+        ->and(Post::query()->imported()->exists())->toBeFalse()
+        ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
+});
+
+test('another network never links a post by a media id in its metadata', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);
+    $publication = externalPublication($account, ['remote_id' => 'ig-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'media-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->not->toBe($tryPost->id);
+});
+
+test('a publication of another network tracked under another id is left to that publication', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'container-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $discovered = externalPublication($account, ['remote_id' => 'media-9']);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->exists())->toBeFalse()
+        ->and($tracked->fresh()->remote_id)->toBe('container-9')
+        ->and($discovered->fresh()->post_id)->toBeNull();
 });
 
 test('a facebook photo discovered under its feed post id does not duplicate the original', function (bool $tracked) {
@@ -251,7 +548,12 @@ test('a facebook photo discovered under its feed post id does not duplicate the 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_id)->toBe($tracked ? null : $original->id);
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->sole()->post_id)->toBe($original->id);
+
+    if ($tracked) {
+        expect($publication->fresh())->toBeNull()
+            ->and($original->fresh()->platform_post_id)->toBe('photo-9');
+    }
 
     Http::assertSentCount(1);
 })->with(['untracked original' => false, 'tracked original' => true]);

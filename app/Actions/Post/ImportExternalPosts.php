@@ -21,6 +21,7 @@ use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -42,6 +43,12 @@ class ImportExternalPosts
     private const array PROVISIONAL_ID_PLATFORMS = [Platform::Instagram, Platform::InstagramFacebook, Platform::TikTok];
 
     private const int MIN_TRUNCATED_MATCH_LENGTH = 20;
+
+    /**
+     * How far from the TryPost post a Facebook Page post carrying its video or
+     * photo may be published and still be its own (production: under 4 minutes).
+     */
+    private const int OWN_PAGE_POST_WINDOW_MINUTES = 120;
 
     /**
      * @return list<string>
@@ -119,15 +126,15 @@ class ImportExternalPosts
         return DB::transaction(function () use ($account, $publicationId): ?string {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if (blank($publication) || filled($publication->post_id) || filled($publication->post_dismissed_at)) {
+            if (blank($publication) || ! $publication->isLinkable()) {
                 return null;
             }
 
-            $existing = self::tryPostTarget($account, $publication);
+            $target = self::tryPostTarget($account, $publication);
 
-            if ($existing !== null) {
-                if (! AnalyticsPublication::query()->where('post_id', $existing->id)->exists()) {
-                    $publication->update(['post_id' => $existing->id]);
+            if (filled($target)) {
+                if (! self::linkToPost($target, $publication)) {
+                    self::reportUnlinkedPagePost($target, $publication);
                 }
 
                 return null;
@@ -148,17 +155,136 @@ class ImportExternalPosts
         });
     }
 
+    /**
+     * Links a publication to the post TryPost published, by the linking rules of
+     * the import, whatever its age (the import itself only looks at the newest
+     * publications within the history retention). Returns that post, or null
+     * when it is not a post TryPost published or it was left as it is.
+     */
+    public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
+    {
+        return DB::transaction(function () use ($account, $publicationId): ?Post {
+            $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
+
+            if (blank($publication) || ! $publication->isLinkable()) {
+                return null;
+            }
+
+            $target = self::tryPostTarget($account, $publication);
+
+            return filled($target) && self::linkToPost($target, $publication) ? $target : null;
+        });
+    }
+
+    /**
+     * A Page post carrying a TryPost post's media, published within its window,
+     * that was not taken for the post's own (another Page post there shares the
+     * media, or the tracked publication could not take the merge): left out of
+     * the import, reported once a day. A Page post sharing the media later is
+     * expected and not reported.
+     */
+    private static function reportUnlinkedPagePost(Post $post, AnalyticsPublication $publication): void
+    {
+        $ambiguous = $post->platform_post_id !== $publication->remote_id
+            && $publication->provider_published_at->between(...self::ownPagePostWindow($post));
+
+        if (! $ambiguous || ! Cache::add("import-external-posts:unlinked-page-post:{$publication->id}", true, now()->addDay())) {
+            return;
+        }
+
+        Log::warning('Facebook Page post carrying a TryPost media was left unlinked.', [
+            'analytics_publication_id' => $publication->id,
+            'post_id' => $post->id,
+        ]);
+    }
+
+    /**
+     * A publication of a post TryPost published is linked to it. One matched
+     * only through the Facebook video or photo it carries is linked only when it
+     * is that post's own Page post (isOwnPagePost). When a Facebook post is
+     * already tracked under its own id, the publication is merged into the
+     * tracked one, so Insights counts the post once. Any other network keeps
+     * the tracked publication.
+     */
+    private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
+    {
+        if ($post->platform_post_id !== $publication->remote_id && ! self::isOwnPagePost($post, $publication)) {
+            return false;
+        }
+
+        if (blank($post->analyticsPublication)) {
+            $publication->update(['post_id' => $post->id]);
+
+            return true;
+        }
+
+        return $post->platform === Platform::Facebook
+            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
+    }
+
+    /**
+     * The Page post TryPost created when it published a Facebook video or photo:
+     * published within OWN_PAGE_POST_WINDOW_MINUTES of the post, and the only
+     * available publication of the channel carrying that media in that window
+     * (a Page post deleted on the network no longer counts). Any doubt leaves
+     * it unlinked; a Page post sharing the media later stays one of its own.
+     */
+    private static function isOwnPagePost(Post $post, AnalyticsPublication $publication): bool
+    {
+        $mediaIds = $publication->facebookMediaIds();
+
+        if (blank($mediaIds)) {
+            return false;
+        }
+
+        $window = self::ownPagePostWindow($post);
+
+        if (! $publication->provider_published_at->between(...$window)) {
+            return false;
+        }
+
+        return AnalyticsPublication::query()
+            ->available()
+            ->where('social_account_id', $publication->social_account_id)
+            ->whereBetween('provider_published_at', $window)
+            ->carryingFacebookMedia($mediaIds)
+            ->count() === 1;
+    }
+
+    /**
+     * The times a TryPost post's own Page post may carry: OWN_PAGE_POST_WINDOW_MINUTES
+     * around its publication, placed as tryPost() places it.
+     *
+     * @return array{0: CarbonInterface, 1: CarbonInterface}
+     */
+    private static function ownPagePostWindow(Post $post): array
+    {
+        $publishedAt = $post->published_at ?? $post->publication_updated_at ?? $post->updated_at;
+
+        return [
+            $publishedAt->subMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+            $publishedAt->addMinutes(self::OWN_PAGE_POST_WINDOW_MINUTES),
+        ];
+    }
+
+    /**
+     * The post TryPost published under the publication's own id, else under the
+     * Facebook video or photo it carries.
+     */
     private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
     {
-        $remoteIds = collect([
-            $publication->remote_id,
-            $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'video_id') : null,
-            $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'photo_id') : null,
-        ])->filter(fn (mixed $id): bool => is_string($id) && filled($id))->values()->all();
+        return self::postPublishedUnder($account, [$publication->remote_id])
+            ?? self::postPublishedUnder($account, $publication->facebookMediaIds());
+    }
 
-        return Post::query()
+    /**
+     * @param  list<string>  $ids
+     */
+    private static function postPublishedUnder(SocialAccount $account, array $ids): ?Post
+    {
+        return blank($ids) ? null : Post::query()
             ->where('social_account_id', $account->id)
-            ->whereIn('platform_post_id', $remoteIds)
+            ->whereIn('platform_post_id', $ids)
             ->where('workspace_id', $account->workspace_id)
             ->first();
     }
