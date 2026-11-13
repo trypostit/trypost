@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "05783f339378d5195d0e90080f8b9514",
+    "content-hash": "ba1555ff77647ccb0535955d2cee483d",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -5070,6 +5070,93 @@
                 "source": "https://github.com/paragonie/random_compat"
             },
             "time": "2020-10-15T08:29:30+00:00"
+        },
+        {
+            "name": "paulocastellano/laravel-database-backup",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/paulocastellano/laravel-database-backup.git",
+                "reference": "bc82aa7f8c9022125d6e2d4d129c5b8020cd4f04"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/paulocastellano/laravel-database-backup/zipball/bc82aa7f8c9022125d6e2d4d129c5b8020cd4f04",
+                "reference": "bc82aa7f8c9022125d6e2d4d129c5b8020cd4f04",
+                "shasum": ""
+            },
+            "require": {
+                "ext-zlib": "*",
+                "guzzlehttp/guzzle": "^7.8||^8.0",
+                "illuminate/console": "^12.0||^13.0",
+                "illuminate/database": "^12.0||^13.0",
+                "illuminate/filesystem": "^12.0||^13.0",
+                "illuminate/http": "^12.0||^13.0",
+                "illuminate/mail": "^12.0||^13.0",
+                "illuminate/process": "^12.0||^13.0",
+                "illuminate/support": "^12.0||^13.0",
+                "league/flysystem-aws-s3-v3": "^3.0",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.9",
+                "laravel/pao": "^1.0",
+                "laravel/pint": "^1.29",
+                "orchestra/testbench": "^10.0||^11.0",
+                "pestphp/pest": "^4.6||^5.0",
+                "pestphp/pest-plugin-laravel": "^4.1||^5.0",
+                "pestphp/pest-plugin-type-coverage": "^4.0||^5.0",
+                "phpstan/extension-installer": "^1.4"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "PauloCastellano\\DatabaseBackup\\DatabaseBackupServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "PauloCastellano\\DatabaseBackup\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Paulo Castellano",
+                    "email": "hello@paulocastellano.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Back up your Laravel database (PostgreSQL, MySQL, MariaDB) to a private S3-compatible bucket on a schedule, with email and Discord notifications.",
+            "homepage": "https://github.com/paulocastellano/laravel-database-backup",
+            "keywords": [
+                "backup",
+                "database",
+                "discord",
+                "laravel",
+                "mariadb",
+                "mysql",
+                "postgresql",
+                "r2",
+                "s3"
+            ],
+            "support": {
+                "issues": "https://github.com/paulocastellano/laravel-database-backup/issues",
+                "source": "https://github.com/paulocastellano/laravel-database-backup"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/paulocastellano",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-11-13T15:06:37+00:00",
+            "published-time": "2026-11-13T15:07:40+00:00"
         },
         {
             "name": "php-http/discovery",
@@ -15915,5 +16002,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

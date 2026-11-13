@@ -77,6 +77,21 @@ services:
       # AWS_DEFAULT_REGION: us-east-1
       # AWS_BUCKET: ""
       # AWS_URL: ""
+      #
+      # --- Database backups (paulocastellano/laravel-database-backup): gzipped
+      # pg_dump every N hours (UTC) to a PRIVATE S3-compatible bucket (R2, S3,
+      # Spaces...); BACKUP_ENDPOINT picks the provider ---
+      # BACKUP_ENABLED: "true"
+      # BACKUP_INTERVAL_HOURS: "6"
+      # BACKUP_KEEP_DAYS: "30"           # 0 keeps every backup
+      # BACKUP_BUCKET: ""                # required
+      # BACKUP_DIRECTORY: trypost        # required: folder of the bucket
+      # BACKUP_ENDPOINT: ""
+      # BACKUP_REGION: auto
+      # BACKUP_ACCESS_KEY_ID: ""
+      # BACKUP_SECRET_ACCESS_KEY: ""
+      # BACKUP_NOTIFY_EMAIL: ""          # every success and failure
+      # BACKUP_NOTIFY_DISCORD_WEBHOOK_URL: ""
 
       # ===== Mail =====
       # Defaults to "log" (emails written to the container log). Configure SMTP
