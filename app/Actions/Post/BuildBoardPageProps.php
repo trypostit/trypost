@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Post;
 
-use App\Enums\Post\Status as PostStatus;
 use App\Http\Resources\App\PostCardResource;
 use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
@@ -17,7 +16,6 @@ use App\Support\Timezone;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -57,11 +55,7 @@ class BuildBoardPageProps
             return $workspaceLabels ??= $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
         };
 
-        $boardColumns = match ($group) {
-            'tag' => self::tagColumns($labels(), $labelIds, $untagged),
-            'channel' => self::channelColumns($workspaceAccounts, $requestedChannelIds, clone $basePosts),
-            default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
-        };
+        $hasChannels = filled($channel) || filled($workspaceAccounts);
 
         $columnQuery = fn (array $column): Builder => self::columnQuery(
             $column,
@@ -69,6 +63,17 @@ class BuildBoardPageProps
                 ->setEagerLoads([]),
             $requester,
         );
+
+        $boardColumns = match (true) {
+            ! $hasChannels => collect(),
+            $group === 'tag' => self::tagColumns($labels(), $labelIds, $untagged),
+            $group === 'channel' => self::channelColumns(
+                $workspaceAccounts,
+                $requestedChannelIds,
+                fn (): bool => $columnQuery(['key' => self::NO_CHANNEL, 'type' => 'no_channel'])->exists(),
+            ),
+            default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
+        };
 
         $loadedPages = null;
         $pages = function () use (&$loadedPages, $request, $boardColumns, $columnQuery): array {
@@ -98,7 +103,7 @@ class BuildBoardPageProps
                 'channels' => $requestedChannelIds,
             ],
             'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts),
-            'hasChannels' => filled($channel) || filled($workspaceAccounts),
+            'hasChannels' => $hasChannels,
             'authUserId' => $user->id,
         ];
     }
@@ -135,11 +140,15 @@ class BuildBoardPageProps
     }
 
     /**
+     * One column per channel, after a No channel column while the board would
+     * show a post there (the same query the column runs).
+     *
      * @param  Collection<int, SocialAccount>  $accounts
      * @param  list<string>  $requestedChannelIds
+     * @param  Closure(): bool  $hasChannelLessPosts
      * @return Collection<int, array<string, mixed>>
      */
-    private static function channelColumns(Collection $accounts, array $requestedChannelIds, HasMany $posts): Collection
+    private static function channelColumns(Collection $accounts, array $requestedChannelIds, Closure $hasChannelLessPosts): Collection
     {
         $filtering = filled($requestedChannelIds);
 
@@ -153,7 +162,7 @@ class BuildBoardPageProps
             ])
             ->values();
 
-        if ($filtering || $posts->whereNull('posts.platform')->doesntExist()) {
+        if ($filtering || ! $hasChannelLessPosts()) {
             return $columns;
         }
 
@@ -169,15 +178,15 @@ class BuildBoardPageProps
 
         $query = match ($type) {
             'status' => match (data_get($column, 'key')) {
-                'draft' => $query->where('status', PostStatus::Draft)
+                'draft' => $query->draft()
                     ->latest('posts.created_at'),
                 'approvals' => $query->pendingApproval()
                     ->visiblePendingApprovalsFor($requester)
                     ->approvalOrder(),
                 'scheduled' => $query->whereIn('status', BuildPublishPageProps::QUEUE_STATUSES)
                     ->orderBy('posts.scheduled_at'),
-                'published' => $query->where('status', PostStatus::Published)->latestAttempt(),
-                default => $query->where('status', PostStatus::Failed)->latestAttempt(),
+                'published' => $query->published()->latestAttempt(),
+                default => $query->failed()->latestAttempt(),
             },
             'label' => $query->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey(data_get($column, 'id'))),
             'untagged' => $query->whereDoesntHave('labels'),
@@ -213,16 +222,6 @@ class BuildBoardPageProps
     }
 
     /**
-     * One page of each requested column, keyed by column. Each column runs its
-     * own count and select; the cards of every column then load their
-     * relations, permissions and metrics together, and a post shown in two
-     * columns is serialized once.
-     *
-     * @param  Collection<int, array<string, mixed>>  $columns
-     * @param  Closure(array<string, mixed>): Builder  $columnQuery
-     * @return array<string, LengthAwarePaginator>
-     */
-    /**
      * @param  array<string, mixed>  $column
      */
     private static function pageName(array $column): string
@@ -232,6 +231,16 @@ class BuildBoardPageProps
         return "{$key}_page";
     }
 
+    /**
+     * One page of each requested column, keyed by column. Each column runs its
+     * own count and select; the cards of every column then load their
+     * relations, permissions and metrics together, and a post shown in two
+     * columns is serialized once.
+     *
+     * @param  Collection<int, array<string, mixed>>  $columns
+     * @param  Closure(array<string, mixed>): Builder  $columnQuery
+     * @return array<string, LengthAwarePaginator>
+     */
     private static function pages(Collection $columns, Closure $columnQuery): array
     {
         $pages = $columns->mapWithKeys(fn (array $column): array => [

@@ -181,6 +181,30 @@ test('a card action reloads the columns, so a tagged card moves to its tag', fun
     $page->assertNoJavaScriptErrors();
 });
 
+test('a card action brings a tag created meanwhile in as a column and drops a deleted one', function () {
+    $alpha = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha']);
+    $gone = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Gone']);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['group' => 'tag']))->resize(1280, 900);
+    waitFor($page, "@board-column-untagged @board-card-{$this->draft->id}");
+    waitFor($page, "@board-column-label_{$gone->id}");
+
+    $added = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Added']);
+    $gone->delete();
+
+    $page->click("@post-labels-board-{$this->draft->id}-trigger");
+    waitFor($page, "@post-labels-board-{$this->draft->id}-checkbox-{$alpha->id}");
+    $page->click("@post-labels-board-{$this->draft->id}-checkbox-{$alpha->id}");
+
+    waitFor($page, "@board-column-label_{$alpha->id} @board-card-{$this->draft->id}");
+    waitFor($page, "@board-column-empty-label_{$added->id}");
+    waitForGone($page, "@board-column-label_{$gone->id}");
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('an approver approves a pending post from its board card', function () {
     $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create([
         'user_id' => $this->user->id,

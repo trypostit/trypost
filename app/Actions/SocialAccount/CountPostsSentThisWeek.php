@@ -28,7 +28,7 @@ class CountPostsSentThisWeek
             return [];
         }
 
-        return Post::query()
+        return Post::countPerChannel(Post::query()
             ->wentOut()
             ->whereNotNull('published_at')
             ->where(fn (Builder $any): Builder => $channels->reduce(
@@ -43,12 +43,6 @@ class CountPostsSentThisWeek
                 }),
                 $any,
             ))
-            ->toBase()
-            ->select('posts.social_account_id')
-            ->selectRaw('count(*) as aggregate')
-            ->groupBy('posts.social_account_id')
-            ->pluck('aggregate', 'social_account_id')
-            ->map(fn (mixed $count): int => (int) $count)
-            ->all();
+        );
     }
 }

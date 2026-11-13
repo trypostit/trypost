@@ -14,8 +14,10 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePublishView } from '@/composables/usePublishView';
 import { calendar } from '@/routes/app';
 import { board, index as postsIndex } from '@/routes/app/posts';
+import { PUBLISH_VIEWS, type PublishView } from '@/types/publish';
 
 const props = defineProps<{
     activeView: 'grid' | 'list' | 'calendar' | 'board';
@@ -24,6 +26,15 @@ const props = defineProps<{
     gridHref?: string;
     boardHref?: string;
 }>();
+
+const { rememberPublishView } = usePublishView();
+
+/** Picking a view here is the only thing that changes the remembered Publish view; the Instagram grid is not one. */
+const pickView = (key: string): void => {
+    if (PUBLISH_VIEWS.includes(key as PublishView)) {
+        rememberPublishView(key as PublishView);
+    }
+};
 
 const views = computed(() => [
     ...(props.gridHref
@@ -82,6 +93,7 @@ const views = computed(() => [
                             activeView === view.key ? 'page' : undefined
                         "
                         :data-testid="`schedule-view-${view.key}`"
+                        @click="pickView(view.key)"
                         class="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-transparent px-2 text-sm font-medium transition-control"
                         :class="
                             activeView === view.key

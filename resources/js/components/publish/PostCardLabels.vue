@@ -5,6 +5,7 @@ import { computed, inject, ref, watch } from 'vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import {
+    POST_CARD_LABELS_RELOAD,
     postCardLabelsKey,
     syncPostCardLabels,
     usePostCardReload,
@@ -26,7 +27,7 @@ const workspaceLabels = inject(
     computed(() => []),
 );
 
-const reload = usePostCardReload({ only: ['posts', 'queue'], reset: ['posts'] });
+const reload = usePostCardReload(POST_CARD_LABELS_RELOAD);
 
 const toIds = (labels: PostCardLabel[]): string[] =>
     labels.map((label) => label.id);

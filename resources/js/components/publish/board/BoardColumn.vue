@@ -85,6 +85,7 @@ const ownName = computed((): string | null => {
                 {{ $t(nameKey) }}
             </h2>
             <span
+                v-if="cards"
                 class="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-secondary px-1 text-xs leading-[18px] font-medium text-muted-foreground"
                 :title="count >= 1000 ? String(count) : undefined"
                 :data-testid="`board-column-count-${column.key}`"
@@ -93,6 +94,19 @@ const ownName = computed((): string | null => {
         </header>
 
         <div
+            v-if="!cards"
+            class="flex flex-col gap-2 px-2 pt-1"
+            aria-hidden="true"
+            :data-testid="`board-column-skeleton-${column.key}`"
+        >
+            <div
+                v-for="index in 3"
+                :key="index"
+                class="h-32 animate-pulse rounded-lg bg-secondary"
+            />
+        </div>
+        <div
+            v-else
             class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 pt-1 pb-2"
             :data-testid="`board-column-scroll-${column.key}`"
         >

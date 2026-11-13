@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Deferred, Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { IconPlus, IconUsers } from '@tabler/icons-vue';
 import { useDebounceFn } from '@vueuse/core';
-import { computed, provide, ref, watch } from 'vue';
+import { computed, onUnmounted, provide, ref, watch } from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
 import AppHeaderActions from '@/components/AppHeaderActions.vue';
@@ -30,7 +30,6 @@ import {
     type PostCardReload,
     postCardReloadKey,
 } from '@/composables/usePostCardActions';
-import { usePublishView } from '@/composables/usePublishView';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -91,11 +90,6 @@ const { timezone, setTimezone } = useDisplayTimezone(
 );
 
 provideViewTimezone(timezone);
-
-const { rememberPublishView } = usePublishView();
-
-rememberPublishView('board');
-
 
 watch(
     () => props.displayTimezone,
@@ -188,13 +182,36 @@ watch(
     { deep: true },
 );
 
+/** The board's columns reload with the list of columns, so a column that is gone leaves and a new one shows. */
 const columnsReload = (): PostCardReload => ({
-    only: columnPaths(),
+    only: ['boardColumns', ...columnPaths()],
     reset: columnPaths(),
 });
 
 /** A card's actions (approve, reject, labels) reload every column from its first page. */
 provide(postCardReloadKey, columnsReload);
+
+/** The first page of each column the reloaded list brought that was not on the board (a new tag, No channel). */
+const loadNewColumns = (): void => {
+    const loaded = (page.props.columns ?? {}) as Record<string, unknown>;
+    const paths = props.boardColumns
+        .filter((column) => blank(loaded[column.key]))
+        .map((column) => `columns.${column.key}`);
+
+    if (filled(paths)) {
+        router.reload({ only: paths, reset: paths });
+    }
+};
+
+onUnmounted(
+    router.on('finish', (event) => {
+        const { visit } = event.detail;
+
+        if (visit.completed && visit.only.includes('boardColumns')) {
+            loadNewColumns();
+        }
+    }),
+);
 
 /** A burst of post events (a batch publishing) reloads the columns once. */
 const refresh = useDebounceFn((): void => {
@@ -328,34 +345,13 @@ const pageTitle = computed(() =>
                     class="flex min-h-0 flex-1 snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pt-4 pb-4 sm:snap-none md:px-8"
                     data-testid="board-columns"
                 >
-                    <Deferred :data="columnPaths()">
-                        <template #fallback>
-                            <div
-                                v-for="column in boardColumns"
-                                :key="column.key"
-                                class="flex h-full w-[85vw] shrink-0 snap-start flex-col gap-2 rounded-lg bg-muted p-2 sm:w-80"
-                                aria-hidden="true"
-                                :data-testid="`board-column-skeleton-${column.key}`"
-                            >
-                                <div
-                                    class="mx-1 mt-2 mb-1 h-5 w-24 animate-pulse rounded bg-secondary"
-                                />
-                                <div
-                                    v-for="index in 3"
-                                    :key="index"
-                                    class="h-32 animate-pulse rounded-lg bg-secondary"
-                                />
-                            </div>
-                        </template>
-
-                        <BoardColumn
-                            v-for="column in boardColumns"
-                            :key="column.key"
-                            :column="column"
-                            :group="group"
-                            :timezone="timezone"
-                        />
-                    </Deferred>
+                    <BoardColumn
+                        v-for="column in boardColumns"
+                        :key="column.key"
+                        :column="column"
+                        :group="group"
+                        :timezone="timezone"
+                    />
                 </div>
             </TooltipProvider>
         </div>

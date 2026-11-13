@@ -31,6 +31,18 @@ export interface PostCardReload {
     reset: string[];
 }
 
+/** What a List card's approval action (approve, reject, take back) reloads. */
+export const POST_CARD_APPROVAL_RELOAD: PostCardReload = {
+    only: ['posts', 'counts', 'queue', 'hasData'],
+    reset: ['posts'],
+};
+
+/** What a List card's label change reloads. */
+export const POST_CARD_LABELS_RELOAD: PostCardReload = {
+    only: ['posts', 'queue'],
+    reset: ['posts'],
+};
+
 /** The props a card action reloads, when the page lists its posts under other props than `posts`. */
 export const postCardReloadKey: InjectionKey<() => PostCardReload> =
     Symbol('postCardReload');
@@ -68,6 +80,8 @@ export const schedulePostCard = (
         only?: string[];
         reset?: string[];
         requestsApproval?: boolean;
+        onStart?: () => void;
+        onFinish?: () => void;
     } = {},
 ): void => {
     const { requestsApproval = false, ...reload } = options;
@@ -127,7 +141,7 @@ export const syncPostCardLabels = (
     postId: string,
     labelIds: string[],
     rollback: () => void,
-    reload: PostCardReload = { only: ['posts', 'queue'], reset: ['posts'] },
+    reload: PostCardReload = POST_CARD_LABELS_RELOAD,
 ): void => {
     const fail = (): void => {
         rollback();

@@ -232,6 +232,59 @@ test('it leaves out the no channel column when every post has a channel', functi
             ->has('boardColumns', 1));
 });
 
+test('it leaves out the no channel column when its only posts are hidden by the label filter or by approval visibility', function () {
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $author = workspaceMember($this->workspace, 'approval');
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $author->id,
+        'status' => PostStatus::PendingApproval,
+        'approval_requested_by' => $author->id,
+    ]);
+    $requester = workspaceMember($this->workspace, 'approval');
+
+    $this->actingAs($requester)
+        ->get(route('app.posts.board', ['group' => 'channel']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
+            ->has('boardColumns', 1));
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => 'channel', 'labels' => [$label->id]]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
+            ->has('boardColumns', 1));
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => 'channel']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('boardColumns.0.key', 'no_channel')
+            ->has('boardColumns', 2));
+});
+
+test('it builds no column for a workspace without channels', function () {
+    $this->channel->delete();
+    Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => 'channel']))
+        ->assertOk()
+        ->assertInertia(function (Assert $page): void {
+            $page->where('hasChannels', false)
+                ->where('boardColumns', [])
+                ->where('columns', []);
+
+            expect(data_get($page->toArray(), 'deferredProps'))->toBeEmpty();
+        });
+});
+
 test('it shows no tag column for a label filter naming no label of the workspace', function () {
     WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
 

@@ -40,8 +40,11 @@ test('the publish menu link opens the list until another view is picked', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('the publish menu link reopens the board after leaving it', function () {
-    $page = visit(route('app.posts.board'))->resize(1280, 900);
+test('the publish menu link reopens the board picked in the view switch', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
     waitFor($page, '@board-column-draft');
 
     expect(browserStorageItem($page, $this->user, 'publish.view'))->toBe('board');
@@ -57,9 +60,12 @@ test('the publish menu link reopens the board after leaving it', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('a channel publish link reopens the calendar after leaving it', function () {
-    $page = visit(route('app.channels.calendar', ['account' => $this->channel, 'view' => 'week']))->resize(1280, 900);
+test('a channel publish link reopens the calendar picked in the view switch', function () {
+    $page = visit(route('app.channels.publish', $this->channel))->resize(1280, 900);
     waitFor($page, '@schedule-view-calendar');
+
+    $page->click('@schedule-view-calendar');
+    waitForPath($page, route('app.channels.calendar', ['account' => $this->channel, 'view' => 'week'], absolute: false));
 
     expect(browserStorageItem($page, $this->user, 'publish.view'))->toBe('calendar');
 
@@ -72,10 +78,32 @@ test('a channel publish link reopens the calendar after leaving it', function ()
     $page->assertNoJavaScriptErrors();
 });
 
+test('landing on the calendar through a redirect keeps the view the user picked', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
+    waitFor($page, '@board-column-draft');
+
+    $calendarPath = json_encode(route('app.calendar', absolute: false));
+    $page->navigate(route('app.home'));
+    waitForCondition($page, "location.pathname.startsWith({$calendarPath})");
+    waitForState($page, '@schedule-view-calendar', "element.getAttribute('aria-current') === 'page'");
+
+    expect(browserStorageItem($page, $this->user, 'publish.view'))->toBe('board');
+
+    $boardPath = route('app.posts.board', absolute: false);
+    waitFor($page, "[data-testid=\"nav-{$boardPath}\"]");
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a link to one post on the list keeps the view the user picked', function () {
     $post = Post::factory()->forAccount($this->channel)->draft()->create(['user_id' => $this->user->id]);
 
-    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
     waitFor($page, '@board-column-draft');
 
     $page->navigate(route('app.posts.index', ['post' => $post->id]));
@@ -86,7 +114,10 @@ test('a link to one post on the list keeps the view the user picked', function (
 });
 
 test('the command palette opens a channel in the view the user picked', function () {
-    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
     waitFor($page, '@board-column-draft');
 
     $page->keys('@app-content-shell', 'ControlOrMeta+k');

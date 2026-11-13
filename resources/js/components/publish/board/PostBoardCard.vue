@@ -76,14 +76,23 @@ const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 const thumbnail = computed(() => postThumbnail(props.post));
 
 const thumbnailFrame = ref<HTMLElement | null>(null);
-const thumbnailVisible = useElementVisibility(thumbnailFrame, {
+
+/**
+ * A video loads its frame once its card shows, never for the whole board at once; an image
+ * is lazy on its own and is not observed. The 200px margin widens the viewport only: the
+ * column's scroller still clips, so a card scrolled out of its column counts as hidden.
+ */
+const videoFrame = computed(() =>
+    thumbnail.value && !isImage(thumbnail.value) ? thumbnailFrame.value : null,
+);
+
+const videoVisible = useElementVisibility(videoFrame, {
     rootMargin: '200px',
 });
 
-/** A video loads its frame once its card comes near the screen, never for the whole board at once. */
 const videoLoaded = ref(false);
 
-watch(thumbnailVisible, (visible) => {
+watch(videoVisible, (visible) => {
     if (visible) {
         videoLoaded.value = true;
     }

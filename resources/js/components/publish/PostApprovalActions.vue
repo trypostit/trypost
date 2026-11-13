@@ -2,12 +2,14 @@
 import { router } from '@inertiajs/vue3';
 import { IconX } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
+import { ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { reject as rejectPostRoute } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import ApprovePostButton from '@/components/publish/ApprovePostButton.vue';
 import { Button } from '@/components/ui/button';
 import {
+    POST_CARD_APPROVAL_RELOAD,
     schedulePostCard,
     toastFirstError,
     usePostCardReload,
@@ -26,10 +28,11 @@ const props = defineProps<{
 
 const { canApprove } = useWorkspaceAbilities();
 
-const approvalReload = usePostCardReload({
-    only: ['posts', 'counts', 'queue', 'hasData'],
-    reset: ['posts'],
-});
+const approvalReload = usePostCardReload(POST_CARD_APPROVAL_RELOAD);
+
+const rejecting = ref(false);
+
+const reverting = ref(false);
 
 const rejectPost = (): void => {
     router.put(
@@ -38,6 +41,12 @@ const rejectPost = (): void => {
         {
             ...approvalReload(),
             preserveScroll: true,
+            onStart: () => {
+                rejecting.value = true;
+            },
+            onFinish: () => {
+                rejecting.value = false;
+            },
             onSuccess: () => {
                 toast.success(trans('posts.approvals.toasts.rejected'), {
                     testId: 'post-approval-toast',
@@ -49,7 +58,15 @@ const rejectPost = (): void => {
 };
 
 const revertRequest = (): void => {
-    schedulePostCard(props.post.id, 'draft', approvalReload());
+    schedulePostCard(props.post.id, 'draft', {
+        ...approvalReload(),
+        onStart: () => {
+            reverting.value = true;
+        },
+        onFinish: () => {
+            reverting.value = false;
+        },
+    });
 };
 </script>
 
@@ -59,6 +76,7 @@ const revertRequest = (): void => {
             <ApprovePostButton :post="post" :test-key="testKey" />
             <Button
                 variant="outline"
+                :loading="rejecting"
                 :data-testid="`post-reject-${testKey}`"
                 @click="rejectPost"
             >
@@ -72,6 +90,7 @@ const revertRequest = (): void => {
         <Button
             v-else
             variant="outline"
+            :loading="reverting"
             :data-testid="`post-revert-${testKey}`"
             @click="revertRequest"
         >

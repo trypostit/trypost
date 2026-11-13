@@ -14,6 +14,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+    POST_CARD_APPROVAL_RELOAD,
     toastFirstError,
     usePostCardReload,
 } from '@/composables/usePostCardActions';
@@ -29,12 +30,11 @@ const props = defineProps<{
     testKey: string;
 }>();
 
-const reload = usePostCardReload({
-    only: ['posts', 'counts', 'queue', 'hasData'],
-    reset: ['posts'],
-});
+const reload = usePostCardReload(POST_CARD_APPROVAL_RELOAD);
 
 const pickerOpen = ref(false);
+
+const approving = ref(false);
 
 const closePicker = (): void => {
     pickerOpen.value = false;
@@ -83,6 +83,12 @@ const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
     router.put(approve.url(props.post.id), payload, {
         ...reload(),
         preserveScroll: true,
+        onStart: () => {
+            approving.value = true;
+        },
+        onFinish: () => {
+            approving.value = false;
+        },
         onSuccess: () => {
             pickerOpen.value = false;
             toast.success(trans(approvedMessageKey(payload)), {
@@ -103,6 +109,7 @@ const confirmTime = (value: string): void => {
         <PopoverTrigger as-child>
             <Button
                 variant="outline"
+                :loading="approving"
                 :data-testid="`post-approve-${testKey}`"
             >
                 <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
@@ -125,6 +132,7 @@ const confirmTime = (value: string): void => {
                 <Button
                     variant="outline"
                     class="w-full"
+                    :loading="approving"
                     :data-testid="`post-approve-publish-now-${testKey}`"
                     @click="send({ publish_now: true })"
                 >
@@ -137,6 +145,7 @@ const confirmTime = (value: string): void => {
     <Button
         v-else
         variant="outline"
+        :loading="approving"
         :data-testid="`post-approve-${testKey}`"
         @click="send({})"
     >

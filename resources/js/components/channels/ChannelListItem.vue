@@ -9,7 +9,6 @@ import {
     IconSettings,
     IconTrash,
 } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
@@ -58,16 +57,11 @@ const lost = computed(() => isConnectionLost(props.channel));
 
 const typeKey = computed(() => accountTypeKey(props.channel));
 
-/** The network and the handle under the name: "Instagram · @trypost.it". */
-const networkLine = computed((): string => {
-    const network = typeKey.value
-        ? trans(typeKey.value)
-        : getPlatformLabel(props.channel.platform);
-
-    return filled(props.channel.handle_label)
+/** The network and the handle under the name: "Instagram · @trypost.it". The network is translated in the template. */
+const networkLine = (network: string): string =>
+    filled(props.channel.handle_label)
         ? `${network} · ${props.channel.handle_label}`
         : network;
-});
 </script>
 
 <template>
@@ -105,10 +99,22 @@ const networkLine = computed((): string => {
                 <p
                     v-else
                     class="truncate text-sm text-muted-foreground"
-                    :title="networkLine"
+                    :title="
+                        networkLine(
+                            typeKey
+                                ? $t(typeKey)
+                                : getPlatformLabel(channel.platform),
+                        )
+                    "
                     :data-testid="`channel-network-${channel.id}`"
                 >
-                    {{ networkLine }}
+                    {{
+                        networkLine(
+                            typeKey
+                                ? $t(typeKey)
+                                : getPlatformLabel(channel.platform),
+                        )
+                    }}
                 </p>
             </div>
         </div>
@@ -147,7 +153,7 @@ const networkLine = computed((): string => {
             </p>
             <div class="flex min-w-0 text-muted-foreground">
                 <GoalProgress
-                    v-if="channel.posting_goal !== null"
+                    v-if="filled(channel.posting_goal)"
                     :channel-id="channel.id"
                     :sent="channel.sent_this_week"
                     :scheduled="channel.scheduled_this_week"

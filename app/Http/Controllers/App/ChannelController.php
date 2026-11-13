@@ -73,7 +73,7 @@ class ChannelController extends Controller
                         'scheduled_this_week' => 0,
                     ]),
                 ]);
-            }),
+            })->matchOn('data.id'),
             'total' => $workspace->socialAccounts()->count(),
             'networks' => fn (): array => ListWorkspaceChannels::networks($workspace),
             'filters' => [

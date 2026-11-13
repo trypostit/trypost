@@ -46,19 +46,28 @@ class Timezone
     {
         $now = new DateTimeImmutable('now');
 
-        return array_map(fn (string $identifier): array => self::option($identifier, $now), DateTimeZone::listIdentifiers());
+        return array_map(fn (string $identifier): array => self::row($identifier, $now), DateTimeZone::listIdentifiers());
     }
 
     /**
      * One time zone as the pickers show it: its city ("Sao Paulo") and its
-     * current offset ("GMT-3").
+     * current offset ("GMT-3"), any identifier normalized first.
      *
      * @return array{value: string, label: string, offset: string}
      */
-    public static function option(string $identifier, ?DateTimeImmutable $now = null): array
+    public static function option(string $identifier): array
     {
-        $identifier = self::normalize($identifier);
-        $seconds = (new DateTimeZone($identifier))->getOffset($now ?? new DateTimeImmutable('now'));
+        return self::row(self::normalize($identifier), new DateTimeImmutable('now'));
+    }
+
+    /**
+     * The picker row of a canonical identifier.
+     *
+     * @return array{value: string, label: string, offset: string}
+     */
+    private static function row(string $identifier, DateTimeImmutable $now): array
+    {
+        $seconds = (new DateTimeZone($identifier))->getOffset($now);
         $sign = $seconds < 0 ? '-' : '+';
         $hours = intdiv(abs($seconds), 3600);
         $minutes = intdiv(abs($seconds) % 3600, 60);

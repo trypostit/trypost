@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Channel;
 
-use App\Enums\SocialAccount\Platform;
+use App\Actions\SocialAccount\ListWorkspaceChannels;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListChannelsRequest extends FormRequest
@@ -32,16 +32,24 @@ class ListChannelsRequest extends FormRequest
     }
 
     /**
-     * The networks asked for that exist ("instagram", "linkedin"), each once.
+     * The networks asked for that the workspace has a channel on ("instagram",
+     * "linkedin"), each once, so a filter left on a network the workspace no
+     * longer has is dropped instead of hiding every channel.
      *
      * @return list<string>
      */
     public function networks(): array
     {
-        $known = collect(Platform::cases())->map(fn (Platform $platform): string => $platform->network())->unique();
+        $requested = $this->collect('networks');
 
-        return $this->collect('networks')
-            ->filter(fn (mixed $network): bool => $known->containsStrict($network))
+        if ($requested->isEmpty()) {
+            return [];
+        }
+
+        $available = ListWorkspaceChannels::networks($this->user()->currentWorkspace);
+
+        return $requested
+            ->filter(fn (mixed $network): bool => in_array($network, $available, true))
             ->unique()
             ->values()
             ->all();

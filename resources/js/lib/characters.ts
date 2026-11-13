@@ -22,7 +22,10 @@ const BLANK = new RegExp(`^[${INVISIBLE}]*$`, 'u');
 
 export const isBlankText = (text: string): boolean => BLANK.test(text);
 
-/** Mirrors Laravel `Str::limit()` by code points: the text cut to `limit` characters, with `end` added when cut. */
+/**
+ * The text cut to `limit` code points (an emoji counts one), trailing spaces trimmed, with `end`
+ * added when cut. Not a mirror of Laravel `Str::limit()`, which measures display width.
+ */
 export const limitText = (text: string, limit: number, end = '...'): string => {
     const characters = Array.from(text);
 

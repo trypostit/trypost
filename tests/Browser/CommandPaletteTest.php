@@ -247,7 +247,7 @@ test('when the workspace changes while the page stays mounted, a channel picked 
     $page->type('@command-palette-input', 'beta');
     waitFor($page, "@command-palette-item-channel-{$channel->id}");
     $page->click("@command-palette-item-channel-{$channel->id}");
-    waitForPath($page, route('app.channels.calendar', ['account' => $channel, 'view' => 'week'], absolute: false));
+    waitForPath($page, route('app.channels.publish', $channel, absolute: false));
 
     expect(browserStorageItem($page, $user, 'commandPalette.recent', $second->id))->toBe(["channel-{$channel->id}"])
         ->and(browserStorageItem($page, $user, 'commandPalette.recent', $first->id))->toBeNull();

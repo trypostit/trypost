@@ -171,6 +171,27 @@ test('accounts index searches every word in the channel name or username', funct
         ->assertInertia(fn ($page) => $page->has('connectedChannels.data', 0));
 });
 
+test('accounts index finds a username searched with a leading @', function () {
+    $acme = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'display_name' => 'Acme Store', 'username' => 'acmestore']);
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'display_name' => 'Beta Labs', 'username' => 'betalabs']);
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => '@acmestore']))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $acme->id));
+});
+
+test('accounts index drops a network filter the workspace no longer has a channel on', function () {
+    $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['networks' => ['linkedin']]))
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.networks', [])
+            ->where('networks', ['x'])
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $x->id));
+});
+
 test('accounts index filters by network, Instagram through Facebook included, and lists the workspace networks', function () {
     $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'position' => 0]);
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram, 'position' => 1]);
@@ -338,4 +359,12 @@ test('a member who needs approval cannot disconnect a channel or its posts', fun
 
     expect(SocialAccount::find($account->id))->not->toBeNull()
         ->and(Post::find($post->id))->not->toBeNull();
+});
+
+test('accounts index merges the next page of channels by id', function () {
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
+
+    $page = $this->actingAs($this->user)->get(route('app.workspace.channels'))->viewData('page');
+
+    expect(data_get($page, 'matchPropsOn'))->toContain('connectedChannels.data.id');
 });

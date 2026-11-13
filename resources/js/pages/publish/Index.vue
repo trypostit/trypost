@@ -60,7 +60,6 @@ import type {
     ComposerInitialPost,
     PostComposition,
 } from '@/composables/usePostComposition';
-import { usePublishView } from '@/composables/usePublishView';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import type { QueueSlotTarget } from '@/composables/useSortableQueue';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
@@ -68,7 +67,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { blank, filled } from '@/lib/helpers';
+import { filled } from '@/lib/helpers';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { calendar } from '@/routes/app';
 import {
@@ -117,8 +116,6 @@ interface Props {
     filterAccounts: PublishSocialAccount[];
     openComposer?: boolean;
     openComposerAssistant?: boolean;
-    openPostDetailsId?: string | null;
-    openPostNotesId?: string | null;
     editPost?: PostCard | null;
 }
 
@@ -145,18 +142,6 @@ const { timezone, setTimezone, dayKey } = useDisplayTimezone(
 );
 
 provideViewTimezone(timezone);
-
-const { rememberPublishView } = usePublishView();
-
-/** A link to one post (an email, a notification) opens the List without making it the user's view. */
-if (
-    !props.openComposer &&
-    blank(props.openPostDetailsId) &&
-    blank(props.openPostNotesId)
-) {
-    rememberPublishView('list');
-}
-
 
 watch(
     () => props.displayTimezone,

@@ -126,7 +126,18 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                     />
                 </div>
 
+                <EmptyState
+                    v-if="blank(channels)"
+                    :title="$t('channels.list.no_results')"
+                    data-testid="channels-no-results"
+                >
+                    <template #illustration>
+                        <ChannelsEmptyIllustration />
+                    </template>
+                </EmptyState>
+
                 <div
+                    v-else
                     class="overflow-hidden rounded-xl border border-border bg-card"
                     data-testid="channels-list"
                 >
@@ -166,13 +177,6 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                             <TableLoadMore v-if="loading" />
                         </template>
                     </InfiniteScroll>
-                    <p
-                        v-if="blank(channels)"
-                        class="px-4 py-10 text-center text-sm text-muted-foreground"
-                        data-testid="channels-no-results"
-                    >
-                        {{ $t('channels.list.no_results') }}
-                    </p>
                 </div>
             </div>
 

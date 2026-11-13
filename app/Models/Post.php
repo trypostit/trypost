@@ -349,6 +349,24 @@ class Post extends Model
     }
 
     /**
+     * How many posts of the query each channel has, keyed by channel id, in
+     * one grouped count; a channel with none is absent.
+     *
+     * @param  Builder<Post>  $query
+     * @return array<string, int>
+     */
+    public static function countPerChannel(Builder $query): array
+    {
+        return $query->toBase()
+            ->select('posts.social_account_id')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('posts.social_account_id')
+            ->pluck('aggregate', 'social_account_id')
+            ->map(fn (mixed $count): int => (int) $count)
+            ->all();
+    }
+
+    /**
      * Posts on any of the channels; no filter when $channelIds is null.
      *
      * @param  list<string>|null  $channelIds

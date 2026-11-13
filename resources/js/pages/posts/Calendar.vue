@@ -50,7 +50,6 @@ import {
     deletePostCardKey,
     postCardLabelsKey,
 } from '@/composables/usePostCardActions';
-import { usePublishView } from '@/composables/usePublishView';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -166,11 +165,6 @@ const { timezone, setTimezone } = useDisplayTimezone(
 );
 
 provideViewTimezone(timezone);
-
-const { rememberPublishView } = usePublishView();
-
-rememberPublishView('calendar');
-
 
 watch(
     () => props.displayTimezone,

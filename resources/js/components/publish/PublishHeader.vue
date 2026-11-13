@@ -13,6 +13,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { filled } from '@/lib/helpers';
 import { settings } from '@/routes/app/channels';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import { channelName } from '@/types/channel';
@@ -70,7 +71,7 @@ const { canManageAccounts } = useWorkspaceAbilities();
                     </Tooltip>
                 </div>
                 <GoalProgress
-                    v-if="channel.posting_goal !== null"
+                    v-if="filled(channel.posting_goal)"
                     :channel-id="channel.id"
                     :sent="channel.sent_this_week"
                     :scheduled="channel.scheduled_this_week"

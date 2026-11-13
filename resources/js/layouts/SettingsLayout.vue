@@ -3,6 +3,7 @@ import { IconExternalLink } from '@tabler/icons-vue';
 
 import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
+import { filled } from '@/lib/helpers';
 
 type Props = {
     fullWidth?: boolean;
@@ -64,7 +65,7 @@ withDefaults(defineProps<Props>(), {
                     >
                         {{ title }}
                         <span
-                            v-if="total !== null"
+                            v-if="filled(total)"
                             class="text-muted-foreground"
                             data-testid="settings-page-total"
                             >({{ total }})</span
