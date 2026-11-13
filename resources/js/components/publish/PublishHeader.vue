@@ -96,7 +96,7 @@ const { canManageAccounts } = useWorkspaceAbilities();
                         >
                             <Link
                                 :href="channelsSettings.url()"
-                                :aria-label="$t('channels.settings')"
+                                :aria-label="$t('channels.manage')"
                                 data-testid="publish-channels-settings"
                             >
                                 <IconSettings class="size-4" />
@@ -106,7 +106,7 @@ const { canManageAccounts } = useWorkspaceAbilities();
                     <TooltipContent
                         data-testid="publish-channels-settings-tooltip"
                     >
-                        {{ $t('channels.settings') }}
+                        {{ $t('channels.manage') }}
                     </TooltipContent>
                 </Tooltip>
             </div>

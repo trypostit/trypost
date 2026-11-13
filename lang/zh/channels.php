@@ -7,6 +7,7 @@ return [
     'description' => '管理此工作区的频道。',
     'connect' => '连接频道',
     'settings' => '频道设置',
+    'manage' => '管理频道',
     'set_goal' => '设置发布目标',
     'publish' => '发布',
     'insights' => 'Insights',

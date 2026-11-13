@@ -213,7 +213,7 @@ const reconnect = (channel: SidebarChannel): void => {
                         >
                             <Link
                                 :href="channelsSettings.url()"
-                                :aria-label="$t('channels.settings')"
+                                :aria-label="$t('channels.manage')"
                                 data-testid="sidebar-channels-settings"
                             >
                                 <IconSettings />
@@ -224,7 +224,7 @@ const reconnect = (channel: SidebarChannel): void => {
                         side="top"
                         data-testid="sidebar-channels-settings-tooltip"
                     >
-                        {{ $t('channels.settings') }}
+                        {{ $t('channels.manage') }}
                     </TooltipContent>
                 </Tooltip>
                 <Tooltip v-if="canManageAccounts">

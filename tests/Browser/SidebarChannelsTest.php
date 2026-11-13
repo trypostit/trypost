@@ -326,7 +326,7 @@ test('the channels settings and connect actions show a tooltip above them', func
     $page->hover('@sidebar-channels-label')->hover("@sidebar-channels-{$action}");
     waitFor($page, "@sidebar-channels-{$action}-tooltip");
 
-    $page->assertSeeIn("@sidebar-channels-{$action}-tooltip", $action === 'settings' ? __('channels.settings') : __('channels.connect'));
+    $page->assertSeeIn("@sidebar-channels-{$action}-tooltip", $action === 'settings' ? __('channels.manage') : __('channels.connect'));
 
     expect($page->script(<<<JS
         (() => {

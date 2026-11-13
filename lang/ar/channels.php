@@ -7,6 +7,7 @@ return [
     'description' => 'أدر قنوات مساحة العمل هذه.',
     'connect' => 'ربط قناة',
     'settings' => 'إعدادات القناة',
+    'manage' => 'إدارة القنوات',
     'set_goal' => 'حدّد هدف النشر',
     'publish' => 'نشر',
     'insights' => 'Insights',

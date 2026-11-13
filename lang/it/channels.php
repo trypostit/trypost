@@ -7,6 +7,7 @@ return [
     'description' => 'Gestisci i canali di questo workspace.',
     'connect' => 'Collega canale',
     'settings' => 'Impostazioni del canale',
+    'manage' => 'Gestisci canali',
     'set_goal' => 'Imposta un obiettivo di pubblicazione',
     'publish' => 'Pubblica',
     'insights' => 'Insights',
