@@ -15,6 +15,7 @@ use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Throwable;
 
 #[Signature('analytics:merge-facebook-duplicates
     {--force : Run without confirmation in production}
@@ -33,20 +34,29 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         }
 
         $linked = new Collection;
+        $failed = 0;
         $verb = $dryRun ? 'Would link' : 'Linked';
 
         AnalyticsPublication::query()
             ->where('platform', Platform::Facebook)
             ->whereNull('post_id')
+            ->whereNull('post_dismissed_at')
             ->where(fn (Builder $query): Builder => $query
                 ->whereNotNull('provider_metadata->video_id')
                 ->orWhereNotNull('provider_metadata->photo_id'))
             ->with('socialAccount')
             ->lazyById()
-            ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked): void {
-                $post = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => $dryRun
-                    ? ImportExternalPosts::tryPostTarget($account, $publication)
-                    : ImportExternalPosts::linkToTryPost($account, $publication->id));
+            ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked, &$failed): void {
+                try {
+                    $post = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => $dryRun
+                        ? ImportExternalPosts::tryPostTarget($account, $publication)
+                        : ImportExternalPosts::linkToTryPost($account, $publication->id));
+                } catch (Throwable $exception) {
+                    report($exception);
+                    $failed++;
+
+                    return;
+                }
 
                 if (filled($post)) {
                     $linked->push($post->content_type->value);
@@ -58,6 +68,12 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
             $linked->countBy()->sortKeys()->map(fn (int $count, string $type): array => [$type, $count])->values()->all(),
         );
         $this->info("{$verb} {$linked->count()} publication(s) to their TryPost post.");
+
+        if ($failed > 0) {
+            $this->error("{$failed} publication(s) failed and were reported; run the command again once fixed.");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }

@@ -281,6 +281,24 @@ test('a merged facebook video stays one publication when it syncs and is discove
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
 });
 
+test('another page post sharing a merged facebook video stays a publication of its own', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_metadata' => ['video_id' => 'video-9']]);
+    ImportExternalPosts::execute($account);
+    $repost = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($repost->fresh())->not->toBeNull()
+        ->and($repost->fresh()->post_id)->toBeNull()
+        ->and(Post::query()->imported()->exists())->toBeFalse()
+        ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
+});
+
 test('a publication of another network tracked under another id is left to that publication', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);

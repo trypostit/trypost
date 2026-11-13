@@ -81,3 +81,15 @@ test('a facebook reel published outside trypost is left alone', function () {
 
     expect($external->fresh()->post_id)->toBeNull();
 });
+
+test('a dismissed publication is left alone, as the import leaves it', function () {
+    [, , $tracked, $discovered] = facebookReelCountedTwice();
+    $discovered->forceFill(['post_dismissed_at' => now()])->save();
+
+    $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
+        ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
+        ->assertSuccessful();
+
+    expect($discovered->fresh())->not->toBeNull()
+        ->and($tracked->fresh()->remote_id)->toBe('media-9');
+});

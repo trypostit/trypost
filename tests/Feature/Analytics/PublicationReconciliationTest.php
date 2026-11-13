@@ -423,6 +423,21 @@ test('merging two reads of the same day follows the same-day rule of every read'
     ],
 ]);
 
+test('a stored metric this version cannot read back is kept, not lost or fatal', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    $legacy = ['value' => 7, 'unit' => 'count', 'time_basis' => 'lifetime', 'precision' => 'exact', 'availability' => 'available'];
+    $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
+    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'reactions' => ['value' => 3]]])->save();
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
+
+    $metrics = $publication->dailySnapshots()->sole()->metrics;
+
+    expect(data_get($metrics, 'a_retired_metric'))->toEqual($legacy)
+        ->and(data_get($metrics, 'reactions'))->toEqual(['value' => 3])
+        ->and(data_get($metrics, 'views.value'))->toBe(52);
+});
+
 test('a discovery under another analytics key is not merged and the publication keeps its id', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);

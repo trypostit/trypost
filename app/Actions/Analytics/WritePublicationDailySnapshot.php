@@ -80,17 +80,18 @@ class WritePublicationDailySnapshot
     /**
      * Folds a same-day snapshot of another publication into `$kept` (one post
      * stored twice, being merged) by the rule every same-day read follows: the
-     * newer read applied over the older one.
+     * newer read applied over the older one. A stored entry this version cannot
+     * read back is kept as it is, the newer one's first.
      */
     public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
     {
         [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
+        $newerMetrics = collect($newer->metrics ?? [])->map(fn (mixed $stored, string $key): ?MetricValue => MetricValue::fromStored($key, $stored));
 
-        $metrics = $this->mergeMetrics($older->metrics ?? [], collect($newer->metrics ?? [])
-            ->filter(fn (mixed $stored, string $key): bool => filled(MetricKey::tryFrom($key)))
-            ->map(fn (array $stored, string $key): MetricValue => MetricValue::fromStored(MetricKey::from($key), $stored))
-            ->values()
-            ->all());
+        $metrics = $this->mergeMetrics(
+            [...($older->metrics ?? []), ...collect($newer->metrics ?? [])->filter(fn (mixed $stored, string $key): bool => blank($newerMetrics->get($key)))->all()],
+            $newerMetrics->filter()->values()->all(),
+        );
 
         $kept->fill([
             'collected_at' => $newer->collected_at,

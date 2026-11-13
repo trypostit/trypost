@@ -26,19 +26,29 @@ final readonly class MetricValue
     ) {}
 
     /**
-     * A metric as stored in a daily snapshot's `metrics`, keyed by its key.
-     *
-     * @param  array<string, mixed>  $stored
+     * A metric as stored in a daily snapshot's `metrics` under `$key`, or null
+     * when the stored entry is not one this version can read back.
      */
-    public static function fromStored(MetricKey $key, array $stored): self
+    public static function fromStored(string $key, mixed $stored): ?self
     {
+        $metricKey = MetricKey::tryFrom($key);
+        $unit = MetricUnit::tryFrom((string) data_get($stored, 'unit'));
+        $timeBasis = MetricTimeBasis::tryFrom((string) data_get($stored, 'time_basis'));
+        $precision = MetricPrecision::tryFrom((string) data_get($stored, 'precision'));
+        $availability = MetricAvailability::tryFrom((string) data_get($stored, 'availability'));
+        $value = data_get($stored, 'value');
+
+        if (blank($metricKey) || blank($unit) || blank($timeBasis) || blank($precision) || blank($availability) || ! (is_null($value) || is_int($value) || is_float($value))) {
+            return null;
+        }
+
         return new self(
-            key: $key,
-            value: data_get($stored, 'value'),
-            unit: MetricUnit::from(data_get($stored, 'unit')),
-            timeBasis: MetricTimeBasis::from(data_get($stored, 'time_basis')),
-            precision: MetricPrecision::from(data_get($stored, 'precision')),
-            availability: MetricAvailability::from(data_get($stored, 'availability')),
+            key: $metricKey,
+            value: $value,
+            unit: $unit,
+            timeBasis: $timeBasis,
+            precision: $precision,
+            availability: $availability,
             providerMetric: data_get($stored, 'provider_metric'),
             periodStart: transform(data_get($stored, 'period_start'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),
             periodEnd: transform(data_get($stored, 'period_end'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),

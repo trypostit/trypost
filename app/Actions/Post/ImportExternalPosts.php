@@ -156,7 +156,7 @@ class ImportExternalPosts
         return DB::transaction(function () use ($account, $publicationId): ?Post {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if (blank($publication) || filled($publication->post_id)) {
+            if (blank($publication) || filled($publication->post_id) || filled($publication->post_dismissed_at)) {
                 return null;
             }
 
@@ -171,7 +171,9 @@ class ImportExternalPosts
      * post is already tracked under another remote id (a video or reel saved
      * under its video id, a photo under its photo id, discovered under the Page
      * post id), the publication is merged into the tracked one, so Insights
-     * counts the post once. Any other network keeps the tracked publication.
+     * counts the post once. Only while the tracked publication still sits on the
+     * post's own id: once merged, another Page post sharing the same video stays
+     * a publication of its own. Any other network keeps the tracked publication.
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
@@ -182,6 +184,7 @@ class ImportExternalPosts
         }
 
         return $post->platform === Platform::Facebook
+            && $post->analyticsPublication->remote_id === $post->platform_post_id
             && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
     }
 
