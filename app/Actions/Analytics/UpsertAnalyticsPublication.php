@@ -7,7 +7,6 @@ namespace App\Actions\Analytics;
 use App\Actions\Media\DeleteOwnedMedia;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\TryPostPublicationIdentity;
-use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
@@ -37,18 +36,10 @@ class UpsertAnalyticsPublication
      */
     private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
-    /**
-     * The counts of a daily snapshot that stand on their own (exposure goes with its kind).
-     *
-     * @var list<string>
-     */
-    private const array SNAPSHOT_COUNTS = [
-        'reactions_count', 'comments_count', 'shares_count', 'saves_count',
-        'views_count', 'impressions_count', 'reach_count', 'engagement_count',
-        'watch_time_milliseconds', 'average_watch_time_milliseconds',
-    ];
-
-    public function __construct(private readonly ResolveAnalyticsAccountKey $accountKeys) {}
+    public function __construct(
+        private readonly ResolveAnalyticsAccountKey $accountKeys,
+        private readonly WritePublicationDailySnapshot $snapshots,
+    ) {}
 
     public function external(
         SocialAccount $account,
@@ -159,9 +150,7 @@ class UpsertAnalyticsPublication
                         return;
                     }
 
-                    $existing->fill($snapshot->collected_at->greaterThan($existing->collected_at)
-                        ? self::combinedSnapshot($snapshot, $existing)
-                        : self::combinedSnapshot($existing, $snapshot))->save();
+                    $this->snapshots->combine($existing, $snapshot);
 
                     $snapshot->delete();
                 });
@@ -192,36 +181,6 @@ class UpsertAnalyticsPublication
 
             return true;
         });
-    }
-
-    /**
-     * Two reads of the same post on one day become one: each value comes from
-     * the newer read, or from the older one where the newer did not measure it,
-     * so a video-only read never drops the comments a post read measured.
-     *
-     * @return array<string, mixed>
-     */
-    private static function combinedSnapshot(AnalyticsPublicationDailySnapshot $newer, AnalyticsPublicationDailySnapshot $older): array
-    {
-        $exposure = filled($newer->exposure_count) ? $newer : $older;
-        $metrics = collect($older->metrics ?? [])
-            ->merge(collect($newer->metrics ?? [])->filter(fn (mixed $metric, string $key): bool => self::isMeasured($metric) || ! self::isMeasured(data_get($older->metrics, $key))))
-            ->all();
-
-        return [
-            'collected_at' => $newer->collected_at,
-            'provider_observed_at' => $newer->provider_observed_at ?? $older->provider_observed_at,
-            'metrics' => $metrics ?: null,
-            ...collect(self::SNAPSHOT_COUNTS)->mapWithKeys(fn (string $column): array => [$column => data_get($newer, $column) ?? data_get($older, $column)])->all(),
-            'exposure_count' => $exposure->exposure_count,
-            'exposure_kind' => $exposure->exposure_kind,
-        ];
-    }
-
-    private static function isMeasured(mixed $metric): bool
-    {
-        return data_get($metric, 'availability') === MetricAvailability::Available->value
-            && is_numeric(data_get($metric, 'value'));
     }
 
     private function deleteImportedPost(string $postId): void

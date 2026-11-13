@@ -46,7 +46,7 @@ test('a dry run counts the duplicates and changes nothing', function () {
     [, $post, $tracked, $discovered] = facebookReelCountedTwice();
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--dry-run' => true])
-        ->expectsOutputToContain('Would merge 1 duplicate(s)')
+        ->expectsOutputToContain('Would link 1 publication(s) to their TryPost post.')
         ->assertSuccessful();
 
     expect($discovered->fresh())->not->toBeNull()
@@ -59,7 +59,7 @@ test('a facebook post counted twice is merged into its trypost publication witho
     Queue::fake();
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Merged 1 duplicate(s)')
+        ->expectsOutputToContain('Linked 1 publication(s) to their TryPost post.')
         ->assertSuccessful();
 
     expect($discovered->fresh())->toBeNull()
@@ -76,7 +76,7 @@ test('a facebook reel published outside trypost is left alone', function () {
     $external = facebookPublication($account, ['remote_id' => 'page_post-2', 'provider_metadata' => ['video_id' => 'video-other']]);
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Merged 0 duplicate(s).')
+        ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
         ->assertSuccessful();
 
     expect($external->fresh()->post_id)->toBeNull();

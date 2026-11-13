@@ -78,6 +78,29 @@ class WritePublicationDailySnapshot
     }
 
     /**
+     * Folds a same-day snapshot of another publication into `$kept` (one post
+     * stored twice, being merged) by the rule every same-day read follows: the
+     * newer read applied over the older one.
+     */
+    public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
+    {
+        [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
+
+        $metrics = $this->mergeMetrics($older->metrics ?? [], collect($newer->metrics ?? [])
+            ->filter(fn (mixed $stored, string $key): bool => filled(MetricKey::tryFrom($key)))
+            ->map(fn (array $stored, string $key): MetricValue => MetricValue::fromStored(MetricKey::from($key), $stored))
+            ->values()
+            ->all());
+
+        $kept->fill([
+            'collected_at' => $newer->collected_at,
+            'provider_observed_at' => $newer->provider_observed_at ?? $older->provider_observed_at,
+            'metrics' => $metrics ?: null,
+            ...$this->scalarProjections($metrics),
+        ])->save();
+    }
+
+    /**
      * Writes the keys the network reported over the publication's stored
      * `provider_metadata`, on the row read again under the lock the transaction
      * took first (before the snapshot, the order discovery locks in): the model

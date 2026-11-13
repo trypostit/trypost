@@ -26,6 +26,26 @@ final readonly class MetricValue
     ) {}
 
     /**
+     * A metric as stored in a daily snapshot's `metrics`, keyed by its key.
+     *
+     * @param  array<string, mixed>  $stored
+     */
+    public static function fromStored(MetricKey $key, array $stored): self
+    {
+        return new self(
+            key: $key,
+            value: data_get($stored, 'value'),
+            unit: MetricUnit::from(data_get($stored, 'unit')),
+            timeBasis: MetricTimeBasis::from(data_get($stored, 'time_basis')),
+            precision: MetricPrecision::from(data_get($stored, 'precision')),
+            availability: MetricAvailability::from(data_get($stored, 'availability')),
+            providerMetric: data_get($stored, 'provider_metric'),
+            periodStart: transform(data_get($stored, 'period_start'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),
+            periodEnd: transform(data_get($stored, 'period_end'), fn (string $date): CarbonImmutable => CarbonImmutable::parse($date)),
+        );
+    }
+
+    /**
      * @return array{
      *     value: int|float|null,
      *     unit: string,

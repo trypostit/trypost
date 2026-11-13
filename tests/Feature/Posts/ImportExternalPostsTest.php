@@ -281,6 +281,18 @@ test('a merged facebook video stays one publication when it syncs and is discove
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
 });
 
+test('a publication of another network tracked under another id is left to that publication', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'container-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $discovered = externalPublication($account, ['remote_id' => 'media-9']);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->exists())->toBeFalse()
+        ->and($tracked->fresh()->remote_id)->toBe('container-9')
+        ->and($discovered->fresh()->post_id)->toBeNull();
+});
+
 test('a facebook photo discovered under its feed post id does not duplicate the original', function (bool $tracked) {
     $account = SocialAccount::factory()->facebook()->create();
     $original = sentByTryPost($account, 'photo-9', 'Our photo', now()->subHour()->toImmutable());

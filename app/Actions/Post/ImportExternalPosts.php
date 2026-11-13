@@ -167,10 +167,11 @@ class ImportExternalPosts
     }
 
     /**
-     * A publication of a post TryPost published is linked to it. When that post
-     * is already tracked under another remote id (a Facebook video or reel saved
-     * under its video id and discovered under its Page post id), the publication
-     * is merged into the tracked one, so Insights counts the post once.
+     * A publication of a post TryPost published is linked to it. When a Facebook
+     * post is already tracked under another remote id (a video or reel saved
+     * under its video id, a photo under its photo id, discovered under the Page
+     * post id), the publication is merged into the tracked one, so Insights
+     * counts the post once. Any other network keeps the tracked publication.
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
@@ -180,7 +181,8 @@ class ImportExternalPosts
             return true;
         }
 
-        return app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
+        return $post->platform === Platform::Facebook
+            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
     }
 
     public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post

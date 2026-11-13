@@ -6,6 +6,13 @@ use App\Actions\Analytics\SyncTryPostPublication;
 use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
+use App\Dto\Analytics\MetricValue;
+use App\Enums\Analytics\ExposureKind;
+use App\Enums\Analytics\MetricAvailability;
+use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\MetricPrecision;
+use App\Enums\Analytics\MetricTimeBasis;
+use App\Enums\Analytics\MetricUnit;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\PublishStatus as Status;
@@ -83,12 +90,14 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
         'publication_id' => $provisional->id,
         'date' => '2026-09-21',
         'collected_at' => '2026-09-21 10:00:00',
+        'metrics' => storedMetrics(['views' => 5]),
         'views_count' => 5,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $discovered->id,
         'date' => '2026-09-21',
         'collected_at' => '2026-09-21 12:00:00',
+        'metrics' => storedMetrics(['views' => 12]),
         'views_count' => 12,
     ]);
 
@@ -336,7 +345,29 @@ test('a network that reports the type still corrects the type TryPost published'
     expect(AnalyticsPublication::sole()->content_type)->toBe(PublicationContentType::Reel);
 });
 
-test('merging two reads of the same day keeps the newer values and fills what only the older one measured', function (?int $trackedComments, ?int $discoveredComments, int $discoveredHoursLater, int $expectedViews, ?int $expectedComments) {
+/**
+ * @param  array<string, int|null>  $counts
+ * @return array<string, array<string, mixed>>
+ */
+function storedMetrics(array $counts): array
+{
+    return collect($counts)->mapWithKeys(fn (?int $value, string $key): array => [$key => (new MetricValue(
+        key: MetricKey::from($key),
+        value: $value,
+        unit: MetricUnit::Count,
+        timeBasis: MetricTimeBasis::Lifetime,
+        precision: MetricPrecision::Exact,
+        availability: filled($value) ? MetricAvailability::Available : MetricAvailability::Unavailable,
+    ))->toArray()])->all();
+}
+
+/**
+ * @param  array<string, int|null>  $trackedCounts
+ * @param  array<string, int|null>  $discoveredCounts
+ * @return array{0: AnalyticsPublication, 1: Post}
+ */
+function facebookVideoReadTwiceOnOneDay(array $trackedCounts, array $discoveredCounts, int $discoveredHoursLater): array
+{
     $account = SocialAccount::factory()->facebook()->create();
     $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
     $tracked = app(SyncTryPostPublication::class)->handle($post);
@@ -351,62 +382,46 @@ test('merging two reads of the same day keeps the newer values and fills what on
         'publication_id' => $tracked->id,
         'date' => $collectedAt->toDateString(),
         'collected_at' => $collectedAt->addHour(),
-        'views_count' => 52,
-        'comments_count' => $trackedComments,
+        'metrics' => storedMetrics($trackedCounts),
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $discovered->id,
         'date' => $collectedAt->toDateString(),
         'collected_at' => $collectedAt->addHour()->addHours($discoveredHoursLater),
-        'views_count' => 50,
-        'comments_count' => $discoveredComments,
+        'metrics' => storedMetrics($discoveredCounts),
     ]);
 
-    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1'))->toBeTrue();
+    return [$tracked, $post];
+}
 
-    $snapshot = $tracked->dailySnapshots()->sole();
+test('merging two reads of the same day follows the same-day rule of every read', function (array $tracked, array $discovered, int $discoveredHoursLater, array $expected) {
+    [$publication, $post] = facebookVideoReadTwiceOnOneDay($tracked, $discovered, $discoveredHoursLater);
 
-    expect($snapshot->views_count)->toBe($expectedViews)
-        ->and($snapshot->comments_count)->toBe($expectedComments)
-        ->and($tracked->fresh()->remote_id)->toBe('page_post-1')
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
+
+    $snapshot = $publication->dailySnapshots()->sole();
+
+    expect($snapshot->only(array_keys($expected)))->toEqual($expected)
+        ->and($publication->fresh()->remote_id)->toBe('page_post-1')
         ->and($post->fresh()->platform_post_id)->toBe('video-9');
 })->with([
-    'the older read measured comments the newer did not' => [null, 3, -1, 52, 3],
-    'the newer read missed comments the older measured' => [4, null, 1, 50, 4],
-    'both measured the same: the newer wins' => [null, null, 1, 50, null],
-    'both measured comments: the newer wins' => [4, 3, 1, 50, 3],
+    'the older read measured comments the newer did not' => [
+        ['views' => 52, 'comments' => null], ['views' => 50, 'comments' => 3], -1,
+        ['views_count' => 52, 'comments_count' => 3],
+    ],
+    'a newer read never lowers a lifetime count' => [
+        ['reactions' => 12, 'comments' => 3], ['reactions' => 5, 'comments' => null], 1,
+        ['reactions_count' => 12, 'comments_count' => 3],
+    ],
+    'a newer read raises a lifetime count' => [
+        ['views' => 50], ['views' => 58], 1,
+        ['views_count' => 58],
+    ],
+    'engagement and exposure come from the merged metrics' => [
+        ['views' => 52, 'engagements' => 5], ['reach' => 40, 'engagements' => 16], -1,
+        ['engagement_count' => 16, 'exposure_count' => 40, 'exposure_kind' => ExposureKind::Reach],
+    ],
 ]);
-
-test('merging combines the measured metrics of both reads', function () {
-    $account = SocialAccount::factory()->facebook()->create();
-    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
-    $tracked = app(SyncTryPostPublication::class)->handle($post);
-    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
-        providerPostId: 'page_post-1',
-        publishedAt: now()->subDay()->toImmutable(),
-        contentType: PublicationContentType::Reel,
-        providerMetadata: ['video_id' => 'video-9'],
-    ));
-    $collectedAt = now()->subHours(3);
-    $views = ['availability' => 'available', 'value' => 52];
-    $comments = ['availability' => 'available', 'value' => 3];
-    AnalyticsPublicationDailySnapshot::factory()->create([
-        'publication_id' => $tracked->id,
-        'date' => $collectedAt->toDateString(),
-        'collected_at' => $collectedAt->addHour(),
-        'metrics' => ['views' => $views, 'comments' => ['availability' => 'unavailable', 'value' => null]],
-    ]);
-    AnalyticsPublicationDailySnapshot::factory()->create([
-        'publication_id' => $discovered->id,
-        'date' => $collectedAt->toDateString(),
-        'collected_at' => $collectedAt,
-        'metrics' => ['views' => ['availability' => 'unavailable', 'value' => null], 'comments' => $comments],
-    ]);
-
-    app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1');
-
-    expect($tracked->dailySnapshots()->sole()->metrics)->toEqual(['views' => $views, 'comments' => $comments]);
-});
 
 test('a discovery under another analytics key is not merged and the publication keeps its id', function () {
     $account = SocialAccount::factory()->facebook()->create();
@@ -430,6 +445,6 @@ test('a discovery under another analytics key is not merged and the publication 
         ->and($discovered->fresh()->post_id)->toBeNull();
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Merged 0 duplicate(s).')
+        ->expectsOutputToContain('Linked 0 publication(s) to their TryPost post.')
         ->assertSuccessful();
 });

@@ -32,8 +32,8 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
             return self::FAILURE;
         }
 
-        $merged = new Collection;
-        $verb = $dryRun ? 'Would merge' : 'Merged';
+        $linked = new Collection;
+        $verb = $dryRun ? 'Would link' : 'Linked';
 
         AnalyticsPublication::query()
             ->where('platform', Platform::Facebook)
@@ -43,21 +43,21 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
                 ->orWhereNotNull('provider_metadata->photo_id'))
             ->with('socialAccount')
             ->lazyById()
-            ->each(function (AnalyticsPublication $publication) use ($dryRun, $merged): void {
+            ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked): void {
                 $post = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => $dryRun
                     ? ImportExternalPosts::tryPostTarget($account, $publication)
                     : ImportExternalPosts::linkToTryPost($account, $publication->id));
 
                 if (filled($post)) {
-                    $merged->push($post->content_type->value);
+                    $linked->push($post->content_type->value);
                 }
             });
 
         $this->table(
             ['TryPost post type', $verb],
-            $merged->countBy()->sortKeys()->map(fn (int $count, string $type): array => [$type, $count])->values()->all(),
+            $linked->countBy()->sortKeys()->map(fn (int $count, string $type): array => [$type, $count])->values()->all(),
         );
-        $this->info("{$verb} {$merged->count()} duplicate(s).");
+        $this->info("{$verb} {$linked->count()} publication(s) to their TryPost post.");
 
         return self::SUCCESS;
     }
