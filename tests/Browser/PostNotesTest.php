@@ -572,6 +572,32 @@ test('opening another post notes closes the open thread, and closing a thread cl
         ->assertNoJavaScriptErrors();
 });
 
+test('Backspace removes a mention chip whole, leaving no @ behind', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@note-input');
+
+    $page->hover('@note-input');
+    $page->typeSlowly('@note-input', 'Oi @bia', 10);
+    waitForCount($page, '@note-mention-option', 1);
+    $page->keys('@note-input', 'Enter');
+    waitFor($page, '@note-input-mention');
+    $page->keys('@note-input', ['Backspace', 'Backspace']);
+    waitForGone($page, '@note-input-mention');
+    waitForEditorText($page, '@note-input', 'Oi');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('Enter sends while the mention list finds nobody', function () {
     Mail::fake();
     $user = User::factory()->create();

@@ -3,7 +3,7 @@
  * (`setNoteParts`, see `App\Support\PostNoteMentions::parts`) and reads back
  * as the body to store (`noteBodyOf`): each mention chip as its markup
  * (`@[user:{id}]`, `@[everyone]`) and each line break as a new line. A copied
- * chip reads `@Name`.
+ * chip reads `@Name`, and Backspace removes a chip whole.
  */
 import { Extension, type Editor, type JSONContent } from '@tiptap/core';
 import Mention from '@tiptap/extension-mention';
@@ -96,6 +96,7 @@ export const NoteBody = Extension.create<NoteBodyOptions>({
         return [
             Mention.configure({
                 HTMLAttributes: this.options.chipAttributes,
+                deleteTriggerWithBackspace: true,
                 renderText: ({ node }) => mentionMarkup(node.attrs.id),
                 suggestion: this.options.suggestion,
             }),
