@@ -343,7 +343,7 @@ class Post extends Model
      */
     public function scopeApprovalOrder(Builder $query): Builder
     {
-        return $query->orderByRaw('CASE WHEN posts.scheduled_at IS NULL THEN 1 ELSE 0 END')
+        return $query->orderByRaw('posts.scheduled_at IS NULL')
             ->orderBy('posts.scheduled_at')
             ->orderBy('posts.approval_requested_at');
     }
