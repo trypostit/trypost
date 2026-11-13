@@ -450,7 +450,7 @@ test('a note created an hour ago reads as past for a user whose zone is not the 
     $page->assertNoJavaScriptErrors();
 });
 
-test('a mention of someone who no longer exists reads as unknown in the note and in its edit', function () {
+test('a mention of someone who no longer exists reads as unknown, opens no card, and stays unknown in its edit', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -465,6 +465,8 @@ test('a mention of someone who no longer exists reads as unknown in the note and
     waitFor($page, "@post-notes-trigger-{$post->id}");
     $page->click("@post-notes-trigger-{$post->id}");
     waitForText($page, '@note-body', "ask @{$unknown}");
+    waitForText($page, '@note-mention-unknown', "@{$unknown}");
+    $page->assertMissing('@note-mention');
 
     $page->click('@note-actions');
     $page->click('@note-edit');

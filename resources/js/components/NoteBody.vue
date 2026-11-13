@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import PostNoteMention from '@/components/posts/editor/PostNoteMention.vue';
+import { filled } from '@/lib/helpers';
 import type { PostNoteMentionable, PostNotePart } from '@/types/post-note';
 
 /**
  * A note's text from its parts, with each mention as `@Name` and a card on
- * hover.
+ * hover. A mention of someone who is gone reads `@unknown` and has no card.
  */
 defineProps<{
     parts: PostNotePart[];
@@ -33,12 +34,18 @@ const requestPeople = () => {
                 >@{{ $t('notes.mention_everyone.word') }}</span
             >
             <PostNoteMention
-                v-else-if="part.type === 'mention'"
-                :name="part.name ?? $t('notes.mention_unknown')"
+                v-else-if="part.type === 'mention' && filled(part.name)"
+                :name="part.name"
                 :user-id="part.id"
                 :people="people"
                 @need-people="requestPeople"
             />
+            <span
+                v-else-if="part.type === 'mention'"
+                class="rounded-sm bg-primary-subtle px-0.5 font-medium text-foreground"
+                data-testid="note-mention-unknown"
+                >@{{ $t('notes.mention_unknown') }}</span
+            >
             <template v-else>{{ part.text }}</template>
         </template>
     </p>
