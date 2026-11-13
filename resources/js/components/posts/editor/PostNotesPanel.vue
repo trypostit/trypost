@@ -467,7 +467,7 @@ onMounted(focusLinkedNote);
                 fallback-class="bg-sidebar-accent text-sidebar-accent-foreground"
             />
             <InputGroup
-                class="min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
+                class="h-auto min-h-9 min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
                 data-testid="note-composer"
             >
                 <PostNoteEditor

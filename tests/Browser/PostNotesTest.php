@@ -738,7 +738,8 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     $page->keys('@note-input', ['Shift+Enter']);
     $page->typeSlowly('@note-input', 'Third line', 10);
     $grown = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
-    expect($grown)->toBeGreaterThan($singleLine);
+    expect($grown)->toBeGreaterThan($singleLine)
+        ->and($page->script("document.querySelector('[data-testid=\"note-composer\"]').getBoundingClientRect().height"))->toBeGreaterThanOrEqual($grown);
 
     $page->keys('@note-input', ['Enter']);
     waitFor($page, '@note-body');
