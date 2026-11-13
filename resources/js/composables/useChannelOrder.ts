@@ -27,6 +27,9 @@ const ITEM_KEY = 'sortableChannel';
 const LIST_KEY = 'sortableChannelList';
 const CHANNEL_ORDER_PROPS = ['channels', 'connectedChannels'];
 
+/** The channels settings list pages by scroll: a new order starts it again from the top, never appended. */
+const CHANNEL_ORDER_RESET = ['connectedChannels'];
+
 const optimisticOrder = ref<string[] | null>(null);
 const saving = ref(false);
 let queuedOrder: string[] | null = null;
@@ -73,7 +76,7 @@ const saveChannelOrder = (orderedIds: string[]): void => {
         queuedOrder = null;
         optimisticOrder.value = null;
         toast.error(message, { testId: 'channels-reorder-error-toast' });
-        router.reload({ only: CHANNEL_ORDER_PROPS });
+        router.reload({ only: CHANNEL_ORDER_PROPS, reset: CHANNEL_ORDER_RESET });
     };
 
     router.put(
@@ -83,6 +86,7 @@ const saveChannelOrder = (orderedIds: string[]): void => {
             preserveScroll: true,
             preserveState: true,
             only: CHANNEL_ORDER_PROPS,
+            reset: CHANNEL_ORDER_RESET,
             onError: (errors) =>
                 rollback(
                     errors.social_account_ids ??

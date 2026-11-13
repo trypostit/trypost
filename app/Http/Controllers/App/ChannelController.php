@@ -17,6 +17,7 @@ use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\BuildPublishPageProps;
 use App\Actions\SocialAccount\BuildPostingGoalProgress;
 use App\Actions\SocialAccount\ListInstagramGridPosts;
+use App\Actions\SocialAccount\ListWorkspaceChannels;
 use App\Actions\SocialAccount\ReorderSocialAccounts;
 use App\Enums\Analytics\ExportFormat;
 use App\Enums\PostPlatform\ContentType;
@@ -24,6 +25,7 @@ use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Channel\ChannelInsightsRequest;
 use App\Http\Requests\App\Channel\DownloadChannelInsightsRequest;
+use App\Http\Requests\App\Channel\ListChannelsRequest;
 use App\Http\Requests\App\Channel\ReorderChannelsRequest;
 use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Http\Resources\App\InstagramGridTileResource;
@@ -45,21 +47,23 @@ class ChannelController extends Controller
 {
     use EnsuresChannelInCurrentWorkspace, RendersPublishPage;
 
-    public function index(Request $request): Response
+    public function index(ListChannelsRequest $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        $this->authorize('manageAccounts', $workspace);
-
-        $accounts = $workspace->socialAccounts()->get();
-        $goals = BuildPostingGoalProgress::forChannels(
-            $accounts->filter(fn (SocialAccount $account): bool => filled($account->posting_goal)),
-            $request->user()->week_starts_on,
-        );
+        $weekStart = $request->user()->week_starts_on;
+        $search = $request->search();
+        $networks = $request->networks();
 
         return Inertia::render('settings/workspace/Channels', [
-            'connectedChannels' => $accounts
-                ->map(fn (SocialAccount $account): array => [
+            'connectedChannels' => Inertia::scroll(function () use ($workspace, $search, $networks, $weekStart): LengthAwarePaginator {
+                $page = ListWorkspaceChannels::query($workspace, $search, $networks)
+                    ->paginate((int) config('app.pagination.default'));
+                $goals = BuildPostingGoalProgress::forChannels(
+                    collect($page->items())->filter(fn (SocialAccount $account): bool => filled($account->posting_goal)),
+                    $weekStart,
+                );
+
+                return $page->through(fn (SocialAccount $account): array => [
                     ...SocialAccountResource::make($account)->resolve(),
                     'timezone_option' => Timezone::option($account->timezone),
                     'posting_times_per_week' => $account->posting_schedule?->slotCount() ?? 0,
@@ -68,8 +72,14 @@ class ChannelController extends Controller
                         'sent_this_week' => 0,
                         'scheduled_this_week' => 0,
                     ]),
-                ])
-                ->all(),
+                ]);
+            }),
+            'total' => $workspace->socialAccounts()->count(),
+            'networks' => fn (): array => ListWorkspaceChannels::networks($workspace),
+            'filters' => [
+                'search' => $search,
+                'networks' => $networks,
+            ],
         ]);
     }
 

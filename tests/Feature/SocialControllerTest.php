@@ -39,7 +39,7 @@ test('accounts index shows platforms and connected accounts', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Channels', false)
-        ->has('connectedChannels', 1)
+        ->has('connectedChannels.data', 1)
     );
 });
 
@@ -62,8 +62,8 @@ test('accounts index lists every account of the same network', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Channels', false)
-        ->has('connectedChannels', 2)
-        ->where('connectedChannels', fn ($accounts): bool => collect($accounts)->pluck('id')->contains($first->id)
+        ->has('connectedChannels.data', 2)
+        ->where('connectedChannels.data', fn ($accounts): bool => collect($accounts)->pluck('id')->contains($first->id)
             && collect($accounts)->pluck('id')->contains($second->id))
     );
 });
@@ -94,7 +94,7 @@ test('accounts index sends each channel time zone, posting times per week, posti
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Channels', false)
-        ->where('connectedChannels', function ($accounts) use ($withGoal, $withoutGoal): bool {
+        ->where('connectedChannels.data', function ($accounts) use ($withGoal, $withoutGoal): bool {
             $byId = collect($accounts)->keyBy('id');
 
             expect(data_get($byId, "{$withGoal->id}.posting_goal"))->toBe(5)
@@ -130,6 +130,66 @@ test('accounts index counts the week of every channel with a goal in the same nu
     expect($queriesFor())->toBe($withOneGoal);
 });
 
+test('accounts index pages the channels at the config page size and counts every channel in the title', function () {
+    config(['app.pagination.default' => 2]);
+    $channels = collect(range(0, 2))->map(fn (int $position) => SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::X,
+        'position' => $position,
+    ]));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels'))
+        ->assertInertia(fn ($page) => $page
+            ->where('total', 3)
+            ->has('connectedChannels.data', 2)
+            ->where('connectedChannels.data.0.id', $channels[0]->id)
+            ->where('connectedChannels.data.1.id', $channels[1]->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['page' => 2]))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $channels[2]->id));
+});
+
+test('accounts index searches every word in the channel name or username', function () {
+    $acme = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'display_name' => 'Acme Store', 'username' => 'acmestore']);
+    $beta = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'display_name' => 'Beta Labs', 'username' => 'betalabs']);
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'ACME']))
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.search', 'ACME')
+            ->where('total', 2)
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $acme->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'labs betalabs']))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $beta->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'acme labs']))
+        ->assertInertia(fn ($page) => $page->has('connectedChannels.data', 0));
+});
+
+test('accounts index filters by network, Instagram through Facebook included, and lists the workspace networks', function () {
+    $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'position' => 0]);
+    $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram, 'position' => 1]);
+    $viaFacebook = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::InstagramFacebook, 'position' => 2]);
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['networks' => ['instagram', 'not-a-network']]))
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.networks', ['instagram'])
+            ->where('networks', ['x', 'instagram'])
+            ->has('connectedChannels.data', 2)
+            ->where('connectedChannels.data.0.id', $instagram->id)
+            ->where('connectedChannels.data.1.id', $viaFacebook->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['networks' => ['x']]))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $x->id));
+});
+
 test('a connected linkedin page account is still returned so it surfaces under the linkedin card', function () {
     SocialAccount::factory()->linkedinPage()->create([
         'workspace_id' => $this->workspace->id,
@@ -142,8 +202,8 @@ test('a connected linkedin page account is still returned so it surfaces under t
     // must report network=linkedin to surface under the single LinkedIn card.
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Channels', false)
-        ->where('connectedChannels.0.platform', Platform::LinkedInPage->value)
-        ->where('connectedChannels.0.network', 'linkedin')
+        ->where('connectedChannels.data.0.platform', Platform::LinkedInPage->value)
+        ->where('connectedChannels.data.0.network', 'linkedin')
     );
 });
 
@@ -159,8 +219,8 @@ test('a connected instagram-facebook account is still returned so it surfaces un
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('settings/workspace/Channels', false)
-        ->where('connectedChannels.0.platform', Platform::InstagramFacebook->value)
-        ->where('connectedChannels.0.network', 'instagram')
+        ->where('connectedChannels.data.0.platform', Platform::InstagramFacebook->value)
+        ->where('connectedChannels.data.0.network', 'instagram')
     );
 });
 

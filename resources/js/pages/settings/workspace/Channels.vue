@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import ChannelListItem from '@/components/channels/ChannelListItem.vue';
 import ChannelsEmptyIllustration from '@/components/channels/ChannelsEmptyIllustration.vue';
@@ -10,13 +10,15 @@ import EmptyState from '@/components/EmptyState.vue';
 import NetworkFilter from '@/components/NetworkFilter.vue';
 import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Button } from '@/components/ui/button';
+import { TableLoadMore } from '@/components/ui/table';
 import { orderChannels } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
+import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { blank, filled } from '@/lib/helpers';
-import { filterBySearch } from '@/lib/search';
+import { channels as channelsSettings } from '@/routes/app/workspace';
 import { Platform } from '@/types/platform';
 import type {
     AvailablePlatform,
@@ -24,37 +26,46 @@ import type {
     ConnectedAccount,
 } from '@/types/social-account';
 
+interface ScrollChannelRows {
+    data: ChannelListRow[];
+}
+
 const props = defineProps<{
-    connectedChannels: ChannelListRow[];
+    connectedChannels: ScrollChannelRows;
+    /** Every channel of the workspace, whatever the search and filter. */
+    total: number;
+    /** Every network the workspace has a channel on, in channel order. */
+    networks: string[];
+    filters: { search: string; networks: string[] };
 }>();
 
 const channels = computed<ChannelListRow[]>(() =>
-    orderChannels(props.connectedChannels),
+    orderChannels(props.connectedChannels.data),
 );
 
-const search = ref('');
-const selectedNetworks = ref<string[]>([]);
+const search = ref(props.filters.search);
+const selectedNetworks = ref<string[]>(props.filters.networks);
 
-/** The networks of the connected channels, each once, in channel order. */
-const networks = computed(() => [
-    ...new Set(channels.value.map((channel) => channel.network)),
-]);
+/** A new search or filter reloads the list from its first page. */
+const applyFilters = debounce((): void => {
+    router.get(
+        channelsSettings.url(),
+        {
+            search: search.value || undefined,
+            networks: filled(selectedNetworks.value)
+                ? selectedNetworks.value
+                : undefined,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            reset: ['connectedChannels'],
+        },
+    );
+}, 300);
 
-const visibleChannels = computed<ChannelListRow[]>(() =>
-    filterBySearch(
-        channels.value.filter(
-            (channel) =>
-                blank(selectedNetworks.value) ||
-                selectedNetworks.value.includes(channel.network),
-        ),
-        search.value,
-        (channel) => [
-            channel.display_name,
-            channel.username,
-            channel.handle_label,
-        ],
-    ),
-);
+watch([search, selectedNetworks], applyFilters);
 
 const page = usePage();
 const platforms = computed<AvailablePlatform[]>(
@@ -87,8 +98,8 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
     <SettingsLayout
         :title="$t('channels.title')"
         :description="$t('channels.description')"
-        :centered="blank(channels)"
-        :total="filled(channels) ? channels.length : null"
+        :centered="total === 0"
+        :total="total > 0 ? total : null"
         wide
     >
         <template #actions>
@@ -98,7 +109,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
             </Button>
         </template>
 
-            <div v-if="filled(channels)" class="flex flex-col gap-3">
+            <div v-if="total > 0" class="flex flex-col gap-3">
                 <div class="flex items-center gap-2" data-testid="channels-toolbar">
                     <SettingsSearch
                         v-model="search"
@@ -130,9 +141,14 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                         <span>{{ $t('channels.list.columns.this_week') }}</span>
                         <span />
                     </div>
-                    <ul class="divide-y divide-border">
+                    <InfiniteScroll
+                        data="connectedChannels"
+                        items-element="#channels-body"
+                        preserve-url
+                    >
+                    <ul id="channels-body" class="divide-y divide-border">
                         <li
-                            v-for="channel in visibleChannels"
+                            v-for="channel in channels"
                             :key="channel.id"
                             :data-testid="`channel-list-row-${channel.id}`"
                         >
@@ -145,8 +161,13 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                             />
                         </li>
                     </ul>
+
+                        <template #next="{ loading }">
+                            <TableLoadMore v-if="loading" />
+                        </template>
+                    </InfiniteScroll>
                     <p
-                        v-if="blank(visibleChannels)"
+                        v-if="blank(channels)"
                         class="px-4 py-10 text-center text-sm text-muted-foreground"
                         data-testid="channels-no-results"
                     >

@@ -269,3 +269,22 @@ test('each channel row shows its time zone and posting times, and the list is se
     $page->assertVisible("@channel-row-{$linkedin->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('the channels list loads its next page without repeating a channel', function () {
+    config(['app.pagination.default' => 2]);
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $channels = collect(range(0, 2))->map(fn (int $position) => SocialAccount::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform' => Platform::X,
+        'position' => $position,
+    ]));
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-row-{$channels[2]->id}");
+    waitForCount($page, '[data-testid^="channel-row-"]', 3);
+
+    $page->assertSeeIn('@settings-page-total', '(3)')
+        ->assertNoJavaScriptErrors();
+});
