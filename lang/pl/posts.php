@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Brak kanału',
         ],
         'empty_column' => 'Nic tu nie ma',
+        'no_columns' => [
+            'title' => 'Nic nie pasuje do tych filtrów',
+            'description' => 'Wyczyść filtr etykiet lub kanałów, aby zobaczyć wszystkie kolumny.',
+        ],
         'column_aria' => '{1} :name, liczba postów: :count|[0,*] :name, liczba postów: :count',
     ],
     'view_switcher' => 'Widok harmonogramu',

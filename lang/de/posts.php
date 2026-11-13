@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Kein Kanal',
         ],
         'empty_column' => 'Hier ist nichts',
+        'no_columns' => [
+            'title' => 'Nichts passt zu diesen Filtern',
+            'description' => 'Entferne den Label- oder Kanalfilter, um alle Spalten zu sehen.',
+        ],
         'column_aria' => '{1} :name, :count Beitrag|[0,*] :name, :count Beiträge',
     ],
     'view_switcher' => 'Planungsansicht',

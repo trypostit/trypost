@@ -15,6 +15,7 @@ use App\Models\WorkspaceLabel;
 use App\Support\RequestIds;
 use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -42,14 +43,14 @@ class BuildBoardPageProps
         $labelIds = RequestIds::uuidList($request->collect('labels'));
         $untagged = $request->boolean('untagged');
         $requestedChannelIds = $channel ? [] : RequestIds::uuidList($request->collect('channels')->unique());
-        $scopedChannelIds = $channel ? [$channel->id] : ($requestedChannelIds !== [] ? $requestedChannelIds : null);
+        $scopedChannelIds = $channel ? [$channel->id] : (filled($requestedChannelIds) ? $requestedChannelIds : null);
 
         $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
         $workspaceAccounts = $channel ? collect() : $workspace->socialAccounts()->get();
 
         $boardColumns = match ($group) {
             'tag' => self::tagColumns($workspace, $labelIds, $untagged),
-            'channel' => self::channelColumns($workspaceAccounts, $requestedChannelIds),
+            'channel' => self::channelColumns($workspaceAccounts, $requestedChannelIds, clone $basePosts),
             default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
         };
 
@@ -64,11 +65,11 @@ class BuildBoardPageProps
             'scope' => $channel ? 'channel' : 'all',
             'channel' => fn (): ?array => $channel ? BuildPublishPageProps::channelHeader($channel, $user->week_starts_on) : null,
             'group' => $group,
-            'groups' => $channel ? array_values(array_diff(self::GROUPS, ['channel'])) : self::GROUPS,
+            'groups' => collect(self::GROUPS)->when(filled($channel), fn (Collection $groups): Collection => $groups->reject(fn (string $group): bool => $group === 'channel'))->values()->all(),
             'boardColumns' => $boardColumns->map(fn (array $column): array => collect($column)->except('id')->all())->values()->all(),
             'columns' => $boardColumns
                 ->mapWithKeys(fn (array $column): array => [
-                    $column['key'] => Inertia::scroll(fn () => self::paginate($column, $columnQuery($column)))
+                    data_get($column, 'key') => Inertia::scroll(fn () => self::paginate($column, $columnQuery($column)))
                         ->defer()
                         ->matchOn('data.id'),
                 ])
@@ -89,7 +90,7 @@ class BuildBoardPageProps
 
     public static function group(mixed $requested, ?SocialAccount $channel): string
     {
-        if (! in_array($requested, self::GROUPS, true) || ($channel !== null && $requested === 'channel')) {
+        if (! collect(self::GROUPS)->containsStrict($requested) || (filled($channel) && $requested === 'channel')) {
             return 'status';
         }
 
@@ -102,7 +103,7 @@ class BuildBoardPageProps
      */
     private static function tagColumns(Workspace $workspace, array $labelIds, bool $untagged): Collection
     {
-        $filtering = $labelIds !== [] || $untagged;
+        $filtering = filled($labelIds) || $untagged;
 
         $columns = $workspace->labels()
             ->when($filtering, fn (Builder $labels): Builder => $labels->whereIn('id', $labelIds))
@@ -123,9 +124,9 @@ class BuildBoardPageProps
      * @param  list<string>  $requestedChannelIds
      * @return Collection<int, array<string, mixed>>
      */
-    private static function channelColumns(Collection $accounts, array $requestedChannelIds): Collection
+    private static function channelColumns(Collection $accounts, array $requestedChannelIds, HasMany $posts): Collection
     {
-        $filtering = $requestedChannelIds !== [];
+        $filtering = filled($requestedChannelIds);
 
         $columns = $accounts
             ->when($filtering, fn (Collection $accounts): Collection => $accounts->whereIn('id', $requestedChannelIds))
@@ -137,7 +138,11 @@ class BuildBoardPageProps
             ])
             ->values();
 
-        return $filtering ? $columns : $columns->prepend(['key' => self::NO_CHANNEL, 'type' => 'no_channel']);
+        if ($filtering || $posts->whereNull('posts.platform')->doesntExist()) {
+            return $columns;
+        }
+
+        return $columns->prepend(['key' => self::NO_CHANNEL, 'type' => 'no_channel']);
     }
 
     /**
@@ -145,8 +150,10 @@ class BuildBoardPageProps
      */
     private static function columnQuery(array $column, Builder $query, ?User $requester): Builder
     {
-        $query = match ($column['type']) {
-            'status' => match ($column['key']) {
+        $type = data_get($column, 'type');
+
+        $query = match ($type) {
+            'status' => match (data_get($column, 'key')) {
                 'draft' => $query->where('status', PostStatus::Draft)
                     ->latest('posts.created_at'),
                 'approvals' => $query->pendingApproval()
@@ -157,13 +164,13 @@ class BuildBoardPageProps
                 'published' => $query->where('status', PostStatus::Published)->latestAttempt(),
                 default => $query->where('status', PostStatus::Failed)->latestAttempt(),
             },
-            'label' => $query->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey($column['id'])),
+            'label' => $query->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey(data_get($column, 'id'))),
             'untagged' => $query->whereDoesntHave('labels'),
-            'channel' => $query->where('posts.social_account_id', $column['id']),
+            'channel' => $query->where('posts.social_account_id', data_get($column, 'id')),
             default => $query->whereNull('posts.platform'),
         };
 
-        return $query->when($column['type'] !== 'status', fn (Builder $query): Builder => $query
+        return $query->when($type !== 'status', fn (Builder $query): Builder => $query
             ->visiblePendingApprovalsFor($requester)
             ->latestAttempt());
     }
@@ -173,7 +180,8 @@ class BuildBoardPageProps
      */
     private static function paginate(array $column, Builder $query): LengthAwarePaginator
     {
-        $paginator = $query->orderBy('posts.id')->paginate((int) config('app.pagination.default'), pageName: "{$column['key']}_page");
+        $key = data_get($column, 'key');
+        $paginator = $query->orderBy('posts.id')->paginate((int) config('app.pagination.default'), pageName: "{$key}_page");
 
         BuildPublishPageProps::decorate($paginator->getCollection());
         BuildPublishPageProps::attachMetrics($paginator->getCollection());

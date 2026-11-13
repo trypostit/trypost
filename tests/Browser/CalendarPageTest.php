@@ -657,6 +657,7 @@ test('a details action reloads the calendar and the details show the new status'
 
     expect($post->refresh()->status)->toBe(PostStatus::Draft);
 
+    waitForOpen($page, "@post-details-{$post->id}");
     $page->keys("@post-details-{$post->id}", 'Escape');
     waitForGone($page, "@post-details-{$post->id}");
     $page->assertVisible("@calendar-post-{$post->id}")

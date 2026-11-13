@@ -31,15 +31,15 @@ import { orderChannels } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { usePublishView } from '@/composables/usePublishView';
 import { useSettingsNavigation } from '@/composables/useSettingsNavigation';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { toUrl } from '@/lib/utils';
 import { insights as insightsIndex } from '@/routes/app';
-import { insights, publish } from '@/routes/app/channels';
+import { insights } from '@/routes/app/channels';
 import { index as feedsIndex } from '@/routes/app/create/feeds';
 import { create as createIdea, index as ideasIndex } from '@/routes/app/create/ideas';
 import { index as templatesIndex } from '@/routes/app/create/templates';
-import { index as postsIndex } from '@/routes/app/posts';
 import { index as repurposes } from '@/routes/app/repurposes';
 import { channelName, type SidebarChannel } from '@/types/channel';
 import type {
@@ -139,6 +139,8 @@ const createPath = (tab: string): CommandPaletteTitle => ({
     path: [{ key: 'sidebar.create' }, { key: `create.tabs.${tab}` }],
 });
 
+const { publishUrl, channelPublishUrl } = usePublishView();
+
 const navigation = computed<CommandPaletteEntry[]>(() => {
     const entries: CommandPaletteEntry[] = hasWorkspace.value
         ? [
@@ -147,7 +149,7 @@ const navigation = computed<CommandPaletteEntry[]>(() => {
                   group: 'navigation',
                   title: { key: 'sidebar.groups.posts' },
                   icon: IconCalendarEvent,
-                  run: visit(postsIndex.url()),
+                  run: visit(publishUrl.value),
               },
               ...(canCreatePost.value
                   ? [
@@ -217,7 +219,7 @@ const channelEntries = computed<CommandPaletteEntry[]>(() =>
         subtitle: { text: getPlatformLabel(channel.platform) },
         channel,
         count: channel.scheduled_posts_count,
-        run: visit(publish.url(channel.id)),
+        run: visit(channelPublishUrl(channel.id)),
     })),
 );
 

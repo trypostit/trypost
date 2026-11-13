@@ -22,6 +22,10 @@ return [
             'no_channel' => 'بلا قناة',
         ],
         'empty_column' => 'لا شيء هنا',
+        'no_columns' => [
+            'title' => 'لا شيء يطابق هذه الفلاتر',
+            'description' => 'امسح فلتر التسمية أو القناة لعرض كل الأعمدة.',
+        ],
         'column_aria' => '{1} :name، المنشورات: :count|[0,*] :name، المنشورات: :count',
     ],
     'view_switcher' => 'عرض الجدول',

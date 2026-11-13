@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Aucun canal',
         ],
         'empty_column' => 'Rien ici',
+        'no_columns' => [
+            'title' => 'Rien ne correspond à ces filtres',
+            'description' => 'Retirez le filtre d\'étiquette ou de canal pour voir toutes les colonnes.',
+        ],
         'column_aria' => '{1} :name, :count publication|[0,*] :name, :count publications',
     ],
     'view_switcher' => 'Vue du calendrier',

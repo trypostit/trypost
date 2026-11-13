@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Geen kanaal',
         ],
         'empty_column' => 'Niets hier',
+        'no_columns' => [
+            'title' => 'Niets komt overeen met deze filters',
+            'description' => 'Wis het label- of kanaalfilter om alle kolommen te zien.',
+        ],
         'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
     ],
     'view_switcher' => 'Planningweergave',

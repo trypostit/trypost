@@ -213,3 +213,36 @@ test('an approver rejects a pending post from its board card', function () {
     expect($pending->fresh()->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
 });
+
+test('a label filter matching no column says so instead of an empty board', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['group' => 'tag', 'labels' => [(string) str()->uuid()]]))->resize(1280, 900);
+    waitFor($page, '@board-no-columns');
+
+    $page->assertSeeIn('@board-no-columns', __('posts.board.no_columns.title'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('moving a scheduled post to drafts from its board card menu reloads the columns in place', function () {
+    $scheduled = Post::factory()->forAccount($this->channel)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'scheduled_at' => now()->addDays(2),
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-scheduled @board-card-{$scheduled->id}");
+    $page->script('document.querySelector(\'[data-testid="board-column-failed"]\').dataset.mounted = "before"');
+
+    $page->click("@board-card-menu-{$scheduled->id}");
+    waitForOpen($page, "@post-card-menu-content-board-{$scheduled->id}");
+    $page->click("@post-move-drafts-board-{$scheduled->id}");
+
+    waitFor($page, "@board-column-draft @board-card-{$scheduled->id}");
+    waitForGone($page, "@board-column-scheduled @board-card-{$scheduled->id}");
+
+    expect($page->script('document.querySelector(\'[data-testid="board-column-failed"]\').dataset.mounted'))->toBe('before');
+    $page->assertNoJavaScriptErrors();
+});

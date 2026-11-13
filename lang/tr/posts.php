@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Kanal yok',
         ],
         'empty_column' => 'Burada hiçbir şey yok',
+        'no_columns' => [
+            'title' => 'Bu filtrelerle eşleşen bir şey yok',
+            'description' => 'Tüm sütunları görmek için etiket veya kanal filtresini temizle.',
+        ],
         'column_aria' => '{1} :name, :count gönderi|[0,*] :name, :count gönderi',
     ],
     'view_switcher' => 'Takvim görünümü',

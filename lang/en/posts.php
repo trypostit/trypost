@@ -9,7 +9,7 @@ return [
         'group_by' => 'Group by',
         'groups' => [
             'status' => 'Status',
-            'tag' => 'Tag',
+            'tag' => 'Label',
             'channel' => 'Channel',
         ],
         'columns' => [
@@ -22,6 +22,10 @@ return [
             'no_channel' => 'No channel',
         ],
         'empty_column' => 'Nothing here',
+        'no_columns' => [
+            'title' => 'Nothing matches these filters',
+            'description' => 'Clear the label or channel filter to see every column.',
+        ],
         'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
     ],
     'view_switcher' => 'Schedule view',

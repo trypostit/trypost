@@ -7,8 +7,7 @@ namespace App\Actions\Post;
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\Queue\BuildQueueTimeline;
 use App\Actions\PostNote\BuildPostNotesProps;
-use App\Actions\SocialAccount\CountPostsScheduledThisWeek;
-use App\Actions\SocialAccount\CountPostsSentThisWeek;
+use App\Actions\SocialAccount\BuildPostingGoalProgress;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\WeekStart;
@@ -158,9 +157,7 @@ class BuildPublishPageProps
     {
         return [
             ...SocialAccountResource::make($channel)->resolve(),
-            'posting_goal' => $channel->posting_goal,
-            'sent_this_week' => CountPostsSentThisWeek::handle($channel, $weekStart),
-            'scheduled_this_week' => CountPostsScheduledThisWeek::handle($channel, $weekStart),
+            ...BuildPostingGoalProgress::forChannel($channel, $weekStart),
             'has_grid' => $channel->platform->hasProfileGrid(),
         ];
     }

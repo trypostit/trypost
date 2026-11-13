@@ -62,6 +62,7 @@ import {
     copyPostCardLink,
     duplicatePostCard,
     editPostCardUrlKey,
+    postCardReloadKey,
     schedulePostCard,
     sharePostCardLink,
 } from '@/composables/usePostCardActions';
@@ -379,10 +380,21 @@ const open = (): void => {
     openDetails();
 };
 
+/** A page that lists posts under other props than `posts` (the board) reloads its own; the List does a full visit. */
+const pageReload = inject(postCardReloadKey, null);
+
+const schedule = (post: PostCard, action: 'publish_now' | 'draft'): void => {
+    schedulePostCard(post.id, action, pageReload?.() ?? {});
+};
+
+const publishNow = (): void => {
+    schedule(props.post, 'publish_now');
+};
+
 const runPostAction = (action: PostCardMenuAction, post: PostCard): void => {
     switch (action) {
         case 'publish_now':
-            schedulePostCard(post.id, 'publish_now');
+            schedule(post, 'publish_now');
             break;
         case 'duplicate':
             duplicatePostCard(post);
@@ -392,7 +404,7 @@ const runPostAction = (action: PostCardMenuAction, post: PostCard): void => {
             recurrenceOpen.value = true;
             break;
         case 'move_drafts':
-            schedulePostCard(post.id, 'draft');
+            schedule(post, 'draft');
             break;
         case 'details':
             detailsOpen.value = true;
@@ -886,7 +898,7 @@ defineExpose({ openDetails, runMenuAction: onMenuSelect });
                             v-if="canPublishDirectly && post.status === PostStatus.Scheduled"
                             variant="outline"
                             :data-testid="`post-publish-now-${post.id}`"
-                            @click="schedulePostCard(post.id, 'publish_now')"
+                            @click="publishNow"
                         >
                             <IconSend class="size-4" />
                             {{ $t('posts.publish.actions.publish_now') }}

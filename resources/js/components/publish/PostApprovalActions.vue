@@ -43,25 +43,27 @@ const revertRequest = (): void => {
 </script>
 
 <template>
-    <template v-if="canApprove">
-        <ApprovePostButton :post="post" :test-key="testKey" />
+    <div class="contents">
+        <template v-if="canApprove">
+            <ApprovePostButton :post="post" :test-key="testKey" />
+            <Button
+                variant="outline"
+                class="text-destructive-text"
+                :data-testid="`post-reject-${testKey}`"
+                @click="rejectPost"
+            >
+                <IconX class="size-4" />
+                {{ $t('posts.approvals.reject') }}
+            </Button>
+        </template>
         <Button
+            v-else
             variant="outline"
-            class="text-destructive-text"
-            :data-testid="`post-reject-${testKey}`"
-            @click="rejectPost"
+            :data-testid="`post-revert-${testKey}`"
+            @click="revertRequest"
         >
             <IconX class="size-4" />
-            {{ $t('posts.approvals.reject') }}
+            {{ $t('posts.approvals.revert') }}
         </Button>
-    </template>
-    <Button
-        v-else
-        variant="outline"
-        :data-testid="`post-revert-${testKey}`"
-        @click="revertRequest"
-    >
-        <IconX class="size-4" />
-        {{ $t('posts.approvals.revert') }}
-    </Button>
+    </div>
 </template>

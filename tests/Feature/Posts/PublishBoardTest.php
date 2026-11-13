@@ -221,6 +221,26 @@ test('it groups by channel with drafts without a channel first', function () {
             ->has('boardColumns', 1));
 });
 
+test('it leaves out the no channel column when every post has a channel', function () {
+    boardPost($this->channel, 'scheduled');
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => 'channel']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
+            ->has('boardColumns', 1));
+});
+
+test('it shows no tag column for a label filter naming no label of the workspace', function () {
+    WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => 'tag', 'labels' => [(string) str()->uuid()]]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('boardColumns', []));
+});
+
 test('it falls back to status for group=channel on a channel page', function () {
     $this->actingAs($this->user)
         ->get(route('app.channels.board', ['account' => $this->channel, 'group' => 'channel']))

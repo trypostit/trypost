@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -103,6 +104,25 @@ test('accounts index sends each channel posting goal and where this week stands'
             return true;
         })
     );
+});
+
+test('accounts index counts the week of every channel with a goal in the same number of queries', function () {
+    $queriesFor = function (): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($this->user)->get(route('app.workspace.channels'))->assertOk();
+        DB::disableQueryLog();
+
+        return count(DB::getQueryLog());
+    };
+
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn, 'posting_goal' => 3]);
+    $queriesFor();
+    $withOneGoal = $queriesFor();
+
+    SocialAccount::factory()->count(3)->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'posting_goal' => 5]);
+
+    expect($queriesFor())->toBe($withOneGoal);
 });
 
 test('a connected linkedin page account is still returned so it surfaces under the linkedin card', function () {

@@ -22,6 +22,10 @@ return [
             'no_channel' => 'Sin canal',
         ],
         'empty_column' => 'Nada por aquí',
+        'no_columns' => [
+            'title' => 'Nada coincide con estos filtros',
+            'description' => 'Quita el filtro de etiqueta o de canal para ver todas las columnas.',
+        ],
         'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
     ],
     'view_switcher' => 'Vista de programación',

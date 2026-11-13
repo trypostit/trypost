@@ -38,7 +38,7 @@ test('the all channels header links to the channels settings with a tooltip', fu
     $page->assertSeeIn('@publish-channels-settings-tooltip', __('channels.settings'));
 
     $page->click('@publish-channels-settings');
-    waitForPath($page, parse_url(route('app.workspace.channels'), PHP_URL_PATH));
+    waitForPath($page, route('app.workspace.channels', absolute: false));
 
     $page->assertNoJavaScriptErrors();
 });

@@ -33,7 +33,7 @@ import { usePublishView } from '@/composables/usePublishView';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { calendar } from '@/routes/app';
 import {
     board as channelBoard,
@@ -313,6 +313,13 @@ const pageTitle = computed(() =>
                     </div>
                 </template>
             </EmptyState>
+
+            <EmptyState
+                v-else-if="blank(boardColumns)"
+                :title="$t('posts.board.no_columns.title')"
+                :description="$t('posts.board.no_columns.description')"
+                data-testid="board-no-columns"
+            />
 
             <TooltipProvider v-else :delay-duration="0">
                 <div

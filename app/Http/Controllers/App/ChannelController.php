@@ -15,13 +15,11 @@ use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Actions\Post\BuildBoardPageProps;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\BuildPublishPageProps;
-use App\Actions\SocialAccount\CountPostsScheduledThisWeek;
-use App\Actions\SocialAccount\CountPostsSentThisWeek;
+use App\Actions\SocialAccount\BuildPostingGoalProgress;
 use App\Actions\SocialAccount\ListInstagramGridPosts;
 use App\Actions\SocialAccount\ReorderSocialAccounts;
 use App\Enums\Analytics\ExportFormat;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\User\WeekStart;
 use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Channel\ChannelInsightsRequest;
@@ -53,33 +51,24 @@ class ChannelController extends Controller
 
         $this->authorize('manageAccounts', $workspace);
 
-        $weekStart = $request->user()->week_starts_on;
+        $accounts = $workspace->socialAccounts()->get();
+        $goals = BuildPostingGoalProgress::forChannels(
+            $accounts->filter(fn (SocialAccount $account): bool => filled($account->posting_goal)),
+            $request->user()->week_starts_on,
+        );
 
         return Inertia::render('settings/workspace/Channels', [
-            'connectedChannels' => $workspace->socialAccounts()->get()
+            'connectedChannels' => $accounts
                 ->map(fn (SocialAccount $account): array => [
                     ...SocialAccountResource::make($account)->resolve(),
-                    ...self::postingGoalProgress($account, $weekStart),
+                    ...data_get($goals, $account->id, [
+                        'posting_goal' => null,
+                        'sent_this_week' => 0,
+                        'scheduled_this_week' => 0,
+                    ]),
                 ])
                 ->all(),
         ]);
-    }
-
-    /**
-     * The channel's weekly posting goal and where this week stands, counted only
-     * for a channel that has a goal.
-     *
-     * @return array{posting_goal: ?int, sent_this_week: int, scheduled_this_week: int}
-     */
-    private static function postingGoalProgress(SocialAccount $account, WeekStart $weekStart): array
-    {
-        $hasGoal = filled($account->posting_goal);
-
-        return [
-            'posting_goal' => $account->posting_goal,
-            'sent_this_week' => $hasGoal ? CountPostsSentThisWeek::handle($account, $weekStart) : 0,
-            'scheduled_this_week' => $hasGoal ? CountPostsScheduledThisWeek::handle($account, $weekStart) : 0,
-        ];
     }
 
     public function reorder(ReorderChannelsRequest $request): RedirectResponse

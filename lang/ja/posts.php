@@ -22,6 +22,10 @@ return [
             'no_channel' => 'チャンネルなし',
         ],
         'empty_column' => '何もありません',
+        'no_columns' => [
+            'title' => 'このフィルターに一致するものはありません',
+            'description' => 'すべての列を表示するには、ラベルまたはチャンネルのフィルターを解除してください。',
+        ],
         'column_aria' => '{1} :name、:count件の投稿|[0,*] :name、:count件の投稿',
     ],
     'view_switcher' => 'スケジュール表示',

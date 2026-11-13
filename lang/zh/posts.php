@@ -22,6 +22,10 @@ return [
             'no_channel' => '无频道',
         ],
         'empty_column' => '这里空空如也',
+        'no_columns' => [
+            'title' => '没有符合这些筛选条件的内容',
+            'description' => '清除标签或频道筛选即可查看所有列。',
+        ],
         'column_aria' => '{1} :name，:count 篇帖子|[0,*] :name，:count 篇帖子',
     ],
     'view_switcher' => '日程视图',

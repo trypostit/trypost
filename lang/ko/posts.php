@@ -22,6 +22,10 @@ return [
             'no_channel' => '채널 없음',
         ],
         'empty_column' => '내용 없음',
+        'no_columns' => [
+            'title' => '이 필터와 일치하는 항목이 없습니다',
+            'description' => '모든 열을 보려면 라벨 또는 채널 필터를 지우세요.',
+        ],
         'column_aria' => '{1} :name, 게시물 :count개|[0,*] :name, 게시물 :count개',
     ],
     'view_switcher' => '일정 보기',
