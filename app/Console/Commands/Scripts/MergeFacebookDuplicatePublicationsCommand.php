@@ -9,12 +9,14 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use Closure;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 #[Signature('analytics:merge-facebook-duplicates
@@ -48,9 +50,9 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
             ->lazyById()
             ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked, &$failed): void {
                 try {
-                    $post = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => $dryRun
-                        ? ImportExternalPosts::tryPostTarget($account, $publication)
-                        : ImportExternalPosts::linkToTryPost($account, $publication->id));
+                    $post = $dryRun
+                        ? $this->withoutWriting(fn (): ?Post => $this->link($publication))
+                        : $this->link($publication);
                 } catch (Throwable $exception) {
                     report($exception);
                     $failed++;
@@ -76,5 +78,29 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function link(AnalyticsPublication $publication): ?Post
+    {
+        return transform($publication->socialAccount, fn (SocialAccount $account): ?Post => ImportExternalPosts::linkToTryPost($account, $publication->id));
+    }
+
+    /**
+     * Runs the real link and undoes it, so a dry run counts exactly what a run
+     * would link. The link only writes rows of the database: these
+     * publications have no post, so no imported post or media is deleted, and
+     * nothing is queued.
+     *
+     * @param  Closure(): ?Post  $link
+     */
+    private function withoutWriting(Closure $link): ?Post
+    {
+        DB::beginTransaction();
+
+        try {
+            return $link();
+        } finally {
+            DB::rollBack();
+        }
     }
 }

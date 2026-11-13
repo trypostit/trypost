@@ -172,8 +172,9 @@ class ImportExternalPosts
      * under its video id, a photo under its photo id, discovered under the Page
      * post id), the publication is merged into the tracked one, so Insights
      * counts the post once. Only while the tracked publication still sits on the
-     * post's own id: once merged, another Page post sharing the same video stays
-     * a publication of its own. Any other network keeps the tracked publication.
+     * post's own id, and only for the first Page post carrying that media, the
+     * one TryPost published: a later Page post sharing the same video stays a
+     * publication of its own. Any other network keeps the tracked publication.
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
@@ -185,7 +186,32 @@ class ImportExternalPosts
 
         return $post->platform === Platform::Facebook
             && $post->analyticsPublication->remote_id === $post->platform_post_id
+            && ! self::hasEarlierDiscoveryOfSameMedia($publication)
             && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
+    }
+
+    /**
+     * Another unlinked Page post of the same channel, published before this one,
+     * carrying the same Facebook video or photo.
+     */
+    private static function hasEarlierDiscoveryOfSameMedia(AnalyticsPublication $publication): bool
+    {
+        $mediaIds = collect(['video_id', 'photo_id'])
+            ->map(fn (string $key): mixed => data_get($publication->provider_metadata, $key))
+            ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
+            ->values();
+
+        return AnalyticsPublication::query()
+            ->available()
+            ->where('social_account_id', $publication->social_account_id)
+            ->whereKeyNot($publication->id)
+            ->whereNull('post_id')
+            ->whereNull('post_dismissed_at')
+            ->where('provider_published_at', '<', $publication->provider_published_at)
+            ->where(fn (Builder $query): Builder => $query
+                ->whereIn('provider_metadata->video_id', $mediaIds)
+                ->orWhereIn('provider_metadata->photo_id', $mediaIds))
+            ->exists();
     }
 
     public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post

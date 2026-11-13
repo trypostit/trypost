@@ -427,7 +427,7 @@ test('a stored metric this version cannot read back is kept, not lost or fatal',
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $legacy = ['value' => 7, 'unit' => 'count', 'time_basis' => 'lifetime', 'precision' => 'exact', 'availability' => 'available'];
     $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
-    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'reactions' => ['value' => 3]]])->save();
+    $discoveredSnapshot->forceFill(['metrics' => [...$discoveredSnapshot->metrics, 'a_retired_metric' => $legacy, 'reactions' => ['value' => 3], 'views' => ['value' => 99]]])->save();
 
     expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
 

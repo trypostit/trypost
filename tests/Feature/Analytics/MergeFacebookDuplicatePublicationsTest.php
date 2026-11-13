@@ -82,6 +82,29 @@ test('a facebook reel published outside trypost is left alone', function () {
     expect($external->fresh()->post_id)->toBeNull();
 });
 
+test('a dry run counts exactly what a run links', function () {
+    [$account, , $tracked] = facebookReelCountedTwice();
+    $share = facebookPublication($account, [
+        'remote_id' => 'page_post-2',
+        'provider_published_at' => now()->addMinute(),
+        'provider_metadata' => ['video_id' => 'media-9'],
+    ]);
+
+    $this->artisan('analytics:merge-facebook-duplicates', ['--dry-run' => true])
+        ->expectsOutputToContain('Would link 1 publication(s) to their TryPost post.')
+        ->assertSuccessful();
+
+    expect($tracked->fresh()->remote_id)->toBe('media-9')
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->count())->toBe(3);
+
+    $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
+        ->expectsOutputToContain('Linked 1 publication(s) to their TryPost post.')
+        ->assertSuccessful();
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($share->fresh()->post_id)->toBeNull();
+});
+
 test('a dismissed publication is left alone, as the import leaves it', function () {
     [, , $tracked, $discovered] = facebookReelCountedTwice();
     $discovered->forceFill(['post_dismissed_at' => now()])->save();

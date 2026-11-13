@@ -299,6 +299,23 @@ test('another page post sharing a merged facebook video stays a publication of i
         ->and($tryPost->fresh()->platform_post_id)->toBe('video-9');
 });
 
+test('the first page post carrying a facebook video is the trypost one, whatever order the import meets them in', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    $original = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHours(3), 'provider_metadata' => ['video_id' => 'video-9']]);
+    $share = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+    ImportExternalPosts::execute($account);
+
+    expect($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($original->fresh())->toBeNull()
+        ->and($share->fresh())->not->toBeNull()
+        ->and($share->fresh()->post_id)->toBeNull()
+        ->and(Post::query()->imported()->exists())->toBeFalse();
+});
+
 test('a publication of another network tracked under another id is left to that publication', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9']);
