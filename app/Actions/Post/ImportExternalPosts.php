@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Actions\Analytics\UpsertAnalyticsPublication;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
@@ -147,9 +148,9 @@ class ImportExternalPosts
     }
 
     /**
-     * Links a publication to the post TryPost published, the way the import
-     * does. Returns that post, or null when it is not a post TryPost published
-     * or it was left as it is.
+     * Links a publication to the post TryPost published, by the rules the import
+     * follows. Returns that post, or null when it is not a post TryPost
+     * published or it was left as it is.
      */
     public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
     {
@@ -167,19 +168,16 @@ class ImportExternalPosts
     }
 
     /**
-     * A publication of a post TryPost published is linked to it. When a Facebook
-     * post is already tracked under another remote id (a video or reel saved
-     * under its video id, a photo under its photo id, discovered under the Page
-     * post id), the publication is merged into the tracked one, so Insights
-     * counts the post once, and only while the tracked one still sits on the
-     * post's own id. A Facebook publication is linked only when it is the first
-     * Page post carrying that media, the one TryPost published: a later Page
-     * post sharing the same video stays a publication of its own. Any other
-     * network keeps the tracked publication.
+     * A publication of a post TryPost published is linked to it. One matched
+     * only through the Facebook video or photo it carries is linked only when it
+     * is that post's own Page post (isOwnPagePost). When a Facebook post is
+     * already tracked under its own id, the publication is merged into the
+     * tracked one, so Insights counts the post once. Any other network keeps
+     * the tracked publication.
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
-        if ($post->platform_post_id !== $publication->remote_id && self::hasEarlierDiscoveryOfSameMedia($publication)) {
+        if ($post->platform_post_id !== $publication->remote_id && ! self::isOwnPagePost($post, $publication)) {
             return false;
         }
 
@@ -189,28 +187,36 @@ class ImportExternalPosts
             return true;
         }
 
+        $tracked = $post->analyticsPublication;
+
         return $post->platform === Platform::Facebook
-            && $post->analyticsPublication->remote_id === $post->platform_post_id
-            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
+            && $tracked->availability === PublicationAvailability::Available
+            && $tracked->remote_id === $post->platform_post_id
+            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, $publication->remote_id);
     }
 
     /**
-     * Another publication of the same channel, published before this one or in
-     * the same second, carrying the same Facebook video or photo. Whatever its
-     * state: when in doubt, nothing is linked.
+     * The Page post TryPost created when it published a Facebook video or photo:
+     * the only publication of the channel carrying that media, published within
+     * the match window of the post. Any doubt (a second Page post sharing the
+     * media, or one published long after) leaves it unlinked.
      */
-    private static function hasEarlierDiscoveryOfSameMedia(AnalyticsPublication $publication): bool
+    private static function isOwnPagePost(Post $post, AnalyticsPublication $publication): bool
     {
+        $window = (int) config('trypost.external_posts.match_window_minutes');
         $mediaIds = self::facebookMediaIds($publication);
 
-        return filled($mediaIds) && AnalyticsPublication::query()
+        if ($window < 1 || blank($mediaIds) || blank($post->published_at)
+            || abs($post->published_at->diffInMinutes($publication->provider_published_at)) > $window) {
+            return false;
+        }
+
+        return AnalyticsPublication::query()
             ->where('social_account_id', $publication->social_account_id)
-            ->whereKeyNot($publication->id)
-            ->where('provider_published_at', '<=', $publication->provider_published_at)
             ->where(fn (Builder $query): Builder => $query
                 ->whereIn('provider_metadata->video_id', $mediaIds)
                 ->orWhereIn('provider_metadata->photo_id', $mediaIds))
-            ->exists();
+            ->count() === 1;
     }
 
     /**

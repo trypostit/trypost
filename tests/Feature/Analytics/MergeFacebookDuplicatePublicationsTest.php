@@ -21,6 +21,7 @@ function facebookPublication(SocialAccount $account, array $attributes = []): An
         'platform_user_id' => $account->platform_user_id,
         'platform' => $account->platform,
         'content_type' => PublicationContentType::Reel,
+        'provider_published_at' => now()->subMinute(),
         ...$attributes,
     ]);
 }
@@ -85,25 +86,24 @@ test('a facebook reel published outside trypost is left alone', function () {
 
 test('a dry run counts exactly what a run links', function () {
     [$account, , $tracked] = facebookReelCountedTwice();
-    $share = facebookPublication($account, [
-        'remote_id' => 'page_post-2',
-        'provider_published_at' => now()->addMinute(),
-        'provider_metadata' => ['video_id' => 'media-9'],
-    ]);
+    $other = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'media-10']);
+    facebookPublication($account, ['remote_id' => 'page_post-2', 'provider_metadata' => ['video_id' => 'media-10']]);
+    facebookPublication($account, ['remote_id' => 'page_post-3', 'provider_metadata' => ['video_id' => 'media-10']]);
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--dry-run' => true])
         ->expectsOutputToContain('Would link 1 publication(s) to their TryPost post.')
         ->assertSuccessful();
 
     expect($tracked->fresh()->remote_id)->toBe('media-9')
-        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->count())->toBe(3);
+        ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->count())->toBe(4);
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
         ->expectsOutputToContain('Linked 1 publication(s) to their TryPost post.')
         ->assertSuccessful();
 
     expect($tracked->fresh()->remote_id)->toBe('page_post-1')
-        ->and($share->fresh()->post_id)->toBeNull();
+        ->and(AnalyticsPublication::query()->whereNotNull('post_id')->whereKeyNot($tracked->id)->exists())->toBeFalse()
+        ->and($other->fresh()->platform_post_id)->toBe('media-10');
 });
 
 test('a dismissed or deleted publication is left alone, as the import leaves it', function (array $state) {
