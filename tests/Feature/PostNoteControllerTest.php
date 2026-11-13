@@ -505,6 +505,26 @@ test('a link with a malformed note or post id opens the page without a thread', 
     'a uuid of nothing' => [fn (): string => Str::uuid()->toString(), null],
 ]);
 
+test('a link to a note that is gone or on another post opens the thread without a highlight', function (Closure $noteId) {
+    $page = $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['notes' => $this->post->id, 'note' => $noteId($this)]))
+        ->assertOk();
+
+    expect($page->inertiaProps('openPostNotesId'))->toBe($this->post->id)
+        ->and($page->inertiaProps('highlightNoteId'))->toBeNull();
+})->with([
+    'a deleted note' => [function ($test): string {
+        $note = PostNote::factory()->create(['post_id' => $test->post->id, 'user_id' => $test->user->id]);
+        $note->delete();
+
+        return $note->id;
+    }],
+    'a note of another post' => [fn ($test): string => PostNote::factory()->create([
+        'post_id' => Post::factory()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id])->id,
+        'user_id' => $test->user->id,
+    ])->id],
+]);
+
 test('an edit drops the mention of someone who no longer sees the post', function () {
     $teammate = workspaceMember($this->workspace);
     $note = PostNote::factory()->create(['post_id' => $this->post->id, 'user_id' => $this->user->id, 'body' => "Ask @[user:{$teammate->id}]"]);
