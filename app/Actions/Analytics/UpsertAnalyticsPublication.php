@@ -105,8 +105,9 @@ class UpsertAnalyticsPublication
      * that the network reports under another id, while the post keeps the id it
      * was published under: a Facebook video or reel is known by its video id to
      * the post (repurpose skips what TryPost published by that id) and by its
-     * Page post id to discovery. Only while the publication still sits on the
-     * post's own id, checked under its lock. False when nothing was merged.
+     * Page post id to discovery. Only into a publication still available and
+     * on the post's own id, both checked under its lock. False when nothing
+     * was merged.
      */
     public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): bool
     {
@@ -122,7 +123,8 @@ class UpsertAnalyticsPublication
                 return false;
             }
 
-            if (! $movePost && Post::query()->whereKey($current->post_id)->value('platform_post_id') !== $current->remote_id) {
+            if (! $movePost && ($current->availability !== PublicationAvailability::Available
+                || Post::query()->whereKey($current->post_id)->value('platform_post_id') !== $current->remote_id)) {
                 return false;
             }
 

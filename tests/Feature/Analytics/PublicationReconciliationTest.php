@@ -13,6 +13,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\PublishStatus as Status;
@@ -483,6 +484,15 @@ test('a merged publication keeps the latest time discovery saw the post', functi
     app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
 
     expect($publication->fresh()->last_seen_at->toIso8601String())->toBe($seenAt->toIso8601String());
+});
+
+test('a merge into a publication marked deleted since it was read does nothing', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    AnalyticsPublication::query()->whereKey($publication->id)->update(['availability' => PublicationAvailability::Deleted]);
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeFalse()
+        ->and($publication->fresh()->remote_id)->toBe('video-9')
+        ->and(AnalyticsPublication::query()->where('remote_id', 'page_post-1')->exists())->toBeTrue();
 });
 
 test('a discovery under another analytics key is not merged and the publication keeps its id', function () {

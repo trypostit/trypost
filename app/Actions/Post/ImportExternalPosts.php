@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Actions\Analytics\UpsertAnalyticsPublication;
-use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
@@ -193,12 +192,8 @@ class ImportExternalPosts
             return true;
         }
 
-        $tracked = $post->analyticsPublication;
-
         return $post->platform === Platform::Facebook
-            && $tracked->availability === PublicationAvailability::Available
-            && $tracked->remote_id === $post->platform_post_id
-            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, $publication->remote_id);
+            && app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
     }
 
     /**
