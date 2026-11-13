@@ -214,7 +214,7 @@ test('a stale reorder is rolled back and reported', function () {
 test('the posting times toggle hides every slot and survives a reload', function () {
     [$user, , $channel] = publishQueueSetup();
     $queued = publishQueuePost($user, $channel);
-    $slot = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 1)[0];
+    $slot = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2)[1];
     $slotKey = publishQueueSlotKey($channel, $slot);
     $this->actingAs($user);
 

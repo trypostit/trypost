@@ -227,6 +227,7 @@ test('editing a post shows a server media error on the item it belongs to', func
 
     $page = visit(route('app.posts.index', ['edit' => $post->id]));
     waitForCount($page, '[data-testid$="-media-item"]', 2);
+    $post->update(['media' => [$post->media[0]]]);
     $media->last()->delete();
 
     $page->click('@composer-save-draft');

@@ -41,7 +41,7 @@ return [
         'account_disconnected' => '계정 연결 해제됨',
         'account_disconnected_description' => '소셜 계정 연결이 해제되면 이메일을 받습니다',
         'post_note_added' => '게시물의 새 메모',
-        'post_note_added_description' => '팀원이 게시물에 메모를 추가하면 이메일을 받습니다',
+        'post_note_added_description' => '팀원이 메모에서 회원님을 언급하거나 회원님이 만들었거나 메모를 남긴 게시물에 메모를 추가하면 이메일을 받습니다',
         'collaboration' => '협업',
         'collaboration_description' => '승인 요청과 승인 또는 거절된 게시물에 대한 이메일 받기',
         'save_failed' => '알림 설정을 저장하지 못했습니다. 다시 시도해 주세요.',

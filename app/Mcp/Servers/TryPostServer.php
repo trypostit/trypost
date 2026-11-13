@@ -30,6 +30,7 @@ use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Mcp\Tools\Post\AddPostNoteReactionTool;
 use App\Mcp\Tools\Post\ApprovePostTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
@@ -41,11 +42,13 @@ use App\Mcp\Tools\Post\DeletePostNoteTool;
 use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
+use App\Mcp\Tools\Post\ListPostNoteMentionablesTool;
 use App\Mcp\Tools\Post\ListPostNotesTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\RejectPostTool;
+use App\Mcp\Tools\Post\RemovePostNoteReactionTool;
 use App\Mcp\Tools\Post\RequestMediaUploadTool;
 use App\Mcp\Tools\Post\SetPostRecurrenceTool;
 use App\Mcp\Tools\Post\UpdatePostNoteTool;
@@ -124,6 +127,9 @@ class TryPostServer extends Server
         CreatePostNoteTool::class,
         UpdatePostNoteTool::class,
         DeletePostNoteTool::class,
+        ListPostNoteMentionablesTool::class,
+        AddPostNoteReactionTool::class,
+        RemovePostNoteReactionTool::class,
 
         GetAnalyticsReportTool::class,
         GetAnalyticsPublicationTool::class,

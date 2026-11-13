@@ -215,7 +215,7 @@ test('presets swap the chart series and the selected preset and period survive a
     $page->click('@insights-post-type-filter');
     waitFor($page, '@insights-post-type-option-instagram_reel');
     $page->click('@insights-post-type-option-instagram_reel');
-    waitForCondition($page, 'new URLSearchParams(location.search).getAll("types[]").includes("instagram_reel")');
+    waitForCondition($page, '[...new URLSearchParams(location.search)].some(([key, value]) => key.startsWith("types[") && value === "instagram_reel")');
     waitForState($page, '@insights-metrics-chart', 'true');
     waitForState($page, '@insights-preset-audience_growth', "element.getAttribute('aria-pressed') === 'true'");
     waitForState($page, '@insights-metrics-mode-both', "element.getAttribute('aria-pressed') === 'true'");

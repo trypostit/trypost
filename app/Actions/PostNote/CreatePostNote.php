@@ -8,6 +8,8 @@ use App\Events\PostNoteChanged;
 use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\User;
+use App\Support\PostNoteMentions;
+use Illuminate\Support\Facades\DB;
 
 final class CreatePostNote
 {
@@ -16,15 +18,23 @@ final class CreatePostNote
      */
     public static function execute(Post $post, User $author, array $data): PostNote
     {
-        $note = $post->notes()->create([
-            'user_id' => $author->id,
-            'body' => data_get($data, 'body'),
-        ]);
+        $audience = ListPostNoteAudience::execute($post);
 
-        $note->load('user.avatarMedia');
+        $note = DB::transaction(function () use ($post, $author, $data, $audience): PostNote {
+            $note = $post->notes()->create([
+                'user_id' => $author->id,
+                'body' => PostNoteMentions::withoutMentionsOutside((string) data_get($data, 'body'), $audience),
+            ]);
 
-        NotifyPostNoteAdded::execute($note);
-        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created');
+            $note->mentions()->sync(PostNoteMentions::extract($note->body));
+
+            return $note;
+        });
+
+        $note->load(PostNote::DISPLAY_RELATIONS);
+
+        NotifyPostNoteRecipients::created($note, $author, $audience);
+        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'created', $note->id);
 
         return $note;
     }

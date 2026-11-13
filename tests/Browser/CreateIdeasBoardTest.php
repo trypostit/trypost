@@ -153,6 +153,31 @@ test('dragging a card onto an empty column moves it there', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a move that cannot reach the server says so and puts the card back', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-{$a->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function () {
+                XMLHttpRequest.prototype.send = send;
+                this.dispatchEvent(new ProgressEvent('error'));
+                this.dispatchEvent(new ProgressEvent('loadend'));
+            };
+        })()
+    JS);
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
+    waitFor($page, '@ideas-move-error-toast');
+    waitFor($page, "@idea-column-{$stages['todo']->id} @idea-card-{$a->id}");
+
+    $page->assertNoJavaScriptErrors();
+    expect($a->refresh()->idea_stage_id)->toBe($stages['todo']->id);
+});
+
 test('a new stage is created on enter and nothing is created on escape', function () {
     [$user, $workspace] = createIdeasBoardSetup();
     $this->actingAs($user);
@@ -354,6 +379,99 @@ test('a drop made while a move is in flight is applied after the first move comp
         ->and($a->refresh()->idea_stage_id)->toBe($stages['done']->id)
         ->and($b->refresh()->idea_stage_id)->toBe($stages['done']->id)
         ->and(Idea::where('idea_stage_id', $stages['done']->id)->orderBy('position')->pluck('id')->all())->toBe($order);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('several drops made while a move is in flight are all saved, in order, after it completes', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
+    $b = createIdeasBoardIdea($workspace, $user, $stages['todo'], 1, 'Idea B');
+    $c = createIdeasBoardIdea($workspace, $user, $stages['todo'], 2, 'Idea C');
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-{$c->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            window.__ideaMoves = [];
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__ideaMove = method.toUpperCase() === 'PUT' && String(url).endsWith('/move');
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (!this.__ideaMove) return send.call(this, body);
+                window.__ideaMoves.push(body);
+                if (window.__ideaMoves.length === 1) {
+                    window.__releaseIdeaMove = () => send.call(this, body);
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })();
+    JS);
+
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
+    waitForCondition($page, 'window.__ideaMoves.length === 1');
+    $page->drag("@idea-card-{$b->id}", "@idea-column-{$stages['done']->id}");
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$b->id}\"]", 'true');
+    $page->drag("@idea-card-{$c->id}", "@idea-column-{$stages['done']->id}");
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$c->id}\"]", 'true');
+
+    $page->script('window.__releaseIdeaMove()');
+    waitForDatabase($page, fn (): bool => $c->refresh()->idea_stage_id === $stages['done']->id);
+
+    $order = $page->script("[...document.querySelectorAll('[data-testid=\"idea-column-{$stages['done']->id}\"] [data-idea-id]')].map((el) => el.dataset.ideaId)");
+    expect($page->script('window.__ideaMoves.length'))->toBe(3)
+        ->and(Idea::whereKey([$a->id, $b->id, $c->id])->pluck('idea_stage_id')->unique()->all())->toBe([$stages['done']->id])
+        ->and(Idea::where('idea_stage_id', $stages['done']->id)->orderBy('position')->pluck('id')->all())->toBe($order);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a card dropped twice while a move is in flight is saved where it was dropped last', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
+    $b = createIdeasBoardIdea($workspace, $user, $stages['todo'], 1, 'Idea B');
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-{$b->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            window.__ideaMoves = [];
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__ideaMove = method.toUpperCase() === 'PUT' && String(url).endsWith('/move');
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (!this.__ideaMove) return send.call(this, body);
+                window.__ideaMoves.push(body);
+                if (window.__ideaMoves.length === 1) {
+                    window.__releaseIdeaMove = () => send.call(this, body);
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })();
+    JS);
+
+    $page->drag("@idea-card-{$b->id}", "@idea-column-{$stages['done']->id}");
+    waitForCondition($page, 'window.__ideaMoves.length === 1');
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['in_progress']->id}");
+    waitForState($page, "@idea-column-{$stages['in_progress']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+
+    $page->script('window.__releaseIdeaMove()');
+    waitForDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
+
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+
+    expect($page->script('window.__ideaMoves.length'))->toBe(2)
+        ->and($b->refresh()->idea_stage_id)->toBe($stages['done']->id);
     $page->assertNoJavaScriptErrors();
 });
 

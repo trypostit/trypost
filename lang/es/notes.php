@@ -15,5 +15,21 @@ return [
     'send' => 'Enviar',
     'empty' => 'Todavía no hay notas. Solo tu equipo las ve.',
     'actions' => 'Acciones de la nota',
-    'load_more' => 'Cargar notas anteriores',
+    'react' => 'Añadir reacción',
+    'no_mentionables' => 'Nadie del equipo coincide',
+    'mention_unknown' => 'desconocido',
+    'mention_everyone' => [
+        'word' => 'todos',
+        'description' => 'Todos en esta publicación',
+    ],
+    'mention_card' => [
+        'local_time' => ':time hora local',
+    ],
+    'errors' => [
+        'invalid_emoji' => 'Elige un solo emoji.',
+        'not_saved' => 'No se pudo guardar tu nota. Inténtalo de nuevo.',
+        'not_deleted' => 'No se pudo eliminar la nota. Inténtalo de nuevo.',
+        'not_reacted' => 'No se pudo actualizar la reacción. Inténtalo de nuevo.',
+        'too_long' => 'Las notas pueden tener hasta :max caracteres.',
+    ],
 ];

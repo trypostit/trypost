@@ -10,6 +10,7 @@ use App\Enums\User\TimeFormat;
 use App\Mail\PostApprovalRequested;
 use App\Mail\PostApproved;
 use App\Mail\PostNoteAdded;
+use App\Mail\PostNoteMentioned;
 use App\Mail\PostRejected;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Mail\WorkspaceInvite;
@@ -131,6 +132,73 @@ test('the post note email renders the note, the post and its channel', function 
     $mailable->assertSeeInHtml(asset('images/accounts/linkedin.png'));
     $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
+
+test('the mention email renders the note with its mentions as names', function (Locale $locale) {
+    $author = User::factory()->create(['name' => 'Ana Author']);
+    $mentioned = User::factory()->create(['name' => 'Bia Lima']);
+    $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id, 'name' => 'Acme Workspace']);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $author->id]);
+    $note = PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $author->id,
+        'body' => "@[user:{$mentioned->id}] can you check?",
+    ]);
+    $note->mentions()->attach($mentioned);
+
+    $mailable = (new PostNoteMentioned($note, $author))->locale($locale->value);
+
+    $mailable->assertHasSubject(__('mail.post_note_mentioned.subject', ['author' => 'Ana Author'], $locale->value));
+    $mailable->assertSeeInHtml(__('mail.post_note_mentioned.heading', [], $locale->value));
+    $mailable->assertSeeInHtml(e(__('mail.post_note_mentioned.body', ['author' => 'Ana Author', 'workspace' => 'Acme Workspace'], $locale->value)), false);
+    $mailable->assertSeeInHtml('@Bia Lima can you check?');
+    $mailable->assertDontSeeInHtml("user:{$mentioned->id}", false);
+    $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
+})->with([Locale::English, Locale::PortugueseBrazil]);
+
+test('the post note email shows mentions as names', function () {
+    $author = User::factory()->create();
+    $mentioned = User::factory()->create(['name' => 'Bia Lima']);
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $author->id,
+        'body' => "Ask @[user:{$mentioned->id}] first",
+    ]);
+    $note->mentions()->attach($mentioned);
+
+    (new PostNoteAdded($note, $author))
+        ->assertSeeInHtml('Ask @Bia Lima first')
+        ->assertDontSeeInHtml("user:{$mentioned->id}", false);
+});
+
+test('the mention email names everyone in the recipient\'s language', function (Locale $locale, string $word) {
+    $author = User::factory()->create();
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => '@[everyone] please review']);
+
+    (new PostNoteMentioned($note, $author))->locale($locale->value)
+        ->assertSeeInHtml("@{$word} please review")
+        ->assertDontSeeInHtml('@[everyone]', false);
+})->with([
+    [Locale::English, 'all'],
+    [Locale::PortugueseBrazil, 'todos'],
+]);
+
+test('a mention of someone no longer there reads as unknown in the email', function () {
+    $author = User::factory()->create();
+    $gone = User::factory()->create();
+    $post = Post::factory()->create(['user_id' => $author->id]);
+    $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id, 'body' => "Ask @[user:{$gone->id}] first"]);
+    $note->mentions()->attach($gone);
+
+    $gone->delete();
+
+    $unknown = __('mail.post_note_added.mention_unknown');
+
+    (new PostNoteAdded($note->fresh(), $author))
+        ->assertSeeInHtml("Ask @{$unknown} first")
+        ->assertDontSeeInHtml("user:{$gone->id}", false);
+});
 
 test('the post note email falls back when the post has no text and no channel', function () {
     $author = User::factory()->create();

@@ -35,9 +35,18 @@ class PostNoteController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
+    public function show(Post $post, PostNote $note): PostNoteResource
+    {
+        abort_unless($note->post_id === $post->id, Response::HTTP_NOT_FOUND);
+
+        $this->authorizeNotes($post);
+
+        return PostNoteResource::make($note->load(PostNote::DISPLAY_RELATIONS));
+    }
+
     public function update(UpdatePostNoteRequest $request, Post $post, PostNote $note): PostNoteResource
     {
-        return new PostNoteResource(UpdatePostNote::execute($post, $note, $request->validated()));
+        return new PostNoteResource(UpdatePostNote::execute($post, $note, $request->user(), $request->validated()));
     }
 
     public function destroy(Post $post, PostNote $note): JsonResponse

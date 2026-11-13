@@ -584,8 +584,10 @@ test('a label created from the empty label picker of the global composer is list
 
     $label = $workspace->labels()->sole();
 
-    $page->click('@composer-tags-trigger')
-        ->assertAttribute("@composer-label-checkbox-{$label->id}", 'data-state', 'checked')
+    waitForGone($page, '@composer-label-new-name');
+    $page->click('@composer-tags-trigger');
+    waitFor($page, "@composer-label-checkbox-{$label->id}");
+    $page->assertAttribute("@composer-label-checkbox-{$label->id}", 'data-state', 'checked')
         ->assertNoJavaScriptErrors();
 });
 
@@ -1357,7 +1359,7 @@ test('select all picks only the channels the search shows, and the last used sho
         ->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
 
-    waitForComposerReady($page, 'posts-new-post');
+    waitFor($page, '@posts-new-post');
     $page->click('@posts-new-post');
     waitForComposerReady($page, 'composer-last-used');
     $page->click('@composer-last-used')

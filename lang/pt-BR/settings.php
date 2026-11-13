@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Conta desconectada',
         'account_disconnected_description' => 'Receber um e-mail quando uma conta social for desconectada',
         'post_note_added' => 'Nova nota em uma publicação',
-        'post_note_added_description' => 'Receber um e-mail quando um membro da equipe adicionar uma nota a uma publicação',
+        'post_note_added_description' => 'Receber um e-mail quando alguém da equipe mencionar você em uma nota ou adicionar uma nota a uma publicação que você criou ou comentou',
         'collaboration' => 'Colaboração',
         'collaboration_description' => 'Receba e-mails sobre pedidos de aprovação e posts aprovados ou rejeitados',
         'save_failed' => 'Não foi possível salvar as preferências de notificações. Tente novamente.',

@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'アカウントの接続が解除されたとき',
         'account_disconnected_description' => 'ソーシャルアカウントの接続が解除されたときにメールを受け取ります',
         'post_note_added' => '投稿への新しいメモ',
-        'post_note_added_description' => 'チームメンバーが投稿にメモを追加したときにメールを受け取ります',
+        'post_note_added_description' => 'チームメンバーがメモであなたをメンションしたとき、またはあなたが作成・メモした投稿にメモを追加したときにメールを受け取ります',
         'collaboration' => 'コラボレーション',
         'collaboration_description' => '承認リクエストや、承認・却下された投稿についてメールを受け取る',
         'save_failed' => '通知設定を保存できませんでした。もう一度お試しください。',

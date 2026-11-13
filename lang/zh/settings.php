@@ -41,7 +41,7 @@ return [
         'account_disconnected' => '账号已断开连接',
         'account_disconnected_description' => '当某个社交账号断开连接时收到邮件',
         'post_note_added' => '帖子有新备注',
-        'post_note_added_description' => '当团队成员为帖子添加备注时接收邮件',
+        'post_note_added_description' => '当团队成员在备注中提到你，或为你创建或备注过的帖子添加备注时接收邮件',
         'collaboration' => '协作',
         'collaboration_description' => '接收关于审批请求以及已批准或已拒绝帖子的邮件',
         'save_failed' => '无法保存通知偏好，请重试。',

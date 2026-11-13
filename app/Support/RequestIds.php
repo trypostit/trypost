@@ -10,6 +10,16 @@ use Illuminate\Support\Str;
 final class RequestIds
 {
     /**
+     * The value when it is a uuid, else null: an id read from a link's query is
+     * ignored when malformed instead of failing the page (PostgreSQL refuses a
+     * non-uuid in a uuid column).
+     */
+    public static function uuid(mixed $value): ?string
+    {
+        return Str::isUuid($value) ? $value : null;
+    }
+
+    /**
      * @param  Collection<int, mixed>  $values
      * @return list<string>
      */

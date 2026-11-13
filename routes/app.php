@@ -37,6 +37,8 @@ use App\Http\Controllers\App\PostController;
 use App\Http\Controllers\App\PostGroupController;
 use App\Http\Controllers\App\PostLabelController;
 use App\Http\Controllers\App\PostNoteController;
+use App\Http\Controllers\App\PostNoteMentionableController;
+use App\Http\Controllers\App\PostNoteReactionController;
 use App\Http\Controllers\App\PostRecurrenceController;
 use App\Http\Controllers\App\PostScheduleController;
 use App\Http\Controllers\App\PostTemplateController;
@@ -274,10 +276,13 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->middleware('throttle:10,1')
         ->name('app.posts.ai.alt-text');
 
-    Route::get('posts/{post}/notes', [PostNoteController::class, 'index'])->name('app.posts.notes.index');
+    Route::get('posts/{post}/notes/mentionables', [PostNoteMentionableController::class, 'index'])->name('app.posts.notes.mentionables.index');
     Route::post('posts/{post}/notes', [PostNoteController::class, 'store'])->name('app.posts.notes.store');
+    Route::get('posts/{post}/notes/{note}', [PostNoteController::class, 'show'])->name('app.posts.notes.show');
     Route::put('posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('app.posts.notes.update');
     Route::delete('posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('app.posts.notes.destroy');
+    Route::put('posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'update'])->name('app.posts.notes.reactions.update');
+    Route::delete('posts/{post}/notes/{note}/reactions', [PostNoteReactionController::class, 'destroy'])->name('app.posts.notes.reactions.destroy');
 
     Route::get('settings/workspace/members', [WorkspaceInviteController::class, 'index'])->name('app.members');
     Route::post('settings/workspace/members/invites', [WorkspaceInviteController::class, 'store'])->name('app.invites.store');

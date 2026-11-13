@@ -42,6 +42,9 @@ function mcpExpectedToolAnnotations(): array
         'create-post-note-tool' => [false, true, false],
         'update-post-note-tool' => [false, true, false],
         'delete-post-note-tool' => [false, true, false],
+        'list-post-note-mentionables-tool' => [true, false, false],
+        'add-post-note-reaction-tool' => [false, false, false],
+        'remove-post-note-reaction-tool' => [false, true, false],
         'set-post-recurrence-tool' => [false, true, true],
         'clear-post-recurrence-tool' => [false, true, false],
 

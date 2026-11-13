@@ -728,7 +728,8 @@ function waitForWebFonts(mixed $page): void
 
 /**
  * Wait until a JavaScript expression is true in the page, for up to 30
- * seconds (longer for a slow import or a fallback that polls the server).
+ * seconds (longer for a slow import or a fallback that polls the server),
+ * and fail the test when it never is: every wait is also an assertion.
  * Assertions do not wait for the SPA to paint, and a blocking sleep() would
  * starve the server that serves the page, so the page polls.
  */
@@ -736,25 +737,32 @@ function waitForCondition(mixed $page, string $condition, int $seconds = 30): vo
 {
     $attempts = $seconds * 20;
 
-    $page->script(<<<JS
+    $met = $page->script(<<<JS
         (async () => {
             for (let i = 0; i < {$attempts}; i++) {
-                if ({$condition}) return;
+                if ({$condition}) return true;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
+
+            return false;
         })();
     JS);
+
+    expect($met)->toBeTrue("Waited {$seconds}s for: {$condition}");
 }
 
 /**
  * Wait until a condition the test reads on the server (a row in the database)
- * holds, letting the page's own requests land between tries.
+ * holds, letting the page's own requests land between tries, and fail the
+ * test when it never does.
  */
 function waitForDatabase(mixed $page, Closure $condition): void
 {
     for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
         $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
     }
+
+    expect($condition())->toBeTrue('Waited 5s for a condition on the server.');
 }
 
 /**
@@ -776,6 +784,17 @@ function waitForQueryParameter(mixed $page, string $name, string $value): void
 function jsSelector(string $selector): string
 {
     return json_encode(preg_replace('/@([\w-]+)/', '[data-testid="$1"]', $selector));
+}
+
+/**
+ * Wait until the note editor matching the selector shows that text, trimmed.
+ * The editor is a contenteditable, so it has no value to assert.
+ */
+function waitForEditorText(mixed $page, string $selector, string $text): void
+{
+    $text = json_encode($text, JSON_THROW_ON_ERROR);
+
+    waitForState($page, $selector, "element.innerText.trim() === {$text}");
 }
 
 /**

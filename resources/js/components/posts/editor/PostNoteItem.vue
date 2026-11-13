@@ -3,6 +3,8 @@ import { IconDots, IconPencil, IconTrash } from '@tabler/icons-vue';
 import { computed, nextTick, ref } from 'vue';
 
 import NoteBody from '@/components/NoteBody.vue';
+import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
+import PostNoteReactions from '@/components/posts/editor/PostNoteReactions.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +16,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useViewTimezone } from '@/composables/useViewTimezone';
 import date from '@/date';
-import type { PostNote } from '@/types/post-note';
+import { blank } from '@/lib/helpers';
+import { afterPaint } from '@/lib/utils';
+import type { PostNote, PostNoteMentionable } from '@/types/post-note';
 
 const props = withDefaults(
     defineProps<{
         note: PostNote;
         currentUserId: string;
+        mentionables: PostNoteMentionable[] | null;
         highlighted?: boolean;
     }>(),
     {
@@ -28,15 +33,19 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-    save: [body: string];
+    save: [body: string, done: (saved: boolean) => void];
     delete: [];
+    react: [emoji: string, reacted: boolean];
+    needPeople: [];
 }>();
 
 const viewTimezone = useViewTimezone();
 
 const editing = ref(false);
+const saving = ref(false);
 const editBody = ref('');
-const editInput = ref<HTMLTextAreaElement | null>(null);
+const editInput = ref<InstanceType<typeof PostNoteEditor> | null>(null);
+const editContainer = ref<HTMLDivElement | null>(null);
 
 const isOwn = computed(() => props.note.user_id === props.currentUserId);
 const wasEdited = computed(
@@ -48,7 +57,8 @@ const startEdit = async () => {
     editing.value = true;
     await nextTick();
     editInput.value?.focus();
-    editInput.value?.parentElement?.scrollIntoView({ block: 'nearest' });
+    await afterPaint();
+    editContainer.value?.scrollIntoView({ block: 'nearest' });
 };
 
 const cancelEdit = () => {
@@ -56,29 +66,30 @@ const cancelEdit = () => {
     editBody.value = '';
 };
 
+/** Keeps the editor open, with the text, until the server takes the edit. */
 const saveEdit = () => {
     const body = editBody.value.trim();
 
-    if (!body) {
+    if (blank(body) || saving.value) {
         return;
     }
 
-    emit('save', body);
-    cancelEdit();
+    saving.value = true;
+    emit('save', body, (saved) => {
+        saving.value = false;
+
+        if (saved) {
+            cancelEdit();
+        }
+    });
 };
 
-const handleEditKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-        event.stopPropagation();
-        cancelEdit();
+const react = (emoji: string, reacted: boolean) => {
+    emit('react', emoji, reacted);
+};
 
-        return;
-    }
-
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-        event.preventDefault();
-        saveEdit();
-    }
+const requestPeople = () => {
+    emit('needPeople');
 };
 </script>
 
@@ -87,6 +98,7 @@ const handleEditKeydown = (event: KeyboardEvent) => {
         :data-note-id="note.id"
         class="group/note relative -mx-2 flex gap-3 rounded-lg px-2 py-1 transition-colors"
         :class="{ 'bg-primary-subtle': highlighted }"
+        :data-highlighted="highlighted"
         data-testid="note-item"
     >
         <Avatar
@@ -155,14 +167,23 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                 </div>
             </div>
 
-            <div v-if="editing" class="mt-1 flex flex-col gap-2">
-                <textarea
+            <div
+                v-if="editing"
+                ref="editContainer"
+                class="mt-1 flex flex-col gap-2"
+            >
+                <PostNoteEditor
                     ref="editInput"
                     v-model="editBody"
-                    rows="1"
-                    class="field-sizing-content max-h-28 min-h-0 w-full resize-none rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    :people="mentionables"
+                    :current-user-id="currentUserId"
+                    :parts="note.parts"
+                    :aria-label="$t('notes.edit')"
+                    class="max-h-28 min-h-0 w-full overflow-y-auto rounded-lg border border-input bg-card px-2.5 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                     data-testid="note-edit-input"
-                    @keydown="handleEditKeydown"
+                    @submit="saveEdit"
+                    @cancel="cancelEdit"
+                    @need-people="requestPeople"
                 />
                 <div class="flex items-center justify-end gap-1.5">
                     <Button
@@ -176,7 +197,8 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                     <Button
                         type="button"
                         size="sm"
-                        :disabled="!editBody.trim()"
+                        :disabled="blank(editBody)"
+                        :loading="saving"
                         data-testid="note-edit-save"
                         @click="saveEdit"
                     >
@@ -185,11 +207,19 @@ const handleEditKeydown = (event: KeyboardEvent) => {
                 </div>
             </div>
 
-            <NoteBody
-                v-else
-                :body="note.body"
-                class="mt-0.5 leading-relaxed text-foreground"
-            />
+            <template v-else>
+                <NoteBody
+                    :parts="note.parts"
+                    :people="mentionables"
+                    class="mt-0.5 leading-relaxed text-foreground"
+                    @need-people="requestPeople"
+                />
+                <PostNoteReactions
+                    :reactions="note.reactions"
+                    :current-user-id="currentUserId"
+                    @toggle="react"
+                />
+            </template>
         </div>
     </div>
 </template>

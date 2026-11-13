@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Account losgekoppeld',
         'account_disconnected_description' => 'Ontvang een e-mail wanneer een social account wordt losgekoppeld',
         'post_note_added' => 'Nieuwe notitie bij een bericht',
-        'post_note_added_description' => 'Ontvang een e-mail wanneer een teamlid een notitie aan een bericht toevoegt',
+        'post_note_added_description' => 'Ontvang een e-mail wanneer een teamlid je noemt in een notitie of een notitie toevoegt aan een bericht dat je hebt gemaakt of becommentarieerd',
         'collaboration' => 'Samenwerking',
         'collaboration_description' => 'Ontvang e-mails over goedkeuringsverzoeken en goedgekeurde of afgewezen berichten',
         'save_failed' => 'De meldingsvoorkeuren konden niet worden opgeslagen. Probeer het opnieuw.',

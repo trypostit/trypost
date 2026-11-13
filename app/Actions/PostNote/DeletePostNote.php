@@ -14,6 +14,6 @@ final class DeletePostNote
     {
         $note->delete();
 
-        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'deleted');
+        PostNoteChanged::dispatch($post->id, $post->workspace_id, 'deleted', $note->id);
     }
 }

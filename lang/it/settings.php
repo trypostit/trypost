@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Account scollegato',
         'account_disconnected_description' => 'Ricevi un\'email quando un account social viene scollegato',
         'post_note_added' => 'Nuova nota su un post',
-        'post_note_added_description' => 'Ricevi un\'email quando un membro del team aggiunge una nota a un post',
+        'post_note_added_description' => 'Ricevi un\'email quando un membro del team ti menziona in una nota o aggiunge una nota a un post che hai creato o commentato',
         'collaboration' => 'Collaborazione',
         'collaboration_description' => 'Ricevi email sulle richieste di approvazione e sui post approvati o rifiutati',
         'save_failed' => 'Impossibile salvare le preferenze di notifica. Riprova.',

@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Delete a note from a post. Only the note author can delete it. This cannot be undone.')]
+#[Description('Delete a note from a post, with its reactions. Only the note\'s author can delete it. Nobody is emailed. This cannot be undone.')]
 class DeletePostNoteTool extends Tool
 {
     use AuthorizesMcpTool, ResolvesPostNotes;
@@ -66,7 +66,7 @@ class DeletePostNoteTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('The UUID of the post.'),
-            'note_id' => $schema->string()->required()->description('The UUID of the note to delete.'),
+            'note_id' => $schema->string()->required()->description('The UUID of the note to delete, from list-post-notes-tool.'),
         ];
     }
 }

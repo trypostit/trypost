@@ -1,0 +1,13 @@
+[
+    "No mention here",
+    "@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f] can you check?",
+    "@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f] and @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f] once",
+    "Uppercase id @[user:0198D0AA-1B2C-7D3E-8F40-5A6B7C8D9E1F]",
+    "Not hex @[user:0198d0aa-1b2c-7d3e-8f40-zzzzzzzzzzzz]",
+    "Not a uuid @[user:------------------------------------]",
+    "Broken @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f",
+    "Line\n@[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e1f], and emoji 🎉 @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]",
+    "@[everyone] please review",
+    "Heads up @[everyone] and @[user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f]",
+    "Old format @[Ana](user:0198d0aa-1b2c-7d3e-8f40-5a6b7c8d9e0f) is text"
+]
