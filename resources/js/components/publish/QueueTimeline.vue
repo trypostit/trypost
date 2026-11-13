@@ -11,6 +11,7 @@ import {
     type SortableQueueItem,
 } from '@/composables/useSortableQueue';
 import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type {
     PostCard,
@@ -86,14 +87,58 @@ const channelOf = computed<Record<string, string>>(() =>
     ),
 );
 
+type QueueStep = { postId: string } | { slot: QueueSlotTarget };
+
+const channelSteps = computed<Record<string, QueueStep[]>>(() => {
+    const movableAfter = now.value.add(1, 'minute');
+    const queued = new Set(Object.values(channelQueues.value).flat());
+    const steps: Record<string, QueueStep[]> = {};
+
+    for (const item of props.days.flatMap((day) => day.items)) {
+        const step: QueueStep | null =
+            item.post_id && queued.has(item.post_id)
+                ? { postId: item.post_id }
+                : props.slotDrop &&
+                    item.type === 'slot' &&
+                    !item.post_id &&
+                    dayjs.utc(item.at).isAfter(movableAfter)
+                  ? { slot: { channelId: item.channel_id, at: item.at } }
+                  : null;
+
+        if (step) {
+            steps[item.channel_id] = [...(steps[item.channel_id] ?? []), step];
+        }
+    }
+
+    return steps;
+});
+
+const neighbourStep = (
+    postId: string,
+    direction: 'up' | 'down',
+): QueueStep | undefined => {
+    const steps = channelSteps.value[channelOf.value[postId]] ?? [];
+    const index = steps.findIndex(
+        (step) => 'postId' in step && step.postId === postId,
+    );
+
+    if (index === -1) {
+        return undefined;
+    }
+
+    return steps[direction === 'up' ? index - 1 : index + 1];
+};
+
 const positions = computed<Record<string, QueuePostPosition>>(() =>
     Object.fromEntries(
         Object.values(channelQueues.value).flatMap((ids) =>
-            ids.map((id, index) => [
+            ids.map((id) => [
                 id,
                 {
-                    canMoveUp: props.reorderable && index > 0,
-                    canMoveDown: props.reorderable && index < ids.length - 1,
+                    canMoveUp:
+                        props.reorderable && filled(neighbourStep(id, 'up')),
+                    canMoveDown:
+                        props.reorderable && filled(neighbourStep(id, 'down')),
                 },
             ]),
         ),
@@ -146,14 +191,21 @@ const onMove = (post: PostCard, direction: PostCardMove): void => {
         return;
     }
 
-    const channelId = channelOf.value[post.id];
-    const ids = channelId ? [...channelQueues.value[channelId]] : [];
-    const index = ids.indexOf(post.id);
-    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    const neighbour = neighbourStep(post.id, direction);
 
-    if (index === -1 || swapWith < 0 || swapWith >= ids.length) {
+    if (!filled(neighbour)) {
         return;
     }
+
+    if ('slot' in neighbour) {
+        emit('moveToSlot', post.id, neighbour.slot);
+        return;
+    }
+
+    const channelId = channelOf.value[post.id];
+    const ids = [...channelQueues.value[channelId]];
+    const index = ids.indexOf(post.id);
+    const swapWith = ids.indexOf(neighbour.postId);
 
     [ids[index], ids[swapWith]] = [ids[swapWith], ids[index]];
     emit('reorder', channelId, ids);

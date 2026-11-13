@@ -174,6 +174,46 @@ test('move down from the card menu swaps a queued post with the next one', funct
     $page->assertNoJavaScriptErrors();
 });
 
+test('move down from the card menu moves a queued post into the free posting time after it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $post = publishQueuePost($user, $channel);
+    $post->update(['content' => 'Queued post']);
+    [, $nextFree] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $nextFree));
+    $page->click("@post-card-menu-{$post->id}");
+    waitForState($page, "@post-move-down-{$post->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-down-{$post->id}");
+    waitForDatabase($page, fn () => $post->refresh()->scheduled_at->equalTo($nextFree));
+
+    expect($post->refresh()->scheduled_at->equalTo($nextFree))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('move up from the card menu moves a queued post into the free posting time before it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $post = publishQueuePost($user, $channel);
+    $post->update(['content' => 'Queued post']);
+    $freed = $first->scheduled_at;
+    $first->delete();
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freed));
+    $page->click("@post-card-menu-{$post->id}");
+    waitForState($page, "@post-move-up-{$post->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-up-{$post->id}");
+    waitForDatabase($page, fn () => $post->refresh()->scheduled_at->equalTo($freed));
+
+    expect($post->refresh()->scheduled_at->equalTo($freed))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('dragging a queued post above another reorders the queue', function () {
     [$user, , $channel] = publishQueueSetup();
     $a = publishQueuePost($user, $channel);
