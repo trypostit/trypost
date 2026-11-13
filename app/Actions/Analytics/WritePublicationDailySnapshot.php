@@ -83,15 +83,17 @@ class WritePublicationDailySnapshot
      * Folds a same-day snapshot of another publication into `$kept` (one post
      * stored twice, being merged) by the rule every same-day read follows: the
      * newer read's metrics merged over the older one's, the columns projected
-     * from the result. A snapshot stored without metrics cannot be merged that
-     * way, so the newer snapshot then wins whole.
+     * from the result. A snapshot stored without metrics brought nothing to
+     * merge, so the other one is kept whole, as a read that brings nothing
+     * keeps what is stored.
      */
     public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
     {
         [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
 
         if (blank($older->metrics) || blank($newer->metrics)) {
-            $kept->fill($newer->only(['collected_at', 'provider_observed_at', 'metrics', ...array_keys($this->scalarProjections([]))]))->save();
+            $whole = blank($newer->metrics) ? $older : $newer;
+            $kept->fill($whole->only(['collected_at', 'provider_observed_at', 'metrics', ...array_keys($this->scalarProjections([]))]))->save();
 
             return;
         }

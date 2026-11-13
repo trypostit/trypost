@@ -378,7 +378,6 @@ class UpsertAnalyticsPublication
     private static function keepsDiscovery(AnalyticsPublication $publication, PublicationOrigin $origin, string $providerPostId): bool
     {
         return $origin === PublicationOrigin::TryPost
-            && $publication->exists
             && $publication->remote_id !== $providerPostId
             && in_array($providerPostId, Arr::only($publication->provider_metadata ?? [], AnalyticsPublication::FACEBOOK_MEDIA_KEYS), true);
     }

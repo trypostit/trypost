@@ -110,6 +110,20 @@ class AnalyticsPublication extends Model
         return $query->available()->whereNull('post_id')->whereNull('post_dismissed_at');
     }
 
+    /**
+     * Carrying, in its Facebook media keys, one of `$mediaIds`, or any media
+     * when none are given.
+     *
+     * @param  list<string>|null  $mediaIds
+     */
+    public function scopeCarryingFacebookMedia(Builder $query, ?array $mediaIds = null): Builder
+    {
+        return $query->where(fn (Builder $carrying): Builder => collect(self::FACEBOOK_MEDIA_KEYS)
+            ->reduce(fn (Builder $carry, string $key): Builder => blank($mediaIds)
+                ? $carry->orWhereNotNull("provider_metadata->{$key}")
+                : $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $carrying));
+    }
+
     public function isLinkable(): bool
     {
         return $this->availability === PublicationAvailability::Available

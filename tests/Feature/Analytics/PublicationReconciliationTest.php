@@ -458,24 +458,20 @@ test('a merge read from a publication that has moved since does nothing', functi
         ->and($second->fresh())->not->toBeNull();
 });
 
-test('a snapshot stored without metrics is replaced whole by the newer one', function () {
-    $account = SocialAccount::factory()->facebook()->create();
-    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
-    $tracked = app(SyncTryPostPublication::class)->handle($post);
-    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
-        providerPostId: 'page_post-1',
-        publishedAt: now()->subDay()->toImmutable(),
-        contentType: PublicationContentType::Reel,
-        providerMetadata: ['video_id' => 'video-9'],
-    ));
-    $collectedAt = now()->subHours(3);
-    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $tracked->id, 'date' => $collectedAt->toDateString(), 'collected_at' => $collectedAt, 'views_count' => 52]);
-    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $discovered->id, 'date' => $collectedAt->toDateString(), 'collected_at' => $collectedAt->addHour(), 'comments_count' => 3]);
+test('a snapshot stored without metrics brings nothing to the merge', function (bool $newerHasMetrics) {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52, 'comments' => 3], ['views' => 50], 1);
+    $withoutMetrics = $newerHasMetrics ? $publication->id : null;
+    AnalyticsPublicationDailySnapshot::query()
+        ->when($withoutMetrics, fn ($query) => $query->where('publication_id', $withoutMetrics), fn ($query) => $query->whereNot('publication_id', $publication->id))
+        ->update(['metrics' => null]);
 
-    app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1');
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
 
-    expect($tracked->dailySnapshots()->sole()->only(['views_count', 'comments_count']))->toEqual(['views_count' => null, 'comments_count' => 3]);
-});
+    $snapshot = $publication->dailySnapshots()->sole();
+
+    expect(data_get($snapshot->metrics, 'views.value'))->toBe($newerHasMetrics ? 50 : 52)
+        ->and(data_get($snapshot->metrics, 'comments.value'))->toBe($newerHasMetrics ? null : 3);
+})->with(['the older one has none' => true, 'the newer one has none' => false]);
 
 test('a merged publication keeps the latest time discovery saw the post', function () {
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);

@@ -14,7 +14,6 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -42,8 +41,7 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         AnalyticsPublication::query()
             ->linkable()
             ->where('platform', Platform::Facebook)
-            ->where(fn (Builder $query): Builder => collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
-                ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereNotNull("provider_metadata->{$key}"), $query))
+            ->carryingFacebookMedia()
             ->with('socialAccount')
             ->lazyById()
             ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked, &$failed): void {

@@ -246,8 +246,7 @@ class ImportExternalPosts
             ->available()
             ->where('social_account_id', $publication->social_account_id)
             ->whereBetween('provider_published_at', $window)
-            ->where(fn (Builder $query): Builder => collect(AnalyticsPublication::FACEBOOK_MEDIA_KEYS)
-                ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $query))
+            ->carryingFacebookMedia($mediaIds)
             ->count() === 1;
     }
 
