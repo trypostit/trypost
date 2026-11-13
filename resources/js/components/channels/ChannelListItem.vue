@@ -57,7 +57,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
 
 <template>
     <div
-        class="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
+        class="flex flex-wrap items-center gap-x-2 gap-y-3 rounded-xl border border-border bg-card p-4 sm:flex-nowrap sm:gap-3"
         :data-testid="`channel-row-${channel.id}`"
     >
         <ChannelAvatar
@@ -80,15 +80,15 @@ const typeKey = computed(() => accountTypeKey(props.channel));
             </p>
             <p
                 v-if="lost"
-                class="flex min-w-0 items-center gap-1.5 text-sm text-destructive"
+                class="flex min-w-0 items-start gap-1.5 text-sm text-destructive sm:items-center"
                 :data-testid="`channel-connection-lost-${channel.id}`"
             >
-                <IconAlertCircle class="size-4 shrink-0" />
-                <span class="truncate">{{ $t('channels.connection_lost_hint') }}</span>
+                <IconAlertCircle class="mt-0.5 size-4 shrink-0 sm:mt-0" />
+                <span class="sm:truncate">{{ $t('channels.connection_lost_hint') }}</span>
             </p>
             <div
                 v-else
-                class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground"
+                class="flex min-w-0 flex-col text-sm text-muted-foreground sm:flex-row sm:items-center sm:gap-x-2"
             >
                 <span class="truncate">{{
                     typeKey
@@ -96,7 +96,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                         : getPlatformLabel(channel.platform)
                 }}</span>
                 <template v-if="goal">
-                    <span aria-hidden="true">·</span>
+                    <span aria-hidden="true" class="max-sm:hidden">·</span>
                     <GoalProgress
                         v-if="goal.posting_goal !== null"
                         :channel-id="channel.id"
@@ -120,7 +120,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
         <Button
             v-if="lost"
             size="sm"
-            class="shrink-0"
+            class="shrink-0 max-sm:order-last max-sm:w-full"
             :data-testid="`channel-reconnect-${channel.id}`"
             @click="emit('reconnect', channel)"
         >
