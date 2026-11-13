@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
-import { computed, nextTick, ref } from 'vue';
+import { useElementVisibility } from '@vueuse/core';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
@@ -74,6 +75,20 @@ const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 
 const thumbnail = computed(() => postThumbnail(props.post));
 
+const thumbnailFrame = ref<HTMLElement | null>(null);
+const thumbnailVisible = useElementVisibility(thumbnailFrame, {
+    rootMargin: '200px',
+});
+
+/** A video loads its frame once its card comes near the screen, never for the whole board at once. */
+const videoLoaded = ref(false);
+
+watch(thumbnailVisible, (visible) => {
+    if (visible) {
+        videoLoaded.value = true;
+    }
+});
+
 const contentTypeKey = computed(() =>
     props.post.platform
         ? getContentTypeBadgeKey(
@@ -103,7 +118,7 @@ const hasMenu = computed(
 
 <template>
     <article
-        class="relative flex flex-col gap-2 rounded-lg border border-border-strong bg-card p-3 transition-control hover:bg-secondary"
+        class="relative flex flex-col gap-2 rounded-lg border border-border-strong bg-card p-3 transition-control [contain-intrinsic-size:auto_160px] [content-visibility:auto] hover:bg-secondary"
         :data-testid="`board-card-${post.id}`"
     >
         <button
@@ -178,6 +193,7 @@ const hasMenu = computed(
 
         <div
             v-if="thumbnail"
+            ref="thumbnailFrame"
             class="relative aspect-video overflow-hidden rounded-md border border-border-strong bg-secondary"
             :data-testid="`board-card-thumbnail-${post.id}`"
         >
@@ -190,6 +206,7 @@ const hasMenu = computed(
             />
             <template v-else>
                 <video
+                    v-if="videoLoaded"
                     :src="videoFrameUrl(thumbnail)"
                     class="size-full object-cover"
                     muted

@@ -14,12 +14,16 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\RequestIds;
 use App\Support\Timezone;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Support\Header;
 
 class BuildBoardPageProps
 {
@@ -48,17 +52,28 @@ class BuildBoardPageProps
         $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
         $workspaceAccounts = $channel ? collect() : $workspace->socialAccounts()->get();
 
+        $workspaceLabels = null;
+        $labels = function () use (&$workspaceLabels, $workspace): Collection {
+            return $workspaceLabels ??= $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
+        };
+
         $boardColumns = match ($group) {
-            'tag' => self::tagColumns($workspace, $labelIds, $untagged),
+            'tag' => self::tagColumns($labels(), $labelIds, $untagged),
             'channel' => self::channelColumns($workspaceAccounts, $requestedChannelIds, clone $basePosts),
             default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
         };
 
         $columnQuery = fn (array $column): Builder => self::columnQuery(
             $column,
-            BuildPublishPageProps::cardQuery(clone $basePosts, $group === 'tag' ? [] : $labelIds, $group === 'tag' ? false : $untagged),
+            BuildPublishPageProps::cardQuery(clone $basePosts, $group === 'tag' ? [] : $labelIds, $group === 'tag' ? false : $untagged)
+                ->setEagerLoads([]),
             $requester,
         );
+
+        $loadedPages = null;
+        $pages = function () use (&$loadedPages, $request, $boardColumns, $columnQuery): array {
+            return $loadedPages ??= self::pages(self::requestedColumns($request, $boardColumns), $columnQuery);
+        };
 
         return [
             'workspace' => $workspace,
@@ -69,21 +84,21 @@ class BuildBoardPageProps
             'boardColumns' => $boardColumns->map(fn (array $column): array => collect($column)->except('id')->all())->values()->all(),
             'columns' => $boardColumns
                 ->mapWithKeys(fn (array $column): array => [
-                    data_get($column, 'key') => Inertia::scroll(fn () => self::paginate($column, $columnQuery($column)))
+                    data_get($column, 'key') => Inertia::scroll(fn () => data_get($pages(), data_get($column, 'key')))
                         ->defer()
                         ->matchOn('data.id'),
                 ])
                 ->all(),
             'displayTimezone' => BuildPublishPageProps::displayTimezone($request->query('tz'), Timezone::normalize($user->timezone)),
             'timezones' => fn (): array => Timezone::options(),
-            'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
+            'labels' => $labels,
             'filters' => [
                 'labels' => $labelIds,
                 'untagged' => $untagged,
                 'channels' => $requestedChannelIds,
             ],
             'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts),
-            'hasChannels' => fn (): bool => $workspace->socialAccounts()->exists(),
+            'hasChannels' => filled($channel) || filled($workspaceAccounts),
             'authUserId' => $user->id,
         ];
     }
@@ -98,23 +113,23 @@ class BuildBoardPageProps
     }
 
     /**
+     * @param  Collection<int, WorkspaceLabel>  $labels
      * @param  list<string>  $labelIds
      * @return Collection<int, array<string, mixed>>
      */
-    private static function tagColumns(Workspace $workspace, array $labelIds, bool $untagged): Collection
+    private static function tagColumns(Collection $labels, array $labelIds, bool $untagged): Collection
     {
         $filtering = filled($labelIds) || $untagged;
 
-        $columns = $workspace->labels()
-            ->when($filtering, fn (Builder $labels): Builder => $labels->whereIn('id', $labelIds))
-            ->orderBy('name')
-            ->get(['id', 'name', 'color'])
+        $columns = $labels
+            ->when($filtering, fn (Collection $labels): Collection => $labels->whereIn('id', $labelIds))
             ->map(fn (WorkspaceLabel $label): array => [
                 'key' => "label_{$label->id}",
                 'type' => 'label',
                 'label' => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color],
                 'id' => $label->id,
-            ]);
+            ])
+            ->values();
 
         return $filtering && ! $untagged ? $columns : $columns->push(['key' => self::UNTAGGED, 'type' => 'untagged']);
     }
@@ -176,16 +191,70 @@ class BuildBoardPageProps
     }
 
     /**
+     * The columns this request loads: the ones a partial reload names (one
+     * column paging on, or every column after a change), else all of them.
+     *
+     * @param  Collection<int, array<string, mixed>>  $columns
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function requestedColumns(Request $request, Collection $columns): Collection
+    {
+        $only = Str::of((string) $request->header(Header::PARTIAL_ONLY))->explode(',')->map(fn (string $prop): string => trim($prop));
+
+        if ($only->contains('columns') || $only->doesntContain(fn (string $prop): bool => Str::startsWith($prop, 'columns.'))) {
+            return $columns;
+        }
+
+        return $columns->filter(function (array $column) use ($only): bool {
+            $key = data_get($column, 'key');
+
+            return $only->contains("columns.{$key}");
+        });
+    }
+
+    /**
+     * One page of each requested column, keyed by column. Each column runs its
+     * own count and select; the cards of every column then load their
+     * relations, permissions and metrics together, and a post shown in two
+     * columns is serialized once.
+     *
+     * @param  Collection<int, array<string, mixed>>  $columns
+     * @param  Closure(array<string, mixed>): Builder  $columnQuery
+     * @return array<string, LengthAwarePaginator>
+     */
+    /**
      * @param  array<string, mixed>  $column
      */
-    private static function paginate(array $column, Builder $query): LengthAwarePaginator
+    private static function pageName(array $column): string
     {
         $key = data_get($column, 'key');
-        $paginator = $query->orderBy('posts.id')->paginate((int) config('app.pagination.default'), pageName: "{$key}_page");
 
-        BuildPublishPageProps::decorate($paginator->getCollection());
-        BuildPublishPageProps::attachMetrics($paginator->getCollection());
+        return "{$key}_page";
+    }
 
-        return $paginator->through(fn (Post $post): array => PostCardResource::make($post)->resolve());
+    private static function pages(Collection $columns, Closure $columnQuery): array
+    {
+        $pages = $columns->mapWithKeys(fn (array $column): array => [
+            data_get($column, 'key') => $columnQuery($column)
+                ->orderBy('posts.id')
+                ->paginate((int) config('app.pagination.default'), pageName: self::pageName($column)),
+        ]);
+
+        $posts = EloquentCollection::make($pages->flatMap(fn (LengthAwarePaginator $page): array => $page->items()));
+
+        $posts->load(['socialAccount', 'user.avatarMedia', 'labels']);
+        BuildPublishPageProps::decorate($posts);
+        BuildPublishPageProps::attachMetrics($posts);
+
+        $card = PostCardResource::serializer();
+        $cards = [];
+
+        return $pages
+            ->map(fn (LengthAwarePaginator $page): LengthAwarePaginator => $page->through(
+                function (Post $post) use ($card, &$cards): array {
+                    return $cards[$post->id] ??= $card($post);
+                },
+            ))
+            ->all();
     }
 }

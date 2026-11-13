@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Deferred, Head, router, usePage } from '@inertiajs/vue3';
 import { IconPlus, IconUsers } from '@tabler/icons-vue';
+import { useDebounceFn } from '@vueuse/core';
 import { computed, provide, ref, watch } from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
@@ -195,9 +196,10 @@ const columnsReload = (): PostCardReload => ({
 /** A card's actions (approve, reject, labels) reload every column from its first page. */
 provide(postCardReloadKey, columnsReload);
 
-const refresh = (): void => {
+/** A burst of post events (a batch publishing) reloads the columns once. */
+const refresh = useDebounceFn((): void => {
     router.reload(columnsReload());
-};
+}, 300);
 
 useWorkspaceEcho(
     ['.post.created', '.post.deleted', '.post.platform.status.updated'],

@@ -246,3 +246,22 @@ test('moving a scheduled post to drafts from its board card menu reloads the col
     expect($page->script('document.querySelector(\'[data-testid="board-column-failed"]\').dataset.mounted'))->toBe('before');
     $page->assertNoJavaScriptErrors();
 });
+
+test('a video thumbnail loads only once its card comes near the screen', function () {
+    $video = Post::factory()->forAccount($this->channel)->failed()->create([
+        'user_id' => $this->user->id,
+        'media' => [['id' => (string) str()->uuid(), 'path' => 'media/clip.mp4', 'url' => 'https://cdn.test/clip.mp4', 'type' => 'video', 'mime_type' => 'video/mp4']],
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(390, 844);
+    waitFor($page, "@board-card-thumbnail-{$video->id}");
+
+    expect($page->script("document.querySelectorAll('[data-testid=\"board-card-thumbnail-{$video->id}\"] video').length"))->toBe(0);
+
+    $page->script('document.querySelector(\'[data-testid="board-column-failed"]\').scrollIntoView({ inline: "start" })');
+    waitFor($page, "@board-card-thumbnail-{$video->id} video");
+
+    $page->assertNoJavaScriptErrors();
+});

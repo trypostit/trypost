@@ -362,7 +362,7 @@ class BuildPublishPageProps
             self::attachMetrics($paginator->getCollection());
         }
 
-        return $paginator->through(fn (Post $post): array => PostCardResource::make($post)->resolve());
+        return $paginator->through(PostCardResource::serializer());
     }
 
     /**
