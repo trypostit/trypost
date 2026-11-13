@@ -186,6 +186,8 @@ return [
         'posting_times_per_week' => ':count на тиждень',
         'no_results' => 'Немає каналів за вашим запитом.',
         'connection_lost' => 'Канал втратив підключення',
+        'settings' => 'Налаштування',
+        'more_actions' => 'Інші дії',
     ],
 
     'settings_page' => [

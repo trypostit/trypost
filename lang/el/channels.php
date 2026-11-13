@@ -186,6 +186,8 @@ return [
         'posting_times_per_week' => ':count την εβδομάδα',
         'no_results' => 'Κανένα κανάλι δεν ταιριάζει με την αναζήτηση.',
         'connection_lost' => 'Αυτό το κανάλι έχασε τη σύνδεση',
+        'settings' => 'Ρυθμίσεις',
+        'more_actions' => 'Περισσότερες ενέργειες',
     ],
 
     'settings_page' => [

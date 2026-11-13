@@ -22,6 +22,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { filled } from '@/lib/helpers';
@@ -173,66 +178,86 @@ const networkLine = computed((): string => {
                 <IconRefresh class="size-4" />
                 {{ $t('channels.reconnect') }}
             </Button>
-            <Button as-child variant="ghost" size="icon">
-                <Link
-                    :href="settingsRoute.url(channel.id)"
-                    :aria-label="$t('channels.settings')"
-                    :data-testid="`channel-settings-${channel.id}`"
-                >
-                    <IconSettings class="size-4" />
-                </Link>
-            </Button>
-
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="data-[state=open]:bg-accent"
-                        :aria-label="$t('channels.actions')"
-                        :data-testid="`channel-menu-${channel.id}`"
-                    >
-                        <IconDotsVertical class="size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem v-if="channel.profile_url" as-child>
-                        <a
-                            :href="channel.profile_url"
-                            target="_blank"
-                            rel="noopener"
-                            :data-testid="`channel-menu-profile-${channel.id}`"
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <Button as-child variant="ghost" size="icon">
+                        <Link
+                            :href="settingsRoute.url(channel.id)"
+                            :aria-label="$t('channels.settings')"
+                            :data-testid="`channel-settings-${channel.id}`"
                         >
-                            <IconExternalLink class="size-4" />
-                            {{ $t('channels.view_profile') }}
-                        </a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        v-if="canLinkFacebook"
-                        :data-testid="`channel-menu-link-facebook-${channel.id}`"
-                        @click="emit('linkFacebook', channel)"
-                    >
-                        <IconBrandFacebook class="size-4" />
-                        {{ $t('channels.link_facebook_page') }}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        :data-testid="`channel-menu-reconnect-${channel.id}`"
-                        @click="emit('reconnect', channel)"
-                    >
-                        <IconRefresh class="size-4" />
-                        {{ $t('channels.refresh_connection') }}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                        variant="destructive"
-                        :data-testid="`channel-disconnect-${channel.id}`"
-                        @click="emit('disconnect', channel)"
-                    >
-                        <IconTrash class="size-4" />
-                        {{ $t('channels.disconnect') }}
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                            <IconSettings class="size-4" />
+                        </Link>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                    :data-testid="`channel-settings-tooltip-${channel.id}`"
+                >
+                    {{ $t('channels.list.settings') }}
+                </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <span class="inline-flex">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    class="data-[state=open]:bg-accent"
+                                    :aria-label="$t('channels.actions')"
+                                    :data-testid="`channel-menu-${channel.id}`"
+                                >
+                                    <IconDotsVertical class="size-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem v-if="channel.profile_url" as-child>
+                                    <a
+                                        :href="channel.profile_url"
+                                        target="_blank"
+                                        rel="noopener"
+                                        :data-testid="`channel-menu-profile-${channel.id}`"
+                                    >
+                                        <IconExternalLink class="size-4" />
+                                        {{ $t('channels.view_profile') }}
+                                    </a>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    v-if="canLinkFacebook"
+                                    :data-testid="`channel-menu-link-facebook-${channel.id}`"
+                                    @click="emit('linkFacebook', channel)"
+                                >
+                                    <IconBrandFacebook class="size-4" />
+                                    {{ $t('channels.link_facebook_page') }}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    :data-testid="`channel-menu-reconnect-${channel.id}`"
+                                    @click="emit('reconnect', channel)"
+                                >
+                                    <IconRefresh class="size-4" />
+                                    {{ $t('channels.refresh_connection') }}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    :data-testid="`channel-disconnect-${channel.id}`"
+                                    @click="emit('disconnect', channel)"
+                                >
+                                    <IconTrash class="size-4" />
+                                    {{ $t('channels.disconnect') }}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent
+                    :data-testid="`channel-menu-tooltip-${channel.id}`"
+                >
+                    {{ $t('channels.list.more_actions') }}
+                </TooltipContent>
+            </Tooltip>
         </div>
 
         <Button

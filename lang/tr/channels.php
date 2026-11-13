@@ -186,6 +186,8 @@ return [
         'posting_times_per_week' => 'Haftada :count',
         'no_results' => 'Aramanızla eşleşen kanal yok.',
         'connection_lost' => 'Bu kanalın bağlantısı koptu',
+        'settings' => 'Ayarlar',
+        'more_actions' => 'Diğer işlemler',
     ],
 
     'settings_page' => [

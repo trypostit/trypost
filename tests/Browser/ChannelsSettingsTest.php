@@ -288,3 +288,27 @@ test('the channels list loads its next page without repeating a channel', functi
     $page->assertSeeIn('@settings-page-total', '(3)')
         ->assertNoJavaScriptErrors();
 });
+
+test('the settings cog and the actions menu of a channel row show a tooltip, and the menu still opens', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-settings-{$channel->id}");
+
+    $page->hover("@channel-settings-{$channel->id}");
+    waitFor($page, "@channel-settings-tooltip-{$channel->id}");
+    $page->assertSeeIn("@channel-settings-tooltip-{$channel->id}", __('channels.list.settings'));
+
+    $page->hover('@header-title')->hover("@channel-menu-{$channel->id}");
+    waitFor($page, "@channel-menu-tooltip-{$channel->id}");
+    $page->assertSeeIn("@channel-menu-tooltip-{$channel->id}", __('channels.list.more_actions'));
+
+    $page->click("@channel-menu-{$channel->id}");
+    waitFor($page, "@channel-disconnect-{$channel->id}");
+    waitForState($page, "@channel-disconnect-{$channel->id}", 'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().bottom <= window.innerHeight');
+
+    $page->assertNoJavaScriptErrors();
+});

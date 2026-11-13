@@ -186,6 +186,8 @@ return [
         'posting_times_per_week' => ':count por semana',
         'no_results' => 'Nenhum canal corresponde à sua busca.',
         'connection_lost' => 'Este canal perdeu a conexão',
+        'settings' => 'Configurações',
+        'more_actions' => 'Mais ações',
     ],
 
     'settings_page' => [

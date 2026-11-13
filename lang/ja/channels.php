@@ -186,6 +186,8 @@ return [
         'posting_times_per_week' => '週:count回',
         'no_results' => '検索に一致するチャンネルはありません。',
         'connection_lost' => 'このチャンネルの接続が切れました',
+        'settings' => '設定',
+        'more_actions' => 'その他の操作',
     ],
 
     'settings_page' => [
