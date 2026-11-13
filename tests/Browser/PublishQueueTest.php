@@ -15,6 +15,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 use App\Support\PostingSchedule;
 use Carbon\CarbonInterface;
 
@@ -172,6 +173,82 @@ test('move down from the card menu swaps a queued post with the next one', funct
 
     expect($b->refresh()->scheduled_at->lessThan($a->refresh()->scheduled_at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
+});
+
+test('move down from the card menu moves a queued post into the free posting time after it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $post = publishQueuePost($user, $channel);
+    $post->update(['content' => 'Queued post']);
+    [, $nextFree] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $nextFree));
+    $page->click("@post-card-menu-{$post->id}");
+    waitForState($page, "@post-move-down-{$post->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-down-{$post->id}");
+    waitForDatabase($page, fn () => $post->refresh()->scheduled_at->equalTo($nextFree));
+
+    expect($post->refresh()->scheduled_at->equalTo($nextFree))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('move up from the card menu moves a queued post into the free posting time before it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $post = publishQueuePost($user, $channel);
+    $post->update(['content' => 'Queued post']);
+    $freed = $first->scheduled_at;
+    $first->delete();
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freed));
+    $page->click("@post-card-menu-{$post->id}");
+    waitForState($page, "@post-move-up-{$post->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-up-{$post->id}");
+    waitForDatabase($page, fn () => $post->refresh()->scheduled_at->equalTo($freed));
+
+    expect($post->refresh()->scheduled_at->equalTo($freed))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('move to top is disabled for the first post of the queue and enabled below it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $second = publishQueuePost($user, $channel);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    $page->click("@post-card-menu-{$first->id}");
+    waitForState($page, "@post-move-top-{$first->id}", "element.getAttribute('data-disabled') !== null");
+    $page->assertAttribute("@post-move-top-{$first->id}", 'data-disabled', '')
+        ->keys("@post-move-top-{$first->id}", 'Escape');
+    waitForGone($page, "@post-move-top-{$first->id}");
+
+    $page->click("@post-card-menu-{$second->id}");
+    waitFor($page, "@post-move-top-{$second->id}");
+    $page->assertAttributeMissing("@post-move-top-{$second->id}", 'data-disabled')
+        ->assertNoJavaScriptErrors();
+});
+
+test('move to top is enabled when a free posting time comes before the post', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $post = publishQueuePost($user, $channel);
+    $freed = $first->scheduled_at;
+    $first->delete();
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freed));
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-move-top-{$post->id}");
+
+    $page->assertAttributeMissing("@post-move-top-{$post->id}", 'data-disabled')
+        ->assertNoJavaScriptErrors();
 });
 
 test('dragging a queued post above another reorders the queue', function () {
@@ -378,6 +455,153 @@ function publishQueueCustomPost(User $user, SocialAccount $channel, CarbonInterf
 
     return $post;
 }
+
+test('move up from the card menu moves a custom-time post into the free posting time before it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [$freeAbove, $slot] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $custom = publishQueueCustomPost($user, $channel, $slot);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freeAbove));
+    $page->click("@post-card-menu-{$custom->id}");
+    waitFor($page, "@post-move-top-{$custom->id}");
+    $page->assertAttributeMissing("@post-move-top-{$custom->id}", 'data-disabled')
+        ->assertAttributeMissing("@post-move-down-{$custom->id}", 'data-disabled')
+        ->click("@post-move-up-{$custom->id}");
+    waitForDatabase($page, fn () => $custom->refresh()->scheduled_at->equalTo($freeAbove));
+
+    expect($custom->refresh()->scheduled_at->equalTo($freeAbove))->toBeTrue()
+        ->and($custom->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+/**
+ * @return array{top: string, up: string, down: string}
+ */
+function publishQueueMoveActions(mixed $page, Post $post): array
+{
+    $page->click("@post-card-menu-{$post->id}");
+    waitForOpen($page, "@post-card-menu-content-{$post->id}");
+
+    $states = $page->script("['top', 'up', 'down'].map((action) => { const item = document.querySelector('[data-testid=\"post-move-' + action + '-{$post->id}\"]'); return item === null ? 'missing' : (item.hasAttribute('data-disabled') ? 'disabled' : 'enabled'); })");
+
+    $page->keys("@post-card-menu-content-{$post->id}", 'Escape');
+    waitForGone($page, "@post-card-menu-content-{$post->id}");
+
+    return array_combine(['top', 'up', 'down'], $states);
+}
+
+test('move down from the card menu skips a custom-time post on the way to a free posting time', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [, $customAt, $nextFree] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 3);
+    $queued = publishQueuePost($user, $channel);
+    $queued->update(['content' => 'Queued post']);
+    $custom = publishQueueCustomPost($user, $channel, $customAt);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $nextFree));
+    $page->click("@post-card-menu-{$queued->id}");
+    waitForState($page, "@post-move-down-{$queued->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-down-{$queued->id}");
+    waitForDatabase($page, fn () => $queued->refresh()->scheduled_at->equalTo($nextFree));
+
+    expect($queued->refresh()->scheduled_at->equalTo($nextFree))->toBeTrue()
+        ->and($custom->refresh()->scheduled_at->equalTo($customAt))->toBeTrue()
+        ->and($custom->schedule_mode)->toBe(ScheduleMode::Custom);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('with the posting times hidden, the ends of the queue cannot move past them', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $last = publishQueuePost($user, $channel);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, "@post-card-{$last->id}");
+    $page->click('@publish-menu');
+    waitFor($page, '@publish-toggle-slots');
+    $page->click('@publish-toggle-slots');
+    waitForGone($page, '[data-testid^="queue-slot-"]');
+
+    expect(publishQueueMoveActions($page, $first))->toBe(['top' => 'disabled', 'up' => 'disabled', 'down' => 'enabled'])
+        ->and(publishQueueMoveActions($page, $last))->toBe(['top' => 'enabled', 'up' => 'enabled', 'down' => 'disabled']);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on the list of all channels, the ends of the queue cannot move further and a custom-time post has no move actions', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [, , $customAt] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 3);
+    $first = publishQueuePost($user, $channel);
+    $last = publishQueuePost($user, $channel);
+    $custom = publishQueueCustomPost($user, $channel, $customAt->addDay());
+    connectAiTo($user);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.posts.index'));
+    waitFor($page, "@post-card-{$custom->id}");
+
+    expect(publishQueueMoveActions($page, $first))->toBe(['top' => 'disabled', 'up' => 'disabled', 'down' => 'enabled'])
+        ->and(publishQueueMoveActions($page, $last))->toBe(['top' => 'enabled', 'up' => 'enabled', 'down' => 'disabled'])
+        ->and(publishQueueMoveActions($page, $custom))->toBe(['top' => 'missing', 'up' => 'missing', 'down' => 'missing']);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('move down from the card menu moves a custom-time post into the free posting time after it', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [$slot, $freeBelow] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $custom = publishQueueCustomPost($user, $channel, $slot);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freeBelow));
+
+    expect(publishQueueMoveActions($page, $custom))->toBe(['top' => 'disabled', 'up' => 'disabled', 'down' => 'enabled']);
+
+    $page->click("@post-card-menu-{$custom->id}");
+    waitFor($page, "@post-move-down-{$custom->id}");
+    $page->click("@post-move-down-{$custom->id}");
+    waitForDatabase($page, fn () => $custom->refresh()->scheduled_at->equalTo($freeBelow));
+
+    expect($custom->refresh()->scheduled_at->equalTo($freeBelow))->toBeTrue()
+        ->and($custom->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('move to top from the card menu puts a custom-time post first in the queue', function () {
+    [$user, , $channel] = publishQueueSetup();
+    [$freeAbove, $slot] = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 2);
+    $custom = publishQueueCustomPost($user, $channel, $slot);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, '@queue-slot-'.publishQueueSlotKey($channel, $freeAbove));
+    $page->click("@post-card-menu-{$custom->id}");
+    waitForState($page, "@post-move-top-{$custom->id}", "element.getAttribute('data-disabled') === null");
+    $page->click("@post-move-top-{$custom->id}");
+    waitForDatabase($page, fn () => $custom->refresh()->scheduled_at->equalTo($freeAbove));
+
+    expect($custom->refresh()->scheduled_at->equalTo($freeAbove))->toBeTrue()
+        ->and($custom->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('with a label filter, move to top stays available on the first post shown', function () {
+    [$user, $workspace, $channel] = publishQueueSetup();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+    publishQueuePost($user, $channel);
+    $labelled = publishQueuePost($user, $channel);
+    $labelled->labels()->attach($label);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', ['account' => $channel, 'labels' => [$label->id]]));
+    waitFor($page, "@post-card-{$labelled->id}");
+
+    expect(publishQueueMoveActions($page, $labelled))->toBe(['top' => 'enabled', 'up' => 'disabled', 'down' => 'disabled']);
+    $page->assertNoJavaScriptErrors();
+});
 
 function publishQueueFollows(mixed $page, string $firstTestId, string $secondTestId): bool
 {

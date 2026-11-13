@@ -111,6 +111,7 @@ export interface QueueDay {
 }
 
 export interface QueuePostPosition {
+    canMoveToTop: boolean;
     canMoveUp: boolean;
     canMoveDown: boolean;
 }
