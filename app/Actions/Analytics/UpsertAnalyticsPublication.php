@@ -11,7 +11,6 @@ use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\PublishStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
@@ -368,17 +367,17 @@ class UpsertAnalyticsPublication
     }
 
     /**
-     * A TryPost write that found a Facebook publication under another remote id
-     * (a video kept on its video id by the post, merged under its Page post id)
-     * keeps what discovery reported about the Page post: its link, time, type
-     * and text.
+     * A TryPost write that found its publication under the Page post carrying
+     * the post's Facebook video or photo (the post kept on its media id, the
+     * publication merged under its Page post id) keeps what discovery reported
+     * about that Page post: its link, time, type and text.
      */
     private static function keepsDiscovery(AnalyticsPublication $publication, PublicationOrigin $origin, string $providerPostId): bool
     {
         return $origin === PublicationOrigin::TryPost
             && $publication->exists
-            && $publication->platform === Platform::Facebook
-            && $publication->remote_id !== $providerPostId;
+            && $publication->remote_id !== $providerPostId
+            && in_array($providerPostId, Arr::only($publication->provider_metadata ?? [], ['video_id', 'photo_id']), true);
     }
 
     /**

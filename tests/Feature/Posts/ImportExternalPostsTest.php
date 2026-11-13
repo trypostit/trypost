@@ -352,6 +352,28 @@ test('a facebook post matched by its own id links whatever else carries its medi
     expect($own->fresh()->post_id)->toBe($tryPost->id);
 });
 
+test('a trypost sync rewrites the link of a facebook publication that does not carry its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-2', 'platform_url' => 'https://www.facebook.com/page_post-2']);
+    $tracked = externalPublication($account, ['remote_id' => 'page_post-1', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'permalink' => 'https://www.facebook.com/page_post-1']);
+
+    app(SyncTryPostPublicationAction::class)->handle($tryPost);
+
+    expect($tracked->fresh()->permalink)->toBe('https://www.facebook.com/page_post-2');
+});
+
+test('a facebook publication links the post published under its own id before one sharing its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $byMedia = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
+    $byId = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-1']);
+    $publication = externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subMinute(), 'provider_metadata' => ['video_id' => 'video-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($publication->fresh()->post_id)->toBe($byId->id)
+        ->and($byMedia->fresh()->analyticsPublication)->toBeNull();
+});
+
 test('a trypost sync rewrites the link of another network\'s publication found by its post', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9', 'platform_url' => 'https://www.instagram.com/p/media-9/']);

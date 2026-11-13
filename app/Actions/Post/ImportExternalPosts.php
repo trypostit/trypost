@@ -238,15 +238,19 @@ class ImportExternalPosts
             ->all();
     }
 
+    /**
+     * The post TryPost published under the publication's own id, else under the
+     * Facebook video or photo it carries.
+     */
     private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
     {
-        $remoteIds = [$publication->remote_id, ...self::facebookMediaIds($publication)];
-
-        return Post::query()
+        $published = fn (array $ids): ?Post => blank($ids) ? null : Post::query()
             ->where('social_account_id', $account->id)
-            ->whereIn('platform_post_id', $remoteIds)
+            ->whereIn('platform_post_id', $ids)
             ->where('workspace_id', $account->workspace_id)
             ->first();
+
+        return $published([$publication->remote_id]) ?? $published(self::facebookMediaIds($publication));
     }
 
     /**
