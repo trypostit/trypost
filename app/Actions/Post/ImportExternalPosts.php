@@ -156,27 +156,6 @@ class ImportExternalPosts
     }
 
     /**
-     * Links a publication to the post TryPost published, by the linking rules of
-     * the import, whatever its age (the import itself only looks at the newest
-     * publications within the history retention). Returns that post, or null
-     * when it is not a post TryPost published or it was left as it is.
-     */
-    public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
-    {
-        return DB::transaction(function () use ($account, $publicationId): ?Post {
-            $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
-
-            if (blank($publication) || ! $publication->isLinkable()) {
-                return null;
-            }
-
-            $target = self::tryPostTarget($account, $publication);
-
-            return filled($target) && self::linkToPost($target, $publication) ? $target : null;
-        });
-    }
-
-    /**
      * A Page post carrying a TryPost post's media, published within its window,
      * that was not taken for the post's own (another Page post there shares the
      * media, or the tracked publication could not take the merge): left out of

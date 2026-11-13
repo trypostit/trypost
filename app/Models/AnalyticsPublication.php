@@ -94,15 +94,6 @@ class AnalyticsPublication extends Model
     }
 
     /**
-     * Available, linked to no post and not dismissed: what the import may link
-     * or turn into a post.
-     */
-    public function scopeLinkable(Builder $query): Builder
-    {
-        return $query->available()->whereNull('post_id')->whereNull('post_dismissed_at');
-    }
-
-    /**
      * Carrying one of `$mediaIds` as its Facebook video or photo; an empty list
      * matches nothing.
      *
@@ -113,18 +104,6 @@ class AnalyticsPublication extends Model
         return $query->where(function (Builder $carrying) use ($mediaIds): void {
             foreach (FacebookMediaKey::cases() as $key) {
                 $carrying->orWhereIn("provider_metadata->{$key->value}", $mediaIds);
-            }
-        });
-    }
-
-    /**
-     * Carrying a Facebook video or photo, whichever.
-     */
-    public function scopeCarryingAnyFacebookMedia(Builder $query): Builder
-    {
-        return $query->where(function (Builder $carrying): void {
-            foreach (FacebookMediaKey::cases() as $key) {
-                $carrying->orWhereNotNull("provider_metadata->{$key->value}");
             }
         });
     }
