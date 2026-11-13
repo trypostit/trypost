@@ -41,7 +41,7 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         AnalyticsPublication::query()
             ->linkable()
             ->where('platform', Platform::Facebook)
-            ->carryingFacebookMedia()
+            ->carryingAnyFacebookMedia()
             ->with('socialAccount')
             ->lazyById()
             ->each(function (AnalyticsPublication $publication) use ($dryRun, $linked, &$failed): void {

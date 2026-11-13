@@ -92,7 +92,7 @@ class WritePublicationDailySnapshot
         [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
 
         if (blank($older->metrics) || blank($newer->metrics)) {
-            $whole = blank($newer->metrics) ? $older : $newer;
+            $whole = blank($newer->metrics) && filled($older->metrics) ? $older : $newer;
             $kept->fill($whole->only(['collected_at', 'provider_observed_at', 'metrics', ...array_keys($this->scalarProjections([]))]))->save();
 
             return;

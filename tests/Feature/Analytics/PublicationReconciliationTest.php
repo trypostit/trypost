@@ -473,6 +473,26 @@ test('a snapshot stored without metrics brings nothing to the merge', function (
         ->and(data_get($snapshot->metrics, 'comments.value'))->toBe($newerHasMetrics ? null : 3);
 })->with(['the older one has none' => true, 'the newer one has none' => false]);
 
+test('a merge of two snapshots stored without metrics keeps the newer one', function () {
+    [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
+    AnalyticsPublicationDailySnapshot::query()->update(['metrics' => null]);
+    $newer = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole()->collected_at;
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1');
+
+    expect($publication->dailySnapshots()->sole()->collected_at->toIso8601String())->toBe($newer->toIso8601String());
+});
+
+test('carrying facebook media matches only the ids given', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $carrying = AnalyticsPublication::factory()->create(['social_account_id' => $account->id, 'platform' => Platform::Facebook, 'provider_metadata' => ['video_id' => 'video-9']]);
+    AnalyticsPublication::factory()->create(['social_account_id' => $account->id, 'platform' => Platform::Facebook, 'provider_metadata' => ['photo_id' => 'photo-3']]);
+
+    expect(AnalyticsPublication::query()->carryingFacebookMedia(['video-9'])->pluck('id')->all())->toBe([$carrying->id])
+        ->and(AnalyticsPublication::query()->carryingFacebookMedia([])->exists())->toBeFalse()
+        ->and(AnalyticsPublication::query()->carryingAnyFacebookMedia()->count())->toBe(2);
+});
+
 test('a merged publication keeps the latest time discovery saw the post', function () {
     [$publication] = facebookVideoReadTwiceOnOneDay(['views' => 52], ['views' => 50], 1);
     $seenAt = now()->subMinutes(5)->startOfSecond();

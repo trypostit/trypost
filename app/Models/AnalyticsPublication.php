@@ -111,17 +111,24 @@ class AnalyticsPublication extends Model
     }
 
     /**
-     * Carrying, in its Facebook media keys, one of `$mediaIds`, or any media
-     * when none are given.
+     * Carrying one of `$mediaIds` as its Facebook video or photo; an empty list
+     * matches nothing.
      *
-     * @param  list<string>|null  $mediaIds
+     * @param  list<string>  $mediaIds
      */
-    public function scopeCarryingFacebookMedia(Builder $query, ?array $mediaIds = null): Builder
+    public function scopeCarryingFacebookMedia(Builder $query, array $mediaIds): Builder
     {
         return $query->where(fn (Builder $carrying): Builder => collect(self::FACEBOOK_MEDIA_KEYS)
-            ->reduce(fn (Builder $carry, string $key): Builder => blank($mediaIds)
-                ? $carry->orWhereNotNull("provider_metadata->{$key}")
-                : $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $carrying));
+            ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereIn("provider_metadata->{$key}", $mediaIds), $carrying));
+    }
+
+    /**
+     * Carrying a Facebook video or photo, whichever.
+     */
+    public function scopeCarryingAnyFacebookMedia(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $carrying): Builder => collect(self::FACEBOOK_MEDIA_KEYS)
+            ->reduce(fn (Builder $carry, string $key): Builder => $carry->orWhereNotNull("provider_metadata->{$key}"), $carrying));
     }
 
     public function isLinkable(): bool
