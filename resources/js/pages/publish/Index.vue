@@ -60,6 +60,7 @@ import type {
     ComposerInitialPost,
     PostComposition,
 } from '@/composables/usePostComposition';
+import { usePublishView } from '@/composables/usePublishView';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import type { QueueSlotTarget } from '@/composables/useSortableQueue';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
@@ -67,15 +68,17 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { filled } from '@/lib/helpers';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { calendar } from '@/routes/app';
 import {
+    board as channelBoard,
     calendar as channelCalendar,
     grid,
     publish,
     settings,
 } from '@/routes/app/channels';
-import { index as postsIndex } from '@/routes/app/posts';
+import { board, index as postsIndex } from '@/routes/app/posts';
 import type { User } from '@/types';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { TimezoneOption } from '@/types/posting-schedule';
@@ -141,6 +144,13 @@ const { timezone, setTimezone, dayKey } = useDisplayTimezone(
 
 provideViewTimezone(timezone);
 
+const { rememberPublishView } = usePublishView();
+
+if (!props.openComposer) {
+    rememberPublishView('list');
+}
+
+
 watch(
     () => props.displayTimezone,
     (value) => {
@@ -177,24 +187,31 @@ const listUrl = (
 
 const isPhone = useBelowBreakpoint('md');
 
-const calendarUrl = computed((): string => {
-    const query = {
-        labels: selectedLabelIds.value.length
-            ? selectedLabelIds.value
+const viewQuery = (): Record<string, string | string[] | undefined> => ({
+    labels: filled(selectedLabelIds.value) ? selectedLabelIds.value : undefined,
+    untagged: selectedUntagged.value ? '1' : undefined,
+    channels:
+        props.scope === 'all' && filled(selectedChannelIds.value)
+            ? selectedChannelIds.value
             : undefined,
-        untagged: selectedUntagged.value ? '1' : undefined,
-        channels:
-            props.scope === 'all' && selectedChannelIds.value.length
-                ? selectedChannelIds.value
-                : undefined,
-        tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
-    };
+    tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
+});
 
+const calendarUrl = computed((): string => {
+    const query = viewQuery();
     const view = isPhone.value ? 'days' : 'week';
 
     return props.channel
         ? channelCalendar.url({ account: props.channel.id, view }, { query })
         : calendar.url({ view }, { query });
+});
+
+const boardUrl = computed((): string => {
+    const query = viewQuery();
+
+    return props.channel
+        ? channelBoard.url(props.channel.id, { query })
+        : board.url({ query });
 });
 
 const applyFilters = (): void => {
@@ -908,6 +925,7 @@ const submitComposition = (
                                 active-view="list"
                                 :list-href="listUrl()"
                                 :calendar-href="calendarUrl"
+                                :board-href="boardUrl"
                                 :grid-href="
                                     channel?.has_grid
                                         ? grid.url(channel.id)

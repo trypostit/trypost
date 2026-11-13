@@ -50,6 +50,7 @@ import {
     deletePostCardKey,
     postCardLabelsKey,
 } from '@/composables/usePostCardActions';
+import { usePublishView } from '@/composables/usePublishView';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -61,12 +62,13 @@ import { calendarDayKey } from '@/lib/calendarItems';
 import { afterPageInHistory } from '@/lib/inAppHistory';
 import { calendar } from '@/routes/app';
 import {
+    board as channelBoard,
     calendar as channelCalendar,
     grid,
     publish,
     settings,
 } from '@/routes/app/channels';
-import { index as postsIndex } from '@/routes/app/posts';
+import { board, index as postsIndex } from '@/routes/app/posts';
 import type { User } from '@/types';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import type {
@@ -165,6 +167,11 @@ const { timezone, setTimezone } = useDisplayTimezone(
 
 provideViewTimezone(timezone);
 
+const { rememberPublishView } = usePublishView();
+
+rememberPublishView('calendar');
+
+
 watch(
     () => props.displayTimezone,
     (value) => {
@@ -251,6 +258,14 @@ const listHref = computed((): string => {
               },
           })
         : postsIndex.url({ query });
+});
+
+const boardHref = computed((): string => {
+    const query = filterQuery();
+
+    return props.channel
+        ? channelBoard.url(props.channel.id, { query })
+        : board.url({ query });
 });
 
 const visit = (url: string): void => {
@@ -727,6 +742,7 @@ const goToDay = (key: string): void => {
                             :calendar-href="
                                 calendarUrl(isDesktop ? 'month' : 'days')
                             "
+                            :board-href="boardHref"
                             :grid-href="
                                 channel?.has_grid
                                     ? grid.url(channel.id)

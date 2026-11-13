@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => '목록',
+    'board' => [
+        'view' => '보드',
+        'group_by' => '그룹 기준',
+        'groups' => [
+            'status' => '상태',
+            'tag' => '라벨',
+            'channel' => '채널',
+        ],
+        'columns' => [
+            'draft' => '초안',
+            'approvals' => '승인',
+            'scheduled' => '예약됨',
+            'published' => '게시됨',
+            'failed' => '실패',
+            'untagged' => '라벨 없음',
+            'no_channel' => '채널 없음',
+        ],
+        'empty_column' => '내용 없음',
+        'column_aria' => '{1} :name, 게시물 :count개|[0,*] :name, 게시물 :count개',
+    ],
     'view_switcher' => '일정 보기',
     'all_posts' => '모든 게시물',
     'composer' => [

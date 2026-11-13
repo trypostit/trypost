@@ -7,6 +7,7 @@ return [
     'description' => 'このワークスペースのチャンネルを管理します。',
     'connect' => 'チャンネルを接続',
     'settings' => 'チャンネル設定',
+    'manage' => 'チャンネルを管理',
     'publish' => '投稿する',
     'insights' => 'Insights',
     'new_post' => 'このチャンネルで新規投稿',

@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { usePublishView } from '@/composables/usePublishView';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { insights } from '@/routes/app';
 import { index as ideasIndex, create as createIdea } from '@/routes/app/create/ideas';
@@ -55,6 +56,7 @@ const {
     canManageAccounts,
     canManageTeam,
 } = useWorkspaceAbilities();
+const { publishUrl } = usePublishView();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -85,7 +87,8 @@ const mainNavItems = computed<NavItem[]>(() => [
         : []),
     {
         title: trans('sidebar.groups.posts'),
-        href: postsIndex.url(),
+        href: publishUrl.value,
+        activePattern: postsIndex.url(),
         icon: IconCalendarEvent,
         count: scheduledPostsCount.value,
         countTestId: 'sidebar-publish-count',

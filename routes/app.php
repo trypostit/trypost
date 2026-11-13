@@ -223,6 +223,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('channels/{account}/calendar/{view?}', [ChannelController::class, 'calendar'])
         ->where('view', 'days|week|month')
         ->name('app.channels.calendar');
+    Route::get('channels/{account}/board', [ChannelController::class, 'board'])->name('app.channels.board');
     Route::get('channels/{account}/insights', [ChannelController::class, 'insights'])->name('app.channels.insights');
     Route::get('channels/{account}/insights/download/{format}', [ChannelController::class, 'downloadInsights'])
         ->whereIn('format', ExportFormat::values())
@@ -245,6 +246,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('schedule/calendar/{view?}', [PostController::class, 'calendar'])
         ->where('view', 'days|week|month')
         ->name('app.calendar');
+    Route::get('schedule/board', [PostController::class, 'board'])->name('app.posts.board');
 
     Route::get('posts/composer/live', ComposerLiveDataController::class)->name('app.posts.composer.live');
     Route::get('posts/composer/accounts/{account}', [ComposerAccountDataController::class, 'show'])->name('app.posts.composer.account');

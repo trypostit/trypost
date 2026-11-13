@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/vue3';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import type { InjectionKey, Ref } from 'vue';
+import { inject, type InjectionKey, type Ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { duplicate as duplicatePost } from '@/actions/App/Http/Controllers/App/PostController';
@@ -25,6 +25,20 @@ export const editPostCardUrlKey: InjectionKey<(post: PostCard) => string> =
 
 export const postCardLabelsKey: InjectionKey<Readonly<Ref<PostCardLabel[]>>> =
     Symbol('postCardLabels');
+
+export interface PostCardReload {
+    only: string[];
+    reset: string[];
+}
+
+/** The props a card action reloads, when the page lists its posts under other props than `posts`. */
+export const postCardReloadKey: InjectionKey<() => PostCardReload> =
+    Symbol('postCardReload');
+
+/** The reload a card action sends: the page's own when it provides one, else the List's. */
+export const usePostCardReload = (
+    fallback: PostCardReload,
+): (() => PostCardReload) => inject(postCardReloadKey, () => fallback);
 
 const successMessage = (
     action: PostScheduleAction,
@@ -113,6 +127,7 @@ export const syncPostCardLabels = (
     postId: string,
     labelIds: string[],
     rollback: () => void,
+    reload: PostCardReload = { only: ['posts', 'queue'], reset: ['posts'] },
 ): void => {
     const fail = (): void => {
         rollback();
@@ -127,8 +142,7 @@ export const syncPostCardLabels = (
         {
             preserveScroll: true,
             preserveState: true,
-            only: ['posts', 'queue'],
-            reset: ['posts'],
+            ...reload,
             onError: fail,
             onHttpException: () => {
                 fail();

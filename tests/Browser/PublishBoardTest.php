@@ -1,0 +1,177 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
+
+function boardInsideViewport(): string
+{
+    return 'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().left >= 0 && element.getBoundingClientRect().right <= window.innerWidth + 1 && element.getBoundingClientRect().bottom <= window.innerHeight + 1';
+}
+
+beforeEach(function () {
+    $this->user = User::factory()->create(['timezone' => 'UTC', 'locale' => Locale::DEFAULT]);
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+    subscribeAccount($this->user->account);
+    $this->user = $this->user->fresh();
+    connectAiTo($this->user);
+
+    $this->channel = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'position' => 1,
+    ]);
+    $this->draft = Post::factory()->forAccount($this->channel)->draft()->create(['user_id' => $this->user->id]);
+});
+
+test('the list links to the board and the board groups by status', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
+
+    waitForPath($page, route('app.posts.board', absolute: false));
+    waitFor($page, '@board-column-draft');
+
+    $page->assertVisible('@board-column-draft')
+        ->assertVisible('@board-column-approvals')
+        ->assertVisible('@board-column-scheduled')
+        ->assertVisible('@board-column-published')
+        ->assertVisible('@board-column-failed');
+
+    waitFor($page, "@board-column-draft @board-card-{$this->draft->id}");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('group by tag shows a post in each of its tags', function () {
+    $alpha = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha']);
+    $beta = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Beta']);
+    $this->draft->labels()->attach([$alpha->id, $beta->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitForCount($page, '@board-group-trigger', 1);
+    waitForState($page, '@board-group-trigger', 'element.getBoundingClientRect().height > 0');
+
+    $page->click('@board-group-trigger');
+
+    waitForOpen($page, '@board-group-content');
+    waitForState($page, '@board-group-content', boardInsideViewport());
+
+    $page->click('@board-group-option-tag');
+
+    waitFor($page, "@board-column-label_{$alpha->id}");
+    waitFor($page, "@board-column-label_{$alpha->id} @board-card-{$this->draft->id}");
+    waitFor($page, "@board-column-label_{$beta->id} @board-card-{$this->draft->id}");
+    waitForCount($page, "@board-card-{$this->draft->id}", 2);
+
+    $page->assertVisible("@board-column-label_{$beta->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a card opens the post details', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-card-open-{$this->draft->id}");
+
+    $page->click("@board-card-open-{$this->draft->id}");
+
+    waitForOpen($page, "@post-details-{$this->draft->id}");
+    waitForState($page, "@post-details-{$this->draft->id}", boardInsideViewport());
+
+    $page->assertVisible("@post-details-{$this->draft->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('on a phone the group menu is a bottom sheet', function () {
+    $channelTwo = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Mastodon,
+        'position' => 2,
+    ]);
+    Post::factory()->forAccount($channelTwo)->draft()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(390, 844);
+    waitForCount($page, '@board-group-trigger', 1);
+    waitForState($page, '@board-group-trigger', 'element.getBoundingClientRect().height > 0');
+
+    $page->click('@board-group-trigger');
+
+    waitForOpen($page, '@board-group-sheet');
+    waitForState($page, '@board-group-sheet', boardInsideViewport());
+
+    $page->click('@board-group-option-channel');
+
+    waitFor($page, "@board-column-channel_{$this->channel->id}");
+
+    $page->assertVisible("@board-column-channel_{$this->channel->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('the channel filter, the label filter and a card menu open inside the viewport', function () {
+    WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha']);
+    SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Mastodon,
+        'position' => 2,
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, '@posts-channel-filter');
+
+    $page->click('@posts-channel-filter');
+    waitFor($page, '@posts-channel-toggle-all');
+    waitForState($page, '@posts-channel-toggle-all', boardInsideViewport());
+    $page->click('@posts-channel-filter');
+    waitForGone($page, '@posts-channel-toggle-all');
+
+    $page->click('@posts-label-filter');
+    waitFor($page, '@posts-label-untagged');
+    waitForState($page, '@posts-label-untagged', boardInsideViewport());
+    $page->click('@posts-label-filter');
+    waitForGone($page, '@posts-label-untagged');
+
+    $page->click("@board-card-menu-{$this->draft->id}");
+    waitForOpen($page, "@post-card-menu-content-board-{$this->draft->id}");
+    waitForState($page, "@post-card-menu-content-board-{$this->draft->id}", boardInsideViewport());
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a card action reloads the columns, so a tagged card moves to its tag', function () {
+    $alpha = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha']);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['group' => 'tag']))->resize(1280, 900);
+    waitFor($page, "@board-column-untagged @board-card-{$this->draft->id}");
+    $page->assertMissing("@board-column-label_{$alpha->id} @board-card-{$this->draft->id}");
+
+    $page->click("@post-labels-board-{$this->draft->id}-trigger");
+    waitFor($page, "@post-labels-board-{$this->draft->id}-checkbox-{$alpha->id}");
+    $page->click("@post-labels-board-{$this->draft->id}-checkbox-{$alpha->id}");
+
+    waitFor($page, "@board-column-label_{$alpha->id} @board-card-{$this->draft->id}");
+    waitForGone($page, "@board-column-untagged @board-card-{$this->draft->id}");
+    waitForText($page, "@board-column-count-label_{$alpha->id}", '1');
+
+    expect($this->draft->labels()->pluck('workspace_labels.id')->all())->toBe([$alpha->id]);
+    $page->assertNoJavaScriptErrors();
+});

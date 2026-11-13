@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Список',
+    'board' => [
+        'view' => 'Дошка',
+        'group_by' => 'Групувати за',
+        'groups' => [
+            'status' => 'Статус',
+            'tag' => 'Мітка',
+            'channel' => 'Канал',
+        ],
+        'columns' => [
+            'draft' => 'Чернетка',
+            'approvals' => 'Схвалення',
+            'scheduled' => 'Заплановано',
+            'published' => 'Опубліковано',
+            'failed' => 'Помилка',
+            'untagged' => 'Без мітки',
+            'no_channel' => 'Немає каналу',
+        ],
+        'empty_column' => 'Тут порожньо',
+        'column_aria' => '{1} :name, постів: :count|[0,*] :name, постів: :count',
+    ],
     'view_switcher' => 'Перегляд розкладу',
     'all_posts' => 'Усі пости',
     'composer' => [

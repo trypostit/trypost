@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lista',
+    'board' => [
+        'view' => 'Tablero',
+        'group_by' => 'Agrupar por',
+        'groups' => [
+            'status' => 'Estado',
+            'tag' => 'Etiqueta',
+            'channel' => 'Canal',
+        ],
+        'columns' => [
+            'draft' => 'Borrador',
+            'approvals' => 'Aprobaciones',
+            'scheduled' => 'Programado',
+            'published' => 'Publicado',
+            'failed' => 'Fallido',
+            'untagged' => 'Sin etiqueta',
+            'no_channel' => 'Sin canal',
+        ],
+        'empty_column' => 'Nada por aquí',
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Vista de programación',
     'all_posts' => 'Todos los posts',
     'composer' => [

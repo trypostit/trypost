@@ -7,6 +7,7 @@ return [
     'description' => 'Bu çalışma alanının kanallarını yönetin.',
     'connect' => 'Kanal bağla',
     'settings' => 'Kanal ayarları',
+    'manage' => 'Kanalları yönet',
     'publish' => 'Yayınla',
     'insights' => 'Insights',
     'new_post' => 'Bu kanalda yeni gönderi',

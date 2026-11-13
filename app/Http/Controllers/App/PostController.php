@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Post\BuildBoardPageProps;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
@@ -82,6 +83,31 @@ class PostController extends Controller
         }
 
         return Inertia::render('posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, null, $view ?? $request->query('view')));
+    }
+
+    public function board(Request $request): Response|RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->authorize('view', $workspace);
+
+        if ($request->boolean('compose')) {
+            $this->authorize('createPost', $workspace);
+
+            return $this->redirectToComposer($request, 'app.posts.board', [
+                'group' => $request->query('group'),
+                'labels' => $request->query('labels'),
+                'untagged' => $request->query('untagged'),
+                'channels' => $request->query('channels'),
+                'tz' => $request->query('tz'),
+            ]);
+        }
+
+        return Inertia::render('posts/Board', BuildBoardPageProps::handle($request, $workspace, null));
     }
 
     public function create(Request $request): RedirectResponse

@@ -7,6 +7,7 @@ import LabelFilter from '@/components/labels/LabelFilter.vue';
 import {
     postCardLabelsKey,
     syncPostCardLabels,
+    usePostCardReload,
 } from '@/composables/usePostCardActions';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import type { PostCardLabel } from '@/types/publish';
@@ -24,6 +25,8 @@ const workspaceLabels = inject(
     postCardLabelsKey,
     computed(() => []),
 );
+
+const reload = usePostCardReload({ only: ['posts', 'queue'], reset: ['posts'] });
 
 const toIds = (labels: PostCardLabel[]): string[] =>
     labels.map((label) => label.id);
@@ -59,9 +62,14 @@ const update = (ids: string[]): void => {
     const previous = selectedIds.value;
 
     selectedIds.value = ids;
-    syncPostCardLabels(props.postId, ids, () => {
-        selectedIds.value = previous;
-    });
+    syncPostCardLabels(
+        props.postId,
+        ids,
+        () => {
+            selectedIds.value = previous;
+        },
+        reload(),
+    );
 };
 </script>
 

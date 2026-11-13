@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Elenco',
+    'board' => [
+        'view' => 'Bacheca',
+        'group_by' => 'Raggruppa per',
+        'groups' => [
+            'status' => 'Stato',
+            'tag' => 'Etichetta',
+            'channel' => 'Canale',
+        ],
+        'columns' => [
+            'draft' => 'Bozza',
+            'approvals' => 'Approvazioni',
+            'scheduled' => 'Programmato',
+            'published' => 'Pubblicato',
+            'failed' => 'Non riuscito',
+            'untagged' => 'Senza etichetta',
+            'no_channel' => 'Nessun canale',
+        ],
+        'empty_column' => 'Niente qui',
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count post',
+    ],
     'view_switcher' => 'Vista programmazione',
     'all_posts' => 'Tutti i post',
     'composer' => [

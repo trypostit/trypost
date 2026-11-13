@@ -44,8 +44,9 @@ import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { usePublishView } from '@/composables/usePublishView';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { insights, publish } from '@/routes/app/channels';
+import { insights } from '@/routes/app/channels';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import { channelName, type SidebarChannel } from '@/types/channel';
 import type { AvailablePlatform } from '@/types/social-account';
@@ -122,6 +123,11 @@ const suggestedPlatforms = computed(() => {
 
     return SUGGESTED_PLATFORMS.filter((platform) => connectable.has(platform));
 });
+
+const { channelPublishUrl, channelPublishPaths } = usePublishView();
+
+const isChannelPublishActive = (channel: SidebarChannel): boolean =>
+    channelPublishPaths(channel.id).some((path) => urlIsActive(path));
 
 const isCurrentChannel = (channel: SidebarChannel): boolean =>
     page.url.startsWith(`/channels/${channel.id}/`);
@@ -383,7 +389,7 @@ const reconnect = (channel: SidebarChannel): void => {
                                 class="h-9 gap-2 py-1 ps-2 max-md:pe-16 group-hover/channel:pe-16 group-has-focus-visible/channel:pe-16 data-[active=true]:bg-transparent data-[active=true]:hover:bg-sidebar-accent [&:has(~[data-sidebar=group-action]:hover)]:bg-sidebar-accent group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:p-0.5! group-data-[collapsible=icon]:data-[active=true]:bg-sidebar-accent"
                             >
                                 <Link
-                                    :href="publish.url(channel.id)"
+                                    :href="channelPublishUrl(channel.id)"
                                     :data-testid="`sidebar-channel-${channel.id}`"
                                 >
                                     <ChannelAvatar
@@ -421,7 +427,7 @@ const reconnect = (channel: SidebarChannel): void => {
                                 {{ $t('channels.connection_lost_hint') }}
                             </p>
                             <Link
-                                :href="publish.url(channel.id)"
+                                :href="channelPublishUrl(channel.id)"
                                 :class="channelCardItemClass"
                                 :data-testid="`sidebar-channel-${channel.id}-card-publish`"
                             >
@@ -505,10 +511,10 @@ const reconnect = (channel: SidebarChannel): void => {
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton
                                         as-child
-                                        :is-active="urlIsActive(publish.url(channel.id))"
+                                        :is-active="isChannelPublishActive(channel)"
                                     >
                                         <Link
-                                            :href="publish.url(channel.id)"
+                                            :href="channelPublishUrl(channel.id)"
                                             :data-testid="`sidebar-channel-${channel.id}-publish`"
                                         >
                                             <IconCalendarEvent />

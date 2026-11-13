@@ -338,6 +338,17 @@ class Post extends Model
     }
 
     /**
+     * Approval requests by when they are due, requests without a time last,
+     * then by when they were asked for.
+     */
+    public function scopeApprovalOrder(Builder $query): Builder
+    {
+        return $query->orderByRaw('CASE WHEN posts.scheduled_at IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('posts.scheduled_at')
+            ->orderBy('posts.approval_requested_at');
+    }
+
+    /**
      * Posts on any of the channels; no filter when $channelIds is null.
      *
      * @param  list<string>|null  $channelIds

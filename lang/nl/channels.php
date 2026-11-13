@@ -7,6 +7,7 @@ return [
     'description' => 'Beheer de kanalen van deze workspace.',
     'connect' => 'Kanaal koppelen',
     'settings' => 'Kanaalinstellingen',
+    'manage' => 'Kanalen beheren',
     'publish' => 'Publiceren',
     'insights' => 'Insights',
     'new_post' => 'Nieuw bericht in dit kanaal',

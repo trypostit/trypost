@@ -21,9 +21,10 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { publishTabFor } from '@/composables/usePostStatus';
 import date from '@/date';
-import { isImage, isVideo } from '@/lib/mediaType';
+import { isImage } from '@/lib/mediaType';
+import { postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
@@ -55,31 +56,9 @@ const openDetails = async (): Promise<void> => {
     card.value?.openDetails();
 };
 
-const SENT_STATUSES: readonly string[] = [
-    PostStatus.Published,
-    PostStatus.Failed,
-];
+const tab = computed((): PublishTab => publishTabFor(props.post));
 
-const tab = computed((): PublishTab => {
-    if (SENT_STATUSES.includes(props.post.status)) {
-        return 'sent';
-    }
-
-    if (props.post.status === PostStatus.Draft) {
-        return 'drafts';
-    }
-
-    return props.post.status === PostStatus.PendingApproval
-        ? 'approvals'
-        : 'queue';
-});
-
-const channels = computed(() =>
-    props.post.platform
-        ? (props.post.social_account?.display_label ??
-          getPlatformLabel(props.post.platform))
-        : '',
-);
+const channels = computed(() => postChannelLabel(props.post));
 
 const time = computed(() =>
     date.formatTimeInTimezone(props.post.calendar_at, props.timezone),
@@ -87,12 +66,7 @@ const time = computed(() =>
 
 const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 
-const thumbnail = computed(
-    () =>
-        (props.post.media ?? []).find(
-            (item) => isImage(item) || isVideo(item),
-        ) ?? null,
-);
+const thumbnail = computed(() => postThumbnail(props.post));
 
 type StatusKey =
     | 'draft'

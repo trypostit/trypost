@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lijst',
+    'board' => [
+        'view' => 'Bord',
+        'group_by' => 'Groeperen op',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Label',
+            'channel' => 'Kanaal',
+        ],
+        'columns' => [
+            'draft' => 'Concept',
+            'approvals' => 'Goedkeuringen',
+            'scheduled' => 'Gepland',
+            'published' => 'Gepubliceerd',
+            'failed' => 'Mislukt',
+            'untagged' => 'Zonder label',
+            'no_channel' => 'Geen kanaal',
+        ],
+        'empty_column' => 'Niets hier',
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Planningweergave',
     'all_posts' => 'Alle posts',
     'composer' => [

@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Liste',
+    'board' => [
+        'view' => 'Pano',
+        'group_by' => 'Gruplandır',
+        'groups' => [
+            'status' => 'Durum',
+            'tag' => 'Etiket',
+            'channel' => 'Kanal',
+        ],
+        'columns' => [
+            'draft' => 'Taslak',
+            'approvals' => 'Onaylar',
+            'scheduled' => 'Planlandı',
+            'published' => 'Yayınlandı',
+            'failed' => 'Başarısız',
+            'untagged' => 'Etiketsiz',
+            'no_channel' => 'Kanal yok',
+        ],
+        'empty_column' => 'Burada hiçbir şey yok',
+        'column_aria' => '{1} :name, :count gönderi|[0,*] :name, :count gönderi',
+    ],
     'view_switcher' => 'Takvim görünümü',
     'all_posts' => 'Tüm Gönderiler',
     'composer' => [

@@ -39,6 +39,7 @@ const props = withDefaults(
         canMoveDown?: boolean;
         movable?: boolean;
         details?: boolean;
+        triggerTestId?: string | null;
     }>(),
     {
         canMoveToTop: false,
@@ -46,6 +47,7 @@ const props = withDefaults(
         canMoveDown: false,
         movable: true,
         details: true,
+        triggerTestId: null,
     },
 );
 
@@ -79,7 +81,7 @@ const isMovable = computed(
                             size="icon"
                             class="data-[state=open]:bg-accent"
                             :aria-label="$t('posts.publish.actions.more')"
-                            :data-testid="`post-card-menu-${testKey}`"
+                            :data-testid="triggerTestId ?? `post-card-menu-${testKey}`"
                         >
                             <IconDotsVertical class="size-4" />
                         </Button>

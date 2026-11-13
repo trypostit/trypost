@@ -67,6 +67,7 @@ import {
     schedulePostCard,
     sharePostCardLink,
     toastFirstError,
+    usePostCardReload,
 } from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -352,21 +353,21 @@ const showStatus = computed(
 
 const hasFailure = computed(() => props.post.status === PostStatus.Failed);
 
-const APPROVAL_RELOAD = {
+const approvalReload = usePostCardReload({
     only: ['posts', 'counts', 'queue', 'hasData'],
     reset: ['posts'],
-};
+});
 
 const rejectPost = (): void => {
     router.put(
         rejectPostRoute.url(props.post.id),
         {},
-        { ...APPROVAL_RELOAD, preserveScroll: true, onError: toastFirstError },
+        { ...approvalReload(), preserveScroll: true, onError: toastFirstError },
     );
 };
 
 const revertRequest = (): void => {
-    schedulePostCard(props.post.id, 'draft', APPROVAL_RELOAD);
+    schedulePostCard(props.post.id, 'draft', approvalReload());
 };
 
 const recurrence = computed(() =>
@@ -446,7 +447,7 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
     }
 };
 
-defineExpose({ openDetails });
+defineExpose({ openDetails, runMenuAction: onMenuSelect });
 </script>
 
 <template>

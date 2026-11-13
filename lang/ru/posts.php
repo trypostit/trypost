@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Список',
+    'board' => [
+        'view' => 'Доска',
+        'group_by' => 'Группировать по',
+        'groups' => [
+            'status' => 'Статус',
+            'tag' => 'Метка',
+            'channel' => 'Канал',
+        ],
+        'columns' => [
+            'draft' => 'Черновик',
+            'approvals' => 'Одобрение',
+            'scheduled' => 'Запланирован',
+            'published' => 'Опубликован',
+            'failed' => 'Ошибка',
+            'untagged' => 'Без метки',
+            'no_channel' => 'Нет канала',
+        ],
+        'empty_column' => 'Здесь пусто',
+        'column_aria' => '{1} :name, постов: :count|[0,*] :name, постов: :count',
+    ],
     'view_switcher' => 'Вид расписания',
     'all_posts' => 'Все посты',
     'composer' => [

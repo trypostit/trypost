@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => '列表',
+    'board' => [
+        'view' => '看板',
+        'group_by' => '分组依据',
+        'groups' => [
+            'status' => '状态',
+            'tag' => '标签',
+            'channel' => '频道',
+        ],
+        'columns' => [
+            'draft' => '草稿',
+            'approvals' => '审批',
+            'scheduled' => '已排期',
+            'published' => '已发布',
+            'failed' => '已失败',
+            'untagged' => '无标签',
+            'no_channel' => '无频道',
+        ],
+        'empty_column' => '这里空空如也',
+        'column_aria' => '{1} :name，:count 篇帖子|[0,*] :name，:count 篇帖子',
+    ],
     'view_switcher' => '日程视图',
     'all_posts' => '所有帖子',
     'composer' => [

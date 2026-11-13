@@ -352,9 +352,7 @@ class BuildPublishPageProps
                 ->latest('posts.created_at'),
             self::TAB_APPROVALS => $query->pendingApproval()
                 ->visiblePendingApprovalsFor($requester)
-                ->orderByRaw('CASE WHEN posts.scheduled_at IS NULL THEN 1 ELSE 0 END')
-                ->orderBy('posts.scheduled_at')
-                ->orderBy('posts.approval_requested_at'),
+                ->approvalOrder(),
             default => $query->whereIn('status', self::SENT_STATUSES)
                 ->latestAttempt(),
         };

@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'リスト',
+    'board' => [
+        'view' => 'ボード',
+        'group_by' => 'グループ化',
+        'groups' => [
+            'status' => 'ステータス',
+            'tag' => 'ラベル',
+            'channel' => 'チャンネル',
+        ],
+        'columns' => [
+            'draft' => '下書き',
+            'approvals' => '承認',
+            'scheduled' => '予約済み',
+            'published' => '公開済み',
+            'failed' => '失敗',
+            'untagged' => 'ラベルなし',
+            'no_channel' => 'チャンネルなし',
+        ],
+        'empty_column' => '何もありません',
+        'column_aria' => '{1} :name、:count件の投稿|[0,*] :name、:count件の投稿',
+    ],
     'view_switcher' => 'スケジュール表示',
     'all_posts' => 'すべての投稿',
     'composer' => [

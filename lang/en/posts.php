@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'List',
+    'board' => [
+        'view' => 'Board',
+        'group_by' => 'Group by',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Tag',
+            'channel' => 'Channel',
+        ],
+        'columns' => [
+            'draft' => 'Draft',
+            'approvals' => 'Approvals',
+            'scheduled' => 'Scheduled',
+            'published' => 'Published',
+            'failed' => 'Failed',
+            'untagged' => 'Untagged',
+            'no_channel' => 'No channel',
+        ],
+        'empty_column' => 'Nothing here',
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Schedule view',
     'all_posts' => 'All Posts',
     'composer' => [

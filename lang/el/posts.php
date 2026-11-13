@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Λίστα',
+    'board' => [
+        'view' => 'Πίνακας',
+        'group_by' => 'Ομαδοποίηση κατά',
+        'groups' => [
+            'status' => 'Κατάσταση',
+            'tag' => 'Ετικέτα',
+            'channel' => 'Κανάλι',
+        ],
+        'columns' => [
+            'draft' => 'Πρόχειρο',
+            'approvals' => 'Εγκρίσεις',
+            'scheduled' => 'Προγραμματισμένη',
+            'published' => 'Δημοσιεύτηκε',
+            'failed' => 'Απέτυχε',
+            'untagged' => 'Χωρίς ετικέτα',
+            'no_channel' => 'Χωρίς κανάλι',
+        ],
+        'empty_column' => 'Δεν υπάρχει τίποτα εδώ',
+        'column_aria' => '{1} :name, :count δημοσίευση|[0,*] :name, :count δημοσιεύσεις',
+    ],
     'view_switcher' => 'Προβολή προγράμματος',
     'all_posts' => 'Όλες οι δημοσιεύσεις',
     'composer' => [

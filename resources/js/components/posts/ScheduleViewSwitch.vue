@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { IconCalendar, IconLayoutGrid, IconList } from '@tabler/icons-vue';
+import {
+    IconCalendar,
+    IconLayoutGrid,
+    IconLayoutKanban,
+    IconList,
+} from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import {
@@ -10,13 +15,14 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { calendar } from '@/routes/app';
-import { index as postsIndex } from '@/routes/app/posts';
+import { board, index as postsIndex } from '@/routes/app/posts';
 
 const props = defineProps<{
-    activeView: 'grid' | 'list' | 'calendar';
+    activeView: 'grid' | 'list' | 'calendar' | 'board';
     listHref?: string;
     calendarHref?: string;
     gridHref?: string;
+    boardHref?: string;
 }>();
 
 const views = computed(() => [
@@ -46,6 +52,13 @@ const views = computed(() => [
         label: 'calendar.title',
         icon: IconCalendar,
         href: props.calendarHref ?? calendar.url({ view: 'week' }),
+        note: null,
+    },
+    {
+        key: 'board',
+        label: 'posts.board.view',
+        icon: IconLayoutKanban,
+        href: props.boardHref ?? board.url(),
         note: null,
     },
 ]);

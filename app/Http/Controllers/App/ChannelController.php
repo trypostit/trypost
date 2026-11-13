@@ -12,6 +12,7 @@ use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ListChannelPublicationPerformance;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Actions\Post\BuildBoardPageProps;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\BuildPublishPageProps;
 use App\Actions\SocialAccount\ListInstagramGridPosts;
@@ -123,6 +124,27 @@ class ChannelController extends Controller
         }
 
         return Inertia::render('posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, $account, $view));
+    }
+
+    public function board(Request $request, SocialAccount $account): Response|RedirectResponse
+    {
+        $this->ensureCurrentWorkspace($request, $account);
+        $workspace = $request->user()->currentWorkspace;
+        $this->authorize('view', $workspace);
+
+        if ($request->boolean('compose')) {
+            $this->authorize('createPost', $workspace);
+
+            return $this->redirectToComposer($request, 'app.channels.board', [
+                'account' => $account->id,
+                'group' => $request->query('group'),
+                'labels' => $request->query('labels'),
+                'untagged' => $request->query('untagged'),
+                'tz' => $request->query('tz'),
+            ]);
+        }
+
+        return Inertia::render('posts/Board', BuildBoardPageProps::handle($request, $workspace, $account));
     }
 
     public function insights(

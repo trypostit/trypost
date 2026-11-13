@@ -11,7 +11,10 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { toastFirstError } from '@/composables/usePostCardActions';
+import {
+    toastFirstError,
+    usePostCardReload,
+} from '@/composables/usePostCardActions';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { userTimezone } from '@/preferences';
@@ -22,6 +25,11 @@ const props = defineProps<{
     post: PostCard;
     testKey: string;
 }>();
+
+const reload = usePostCardReload({
+    only: ['posts', 'counts', 'queue', 'hasData'],
+    reset: ['posts'],
+});
 
 const pickerOpen = ref(false);
 
@@ -56,8 +64,7 @@ const labelKey = computed(() => {
 
 const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
     router.put(approve.url(props.post.id), payload, {
-        only: ['posts', 'counts', 'queue', 'hasData'],
-        reset: ['posts'],
+        ...reload(),
         preserveScroll: true,
         onSuccess: () => {
             pickerOpen.value = false;

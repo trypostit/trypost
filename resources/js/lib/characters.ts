@@ -21,3 +21,12 @@ const INVISIBLE =
 const BLANK = new RegExp(`^[${INVISIBLE}]*$`, 'u');
 
 export const isBlankText = (text: string): boolean => BLANK.test(text);
+
+/** Mirrors Laravel `Str::limit()` by code points: the text cut to `limit` characters, with `end` added when cut. */
+export const limitText = (text: string, limit: number, end = '...'): string => {
+    const characters = Array.from(text);
+
+    return characters.length <= limit
+        ? text
+        : `${characters.slice(0, limit).join('').trimEnd()}${end}`;
+};

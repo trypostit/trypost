@@ -4,6 +4,26 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'قائمة',
+    'board' => [
+        'view' => 'لوحة',
+        'group_by' => 'تجميع حسب',
+        'groups' => [
+            'status' => 'الحالة',
+            'tag' => 'التسمية',
+            'channel' => 'القناة',
+        ],
+        'columns' => [
+            'draft' => 'مسودة',
+            'approvals' => 'الموافقات',
+            'scheduled' => 'مجدول',
+            'published' => 'منشور',
+            'failed' => 'فشل',
+            'untagged' => 'بدون تسمية',
+            'no_channel' => 'بلا قناة',
+        ],
+        'empty_column' => 'لا شيء هنا',
+        'column_aria' => '{1} :name، المنشورات: :count|[0,*] :name، المنشورات: :count',
+    ],
     'view_switcher' => 'عرض الجدول',
     'all_posts' => 'جميع المنشورات',
     'composer' => [
