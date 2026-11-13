@@ -264,6 +264,7 @@ const sendNote = async () => {
     }
 
     sendHttp.body = body;
+    composerInput.value?.markSent();
 
     const created = await sendHttp
         .post(storeNote.url(props.postId))
@@ -275,10 +276,7 @@ const sendNote = async () => {
         return;
     }
 
-    if (newBody.value.trim() === body) {
-        newBody.value = '';
-    }
-
+    composerInput.value?.dropSent();
     await putNote(created, true);
     scrollToBottom();
     focusComposer();

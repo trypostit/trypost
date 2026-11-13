@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconUsers } from '@tabler/icons-vue';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { SuggestionProps } from '@tiptap/suggestion';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { wTrans } from 'laravel-vue-i18n';
@@ -256,7 +257,41 @@ const focus = () => {
     editor.value?.commands.focus('end');
 };
 
-defineExpose({ focus });
+/** What the field held when it was sent, and where that text ends. */
+let sent: { doc: ProseMirrorNode; end: number } | null = null;
+
+const markSent = () => {
+    const doc = editor.value?.state.doc;
+
+    sent = doc ? { doc, end: doc.content.size - 1 } : null;
+};
+
+/**
+ * Removes the sent text from the start of the field once it lands, keeping
+ * what was typed while it was sending. A field changed inside the sent text
+ * stays as it is, so nothing typed is lost.
+ */
+const dropSent = () => {
+    const current = editor.value;
+    const snapshot = sent;
+
+    sent = null;
+
+    if (!current || !snapshot) {
+        return;
+    }
+
+    const { doc } = current.state;
+    const unchanged =
+        snapshot.end <= doc.content.size - 1 &&
+        doc.slice(0, snapshot.end).eq(snapshot.doc.slice(0, snapshot.end));
+
+    if (unchanged) {
+        current.commands.deleteRange({ from: 1, to: snapshot.end });
+    }
+};
+
+defineExpose({ focus, markSent, dropSent });
 </script>
 
 <template>

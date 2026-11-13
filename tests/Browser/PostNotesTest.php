@@ -348,6 +348,59 @@ test('the note composer enables send only with text and sends on Enter but not S
     expect(PostNote::query()->where('post_id', $post->id)->pluck('body')->all())->toBe(['First line']);
 });
 
+test('text typed while a note is sending stays in the composer without the sent text', function () {
+    Mail::fake();
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitFor($page, '@notes-empty');
+
+    $holdRequests = <<<'JS'
+        (() => {
+            const send = XMLHttpRequest.prototype.send;
+            const held = [];
+            XMLHttpRequest.prototype.send = function (body) {
+                held.push(() => send.call(this, body));
+            };
+            window.__release = () => {
+                XMLHttpRequest.prototype.send = send;
+                held.splice(0).forEach((go) => go());
+            };
+        })()
+    JS;
+
+    $page->script($holdRequests);
+    $page->fill('@note-input', 'Sent part');
+    waitForEditorText($page, '@note-input', 'Sent part');
+    $page->keys('@note-input', ['Enter']);
+    $page->typeSlowly('@note-input', ' typed after', 10);
+    waitForEditorText($page, '@note-input', 'Sent part typed after');
+    $page->script('window.__release()');
+    waitForText($page, '@note-body', 'Sent part');
+    waitForEditorText($page, '@note-input', 'typed after');
+
+    $page->keys('@note-input', ['ControlOrMeta+a', 'Backspace']);
+    $page->typeSlowly('@note-input', 'Second note', 10);
+    waitForEditorText($page, '@note-input', 'Second note');
+    $page->script($holdRequests);
+    $page->keys('@note-input', ['Enter', 'Backspace']);
+    $page->typeSlowly('@note-input', 's', 10);
+    waitForEditorText($page, '@note-input', 'Second nots');
+    $page->script('window.__release()');
+    waitForCount($page, '@note-body', 2);
+    waitForEditorText($page, '@note-input', 'Second nots');
+    $page->assertNoJavaScriptErrors();
+
+    expect(PostNote::query()->where('post_id', $post->id)->oldest('id')->pluck('body')->all())->toBe(['Sent part', 'Second note']);
+});
+
 test('a note timestamp follows the display zone of the list', function () {
     $user = User::factory()->create(['timezone' => 'Asia/Tokyo']);
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -796,9 +849,11 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     expect($grown)->toBeGreaterThan($singleLine)
         ->and($page->script("document.querySelector('[data-testid=\"note-composer\"]').getBoundingClientRect().height"))->toBeGreaterThanOrEqual($grown);
 
+    waitForEditorText($page, '@note-input', "First line\nSecond line\nThird line");
     $page->keys('@note-input', ['Enter']);
     waitFor($page, '@note-body');
     waitForText($page, "@post-notes-count-{$post->id}", '1');
+    expect(PostNote::query()->where('post_id', $post->id)->sole()->body)->toBe("First line\nSecond line\nThird line");
     $page->assertSeeIn("@post-notes-count-{$post->id}", '1')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
 
