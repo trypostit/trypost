@@ -155,17 +155,18 @@ const neighbours = computed<Record<string, QueueNeighbours>>(() => {
     return byPost;
 });
 
-const positions = computed<Record<string, QueuePostPosition>>(() =>
-    Object.fromEntries(
-        Object.entries(neighbours.value).map(([postId, { up, down }]) => [
-            postId,
-            {
-                canMoveUp: props.reorderable && filled(up),
-                canMoveDown: props.reorderable && filled(down),
-            },
-        ]),
-    ),
-);
+const positions = computed<Record<string, QueuePostPosition>>(() => {
+    const byPost: Record<string, QueuePostPosition> = {};
+
+    for (const [postId, { up, down }] of Object.entries(neighbours.value)) {
+        byPost[postId] = {
+            canMoveUp: props.reorderable && filled(up),
+            canMoveDown: props.reorderable && filled(down),
+        };
+    }
+
+    return byPost;
+});
 
 const draggables = computed<Record<string, SortableQueueItem>>(() => {
     if (!props.reorderable) {
