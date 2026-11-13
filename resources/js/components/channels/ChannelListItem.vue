@@ -57,7 +57,7 @@ const typeKey = computed(() => accountTypeKey(props.channel));
 
 <template>
     <div
-        class="flex flex-wrap items-center gap-x-2 gap-y-3 rounded-xl border border-border bg-card p-4 sm:flex-nowrap sm:gap-3"
+        class="flex items-center gap-2 rounded-xl border border-border bg-card p-4 sm:gap-3"
         :data-testid="`channel-row-${channel.id}`"
     >
         <ChannelAvatar
@@ -120,12 +120,13 @@ const typeKey = computed(() => accountTypeKey(props.channel));
         <Button
             v-if="lost"
             size="sm"
-            class="shrink-0 max-sm:order-last max-sm:w-full"
+            class="shrink-0 max-sm:size-8 max-sm:px-0"
+            :aria-label="$t('channels.reconnect')"
             :data-testid="`channel-reconnect-${channel.id}`"
             @click="emit('reconnect', channel)"
         >
             <IconRefresh class="size-4" />
-            {{ $t('channels.reconnect') }}
+            <span class="max-sm:hidden">{{ $t('channels.reconnect') }}</span>
         </Button>
 
         <div class="flex shrink-0 items-center">
