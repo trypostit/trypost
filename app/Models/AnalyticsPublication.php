@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Arr;
 
 class AnalyticsPublication extends Model
 {
@@ -88,15 +88,6 @@ class AnalyticsPublication extends Model
         return $this->hasMany(AnalyticsPublicationDailySnapshot::class, 'publication_id');
     }
 
-    /**
-     * The `provider_metadata` keys under which Facebook discovery reports the
-     * video or photo a Page post carries, which TryPost may have saved as the
-     * post's id.
-     *
-     * @var list<string>
-     */
-    public const array FACEBOOK_MEDIA_KEYS = ['video_id', 'photo_id'];
-
     public function scopeAvailable(Builder $query): Builder
     {
         return $query->where('availability', PublicationAvailability::Available);
@@ -120,8 +111,8 @@ class AnalyticsPublication extends Model
     public function scopeCarryingFacebookMedia(Builder $query, array $mediaIds): Builder
     {
         return $query->where(function (Builder $carrying) use ($mediaIds): void {
-            foreach (self::FACEBOOK_MEDIA_KEYS as $key) {
-                $carrying->orWhereIn("provider_metadata->{$key}", $mediaIds);
+            foreach (FacebookMediaKey::cases() as $key) {
+                $carrying->orWhereIn("provider_metadata->{$key->value}", $mediaIds);
             }
         });
     }
@@ -132,8 +123,8 @@ class AnalyticsPublication extends Model
     public function scopeCarryingAnyFacebookMedia(Builder $query): Builder
     {
         return $query->where(function (Builder $carrying): void {
-            foreach (self::FACEBOOK_MEDIA_KEYS as $key) {
-                $carrying->orWhereNotNull("provider_metadata->{$key}");
+            foreach (FacebookMediaKey::cases() as $key) {
+                $carrying->orWhereNotNull("provider_metadata->{$key->value}");
             }
         });
     }
@@ -150,7 +141,8 @@ class AnalyticsPublication extends Model
             return [];
         }
 
-        return collect(Arr::only($this->provider_metadata ?? [], self::FACEBOOK_MEDIA_KEYS))
+        return collect(FacebookMediaKey::cases())
+            ->map(fn (FacebookMediaKey $key): mixed => data_get($this->provider_metadata, $key->value))
             ->filter(fn (mixed $id): bool => is_string($id) && filled($id))
             ->values()
             ->all();
