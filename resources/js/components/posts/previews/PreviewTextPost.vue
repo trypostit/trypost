@@ -4,6 +4,7 @@ import { computed, toRef } from 'vue';
 
 import LinkCard from '@/components/posts/previews/LinkCard.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
+import PreviewClampedText from '@/components/posts/previews/PreviewClampedText.vue';
 import PreviewMedia from '@/components/posts/previews/PreviewMedia.vue';
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
 import type {
@@ -35,7 +36,7 @@ const props = withDefaults(
         textClass?: string;
         truncate?: number | null;
         moreKey?: string;
-        moreBelow?: boolean;
+        clampLines?: number | null;
         mediaLayout?: PreviewMediaLayout;
         muteBadge?: boolean;
         linkCard?: boolean;
@@ -64,7 +65,7 @@ const props = withDefaults(
         textClass: undefined,
         truncate: null,
         moreKey: 'posts.composer.preview.more',
-        moreBelow: false,
+        clampLines: null,
         mediaLayout: 'grid',
         muteBadge: false,
         linkCard: false,
@@ -213,24 +214,30 @@ const hasActions = computed(
                 :class="textClass"
                 :data-testid="contentTestid"
             >
-                <PreviewText
-                    :text="visibleContent"
+                <PreviewClampedText
+                    v-if="clampLines"
+                    :text="content"
+                    :lines="clampLines"
+                    :more-key="moreKey"
                     :tone="linkTone"
                     :host-only="hostOnly"
                     :tags="tags"
                     :links="links"
-                /><template v-if="isTruncated && !moreBelow"
-                    >…
-                    <span class="text-muted-foreground">{{
-                        $t(moreKey)
-                    }}</span></template
-                >
-                <p
-                    v-if="isTruncated && moreBelow"
-                    class="text-right text-muted-foreground"
-                >
-                    …{{ $t(moreKey) }}
-                </p>
+                />
+                <template v-else>
+                    <PreviewText
+                        :text="visibleContent"
+                        :tone="linkTone"
+                        :host-only="hostOnly"
+                        :tags="tags"
+                        :links="links"
+                    /><template v-if="isTruncated"
+                        >…
+                        <span class="text-muted-foreground">{{
+                            $t(moreKey)
+                        }}</span></template
+                    >
+                </template>
             </div>
             <div v-if="$slots['before-media']" :class="{ 'px-4': isStacked }">
                 <slot name="before-media" />

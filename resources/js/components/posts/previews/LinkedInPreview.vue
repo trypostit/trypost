@@ -32,8 +32,7 @@ const comments = computed(() =>
         :caption="date.formatPreviewPostedAt(postedAt, $t('common.just_now'))"
         caption-globe
         text-class="text-sm"
-        :truncate="140"
-        more-below
+        :clamp-lines="3"
         :link-card="meta?.link_preview !== false"
         :link-card-options="{
             bleed: true,

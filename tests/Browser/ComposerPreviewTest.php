@@ -168,3 +168,68 @@ test('the x preview lays two images side by side and three as one tall image bes
 
     $page->assertNoJavaScriptErrors();
 })->with([2, 3]);
+
+test('the linkedin preview stops after three lines with more right after the last visible text', function () {
+    Http::fake();
+    [$user] = composerPreviewWorkspace();
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $post = Post::factory()->forAccount($linkedin)->create([
+        'user_id' => $user->id,
+        'content' => "Package for backups\n\n- MySQL & PostgreSQL\n- Backups per day\n- Retention",
+        'media' => [],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@linkedin-preview @preview-more');
+
+    $layout = $page->script(<<<'JS'
+        (() => {
+            const box = document.querySelector('[data-testid="linkedin-preview"] [data-testid="preview-clamped-text"]');
+            const more = document.querySelector('[data-testid="linkedin-preview"] [data-testid="preview-more"]');
+            const lineHeight = parseFloat(getComputedStyle(box).lineHeight);
+            const bounds = box.getBoundingClientRect();
+            const range = document.createRange();
+            const lastLine = [...box.querySelectorAll('span span')].find((span) => span.textContent.includes('PostgreSQL'));
+            range.selectNodeContents(lastLine);
+            const textEnd = Math.max(...[...range.getClientRects()].map((rect) => rect.right));
+
+            return {
+                lines: Math.round(bounds.height / lineHeight),
+                keepsWholeText: box.textContent.includes('- Retention'),
+                moreOnLastLine: Math.abs(more.getBoundingClientRect().bottom - bounds.bottom) < 2,
+                moreAfterText: Math.abs(more.getBoundingClientRect().left - textEnd) < 2,
+                label: more.textContent.replace(/\s+/g, ' ').trim(),
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe([
+        'lines' => 3,
+        'keepsWholeText' => true,
+        'moreOnLastLine' => true,
+        'moreAfterText' => true,
+        'label' => '… more',
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the linkedin preview shows no more for a post that fits in three lines', function () {
+    Http::fake();
+    [$user] = composerPreviewWorkspace();
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $post = Post::factory()->forAccount($linkedin)->create([
+        'user_id' => $user->id,
+        'content' => 'A short post',
+        'media' => [],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
+    waitForOpen($page, '@post-composer-dialog');
+    waitForText($page, '@linkedin-preview @preview-clamped-text', 'A short post');
+
+    $page->assertMissing('@preview-more')
+        ->assertNoJavaScriptErrors();
+});
