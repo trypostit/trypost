@@ -27,14 +27,14 @@ function facebookPublication(SocialAccount $account, array $attributes = []): An
 /**
  * @return array{0: SocialAccount, 1: Post, 2: AnalyticsPublication, 3: AnalyticsPublication}
  */
-function facebookReelCountedTwice(): array
+function facebookReelCountedTwice(string $alias = 'video_id'): array
 {
     $account = SocialAccount::factory()->facebook()->create();
-    $post = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'video-9']);
-    $tracked = facebookPublication($account, ['remote_id' => 'video-9', 'post_id' => $post->id, 'origin' => PublicationOrigin::TryPost]);
+    $post = Post::factory()->forAccount($account)->facebookReel()->published()->create(['platform_post_id' => 'media-9']);
+    $tracked = facebookPublication($account, ['remote_id' => 'media-9', 'post_id' => $post->id, 'origin' => PublicationOrigin::TryPost]);
     $discovered = facebookPublication($account, [
         'remote_id' => 'page_post-1',
-        'provider_metadata' => ['video_id' => 'video-9'],
+        'provider_metadata' => [$alias => 'media-9'],
         'preview_metadata' => ['thumbnail_url' => 'https://scontent.xx.fbcdn.net/expired.jpg'],
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $discovered->id, 'comments_count' => 2]);
@@ -50,12 +50,12 @@ test('a dry run counts the duplicates and changes nothing', function () {
         ->assertSuccessful();
 
     expect($discovered->fresh())->not->toBeNull()
-        ->and($tracked->fresh()->remote_id)->toBe('video-9')
-        ->and($post->fresh()->platform_post_id)->toBe('video-9');
+        ->and($tracked->fresh()->remote_id)->toBe('media-9')
+        ->and($post->fresh()->platform_post_id)->toBe('media-9');
 });
 
-test('a facebook reel counted twice is merged into its trypost publication without queueing anything', function () {
-    [$account, $post, $tracked, $discovered] = facebookReelCountedTwice();
+test('a facebook post counted twice is merged into its trypost publication without queueing anything', function (string $alias) {
+    [$account, $post, $tracked, $discovered] = facebookReelCountedTwice($alias);
     Queue::fake();
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
@@ -65,18 +65,18 @@ test('a facebook reel counted twice is merged into its trypost publication witho
     expect($discovered->fresh())->toBeNull()
         ->and(AnalyticsPublication::query()->where('social_account_id', $account->id)->sole()->id)->toBe($tracked->id)
         ->and($tracked->fresh()->remote_id)->toBe('page_post-1')
-        ->and($tracked->fresh()->provider_metadata)->toEqual(['video_id' => 'video-9'])
+        ->and($tracked->fresh()->provider_metadata)->toEqual([$alias => 'media-9'])
         ->and($tracked->dailySnapshots()->sole()->comments_count)->toBe(2)
-        ->and($post->fresh()->platform_post_id)->toBe('page_post-1');
+        ->and($post->fresh()->platform_post_id)->toBe('media-9');
     Queue::assertNothingPushed();
-});
+})->with(['a video or reel' => 'video_id', 'a single photo' => 'photo_id']);
 
 test('a facebook reel published outside trypost is left alone', function () {
     $account = SocialAccount::factory()->facebook()->create();
     $external = facebookPublication($account, ['remote_id' => 'page_post-2', 'provider_metadata' => ['video_id' => 'video-other']]);
 
     $this->artisan('analytics:merge-facebook-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Merged 0 duplicate(s); 1 discovery(ies) are not a TryPost post.')
+        ->expectsOutputToContain('Merged 0 duplicate(s).')
         ->assertSuccessful();
 
     expect($external->fresh()->post_id)->toBeNull();

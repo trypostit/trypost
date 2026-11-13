@@ -36,6 +36,18 @@ class UpsertAnalyticsPublication
      */
     private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
+    /**
+     * The measured counts of a daily snapshot.
+     *
+     * @var list<string>
+     */
+    private const array SNAPSHOT_COUNTS = [
+        'reactions_count', 'comments_count', 'shares_count', 'saves_count',
+        'views_count', 'impressions_count', 'reach_count',
+        'engagement_count', 'exposure_count',
+        'watch_time_milliseconds', 'average_watch_time_milliseconds',
+    ];
+
     public function __construct(private readonly ResolveAnalyticsAccountKey $accountKeys) {}
 
     public function external(
@@ -88,9 +100,30 @@ class UpsertAnalyticsPublication
         );
     }
 
+    /**
+     * Moves a TryPost publication to the id the network reports, merging the
+     * discovery already stored under it, and moves the post to that id too.
+     */
     public function reconcileRemoteId(AnalyticsPublication $publication, string $remoteId): void
     {
-        DB::transaction(function () use ($publication, $remoteId): void {
+        $this->moveToRemoteId($publication, $remoteId, movePost: true);
+    }
+
+    /**
+     * Merges the discovery stored under `$remoteId` into a TryPost publication
+     * that the network reports under another id, while the post keeps the id it
+     * was published under: a Facebook video or reel is known by its video id to
+     * the post (repurpose skips what TryPost published by that id) and by its
+     * Page post id to discovery.
+     */
+    public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): void
+    {
+        $this->moveToRemoteId($publication, $remoteId, movePost: false);
+    }
+
+    private function moveToRemoteId(AnalyticsPublication $publication, string $remoteId, bool $movePost): void
+    {
+        DB::transaction(function () use ($movePost, $publication, $remoteId): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
 
             if ($current->remote_id === $remoteId || ! $current->post_id) {
@@ -122,13 +155,11 @@ class UpsertAnalyticsPublication
                         return;
                     }
 
-                    if ($snapshot->collected_at->greaterThan($existing->collected_at)) {
+                    if (self::replaces($snapshot, $existing)) {
                         $existing->fill($snapshot->only([
                             'collected_at', 'provider_observed_at', 'metrics',
-                            'reactions_count', 'comments_count', 'shares_count', 'saves_count',
-                            'views_count', 'impressions_count', 'reach_count',
-                            'engagement_count', 'exposure_count', 'exposure_kind',
-                            'watch_time_milliseconds', 'average_watch_time_milliseconds',
+                            ...self::SNAPSHOT_COUNTS,
+                            'exposure_kind',
                         ]))->save();
                     }
 
@@ -149,14 +180,38 @@ class UpsertAnalyticsPublication
             $current->remote_id = $remoteId;
             $current->save();
 
-            Post::query()->whereKey($current->post_id)->toBase()->update([
-                'platform_post_id' => $remoteId,
-                'platform_url' => $current->permalink,
-                'publication_updated_at' => now(),
-            ]);
+            if ($movePost) {
+                Post::query()->whereKey($current->post_id)->toBase()->update([
+                    'platform_post_id' => $remoteId,
+                    'platform_url' => $current->permalink,
+                    'publication_updated_at' => now(),
+                ]);
+            }
 
             $publication->setRawAttributes($current->getAttributes(), true);
         });
+    }
+
+    /**
+     * Two reads of the same post on one day: the one that measured more wins,
+     * so a video-only read never drops the comments a post read measured; on a
+     * tie, the newer one.
+     */
+    private static function replaces(AnalyticsPublicationDailySnapshot $incoming, AnalyticsPublicationDailySnapshot $kept): bool
+    {
+        $incomingCounts = self::measuredCounts($incoming);
+        $keptCounts = self::measuredCounts($kept);
+
+        if ($incomingCounts !== $keptCounts) {
+            return $incomingCounts > $keptCounts;
+        }
+
+        return $incoming->collected_at->greaterThan($kept->collected_at);
+    }
+
+    private static function measuredCounts(AnalyticsPublicationDailySnapshot $snapshot): int
+    {
+        return collect($snapshot->only(self::SNAPSHOT_COUNTS))->filter(fn (mixed $value): bool => filled($value))->count();
     }
 
     private function deleteImportedPost(string $postId): void

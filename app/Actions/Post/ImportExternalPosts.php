@@ -123,11 +123,7 @@ class ImportExternalPosts
                 return null;
             }
 
-            $existing = self::tryPostTarget($account, $publication);
-
-            if ($existing !== null) {
-                self::linkToTryPost($existing, $publication);
-
+            if (self::linkTryPostTarget($account, $publication)) {
                 return null;
             }
 
@@ -147,10 +143,10 @@ class ImportExternalPosts
     }
 
     /**
-     * Links an unlinked discovery to the TryPost post it is, or merges it into
-     * that post's publication. False when it is not a post TryPost published.
+     * Links an unlinked publication to the post TryPost published, the way the
+     * import does. False when it is not a post TryPost published.
      */
-    public static function mergeIntoTryPost(SocialAccount $account, string $publicationId): bool
+    public static function linkToTryPost(SocialAccount $account, string $publicationId): bool
     {
         return DB::transaction(function () use ($account, $publicationId): bool {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
@@ -159,35 +155,33 @@ class ImportExternalPosts
                 return false;
             }
 
-            $existing = self::tryPostTarget($account, $publication);
-
-            if ($existing === null) {
-                return false;
-            }
-
-            self::linkToTryPost($existing, $publication);
-
-            return true;
+            return self::linkTryPostTarget($account, $publication);
         });
     }
 
     /**
-     * A discovery of a post TryPost published. When the post is already tracked
-     * under another remote id (a Facebook video or reel saved under its video id
-     * and discovered under its Page post id), the discovery is merged into that
-     * publication, so Insights counts the post once.
+     * A publication of a post TryPost published is linked to it. When that post
+     * is already tracked under another remote id (a Facebook video or reel saved
+     * under its video id and discovered under its Page post id), the publication
+     * is merged into the tracked one, so Insights counts the post once.
      */
-    private static function linkToTryPost(Post $post, AnalyticsPublication $publication): void
+    private static function linkTryPostTarget(SocialAccount $account, AnalyticsPublication $publication): bool
     {
-        $tracked = $post->analyticsPublication;
+        $target = self::tryPostTarget($account, $publication);
 
-        if ($tracked === null) {
-            $publication->update(['post_id' => $post->id]);
-
-            return;
+        if (blank($target)) {
+            return false;
         }
 
-        app(UpsertAnalyticsPublication::class)->reconcileRemoteId($tracked, $publication->remote_id);
+        if (blank($target->analyticsPublication)) {
+            $publication->update(['post_id' => $target->id]);
+
+            return true;
+        }
+
+        app(UpsertAnalyticsPublication::class)->mergeDiscovery($target->analyticsPublication, $publication->remote_id);
+
+        return true;
     }
 
     public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post

@@ -334,3 +334,43 @@ test('a network that reports the type still corrects the type TryPost published'
 
     expect(AnalyticsPublication::sole()->content_type)->toBe(PublicationContentType::Reel);
 });
+
+test('merging two reads of the same day keeps the one that measured more, else the newer one', function (?int $trackedComments, ?int $discoveredComments, int $discoveredHoursLater, int $expectedViews) {
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $tracked = app(SyncTryPostPublication::class)->handle($post);
+    $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'page_post-1',
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $collectedAt = now()->subHours(3);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $tracked->id,
+        'date' => $collectedAt->toDateString(),
+        'collected_at' => $collectedAt->addHour(),
+        'views_count' => 52,
+        'comments_count' => $trackedComments,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $discovered->id,
+        'date' => $collectedAt->toDateString(),
+        'collected_at' => $collectedAt->addHour()->addHours($discoveredHoursLater),
+        'views_count' => 50,
+        'comments_count' => $discoveredComments,
+    ]);
+
+    app(UpsertAnalyticsPublication::class)->mergeDiscovery($tracked, 'page_post-1');
+
+    $snapshot = $tracked->dailySnapshots()->sole();
+
+    expect($snapshot->views_count)->toBe($expectedViews)
+        ->and($snapshot->comments_count)->toBe($expectedViews === 50 ? $discoveredComments : $trackedComments)
+        ->and($tracked->fresh()->remote_id)->toBe('page_post-1')
+        ->and($post->fresh()->platform_post_id)->toBe('video-9');
+})->with([
+    'an older read that measured more wins' => [null, 3, -1, 50],
+    'a newer read that measured less loses' => [4, null, 1, 52],
+    'a newer read that measured the same wins' => [null, null, 1, 50],
+]);
