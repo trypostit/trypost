@@ -172,6 +172,21 @@ return [
         'cancel' => '取消',
     ],
 
+    'list' => [
+        'search' => '按名称或 @用户名搜索',
+        'networks' => '网络',
+        'networks_search' => '搜索网络',
+        'no_networks' => '未找到网络',
+        'columns' => [
+            'channel' => '频道',
+            'timezone' => '时区',
+            'posting_times' => '发布时间',
+            'this_week' => '本周',
+        ],
+        'posting_times_per_week' => '每周 :count 次',
+        'no_results' => '没有符合搜索的频道。',
+    ],
+
     'settings_page' => [
         'subtitle' => '频道设置',
         'back' => '返回频道',

@@ -61,6 +61,8 @@ class ChannelController extends Controller
             'connectedChannels' => $accounts
                 ->map(fn (SocialAccount $account): array => [
                     ...SocialAccountResource::make($account)->resolve(),
+                    'timezone_option' => Timezone::option($account->timezone),
+                    'posting_times_per_week' => $account->posting_schedule?->slotCount() ?? 0,
                     ...data_get($goals, $account->id, [
                         'posting_goal' => null,
                         'sent_this_week' => 0,

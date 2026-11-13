@@ -172,6 +172,21 @@ return [
         'cancel' => 'İptal',
     ],
 
+    'list' => [
+        'search' => 'Ada veya @kullanıcı adına göre ara',
+        'networks' => 'Ağlar',
+        'networks_search' => 'Ağ ara',
+        'no_networks' => 'Ağ bulunamadı',
+        'columns' => [
+            'channel' => 'Kanal',
+            'timezone' => 'Saat dilimi',
+            'posting_times' => 'Saatler',
+            'this_week' => 'Bu hafta',
+        ],
+        'posting_times_per_week' => 'Haftada :count',
+        'no_results' => 'Aramanızla eşleşen kanal yok.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Kanal ayarları',
         'back' => 'Kanallara dön',

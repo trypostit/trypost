@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { IconPencil } from '@tabler/icons-vue';
+import { createReusableTemplate } from '@vueuse/core';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -18,9 +19,13 @@ const props = withDefaults(
         scheduled: number;
         goal: number;
         testId?: string;
+        /** Off where another control already opens the channel settings (the channels list): the progress shows, without its popover. */
+        interactive?: boolean;
     }>(),
-    { testId: 'publish-goal' },
+    { testId: 'publish-goal', interactive: true },
 );
+
+const [DefineSummary, ReuseSummary] = createReusableTemplate();
 
 const percent = computed(() =>
     Math.min(100, Math.round((props.sent / Math.max(props.goal, 1)) * 100)),
@@ -32,46 +37,57 @@ const toDo = computed(() =>
 </script>
 
 <template>
-    <Popover>
+    <DefineSummary>
+        <svg
+            viewBox="0 0 14 14"
+            class="size-3.5 shrink-0 -rotate-90"
+            aria-hidden="true"
+            :data-testid="`${testId}-pie`"
+            :data-percent="percent"
+        >
+            <circle
+                cx="7"
+                cy="7"
+                r="6.25"
+                fill="none"
+                stroke-width="1.5"
+                class="stroke-success"
+            />
+            <circle
+                v-if="percent > 0"
+                cx="7"
+                cy="7"
+                r="2.25"
+                fill="none"
+                stroke-width="4.5"
+                pathLength="100"
+                :stroke-dasharray="`${percent} 100`"
+                class="stroke-success"
+            />
+        </svg>
+            <span class="truncate">{{
+                $t('posts.publish.goal', {
+                    sent: String(sent),
+                    goal: String(goal),
+                })
+            }}</span>
+    </DefineSummary>
+
+    <span
+        v-if="!interactive"
+        class="flex max-w-full min-w-0 items-center gap-1 text-sm text-muted-foreground"
+        :data-testid="`${testId}-progress`"
+    >
+        <ReuseSummary />
+    </span>
+    <Popover v-else>
         <PopoverTrigger as-child>
             <button
                 type="button"
                 class="flex max-w-full min-w-0 items-center gap-1 rounded-md text-sm text-muted-foreground transition-control hover:text-foreground data-[state=open]:text-foreground"
                 :data-testid="`${testId}-progress`"
             >
-            <svg
-                viewBox="0 0 14 14"
-                class="size-3.5 shrink-0 -rotate-90"
-                aria-hidden="true"
-                :data-testid="`${testId}-pie`"
-                :data-percent="percent"
-            >
-                <circle
-                    cx="7"
-                    cy="7"
-                    r="6.25"
-                    fill="none"
-                    stroke-width="1.5"
-                    class="stroke-success"
-                />
-                <circle
-                    v-if="percent > 0"
-                    cx="7"
-                    cy="7"
-                    r="2.25"
-                    fill="none"
-                    stroke-width="4.5"
-                    pathLength="100"
-                    :stroke-dasharray="`${percent} 100`"
-                    class="stroke-success"
-                />
-            </svg>
-                <span class="truncate">{{
-                    $t('posts.publish.goal', {
-                        sent: String(sent),
-                        goal: String(goal),
-                    })
-                }}</span>
+                <ReuseSummary />
             </button>
         </PopoverTrigger>
         <PopoverContent

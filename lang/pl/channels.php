@@ -172,6 +172,21 @@ return [
         'cancel' => 'Anuluj',
     ],
 
+    'list' => [
+        'search' => 'Szukaj po nazwie lub @nazwie użytkownika',
+        'networks' => 'Sieci',
+        'networks_search' => 'Szukaj sieci',
+        'no_networks' => 'Nie znaleziono sieci',
+        'columns' => [
+            'channel' => 'Kanał',
+            'timezone' => 'Strefa czasowa',
+            'posting_times' => 'Godziny',
+            'this_week' => 'Ten tydzień',
+        ],
+        'posting_times_per_week' => ':count na tydzień',
+        'no_results' => 'Żaden kanał nie pasuje do wyszukiwania.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Ustawienia kanału',
         'back' => 'Wróć do kanałów',

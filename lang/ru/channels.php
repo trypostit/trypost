@@ -172,6 +172,21 @@ return [
         'cancel' => 'Отмена',
     ],
 
+    'list' => [
+        'search' => 'Поиск по имени или @имени пользователя',
+        'networks' => 'Сети',
+        'networks_search' => 'Поиск сетей',
+        'no_networks' => 'Сети не найдены',
+        'columns' => [
+            'channel' => 'Канал',
+            'timezone' => 'Часовой пояс',
+            'posting_times' => 'Время',
+            'this_week' => 'Эта неделя',
+        ],
+        'posting_times_per_week' => ':count в неделю',
+        'no_results' => 'Нет каналов по вашему запросу.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Настройки канала',
         'back' => 'Назад к каналам',

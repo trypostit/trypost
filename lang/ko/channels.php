@@ -172,6 +172,21 @@ return [
         'cancel' => '취소',
     ],
 
+    'list' => [
+        'search' => '이름 또는 @사용자 이름으로 검색',
+        'networks' => '네트워크',
+        'networks_search' => '네트워크 검색',
+        'no_networks' => '네트워크를 찾을 수 없습니다',
+        'columns' => [
+            'channel' => '채널',
+            'timezone' => '시간대',
+            'posting_times' => '게시 시간',
+            'this_week' => '이번 주',
+        ],
+        'posting_times_per_week' => '주 :count회',
+        'no_results' => '검색과 일치하는 채널이 없습니다.',
+    ],
+
     'settings_page' => [
         'subtitle' => '채널 설정',
         'back' => '채널로 돌아가기',

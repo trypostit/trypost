@@ -172,6 +172,21 @@ return [
         'cancel' => 'キャンセル',
     ],
 
+    'list' => [
+        'search' => '名前または@ユーザー名で検索',
+        'networks' => 'ネットワーク',
+        'networks_search' => 'ネットワークを検索',
+        'no_networks' => 'ネットワークが見つかりません',
+        'columns' => [
+            'channel' => 'チャンネル',
+            'timezone' => 'タイムゾーン',
+            'posting_times' => '投稿時間',
+            'this_week' => '今週',
+        ],
+        'posting_times_per_week' => '週:count回',
+        'no_results' => '検索に一致するチャンネルはありません。',
+    ],
+
     'settings_page' => [
         'subtitle' => 'チャンネル設定',
         'back' => 'チャンネルに戻る',

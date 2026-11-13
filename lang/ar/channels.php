@@ -172,6 +172,21 @@ return [
         'cancel' => 'إلغاء',
     ],
 
+    'list' => [
+        'search' => 'ابحث بالاسم أو @اسم المستخدم',
+        'networks' => 'الشبكات',
+        'networks_search' => 'ابحث في الشبكات',
+        'no_networks' => 'لم يتم العثور على شبكات',
+        'columns' => [
+            'channel' => 'القناة',
+            'timezone' => 'المنطقة الزمنية',
+            'posting_times' => 'أوقات النشر',
+            'this_week' => 'هذا الأسبوع',
+        ],
+        'posting_times_per_week' => ':count في الأسبوع',
+        'no_results' => 'لا توجد قنوات تطابق بحثك.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'إعدادات القناة',
         'back' => 'العودة إلى القنوات',

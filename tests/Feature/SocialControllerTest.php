@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostingSchedule;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -67,7 +68,7 @@ test('accounts index lists every account of the same network', function () {
     );
 });
 
-test('accounts index sends each channel posting goal and where this week stands', function () {
+test('accounts index sends each channel time zone, posting times per week, posting goal and where this week stands', function () {
     $this->travelTo(now('UTC')->next('Wednesday')->setTime(12, 0));
 
     $withGoal = SocialAccount::factory()->create([
@@ -75,6 +76,7 @@ test('accounts index sends each channel posting goal and where this week stands'
         'platform' => Platform::LinkedIn,
         'timezone' => 'UTC',
         'posting_goal' => 5,
+        'posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00')->withTime(1, '15:00')->withTime(3, '09:00'),
     ]);
     $withoutGoal = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -99,7 +101,10 @@ test('accounts index sends each channel posting goal and where this week stands'
                 ->and(data_get($byId, "{$withGoal->id}.sent_this_week"))->toBe(1)
                 ->and(data_get($byId, "{$withGoal->id}.scheduled_this_week"))->toBe(1)
                 ->and(data_get($byId, "{$withoutGoal->id}.posting_goal"))->toBeNull()
-                ->and(data_get($byId, "{$withoutGoal->id}.sent_this_week"))->toBe(0);
+                ->and(data_get($byId, "{$withoutGoal->id}.sent_this_week"))->toBe(0)
+                ->and(data_get($byId, "{$withGoal->id}.posting_times_per_week"))->toBe(3)
+                ->and(data_get($byId, "{$withoutGoal->id}.posting_times_per_week"))->toBe(0)
+                ->and(data_get($byId, "{$withGoal->id}.timezone_option"))->toBe(['value' => 'UTC', 'label' => 'UTC', 'offset' => 'GMT']);
 
             return true;
         })

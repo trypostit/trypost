@@ -6,6 +6,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostingSchedule;
 
 function channelsSettingsAdmin(): User
 {
@@ -200,7 +201,7 @@ test('an instagram login channel offers to link a facebook page, which reconnect
     $page->assertNoJavaScriptErrors();
 });
 
-test('each channel row shows its weekly posting goal, or a link to set one', function () {
+test('each channel row shows its weekly posting goal without a popover, or a link to set one', function () {
     $user = channelsSettingsAdmin();
     connectAiTo($user);
     $withGoal = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id, 'posting_goal' => 5]);
@@ -213,17 +214,56 @@ test('each channel row shows its weekly posting goal, or a link to set one', fun
     $page->assertSeeIn("@channel-goal-{$withGoal->id}-progress", '0/5');
 
     $page->click("@channel-goal-{$withGoal->id}-progress");
-    waitForOpen($page, "@channel-goal-{$withGoal->id}-popover");
-    waitForState(
-        $page,
-        "@channel-goal-{$withGoal->id}-popover",
-        'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().right <= window.innerWidth + 1 && element.getBoundingClientRect().bottom <= window.innerHeight + 1',
-    );
-    $page->keys("@channel-goal-{$withGoal->id}-popover", 'Escape');
-    waitForGone($page, "@channel-goal-{$withGoal->id}-popover");
+
+    expect($page->script("document.querySelectorAll('[data-testid=\"channel-goal-{$withGoal->id}-popover\"]').length"))->toBe(0);
 
     $page->click("@channel-goal-set-{$withoutGoal->id}");
     waitForPath($page, route('app.channels.settings', $withoutGoal, absolute: false));
 
     $page->assertNoJavaScriptErrors();
+});
+
+test('each channel row shows its time zone and posting times, and the list is searched and filtered by network', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $linkedin = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'display_name' => 'Acme LinkedIn',
+        'timezone' => 'America/Sao_Paulo',
+        'posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00')->withTime(3, '09:00'),
+    ]);
+    $x = SocialAccount::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform' => Platform::X,
+        'display_name' => 'Beta X',
+        'timezone' => 'UTC',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-row-{$linkedin->id}");
+
+    $page->assertSeeIn("@channel-timezone-{$linkedin->id}", 'Sao Paulo')
+        ->assertSeeIn("@channel-posting-times-{$linkedin->id}", __('channels.list.posting_times_per_week', ['count' => 2]))
+        ->assertSeeIn("@channel-posting-times-{$x->id}", __('channels.settings_page.day_empty'))
+        ->assertSeeIn('@settings-page-total', '(2)');
+
+    $page->type('@header-search-input', 'beta');
+    waitForGone($page, "@channel-row-{$linkedin->id}");
+    $page->assertVisible("@channel-row-{$x->id}");
+
+    $page->type('@header-search-input', 'nothing like this');
+    waitFor($page, '@channels-no-results');
+
+    $page->clear('@header-search-input');
+    waitFor($page, "@channel-row-{$linkedin->id}");
+
+    $page->click('@channels-network-filter');
+    waitFor($page, '@channels-network-option-linkedin');
+    waitForState($page, '@channels-network-option-linkedin', 'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().bottom <= window.innerHeight');
+    $page->click('@channels-network-option-linkedin');
+    waitForGone($page, "@channel-row-{$x->id}");
+
+    $page->assertVisible("@channel-row-{$linkedin->id}")
+        ->assertNoJavaScriptErrors();
 });

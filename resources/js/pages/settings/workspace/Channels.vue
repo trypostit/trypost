@@ -7,26 +7,53 @@ import ChannelListItem from '@/components/channels/ChannelListItem.vue';
 import ChannelsEmptyIllustration from '@/components/channels/ChannelsEmptyIllustration.vue';
 import DisconnectChannelDialog from '@/components/channels/DisconnectChannelDialog.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import NetworkFilter from '@/components/NetworkFilter.vue';
+import SettingsSearch from '@/components/settings/SettingsSearch.vue';
 import { Button } from '@/components/ui/button';
 import { orderChannels } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
+import { blank, filled } from '@/lib/helpers';
+import { filterBySearch } from '@/lib/search';
 import { Platform } from '@/types/platform';
 import type {
     AvailablePlatform,
+    ChannelListRow,
     ConnectedAccount,
-    PostingGoalProgress,
 } from '@/types/social-account';
 
-type ChannelWithGoal = ConnectedAccount & PostingGoalProgress;
-
 const props = defineProps<{
-    connectedChannels: ChannelWithGoal[];
+    connectedChannels: ChannelListRow[];
 }>();
 
-const channels = computed<ChannelWithGoal[]>(() =>
+const channels = computed<ChannelListRow[]>(() =>
     orderChannels(props.connectedChannels),
+);
+
+const search = ref('');
+const selectedNetworks = ref<string[]>([]);
+
+/** The networks of the connected channels, each once, in channel order. */
+const networks = computed(() => [
+    ...new Set(channels.value.map((channel) => channel.network)),
+]);
+
+const visibleChannels = computed<ChannelListRow[]>(() =>
+    filterBySearch(
+        channels.value.filter(
+            (channel) =>
+                blank(selectedNetworks.value) ||
+                selectedNetworks.value.includes(channel.network),
+        ),
+        search.value,
+        (channel) => [
+            channel.display_name,
+            channel.username,
+            channel.handle_label,
+        ],
+    ),
 );
 
 const page = usePage();
@@ -60,7 +87,9 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
     <SettingsLayout
         :title="$t('channels.title')"
         :description="$t('channels.description')"
-        :centered="channels.length === 0"
+        :centered="blank(channels)"
+        :total="filled(channels) ? channels.length : null"
+        wide
     >
         <template #actions>
             <Button data-testid="channels-connect" @click="openConnectDialog()">
@@ -69,22 +98,62 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
             </Button>
         </template>
 
-            <ul v-if="channels.length > 0" class="flex flex-col gap-3">
-                <li
-                    v-for="channel in channels"
-                    :key="channel.id"
-                    :data-testid="`channel-list-row-${channel.id}`"
-                >
-                    <ChannelListItem
-                        :channel="channel"
-                        :can-link-facebook="canLinkFacebook(channel)"
-                        :goal="channel"
-                        @reconnect="reconnectChannel"
-                        @link-facebook="linkFacebook"
-                        @disconnect="disconnectChannel"
+            <div v-if="filled(channels)" class="flex flex-col gap-3">
+                <div class="flex items-center gap-2" data-testid="channels-toolbar">
+                    <SettingsSearch
+                        v-model="search"
+                        class="min-w-0 flex-1"
+                        :placeholder="$t('channels.list.search')"
+                        compact
                     />
-                </li>
-            </ul>
+                    <NetworkFilter
+                        v-if="networks.length > 1"
+                        v-model="selectedNetworks"
+                        :networks="networks"
+                        test-id="channels-network"
+                        sheet-below-sm
+                    />
+                </div>
+
+                <div
+                    class="overflow-hidden rounded-xl border border-border bg-card"
+                    data-testid="channels-list"
+                >
+                    <div
+                        class="hidden gap-x-3 border-b border-border bg-secondary/50 px-4 py-2 text-xs font-medium text-muted-foreground md:grid"
+                        :class="CHANNEL_LIST_COLUMNS"
+                        aria-hidden="true"
+                    >
+                        <span>{{ $t('channels.list.columns.channel') }}</span>
+                        <span>{{ $t('channels.list.columns.timezone') }}</span>
+                        <span>{{ $t('channels.list.columns.posting_times') }}</span>
+                        <span>{{ $t('channels.list.columns.this_week') }}</span>
+                        <span />
+                    </div>
+                    <ul class="divide-y divide-border">
+                        <li
+                            v-for="channel in visibleChannels"
+                            :key="channel.id"
+                            :data-testid="`channel-list-row-${channel.id}`"
+                        >
+                            <ChannelListItem
+                                :channel="channel"
+                                :can-link-facebook="canLinkFacebook(channel)"
+                                @reconnect="reconnectChannel"
+                                @link-facebook="linkFacebook"
+                                @disconnect="disconnectChannel"
+                            />
+                        </li>
+                    </ul>
+                    <p
+                        v-if="blank(visibleChannels)"
+                        class="px-4 py-10 text-center text-sm text-muted-foreground"
+                        data-testid="channels-no-results"
+                    >
+                        {{ $t('channels.list.no_results') }}
+                    </p>
+                </div>
+            </div>
 
             <EmptyState
                 v-else

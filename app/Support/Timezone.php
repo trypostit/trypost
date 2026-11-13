@@ -7,6 +7,7 @@ namespace App\Support;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use IntlTimeZone;
 
 class Timezone
@@ -45,21 +46,30 @@ class Timezone
     {
         $now = new DateTimeImmutable('now');
 
-        return array_map(function (string $identifier) use ($now): array {
-            $seconds = (new DateTimeZone($identifier))->getOffset($now);
-            $sign = $seconds < 0 ? '-' : '+';
-            $hours = intdiv(abs($seconds), 3600);
-            $minutes = intdiv(abs($seconds) % 3600, 60);
-            $offset = $seconds === 0
-                ? 'GMT'
-                : ($minutes === 0 ? "GMT{$sign}{$hours}" : sprintf('GMT%s%d:%02d', $sign, $hours, $minutes));
-            $segments = explode('/', $identifier);
+        return array_map(fn (string $identifier): array => self::option($identifier, $now), DateTimeZone::listIdentifiers());
+    }
 
-            return [
-                'value' => $identifier,
-                'label' => str_replace('_', ' ', (string) end($segments)),
-                'offset' => $offset,
-            ];
-        }, DateTimeZone::listIdentifiers());
+    /**
+     * One time zone as the pickers show it: its city ("Sao Paulo") and its
+     * current offset ("GMT-3").
+     *
+     * @return array{value: string, label: string, offset: string}
+     */
+    public static function option(string $identifier, ?DateTimeImmutable $now = null): array
+    {
+        $identifier = self::normalize($identifier);
+        $seconds = (new DateTimeZone($identifier))->getOffset($now ?? new DateTimeImmutable('now'));
+        $sign = $seconds < 0 ? '-' : '+';
+        $hours = intdiv(abs($seconds), 3600);
+        $minutes = intdiv(abs($seconds) % 3600, 60);
+        $offset = $seconds === 0
+            ? 'GMT'
+            : ($minutes === 0 ? "GMT{$sign}{$hours}" : sprintf('GMT%s%d:%02d', $sign, $hours, $minutes));
+
+        return [
+            'value' => $identifier,
+            'label' => Str::of($identifier)->afterLast('/')->replace('_', ' ')->toString(),
+            'offset' => $offset,
+        ];
     }
 }

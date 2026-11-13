@@ -172,6 +172,21 @@ return [
         'cancel' => 'Ακύρωση',
     ],
 
+    'list' => [
+        'search' => 'Αναζήτηση με όνομα ή @όνομα χρήστη',
+        'networks' => 'Δίκτυα',
+        'networks_search' => 'Αναζήτηση δικτύων',
+        'no_networks' => 'Δεν βρέθηκαν δίκτυα',
+        'columns' => [
+            'channel' => 'Κανάλι',
+            'timezone' => 'Ζώνη ώρας',
+            'posting_times' => 'Ώρες',
+            'this_week' => 'Αυτή την εβδομάδα',
+        ],
+        'posting_times_per_week' => ':count την εβδομάδα',
+        'no_results' => 'Κανένα κανάλι δεν ταιριάζει με την αναζήτηση.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Ρυθμίσεις καναλιού',
         'back' => 'Πίσω στα κανάλια',

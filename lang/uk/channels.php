@@ -172,6 +172,21 @@ return [
         'cancel' => 'Скасувати',
     ],
 
+    'list' => [
+        'search' => 'Пошук за назвою або @іменем користувача',
+        'networks' => 'Мережі',
+        'networks_search' => 'Пошук мереж',
+        'no_networks' => 'Мережі не знайдено',
+        'columns' => [
+            'channel' => 'Канал',
+            'timezone' => 'Часовий пояс',
+            'posting_times' => 'Час',
+            'this_week' => 'Цей тиждень',
+        ],
+        'posting_times_per_week' => ':count на тиждень',
+        'no_results' => 'Немає каналів за вашим запитом.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Налаштування каналу',
         'back' => 'Назад до каналів',

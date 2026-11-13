@@ -9,6 +9,7 @@ import {
     IconSettings,
     IconTrash,
 } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
@@ -22,25 +23,23 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
+import { filled } from '@/lib/helpers';
 import { settings as settingsRoute } from '@/routes/app/channels';
 import {
     accountTypeKey,
     isConnectionLost,
+    type ChannelListRow,
     type ConnectedAccount,
-    type PostingGoalProgress,
 } from '@/types/social-account';
 
 const props = withDefaults(
     defineProps<{
-        channel: ConnectedAccount;
-        showSettings?: boolean;
+        channel: ChannelListRow;
         canLinkFacebook?: boolean;
-        goal?: PostingGoalProgress | null;
     }>(),
     {
-        showSettings: true,
         canLinkFacebook: false,
-        goal: null,
     },
 );
 
@@ -53,88 +52,127 @@ const emit = defineEmits<{
 const lost = computed(() => isConnectionLost(props.channel));
 
 const typeKey = computed(() => accountTypeKey(props.channel));
+
+/** The network and the handle under the name: "Instagram · @trypost.it". */
+const networkLine = computed((): string => {
+    const network = typeKey.value
+        ? trans(typeKey.value)
+        : getPlatformLabel(props.channel.platform);
+
+    return filled(props.channel.handle_label)
+        ? `${network} · ${props.channel.handle_label}`
+        : network;
+});
 </script>
 
 <template>
     <div
-        class="flex flex-wrap items-center gap-x-2 gap-y-3 rounded-xl border border-border bg-card p-4 sm:flex-nowrap sm:gap-3"
+        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3"
+        :class="CHANNEL_LIST_COLUMNS"
         :data-testid="`channel-row-${channel.id}`"
     >
-        <ChannelAvatar
-            :status="channel.status"
-            :account-id="channel.id"
-            :platform="channel.platform"
-            :src="channel.avatar_url"
-            :verified="channel.verified_badge"
-            :name="channel.display_name || channel.username"
-            :size="40"
-            ring="card"
-        />
-
-        <div class="min-w-0 flex-1">
-            <p
-                class="truncate text-sm leading-tight font-emphasis text-foreground"
-                :data-testid="`channel-name-${channel.id}`"
-            >
-                {{ channel.display_name || channel.username }}
-            </p>
-            <p
-                v-if="lost"
-                class="flex min-w-0 items-start gap-1.5 text-sm text-destructive sm:items-center"
-                :data-testid="`channel-connection-lost-${channel.id}`"
-            >
-                <IconAlertCircle class="mt-0.5 size-4 shrink-0 sm:mt-0" />
-                <span class="sm:truncate">{{ $t('channels.connection_lost_hint') }}</span>
-            </p>
-            <div
-                v-else
-                class="flex min-w-0 flex-col text-sm text-muted-foreground sm:flex-row sm:items-center sm:gap-x-2"
-            >
-                <span class="truncate">{{
-                    typeKey
-                        ? $t(typeKey)
-                        : getPlatformLabel(channel.platform)
-                }}</span>
-                <template v-if="goal">
-                    <span aria-hidden="true" class="max-sm:hidden">·</span>
-                    <GoalProgress
-                        v-if="goal.posting_goal !== null"
-                        :channel-id="channel.id"
-                        :sent="goal.sent_this_week"
-                        :scheduled="goal.scheduled_this_week"
-                        :goal="goal.posting_goal"
-                        :test-id="`channel-goal-${channel.id}`"
-                    />
-                    <Link
-                        v-else
-                        :href="settingsRoute.url(channel.id)"
-                        class="truncate rounded-md transition-control hover:text-foreground"
-                        :data-testid="`channel-goal-set-${channel.id}`"
-                    >
-                        {{ $t('channels.set_goal') }}
-                    </Link>
-                </template>
+        <div class="flex min-w-0 items-center gap-3">
+            <ChannelAvatar
+                :status="channel.status"
+                :account-id="channel.id"
+                :platform="channel.platform"
+                :src="channel.avatar_url"
+                :verified="channel.verified_badge"
+                :name="channel.display_name || channel.username"
+                :size="32"
+                ring="card"
+            />
+            <div class="min-w-0">
+                <p
+                    class="truncate text-sm leading-tight font-emphasis text-foreground"
+                    :data-testid="`channel-name-${channel.id}`"
+                >
+                    {{ channel.display_name || channel.username }}
+                </p>
+                <p
+                    v-if="lost"
+                    class="flex min-w-0 items-start gap-1.5 text-sm text-destructive"
+                    :data-testid="`channel-connection-lost-${channel.id}`"
+                >
+                    <IconAlertCircle class="mt-0.5 size-4 shrink-0" />
+                    <span>{{ $t('channels.connection_lost_hint') }}</span>
+                </p>
+                <p
+                    v-else
+                    class="truncate text-sm text-muted-foreground"
+                    :title="networkLine"
+                    :data-testid="`channel-network-${channel.id}`"
+                >
+                    {{ networkLine }}
+                </p>
             </div>
         </div>
 
-        <Button
-            v-if="lost"
-            size="sm"
-            class="shrink-0 max-sm:order-last max-sm:w-full"
-            :data-testid="`channel-reconnect-${channel.id}`"
-            @click="emit('reconnect', channel)"
+        <div
+            class="col-span-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm max-md:order-3 max-md:ps-11 md:contents"
         >
-            <IconRefresh class="size-4" />
-            {{ $t('channels.reconnect') }}
-        </Button>
-
-        <div class="flex shrink-0 items-center">
-            <Button
-                v-if="showSettings"
-                as-child
-                variant="ghost"
-                size="icon"
+            <p
+                class="min-w-0 truncate text-foreground"
+                :title="channel.timezone_option.value"
+                :data-testid="`channel-timezone-${channel.id}`"
             >
+                {{ channel.timezone_option.label }}
+                <span
+                    v-if="channel.timezone_option.label !== 'UTC'"
+                    class="text-muted-foreground"
+                    >{{ channel.timezone_option.offset }}</span
+                >
+            </p>
+            <p
+                class="min-w-0 truncate"
+                :class="
+                    channel.posting_times_per_week > 0
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                "
+                :data-testid="`channel-posting-times-${channel.id}`"
+            >
+                {{
+                    channel.posting_times_per_week > 0
+                        ? $t('channels.list.posting_times_per_week', {
+                              count: String(channel.posting_times_per_week),
+                          })
+                        : $t('channels.settings_page.day_empty')
+                }}
+            </p>
+            <div class="flex min-w-0 text-muted-foreground">
+                <GoalProgress
+                    v-if="channel.posting_goal !== null"
+                    :channel-id="channel.id"
+                    :sent="channel.sent_this_week"
+                    :scheduled="channel.scheduled_this_week"
+                    :goal="channel.posting_goal"
+                    :test-id="`channel-goal-${channel.id}`"
+                    :interactive="false"
+                />
+                <Link
+                    v-else
+                    :href="settingsRoute.url(channel.id)"
+                    class="truncate rounded-md transition-control hover:text-foreground"
+                    :data-testid="`channel-goal-set-${channel.id}`"
+                >
+                    {{ $t('channels.set_goal') }}
+                </Link>
+            </div>
+        </div>
+
+        <div class="flex shrink-0 items-center justify-end gap-1 max-md:order-2">
+            <Button
+                v-if="lost"
+                size="sm"
+                class="max-md:hidden"
+                :data-testid="`channel-reconnect-${channel.id}`"
+                @click="emit('reconnect', channel)"
+            >
+                <IconRefresh class="size-4" />
+                {{ $t('channels.reconnect') }}
+            </Button>
+            <Button v-else as-child variant="ghost" size="icon">
                 <Link
                     :href="settingsRoute.url(channel.id)"
                     :aria-label="$t('channels.settings')"
@@ -195,5 +233,16 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
+
+        <Button
+            v-if="lost"
+            size="sm"
+            class="col-span-2 order-4 md:hidden"
+            :data-testid="`channel-reconnect-phone-${channel.id}`"
+            @click="emit('reconnect', channel)"
+        >
+            <IconRefresh class="size-4" />
+            {{ $t('channels.reconnect') }}
+        </Button>
     </div>
 </template>

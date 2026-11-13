@@ -1,5 +1,6 @@
 import type { MediaType } from '@/lib/mediaType';
 import { Platform } from '@/types/platform';
+import type { TimezoneOption } from '@/types/posting-schedule';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface AvailablePlatform {
@@ -17,6 +18,12 @@ export interface PostingGoalProgress {
     posting_goal: number | null;
     sent_this_week: number;
     scheduled_this_week: number;
+}
+
+/** A connected channel as the channels settings list shows it. */
+export interface ChannelListRow extends ConnectedAccount, PostingGoalProgress {
+    timezone_option: TimezoneOption;
+    posting_times_per_week: number;
 }
 
 export interface ConnectedAccount {

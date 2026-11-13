@@ -172,6 +172,21 @@ return [
         'cancel' => 'Annuleren',
     ],
 
+    'list' => [
+        'search' => 'Zoeken op naam of @gebruikersnaam',
+        'networks' => 'Netwerken',
+        'networks_search' => 'Netwerken zoeken',
+        'no_networks' => 'Geen netwerken gevonden',
+        'columns' => [
+            'channel' => 'Kanaal',
+            'timezone' => 'Tijdzone',
+            'posting_times' => 'Tijden',
+            'this_week' => 'Deze week',
+        ],
+        'posting_times_per_week' => ':count per week',
+        'no_results' => 'Geen kanalen gevonden voor je zoekopdracht.',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Kanaalinstellingen',
         'back' => 'Terug naar kanalen',
