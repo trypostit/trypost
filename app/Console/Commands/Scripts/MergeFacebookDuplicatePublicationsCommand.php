@@ -33,6 +33,7 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
         }
 
         $merged = new Collection;
+        $verb = $dryRun ? 'Would merge' : 'Merged';
 
         AnalyticsPublication::query()
             ->where('platform', Platform::Facebook)
@@ -43,20 +44,20 @@ class MergeFacebookDuplicatePublicationsCommand extends Command
             ->with('socialAccount')
             ->lazyById()
             ->each(function (AnalyticsPublication $publication) use ($dryRun, $merged): void {
-                $target = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => ImportExternalPosts::tryPostTarget($account, $publication));
+                $post = transform($publication->socialAccount, fn (SocialAccount $account): ?Post => $dryRun
+                    ? ImportExternalPosts::tryPostTarget($account, $publication)
+                    : ImportExternalPosts::linkToTryPost($account, $publication->id));
 
-                if (blank($target) || (! $dryRun && ! ImportExternalPosts::linkToTryPost($publication->socialAccount, $publication->id))) {
-                    return;
+                if (filled($post)) {
+                    $merged->push($post->content_type->value);
                 }
-
-                $merged->push($target->content_type->value);
             });
 
         $this->table(
-            ['TryPost post type', $dryRun ? 'Would merge' : 'Merged'],
+            ['TryPost post type', $verb],
             $merged->countBy()->sortKeys()->map(fn (int $count, string $type): array => [$type, $count])->values()->all(),
         );
-        $this->info(($dryRun ? 'Would merge' : 'Merged')." {$merged->count()} duplicate(s).");
+        $this->info("{$verb} {$merged->count()} duplicate(s).");
 
         return self::SUCCESS;
     }

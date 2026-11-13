@@ -7,6 +7,7 @@ namespace App\Actions\Analytics;
 use App\Actions\Media\DeleteOwnedMedia;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\TryPostPublicationIdentity;
+use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
@@ -37,14 +38,13 @@ class UpsertAnalyticsPublication
     private const array METRICS_ONLY_PROVIDER_METADATA = ['thread_polls'];
 
     /**
-     * The measured counts of a daily snapshot.
+     * The counts of a daily snapshot that stand on their own (exposure goes with its kind).
      *
      * @var list<string>
      */
     private const array SNAPSHOT_COUNTS = [
         'reactions_count', 'comments_count', 'shares_count', 'saves_count',
-        'views_count', 'impressions_count', 'reach_count',
-        'engagement_count', 'exposure_count',
+        'views_count', 'impressions_count', 'reach_count', 'engagement_count',
         'watch_time_milliseconds', 'average_watch_time_milliseconds',
     ];
 
@@ -114,20 +114,20 @@ class UpsertAnalyticsPublication
      * that the network reports under another id, while the post keeps the id it
      * was published under: a Facebook video or reel is known by its video id to
      * the post (repurpose skips what TryPost published by that id) and by its
-     * Page post id to discovery.
+     * Page post id to discovery. False when there was no discovery to merge.
      */
-    public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): void
+    public function mergeDiscovery(AnalyticsPublication $publication, string $remoteId): bool
     {
-        $this->moveToRemoteId($publication, $remoteId, movePost: false);
+        return $this->moveToRemoteId($publication, $remoteId, movePost: false);
     }
 
-    private function moveToRemoteId(AnalyticsPublication $publication, string $remoteId, bool $movePost): void
+    private function moveToRemoteId(AnalyticsPublication $publication, string $remoteId, bool $movePost): bool
     {
-        DB::transaction(function () use ($movePost, $publication, $remoteId): void {
+        return DB::transaction(function () use ($movePost, $publication, $remoteId): bool {
             $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
 
             if ($current->remote_id === $remoteId || ! $current->post_id) {
-                return;
+                return false;
             }
 
             $discovered = AnalyticsPublication::query()
@@ -137,6 +137,10 @@ class UpsertAnalyticsPublication
                 ->where('remote_id', $remoteId)
                 ->lockForUpdate()
                 ->first();
+
+            if (! $movePost && blank($discovered)) {
+                return false;
+            }
 
             if ($discovered) {
                 if ($discovered->post_id && $discovered->post_id !== $current->post_id) {
@@ -155,13 +159,9 @@ class UpsertAnalyticsPublication
                         return;
                     }
 
-                    if (self::replaces($snapshot, $existing)) {
-                        $existing->fill($snapshot->only([
-                            'collected_at', 'provider_observed_at', 'metrics',
-                            ...self::SNAPSHOT_COUNTS,
-                            'exposure_kind',
-                        ]))->save();
-                    }
+                    $existing->fill($snapshot->collected_at->greaterThan($existing->collected_at)
+                        ? self::combinedSnapshot($snapshot, $existing)
+                        : self::combinedSnapshot($existing, $snapshot))->save();
 
                     $snapshot->delete();
                 });
@@ -189,29 +189,39 @@ class UpsertAnalyticsPublication
             }
 
             $publication->setRawAttributes($current->getAttributes(), true);
+
+            return true;
         });
     }
 
     /**
-     * Two reads of the same post on one day: the one that measured more wins,
-     * so a video-only read never drops the comments a post read measured; on a
-     * tie, the newer one.
+     * Two reads of the same post on one day become one: each value comes from
+     * the newer read, or from the older one where the newer did not measure it,
+     * so a video-only read never drops the comments a post read measured.
+     *
+     * @return array<string, mixed>
      */
-    private static function replaces(AnalyticsPublicationDailySnapshot $incoming, AnalyticsPublicationDailySnapshot $kept): bool
+    private static function combinedSnapshot(AnalyticsPublicationDailySnapshot $newer, AnalyticsPublicationDailySnapshot $older): array
     {
-        $incomingCounts = self::measuredCounts($incoming);
-        $keptCounts = self::measuredCounts($kept);
+        $exposure = filled($newer->exposure_count) ? $newer : $older;
+        $metrics = collect($older->metrics ?? [])
+            ->merge(collect($newer->metrics ?? [])->filter(fn (mixed $metric, string $key): bool => self::isMeasured($metric) || ! self::isMeasured(data_get($older->metrics, $key))))
+            ->all();
 
-        if ($incomingCounts !== $keptCounts) {
-            return $incomingCounts > $keptCounts;
-        }
-
-        return $incoming->collected_at->greaterThan($kept->collected_at);
+        return [
+            'collected_at' => $newer->collected_at,
+            'provider_observed_at' => $newer->provider_observed_at ?? $older->provider_observed_at,
+            'metrics' => $metrics ?: null,
+            ...collect(self::SNAPSHOT_COUNTS)->mapWithKeys(fn (string $column): array => [$column => data_get($newer, $column) ?? data_get($older, $column)])->all(),
+            'exposure_count' => $exposure->exposure_count,
+            'exposure_kind' => $exposure->exposure_kind,
+        ];
     }
 
-    private static function measuredCounts(AnalyticsPublicationDailySnapshot $snapshot): int
+    private static function isMeasured(mixed $metric): bool
     {
-        return collect($snapshot->only(self::SNAPSHOT_COUNTS))->filter(fn (mixed $value): bool => filled($value))->count();
+        return data_get($metric, 'availability') === MetricAvailability::Available->value
+            && is_numeric(data_get($metric, 'value'));
     }
 
     private function deleteImportedPost(string $postId): void

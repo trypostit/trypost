@@ -123,7 +123,11 @@ class ImportExternalPosts
                 return null;
             }
 
-            if (self::linkTryPostTarget($account, $publication)) {
+            $target = self::tryPostTarget($account, $publication);
+
+            if (filled($target)) {
+                self::linkToPost($target, $publication);
+
                 return null;
             }
 
@@ -144,18 +148,21 @@ class ImportExternalPosts
 
     /**
      * Links an unlinked publication to the post TryPost published, the way the
-     * import does. False when it is not a post TryPost published.
+     * import does. Returns that post, or null when it is not a post TryPost
+     * published or there was nothing to link.
      */
-    public static function linkToTryPost(SocialAccount $account, string $publicationId): bool
+    public static function linkToTryPost(SocialAccount $account, string $publicationId): ?Post
     {
-        return DB::transaction(function () use ($account, $publicationId): bool {
+        return DB::transaction(function () use ($account, $publicationId): ?Post {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
             if (blank($publication) || filled($publication->post_id)) {
-                return false;
+                return null;
             }
 
-            return self::linkTryPostTarget($account, $publication);
+            $target = self::tryPostTarget($account, $publication);
+
+            return filled($target) && self::linkToPost($target, $publication) ? $target : null;
         });
     }
 
@@ -165,23 +172,15 @@ class ImportExternalPosts
      * under its video id and discovered under its Page post id), the publication
      * is merged into the tracked one, so Insights counts the post once.
      */
-    private static function linkTryPostTarget(SocialAccount $account, AnalyticsPublication $publication): bool
+    private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
-        $target = self::tryPostTarget($account, $publication);
-
-        if (blank($target)) {
-            return false;
-        }
-
-        if (blank($target->analyticsPublication)) {
-            $publication->update(['post_id' => $target->id]);
+        if (blank($post->analyticsPublication)) {
+            $publication->update(['post_id' => $post->id]);
 
             return true;
         }
 
-        app(UpsertAnalyticsPublication::class)->mergeDiscovery($target->analyticsPublication, $publication->remote_id);
-
-        return true;
+        return app(UpsertAnalyticsPublication::class)->mergeDiscovery($post->analyticsPublication, $publication->remote_id);
     }
 
     public static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
