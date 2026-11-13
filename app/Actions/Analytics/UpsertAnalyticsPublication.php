@@ -11,6 +11,7 @@ use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\PublishStatus;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
@@ -121,6 +122,10 @@ class UpsertAnalyticsPublication
                 return false;
             }
 
+            if (! $movePost && $current->remote_id !== $publication->remote_id) {
+                return false;
+            }
+
             $discovered = AnalyticsPublication::query()
                 ->where('workspace_id', $current->workspace_id)
                 ->where('social_account_key', $current->social_account_key)
@@ -162,6 +167,10 @@ class UpsertAnalyticsPublication
                     'provider_synced_at' => $discovered->provider_synced_at ?? $current->provider_synced_at,
                     'excerpt' => $discovered->excerpt ?? $current->excerpt,
                     'provider_published_at' => $discovered->provider_published_at ?? $current->provider_published_at,
+                    ...($movePost ? [] : [
+                        'content_type' => $discovered->content_type,
+                        'provider_content_type' => $discovered->provider_content_type ?? $current->provider_content_type,
+                    ]),
                 ]);
                 $discovered->delete();
             }
@@ -333,7 +342,7 @@ class UpsertAnalyticsPublication
             foreach ([
                 'provider_content_type' => $keepsDiscovery ? null : $providerContentType,
                 'permalink' => $keepsDiscovery ? null : $permalink,
-                'excerpt' => $excerpt,
+                'excerpt' => $keepsDiscovery ? null : $excerpt,
                 'preview_metadata' => $previewMetadata,
                 'provider_metadata' => self::providerMetadataAfterDiscovery($publication, $providerMetadata),
                 'account_display_name' => $identity->accountDisplayName,
@@ -358,15 +367,16 @@ class UpsertAnalyticsPublication
     }
 
     /**
-     * A TryPost write that found its publication under another remote id (a
-     * Facebook video kept on its video id by the post, merged under its Page
-     * post id) keeps what discovery reported about the network's post: its
-     * link, time and type.
+     * A TryPost write that found a Facebook publication under another remote id
+     * (a video kept on its video id by the post, merged under its Page post id)
+     * keeps what discovery reported about the Page post: its link, time, type
+     * and text.
      */
     private static function keepsDiscovery(AnalyticsPublication $publication, PublicationOrigin $origin, string $providerPostId): bool
     {
         return $origin === PublicationOrigin::TryPost
             && $publication->exists
+            && $publication->platform === Platform::Facebook
             && $publication->remote_id !== $providerPostId;
     }
 

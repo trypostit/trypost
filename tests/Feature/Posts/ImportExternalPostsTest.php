@@ -214,7 +214,7 @@ test('a facebook video already tracked by its trypost publication is merged into
         'remote_id' => 'video-9',
         'post_id' => $tryPost->id,
         'origin' => PublicationOrigin::TryPost,
-        'content_type' => PublicationContentType::Reel,
+        'content_type' => PublicationContentType::Video,
     ]);
     $external = externalPublication($account, [
         'remote_id' => 'page_post-1',
@@ -242,6 +242,7 @@ test('a facebook video already tracked by its trypost publication is merged into
     $merged = $tracked->fresh();
 
     expect($merged->remote_id)->toBe('page_post-1')
+        ->and($merged->content_type)->toBe(PublicationContentType::Reel)
         ->and($merged->post_id)->toBe($tryPost->id)
         ->and($merged->provider_metadata)->toEqual(['video_id' => 'video-9'])
         ->and($merged->dailySnapshots()->orderBy('date')->pluck('views_count')->all())->toBe([200, 234])
@@ -252,6 +253,7 @@ test('a merged facebook video stays one publication when it syncs and is discove
     $account = SocialAccount::factory()->facebook()->create();
     $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
         'platform_post_id' => 'video-9',
+        'content' => 'The caption written in TryPost',
     ]);
     $tracked = app(SyncTryPostPublicationAction::class)->handle($tryPost);
     $discovered = new DiscoveredPublication(
@@ -260,7 +262,7 @@ test('a merged facebook video stays one publication when it syncs and is discove
         contentType: PublicationContentType::Reel,
         providerContentType: 'video_inline',
         permalink: 'https://www.facebook.com/reel/video-9/',
-        excerpt: null,
+        excerpt: 'The caption on the Page',
         previewMetadata: null,
         providerMetadata: ['video_id' => 'video-9'],
     );
@@ -279,6 +281,7 @@ test('a merged facebook video stays one publication when it syncs and is discove
         ->and($publication->origin)->toBe(PublicationOrigin::TryPost)
         ->and($publication->permalink)->toBe('https://www.facebook.com/reel/video-9/')
         ->and($publication->provider_content_type)->toBe('video_inline')
+        ->and($publication->excerpt)->toBe('The caption on the Page')
         ->and($publication->content_type)->toBe(PublicationContentType::Reel)
         ->and($publication->provider_published_at->toIso8601String())->toBe($discovered->publishedAt->toIso8601String())
         ->and(Post::query()->imported()->count())->toBe(0)
@@ -306,6 +309,27 @@ test('a share met before the trypost page post is never linked, whether or not t
         expect($original->fresh()->post_id)->toBe($tryPost->id);
     }
 })->with(['tracked' => true, 'not tracked yet' => false]);
+
+test('a facebook post matched by its own id links whatever else carries its media', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $tryPost = Post::factory()->forAccount($account)->facebook()->published()->create(['platform_post_id' => 'page_post-2']);
+    externalPublication($account, ['remote_id' => 'page_post-1', 'provider_published_at' => now()->subHours(3), 'provider_metadata' => ['photo_id' => 'photo-9']]);
+    $own = externalPublication($account, ['remote_id' => 'page_post-2', 'provider_published_at' => now()->subHour(), 'provider_metadata' => ['photo_id' => 'photo-9']]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($own->fresh()->post_id)->toBe($tryPost->id);
+});
+
+test('a trypost sync rewrites the link of another network\'s publication found by its post', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create(['platform_post_id' => 'media-9', 'platform_url' => 'https://www.instagram.com/p/media-9/']);
+    $tracked = externalPublication($account, ['remote_id' => 'container-9', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost, 'permalink' => 'https://example.com/old']);
+
+    app(SyncTryPostPublicationAction::class)->handle($tryPost);
+
+    expect($tracked->fresh()->permalink)->toBe('https://www.instagram.com/p/media-9/');
+});
 
 test('two page posts carrying a facebook video in the same second link neither', function () {
     $account = SocialAccount::factory()->facebook()->create();

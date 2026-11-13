@@ -179,7 +179,7 @@ class ImportExternalPosts
      */
     private static function linkToPost(Post $post, AnalyticsPublication $publication): bool
     {
-        if (self::hasEarlierDiscoveryOfSameMedia($publication)) {
+        if ($post->platform_post_id !== $publication->remote_id && self::hasEarlierDiscoveryOfSameMedia($publication)) {
             return false;
         }
 

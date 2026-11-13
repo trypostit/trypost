@@ -31,19 +31,20 @@ final readonly class MetricValue
      */
     public static function fromStored(string $key, mixed $stored): ?self
     {
+        $text = fn (string $field): string => is_string(data_get($stored, $field)) ? data_get($stored, $field) : '';
         $metricKey = MetricKey::tryFrom($key);
-        $unit = MetricUnit::tryFrom((string) data_get($stored, 'unit'));
-        $timeBasis = MetricTimeBasis::tryFrom((string) data_get($stored, 'time_basis'));
-        $precision = MetricPrecision::tryFrom((string) data_get($stored, 'precision'));
-        $availability = MetricAvailability::tryFrom((string) data_get($stored, 'availability'));
-        $value = data_get($stored, 'value');
-        $providerMetric = data_get($stored, 'provider_metric');
+        $unit = MetricUnit::tryFrom($text('unit'));
+        $timeBasis = MetricTimeBasis::tryFrom($text('time_basis'));
+        $precision = MetricPrecision::tryFrom($text('precision'));
+        $availability = MetricAvailability::tryFrom($text('availability'));
+        $value = filled(data_get($stored, 'value')) ? data_get($stored, 'value') : null;
+        $providerMetric = filled(data_get($stored, 'provider_metric')) ? data_get($stored, 'provider_metric') : null;
         $periodStart = self::storedDate(data_get($stored, 'period_start'));
         $periodEnd = self::storedDate(data_get($stored, 'period_end'));
 
         if (blank($metricKey) || blank($unit) || blank($timeBasis) || blank($precision) || blank($availability)
-            || ! (is_null($value) || is_int($value) || is_float($value))
-            || ! (is_null($providerMetric) || is_string($providerMetric))
+            || (filled($value) && ! is_int($value) && ! is_float($value))
+            || (filled($providerMetric) && ! is_string($providerMetric))
             || $periodStart === false || $periodEnd === false) {
             return null;
         }
@@ -66,7 +67,7 @@ final readonly class MetricValue
      */
     private static function storedDate(mixed $stored): CarbonImmutable|false|null
     {
-        if (is_null($stored)) {
+        if (blank($stored)) {
             return null;
         }
 

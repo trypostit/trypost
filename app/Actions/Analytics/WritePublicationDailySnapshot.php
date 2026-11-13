@@ -14,6 +14,7 @@ use App\Enums\Analytics\MetricUnit;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class WritePublicationDailySnapshot
@@ -86,11 +87,13 @@ class WritePublicationDailySnapshot
     public function combine(AnalyticsPublicationDailySnapshot $kept, AnalyticsPublicationDailySnapshot $other): void
     {
         [$older, $newer] = $other->collected_at->greaterThan($kept->collected_at) ? [$kept, $other] : [$other, $kept];
-        $newerMetrics = collect($newer->metrics ?? [])->map(fn (mixed $stored, string $key): ?MetricValue => MetricValue::fromStored($key, $stored));
+        [$readable, $unreadable] = collect($newer->metrics ?? [])
+            ->map(fn (mixed $stored, string $key): ?MetricValue => MetricValue::fromStored($key, $stored))
+            ->partition(fn (?MetricValue $metric): bool => filled($metric));
 
         $metrics = $this->mergeMetrics(
-            [...collect($newer->metrics ?? [])->filter(fn (mixed $stored, string $key): bool => blank($newerMetrics->get($key)))->all(), ...($older->metrics ?? [])],
-            $newerMetrics->filter()->values()->all(),
+            [...Arr::only($newer->metrics ?? [], $unreadable->keys()->all()), ...($older->metrics ?? [])],
+            $readable->values()->all(),
         );
 
         $kept->fill([

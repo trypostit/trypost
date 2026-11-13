@@ -429,6 +429,7 @@ test('a stored metric this version cannot read back is kept, not lost or fatal',
     $discoveredSnapshot = AnalyticsPublicationDailySnapshot::query()->whereNot('publication_id', $publication->id)->sole();
     $badProviderMetric = [...$legacy, 'provider_metric' => 12];
     $badPeriod = [...$legacy, 'period_start' => 'not a date'];
+    $badUnit = [...$legacy, 'unit' => ['count']];
     $discoveredSnapshot->forceFill(['metrics' => [
         ...$discoveredSnapshot->metrics,
         'a_retired_metric' => $legacy,
@@ -436,6 +437,8 @@ test('a stored metric this version cannot read back is kept, not lost or fatal',
         'views' => ['value' => 99],
         'shares' => $badProviderMetric,
         'clicks' => $badPeriod,
+        'saves' => $badUnit,
+        'reach' => [...$legacy, 'period_start' => ''],
     ]])->save();
 
     expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($publication, 'page_post-1'))->toBeTrue();
@@ -445,8 +448,30 @@ test('a stored metric this version cannot read back is kept, not lost or fatal',
     expect(data_get($metrics, 'a_retired_metric'))->toEqual($legacy)
         ->and(data_get($metrics, 'shares'))->toEqual($badProviderMetric)
         ->and(data_get($metrics, 'clicks'))->toEqual($badPeriod)
+        ->and(data_get($metrics, 'saves'))->toEqual($badUnit)
+        ->and(data_get($metrics, 'reach.value'))->toBe(7)
+        ->and(data_get($metrics, 'reach.period_start'))->toBeNull()
         ->and(data_get($metrics, 'reactions'))->toEqual(['value' => 3])
         ->and(data_get($metrics, 'views.value'))->toBe(52);
+});
+
+test('a merge read from a publication that has moved since does nothing', function () {
+    $account = SocialAccount::factory()->facebook()->create();
+    $post = Post::factory()->forAccount($account, ContentType::FacebookReel)->published()->create(['platform_post_id' => 'video-9']);
+    $stale = app(SyncTryPostPublication::class)->handle($post);
+    $discovery = fn (string $id): AnalyticsPublication => app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: $id,
+        publishedAt: now()->subDay()->toImmutable(),
+        contentType: PublicationContentType::Reel,
+        providerMetadata: ['video_id' => 'video-9'],
+    ));
+    $discovery('page_post-1');
+    $second = $discovery('page_post-2');
+
+    expect(app(UpsertAnalyticsPublication::class)->mergeDiscovery($stale->replicate()->setRawAttributes($stale->getAttributes()), 'page_post-1'))->toBeTrue()
+        ->and(app(UpsertAnalyticsPublication::class)->mergeDiscovery($stale, 'page_post-2'))->toBeFalse()
+        ->and($stale->fresh()->remote_id)->toBe('page_post-1')
+        ->and($second->fresh())->not->toBeNull();
 });
 
 test('a discovery under another analytics key is not merged and the publication keeps its id', function () {
