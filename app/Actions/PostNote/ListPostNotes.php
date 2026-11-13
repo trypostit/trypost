@@ -18,6 +18,7 @@ final class ListPostNotes
         return $post->notes()
             ->with(PostNote::DISPLAY_RELATIONS)
             ->latest()
+            ->latest('id')
             ->paginate((int) config('app.pagination.default'), pageName: $pageName, page: $page);
     }
 }

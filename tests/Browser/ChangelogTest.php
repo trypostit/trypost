@@ -18,7 +18,7 @@ function waitForChangelogViews(mixed $page, User $user, int $count): void
 
 function waitForChangelogReaction(mixed $page, ChangelogEntry $entry, ?Reaction $reaction): void
 {
-    waitForDatabase($page, fn () => ChangelogEntryView::where('changelog_entry_id', $entry->id)->value('reaction') === $reaction?->value);
+    waitForDatabase($page, fn () => ChangelogEntryView::where('changelog_entry_id', $entry->id)->first()?->reaction === $reaction);
 }
 
 function createChangelogUser(array $attributes = []): User

@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => 'Wybierz jedno emoji.',
         'not_saved' => 'Nie udało się zapisać notatki. Spróbuj ponownie.',
+        'not_deleted' => 'Nie udało się usunąć notatki. Spróbuj ponownie.',
+        'not_reacted' => 'Nie udało się zaktualizować reakcji. Spróbuj ponownie.',
         'too_long' => 'Notatka może mieć maksymalnie :max znaków.',
     ],
 ];

@@ -17,6 +17,7 @@ export interface PostNote {
     created_at: string;
     updated_at: string;
     mentions: MentionedPerson[];
+    parts: PostNotePart[];
     reactions: PostNoteReaction[];
     user: PostNoteAuthor;
 }
@@ -28,6 +29,12 @@ export interface PostNotesPage {
         total: number;
     };
 }
+
+/** A piece of a note's text, as the server splits it: text, a person (null name when they are gone) or everyone. */
+export type PostNotePart =
+    | { type: 'text'; text: string }
+    | { type: 'mention'; id: string; name: string | null }
+    | { type: 'everyone' };
 
 /** A member a note mentions, with their current name; the body holds only the id. */
 export interface MentionedPerson {

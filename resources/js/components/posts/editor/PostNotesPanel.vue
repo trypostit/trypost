@@ -140,19 +140,26 @@ const isAtBottom = (): boolean => {
     );
 };
 
-/** Puts a note in the thread: replaces it where it is, or adds it as the newest. */
-const putNote = async (note: PostNote): Promise<void> => {
+/**
+ * Puts a note in the thread: replaces it wherever it shows (a page loaded after
+ * a new note can repeat one), or, for a new note, adds it as the newest.
+ */
+const putNote = async (note: PostNote, isNew = false): Promise<void> => {
     const loaded = thread.value;
 
     if (!loaded) {
         return;
     }
 
-    const index = loaded.data.findIndex((item) => item.id === note.id);
+    if (loaded.data.some((item) => item.id === note.id)) {
+        loaded.data = loaded.data.map((item) =>
+            item.id === note.id ? note : item,
+        );
 
-    if (index >= 0) {
-        loaded.data[index] = note;
+        return;
+    }
 
+    if (!isNew) {
         return;
     }
 
@@ -167,20 +174,20 @@ const putNote = async (note: PostNote): Promise<void> => {
     }
 };
 
+/** Takes a note out of the thread, every copy of it. */
 const dropNote = (noteId: string): void => {
     const loaded = thread.value;
-    const index = loaded?.data.findIndex((item) => item.id === noteId) ?? -1;
 
-    if (loaded && index >= 0) {
-        loaded.data.splice(index, 1);
-        loaded.meta.total--;
+    if (!loaded?.data.some((item) => item.id === noteId)) {
+        return;
     }
+
+    loaded.data = loaded.data.filter((item) => item.id !== noteId);
+    loaded.meta.total--;
 };
 
-const failed = (message?: string): void => {
-    toast.error(message ?? trans('notes.errors.not_saved'), {
-        testId: 'note-error-toast',
-    });
+const failed = (message: string): void => {
+    toast.error(message, { testId: 'note-error-toast' });
 };
 
 /** Another member (or this page) changed a note: refresh that note alone. */
@@ -203,7 +210,7 @@ usePostEcho<{ note_id: string | null; change: string }>(
             .catch(() => null);
 
         if (filled(note)) {
-            await putNote(note);
+            await putNote(note, change === 'created');
         }
     },
 );
@@ -244,7 +251,7 @@ const toggleReaction = async (
     if (filled(updated)) {
         await putNote(updated);
     } else {
-        failed(reactionHttp.errors.emoji);
+        failed(reactionHttp.errors.emoji ?? trans('notes.errors.not_reacted'));
     }
 };
 
@@ -262,7 +269,7 @@ const sendNote = async () => {
         .catch(() => null);
 
     if (!filled(created)) {
-        failed(sendHttp.errors.body);
+        failed(sendHttp.errors.body ?? trans('notes.errors.not_saved'));
 
         return;
     }
@@ -271,7 +278,7 @@ const sendNote = async () => {
         newBody.value = '';
     }
 
-    await putNote(created);
+    await putNote(created, true);
     scrollToBottom();
     focusComposer();
 };
@@ -291,7 +298,7 @@ const saveNote = async (
     if (filled(updated)) {
         await putNote(updated);
     } else {
-        failed(noteHttp.errors.body);
+        failed(noteHttp.errors.body ?? trans('notes.errors.not_saved'));
     }
 
     done(filled(updated));
@@ -306,7 +313,7 @@ const deleteNote = async (note: PostNote) => {
     if (deleted) {
         dropNote(note.id);
     } else {
-        failed();
+        failed(trans('notes.errors.not_deleted'));
     }
 };
 

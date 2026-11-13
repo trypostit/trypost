@@ -404,6 +404,52 @@ test('several drops made while a move is in flight are all saved, in order, afte
     $page->assertNoJavaScriptErrors();
 });
 
+test('a card dropped twice while a move is in flight is saved where it was dropped last', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
+    $b = createIdeasBoardIdea($workspace, $user, $stages['todo'], 1, 'Idea B');
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-{$b->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            window.__ideaMoves = [];
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__ideaMove = method.toUpperCase() === 'PUT' && String(url).endsWith('/move');
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (!this.__ideaMove) return send.call(this, body);
+                window.__ideaMoves.push(body);
+                if (window.__ideaMoves.length === 1) {
+                    window.__releaseIdeaMove = () => send.call(this, body);
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })();
+    JS);
+
+    $page->drag("@idea-card-{$b->id}", "@idea-column-{$stages['done']->id}");
+    waitForCondition($page, 'window.__ideaMoves.length === 1');
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['in_progress']->id}");
+    waitForState($page, "@idea-column-{$stages['in_progress']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+    $page->drag("@idea-card-{$a->id}", "@idea-column-{$stages['done']->id}");
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+
+    $page->script('window.__releaseIdeaMove()');
+    waitForDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
+
+    waitForState($page, "@idea-column-{$stages['done']->id} [data-idea-id=\"{$a->id}\"]", 'true');
+
+    expect($page->script('window.__ideaMoves.length'))->toBe(2)
+        ->and($b->refresh()->idea_stage_id)->toBe($stages['done']->id);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('move to stage works on a filtered board and appends to the end of the stage', function () {
     [$user, $workspace, $stages] = createIdeasBoardSetup();
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);

@@ -236,7 +236,7 @@ const moving = ref(false);
 /**
  * Moves made while one is saving: shown at once, then sent in order after it,
  * each with its column's order as the board shows it then (a later drop may
- * have joined that column since).
+ * have joined that column since). A card dropped twice keeps its last drop.
  */
 const queuedMoves: { ideaId: string; toStageId: string | null }[] = [];
 
@@ -273,7 +273,12 @@ const moveIdea = (
 
     if (moving.value) {
         localColumns.value = next;
-        queuedMoves.push({ ideaId, toStageId });
+        queuedMoves.splice(
+            0,
+            queuedMoves.length,
+            ...queuedMoves.filter((queued) => queued.ideaId !== ideaId),
+            { ideaId, toStageId },
+        );
 
         return;
     }

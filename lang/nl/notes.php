@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => 'Kies één emoji.',
         'not_saved' => 'Je notitie kon niet worden opgeslagen. Probeer het opnieuw.',
+        'not_deleted' => 'De notitie kon niet worden verwijderd. Probeer het opnieuw.',
+        'not_reacted' => 'De reactie kon niet worden bijgewerkt. Probeer het opnieuw.',
         'too_long' => 'Notities mogen maximaal :max tekens bevatten.',
     ],
 ];

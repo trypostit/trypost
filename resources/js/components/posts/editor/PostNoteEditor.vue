@@ -17,13 +17,14 @@ import {
 import { blank, filled, isString } from '@/lib/helpers';
 import { EVERYONE_ID } from '@/lib/noteMentions';
 import { filterBySearch } from '@/lib/search';
-import type { MentionedPerson, PostNoteMentionable } from '@/types/post-note';
+import type { PostNoteMentionable, PostNotePart } from '@/types/post-note';
 
 /**
  * The note editor: typing `@` lists everyone on the post (`@all` in the
  * reader's language) and the teammates who can be mentioned; picking one
- * inserts a mention chip that keeps the person's id. The model is the body to
- * store, with mentions as markup (the `NoteBody` plugin). Enter submits and
+ * inserts a mention chip that keeps the person's id. A note being edited opens
+ * from its `parts`; the model is the body to store, with mentions as markup
+ * (the `NoteBody` plugin). Enter submits and
  * Shift+Enter breaks the line; Esc closes the list, then cancels. Attributes
  * (class, test id, aria label) go to the editable element.
  */
@@ -35,11 +36,11 @@ const props = withDefaults(
     defineProps<{
         people: PostNoteMentionable[] | null;
         currentUserId: string;
-        mentions?: MentionedPerson[];
+        parts?: PostNotePart[];
         placeholder?: string;
     }>(),
     {
-        mentions: () => [],
+        parts: () => [],
         placeholder: '',
     },
 );
@@ -63,27 +64,6 @@ type Option = { id: string; label: string } & (
 const everyoneWord = wTrans('notes.mention_everyone.word');
 const everyoneDescription = wTrans('notes.mention_everyone.description');
 const unknownWord = wTrans('notes.mention_unknown');
-
-/**
- * The name a mention chip shows for an id: everyone's word, or the person's
- * name. A person not known yet (a pasted mention before the people loaded)
- * asks for the people and reads as unknown until they arrive.
- */
-const mentionLabel = (id: string): string => {
-    if (id === EVERYONE_ID) {
-        return everyoneWord.value;
-    }
-
-    const name = [...props.mentions, ...(props.people ?? [])].find(
-        (person) => person.id === id,
-    )?.name;
-
-    if (!name && props.people === null) {
-        emit('needPeople');
-    }
-
-    return name ?? unknownWord.value;
-};
 
 /** The open `@` search: what was typed after it and how to insert a pick. */
 const search = ref<{
@@ -201,7 +181,8 @@ const editor = useEditor({
     extensions: [
         ...plainTextExtensions(() => props.placeholder),
         NoteBody.configure({
-            label: mentionLabel,
+            everyoneLabel: () => everyoneWord.value,
+            unknownLabel: () => unknownWord.value,
             chipAttributes: {
                 class: 'rounded-sm bg-primary-subtle px-0.5 font-medium text-foreground',
                 'data-testid': 'note-input-mention',
@@ -247,7 +228,7 @@ const editor = useEditor({
         }),
     },
     onCreate: ({ editor: created }) => {
-        created.commands.setNoteBody(body.value);
+        created.commands.setNoteParts(props.parts);
     },
     onUpdate: ({ editor: current }) => {
         body.value = noteBodyOf(current);
@@ -259,42 +240,12 @@ watch([listOpen, highlighted, matches], () => {
     editor.value?.view.setProps({});
 });
 
-/** Once the people load, chips that could not be named yet take their names. */
-watch(
-    () => props.people,
-    () => {
-        const current = editor.value;
-
-        if (!current) {
-            return;
-        }
-
-        const { tr } = current.state;
-
-        current.state.doc.descendants((node, position) => {
-            if (node.type.name !== 'mention') {
-                return;
-            }
-
-            const label = mentionLabel(node.attrs.id);
-
-            if (label !== node.attrs.label) {
-                tr.setNodeMarkup(position, undefined, { ...node.attrs, label });
-            }
-        });
-
-        if (tr.docChanged) {
-            current.view.dispatch(tr);
-        }
-    },
-);
-
-/** The parent replaced the body (reset after sending, another note to edit). */
+/** The parent emptied the body (after sending). */
 watch(body, (stored) => {
     const current = editor.value;
 
-    if (current && stored !== noteBodyOf(current)) {
-        current.commands.setNoteBody(stored);
+    if (current && blank(stored) && filled(noteBodyOf(current))) {
+        current.commands.clearContent();
     }
 });
 

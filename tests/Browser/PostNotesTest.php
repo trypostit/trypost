@@ -472,6 +472,73 @@ test('scrolling up the thread loads older notes, reacting or sending keeps them,
         ->assertNoJavaScriptErrors();
 });
 
+test('a note repeated by an older page after a new one disappears when deleted, and a refused delete or reaction says so', function () {
+    Mail::fake();
+    config(['app.pagination.default' => 8]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
+    $notes = collect(range(1, 20))->map(fn (int $number): PostNote => PostNote::factory()->create([
+        'post_id' => $post->id,
+        'user_id' => $user->id,
+        'body' => "Note number {$number}",
+        'created_at' => now()->subMinutes(30 - $number),
+        'updated_at' => now()->subMinutes(30 - $number),
+    ]));
+    $boundary = $notes[12];
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, "@post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForCount($page, '@note-item', 8);
+    $page->fill('@note-input', 'A brand new note');
+    $page->keys('@note-input', 'Enter');
+    waitForCount($page, '@note-item', 9);
+
+    $page->script("document.querySelector('[data-testid=\"notes-list\"]').scrollTop = 0");
+    waitForText($page, '@notes-list', 'Note number 6');
+    $boundaryNote = "[data-note-id=\"{$boundary->id}\"]";
+    $page->assertCount($boundaryNote, 1);
+
+    $page->hover($boundaryNote)->click("{$boundaryNote} [data-testid=note-actions]");
+    waitFor($page, '@note-delete');
+    $page->click('@note-delete');
+    waitForGone($page, $boundaryNote);
+    $page->assertMissing($boundaryNote);
+    expect($boundary->fresh())->toBeNull();
+
+    $gone = $notes[9];
+    $goneNote = "[data-note-id=\"{$gone->id}\"]";
+    $page->script(<<<'JS'
+        (() => {
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function (body) {
+                this.dispatchEvent(new ProgressEvent('error'));
+                this.dispatchEvent(new ProgressEvent('loadend'));
+            };
+            window.__restoreSend = () => { XMLHttpRequest.prototype.send = send; };
+        })()
+    JS);
+    $page->hover($goneNote)->click("{$goneNote} [data-testid=note-react]");
+    waitForOpen($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
+    $page->click('@emoji-picker-option');
+    waitForText($page, '@note-error-toast', __('notes.errors.not_reacted'));
+    $page->keys('@emoji-picker-option', 'Escape');
+    waitForGone($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
+
+    $page->hover($goneNote)->click("{$goneNote} [data-testid=note-actions]");
+    waitFor($page, '@note-delete');
+    $page->click('@note-delete');
+    waitForText($page, '@note-error-toast', __('notes.errors.not_deleted'));
+    $page->script('window.__restoreSend()');
+    $page->assertPresent($goneNote)->assertNoJavaScriptErrors();
+    expect($gone->fresh())->not->toBeNull();
+});
+
 test('opening another post notes closes the open thread, and closing a thread clears it from the link', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -504,13 +571,13 @@ test('opening another post notes closes the open thread, and closing a thread cl
         ->assertNoJavaScriptErrors();
 });
 
-test('Enter sends while the mention list finds nobody, and pasted mention markup becomes a named chip', function () {
+test('Enter sends while the mention list finds nobody', function () {
     Mail::fake();
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
-    $bia = workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
+    workspaceMember($workspace, 'member', ['name' => 'Bia Lima']);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'hello team']);
     $this->actingAs($user);
 
@@ -519,31 +586,15 @@ test('Enter sends while the mention list finds nobody, and pasted mention markup
     $page->click("@post-notes-trigger-{$post->id}");
     waitFor($page, '@note-input');
 
-    $page->script(<<<JS
-        (() => {
-            const editor = document.querySelector('[data-testid="note-input"]');
-            const clipboard = new DataTransfer();
-            editor.focus();
-            clipboard.setData('text/plain', 'Ask @[user:{$bia->id}] now');
-            editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true, cancelable: true }));
-        })()
-    JS);
-    waitForText($page, '@note-input-mention', '@Bia Lima');
-    waitForEditorText($page, '@note-input', 'Ask @Bia Lima now');
-
-    $page->keys('@note-input', 'Enter');
-    waitFor($page, '@note-mention');
-    $page->assertSeeIn('@note-body', 'Bia Lima');
-
     $page->hover('@note-input');
     $page->typeSlowly('@note-input', 'hi @zzz', 10);
     waitForText($page, '@note-mention-list', 'No teammate matches');
     $page->keys('@note-input', 'Enter');
-    waitForCount($page, '@note-item', 2);
-    $page->assertNoJavaScriptErrors();
+    waitFor($page, '@note-item');
+    $page->assertSeeIn('@note-body', 'hi @zzz')
+        ->assertNoJavaScriptErrors();
 
-    expect(PostNote::query()->orderBy('created_at')->orderBy('id')->pluck('body')->all())
-        ->toBe(["Ask @[user:{$bia->id}] now", 'hi @zzz']);
+    expect(PostNote::query()->pluck('body')->all())->toBe(['hi @zzz']);
 });
 
 test('an edit the server refuses keeps the editor open with the text and says why', function () {

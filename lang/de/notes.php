@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => 'Wähle ein einzelnes Emoji.',
         'not_saved' => 'Deine Notiz konnte nicht gespeichert werden. Versuch es noch einmal.',
+        'not_deleted' => 'Die Notiz konnte nicht gelöscht werden. Versuch es noch einmal.',
+        'not_reacted' => 'Die Reaktion konnte nicht aktualisiert werden. Versuch es noch einmal.',
         'too_long' => 'Notizen können bis zu :max Zeichen haben.',
     ],
 ];

@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => 'Escolha um único emoji.',
         'not_saved' => 'Não foi possível salvar sua nota. Tente de novo.',
+        'not_deleted' => 'Não foi possível excluir a nota. Tente de novo.',
+        'not_reacted' => 'Não foi possível atualizar a reação. Tente de novo.',
         'too_long' => 'Notas podem ter até :max caracteres.',
     ],
 ];

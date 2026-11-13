@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => '请选择一个表情符号。',
         'not_saved' => '无法保存备注。请重试。',
+        'not_deleted' => '无法删除备注。请重试。',
+        'not_reacted' => '无法更新回应。请重试。',
         'too_long' => '备注最多 :max 个字符。',
     ],
 ];

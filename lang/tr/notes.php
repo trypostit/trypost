@@ -28,6 +28,8 @@ return [
     'errors' => [
         'invalid_emoji' => 'Tek bir emoji seç.',
         'not_saved' => 'Not kaydedilemedi. Tekrar dene.',
+        'not_deleted' => 'Not silinemedi. Tekrar dene.',
+        'not_reacted' => 'Tepki güncellenemedi. Tekrar dene.',
         'too_long' => 'Notlar en fazla :max karakter olabilir.',
     ],
 ];

@@ -1,34 +1,32 @@
 /**
- * A note body in the editor: mention chips that read back as the stored
- * markup (`@[user:{id}]`, `@[everyone]`, see `lib/noteMentions.ts`), so
- * `noteBodyOf(editor)` is the body to store and `setNoteBody(body)` loads a
- * stored one, each chip labelled by `label`. What the editor shows is what it
- * stores: pasted markup becomes a chip, and a copied chip reads `@Name`.
+ * A note in the editor: mention chips that read back as the stored markup
+ * (`@[user:{id}]`, `@[everyone]`), so `noteBodyOf(editor)` is the body to
+ * store. `setNoteParts(parts)` loads a note from the parts the server sends
+ * (`lib/noteMentions.ts`). A copied chip reads `@Name`.
  */
-import { Extension, nodePasteRule, type Editor } from '@tiptap/core';
+import { Extension, type Editor } from '@tiptap/core';
 import Mention from '@tiptap/extension-mention';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Plugin } from '@tiptap/pm/state';
 import type { SuggestionOptions } from '@tiptap/suggestion';
 
-import {
-    EVERYONE_ID,
-    MENTION_PATTERN,
-    noteBodyToDoc,
-} from '@/lib/noteMentions';
+import { EVERYONE_ID, noteDoc } from '@/lib/noteMentions';
+import type { PostNotePart } from '@/types/post-note';
 
 declare module '@tiptap/core' {
     interface Commands<ReturnType> {
         noteBody: {
-            /** Replaces the content with a stored body, without an update event. */
-            setNoteBody: (body: string) => ReturnType;
+            /** Replaces the content with a note's parts, without an update event. */
+            setNoteParts: (parts: PostNotePart[]) => ReturnType;
         };
     }
 }
 
 interface NoteBodyOptions {
-    /** The name a chip shows for an id (`EVERYONE_ID` for everyone). */
-    label: (id: string) => string;
+    /** The word a chip of everyone shows, in the reader's language. */
+    everyoneLabel: () => string;
+    /** What a chip shows for someone no longer there. */
+    unknownLabel: () => string;
     /** The `@` list shown while typing after `@`. */
     suggestion: Omit<SuggestionOptions, 'editor'>;
     /** Attributes of a chip (class, test id). */
@@ -47,7 +45,8 @@ export const NoteBody = Extension.create<NoteBodyOptions>({
     name: 'noteBody',
 
     addOptions: () => ({
-        label: (id: string) => id,
+        everyoneLabel: () => '',
+        unknownLabel: () => '',
         suggestion: {},
         chipAttributes: {},
     }),
@@ -58,20 +57,6 @@ export const NoteBody = Extension.create<NoteBodyOptions>({
                 HTMLAttributes: this.options.chipAttributes,
                 renderText: ({ node }) => mentionMarkup(node.attrs.id),
                 suggestion: this.options.suggestion,
-            }),
-        ];
-    },
-
-    addPasteRules() {
-        return [
-            nodePasteRule({
-                find: MENTION_PATTERN,
-                type: this.editor.schema.nodes.mention,
-                getAttributes: (match) => {
-                    const id = match[1]?.toLowerCase() ?? EVERYONE_ID;
-
-                    return { id, label: this.options.label(id) };
-                },
             }),
         ];
     },
@@ -94,12 +79,16 @@ export const NoteBody = Extension.create<NoteBodyOptions>({
 
     addCommands() {
         return {
-            setNoteBody:
-                (body) =>
+            setNoteParts:
+                (parts) =>
                 ({ commands }) =>
-                    commands.setContent(noteBodyToDoc(body, this.options.label), {
-                        emitUpdate: false,
-                    }),
+                    commands.setContent(
+                        noteDoc(parts, {
+                            everyone: this.options.everyoneLabel(),
+                            unknown: this.options.unknownLabel(),
+                        }),
+                        { emitUpdate: false },
+                    ),
         };
     },
 });
