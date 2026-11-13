@@ -11,13 +11,14 @@ import {
     type SortableQueueItem,
 } from '@/composables/useSortableQueue';
 import dayjs from '@/dayjs';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type {
     PostCard,
     PostCardMove,
     PublishSocialAccount,
     QueueDay,
+    QueueItem,
     QueuePostPosition,
 } from '@/types/publish';
 
@@ -56,28 +57,78 @@ const { register, registerSlot, dropIndicator, slotDropKey } =
         onMoveToSlot: (postId, slot) => emit('moveToSlot', postId, slot),
     });
 
-const channelQueues = computed<Record<string, string[]>>(() => {
-    const movableAfter = now.value.add(1, 'minute');
-    const queues: Record<string, string[]> = {};
+type QueueStep =
+    | { kind: 'post'; postId: string }
+    | { kind: 'slot'; slot: QueueSlotTarget };
 
-    for (const item of props.days.flatMap((day) => day.items)) {
-        const post = item.post_id ? props.posts[item.post_id] : undefined;
+interface QueueNeighbours {
+    up?: QueueStep;
+    down?: QueueStep;
+}
 
-        if (
-            post &&
-            post.status === PostStatus.Scheduled &&
-            post.schedule_mode === ScheduleMode.Queue &&
-            dayjs.utc(item.at).isAfter(movableAfter)
-        ) {
-            queues[item.channel_id] = [
-                ...(queues[item.channel_id] ?? []),
-                post.id,
-            ];
+const items = computed<QueueItem[]>(() =>
+    props.days.flatMap((day) => day.items),
+);
+
+const isMovable = (item: QueueItem): boolean =>
+    dayjs.utc(item.at).isAfter(now.value.add(1, 'minute'));
+
+const postOf = (item: QueueItem): PostCard | undefined =>
+    filled(item.post_id) ? props.posts[item.post_id] : undefined;
+
+const isQueuedPost = (item: QueueItem): boolean => {
+    const post = postOf(item);
+
+    return (
+        post?.status === PostStatus.Scheduled &&
+        post.schedule_mode === ScheduleMode.Queue &&
+        isMovable(item)
+    );
+};
+
+const isFreeSlot = (item: QueueItem): boolean =>
+    props.slotDrop &&
+    item.type === 'slot' &&
+    blank(item.post_id) &&
+    isMovable(item);
+
+const toStep = (item: QueueItem): QueueStep | null => {
+    if (filled(item.post_id)) {
+        return isQueuedPost(item)
+            ? { kind: 'post', postId: item.post_id }
+            : null;
+    }
+
+    return isFreeSlot(item)
+        ? { kind: 'slot', slot: { channelId: item.channel_id, at: item.at } }
+        : null;
+};
+
+const channelSteps = computed<Record<string, QueueStep[]>>(() => {
+    const steps: Record<string, QueueStep[]> = {};
+
+    for (const item of items.value) {
+        const step = toStep(item);
+
+        if (step) {
+            (steps[item.channel_id] ??= []).push(step);
         }
     }
 
-    return queues;
+    return steps;
 });
+
+const queuedPostIds = (steps: QueueStep[]): string[] =>
+    steps.flatMap((step) => (step.kind === 'post' ? [step.postId] : []));
+
+const channelQueues = computed<Record<string, string[]>>(() =>
+    Object.fromEntries(
+        Object.entries(channelSteps.value).map(([channelId, steps]) => [
+            channelId,
+            queuedPostIds(steps),
+        ]),
+    ),
+);
 
 const channelOf = computed<Record<string, string>>(() =>
     Object.fromEntries(
@@ -87,61 +138,32 @@ const channelOf = computed<Record<string, string>>(() =>
     ),
 );
 
-type QueueStep = { postId: string } | { slot: QueueSlotTarget };
+const neighbours = computed<Record<string, QueueNeighbours>>(() => {
+    const byPost: Record<string, QueueNeighbours> = {};
 
-const channelSteps = computed<Record<string, QueueStep[]>>(() => {
-    const movableAfter = now.value.add(1, 'minute');
-    const queued = new Set(Object.values(channelQueues.value).flat());
-    const steps: Record<string, QueueStep[]> = {};
-
-    for (const item of props.days.flatMap((day) => day.items)) {
-        const step: QueueStep | null =
-            item.post_id && queued.has(item.post_id)
-                ? { postId: item.post_id }
-                : props.slotDrop &&
-                    item.type === 'slot' &&
-                    !item.post_id &&
-                    dayjs.utc(item.at).isAfter(movableAfter)
-                  ? { slot: { channelId: item.channel_id, at: item.at } }
-                  : null;
-
-        if (step) {
-            steps[item.channel_id] = [...(steps[item.channel_id] ?? []), step];
-        }
+    for (const steps of Object.values(channelSteps.value)) {
+        steps.forEach((step, index) => {
+            if (step.kind === 'post') {
+                byPost[step.postId] = {
+                    up: steps[index - 1],
+                    down: steps[index + 1],
+                };
+            }
+        });
     }
 
-    return steps;
+    return byPost;
 });
-
-const neighbourStep = (
-    postId: string,
-    direction: 'up' | 'down',
-): QueueStep | undefined => {
-    const steps = channelSteps.value[channelOf.value[postId]] ?? [];
-    const index = steps.findIndex(
-        (step) => 'postId' in step && step.postId === postId,
-    );
-
-    if (index === -1) {
-        return undefined;
-    }
-
-    return steps[direction === 'up' ? index - 1 : index + 1];
-};
 
 const positions = computed<Record<string, QueuePostPosition>>(() =>
     Object.fromEntries(
-        Object.values(channelQueues.value).flatMap((ids) =>
-            ids.map((id) => [
-                id,
-                {
-                    canMoveUp:
-                        props.reorderable && filled(neighbourStep(id, 'up')),
-                    canMoveDown:
-                        props.reorderable && filled(neighbourStep(id, 'down')),
-                },
-            ]),
-        ),
+        Object.entries(neighbours.value).map(([postId, { up, down }]) => [
+            postId,
+            {
+                canMoveUp: props.reorderable && filled(up),
+                canMoveDown: props.reorderable && filled(down),
+            },
+        ]),
     ),
 );
 
@@ -150,31 +172,30 @@ const draggables = computed<Record<string, SortableQueueItem>>(() => {
         return {};
     }
 
-    const movableAfter = now.value.add(1, 'minute');
-    const items: Record<string, SortableQueueItem> = {};
+    const draggable: Record<string, SortableQueueItem> = {};
 
     for (const [channelId, ids] of Object.entries(channelQueues.value)) {
         if (ids.length > 1 || props.slotDrop) {
             for (const postId of ids) {
-                items[postId] = { postId, channelId, queued: true };
+                draggable[postId] = { postId, channelId, queued: true };
             }
         }
     }
 
     if (!props.slotDrop) {
-        return items;
+        return draggable;
     }
 
-    for (const item of props.days.flatMap((day) => day.items)) {
-        const post = item.post_id ? props.posts[item.post_id] : undefined;
+    for (const item of items.value) {
+        const post = postOf(item);
 
         if (
             post &&
-            !(post.id in items) &&
+            !(post.id in draggable) &&
             post.status === PostStatus.Scheduled &&
-            dayjs.utc(item.at).isAfter(movableAfter)
+            isMovable(item)
         ) {
-            items[post.id] = {
+            draggable[post.id] = {
                 postId: post.id,
                 channelId: item.channel_id,
                 queued: false,
@@ -182,8 +203,17 @@ const draggables = computed<Record<string, SortableQueueItem>>(() => {
         }
     }
 
-    return items;
+    return draggable;
 });
+
+const swapQueuedPosts = (postId: string, otherPostId: string): void => {
+    const channelId = channelOf.value[postId];
+    const ids = [...channelQueues.value[channelId]];
+    const [from, to] = [ids.indexOf(postId), ids.indexOf(otherPostId)];
+
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    emit('reorder', channelId, ids);
+};
 
 const onMove = (post: PostCard, direction: PostCardMove): void => {
     if (direction === 'top') {
@@ -191,24 +221,13 @@ const onMove = (post: PostCard, direction: PostCardMove): void => {
         return;
     }
 
-    const neighbour = neighbourStep(post.id, direction);
+    const neighbour = neighbours.value[post.id]?.[direction];
 
-    if (!filled(neighbour)) {
-        return;
-    }
-
-    if ('slot' in neighbour) {
+    if (neighbour?.kind === 'slot') {
         emit('moveToSlot', post.id, neighbour.slot);
-        return;
+    } else if (neighbour?.kind === 'post') {
+        swapQueuedPosts(post.id, neighbour.postId);
     }
-
-    const channelId = channelOf.value[post.id];
-    const ids = [...channelQueues.value[channelId]];
-    const index = ids.indexOf(post.id);
-    const swapWith = ids.indexOf(neighbour.postId);
-
-    [ids[index], ids[swapWith]] = [ids[swapWith], ids[index]];
-    emit('reorder', channelId, ids);
 };
 
 const loadMoreTimes = (): void => {
