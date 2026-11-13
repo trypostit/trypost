@@ -328,6 +328,8 @@ test('the note composer enables send only with text and sends on Enter but not S
     $page->assertDisabled('@note-send');
 
     $page->fill('@note-input', 'First line');
+    waitForEditorText($page, '@note-input', 'First line');
+    waitForState($page, '@note-send', '! element.disabled');
     $page->assertEnabled('@note-send');
 
     $page->keys('@note-input', ['Shift+Enter']);
@@ -514,6 +516,7 @@ test('scrolling up the thread loads older notes, reacting or sending keeps them,
     expect($loaded)->toBeGreaterThanOrEqual(16);
 
     $page->fill('@note-input', 'A brand new note');
+    waitForEditorText($page, '@note-input', 'A brand new note');
     $page->keys('@note-input', 'Enter');
     waitForCount($page, '@note-item', $loaded + 1);
     $page->assertSeeIn('@notes-list', 'A brand new note')
@@ -552,6 +555,7 @@ test('a note repeated by an older page after a new one disappears when deleted, 
     $page->click("@post-notes-trigger-{$post->id}");
     waitForCount($page, '@note-item', 8);
     $page->fill('@note-input', 'A brand new note');
+    waitForEditorText($page, '@note-input', 'A brand new note');
     $page->keys('@note-input', 'Enter');
     waitForCount($page, '@note-item', 9);
 
@@ -843,15 +847,17 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
 
     $singleLine = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
     $page->fill('@note-input', 'First line');
+    waitForEditorText($page, '@note-input', 'First line');
     $page->keys('@note-input', ['Shift+Enter']);
     $page->typeSlowly('@note-input', 'Second line', 10);
+    waitForEditorText($page, '@note-input', "First line\nSecond line");
     $page->keys('@note-input', ['Shift+Enter']);
     $page->typeSlowly('@note-input', 'Third line', 10);
+    waitForEditorText($page, '@note-input', "First line\nSecond line\nThird line");
     $grown = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
     expect($grown)->toBeGreaterThan($singleLine)
         ->and($page->script("document.querySelector('[data-testid=\"note-composer\"]').getBoundingClientRect().height"))->toBeGreaterThanOrEqual($grown);
 
-    waitForEditorText($page, '@note-input', "First line\nSecond line\nThird line");
     $page->keys('@note-input', ['Enter']);
     waitFor($page, '@note-body');
     waitForText($page, "@post-notes-count-{$post->id}", '1');
