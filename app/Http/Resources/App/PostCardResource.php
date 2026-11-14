@@ -6,6 +6,7 @@ namespace App\Http\Resources\App;
 
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -36,24 +37,20 @@ class PostCardResource extends JsonResource
     {
         $post = $this->resource;
 
-        $card = [
+        return [
             ...$post->attributesToArray(),
-            ...$this->relations($post),
-            'failure' => $post->error_context === null ? null : [
-                'category' => data_get($post->error_context, 'category'),
-                'failed_at' => data_get($post->error_context, 'failed_at'),
-            ],
+            ...$this->otherRelations($post),
+            'social_account' => $this->whenLoaded('socialAccount', fn (SocialAccount $account): array => $this->accountArray($account)),
+            'user' => $this->whenLoaded('user', fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'photo_url' => $user->photo_url,
+            ]),
+            'failure' => transform($post->error_context, fn (array $context): array => [
+                'category' => data_get($context, 'category'),
+                'failed_at' => data_get($context, 'failed_at'),
+            ]),
         ];
-
-        if ($post->relationLoaded('user')) {
-            $card['user'] = $post->user === null ? null : [
-                'id' => $post->user->id,
-                'name' => $post->user->name,
-                'photo_url' => $post->user->photo_url,
-            ];
-        }
-
-        return $card;
     }
 
     /**
@@ -84,24 +81,16 @@ class PostCardResource extends JsonResource
     }
 
     /**
-     * The post's loaded relations as `toArray()` writes them, without its
-     * author (the card writes its own) and with its channel serialized once.
+     * The post's loaded relations as `toArray()` writes them (its labels…),
+     * except its channel and its author, which the card writes itself.
      *
      * @return array<string, mixed>
      */
-    private function relations(Post $post): array
+    private function otherRelations(Post $post): array
     {
-        $hidden = $post->getHidden();
-        $post->setHidden([...$hidden, 'user', 'socialAccount']);
+        $post->makeHidden(['socialAccount', 'user']);
         $relations = $post->relationsToArray();
-        $post->setHidden($hidden);
-
-        if ($post->relationLoaded('socialAccount') && collect($hidden)->doesntContain('socialAccount')) {
-            $relations['social_account'] = transform(
-                $post->socialAccount,
-                fn (SocialAccount $account): array => $this->accountArray($account),
-            );
-        }
+        $post->makeVisible(['socialAccount', 'user']);
 
         return $relations;
     }
