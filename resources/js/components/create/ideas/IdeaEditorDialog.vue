@@ -13,7 +13,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue';
 
 import WritingAssistantPanel from '@/components/ai/WritingAssistantPanel.vue';
-import LabelBadge from '@/components/labels/LabelBadge.vue';
+import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
@@ -41,6 +41,7 @@ import {
     useMediaImport,
 } from '@/composables/useMediaImport';
 import { mediaUploadLimits, useMediaUpload } from '@/composables/useMediaUpload';
+import { filled } from '@/lib/helpers';
 import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute } from '@/lib/mediaType';
@@ -207,20 +208,7 @@ const selectedLabels = computed(() =>
     ),
 );
 
-/** The trigger shows the first two picked labels and counts the rest. */
-const SHOWN_LABELS_IN_TRIGGER = 2;
-
-const shownSelectedLabels = computed(() =>
-    selectedLabels.value.slice(0, SHOWN_LABELS_IN_TRIGGER),
-);
-
-const hiddenSelectedLabelCount = computed(
-    () => selectedLabels.value.length - shownSelectedLabels.value.length,
-);
-
-const hasHiddenSelectedLabels = computed(
-    () => hiddenSelectedLabelCount.value > 0,
-);
+const hasSelectedLabels = computed(() => filled(selectedLabels.value));
 
 const addLabel = (label: IdeaLabel): void => {
     if (!availableLabels.value.some(({ id }) => id === label.id)) {
@@ -516,25 +504,14 @@ const iconButtonClass =
                                 data-testid="idea-editor-labels"
                             >
                                 <IconTag class="size-4 shrink-0" />
-                                <span v-if="!selectedLabels.length">{{
+                                <span v-if="!hasSelectedLabels">{{
                                     $t('create.ideas.editor.labels')
                                 }}</span>
-                                <span
+                                <LabelChips
                                     v-else
-                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
-                                >
-                                    <LabelBadge
-                                        v-for="label in shownSelectedLabels"
-                                        :key="label.id"
-                                        :label="label"
-                                        :data-testid="`idea-editor-labels-chip-${label.id}`"
-                                    />
-                                    <span
-                                        v-if="hasHiddenSelectedLabels"
-                                        class="shrink-0 text-muted-foreground"
-                                        >+{{ hiddenSelectedLabelCount }}</span
-                                    >
-                                </span>
+                                    :labels="selectedLabels"
+                                    test-id="idea-editor-labels-chip"
+                                />
                                 <IconChevronDown
                                     class="size-4 shrink-0 text-muted-foreground"
                                 />

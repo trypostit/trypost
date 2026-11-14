@@ -1368,7 +1368,7 @@ test('select all picks only the channels the search shows, and the last used sho
         ->assertNoJavaScriptErrors();
 });
 
-test('the composer label button shows the first two labels as colored chips and counts the rest', function () {
+test('the composer label button keeps its tag icon, shows the first two labels as colored chips and counts the rest', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -1383,10 +1383,10 @@ test('the composer label button shows the first two labels as colored chips and 
 
     $page = visit(route('app.posts.edit', $post));
     waitForComposerReady($page, 'composer-tags-trigger');
-    waitForText($page, '@composer-tags-trigger', '+1');
+    waitForText($page, '@composer-tags-chip-more', '+1');
 
     $chips = $page->script(<<<'JS'
-        Array.from(document.querySelectorAll('[data-testid^="composer-tags-chip-"]'), (chip) => ({
+        Array.from(document.querySelectorAll('[data-testid^="composer-tags-chip-"]:not([data-testid$="-more"])'), (chip) => ({
             text: chip.innerText.trim(),
             background: getComputedStyle(chip).backgroundColor,
         }))
@@ -1397,5 +1397,6 @@ test('the composer label button shows the first two labels as colored chips and 
         ['text' => 'Beta', 'background' => 'rgb(124, 58, 237)'],
     ]);
     $page->assertDontSeeIn('@composer-tags-trigger', 'Gamma')
+        ->assertVisible('@composer-tags-icon')
         ->assertNoJavaScriptErrors();
 });

@@ -846,7 +846,7 @@ test('the idea editor label button shows the first two labels and counts the res
 
     $page = visit(route('app.create.ideas.show', $idea));
     waitForOpen($page, '@idea-editor');
-    waitForText($page, '@idea-editor-labels', '+1');
+    waitForText($page, '@idea-editor-labels-chip-more', '+1');
 
     $page->assertSeeIn('@idea-editor-labels', 'Alpha')
         ->assertSeeIn('@idea-editor-labels', 'Beta')

@@ -48,7 +48,7 @@ import BottomSheet from '@/components/BottomSheet.vue';
 import CharacterCounter from '@/components/CharacterCounter.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FilterEmptyState from '@/components/FilterEmptyState.vue';
-import LabelBadge from '@/components/labels/LabelBadge.vue';
+import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
@@ -1025,20 +1025,7 @@ const selectedLabels = computed(() =>
     ),
 );
 
-/** The trigger shows the first two picked labels and counts the rest. */
-const SHOWN_LABELS_IN_TRIGGER = 2;
-
-const shownSelectedLabels = computed(() =>
-    selectedLabels.value.slice(0, SHOWN_LABELS_IN_TRIGGER),
-);
-
-const hiddenSelectedLabelCount = computed(
-    () => selectedLabels.value.length - shownSelectedLabels.value.length,
-);
-
-const hasHiddenSelectedLabels = computed(
-    () => hiddenSelectedLabelCount.value > 0,
-);
+const hasSelectedLabels = computed(() => filled(selectedLabels.value));
 const addLabel = (label: {
     id: string;
     name: string;
@@ -2369,35 +2356,24 @@ const onDialogOpenChange = (value: boolean): void => {
                                 data-testid="composer-tags-trigger"
                             >
                                 <IconTag
-                                    v-if="!selectedLabels.length"
-                                    class="size-4"
+                                    class="size-4 shrink-0"
+                                    data-testid="composer-tags-icon"
                                 />
                                 <span
-                                    v-if="!selectedLabels.length"
+                                    v-if="!hasSelectedLabels"
                                     class="max-sm:sr-only"
                                     >{{
                                     $t('posts.edit.labels')
                                 }}</span>
-                                <span
+                                <LabelChips
                                     v-else
-                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
-                                >
-                                    <LabelBadge
-                                        v-for="label in shownSelectedLabels"
-                                        :key="label.id"
-                                        :label="label"
-                                        :data-testid="`composer-tags-chip-${label.id}`"
-                                    />
-                                    <span
-                                        v-if="hasHiddenSelectedLabels"
-                                        class="shrink-0 text-muted-foreground"
-                                        >+{{ hiddenSelectedLabelCount }}</span
-                                    >
-                                </span>
+                                    :labels="selectedLabels"
+                                    test-id="composer-tags-chip"
+                                />
                                 <IconChevronDown
                                     class="size-4 shrink-0 text-muted-foreground"
                                     :class="{
-                                        'max-sm:hidden': !selectedLabels.length,
+                                        'max-sm:hidden': !hasSelectedLabels,
                                     }"
                                 />
                             </Button>
