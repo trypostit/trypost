@@ -483,3 +483,47 @@ test('resuming an unfinished post keeps its thread replies', function () {
         ->assertValue("@composer-caption-{$bluesky->id}", 'Thread root')
         ->assertNoJavaScriptErrors();
 });
+
+test('the sidebar new button marks an unfinished post as soon as the composer closes and drops the mark once it is discarded', function () {
+    [$user, , $account] = composerAutosaveWorkspace();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@sidebar-new');
+    $page->assertMissing('@sidebar-new-unfinished');
+
+    openComposerForAutosave($page);
+    writeUnfinishedPost($page, $account, 'Half written idea');
+    closeComposerForAutosave($page);
+    waitFor($page, '@sidebar-new-unfinished');
+
+    $page->assertSeeIn('@sidebar-new-unfinished', __('sidebar.unfinished_post'));
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-discard');
+    waitForGone($page, '@composer-resume-dialog');
+    closeComposerForAutosave($page);
+
+    waitForGone($page, '@sidebar-new-unfinished');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the sidebar new button marks an unfinished post kept from an earlier visit, but not a draft holding only labels', function () {
+    [$user, $workspace, $account] = composerAutosaveWorkspace();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@sidebar-new');
+    seedComposerAutosave($page, $user, $workspace->id, ['labelIds' => ['label']]);
+
+    $page->navigate(route('app.calendar'));
+    waitFor($page, '@sidebar-new');
+    $page->assertMissing('@sidebar-new-unfinished');
+
+    seedComposerAutosave($page, $user, $workspace->id, ['accountIds' => [$account->id]]);
+    $page->navigate(route('app.posts.index'));
+    waitFor($page, '@sidebar-new-unfinished');
+
+    $page->assertNoJavaScriptErrors();
+});

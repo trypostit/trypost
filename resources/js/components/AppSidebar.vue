@@ -35,6 +35,7 @@ import {
     SidebarHeader,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { useHasUnfinishedPost } from '@/composables/useComposerAutosave';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { usePublishView } from '@/composables/usePublishView';
@@ -57,6 +58,7 @@ const {
     canManageTeam,
 } = useWorkspaceAbilities();
 const { publishUrl } = usePublishView();
+const hasUnfinishedPost = useHasUnfinishedPost();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -137,7 +139,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                         <Button
-                            class="h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+                            class="relative h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
                             :aria-label="$t('sidebar.new')"
                             data-testid="sidebar-new"
                         >
@@ -147,6 +149,15 @@ const mainNavItems = computed<NavItem[]>(() => [
                             <span class="group-data-[collapsible=icon]:hidden">{{
                                 $t('sidebar.new')
                             }}</span>
+                            <span
+                                v-if="hasUnfinishedPost"
+                                class="absolute -top-0.5 -left-0.5 size-2.5 rounded-full bg-success ring-2 ring-sidebar"
+                                data-testid="sidebar-new-unfinished"
+                            >
+                                <span class="sr-only">{{
+                                    $t('sidebar.unfinished_post')
+                                }}</span>
+                            </span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent

@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Çalışma alanı seç',
     'create_workspace' => 'Çalışma alanı oluştur',
     'new' => 'Yeni',
+    'unfinished_post' => 'Bitirmediğin bir gönderin var',
     'create' => 'Oluştur',
     'new_menu' => [
         'post' => 'Gönderi',

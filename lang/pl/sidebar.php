@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Wybierz przestrzeń roboczą',
     'create_workspace' => 'Nowa przestrzeń',
     'new' => 'Nowy',
+    'unfinished_post' => 'Masz niedokończony post',
     'create' => 'Twórz',
     'new_menu' => [
         'post' => 'Post',

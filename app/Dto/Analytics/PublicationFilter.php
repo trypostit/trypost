@@ -103,7 +103,7 @@ final readonly class PublicationFilter
      */
     private function publicationTypes(): array
     {
-        if ($this->platform === null) {
+        if (blank($this->platform)) {
             return [];
         }
 
