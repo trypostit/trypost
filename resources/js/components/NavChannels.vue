@@ -124,10 +124,7 @@ const suggestedPlatforms = computed(() => {
     return SUGGESTED_PLATFORMS.filter((platform) => connectable.has(platform));
 });
 
-const { channelPublishUrl, channelPublishPaths } = usePublishView();
-
-const isChannelPublishActive = (channel: SidebarChannel): boolean =>
-    channelPublishPaths(channel.id).some((path) => urlIsActive(path));
+const { channelPublishUrl, isChannelPublishPage } = usePublishView();
 
 const isCurrentChannel = (channel: SidebarChannel): boolean =>
     page.url.startsWith(`/channels/${channel.id}/`);
@@ -511,7 +508,7 @@ const reconnect = (channel: SidebarChannel): void => {
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton
                                         as-child
-                                        :is-active="isChannelPublishActive(channel)"
+                                        :is-active="isChannelPublishPage(channel.id)"
                                     >
                                         <Link
                                             :href="channelPublishUrl(channel.id)"

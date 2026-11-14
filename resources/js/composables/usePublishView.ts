@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 
+import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useUserStorage } from '@/composables/useBrowserStorage';
 import { calendar } from '@/routes/app';
@@ -20,10 +21,11 @@ export const usePublishView = (): {
     rememberPublishView: (view: PublishView) => void;
     publishUrl: ComputedRef<string>;
     channelPublishUrl: (channelId: string) => string;
-    channelPublishPaths: (channelId: string) => string[];
+    isChannelPublishPage: (channelId: string) => boolean;
 } => {
     const stored = useUserStorage('publish.view', 'list');
     const isPhone = useBelowBreakpoint('md');
+    const { urlIsActive } = useActiveUrl();
 
     const publishView = computed((): PublishView =>
         PUBLISH_VIEWS.includes(stored.value) ? stored.value : 'list',
@@ -55,18 +57,19 @@ export const usePublishView = (): {
             : channelPublish.url(channelId);
     };
 
-    /** Every path of a channel's Publish views, to mark its Publish link as current on any of them. */
-    const channelPublishPaths = (channelId: string): string[] => [
-        channelPublish.url(channelId),
-        channelCalendar.url({ account: channelId }),
-        channelBoard.url(channelId),
-    ];
+    /** Whether the page is one of a channel's Publish views, so its Publish link shows as current on any of them. */
+    const isChannelPublishPage = (channelId: string): boolean =>
+        [
+            channelPublish.url(channelId),
+            channelCalendar.url({ account: channelId }),
+            channelBoard.url(channelId),
+        ].some((url) => urlIsActive(url));
 
     return {
         publishView,
         rememberPublishView,
         publishUrl,
         channelPublishUrl,
-        channelPublishPaths,
+        isChannelPublishPage,
     };
 };
