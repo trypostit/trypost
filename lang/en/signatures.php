@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'Edit signature',
-        'delete' => 'Delete signature',
+        'delete' => 'Delete',
+        'settings' => 'Settings',
     ],
 
     'create' => [

@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'Editar assinatura',
-        'delete' => 'Excluir assinatura',
+        'delete' => 'Excluir',
+        'settings' => 'Configurações',
     ],
 
     'create' => [

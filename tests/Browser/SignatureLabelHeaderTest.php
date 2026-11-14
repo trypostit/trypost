@@ -63,13 +63,13 @@ test('signature edit uses a centered dialog and resets canceled changes', functi
 
     $page = visit(route('app.signatures.index'));
     $page
-        ->click("@signature-row-{$signature->id}")
+        ->click("@signature-settings-{$signature->id}")
         ->assertVisible('@edit-signature-sheet')
         ->assertVisible('@edit-signature-name')
         ->fill('@edit-signature-name', 'Unsaved name')
         ->click('@cancel-edit-signature')
         ->assertMissing('@edit-signature-sheet')
-        ->click("@signature-row-{$signature->id}")
+        ->click("@signature-settings-{$signature->id}")
         ->assertValue('@edit-signature-name', 'Original signature');
 
     $layout = $page->script(<<<'JS'

@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'تعديل التوقيع',
-        'delete' => 'حذف التوقيع',
+        'delete' => 'حذف',
+        'settings' => 'الإعدادات',
     ],
 
     'create' => [

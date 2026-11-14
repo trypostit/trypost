@@ -20,6 +20,7 @@ return [
     'posts.status.pending_review' => 28,
     'posts.status.deleted_on_network' => 10,
     'labels.actions.view_insights' => 20,
+    'labels.meta.posts' => 18,
     'accounts.connect.actions.back' => 8,
     'accounts.connect.actions.connect_again' => 17,
     'accounts.connect.actions.start_again' => 16,

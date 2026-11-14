@@ -188,7 +188,7 @@ test('a label row shows its color, how many posts use it and its actions in one 
         ->assertNoJavaScriptErrors();
 });
 
-test('only the cog on a label row opens its edit dialog, not the rest of the row', function () {
+test('only the cog on a label row opens its edit dialog, not the rest of the row, and the cog and menu say Settings and More actions', function () {
     [$user, $label] = labelMenuOwner();
     $this->actingAs($user);
 
@@ -198,6 +198,11 @@ test('only the cog on a label row opens its edit dialog, not the rest of the row
     $page->click("@label-posts-count-{$label->id}");
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
     $page->assertMissing('@edit-label-dialog');
+
+    $page->hover("@label-settings-{$label->id}");
+    waitForText($page, "@label-settings-tooltip-{$label->id}", __('labels.actions.settings'));
+    $page->hover('@header-title')->hover("@label-menu-{$label->id}");
+    waitForText($page, "@label-menu-tooltip-{$label->id}", __('labels.actions.more'));
 
     $page->click("@label-settings-{$label->id}");
     waitForOpen($page, '@edit-label-dialog');

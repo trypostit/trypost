@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'İmzayı düzenle',
-        'delete' => 'İmzayı sil',
+        'delete' => 'Sil',
+        'settings' => 'Ayarlar',
     ],
 
     'create' => [

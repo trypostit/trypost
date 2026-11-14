@@ -17,9 +17,9 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Edit label',
         'delete' => 'Delete label',
         'more' => 'More actions',
+        'settings' => 'Settings',
         'view_posts' => 'View posts',
         'view_insights' => 'View insights',
     ],

@@ -17,9 +17,9 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Label bewerken',
         'delete' => 'Label verwijderen',
         'more' => 'Meer acties',
+        'settings' => 'Instellingen',
         'view_posts' => 'Berichten bekijken',
         'view_insights' => 'Insights bekijken',
     ],

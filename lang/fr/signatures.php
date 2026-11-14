@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'Modifier la signature',
-        'delete' => 'Supprimer la signature',
+        'delete' => 'Supprimer',
+        'settings' => 'Paramètres',
     ],
 
     'create' => [

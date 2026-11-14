@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => '署名を編集',
-        'delete' => '署名を削除',
+        'delete' => '削除',
+        'settings' => '設定',
     ],
 
     'create' => [

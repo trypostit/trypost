@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'Editar firma',
-        'delete' => 'Eliminar firma',
+        'delete' => 'Eliminar',
+        'settings' => 'Configuración',
     ],
 
     'create' => [

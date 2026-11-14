@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => '서명 편집',
-        'delete' => '서명 삭제',
+        'delete' => '삭제',
+        'settings' => '설정',
     ],
 
     'create' => [

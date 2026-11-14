@@ -17,9 +17,9 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'تعديل التسمية',
         'delete' => 'حذف التسمية',
         'more' => 'مزيد من الإجراءات',
+        'settings' => 'الإعدادات',
         'view_posts' => 'عرض المنشورات',
         'view_insights' => 'عرض Insights',
     ],

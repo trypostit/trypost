@@ -17,9 +17,9 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Modifier l\'étiquette',
         'delete' => 'Supprimer l\'étiquette',
         'more' => 'Plus d\'actions',
+        'settings' => 'Paramètres',
         'view_posts' => 'Voir les publications',
         'view_insights' => 'Voir les insights',
     ],

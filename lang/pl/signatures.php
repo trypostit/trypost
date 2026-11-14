@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => 'Edytuj sygnaturę',
-        'delete' => 'Usuń sygnaturę',
+        'delete' => 'Usuń',
+        'settings' => 'Ustawienia',
     ],
 
     'create' => [

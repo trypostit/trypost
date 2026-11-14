@@ -20,7 +20,8 @@ return [
 
     'actions' => [
         'edit' => '编辑签名',
-        'delete' => '删除签名',
+        'delete' => '删除',
+        'settings' => '设置',
     ],
 
     'create' => [

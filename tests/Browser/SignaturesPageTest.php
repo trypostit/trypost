@@ -118,7 +118,7 @@ test('the signatures empty state is never cut off on a short screen', function (
     $page->assertNoJavaScriptErrors();
 });
 
-test('a signature row shows the cog and the trash side by side, opening the edit sheet and the delete confirmation', function () {
+test('a signature row opens the edit sheet and the delete confirmation only from its cog and trash, each with a short tooltip', function () {
     [$user, $workspace] = signaturesPageOwner();
     $signature = WorkspaceSignature::factory()->create(['workspace_id' => $workspace->id]);
     $this->actingAs($user);
@@ -128,6 +128,15 @@ test('a signature row shows the cog and the trash side by side, opening the edit
 
     $page->assertVisible("@signature-delete-{$signature->id}")
         ->assertMissing("@signature-menu-{$signature->id}");
+
+    $page->click("@signature-row-{$signature->id}");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+    $page->assertMissing('@edit-signature-sheet');
+
+    $page->hover("@signature-settings-{$signature->id}");
+    waitForText($page, "@signature-settings-tooltip-{$signature->id}", __('signatures.actions.settings'));
+    $page->hover('@header-title')->hover("@signature-delete-{$signature->id}");
+    waitForText($page, "@signature-delete-tooltip-{$signature->id}", __('signatures.actions.delete'));
 
     $page->click("@signature-settings-{$signature->id}");
     waitForOpen($page, '@edit-signature-sheet');

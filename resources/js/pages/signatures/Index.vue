@@ -154,9 +154,7 @@ const handleDelete = (signature: Signature) => {
                         <SettingsListRow
                             v-for="signature in signatures.data"
                             :key="signature.id"
-                            class="cursor-pointer"
                             :data-testid="`signature-row-${signature.id}`"
-                            @click="openEditDialog(signature)"
                         >
                             <template #media>
                                 <span
@@ -185,15 +183,17 @@ const handleDelete = (signature: Signature) => {
                                                 variant="ghost"
                                                 size="icon"
                                                 class="shrink-0 text-muted-foreground"
-                                                :aria-label="$t('signatures.actions.edit')"
+                                                :aria-label="$t('signatures.actions.settings')"
                                                 :data-testid="`signature-settings-${signature.id}`"
-                                                @click.stop="openEditDialog(signature)"
+                                                @click="openEditDialog(signature)"
                                             >
                                                 <IconSettings class="size-4" />
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>
-                                            {{ $t('signatures.actions.edit') }}
+                                        <TooltipContent
+                                            :data-testid="`signature-settings-tooltip-${signature.id}`"
+                                        >
+                                            {{ $t('signatures.actions.settings') }}
                                         </TooltipContent>
                                     </Tooltip>
                                     <Tooltip>
@@ -204,12 +204,14 @@ const handleDelete = (signature: Signature) => {
                                                 class="shrink-0 text-destructive-text hover:bg-critical-subtle hover:text-destructive-text"
                                                 :aria-label="$t('signatures.actions.delete')"
                                                 :data-testid="`signature-delete-${signature.id}`"
-                                                @click.stop="handleDelete(signature)"
+                                                @click="handleDelete(signature)"
                                             >
                                                 <IconTrash class="size-4" />
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>
+                                        <TooltipContent
+                                            :data-testid="`signature-delete-tooltip-${signature.id}`"
+                                        >
                                             {{ $t('signatures.actions.delete') }}
                                         </TooltipContent>
                                     </Tooltip>
