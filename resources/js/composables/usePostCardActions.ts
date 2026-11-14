@@ -8,6 +8,7 @@ import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/P
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { filled } from '@/lib/helpers';
+import { rememberInAppPush } from '@/lib/inAppHistory';
 import { postPermalink } from '@/lib/postNetwork';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
@@ -118,7 +119,11 @@ export const schedulePostCard = (
 };
 
 export const duplicatePostCard = (post: PostCard): void => {
-    router.post(duplicatePost.url(post.id));
+    router.post(
+        duplicatePost.url(post.id),
+        {},
+        { onSuccess: rememberInAppPush },
+    );
 };
 
 /** Opens the composer with the sent post's link and every channel of the workspace. */

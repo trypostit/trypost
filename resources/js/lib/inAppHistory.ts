@@ -25,6 +25,16 @@ export const trackInAppPushes = (): void => {
 };
 
 /**
+ * Marks the current history entry as pushed by the app, for a visit that is
+ * not a plain GET but still pushed a page on top of the one it was sent from:
+ * duplicating a post sends a POST that lands on the copy's composer, so closing
+ * that composer goes back to the List, Calendar or Board it was duplicated from.
+ */
+export const rememberInAppPush = (): void => {
+    pushedUrl = window.location.href;
+};
+
+/**
  * Whether the app pushed the current history entry, so the entry behind it is
  * another page of the app the user can be sent back to. A partial reload may
  * add query parameters to the entry afterwards (`queue_days`), so the entry
