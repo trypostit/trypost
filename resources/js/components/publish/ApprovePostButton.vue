@@ -24,6 +24,8 @@ import { userTimezone } from '@/preferences';
 import { ScheduleMode } from '@/types/post';
 import type { PostCard } from '@/types/publish';
 
+type ApprovalPayload = { scheduled_at?: string; publish_now?: true };
+
 const props = defineProps<{
     post: PostCard;
     testKey: string;
@@ -48,12 +50,19 @@ const postTimezone = computed(
 );
 
 /** A custom-time post without a time still to come asks for one before it is approved. */
-const needsTime = computed(
-    () =>
-        !isQueued.value &&
-        (!filled(props.post.scheduled_at) ||
-            date.hasPassed(props.post.scheduled_at)),
-);
+const needsTime = computed((): boolean => {
+    if (isQueued.value) {
+        return false;
+    }
+
+    const scheduledAt = props.post.scheduled_at;
+
+    if (!filled(scheduledAt)) {
+        return true;
+    }
+
+    return date.hasPassed(scheduledAt);
+});
 
 /** Approving a post as it was asked for: into the queue, or at its time. */
 const asRequested = computed(() => {
@@ -71,10 +80,7 @@ const asRequested = computed(() => {
 });
 
 /** Sends the approval and toasts what it did, named after the button the approver clicked. */
-const send = (
-    payload: { scheduled_at?: string; publish_now?: true },
-    toastKey: string,
-): void => {
+const send = (payload: ApprovalPayload, toastKey: string): void => {
     router.put(approve.url(props.post.id), payload, {
         ...reload(),
         preserveScroll: true,
@@ -85,7 +91,7 @@ const send = (
             approving.value = false;
         },
         onSuccess: () => {
-            pickerOpen.value = false;
+            closePicker();
             toast.success(trans(toastKey), { testId: 'post-approval-toast' });
         },
         onError: toastFirstError,
