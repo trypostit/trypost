@@ -18,7 +18,6 @@ return [
         'created_at' => 'Utworzono',
     ],
 
-    'row_actions' => 'Akcje podpisu',
     'actions' => [
         'edit' => 'Edytuj sygnaturę',
         'delete' => 'Usuń sygnaturę',

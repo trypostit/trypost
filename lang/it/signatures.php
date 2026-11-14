@@ -18,7 +18,6 @@ return [
         'created_at' => 'Creata',
     ],
 
-    'row_actions' => 'Azioni della firma',
     'actions' => [
         'edit' => 'Modifica firma',
         'delete' => 'Elimina firma',

@@ -18,7 +18,6 @@ return [
         'created_at' => 'Aangemaakt',
     ],
 
-    'row_actions' => 'Acties voor handtekening',
     'actions' => [
         'edit' => 'Handtekening bewerken',
         'delete' => 'Handtekening verwijderen',

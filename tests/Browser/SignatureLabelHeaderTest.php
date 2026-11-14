@@ -131,8 +131,7 @@ test('label and signature deletion use a plain confirmation without typing', fun
         ->assertNoJavaScriptErrors();
 
     visit(route('app.signatures.index'))
-        ->click("@signature-menu-{$signature->id}")
-        ->click("@delete-signature-{$signature->id}")
+        ->click("@signature-delete-{$signature->id}")
         ->assertVisible('@confirm-delete-modal')
         ->assertMissing('@confirm-delete-input')
         ->click('@confirm-delete-action')

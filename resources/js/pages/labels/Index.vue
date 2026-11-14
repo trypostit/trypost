@@ -163,9 +163,7 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                         <SettingsListRow
                             v-for="label in labels.data"
                             :key="label.id"
-                            class="cursor-pointer"
                             :data-testid="`label-row-${label.id}`"
-                            @click="openEditDialog(label)"
                         >
                             <template #media>
                                 <span
@@ -200,7 +198,7 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                             class="shrink-0 text-muted-foreground"
                                             :aria-label="$t('labels.actions.edit')"
                                             :data-testid="`label-settings-${label.id}`"
-                                            @click.stop="openEditDialog(label)"
+                                            @click="openEditDialog(label)"
                                         >
                                             <IconSettings class="size-4" />
                                         </Button>
@@ -217,12 +215,11 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                             class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
                                             :aria-label="$t('labels.actions.more')"
                                             :data-testid="`label-menu-${label.id}`"
-                                            @click.stop
                                         >
                                             <IconDotsVertical class="size-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" @click.stop>
+                                    <DropdownMenuContent align="end">
                                         <DropdownMenuItem as-child>
                                             <a
                                                 :href="postsIndex.url(labelQuery(label))"

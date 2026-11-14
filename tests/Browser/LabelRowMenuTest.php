@@ -188,12 +188,16 @@ test('a label row shows its color, how many posts use it and its actions in one 
         ->assertNoJavaScriptErrors();
 });
 
-test('the cog on a label row opens its edit dialog', function () {
+test('only the cog on a label row opens its edit dialog, not the rest of the row', function () {
     [$user, $label] = labelMenuOwner();
     $this->actingAs($user);
 
     $page = visit(route('app.labels.index'));
     waitFor($page, "@label-settings-{$label->id}");
+
+    $page->click("@label-posts-count-{$label->id}");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+    $page->assertMissing('@edit-label-dialog');
 
     $page->click("@label-settings-{$label->id}");
     waitForOpen($page, '@edit-label-dialog');

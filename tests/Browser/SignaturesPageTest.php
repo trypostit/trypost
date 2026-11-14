@@ -117,3 +117,26 @@ test('the signatures empty state is never cut off on a short screen', function (
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a signature row shows the cog and the trash side by side, opening the edit sheet and the delete confirmation', function () {
+    [$user, $workspace] = signaturesPageOwner();
+    $signature = WorkspaceSignature::factory()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.signatures.index'));
+    waitFor($page, "@signature-settings-{$signature->id}");
+
+    $page->assertVisible("@signature-delete-{$signature->id}")
+        ->assertMissing("@signature-menu-{$signature->id}");
+
+    $page->click("@signature-settings-{$signature->id}");
+    waitForOpen($page, '@edit-signature-sheet');
+    $page->click('@cancel-edit-signature');
+    waitForGone($page, '@edit-signature-sheet');
+
+    $page->click("@signature-delete-{$signature->id}");
+    waitForOpen($page, '@confirm-delete-modal');
+
+    $page->assertMissing('@edit-signature-sheet')
+        ->assertNoJavaScriptErrors();
+});

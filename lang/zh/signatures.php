@@ -18,7 +18,6 @@ return [
         'created_at' => '创建时间',
     ],
 
-    'row_actions' => '签名操作',
     'actions' => [
         'edit' => '编辑签名',
         'delete' => '删除签名',

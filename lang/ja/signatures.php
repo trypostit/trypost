@@ -18,7 +18,6 @@ return [
         'created_at' => '作成日',
     ],
 
-    'row_actions' => '署名の操作',
     'actions' => [
         'edit' => '署名を編集',
         'delete' => '署名を削除',
