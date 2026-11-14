@@ -103,7 +103,7 @@ const columnName = (translate: (key: string) => string): string => {
                 v-else
                 class="min-w-0 truncate text-sm leading-5 font-emphasis text-foreground"
             >
-                {{ $t(nameKey) }}
+                {{ columnName($t) }}
             </h2>
             <span
                 v-if="cards"

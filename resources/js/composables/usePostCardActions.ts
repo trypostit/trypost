@@ -47,6 +47,19 @@ export const POST_CARD_LABELS_RELOAD: PostCardReload = {
 export const postCardReloadKey: InjectionKey<() => PostCardReload> =
     Symbol('postCardReload');
 
+/** The reload a page asks its card actions for (the board's columns); none on the List, which does a full visit. */
+export const usePageReload = (): (() => Partial<PostCardReload>) => {
+    const pageReload = inject(postCardReloadKey, null);
+
+    return () => {
+        if (pageReload === null) {
+            return {};
+        }
+
+        return pageReload();
+    };
+};
+
 /** The reload a card action sends: the page's own when it provides one, else the List's. */
 export const usePostCardReload = (
     fallback: PostCardReload,

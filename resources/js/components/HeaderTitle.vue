@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import type { Component } from 'vue';
+import { computed, type Component } from 'vue';
 
 import { filled } from '@/lib/helpers';
 
-defineProps<{
+const props = defineProps<{
     title?: string;
     total?: number | null;
     icon?: Component;
 }>();
+
+/** The count shows after the title once there is something to count. */
+const hasTotal = computed((): boolean => {
+    if (!filled(props.total)) {
+        return false;
+    }
+
+    return props.total > 0;
+});
 </script>
 
 <template>
@@ -30,7 +39,7 @@ defineProps<{
                 >
                     {{ title }}
                     <span
-                        v-if="filled(total) && total > 0"
+                        v-if="hasTotal"
                         class="text-muted-foreground"
                         data-testid="header-title-total"
                     >

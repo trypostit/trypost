@@ -37,6 +37,7 @@ import {
 } from '@/composables/usePlatformLogo';
 import {
     schedulePostCard,
+    usePageReload,
 } from '@/composables/usePostCardActions';
 import {
     getPostStatusConfig,
@@ -137,6 +138,13 @@ const railStatuses = computed(() =>
         ]),
     ),
 );
+
+const pageReload = usePageReload();
+
+/** Publishing from the details reloads what the page asks for (the board's columns), like the card's menu. */
+const publishCurrentNow = (): void => {
+    schedulePostCard(current.value.id, 'publish_now', pageReload());
+};
 
 const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
@@ -562,7 +570,7 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 "
                                 variant="outline"
                                 :data-testid="`post-details-publish-now-${currentKey}`"
-                                @click="schedulePostCard(current.id, 'publish_now')"
+                                @click="publishCurrentNow"
                             >
                                 <IconSend class="size-4" />
                                 {{ $t('posts.publish.actions.publish_now') }}

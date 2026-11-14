@@ -29,6 +29,7 @@ import {
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { blank, filled } from '@/lib/helpers';
 import { settings as settingsRoute } from '@/routes/app/channels';
+import { channelName } from '@/types/channel';
 import {
     accountTypeKey,
     isConnectionLost,
@@ -52,9 +53,7 @@ const emit = defineEmits<{
     disconnect: [channel: ConnectedAccount];
 }>();
 
-const name = computed(
-    () => props.channel.display_name || props.channel.username,
-);
+const name = computed(() => channelName(props.channel));
 
 const lost = computed(() => isConnectionLost(props.channel));
 

@@ -40,19 +40,20 @@ const {
     detailsOpen,
     recurrenceOpen,
     recurrenceTarget,
+    recurrenceTimezone,
     openDetails,
     edit,
     runPostAction,
     runMenuAction,
-} = usePostCardMenuActions(() => props.post, { lazy: true });
+} = usePostCardMenuActions(() => props.post, {
+    timezone: () => props.timezone,
+    lazy: true,
+});
 
 const account = computed(() => props.post.social_account);
 
 const channelLabel = computed(() => postChannelLabel(props.post));
 
-const recurrenceTimezone = computed(
-    () => account.value?.timezone ?? props.timezone,
-);
 
 const attemptAt = computed(() => postAttemptAt(props.post));
 
@@ -64,13 +65,22 @@ const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 
 const hasText = computed(() => filled(text.value));
 
-const textColor = computed(() =>
-    hasText.value ? 'text-foreground' : 'text-muted-foreground',
-);
+const textColor = computed((): string => {
+    if (hasText.value) {
+        return 'text-foreground';
+    }
+
+    return 'text-muted-foreground';
+});
 
 /** The channel the card names, or "No channel". Takes the template's `$t`, like the helpers below. */
-const channelOrNone = (translate: Translate): string =>
-    channelLabel.value || translate('posts.board.columns.no_channel');
+const channelOrNone = (translate: Translate): string => {
+    if (filled(channelLabel.value)) {
+        return channelLabel.value;
+    }
+
+    return translate('posts.board.columns.no_channel');
+};
 
 /** The post's text, or "No content". */
 const textOrNone = (translate: Translate): string => {

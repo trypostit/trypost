@@ -10,7 +10,24 @@ import {
     publish as channelPublish,
 } from '@/routes/app/channels';
 import { board, index as postsIndex } from '@/routes/app/posts';
-import { PUBLISH_VIEWS, type PublishView } from '@/types/publish';
+import {
+    type CalendarView,
+    PUBLISH_VIEWS,
+    type PublishView,
+} from '@/types/publish';
+
+/** The calendar view a Publish link opens: days on a phone, the week elsewhere. */
+export const useOpeningCalendarView = (): ComputedRef<CalendarView> => {
+    const isPhone = useBelowBreakpoint('md');
+
+    return computed((): CalendarView => {
+        if (isPhone.value) {
+            return 'days';
+        }
+
+        return 'week';
+    });
+};
 
 /**
  * The Publish view (list, calendar or board) the user last opened, kept in the
@@ -24,7 +41,6 @@ export const usePublishView = (): {
     isChannelPublishPage: (channelId: string) => boolean;
 } => {
     const stored = useUserStorage('publish.view', 'list');
-    const isPhone = useBelowBreakpoint('md');
     const { urlIsActive } = useActiveUrl();
 
     /** The stored view when it is still one of the views, else the list. */
@@ -36,14 +52,7 @@ export const usePublishView = (): {
         return 'list';
     });
 
-    /** The calendar opens on days on a phone, on the week elsewhere. */
-    const calendarView = computed((): string => {
-        if (isPhone.value) {
-            return 'days';
-        }
-
-        return 'week';
-    });
+    const calendarView = useOpeningCalendarView();
 
     const rememberPublishView = (view: PublishView): void => {
         if (stored.value !== view) {

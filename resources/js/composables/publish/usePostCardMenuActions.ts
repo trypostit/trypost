@@ -7,10 +7,11 @@ import {
     deletePostCardKey,
     duplicatePostCard,
     editPostCardUrlKey,
-    postCardReloadKey,
     schedulePostCard,
     sharePostCardLink,
+    usePageReload,
 } from '@/composables/usePostCardActions';
+import { filled } from '@/lib/helpers';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
 
 /**
@@ -22,15 +23,19 @@ import type { PostCard, PostCardMenuAction } from '@/types/publish';
  */
 export const usePostCardMenuActions = (
     post: () => PostCard,
-    options: { detailsOpen?: boolean; lazy?: boolean } = {},
+    options: {
+        /** The zone the recurrence dialog falls back to when the post's channel has none. */
+        timezone: () => string;
+        detailsOpen?: boolean;
+        lazy?: boolean;
+    },
 ) => {
     const deletePost = inject(deletePostCardKey, () => {});
     const editUrl = inject(editPostCardUrlKey, (target: PostCard) =>
         editPostRoute.url(target.id),
     );
 
-    /** A page that lists posts under other props than `posts` (the board) reloads its own; the List does a full visit. */
-    const pageReload = inject(postCardReloadKey, null);
+    const pageReload = usePageReload();
 
     const dialogsMounted = ref(!options.lazy);
     const detailsOpen = ref(options.detailsOpen ?? false);
@@ -38,9 +43,24 @@ export const usePostCardMenuActions = (
     const recurrencePost = ref<PostCard>(post());
 
     /** The post the recurrence dialog edits: this card's, kept current, or a sibling picked in the details. */
-    const recurrenceTarget = computed((): PostCard =>
-        recurrencePost.value.id === post().id ? post() : recurrencePost.value,
-    );
+    const recurrenceTarget = computed((): PostCard => {
+        if (recurrencePost.value.id === post().id) {
+            return post();
+        }
+
+        return recurrencePost.value;
+    });
+
+    /** The recurrence dialog reads times in the edited post's channel zone. */
+    const recurrenceTimezone = computed((): string => {
+        const channelZone = recurrenceTarget.value.social_account?.timezone;
+
+        if (filled(channelZone)) {
+            return channelZone;
+        }
+
+        return options.timezone();
+    });
 
     /** Runs `open` now when the dialogs are mounted, else once they mount. */
     const withDialogs = (open: () => void): void => {
@@ -75,7 +95,7 @@ export const usePostCardMenuActions = (
         target: PostCard,
         action: 'publish_now' | 'draft',
     ): void => {
-        schedulePostCard(target.id, action, pageReload?.() ?? {});
+        schedulePostCard(target.id, action, pageReload());
     };
 
     const publishNow = (): void => {
@@ -121,6 +141,7 @@ export const usePostCardMenuActions = (
         detailsOpen,
         recurrenceOpen,
         recurrenceTarget,
+        recurrenceTimezone,
         openDetails,
         edit,
         publishNow,

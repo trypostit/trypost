@@ -21,6 +21,10 @@ defineProps<{
 const group = defineModel<BoardGroup>({ required: true });
 
 const belowSm = useBelowBreakpoint('sm');
+
+/** The phone trigger's name: "Group by: Tag", resolved with the template's `$t`. */
+const triggerLabel = (translate: (key: string) => string): string =>
+    `${translate('posts.board.group_by')}: ${translate(`posts.board.groups.${group.value}`)}`;
 const sheetOpen = ref(false);
 
 const openSheet = (): void => {
@@ -46,7 +50,7 @@ const chooseFromMenu = (value: unknown): void => {
             <Button
                 variant="ghost"
                 class="shrink-0 gap-1.5 px-2"
-                :aria-label="`${$t('posts.board.group_by')}: ${$t(`posts.board.groups.${group}`)}`"
+                :aria-label="triggerLabel($t)"
                 aria-haspopup="dialog"
                 :aria-expanded="sheetOpen"
                 data-testid="board-group-trigger"

@@ -135,9 +135,6 @@ const highlightNoteId = computed(() =>
 
 const platform = computed(() => props.post.platform ?? null);
 const account = computed(() => props.post.social_account ?? null);
-const recurrenceTimezone = computed(
-    () => account.value?.timezone ?? timezone.value,
-);
 
 const isPublishing = computed(
     () => props.post.status === PostStatus.Publishing,
@@ -356,12 +353,14 @@ const {
     detailsOpen,
     recurrenceOpen,
     recurrenceTarget,
+    recurrenceTimezone,
     openDetails,
     edit,
     publishNow,
     runPostAction,
     runMenuAction,
 } = usePostCardMenuActions(() => props.post, {
+    timezone: () => timezone.value,
     detailsOpen: openPostDetailsId.value === props.post.id,
 });
 

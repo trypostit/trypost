@@ -1,8 +1,8 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
+import { useOpeningCalendarView } from '@/composables/usePublishView';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { blank, filled } from '@/lib/helpers';
 import { calendar } from '@/routes/app';
@@ -157,16 +157,7 @@ export const usePublishFilters = (
         return board.url({ query });
     };
 
-    const isPhone = useBelowBreakpoint('md');
-
-    /** The calendar opens on days on a phone, on the week elsewhere. */
-    const calendarView = computed((): CalendarView => {
-        if (isPhone.value) {
-            return 'days';
-        }
-
-        return 'week';
-    });
+    const calendarView = useOpeningCalendarView();
 
     const listHref = computed((): string => listUrlFor());
 

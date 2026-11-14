@@ -57,14 +57,14 @@ const {
     detailsOpen,
     recurrenceOpen,
     recurrenceTarget,
+    recurrenceTimezone,
     openDetails,
     edit,
     runPostAction,
-} = usePostCardMenuActions(() => props.post, { lazy: true });
-
-const recurrenceTimezone = computed(
-    () => props.post.social_account?.timezone ?? props.timezone,
-);
+} = usePostCardMenuActions(() => props.post, {
+    timezone: () => props.timezone,
+    lazy: true,
+});
 
 const channels = computed(() => postChannelLabel(props.post));
 

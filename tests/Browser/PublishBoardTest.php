@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
+use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Models\WorkspaceLabel;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 function boardInsideViewport(): string
@@ -330,6 +332,33 @@ test('deleting a card from its menu reloads the columns in place', function () {
 
     expect($page->script('document.querySelector(\'[data-testid="board-column-scroll-failed"]\')?.dataset.mounted'))->toBe('before')
         ->and(Post::query()->whereKey($this->draft->id)->exists())->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('publishing now from a board card\'s details reloads the columns in place', function () {
+    Queue::fake([PublishPost::class]);
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $scheduled = Post::factory()->forAccount($this->channel)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'scheduled_at' => now()->addDays(2),
+        'content' => 'Ready to go out',
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['group' => 'tag']))->resize(1280, 900);
+    waitForText($page, "@board-card-status-{$scheduled->id}", __('posts.status.scheduled'));
+    waitFor($page, "@board-column-scroll-label_{$label->id}");
+    $page->script("document.querySelector('[data-testid=\"board-column-scroll-label_{$label->id}\"]').dataset.mounted = 'before'");
+
+    $page->click("@board-card-open-{$scheduled->id}");
+    waitFor($page, "@post-details-publish-now-{$scheduled->id}");
+    $page->click("@post-details-publish-now-{$scheduled->id}");
+
+    waitForText($page, "@board-card-status-{$scheduled->id}", __('posts.status.publishing'));
+
+    expect($page->script("document.querySelector('[data-testid=\"board-column-scroll-label_{$label->id}\"]')?.dataset.mounted"))->toBe('before')
+        ->and($scheduled->refresh()->status)->toBe(PostStatus::Publishing);
     $page->assertNoJavaScriptErrors();
 });
 
