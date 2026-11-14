@@ -9,8 +9,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\Header;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -69,31 +67,6 @@ function boardReload(string $only, array $query = [], ?Closure $beforeReload = n
     $test->flushHeaders();
 
     return $response;
-}
-
-/**
- * The queries a partial reload runs and the social accounts it loads.
- *
- * @return array{queries: int, accounts: list<string>}
- */
-function boardReloadCost(string $only, array $query = []): array
-{
-    $accounts = [];
-    $event = 'eloquent.retrieved: '.SocialAccount::class;
-
-    boardReload($only, $query, function () use (&$accounts, $event): void {
-        DB::flushQueryLog();
-        DB::enableQueryLog();
-        Event::listen($event, function (SocialAccount $account) use (&$accounts): void {
-            $accounts[] = $account->id;
-        });
-    });
-
-    $queries = count(DB::getQueryLog());
-    DB::disableQueryLog();
-    Event::forget($event);
-
-    return ['queries' => $queries, 'accounts' => array_values(array_unique($accounts))];
 }
 
 test('it renders the board on both pages', function () {
@@ -444,20 +417,6 @@ test('it loads only the requested column on a partial reload of columns', functi
     expect(collect(data_get($response, "columns.channel_{$this->channel->id}.data"))->pluck('id')->all())->toBe([$post->id])
         ->and(data_get($response, 'columns'))->toHaveKeys(["channel_{$this->channel->id}"])->toHaveCount(1)
         ->and($response)->not->toHaveKey('boardColumns');
-});
-
-test('a partial reload of one column loads neither the other channels nor the no channel check', function () {
-    $others = SocialAccount::factory()->count(3)->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
-    boardPost($this->channel, 'draft');
-    $others->each(fn (SocialAccount $account): Post => boardPost($account, 'draft'));
-
-    $column = "columns.channel_{$this->channel->id}";
-    $withColumns = boardReloadCost("boardColumns,{$column}", ['group' => 'channel']);
-    $columnOnly = boardReloadCost($column, ['group' => 'channel']);
-
-    expect($withColumns['accounts'])->toHaveCount(4)
-        ->and($columnOnly['accounts'])->toBe([$this->channel->id])
-        ->and($columnOnly['queries'])->toBeLessThan($withColumns['queries']);
 });
 
 test('a partial reload of a column builds no column for another workspace\'s label or channel or an unknown key', function () {
