@@ -60,9 +60,22 @@ const lost = computed(() => isConnectionLost(props.channel));
 const timezone = computed(() => props.channel.timezone_option);
 
 /** UTC needs no offset next to it: "UTC GMT" says nothing more. */
-const showsOffset = computed(() => timezone.value.label !== 'UTC');
+const showsOffset = computed((): boolean => {
+    if (timezone.value.label === 'UTC') {
+        return false;
+    }
 
-const hasPostingTimes = computed(() => props.channel.posting_times_per_week > 0);
+    return true;
+});
+
+/** Whether the channel has posting times, so the queue can fill them. */
+const hasPostingTimes = computed((): boolean => {
+    if (props.channel.posting_times_per_week > 0) {
+        return true;
+    }
+
+    return false;
+});
 
 type Translate = (key: string) => string;
 

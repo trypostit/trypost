@@ -151,6 +151,15 @@ const isPending = computed(
 );
 
 
+/** The details and recurrence dialogs mount once one is opened, for a member who can post. */
+const mountsDialogs = computed((): boolean => {
+    if (!canCreatePost.value) {
+        return false;
+    }
+
+    return dialogsMounted.value;
+});
+
 /** A member who can post gets the card's menu, except while the post is publishing. */
 const hasMenu = computed((): boolean => {
     if (!canCreatePost.value) {
@@ -282,7 +291,7 @@ const hasMenu = computed((): boolean => {
             />
         </div>
 
-        <template v-if="canCreatePost && dialogsMounted">
+        <template v-if="mountsDialogs">
             <PostDetailsDialog
                 v-model:open="detailsOpen"
                 :post="post"

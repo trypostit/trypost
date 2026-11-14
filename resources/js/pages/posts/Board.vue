@@ -129,9 +129,9 @@ watch(
     { deep: true },
 );
 
-/** The board's columns reload with the list of columns, so a column that is gone leaves and a new one shows. */
+/** The board's columns reload with the list of columns, so a column that is gone leaves and a new one shows, and with the sidebar's channel counts. */
 const columnsReload = (): PostCardReload => ({
-    only: ['boardColumns', ...columnPaths()],
+    only: ['boardColumns', 'channels', ...columnPaths()],
     reset: columnPaths(),
 });
 

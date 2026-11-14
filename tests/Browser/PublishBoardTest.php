@@ -434,7 +434,7 @@ test('a thousand posts or more show as a short count on the board column and the
         ->assertNoJavaScriptErrors();
 });
 
-test('a post created, published or deleted elsewhere reaches the open board without a reload', function () {
+test('a post created, published or deleted elsewhere reaches the open board and the sidebar counts without a reload', function () {
     $scheduled = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id]);
 
     $this->actingAs($this->user);
@@ -442,6 +442,7 @@ test('a post created, published or deleted elsewhere reaches the open board with
     $page = visit(route('app.posts.board'))->resize(1280, 900);
     waitFor($page, "@board-column-scheduled @board-card-{$scheduled->id}");
     waitForCondition($page, "Boolean(window.Pusher?.instances[0]?.channels.channels['private-workspace.{$this->workspace->id}'])");
+    waitForText($page, "@sidebar-channel-count-{$this->channel->id}", '1');
 
     $emit = fn (string $event) => $page->script(<<<JS
         window.Pusher.instances[0].channels.channels['private-workspace.{$this->workspace->id}'].emit('{$event}', {})
@@ -455,6 +456,7 @@ test('a post created, published or deleted elsewhere reaches the open board with
     $emit('post.platform.status.updated');
     waitFor($page, "@board-column-published @board-card-{$scheduled->id}");
     waitForGone($page, "@board-column-scheduled @board-card-{$scheduled->id}");
+    waitForText($page, "@sidebar-channel-count-{$this->channel->id}", '0');
 
     $this->draft->delete();
     $emit('post.deleted');

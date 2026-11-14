@@ -45,10 +45,23 @@ const channels = computed<ChannelListRow[]>(() =>
 const search = ref(props.filters.search);
 const selectedNetworks = ref<string[]>(props.filters.networks);
 
-const hasChannels = computed(() => props.total > 0);
+/** Whether the workspace has any channel, whatever the search and filter. */
+const hasChannels = computed((): boolean => {
+    if (props.total > 0) {
+        return true;
+    }
+
+    return false;
+});
 
 /** The network filter shows once there is more than one network to pick from. */
-const showsNetworkFilter = computed(() => props.networks.length > 1);
+const showsNetworkFilter = computed((): boolean => {
+    if (props.networks.length > 1) {
+        return true;
+    }
+
+    return false;
+});
 
 const searchQuery = (): string | undefined => {
     if (blank(search.value)) {
