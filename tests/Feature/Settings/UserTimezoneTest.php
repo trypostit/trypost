@@ -154,3 +154,16 @@ test('timezone normalize and options', function () {
     expect($saoPaulo)->toMatchArray(['value' => 'America/Sao_Paulo', 'label' => 'Sao Paulo'])
         ->and($saoPaulo['offset'])->toStartWith('GMT');
 });
+
+test('a time zone option writes its offset at the given instant as GMT, GMT-3 or GMT+5:30', function () {
+    $winter = now('UTC')->startOfYear()->addDays(14);
+    $summer = $winter->addMonths(6);
+
+    expect(Timezone::option('UTC', $winter))->toBe(['value' => 'UTC', 'label' => 'UTC', 'offset' => 'GMT'])
+        ->and(Timezone::option('Asia/Kolkata', $winter))->toBe(['value' => 'Asia/Kolkata', 'label' => 'Kolkata', 'offset' => 'GMT+5:30'])
+        ->and(Timezone::option('Asia/Kathmandu', $winter)['offset'])->toBe('GMT+5:45')
+        ->and(Timezone::option('America/St_Johns', $winter)['offset'])->toBe('GMT-3:30')
+        ->and(Timezone::option('America/New_York', $winter)['offset'])->toBe('GMT-5')
+        ->and(Timezone::option('America/New_York', $summer)['offset'])->toBe('GMT-4')
+        ->and(Timezone::option('America/Argentina/Buenos_Aires', $winter)['label'])->toBe('Buenos Aires');
+});

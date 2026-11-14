@@ -127,3 +127,47 @@ test('the command palette opens a channel in the view the user picked', function
     waitForPath($page, route('app.channels.board', $this->channel, absolute: false));
     $page->assertNoJavaScriptErrors();
 });
+
+test('going back to the list keeps the board as the view the user picked', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
+    waitFor($page, '@board-column-draft');
+
+    $page->back();
+    waitForPath($page, route('app.posts.index', absolute: false));
+    waitFor($page, '@schedule-view-board');
+
+    expect(browserStorageItem($page, $this->user, 'publish.view'))->toBe('board');
+
+    $boardPath = route('app.posts.board', absolute: false);
+    waitFor($page, "[data-testid=\"nav-{$boardPath}\"]");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the view the user picked follows them to another workspace', function () {
+    $second = Workspace::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->user->account_id]);
+    $second->members()->attach($this->user->id, membershipPivot('admin'));
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
+    waitFor($page, '@board-column-draft');
+
+    $page->click('@sidebar-workspace-menu');
+    waitFor($page, '@sidebar-workspaces-trigger');
+    $page->click('@sidebar-workspaces-trigger');
+    waitFor($page, "@sidebar-workspace-{$second->id}");
+    $page->click("@sidebar-workspace-{$second->id}");
+    waitForDatabase($page, fn () => $this->user->fresh()->current_workspace_id === $second->id);
+
+    $boardPath = route('app.posts.board', absolute: false);
+    waitFor($page, "[data-testid=\"nav-{$boardPath}\"]");
+    $page->click("@nav-{$boardPath}");
+    waitForPath($page, $boardPath);
+    waitFor($page, '@board-column-draft');
+
+    $page->assertNoJavaScriptErrors();
+});

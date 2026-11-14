@@ -259,7 +259,10 @@ test('a pending card reads Pending and splits its approval buttons across the ro
     $fills = $own->script("(() => { const row = document.querySelector('[data-testid=\"board-card-approval-{$request->id}\"]').getBoundingClientRect(); const revert = document.querySelector('[data-testid=\"post-revert-board-{$request->id}\"]').getBoundingClientRect(); return Math.abs(revert.width - row.width) < 1; })()");
 
     expect($fills)->toBeTrue();
-    $own->assertNoJavaScriptErrors();
+    $own->assertMissing("@post-approve-board-{$request->id}")
+        ->assertMissing("@post-reject-board-{$request->id}")
+        ->assertMissing("@board-card-{$pending->id}")
+        ->assertNoJavaScriptErrors();
 });
 
 test('an approver rejects a pending post from its board card', function () {
@@ -400,7 +403,8 @@ test('a video thumbnail loads only once its card comes near the screen', functio
     $page->assertNoJavaScriptErrors();
 });
 
-test('a thousand posts or more show as a short count on the board column and the list tab', function () {
+test('a thousand posts or more show as a short count on the board column and the list tab, the same in every language', function () {
+    $this->user->update(['locale' => Locale::PortugueseBrazil]);
     $published = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
     $row = Arr::except((array) DB::table('posts')->where('id', $published->id)->first(), ['id']);
 
@@ -424,3 +428,183 @@ test('a thousand posts or more show as a short count on the board column and the
     $list->assertSeeIn('@publish-tab-count-drafts', '1')
         ->assertNoJavaScriptErrors();
 });
+
+test('a post created, published or deleted elsewhere reaches the open board without a reload', function () {
+    $scheduled = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-scheduled @board-card-{$scheduled->id}");
+    waitForCondition($page, "Boolean(window.Pusher?.instances[0]?.channels.channels['private-workspace.{$this->workspace->id}'])");
+
+    $emit = fn (string $event) => $page->script(<<<JS
+        window.Pusher.instances[0].channels.channels['private-workspace.{$this->workspace->id}'].emit('{$event}', {})
+    JS);
+
+    $created = Post::factory()->forAccount($this->channel)->draft()->create(['user_id' => $this->user->id]);
+    $emit('post.created');
+    waitFor($page, "@board-column-draft @board-card-{$created->id}");
+
+    $scheduled->markAsPublished();
+    $emit('post.platform.status.updated');
+    waitFor($page, "@board-column-published @board-card-{$scheduled->id}");
+    waitForGone($page, "@board-column-scheduled @board-card-{$scheduled->id}");
+
+    $this->draft->delete();
+    $emit('post.deleted');
+    waitForGone($page, "@board-card-{$this->draft->id}");
+
+    $page->assertVisible("@board-card-{$created->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a column loads its next posts as it scrolls', function () {
+    config()->set('app.pagination.default', 2);
+    Post::factory()->forAccount($this->channel)->draft()->count(4)->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 2);
+    waitForText($page, '@board-column-count-draft', '5');
+
+    $scrollDown = "document.querySelector('[data-testid=\"board-column-scroll-draft\"]').scrollTop = 100000";
+    $page->script($scrollDown);
+    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 4);
+    $page->script($scrollDown);
+    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 5);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a card opens its details from the keyboard', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-card-open-{$this->draft->id}");
+
+    $page->keys("@board-card-open-{$this->draft->id}", 'Enter');
+
+    waitForOpen($page, "@post-details-{$this->draft->id}");
+    $page->assertVisible("@post-details-{$this->draft->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('approving from a board card shows the button waiting until the answer lands', function () {
+    $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create([
+        'user_id' => $this->user->id,
+        'content' => '<p>Ready for review</p>',
+        'scheduled_at' => now()->addDays(2),
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@post-approve-board-{$pending->id}");
+
+    $page->script(<<<'JS'
+        (() => {
+            const send = XMLHttpRequest.prototype.send;
+            window.__heldRequests = [];
+            XMLHttpRequest.prototype.send = function (body) {
+                window.__heldRequests.push(() => send.call(this, body));
+            };
+            window.__releaseRequests = () => {
+                XMLHttpRequest.prototype.send = send;
+                window.__heldRequests.splice(0).forEach((release) => release());
+            };
+        })()
+    JS);
+
+    $page->click("@post-approve-board-{$pending->id}");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+    waitForState($page, "@post-approve-board-{$pending->id}", 'element.disabled');
+
+    expect($pending->fresh()->status)->toBe(PostStatus::PendingApproval);
+
+    $page->script('window.__releaseRequests()');
+    waitFor($page, "@board-column-scheduled @board-card-{$pending->id}");
+    expect($pending->fresh()->status)->toBe(PostStatus::Scheduled);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the recurrence opened for another channel of the post from its details reads that channel\'s time zone', function () {
+    $newYork = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'position' => 2,
+        'timezone' => 'America/New_York',
+    ]);
+    $this->channel->update(['timezone' => 'UTC']);
+    $at = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)->setTime(2, 0);
+    $group = (string) Str::uuid();
+    $first = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id, 'post_group_id' => $group, 'scheduled_at' => $at]);
+    $sibling = Post::factory()->forAccount($newYork)->scheduled()->create(['user_id' => $this->user->id, 'post_group_id' => $group, 'scheduled_at' => $at]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-card-open-{$first->id}");
+    $page->click("@board-card-open-{$first->id}");
+    waitForOpen($page, "@post-details-{$first->id}");
+
+    waitFor($page, "@post-details-rail-item-{$sibling->id}");
+    $page->click("@post-details-rail-item-{$sibling->id}");
+    waitFor($page, "@post-card-menu-details-{$sibling->id}");
+    $page->click("@post-card-menu-details-{$sibling->id}");
+    waitFor($page, "@post-recurrence-open-details-{$sibling->id}");
+    $page->click("@post-recurrence-open-details-{$sibling->id}");
+    waitFor($page, "@post-recurrence-summary-{$first->id}");
+
+    $local = $at->setTimezone('America/New_York');
+    waitForText($page, "@post-recurrence-summary-{$first->id}", "every {$local->format('l')} at {$local->format('g:i A')}");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('compose on the board opens the composer there and closing it stays on the board with its grouping', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['compose' => 1, 'group' => 'tag']))->resize(1280, 900);
+    waitFor($page, '@post-composer-dialog');
+
+    $page->assertPathIs(route('app.posts.board', absolute: false));
+    waitForCondition($page, "new URLSearchParams(location.search).get('group') === 'tag'");
+
+    $page->click('@composer-close');
+    waitForGone($page, '@post-composer-dialog');
+    waitFor($page, '@board-column-untagged');
+
+    $page->assertPathIs(route('app.posts.board', absolute: false))
+        ->assertNoJavaScriptErrors();
+    expect($page->script('location.search'))->toContain('group=tag');
+});
+
+test('editing a post from its board card lands back on the board after closing or saving', function (string $leave) {
+    $this->actingAs($this->user);
+    $before = route('app.settings.preferences', absolute: false);
+    $boardPath = route('app.posts.board', absolute: false);
+
+    $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate(route('app.posts.board'));
+    waitFor($page, "@board-card-open-{$this->draft->id}");
+    $page->click("@board-card-open-{$this->draft->id}");
+    waitFor($page, "@post-details-edit-{$this->draft->id}");
+    $page->click("@post-details-edit-{$this->draft->id}");
+    waitFor($page, '@post-composer-dialog');
+
+    $page->click($leave);
+    waitForGone($page, '@post-composer-dialog');
+    waitForPath($page, $boardPath);
+    waitForCondition($page, "!location.search.includes('edit=')");
+    waitFor($page, "@board-card-{$this->draft->id}");
+
+    $page->assertPathIs($boardPath)->assertMissing('@unsaved-changes-dialog');
+
+    $page->back();
+    waitForPath($page, $before);
+
+    $page->assertPathIs($before)->assertNoJavaScriptErrors();
+})->with([
+    'closing' => '@composer-close',
+    'saving' => '@composer-save-draft',
+]);
