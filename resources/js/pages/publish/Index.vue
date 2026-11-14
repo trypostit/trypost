@@ -66,6 +66,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
+import { postAttemptAt } from '@/lib/postCard';
 import { grid, settings } from '@/routes/app/channels';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { TimezoneOption } from '@/types/posting-schedule';
@@ -176,7 +177,7 @@ const listGroups = computed<CardGroup[]>(() => {
         const at =
             props.tab === 'drafts' || props.tab === 'approvals'
                 ? post.scheduled_at
-                : (post.published_at ?? post.scheduled_at ?? post.created_at);
+                : postAttemptAt(post);
         const key = at ? dayKey(at) : NO_TIME;
 
         groups.set(key, [...(groups.get(key) ?? []), post]);

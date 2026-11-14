@@ -19,8 +19,7 @@ import {
     usePostCardReload,
 } from '@/composables/usePostCardActions';
 import date from '@/date';
-import dayjs from '@/dayjs';
-import { blank } from '@/lib/helpers';
+import { filled } from '@/lib/helpers';
 import { userTimezone } from '@/preferences';
 import { ScheduleMode } from '@/types/post';
 import type { PostCard } from '@/types/publish';
@@ -48,38 +47,34 @@ const postTimezone = computed(
     () => props.post.social_account?.timezone ?? userTimezone.value,
 );
 
+/** A custom-time post without a time still to come asks for one before it is approved. */
 const needsTime = computed(
     () =>
         !isQueued.value &&
-        (!props.post.scheduled_at ||
-            dayjs(props.post.scheduled_at).isBefore(dayjs())),
+        (!filled(props.post.scheduled_at) ||
+            date.hasPassed(props.post.scheduled_at)),
 );
 
-const labelKey = computed(() => {
-    if (needsTime.value) {
-        return 'posts.approvals.approve';
+/** Approving a post as it was asked for: into the queue, or at its time. */
+const asRequested = computed(() => {
+    if (isQueued.value) {
+        return {
+            labelKey: 'posts.publish.actions.add_to_queue',
+            toastKey: 'posts.approvals.toasts.queued',
+        };
     }
 
-    return isQueued.value
-        ? 'posts.publish.actions.add_to_queue'
-        : 'posts.approvals.schedule';
+    return {
+        labelKey: 'posts.approvals.schedule',
+        toastKey: 'posts.approvals.toasts.scheduled',
+    };
 });
 
-/** What the approval did, named after the button the approver clicked. */
-const approvedMessageKey = (payload: {
-    scheduled_at?: string;
-    publish_now?: true;
-}): string => {
-    if (payload.publish_now) {
-        return 'posts.approvals.toasts.publishing';
-    }
-
-    return isQueued.value && blank(payload.scheduled_at)
-        ? 'posts.approvals.toasts.queued'
-        : 'posts.approvals.toasts.scheduled';
-};
-
-const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
+/** Sends the approval and toasts what it did, named after the button the approver clicked. */
+const send = (
+    payload: { scheduled_at?: string; publish_now?: true },
+    toastKey: string,
+): void => {
     router.put(approve.url(props.post.id), payload, {
         ...reload(),
         preserveScroll: true,
@@ -91,16 +86,25 @@ const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
         },
         onSuccess: () => {
             pickerOpen.value = false;
-            toast.success(trans(approvedMessageKey(payload)), {
-                testId: 'post-approval-toast',
-            });
+            toast.success(trans(toastKey), { testId: 'post-approval-toast' });
         },
         onError: toastFirstError,
     });
 };
 
-const confirmTime = (value: string): void => {
-    send({ scheduled_at: date.wallClockToUtc(value, postTimezone.value) });
+const approveAsRequested = (): void => {
+    send({}, asRequested.value.toastKey);
+};
+
+const approveAt = (value: string): void => {
+    send(
+        { scheduled_at: date.wallClockToUtc(value, postTimezone.value) },
+        'posts.approvals.toasts.scheduled',
+    );
+};
+
+const publishNow = (): void => {
+    send({ publish_now: true }, 'posts.approvals.toasts.publishing');
 };
 </script>
 
@@ -113,7 +117,7 @@ const confirmTime = (value: string): void => {
                 :data-testid="`post-approve-${testKey}`"
             >
                 <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
-                {{ $t(labelKey) }}
+                {{ $t('posts.approvals.approve') }}
             </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -126,7 +130,7 @@ const confirmTime = (value: string): void => {
                 model-value=""
                 :timezone="postTimezone"
                 @back="closePicker"
-                @confirm="confirmTime"
+                @confirm="approveAt"
             />
             <div class="border-t border-border-strong p-3">
                 <Button
@@ -134,7 +138,7 @@ const confirmTime = (value: string): void => {
                     class="w-full"
                     :loading="approving"
                     :data-testid="`post-approve-publish-now-${testKey}`"
-                    @click="send({ publish_now: true })"
+                    @click="publishNow"
                 >
                     <IconSend class="size-4" />
                     {{ $t('posts.publish.actions.publish_now') }}
@@ -147,9 +151,9 @@ const confirmTime = (value: string): void => {
         variant="outline"
         :loading="approving"
         :data-testid="`post-approve-${testKey}`"
-        @click="send({})"
+        @click="approveAsRequested"
     >
         <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
-        {{ $t(labelKey) }}
+        {{ $t(asRequested.labelKey) }}
     </Button>
 </template>

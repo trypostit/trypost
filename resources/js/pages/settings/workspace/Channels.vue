@@ -115,7 +115,6 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                         v-model="search"
                         class="min-w-0 flex-1"
                         :placeholder="$t('channels.list.search')"
-                        compact
                     />
                     <NetworkFilter
                         v-if="networks.length > 1"

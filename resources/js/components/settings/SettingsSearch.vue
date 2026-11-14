@@ -5,14 +5,9 @@ import { Input } from '@/components/ui/input';
 
 const query = defineModel<string>({ required: true });
 
-withDefaults(
-    defineProps<{
-        placeholder: string;
-        /** The height of the inputs and filters around it, for a toolbar row. */
-        compact?: boolean;
-    }>(),
-    { compact: false },
-);
+defineProps<{
+    placeholder: string;
+}>();
 </script>
 
 <template>
@@ -24,8 +19,7 @@ withDefaults(
             v-model="query"
             :aria-label="placeholder"
             :placeholder="placeholder"
-            class="ps-9"
-            :class="compact ? 'h-8' : 'h-10'"
+            class="h-8 ps-9"
             data-testid="header-search-input"
         />
     </div>

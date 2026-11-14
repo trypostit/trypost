@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
 import { useElementVisibility } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
@@ -16,8 +16,9 @@ import { getPostCardStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import { limitText } from '@/lib/characters';
+import { filled, transform } from '@/lib/helpers';
 import { isImage } from '@/lib/mediaType';
-import { postChannelLabel, postThumbnail } from '@/lib/postCard';
+import { postAttemptAt, postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus } from '@/types/post';
@@ -43,7 +44,7 @@ const {
     runMenuAction,
 } = usePostCardMenuActions(() => props.post, { lazy: true });
 
-const account = computed(() => props.post.social_account ?? null);
+const account = computed(() => props.post.social_account);
 
 const channelLabel = computed(() => postChannelLabel(props.post));
 
@@ -51,52 +52,13 @@ const recurrenceTimezone = computed(
     () => account.value?.timezone ?? props.timezone,
 );
 
+const attemptAt = computed(() => postAttemptAt(props.post));
+
 const time = computed(() =>
-    date.formatMonthDayTimeInTimezone(
-        props.post.published_at ??
-            props.post.scheduled_at ??
-            props.post.created_at,
-        props.timezone,
-    ),
+    date.formatMonthDayTimeInTimezone(attemptAt.value, props.timezone),
 );
 
 const text = computed(() => htmlToPlainText(props.post.content ?? ''));
-
-const thumbnail = computed(() => postThumbnail(props.post));
-
-const thumbnailFrame = ref<HTMLElement | null>(null);
-
-/**
- * A video loads its frame once its card shows, never for the whole board at once; an image
- * is lazy on its own and is not observed. The 200px margin widens the viewport only: the
- * column's scroller still clips, so a card scrolled out of its column counts as hidden.
- */
-const videoFrame = computed(() =>
-    thumbnail.value && !isImage(thumbnail.value) ? thumbnailFrame.value : null,
-);
-
-const videoVisible = useElementVisibility(videoFrame, {
-    rootMargin: '200px',
-});
-
-const videoLoaded = ref(false);
-
-watch(videoVisible, (visible) => {
-    if (visible) {
-        videoLoaded.value = true;
-    }
-});
-
-const contentTypeKey = computed(() =>
-    props.post.platform
-        ? getContentTypeBadgeKey(
-              props.post.platform,
-              props.post.content_type ?? null,
-          )
-        : null,
-);
-
-const statusConfig = computed(() => getPostCardStatusConfig(props.post));
 
 /** The overlay's name: channel, time and the start of the post, never its whole text. */
 const openLabel = computed(() =>
@@ -104,6 +66,32 @@ const openLabel = computed(() =>
         .filter(Boolean)
         .join(' · '),
 );
+
+const thumbnail = computed(() => postThumbnail(props.post));
+
+const thumbnailFrame = ref<HTMLElement | null>(null);
+
+/**
+ * A video loads its frame once its card first shows, never for the whole board at once; an
+ * image is lazy on its own and is not observed. The 200px margin widens the viewport only:
+ * the column's scroller still clips, so a card scrolled out of its column counts as hidden.
+ */
+const videoLoaded = useElementVisibility(
+    computed(() =>
+        transform(thumbnail.value, (item) =>
+            isImage(item) ? null : thumbnailFrame.value,
+        ),
+    ),
+    { rootMargin: '200px', once: true },
+);
+
+const contentTypeKey = computed(() =>
+    transform(props.post.platform, (platform) =>
+        getContentTypeBadgeKey(platform, props.post.content_type ?? null),
+    ),
+);
+
+const statusConfig = computed(() => getPostCardStatusConfig(props.post));
 
 const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
@@ -123,11 +111,9 @@ const hasMenu = computed(
             type="button"
             class="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             :aria-label="
-                text
+                filled(text)
                     ? openLabel
-                    : [openLabel, $t('calendar.no_content')]
-                          .filter(Boolean)
-                          .join(' · ')
+                    : `${openLabel} · ${$t('calendar.no_content')}`
             "
             :data-testid="`board-card-open-${post.id}`"
             @click="openDetails"
@@ -155,7 +141,7 @@ const hasMenu = computed(
             class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
         >
             <time
-                :datetime="post.published_at ?? post.scheduled_at ?? post.created_at"
+                :datetime="attemptAt"
                 :data-testid="`board-card-time-${post.id}`"
                 >{{ time }}</time
             >

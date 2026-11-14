@@ -63,6 +63,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { postAttemptAt } from '@/lib/postCard';
 import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
@@ -199,11 +200,7 @@ const setNoteCount = (count: number): void => {
 
 const time = computed(() => {
     if (props.tab === 'sent') {
-        return (
-            props.post.published_at ??
-            props.post.scheduled_at ??
-            props.post.created_at
-        );
+        return postAttemptAt(props.post);
     }
 
     return isPublishing.value
