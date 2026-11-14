@@ -27,7 +27,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { blank, filled } from '@/lib/helpers';
 import { settings as settingsRoute } from '@/routes/app/channels';
 import {
@@ -69,8 +68,7 @@ const networkLine = (network: string): string => {
 
 <template>
     <div
-        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3"
-        :class="CHANNEL_LIST_COLUMNS"
+        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 md:channel-list-columns"
         :data-testid="`channel-row-${channel.id}`"
     >
         <div class="flex min-w-0 items-center gap-3">

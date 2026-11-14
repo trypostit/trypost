@@ -16,7 +16,6 @@ import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
 import { blank, filled } from '@/lib/helpers';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import { Platform } from '@/types/platform';
@@ -141,8 +140,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                     data-testid="channels-list"
                 >
                     <div
-                        class="hidden gap-x-3 border-b border-border bg-secondary/50 px-4 py-2 text-xs font-medium text-muted-foreground md:grid"
-                        :class="CHANNEL_LIST_COLUMNS"
+                        class="hidden gap-x-3 border-b border-border bg-secondary/50 px-4 py-2 text-xs font-medium text-muted-foreground md:grid md:channel-list-columns"
                         aria-hidden="true"
                     >
                         <span>{{ $t('channels.list.columns.channel') }}</span>

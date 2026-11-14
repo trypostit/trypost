@@ -370,6 +370,13 @@
     transition-timing-function: var(--motion-easing-control-feedback);
 }
 
+/* The columns of the channels settings list (channel, time zone, posting times, this week,
+   actions), shared by its header and its rows so they line up. The actions column has a
+   fixed width: a row that offers Reconnect must not shift the columns of the others. */
+@utility channel-list-columns {
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) 13rem;
+}
+
 @layer components {
     /* The filled part runs from --range-from to --range-to (set by rangeFill()). */
     .editor-range {
