@@ -983,6 +983,15 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
 - Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
 
+## The current workspace is guaranteed by middleware
+
+Every app route that works on the current workspace sits behind `EnsureHasWorkspace` (`routes/app.php`), which redirects a user without one to `app.workspaces.create` before the controller runs (owner decision November 2026). A controller reads `$request->user()->currentWorkspace` and uses it; it never checks it again.
+
+- Never write `if (! $workspace) { return redirect()->route('app.workspaces.create'); }`, `abort_unless($workspace, ...)` or any other "no workspace" guard in a controller, a FormRequest or an action reached from those routes. The guard was copied into 27 controller actions and never ran; all of it was removed.
+- A new route that needs the current workspace goes inside the `EnsureHasWorkspace` group, never outside it with its own check. Its return type does not carry `|RedirectResponse` for that redirect.
+- A route that must work without a workspace (creating the first one, Welcome) stays outside the group and handles that case itself.
+- The redirect is covered once, for the middleware, by the tests that hit an app page without a workspace; a controller test does not repeat it.
+
 ## MCP tools list in one page
 
 `tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). The same page size applies to `resources/list`, `resources/templates/list` and `prompts/list`. Raise both before the server reaches 200 tools. A client may still ask for a smaller page (`per_page`, a laravel/mcp extension; the MCP spec only defines `cursor`) and follow `nextCursor`; a bigger request is capped at 200. `tests/Feature/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.

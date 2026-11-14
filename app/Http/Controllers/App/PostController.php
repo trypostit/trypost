@@ -34,10 +34,6 @@ class PostController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('view', $workspace);
 
         if ($request->boolean('compose')) {
@@ -59,10 +55,6 @@ class PostController extends Controller
     public function calendar(Request $request, ?string $view = null): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
@@ -88,10 +80,6 @@ class PostController extends Controller
     public function board(Request $request): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('view', $workspace);
 
@@ -122,10 +110,6 @@ class PostController extends Controller
     public function store(StorePostRequest $request): RedirectResponse|HttpResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -160,14 +144,8 @@ class PostController extends Controller
             ->with('created_post_ids', $posts->pluck('id')->all());
     }
 
-    public function edit(Request $request, Post $post): Response|RedirectResponse
+    public function edit(Request $request, Post $post): RedirectResponse
     {
-        $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('view', $post);
 
         if ($request->filled('comment')) {
@@ -184,16 +162,11 @@ class PostController extends Controller
         return redirect()->route('app.posts.index', [
             'edit' => $post->id,
         ]);
-
     }
 
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('update', $post);
 
@@ -219,12 +192,6 @@ class PostController extends Controller
 
     public function destroy(Request $request, Post $post): RedirectResponse
     {
-        $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('delete', $post);
 
         try {

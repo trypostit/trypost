@@ -131,14 +131,10 @@ class WorkspaceController extends Controller
         return redirect()->route('app.calendar');
     }
 
-    public function settings(Request $request): Response|RedirectResponse
+    public function settings(Request $request): Response
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('update', $workspace);
 
@@ -191,10 +187,6 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
         $workspace = $user->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('update', $workspace);
 
