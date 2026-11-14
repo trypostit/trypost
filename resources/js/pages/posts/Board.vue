@@ -21,28 +21,18 @@ import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { usePublishFilters } from '@/composables/publish/usePublishFilters';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import {
     deletePostCardKey,
     postCardLabelsKey,
     type PostCardReload,
     postCardReloadKey,
 } from '@/composables/usePostCardActions';
-import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { blank, filled } from '@/lib/helpers';
-import { calendar } from '@/routes/app';
-import {
-    board as channelBoard,
-    calendar as channelCalendar,
-    grid,
-    publish,
-} from '@/routes/app/channels';
-import { board, index as postsIndex } from '@/routes/app/posts';
-import type { User } from '@/types';
+import { grid } from '@/routes/app/channels';
 import type { BoardColumnMeta, BoardGroup } from '@/types/board';
 import { channelName } from '@/types/channel';
 import type { TimezoneOption } from '@/types/posting-schedule';
@@ -53,8 +43,6 @@ import type {
     PublishScope,
     PublishSocialAccount,
 } from '@/types/publish';
-
-type Query = Record<string, string | string[] | undefined>;
 
 interface Props {
     scope: PublishScope;
@@ -78,25 +66,17 @@ const props = defineProps<Props>();
 const page = usePage();
 const { canManageAccounts, canManageTeam } = useWorkspaceAbilities();
 
-const userTimezone = computed(
-    () => (page.props.auth.user as User).timezone || props.displayTimezone,
-);
-
-const { timezone, setTimezone } = useDisplayTimezone(
-    props.displayTimezone,
-    props.timezones.map((option) => option.value),
-    undefined,
-    () => ['displayTimezone'],
-);
-
-provideViewTimezone(timezone);
-
-watch(
-    () => props.displayTimezone,
-    (value) => {
-        timezone.value = value;
-    },
-);
+const {
+    timezone,
+    setTimezone,
+    selectedLabelIds,
+    selectedUntagged,
+    selectedChannelIds,
+    filterQuery,
+    boardUrlFor,
+    listHref,
+    calendarHref,
+} = usePublishFilters(props, { reloadProps: () => ['displayTimezone'] });
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
@@ -110,55 +90,12 @@ provide(
 );
 
 const selectedGroup = ref<BoardGroup>(props.group);
-const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
-const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
-const selectedChannelIds = ref<string[]>(props.filters.channels ?? []);
 
-const filterQuery = (): Query => ({
-    labels: filled(selectedLabelIds.value) ? selectedLabelIds.value : undefined,
-    untagged: selectedUntagged.value ? '1' : undefined,
-    channels:
-        props.scope === 'all' && filled(selectedChannelIds.value)
-            ? selectedChannelIds.value
-            : undefined,
-    tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
-});
-
-const boardUrl = (): string => {
-    const query = {
+const boardUrl = (): string =>
+    boardUrlFor({
         ...filterQuery(),
         group: selectedGroup.value !== 'status' ? selectedGroup.value : undefined,
-    };
-
-    return props.channel
-        ? channelBoard.url(props.channel.id, { query })
-        : board.url({ query });
-};
-
-const isPhone = useBelowBreakpoint('md');
-
-const listHref = computed((): string => {
-    const query = filterQuery();
-
-    return props.channel
-        ? publish.url(props.channel.id, {
-              query: {
-                  labels: query.labels,
-                  untagged: query.untagged,
-                  tz: query.tz,
-              },
-          })
-        : postsIndex.url({ query });
-});
-
-const calendarHref = computed((): string => {
-    const query = filterQuery();
-    const view = isPhone.value ? 'days' : 'week';
-
-    return props.channel
-        ? channelCalendar.url({ account: props.channel.id, view }, { query })
-        : calendar.url({ view }, { query });
-});
+    });
 
 const columnPaths = (): string[] =>
     props.boardColumns.map((column) => `columns.${column.key}`);

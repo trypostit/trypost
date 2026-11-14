@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import {
     IconCheck,
     IconLayoutSidebarRightCollapse,
@@ -42,16 +42,15 @@ import {
     DRAG_HINT_ID,
     useCalendarDrag,
 } from '@/composables/calendar/useCalendarDrag';
+import { usePublishFilters } from '@/composables/publish/usePublishFilters';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
-import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     deletePostCardKey,
     postCardLabelsKey,
 } from '@/composables/usePostCardActions';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
-import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
@@ -59,16 +58,7 @@ import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendarDayKey } from '@/lib/calendarItems';
 import { afterPageInHistory } from '@/lib/inAppHistory';
-import { calendar } from '@/routes/app';
-import {
-    board as channelBoard,
-    calendar as channelCalendar,
-    grid,
-    publish,
-    settings,
-} from '@/routes/app/channels';
-import { board, index as postsIndex } from '@/routes/app/posts';
-import type { User } from '@/types';
+import { grid, settings } from '@/routes/app/channels';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import type {
     CalendarPost,
@@ -106,7 +96,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const page = usePage();
 const { canCreatePost, canManageAccounts, requiresApproval } =
     useWorkspaceAbilities();
 const { showSlots, setShowSlots } = useShowPostingSlots();
@@ -153,25 +142,17 @@ onUnmounted(() => {
     cancelSlotsReload();
 });
 
-const userTimezone = computed(
-    () => (page.props.auth.user as User).timezone || props.displayTimezone,
-);
-
-const { timezone, setTimezone } = useDisplayTimezone(
-    props.displayTimezone,
-    props.timezones.map((option) => option.value),
-    undefined,
-    reloadProps,
-);
-
-provideViewTimezone(timezone);
-
-watch(
-    () => props.displayTimezone,
-    (value) => {
-        timezone.value = value;
-    },
-);
+const {
+    timezone,
+    setTimezone,
+    selectedLabelIds,
+    selectedUntagged,
+    selectedChannelIds,
+    filterQuery,
+    calendarUrlFor,
+    listHref,
+    boardHref,
+} = usePublishFilters(props, { reloadProps });
 
 const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
     customTimeDialog.value?.confirm(from, to, timezone.value) ??
@@ -206,21 +187,8 @@ const isRescheduling = computed(() => movingPostIds.value.length > 0);
 
 const undatedDraftList = computed(() => props.undatedDrafts?.data ?? null);
 
-const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
-const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
-const selectedChannelIds = ref<string[]>(props.filters.channels ?? []);
 const selectedStatus = ref<CalendarStatus>(props.filters.status ?? 'all');
 const undatedOpen = ref(props.undatedDrafts !== undefined);
-
-const filterQuery = (): Record<string, string | string[] | undefined> => ({
-    labels: selectedLabelIds.value.length ? selectedLabelIds.value : undefined,
-    untagged: selectedUntagged.value ? '1' : undefined,
-    channels:
-        props.scope === 'all' && selectedChannelIds.value.length
-            ? selectedChannelIds.value
-            : undefined,
-    tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
-});
 
 const calendarUrl = (
     view: CalendarView,
@@ -235,32 +203,8 @@ const calendarUrl = (
         slots: showSlots.value ? '1' : undefined,
     };
 
-    return props.channel
-        ? channelCalendar.url({ account: props.channel.id, view }, { query })
-        : calendar.url({ view }, { query });
+    return calendarUrlFor(view, query);
 };
-
-const listHref = computed((): string => {
-    const query = filterQuery();
-
-    return props.channel
-        ? publish.url(props.channel.id, {
-              query: {
-                  labels: query.labels,
-                  untagged: query.untagged,
-                  tz: query.tz,
-              },
-          })
-        : postsIndex.url({ query });
-});
-
-const boardHref = computed((): string => {
-    const query = filterQuery();
-
-    return props.channel
-        ? channelBoard.url(props.channel.id, { query })
-        : board.url({ query });
-});
 
 const visit = (url: string): void => {
     router.get(

@@ -12,7 +12,7 @@ use App\Http\Resources\App\SocialAccountResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Support\RequestIds;
+use App\Support\PublishFilters;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -39,15 +39,14 @@ class BuildCalendarPageProps
      */
     public static function handle(Request $request, Workspace $workspace, ?SocialAccount $channel, ?string $view): array
     {
-        $userTimezone = Timezone::normalize($request->user()->timezone);
-        $timezone = BuildPublishPageProps::displayTimezone($request->query('tz'), $userTimezone);
+        $filters = PublishFilters::fromRequest($request, $channel, $request->user());
+        $timezone = $filters->displayTimezone;
         $view = in_array($view, self::VIEWS, true) ? $view : 'week';
         $status = in_array($request->query('status'), self::STATUSES, true) ? $request->query('status') : self::STATUS_ALL;
 
-        $labelIds = RequestIds::uuidList($request->collect('labels'));
-        $untagged = $request->boolean('untagged');
-        $requestedChannelIds = $channel ? [] : RequestIds::uuidList($request->collect('channels')->unique());
-        $scopedChannelIds = $channel ? [$channel->id] : ($requestedChannelIds !== [] ? $requestedChannelIds : null);
+        $labelIds = $filters->labelIds;
+        $untagged = $filters->untagged;
+        $requestedChannelIds = $filters->requestedChannelIds;
 
         $weekStartsOn = $request->user()->week_starts_on;
         $today = CarbonImmutable::now($timezone)->startOfDay();
@@ -67,7 +66,7 @@ class BuildCalendarPageProps
         };
 
         $scopedPosts = fn (): Builder => BuildPublishPageProps::cardQuery($workspace->posts(), $labelIds, $untagged)
-            ->onChannels($scopedChannelIds)
+            ->onChannels($filters->scopedChannelIds)
             ->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($request->user(), $workspace));
 
         $range = [$rangeStart->utc(), $rangeEnd->utc()];
@@ -107,9 +106,7 @@ class BuildCalendarPageProps
             'timezones' => fn (): array => Timezone::options(),
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'filters' => [
-                'labels' => $labelIds,
-                'untagged' => $untagged,
-                'channels' => $requestedChannelIds,
+                ...$filters->toProp(),
                 'status' => $status,
             ],
             'filterAccounts' => fn () => SocialAccountResource::collection($filterAccounts()),

@@ -18,6 +18,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostStatusRules;
+use App\Support\PublishFilters;
 use App\Support\RequestIds;
 use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,12 +63,11 @@ class BuildPublishPageProps
     {
         $user = $request->user();
         $requester = self::pendingApprovalsRequester($user, $workspace);
-        $userTimezone = Timezone::normalize($user->timezone);
-        $displayTimezone = self::displayTimezone($request->query('tz'), $userTimezone);
-
-        $labelIds = RequestIds::uuidList($request->collect('labels'));
-        $untagged = $request->boolean('untagged');
-        $requestedChannelIds = $channel ? [] : RequestIds::uuidList($request->collect('channels')->unique());
+        $filters = PublishFilters::fromRequest($request, $channel, $user);
+        $displayTimezone = $filters->displayTimezone;
+        $labelIds = $filters->labelIds;
+        $untagged = $filters->untagged;
+        $requestedChannelIds = $filters->requestedChannelIds;
 
         $workspaceAccounts = null;
         $filterAccounts = function () use (&$workspaceAccounts, $channel, $workspace): Collection {
@@ -80,9 +80,7 @@ class BuildPublishPageProps
             default => $filterAccounts(),
         };
 
-        $scopedChannelIds = $channel ? [$channel->id] : ($requestedChannelIds !== [] ? $requestedChannelIds : null);
-
-        $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
+        $basePosts = $workspace->posts()->onChannels($filters->scopedChannelIds);
 
         $openPostNotesId = RequestIds::uuid($request->query('notes'));
         $openPostDetailsId = RequestIds::uuid($request->query('post'));
@@ -117,11 +115,7 @@ class BuildPublishPageProps
             'displayTimezone' => $displayTimezone,
             'timezones' => fn (): array => Timezone::options(),
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
-            'filters' => [
-                'labels' => $labelIds,
-                'untagged' => $untagged,
-                'channels' => $requestedChannelIds,
-            ],
+            'filters' => $filters->toProp(),
             'filterAccounts' => fn () => SocialAccountResource::collection($filterAccounts()),
             'hasData' => $hasData,
             'hasQueueSlots' => $hasQueueSlots,
@@ -160,17 +154,6 @@ class BuildPublishPageProps
             ...BuildPostingGoalProgress::forChannel($channel, $weekStart),
             'has_grid' => $channel->platform->hasProfileGrid(),
         ];
-    }
-
-    public static function displayTimezone(mixed $requested, string $userTimezone): string
-    {
-        if (! is_string($requested) || $requested === '') {
-            return $userTimezone;
-        }
-
-        $normalized = Timezone::normalize($requested);
-
-        return $normalized === Timezone::DEFAULT && $requested !== Timezone::DEFAULT ? $userTimezone : $normalized;
     }
 
     /**

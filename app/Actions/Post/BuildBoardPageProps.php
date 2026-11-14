@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Support\PublishFilters;
 use App\Support\RequestIds;
 use App\Support\Timezone;
 use Closure;
@@ -44,12 +45,12 @@ class BuildBoardPageProps
         $requester = BuildPublishPageProps::pendingApprovalsRequester($user, $workspace);
         $group = self::group($request->query('group'), $channel);
 
-        $labelIds = RequestIds::uuidList($request->collect('labels'));
-        $untagged = $request->boolean('untagged');
-        $requestedChannelIds = $channel ? [] : RequestIds::uuidList($request->collect('channels')->unique());
-        $scopedChannelIds = $channel ? [$channel->id] : (filled($requestedChannelIds) ? $requestedChannelIds : null);
+        $filters = PublishFilters::fromRequest($request, $channel, $user);
+        $labelIds = $filters->labelIds;
+        $untagged = $filters->untagged;
+        $requestedChannelIds = $filters->requestedChannelIds;
 
-        $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
+        $basePosts = $workspace->posts()->onChannels($filters->scopedChannelIds);
 
         $loadedAccounts = null;
         $workspaceAccounts = function () use (&$loadedAccounts, $workspace, $channel): EloquentCollection {
@@ -111,14 +112,10 @@ class BuildBoardPageProps
                         ->matchOn('data.id'),
                 ])
                 ->all(),
-            'displayTimezone' => BuildPublishPageProps::displayTimezone($request->query('tz'), Timezone::normalize($user->timezone)),
+            'displayTimezone' => $filters->displayTimezone,
             'timezones' => fn (): array => Timezone::options(),
             'labels' => $labels,
-            'filters' => [
-                'labels' => $labelIds,
-                'untagged' => $untagged,
-                'channels' => $requestedChannelIds,
-            ],
+            'filters' => $filters->toProp(),
             'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts()),
             'hasChannels' => $hasChannels,
             'authUserId' => $user->id,

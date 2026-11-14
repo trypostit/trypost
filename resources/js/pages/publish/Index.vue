@@ -44,10 +44,9 @@ import PublishTabs from '@/components/publish/PublishTabs.vue';
 import QueueTimeline from '@/components/publish/QueueTimeline.vue';
 import { Button } from '@/components/ui/button';
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { usePublishFilters } from '@/composables/publish/usePublishFilters';
 import { useComposerData } from '@/composables/useComposerData';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     deletePostCardKey,
@@ -62,23 +61,12 @@ import type {
 } from '@/composables/usePostComposition';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import type { QueueSlotTarget } from '@/composables/useSortableQueue';
-import { provideViewTimezone } from '@/composables/useViewTimezone';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { filled } from '@/lib/helpers';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
-import { calendar } from '@/routes/app';
-import {
-    board as channelBoard,
-    calendar as channelCalendar,
-    grid,
-    publish,
-    settings,
-} from '@/routes/app/channels';
-import { board, index as postsIndex } from '@/routes/app/posts';
-import type { User } from '@/types';
+import { grid, settings } from '@/routes/app/channels';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import type {
@@ -131,80 +119,23 @@ const page = usePage();
 const { canManageAccounts, canManageTeam, canPublishDirectly } =
     useWorkspaceAbilities();
 
-const userTimezone = computed(
-    () => (page.props.auth.user as User).timezone || props.displayTimezone,
-);
-
-const { timezone, setTimezone, dayKey } = useDisplayTimezone(
-    props.displayTimezone,
-    props.timezones.map((option) => option.value),
-    () => props.tab,
-);
-
-provideViewTimezone(timezone);
-
-watch(
-    () => props.displayTimezone,
-    (value) => {
-        timezone.value = value;
-    },
-);
-
-const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
-const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
-const selectedChannelIds = ref<string[]>(props.filters.channels ?? []);
+const {
+    timezone,
+    setTimezone,
+    dayKey,
+    selectedLabelIds,
+    selectedUntagged,
+    selectedChannelIds,
+    filterQuery,
+    listUrlFor,
+    calendarHref,
+    boardHref,
+} = usePublishFilters(props, { currentTab: () => props.tab });
 
 const listUrl = (
     tab: PublishTab = props.tab,
     extra: Record<string, string> = {},
-): string => {
-    const query = {
-        tab,
-        labels: selectedLabelIds.value.length
-            ? selectedLabelIds.value
-            : undefined,
-        untagged: selectedUntagged.value ? '1' : undefined,
-        channels:
-            props.scope === 'all' && selectedChannelIds.value.length
-                ? selectedChannelIds.value
-                : undefined,
-        tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
-        ...extra,
-    };
-
-    return props.channel
-        ? publish.url(props.channel.id, { query })
-        : postsIndex.url({ query });
-};
-
-const isPhone = useBelowBreakpoint('md');
-
-const viewQuery = (): Record<string, string | string[] | undefined> => ({
-    labels: filled(selectedLabelIds.value) ? selectedLabelIds.value : undefined,
-    untagged: selectedUntagged.value ? '1' : undefined,
-    channels:
-        props.scope === 'all' && filled(selectedChannelIds.value)
-            ? selectedChannelIds.value
-            : undefined,
-    tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
-});
-
-const calendarUrl = computed((): string => {
-    const query = viewQuery();
-    const view = isPhone.value ? 'days' : 'week';
-
-    return props.channel
-        ? channelCalendar.url({ account: props.channel.id, view }, { query })
-        : calendar.url({ view }, { query });
-});
-
-const boardUrl = computed((): string => {
-    const query = viewQuery();
-
-    return props.channel
-        ? channelBoard.url(props.channel.id, { query })
-        : board.url({ query });
-});
+): string => listUrlFor({ tab, ...filterQuery(), ...extra });
 
 const applyFilters = (): void => {
     router.get(
@@ -916,8 +847,8 @@ const submitComposition = (
                             <ScheduleViewSwitch
                                 active-view="list"
                                 :list-href="listUrl()"
-                                :calendar-href="calendarUrl"
-                                :board-href="boardUrl"
+                                :calendar-href="calendarHref"
+                                :board-href="boardHref"
                                 :grid-href="
                                     channel?.has_grid
                                         ? grid.url(channel.id)
