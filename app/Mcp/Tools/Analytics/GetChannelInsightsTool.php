@@ -11,7 +11,6 @@ use App\Http\Resources\Api\ChannelInsightsResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Models\WorkspaceLabel;
 use App\Support\Analytics\ChannelMetrics;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
@@ -61,9 +60,7 @@ class GetChannelInsightsTool extends Tool
             'period' => ['sometimes', Rule::in(['current', 'previous'])],
             'sort' => ['sometimes', Rule::in(ChannelMetrics::sortable())],
             'labels' => ['sometimes', 'array'],
-            'labels.*' => ['bail', 'uuid', Rule::exists(WorkspaceLabel::class, 'id')
-                ->where('workspace_id', $workspace->id)
-                ->withoutTrashed()],
+            'labels.*' => ['uuid'],
             'untagged' => ['sometimes', 'boolean'],
             'types' => ['sometimes', 'array'],
             'types.*' => [Rule::in(PublicationFilter::typesFor($account->platform))],

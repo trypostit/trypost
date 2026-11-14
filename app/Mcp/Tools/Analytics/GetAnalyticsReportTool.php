@@ -10,7 +10,6 @@ use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Dto\Analytics\PublicationFilter;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
-use App\Models\WorkspaceLabel;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
@@ -51,9 +50,7 @@ class GetAnalyticsReportTool extends Tool
             'start' => [$exclude, ...$presence, 'date_format:Y-m-d'],
             'end' => [$exclude, ...$presence, 'date_format:Y-m-d', 'after_or_equal:start'],
             'labels' => ['sometimes', 'array'],
-            'labels.*' => ['bail', 'uuid', Rule::exists(WorkspaceLabel::class, 'id')
-                ->where('workspace_id', $workspace->id)
-                ->withoutTrashed()],
+            'labels.*' => ['uuid'],
             'untagged' => ['sometimes', 'boolean'],
         ]);
         $user = $request->user();

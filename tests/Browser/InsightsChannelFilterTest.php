@@ -462,3 +462,24 @@ test('history back re-syncs the label filter of the workspace insights with the 
     $page->assertAttribute("@analytics-label-checkbox-{$label->id}", 'data-state', 'unchecked')
         ->assertNoJavaScriptErrors();
 });
+
+test('a deleted label in the url keeps the workspace insights open and matches no post', function () {
+    [$user, $label] = insightsLabelledFixture();
+    $label->delete();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights', ['labels' => [$label->id]]));
+    waitFor($page, '@analytics-label-filter');
+
+    $page->assertPathIs(route('app.insights', absolute: false))
+        ->assertNoJavaScriptErrors();
+    expect($page->script('location.search'))->toContain($label->id);
+
+    $page->click('@analytics-label-filter');
+    waitFor($page, '@analytics-label-clear');
+    $page->click('@analytics-label-clear');
+    waitForCondition($page, "!location.search.includes('labels')");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->assertNoJavaScriptErrors();
+});

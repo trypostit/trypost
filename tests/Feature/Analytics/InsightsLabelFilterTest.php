@@ -79,9 +79,25 @@ test('the workspace insights page offers the labels and counts only the posts of
     'the label or untagged' => [fn (WorkspaceLabel $label): array => ['labels' => [$label->id], 'untagged' => 1], 2, 14],
 ]);
 
-test('the workspace insights page refuses a label of another workspace', function () {
+test('a label of another workspace or a deleted one matches no post instead of failing, and a malformed id is refused', function () {
+    $foreign = WorkspaceLabel::factory()->create();
+    $deleted = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $this->account->posts()->first()->labels()->attach($deleted);
+    $deleted->delete();
+
+    foreach ([$foreign, $deleted] as $label) {
+        $this->actingAs($this->user)
+            ->get(route('app.insights', [...$this->range, 'labels' => [$label->id]]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('report.filters.labels', [$label->id])
+                ->where('report.summary.posts.value', 0)
+                ->where('report.summary.followers.value', 500)
+                ->etc());
+    }
+
     $this->actingAs($this->user)
-        ->getJson(route('app.insights', [...$this->range, 'labels' => [WorkspaceLabel::factory()->create()->id]]))
+        ->getJson(route('app.insights', [...$this->range, 'labels' => ['not-a-uuid']]))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('labels.0');
 });
@@ -133,13 +149,4 @@ test('the label filter combines with the channel filter', function () {
     $report(['untagged' => 1, 'channels' => [$facebook->id]])->assertInertia(fn (Assert $page) => $page
         ->where('report.summary.posts.value', 0)
         ->etc());
-});
-
-test('the workspace insights page refuses a deleted label, like the channel insights', function () {
-    $this->label->delete();
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.insights', [...$this->range, 'labels' => [$this->label->id]]))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('labels.0');
 });
