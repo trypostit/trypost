@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -44,41 +43,43 @@ class Timezone
      */
     public static function options(): array
     {
-        $now = new DateTimeImmutable('now');
-
-        return array_map(fn (string $identifier): array => self::row($identifier, $now), DateTimeZone::listIdentifiers());
+        return collect(DateTimeZone::listIdentifiers())
+            ->map(fn (string $identifier): array => self::option($identifier))
+            ->all();
     }
 
     /**
-     * One time zone as the pickers show it: its city ("Sao Paulo") and its
-     * current offset ("GMT-3"), any identifier normalized first.
+     * A canonical time zone as the pickers show it: its city ("Sao Paulo") and
+     * its current offset ("GMT-3").
      *
      * @return array{value: string, label: string, offset: string}
      */
     public static function option(string $identifier): array
     {
-        return self::row(self::normalize($identifier), new DateTimeImmutable('now'));
-    }
-
-    /**
-     * The picker row of a canonical identifier.
-     *
-     * @return array{value: string, label: string, offset: string}
-     */
-    private static function row(string $identifier, DateTimeImmutable $now): array
-    {
-        $seconds = (new DateTimeZone($identifier))->getOffset($now);
-        $sign = $seconds < 0 ? '-' : '+';
-        $hours = intdiv(abs($seconds), 3600);
-        $minutes = intdiv(abs($seconds) % 3600, 60);
-        $offset = $seconds === 0
-            ? 'GMT'
-            : ($minutes === 0 ? "GMT{$sign}{$hours}" : sprintf('GMT%s%d:%02d', $sign, $hours, $minutes));
-
         return [
             'value' => $identifier,
             'label' => Str::of($identifier)->afterLast('/')->replace('_', ' ')->toString(),
-            'offset' => $offset,
+            'offset' => self::gmtOffset(now($identifier)->utcOffset()),
         ];
+    }
+
+    /**
+     * An offset in minutes as the pickers write it: "GMT", "GMT-3", "GMT+5:30".
+     */
+    private static function gmtOffset(int $minutes): string
+    {
+        if ($minutes === 0) {
+            return 'GMT';
+        }
+
+        $sign = $minutes < 0 ? '-' : '+';
+        $hours = intdiv(abs($minutes), 60);
+        $rest = abs($minutes) % 60;
+
+        if ($rest === 0) {
+            return "GMT{$sign}{$hours}";
+        }
+
+        return sprintf('GMT%s%d:%02d', $sign, $hours, $rest);
     }
 }

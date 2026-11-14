@@ -15,7 +15,6 @@ use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Actions\Post\BuildBoardPageProps;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\BuildPublishPageProps;
-use App\Actions\SocialAccount\BuildPostingGoalProgress;
 use App\Actions\SocialAccount\ListInstagramGridPosts;
 use App\Actions\SocialAccount\ListWorkspaceChannels;
 use App\Actions\SocialAccount\ReorderSocialAccounts;
@@ -27,6 +26,7 @@ use App\Http\Requests\App\Channel\ChannelInsightsRequest;
 use App\Http\Requests\App\Channel\DownloadChannelInsightsRequest;
 use App\Http\Requests\App\Channel\ListChannelsRequest;
 use App\Http\Requests\App\Channel\ReorderChannelsRequest;
+use App\Http\Resources\App\ChannelListRowResource;
 use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Http\Resources\App\InstagramGridTileResource;
 use App\Http\Resources\App\SocialAccountResource;
@@ -55,25 +55,9 @@ class ChannelController extends Controller
         $networks = $request->networks();
 
         return Inertia::render('settings/workspace/Channels', [
-            'connectedChannels' => Inertia::scroll(function () use ($workspace, $search, $networks, $weekStart): LengthAwarePaginator {
-                $page = ListWorkspaceChannels::query($workspace, $search, $networks)
-                    ->paginate((int) config('app.pagination.default'));
-                $goals = BuildPostingGoalProgress::forChannels(
-                    collect($page->items())->filter(fn (SocialAccount $account): bool => filled($account->posting_goal)),
-                    $weekStart,
-                );
-
-                return $page->through(fn (SocialAccount $account): array => [
-                    ...SocialAccountResource::make($account)->resolve(),
-                    'timezone_option' => Timezone::option($account->timezone),
-                    'posting_times_per_week' => $account->posting_schedule?->slotCount() ?? 0,
-                    ...data_get($goals, $account->id, [
-                        'posting_goal' => null,
-                        'sent_this_week' => 0,
-                        'scheduled_this_week' => 0,
-                    ]),
-                ]);
-            })->matchOn('data.id'),
+            'connectedChannels' => Inertia::scroll(fn () => ChannelListRowResource::collection(
+                ListWorkspaceChannels::page($workspace, $search, $networks, $weekStart),
+            ))->matchOn('data.id'),
             'total' => $workspace->socialAccounts()->count(),
             'networks' => fn (): array => ListWorkspaceChannels::networks($workspace),
             'filters' => [
