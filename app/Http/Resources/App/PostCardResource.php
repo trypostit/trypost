@@ -22,12 +22,12 @@ class PostCardResource extends JsonResource
      * The channels already serialized in this batch of cards, so a page of
      * posts on a few channels serializes each channel once.
      *
-     * Keyed by channel id; null outside a batch, where each card serializes
-     * its own channel (an empty array is a batch that has none yet).
+     * Keyed by channel id. A card alone keeps its own; the cards of one
+     * serializer() share it.
      *
-     * @var array<string, array<string, mixed>>|null
+     * @var array<string, array<string, mixed>>
      */
-    private ?array $serializedAccounts = null;
+    private array $serializedAccounts = [];
 
     /**
      * @return array<string, mixed>
@@ -111,10 +111,6 @@ class PostCardResource extends JsonResource
      */
     private function accountArray(SocialAccount $account): array
     {
-        if ($this->serializedAccounts === null) {
-            return $account->toArray();
-        }
-
         return $this->serializedAccounts[$account->id] ??= $account->toArray();
     }
 }
