@@ -362,6 +362,25 @@ test('publishing now from a board card\'s details reloads the columns in place',
     $page->assertNoJavaScriptErrors();
 });
 
+test('a draft without a time reads No time like the list, a dated one shows its time', function () {
+    $this->draft->update(['scheduled_at' => null]);
+    $dated = Post::factory()->forAccount($this->channel)->draft()->create([
+        'user_id' => $this->user->id,
+        'scheduled_at' => now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)->setTime(10, 0),
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-card-no-time-{$this->draft->id}");
+
+    $page->assertSeeIn("@board-card-no-time-{$this->draft->id}", __('posts.publish.no_time'))
+        ->assertMissing("@board-card-time-{$this->draft->id}")
+        ->assertVisible("@board-card-time-{$dated->id}")
+        ->assertMissing("@board-card-no-time-{$dated->id}")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a video thumbnail loads only once its card comes near the screen', function () {
     $video = Post::factory()->forAccount($this->channel)->failed()->create([
         'user_id' => $this->user->id,

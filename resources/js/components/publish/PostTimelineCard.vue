@@ -62,7 +62,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
-import { postAttemptAt } from '@/lib/postCard';
+import { postAttemptAt, postNoTimeKey } from '@/lib/postCard';
 import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
@@ -228,16 +228,7 @@ const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
 );
 
-/** What a post without a time shows: the queue slot its approval request asks for, else "No time". */
-const noTimeKey = computed((): string => {
-    const slot = props.post.approval_queue_position;
-
-    if (isPending.value && slot) {
-        return `posts.publish.pending_slot.${slot}`;
-    }
-
-    return 'posts.publish.no_time';
-});
+const noTimeKey = computed(() => postNoTimeKey(props.post));
 
 const isEditable = computed(
     () =>

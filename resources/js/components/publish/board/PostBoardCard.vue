@@ -18,7 +18,12 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import { filled, transform } from '@/lib/helpers';
 import { isImage } from '@/lib/mediaType';
-import { postAttemptAt, postChannelLabel, postThumbnail } from '@/lib/postCard';
+import {
+    postChannelLabel,
+    postNoTimeKey,
+    postShownAt,
+    postThumbnail,
+} from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus } from '@/types/post';
@@ -55,11 +60,16 @@ const account = computed(() => props.post.social_account);
 const channelLabel = computed(() => postChannelLabel(props.post));
 
 
-const attemptAt = computed(() => postAttemptAt(props.post));
+const shownAt = computed(() => postShownAt(props.post));
 
-const time = computed(() =>
-    date.formatMonthDayTimeInTimezone(attemptAt.value, props.timezone),
-);
+/** The card's time, like the List: none for a draft or request without one, which shows its no-time label instead. */
+const timeOrNone = (translate: Translate): string => {
+    if (!filled(shownAt.value)) {
+        return translate(postNoTimeKey(props.post));
+    }
+
+    return date.formatMonthDayTimeInTimezone(shownAt.value, props.timezone);
+};
 
 const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 
@@ -93,7 +103,9 @@ const textOrNone = (translate: Translate): string => {
 
 /** What a screen reader says on the card, as the calendar chip does: channel, time and text. */
 const openLabel = (translate: Translate): string =>
-    [channelOrNone(translate), time.value, textOrNone(translate)].join(' · ');
+    [channelOrNone(translate), timeOrNone(translate), textOrNone(translate)].join(
+        ' · ',
+    );
 
 const thumbnail = computed(() => postThumbnail(props.post));
 
@@ -166,10 +178,14 @@ const hasMenu = computed(
             class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
         >
             <time
-                :datetime="attemptAt"
+                v-if="filled(shownAt)"
+                :datetime="shownAt"
                 :data-testid="`board-card-time-${post.id}`"
-                >{{ time }}</time
+                >{{ timeOrNone($t) }}</time
             >
+            <span v-else :data-testid="`board-card-no-time-${post.id}`">{{
+                timeOrNone($t)
+            }}</span>
             <Badge
                 v-if="contentTypeKey"
                 variant="secondary"
