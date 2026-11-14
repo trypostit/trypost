@@ -501,6 +501,8 @@ test('the sidebar new button marks an unfinished post as soon as the composer cl
     waitForText($page, '@sidebar-new-unfinished-tooltip', __('sidebar.unfinished_post'));
     $page->click('@sidebar-new');
     waitForOpen($page, '@sidebar-new-menu');
+    $page->assertVisible('@sidebar-new-post-unfinished')
+        ->assertSeeIn('@sidebar-new-post-unfinished', __('sidebar.unfinished_post'));
     $page->keys('@sidebar-new-post', 'Escape');
     waitForGone($page, '@sidebar-new-menu');
 
@@ -513,7 +515,11 @@ test('the sidebar new button marks an unfinished post as soon as the composer cl
     waitForGone($page, '@sidebar-new-unfinished');
     $page->hover('@sidebar-new');
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
-    $page->assertMissing('@sidebar-new-unfinished-tooltip')
+    $page->assertMissing('@sidebar-new-unfinished-tooltip');
+
+    $page->click('@sidebar-new');
+    waitForOpen($page, '@sidebar-new-menu');
+    $page->assertMissing('@sidebar-new-post-unfinished')
         ->assertNoJavaScriptErrors();
 });
 

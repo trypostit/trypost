@@ -199,6 +199,15 @@ const mainNavItems = computed<NavItem[]>(() => [
                                                 }}</span
                                             >
                                         </span>
+                                        <span
+                                            v-if="hasUnfinishedPost"
+                                            class="ms-auto size-2 shrink-0 rounded-full bg-warning"
+                                            data-testid="sidebar-new-post-unfinished"
+                                        >
+                                            <span class="sr-only">{{
+                                                $t('sidebar.unfinished_post')
+                                            }}</span>
+                                        </span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         class="gap-3 p-2"
