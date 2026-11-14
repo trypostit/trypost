@@ -15,14 +15,23 @@ class Timezone
 
     public static function normalize(?string $value): string
     {
+        return self::known($value) ?? self::DEFAULT;
+    }
+
+    /**
+     * The canonical identifier of a zone PHP knows (its IANA alias resolved),
+     * or null for a blank or unknown one.
+     */
+    public static function known(?string $value): ?string
+    {
         if (blank($value)) {
-            return self::DEFAULT;
+            return null;
         }
 
         $canonical = once(fn (): Collection => collect(DateTimeZone::listIdentifiers())->flip());
 
         return collect([$value, IntlTimeZone::getIanaID($value)])
-            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone), self::DEFAULT);
+            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone));
     }
 
     /**
@@ -32,10 +41,19 @@ class Timezone
      */
     public static function usable(string $value): string
     {
-        $known = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
-        $normalized = self::normalize($value);
+        $canonical = self::known($value);
 
-        return $normalized === self::DEFAULT && $known->has($value) ? $value : $normalized;
+        if (filled($canonical)) {
+            return $canonical;
+        }
+
+        $understood = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
+
+        if ($understood->has($value)) {
+            return $value;
+        }
+
+        return self::DEFAULT;
     }
 
     /**

@@ -41,22 +41,8 @@ final class PublishFilters
                 filled($requestedChannelIds) => $requestedChannelIds,
                 default => null,
             },
-            displayTimezone: self::displayTimezone($request->query('tz'), Timezone::normalize($user->timezone)),
+            displayTimezone: Timezone::known($request->query->getString('tz')) ?? Timezone::normalize($user->timezone),
         );
-    }
-
-    /**
-     * The requested zone when it is a known one, else the user's zone.
-     */
-    private static function displayTimezone(mixed $requested, string $userTimezone): string
-    {
-        if (! is_string($requested) || blank($requested)) {
-            return $userTimezone;
-        }
-
-        $normalized = Timezone::normalize($requested);
-
-        return $normalized === Timezone::DEFAULT && $requested !== Timezone::DEFAULT ? $userTimezone : $normalized;
     }
 
     /**
