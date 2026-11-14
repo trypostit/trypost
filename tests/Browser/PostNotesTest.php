@@ -849,9 +849,11 @@ test('notes open, grow, send, edit and fit the card on every tab, on desktop and
     $page->fill('@note-input', 'First line');
     waitForEditorText($page, '@note-input', 'First line');
     $page->keys('@note-input', ['Shift+Enter']);
+    waitFor($page, '@note-input br');
     $page->typeSlowly('@note-input', 'Second line', 10);
     waitForEditorText($page, '@note-input', "First line\nSecond line");
     $page->keys('@note-input', ['Shift+Enter']);
+    waitForCount($page, '@note-input br', 2, '>=');
     $page->typeSlowly('@note-input', 'Third line', 10);
     waitForEditorText($page, '@note-input', "First line\nSecond line\nThird line");
     $grown = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");

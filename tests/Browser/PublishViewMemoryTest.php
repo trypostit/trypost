@@ -162,6 +162,7 @@ test('the view the user picked follows them to another workspace', function () {
     waitFor($page, "@sidebar-workspace-{$second->id}");
     $page->click("@sidebar-workspace-{$second->id}");
     waitForDatabase($page, fn () => $this->user->fresh()->current_workspace_id === $second->id);
+    waitForPath($page, route('app.calendar', absolute: false));
 
     $boardPath = route('app.posts.board', absolute: false);
     waitFor($page, "[data-testid=\"nav-{$boardPath}\"]");
