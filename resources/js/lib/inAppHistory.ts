@@ -1,24 +1,31 @@
+import type { ActiveVisit } from '@inertiajs/core';
 import { router } from '@inertiajs/vue3';
+
+import { blank, filled } from '@/lib/helpers';
 
 let pushedUrl: string | null = null;
 
+/** A completed GET that pushed a whole page: no replace, no prefetch, no partial reload. */
+const pushedAPage = (visit: ActiveVisit): boolean => {
+    if (visit.method !== 'get' || !visit.completed) {
+        return false;
+    }
+
+    if (visit.replace || visit.prefetch) {
+        return false;
+    }
+
+    return blank(visit.only) && blank(visit.except);
+};
+
 /**
  * Remembers the URL of the last page the app pushed onto the browser history
- * with a full visit (a link or `router.visit`: no replace, no partial reload,
- * no prefetch). Back and forward make no visit, and a reload starts empty.
+ * with a full visit (a link or `router.visit`). Back and forward make no visit,
+ * and a reload starts empty.
  */
 export const trackInAppPushes = (): void => {
     router.on('finish', (event) => {
-        const visit = event.detail.visit;
-
-        if (
-            visit.method === 'get' &&
-            visit.completed &&
-            !visit.replace &&
-            !visit.prefetch &&
-            visit.only.length === 0 &&
-            visit.except.length === 0
-        ) {
+        if (pushedAPage(event.detail.visit)) {
             pushedUrl = window.location.href;
         }
     });
@@ -41,19 +48,19 @@ export const rememberInAppPush = (): void => {
  * still counts while its path and every parameter it was pushed with match.
  */
 export const cameFromAppPage = (): boolean => {
-    if (pushedUrl === null) {
+    if (!filled(pushedUrl)) {
         return false;
     }
 
     const pushed = new URL(pushedUrl);
     const current = new URL(window.location.href);
 
-    return (
-        pushed.origin === current.origin &&
-        pushed.pathname === current.pathname &&
-        [...pushed.searchParams].every(
-            ([key, value]) => current.searchParams.get(key) === value,
-        )
+    if (pushed.origin !== current.origin || pushed.pathname !== current.pathname) {
+        return false;
+    }
+
+    return [...pushed.searchParams].every(
+        ([key, value]) => current.searchParams.get(key) === value,
     );
 };
 
@@ -65,7 +72,7 @@ export const cameFromAppPage = (): boolean => {
  * for a page that unmounts before the write.
  */
 export const afterPageInHistory = (then: () => void): (() => void) => {
-    if (window.history.state?.page) {
+    if (filled(window.history.state?.page)) {
         then();
 
         return () => {};
@@ -104,7 +111,7 @@ export const stepBackInHistory = (): void => {
  * right away when none is under way.
  */
 export const afterHistorySettles = (then: () => void): void => {
-    if (settling) {
+    if (filled(settling)) {
         void settling.then(then);
 
         return;
