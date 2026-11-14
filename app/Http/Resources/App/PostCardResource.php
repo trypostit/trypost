@@ -9,7 +9,6 @@ use App\Models\SocialAccount;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use WeakMap;
 
 /**
  * A post in the shape the publish page cards read (see BuildPublishPageProps::decorate).
@@ -23,9 +22,12 @@ class PostCardResource extends JsonResource
      * The channels already serialized in this batch of cards, so a page of
      * posts on a few channels serializes each channel once.
      *
-     * @var WeakMap<SocialAccount, array<string, mixed>>|null
+     * Keyed by channel id; null outside a batch, where each card serializes
+     * its own channel (an empty array is a batch that has none yet).
+     *
+     * @var array<string, array<string, mixed>>|null
      */
-    private ?WeakMap $serializedAccounts = null;
+    private ?array $serializedAccounts = null;
 
     /**
      * @return array<string, mixed>
@@ -71,11 +73,11 @@ class PostCardResource extends JsonResource
      */
     public static function serializer(): Closure
     {
-        $accounts = new WeakMap;
+        $accounts = [];
 
-        return function (Post $post) use ($accounts): array {
+        return function (Post $post) use (&$accounts): array {
             $resource = self::make($post);
-            $resource->serializedAccounts = $accounts;
+            $resource->serializedAccounts = &$accounts;
 
             return $resource->resolve();
         };
@@ -97,12 +99,22 @@ class PostCardResource extends JsonResource
         if ($post->relationLoaded('socialAccount') && collect($hidden)->doesntContain('socialAccount')) {
             $relations['social_account'] = transform(
                 $post->socialAccount,
-                fn (SocialAccount $account): array => $this->serializedAccounts === null
-                    ? $account->toArray()
-                    : ($this->serializedAccounts[$account] ??= $account->toArray()),
+                fn (SocialAccount $account): array => $this->accountArray($account),
             );
         }
 
         return $relations;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function accountArray(SocialAccount $account): array
+    {
+        if ($this->serializedAccounts === null) {
+            return $account->toArray();
+        }
+
+        return $this->serializedAccounts[$account->id] ??= $account->toArray();
     }
 }
