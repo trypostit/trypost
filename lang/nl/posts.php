@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Bord',
         'group_by' => 'Groeperen op',
+        'group_by_value' => 'Groeperen op: :group',
         'groups' => [
             'status' => 'Status',
             'tag' => 'Label',

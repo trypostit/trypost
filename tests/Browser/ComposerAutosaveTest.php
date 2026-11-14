@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * @return array{0: User, 1: Workspace, 2: SocialAccount}
@@ -523,21 +524,38 @@ test('the sidebar new button marks an unfinished post as soon as the composer cl
         ->assertNoJavaScriptErrors();
 });
 
-test('the sidebar new button marks an unfinished post kept from an earlier visit, but not a draft holding only labels', function () {
+test('the sidebar new button marks only a draft the composer offers back, not one left with labels, a disconnected channel or expired uploads', function (Closure $draft, bool $marked) {
     [$user, $workspace, $account] = composerAutosaveWorkspace();
     $this->actingAs($user);
 
-    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@sidebar-new');
-    seedComposerAutosave($page, $user, $workspace->id, ['labelIds' => ['label']]);
+    seedComposerAutosave($page, $user, $workspace->id, $draft($account));
 
-    $page->navigate(route('app.calendar'));
-    waitFor($page, '@sidebar-new');
-    $page->assertMissing('@sidebar-new-unfinished');
-
-    seedComposerAutosave($page, $user, $workspace->id, ['accountIds' => [$account->id]]);
     $page->navigate(route('app.posts.index'));
-    waitFor($page, '@sidebar-new-unfinished');
+    waitFor($page, '@sidebar-new');
+
+    if ($marked) {
+        waitFor($page, '@sidebar-new-unfinished');
+    } else {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+        $page->assertMissing('@sidebar-new-unfinished');
+    }
+
+    openComposerForAutosave($page);
+
+    if ($marked) {
+        waitFor($page, '@composer-resume-dialog');
+    } else {
+        $page->assertMissing('@composer-resume-dialog');
+    }
 
     $page->assertNoJavaScriptErrors();
-});
+})->with([
+    'its text' => [fn (SocialAccount $account): array => ['content' => 'Half written'], true],
+    'its channel' => [fn (SocialAccount $account): array => ['accountIds' => [$account->id]], true],
+    'a fresh upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'fresh', 'upload_token' => 'fresh-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/fresh.png', 'type' => 'image', 'mime_type' => 'image/png']]], true],
+    'only labels' => [fn (SocialAccount $account): array => ['labelIds' => ['label']], false],
+    'a disconnected channel' => [fn (SocialAccount $account): array => ['accountIds' => [(string) Str::uuid()]], false],
+    'an expired upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'expired', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/expired.png', 'type' => 'image', 'mime_type' => 'image/png']]], false],
+]);

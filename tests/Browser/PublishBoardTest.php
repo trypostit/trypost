@@ -119,6 +119,8 @@ test('on a phone the group menu is a bottom sheet', function () {
     waitForCount($page, '@board-group-trigger', 1);
     waitForState($page, '@board-group-trigger', 'element.getBoundingClientRect().height > 0');
 
+    $page->assertAttribute('@board-group-trigger', 'aria-label', __('posts.board.group_by_value', ['group' => __('posts.board.groups.status')]));
+
     $page->click('@board-group-trigger');
 
     waitForOpen($page, '@board-group-sheet');
@@ -129,6 +131,7 @@ test('on a phone the group menu is a bottom sheet', function () {
     waitFor($page, "@board-column-channel_{$this->channel->id}");
 
     $page->assertVisible("@board-column-channel_{$this->channel->id}")
+        ->assertAttribute('@board-group-trigger', 'aria-label', __('posts.board.group_by_value', ['group' => __('posts.board.groups.channel')]))
         ->assertNoJavaScriptErrors();
 });
 

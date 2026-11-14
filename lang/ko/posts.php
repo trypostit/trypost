@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => '보드',
         'group_by' => '그룹 기준',
+        'group_by_value' => '그룹 기준: :group',
         'groups' => [
             'status' => '상태',
             'tag' => '라벨',

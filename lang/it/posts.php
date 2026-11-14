@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Bacheca',
         'group_by' => 'Raggruppa per',
+        'group_by_value' => 'Raggruppa per: :group',
         'groups' => [
             'status' => 'Stato',
             'tag' => 'Etichetta',

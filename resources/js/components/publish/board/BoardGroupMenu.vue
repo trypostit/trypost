@@ -22,9 +22,17 @@ const group = defineModel<BoardGroup>({ required: true });
 
 const belowSm = useBelowBreakpoint('sm');
 
-/** The phone trigger's name: "Group by: Tag", resolved with the template's `$t`. */
-const triggerLabel = (translate: (key: string) => string): string =>
-    `${translate('posts.board.group_by')}: ${translate(`posts.board.groups.${group.value}`)}`;
+/** The phone trigger's name: "Group by: Label", resolved with the template's `$t`. */
+const triggerLabel = (
+    translate: (key: string, replacements?: Record<string, string>) => string,
+): string =>
+    translate('posts.board.group_by_value', {
+        group: translate(`posts.board.groups.${group.value}`),
+    });
+
+/** Whether an option is the group the board shows. */
+const isSelected = (option: BoardGroup): boolean => option === group.value;
+
 const sheetOpen = ref(false);
 
 const openSheet = (): void => {
@@ -75,14 +83,14 @@ const chooseFromMenu = (value: unknown): void => {
                     v-for="option in groups"
                     :key="option"
                     type="button"
-                    :aria-pressed="option === group"
+                    :aria-pressed="isSelected(option)"
                     class="menu-row"
                     :data-testid="`board-group-option-${option}`"
                     @click="select(option)"
                 >
                     {{ $t(`posts.board.groups.${option}`) }}
                     <IconCheck
-                        v-if="option === group"
+                        v-if="isSelected(option)"
                         class="ms-auto size-4"
                     />
                 </button>

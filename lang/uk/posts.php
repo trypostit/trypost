@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Дошка',
         'group_by' => 'Групувати за',
+        'group_by_value' => 'Групувати за: :group',
         'groups' => [
             'status' => 'Статус',
             'tag' => 'Мітка',

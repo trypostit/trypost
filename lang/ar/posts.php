@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'لوحة',
         'group_by' => 'تجميع حسب',
+        'group_by_value' => 'تجميع حسب: :group',
         'groups' => [
             'status' => 'الحالة',
             'tag' => 'التسمية',

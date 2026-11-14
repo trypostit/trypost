@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Pano',
         'group_by' => 'Gruplandır',
+        'group_by_value' => 'Gruplandır: :group',
         'groups' => [
             'status' => 'Durum',
             'tag' => 'Etiket',

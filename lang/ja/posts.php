@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'ボード',
         'group_by' => 'グループ化',
+        'group_by_value' => 'グループ化：:group',
         'groups' => [
             'status' => 'ステータス',
             'tag' => 'ラベル',

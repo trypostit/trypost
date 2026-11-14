@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Πίνακας',
         'group_by' => 'Ομαδοποίηση κατά',
+        'group_by_value' => 'Ομαδοποίηση κατά: :group',
         'groups' => [
             'status' => 'Κατάσταση',
             'tag' => 'Ετικέτα',

@@ -10,6 +10,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
 
 /**
  * A post in the shape the publish page cards read (see BuildPublishPageProps::decorate).
@@ -88,11 +89,7 @@ class PostCardResource extends JsonResource
      */
     private function otherRelations(Post $post): array
     {
-        $post->makeHidden(['socialAccount', 'user']);
-        $relations = $post->relationsToArray();
-        $post->makeVisible(['socialAccount', 'user']);
-
-        return $relations;
+        return Arr::except($post->relationsToArray(), ['social_account', 'user']);
     }
 
     /**

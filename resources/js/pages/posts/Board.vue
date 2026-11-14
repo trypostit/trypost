@@ -190,9 +190,14 @@ const pageTitle = (translate: (key: string) => string): string => {
     return translate('posts.board.view');
 };
 
-const showsChannelFilter = computed(
-    () => props.scope === 'all' && filled(props.filterAccounts),
-);
+/** The channel filter shows on the all-channels board while there are channels to pick. */
+const showsChannelFilter = computed((): boolean => {
+    if (props.scope !== 'all') {
+        return false;
+    }
+
+    return filled(props.filterAccounts);
+});
 
 /** The Instagram grid's link, for a channel that has one. */
 const gridHref = computed((): string | undefined => {

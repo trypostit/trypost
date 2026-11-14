@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Доска',
         'group_by' => 'Группировать по',
+        'group_by_value' => 'Группировать по: :group',
         'groups' => [
             'status' => 'Статус',
             'tag' => 'Метка',

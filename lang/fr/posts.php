@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => 'Tableau',
         'group_by' => 'Grouper par',
+        'group_by_value' => 'Grouper par : :group',
         'groups' => [
             'status' => 'Statut',
             'tag' => 'Étiquette',

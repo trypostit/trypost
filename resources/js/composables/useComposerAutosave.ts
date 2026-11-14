@@ -17,6 +17,7 @@ import { filled } from '@/lib/helpers';
 import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import { classify, MediaType } from '@/lib/mediaType';
 import type { SharedData } from '@/types';
+import type { SidebarChannel } from '@/types/channel';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -278,8 +279,15 @@ export const useAutosavePreview = (
     ),
 });
 
-/** Whether a saved draft holds what the resume dialog offers back: text, channels or media. */
-const isUnfinished = (snapshot: AutosaveSnapshot | null): boolean => {
+/**
+ * Whether a saved draft holds what the resume dialog offers back
+ * (`useAutosavePreview`): text, a channel that still exists, or media still
+ * within the upload retention.
+ */
+const isUnfinished = (
+    snapshot: AutosaveSnapshot | null,
+    channelIds: string[],
+): boolean => {
     if (!filled(snapshot)) {
         return false;
     }
@@ -288,11 +296,13 @@ const isUnfinished = (snapshot: AutosaveSnapshot | null): boolean => {
         return true;
     }
 
-    if (filled(snapshot.accountIds)) {
+    if (snapshot.accountIds.some((id) => channelIds.includes(id))) {
         return true;
     }
 
-    return filled(snapshot.media);
+    const retentionHours = mediaUploadLimits().upload_retention_hours;
+
+    return snapshot.media.some((item) => !isExpiredUpload(item, retentionHours));
 };
 
 /**
@@ -306,8 +316,12 @@ export const useHasUnfinishedPost = (): ComputedRef<boolean> => {
 
     return computed((): boolean => {
         const { auth } = page.props;
+        const channels = (page.props.channels ?? []) as SidebarChannel[];
         trackDraftChanges();
 
-        return isUnfinished(read(auth.user.id, auth.currentWorkspace?.id));
+        return isUnfinished(
+            read(auth.user.id, auth.currentWorkspace?.id),
+            channels.map((channel) => channel.id),
+        );
     });
 };

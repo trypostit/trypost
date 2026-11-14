@@ -7,6 +7,7 @@ return [
     'board' => [
         'view' => '看板',
         'group_by' => '分组依据',
+        'group_by_value' => '分组依据：:group',
         'groups' => [
             'status' => '状态',
             'tag' => '标签',

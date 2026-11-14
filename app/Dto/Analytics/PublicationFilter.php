@@ -25,7 +25,7 @@ use Illuminate\Support\ValidatedInput;
 final readonly class PublicationFilter
 {
     /**
-     * @param  list<string>  $labelIds  Workspace label ids already validated for tenancy.
+     * @param  list<string>  $labelIds  Label UUIDs; one deleted or of another workspace matches no post, since only this workspace's posts carry its labels.
      * @param  list<ContentType>  $contentTypes  Content types of $platform; none without one.
      */
     public function __construct(
