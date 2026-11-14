@@ -65,15 +65,25 @@ const showsOffset = computed(() => timezone.value.label !== 'UTC');
 
 const hasPostingTimes = computed(() => props.channel.posting_times_per_week > 0);
 
+type Translate = (key: string) => string;
+
 /**
- * The network and the handle under the name: "Instagram · @trypost.it". It takes the
- * template's `$t`, so the account type ("LinkedIn Page") follows the loaded language.
+ * The account type when the network has several ("LinkedIn Page"), else the network's name.
+ * It takes the template's `$t`, so the type follows the loaded language.
  */
-const networkLine = (translate: (key: string) => string): string => {
+const networkName = (translate: Translate): string => {
     const typeKey = accountTypeKey(props.channel);
-    const network = typeKey
-        ? translate(typeKey)
-        : getPlatformLabel(props.channel.platform);
+
+    if (filled(typeKey)) {
+        return translate(typeKey);
+    }
+
+    return getPlatformLabel(props.channel.platform);
+};
+
+/** The network and the handle under the name: "Instagram · @trypost.it". */
+const networkLine = (translate: Translate): string => {
+    const network = networkName(translate);
 
     if (blank(props.channel.handle_label)) {
         return network;
