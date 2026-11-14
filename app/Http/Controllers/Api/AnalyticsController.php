@@ -33,7 +33,7 @@ class AnalyticsController extends Controller
             $channelKeys,
             $clamped,
             weekStart: $request->user()->week_starts_on,
-            filter: PublicationFilter::labelsFromValidated($request->validated()),
+            filter: PublicationFilter::labelsFrom($request->safe()),
         ));
     }
 

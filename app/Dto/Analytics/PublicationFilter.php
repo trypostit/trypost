@@ -10,6 +10,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\ValidatedInput;
 
 /**
  * Narrows publications by the labels of their TryPost post and, for one channel, by post type.
@@ -52,16 +53,10 @@ final readonly class PublicationFilter
 
     /**
      * Narrows the publications of every network by label, from the validated `labels` and `untagged`.
-     *
-     * @param  array<string, mixed>  $validated
      */
-    public static function labelsFromValidated(array $validated): self
+    public static function labelsFrom(ValidatedInput $validated): self
     {
-        return new self(
-            null,
-            array_values((array) data_get($validated, 'labels', [])),
-            filter_var(data_get($validated, 'untagged', false), FILTER_VALIDATE_BOOLEAN),
-        );
+        return new self(null, $validated->array('labels'), $validated->boolean('untagged'));
     }
 
     /**

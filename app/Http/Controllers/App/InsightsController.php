@@ -37,7 +37,7 @@ class InsightsController extends Controller
 
         ['range' => $range, 'selection' => $selection, 'clamped' => $clamped] = $presets->selection($request->validated(), $request->user()->timezone);
         ['channels' => $channels, 'selected' => $selectedChannels, 'keys' => $channelKeys] = $channelFilter->execute($workspace, $request->collect('channels'));
-        $filter = PublicationFilter::labelsFromValidated($request->validated());
+        $filter = PublicationFilter::labelsFrom($request->safe());
         $report = $analytics->forSelection($workspace, $selection, $channelKeys, $clamped, weekStart: $request->user()->week_starts_on, filter: $filter);
         $single = $selectedChannels->count() === 1 ? $selectedChannels->first() : null;
 
@@ -77,7 +77,7 @@ class InsightsController extends Controller
         ['keys' => $channelKeys] = $channelFilter->execute($workspace, $request->collect('channels'));
         $accountKeys = $analytics->keys($channelKeys);
         ['bounds' => $bounds, 'range' => $current] = $analytics->resolveRange($workspace, $selection, $accountKeys, $clamped);
-        $report = $analytics->forRange($workspace, $current, $bounds, $channelKeys, $request->user()->week_starts_on, PublicationFilter::labelsFromValidated($request->validated()));
+        $report = $analytics->forRange($workspace, $current, $bounds, $channelKeys, $request->user()->week_starts_on, PublicationFilter::labelsFrom($request->safe()));
         $sections = $export->execute($workspace, $report, $current, $accountKeys, $timezone);
         $filename = 'trypost-insights-'.now($timezone)->toDateString().".{$format->value}";
 

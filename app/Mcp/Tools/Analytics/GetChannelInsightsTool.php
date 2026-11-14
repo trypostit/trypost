@@ -81,7 +81,7 @@ class GetChannelInsightsTool extends Tool
             'end' => $schema->string()->description('Optional end date in YYYY-MM-DD format.'),
             'period' => $schema->string()->enum(['current', 'previous'])->description('Optional publication period the ranking reads (current or previous range); echoed back in filters.period.'),
             'sort' => $schema->string()->enum(ChannelMetrics::sortable())->description('Optional metric the publication ranking sorts by; echoed back in filters.sort, falling back to the first metric the channel reports.'),
-            'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count.'),
+            'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count. A deleted or unknown label matches nothing.'),
             'untagged' => $schema->boolean()->description('Optional: include posts without labels (and posts published outside TryPost).'),
             'types' => $schema->array()->items($schema->string())->description('Optional post types of this channel\'s platform (see list-content-types-tool); only those posts count.'),
         ];

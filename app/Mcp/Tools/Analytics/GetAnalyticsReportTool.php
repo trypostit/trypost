@@ -11,6 +11,7 @@ use App\Dto\Analytics\PublicationFilter;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\ValidatedInput;
 use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -64,7 +65,7 @@ class GetAnalyticsReportTool extends Tool
             $channelKeys,
             $clamped,
             weekStart: $user->week_starts_on,
-            filter: PublicationFilter::labelsFromValidated($validated),
+            filter: PublicationFilter::labelsFrom(new ValidatedInput($validated)),
         ));
     }
 
@@ -76,7 +77,7 @@ class GetAnalyticsReportTool extends Tool
             'start' => $schema->string()->description('Optional start date in YYYY-MM-DD format.'),
             'end' => $schema->string()->description('Optional end date in YYYY-MM-DD format.'),
             'channels' => $schema->array()->items($schema->string())->description('Optional social account UUIDs to report on; omitted or empty reports every channel included in analytics.'),
-            'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count in the post metrics (followers stay account-wide).'),
+            'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count in the post metrics (followers stay account-wide). A deleted or unknown label matches nothing.'),
             'untagged' => $schema->boolean()->description('Optional: include posts without labels (and posts published outside TryPost).'),
         ];
     }
