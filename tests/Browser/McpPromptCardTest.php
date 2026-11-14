@@ -64,7 +64,7 @@ test('closing the card keeps it in the user\'s one browser storage key, leaving 
     expect($page->script("Object.keys(localStorage).filter((key) => key.startsWith('trypost:') || key.startsWith('mcp.'))"))->toBe([$key])
         ->and($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
             'version' => 1,
-            'user' => ['mcp.promptDismissed' => true],
+            'user' => ['tours' => ['mcp.prompt' => ['status' => 'skipped', 'step' => 1]]],
             'workspaces' => ['kept' => ['note' => true]],
         ]);
     $page->assertNoJavaScriptErrors();
@@ -79,7 +79,7 @@ test('closing the card in another tab hides it here at once', function () {
     waitFor($page, '@mcp-prompt');
     $page->script(sprintf(<<<'JS'
         (() => {
-            const value = JSON.stringify({ version: 1, user: { 'mcp.promptDismissed': true }, workspaces: {} });
+            const value = JSON.stringify({ version: 1, user: { tours: { 'mcp.prompt': { status: 'skipped', step: 1 } } }, workspaces: {} });
             localStorage.setItem('%1$s', value);
             window.dispatchEvent(new StorageEvent('storage', { key: '%1$s', newValue: value }));
         })()
@@ -107,15 +107,15 @@ test('an unreadable, older or malformed browser storage value reads as empty and
 
     expect($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
         'version' => 1,
-        'user' => ['mcp.promptDismissed' => true],
+        'user' => ['tours' => ['mcp.prompt' => ['status' => 'skipped', 'step' => 1]]],
         'workspaces' => $workspaces,
     ]);
     $page->assertNoJavaScriptErrors();
 })->with([
     'not JSON' => ['not json'],
-    'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
+    'an older version' => ['{"version":0,"user":{"tours":{"mcp.prompt":{"status":"skipped","step":1}}},"workspaces":{}}'],
     'no user or workspaces block' => ['{"version":1}'],
-    'an item of the wrong shape' => ['{"version":1,"user":{"mcp.promptDismissed":"yes"},"workspaces":{}}'],
+    'an item of the wrong shape' => ['{"version":1,"user":{"tours":"yes"},"workspaces":{}}'],
     'a list instead of the value' => ['[1]'],
     'a user block that is not an object' => ['{"version":1,"user":"dismissed","workspaces":{}}'],
     'a workspace block that is not an object' => ['{"version":1,"user":{},"workspaces":{"workspace-a":"draft"}}', ['workspace-a' => []]],

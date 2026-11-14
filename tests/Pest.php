@@ -50,7 +50,10 @@ pest()->extend(TestCase::class)
 
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(fn () => fakePwnedPasswords())
+    ->beforeEach(function (): void {
+        fakePwnedPasswords();
+        config(['trypost.tours.enabled' => false]);
+    })
     ->in('Browser');
 
 pest()->in('Feature/Social')

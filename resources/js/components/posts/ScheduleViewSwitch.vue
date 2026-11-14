@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-vue';
 import { type Component, computed } from 'vue';
 
+import TourStep from '@/components/tours/TourStep.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -169,38 +170,45 @@ const viewLinkClass = (key: string): string => {
             </DropdownMenuItem>
         </DropdownMenuContent>
     </DropdownMenu>
-    <TooltipProvider v-else :delay-duration="0">
-        <nav
-            class="inline-flex h-8 items-center gap-1 rounded-lg border border-border-strong bg-card p-[3px]"
-            :aria-label="$t('posts.view_switcher')"
-        >
-            <Tooltip
-                v-for="view in views"
-                :key="view.key"
-                :disabled="!view.note"
+    <TourStep
+        v-else
+        tour="publish.board"
+        step="board"
+        :tag="$t('tours.tags.new')"
+    >
+        <TooltipProvider :delay-duration="0">
+            <nav
+                class="inline-flex h-8 items-center gap-1 rounded-lg border border-border-strong bg-card p-[3px]"
+                :aria-label="$t('posts.view_switcher')"
             >
-                <TooltipTrigger as-child>
-                    <Link
-                        :href="view.href"
-                        :aria-current="ariaCurrent(view.key)"
-                        :data-testid="`schedule-view-${view.key}`"
-                        @click="pickView(view.key)"
-                        class="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-transparent px-2 text-sm font-medium transition-control"
-                        :class="viewLinkClass(view.key)"
-                    >
-                        <component :is="view.icon" class="size-4" />
-                        <span class="hidden sm:inline">{{
-                            $t(view.label)
-                        }}</span>
-                    </Link>
-                </TooltipTrigger>
-                <TooltipContent
-                    v-if="view.note"
-                    :data-testid="`schedule-view-${view.key}-note`"
+                <Tooltip
+                    v-for="view in views"
+                    :key="view.key"
+                    :disabled="!view.note"
                 >
-                    {{ $t(view.note) }}
-                </TooltipContent>
-            </Tooltip>
-        </nav>
-    </TooltipProvider>
+                    <TooltipTrigger as-child>
+                        <Link
+                            :href="view.href"
+                            :aria-current="ariaCurrent(view.key)"
+                            :data-testid="`schedule-view-${view.key}`"
+                            @click="pickView(view.key)"
+                            class="inline-flex h-6 items-center justify-center gap-1 rounded-md border border-transparent px-2 text-sm font-medium transition-control"
+                            :class="viewLinkClass(view.key)"
+                        >
+                            <component :is="view.icon" class="size-4" />
+                            <span class="hidden sm:inline">{{
+                                $t(view.label)
+                            }}</span>
+                        </Link>
+                    </TooltipTrigger>
+                    <TooltipContent
+                        v-if="view.note"
+                        :data-testid="`schedule-view-${view.key}-note`"
+                    >
+                        {{ $t(view.note) }}
+                    </TooltipContent>
+                </Tooltip>
+            </nav>
+        </TooltipProvider>
+    </TourStep>
 </template>

@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
-import { useUserStorage } from '@/composables/useBrowserStorage';
+import { useTourProgress } from '@/composables/useTour';
 import {
     mcpAppLogos,
     mcpClients,
@@ -39,7 +39,7 @@ const avatars: McpAppLogo[] = AVATAR_APPS.flatMap((id) =>
 const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
 
-const dismissed = useUserStorage('mcp.promptDismissed', false);
+const { wentThrough: dismissed, record } = useTourProgress('mcp.prompt');
 const connected = ref(false);
 const prompt = computed(() => page.props.mcpPrompt ?? null);
 
@@ -65,7 +65,7 @@ const dismissHttp = useHttp<{ answer: 'dismiss' }>({ answer: 'dismiss' });
 const statusHttp = useHttp<Record<string, never>, McpConnectionStatus>({});
 
 const dismiss = (): void => {
-    dismissed.value = true;
+    record('skipped', 1);
     dismissHttp.post(storePromptAnswer.url()).catch(() => {});
 };
 
