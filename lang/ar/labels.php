@@ -21,6 +21,7 @@ return [
         'delete' => 'حذف التسمية',
         'more' => 'مزيد من الإجراءات',
         'view_posts' => 'عرض المنشورات',
+        'view_insights' => 'عرض Insights',
     ],
 
     'create' => [

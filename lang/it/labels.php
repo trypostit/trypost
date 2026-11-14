@@ -21,6 +21,7 @@ return [
         'delete' => 'Elimina etichetta',
         'more' => 'Altre azioni',
         'view_posts' => 'Visualizza post',
+        'view_insights' => 'Visualizza insights',
     ],
 
     'create' => [

@@ -21,6 +21,7 @@ return [
         'delete' => '删除标签',
         'more' => '更多操作',
         'view_posts' => '查看帖子',
+        'view_insights' => '查看 Insights',
     ],
 
     'create' => [

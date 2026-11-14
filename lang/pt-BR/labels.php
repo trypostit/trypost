@@ -21,6 +21,7 @@ return [
         'delete' => 'Excluir etiqueta',
         'more' => 'Mais ações',
         'view_posts' => 'Ver posts',
+        'view_insights' => 'Ver insights',
     ],
 
     'create' => [

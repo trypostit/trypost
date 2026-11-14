@@ -21,6 +21,7 @@ return [
         'delete' => 'Διαγραφή ετικέτας',
         'more' => 'Περισσότερες ενέργειες',
         'view_posts' => 'Προβολή αναρτήσεων',
+        'view_insights' => 'Προβολή Insights',
     ],
 
     'create' => [

@@ -21,6 +21,7 @@ return [
         'delete' => '라벨 삭제',
         'more' => '추가 작업',
         'view_posts' => '게시물 보기',
+        'view_insights' => 'Insights 보기',
     ],
 
     'create' => [

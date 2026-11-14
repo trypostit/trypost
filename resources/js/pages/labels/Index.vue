@@ -3,10 +3,10 @@ import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import {
     IconDotsVertical,
     IconLayoutGrid,
-    IconPencil,
     IconPlus,
     IconSettings,
     IconTrash,
+    IconTrendingUp,
 } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
 
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { insights as insightsRoute } from '@/routes/app';
 import {
     destroy as labelsDestroy,
     index as labelsIndex,
@@ -174,20 +175,22 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                     :data-testid="`label-swatch-${label.id}`"
                                 />
                             </template>
-                            <p
-                                class="truncate text-sm leading-tight font-emphasis text-foreground"
-                            >
-                                {{ label.name }}
-                            </p>
-                            <p
-                                class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
-                            >
-                                <span :data-testid="`label-posts-count-${label.id}`">{{
-                                    $tChoice('labels.meta.posts', label.posts_count, {
-                                        count: String(label.posts_count),
-                                    })
-                                }}</span>
-                            </p>
+                            <div class="flex min-w-0 items-center gap-3">
+                                <p
+                                    class="min-w-0 flex-1 truncate text-sm leading-tight font-emphasis text-foreground"
+                                >
+                                    {{ label.name }}
+                                </p>
+                                <span
+                                    class="shrink-0 text-xs text-muted-foreground tabular-nums"
+                                    :data-testid="`label-posts-count-${label.id}`"
+                                    >{{
+                                        $tChoice('labels.meta.posts', label.posts_count, {
+                                            count: String(label.posts_count),
+                                        })
+                                    }}</span
+                                >
+                            </div>
                             <template #actions>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
@@ -220,13 +223,6 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" @click.stop>
-                                        <DropdownMenuItem
-                                            :data-testid="`edit-label-${label.id}`"
-                                            @click="openEditDialog(label)"
-                                        >
-                                            <IconPencil class="size-4" />
-                                            {{ $t('labels.actions.edit') }}
-                                        </DropdownMenuItem>
                                         <DropdownMenuItem as-child>
                                             <a
                                                 :href="postsIndex.url(labelQuery(label))"
@@ -236,6 +232,17 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                             >
                                                 <IconLayoutGrid class="size-4" />
                                                 {{ $t('labels.actions.view_posts') }}
+                                            </a>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem as-child>
+                                            <a
+                                                :href="insightsRoute.url(labelQuery(label))"
+                                                target="_blank"
+                                                rel="noopener"
+                                                :data-testid="`label-view-insights-${label.id}`"
+                                            >
+                                                <IconTrendingUp class="size-4" />
+                                                {{ $t('labels.actions.view_insights') }}
                                             </a>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />

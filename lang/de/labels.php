@@ -21,6 +21,7 @@ return [
         'delete' => 'Label löschen',
         'more' => 'Weitere Aktionen',
         'view_posts' => 'Beiträge ansehen',
+        'view_insights' => 'Insights ansehen',
     ],
 
     'create' => [

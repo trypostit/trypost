@@ -21,6 +21,7 @@ return [
         'delete' => 'Delete label',
         'more' => 'More actions',
         'view_posts' => 'View posts',
+        'view_insights' => 'View insights',
     ],
 
     'create' => [

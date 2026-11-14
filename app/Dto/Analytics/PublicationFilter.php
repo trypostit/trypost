@@ -12,7 +12,8 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 
 /**
- * Narrows a channel's publications by the labels of their TryPost post and by post type.
+ * Narrows publications by the labels of their TryPost post and, for one channel, by post type.
+ * Without a platform (the workspace Insights, across every network) it narrows by label only.
  *
  * Expects the publication query aliased as `publication`, left-joined to its post as `destination`.
  * A publication with a post platform takes that post platform's content type; one without (published
@@ -24,10 +25,10 @@ final readonly class PublicationFilter
 {
     /**
      * @param  list<string>  $labelIds  Workspace label ids already validated for tenancy.
-     * @param  list<ContentType>  $contentTypes  Content types of $platform.
+     * @param  list<ContentType>  $contentTypes  Content types of $platform; none without one.
      */
     public function __construct(
-        public Platform $platform,
+        public ?Platform $platform,
         public array $labelIds = [],
         public bool $untagged = false,
         public array $contentTypes = [],
@@ -46,6 +47,20 @@ final readonly class PublicationFilter
                 fn (string $type): ContentType => ContentType::from($type),
                 (array) data_get($validated, 'types', []),
             )),
+        );
+    }
+
+    /**
+     * Narrows the publications of every network by label, from the validated `labels` and `untagged`.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    public static function labelsFromValidated(array $validated): self
+    {
+        return new self(
+            null,
+            array_values((array) data_get($validated, 'labels', [])),
+            filter_var(data_get($validated, 'untagged', false), FILTER_VALIDATE_BOOLEAN),
         );
     }
 
@@ -93,6 +108,10 @@ final readonly class PublicationFilter
      */
     private function publicationTypes(): array
     {
+        if ($this->platform === null) {
+            return [];
+        }
+
         return array_values(array_map(
             fn (PublicationContentType $type): string => $type->value,
             array_filter(

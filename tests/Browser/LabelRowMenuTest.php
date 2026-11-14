@@ -180,13 +180,12 @@ test('a label row shows its color, how many posts use it and its actions in one 
         ->toBe('rgb(22, 163, 74)');
 
     $page->click("@label-menu-{$label->id}");
-    waitFor($page, "@edit-label-{$label->id}");
+    waitFor($page, "@delete-label-{$label->id}");
 
-    $page->assertVisible("@delete-label-{$label->id}")
-        ->click("@edit-label-{$label->id}");
-    waitFor($page, '@edit-label-dialog');
-
-    $page->assertVisible('@edit-label-dialog')->assertNoJavaScriptErrors();
+    $page->assertVisible("@label-view-posts-{$label->id}")
+        ->assertVisible("@label-view-insights-{$label->id}")
+        ->assertMissing("@edit-label-{$label->id}")
+        ->assertNoJavaScriptErrors();
 });
 
 test('the cog on a label row opens its edit dialog', function () {
@@ -200,6 +199,30 @@ test('the cog on a label row opens its edit dialog', function () {
     waitForOpen($page, '@edit-label-dialog');
 
     $page->assertVisible('@edit-label-dialog')
-        ->assertMissing("@edit-label-{$label->id}")
         ->assertNoJavaScriptErrors();
+});
+
+test('label row menu opens insights filtered by the label in a new tab, with the label picked in the filter', function () {
+    [$user, $label] = labelMenuOwner();
+    subscribeAccount($user->account);
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'));
+    waitFor($page, "@label-menu-{$label->id}");
+    $page->click("@label-menu-{$label->id}");
+    waitFor($page, "@label-view-insights-{$label->id}");
+
+    $link = $page->script(<<<JS
+        (() => {
+            const link = document.querySelector('[data-testid="label-view-insights-{$label->id}"]');
+            return { href: decodeURIComponent(link.href), target: link.target, rel: link.rel };
+        })()
+    JS);
+
+    expect($link['target'])->toBe('_blank')
+        ->and($link['rel'])->toContain('noopener')
+        ->and($link['href'])->toStartWith(route('app.insights'))
+        ->and($link['href'])->toContain("labels[]={$label->id}");
+
+    assertLabelFilterSelected(visit(route('app.insights', ['labels' => [$label->id]])), 'analytics-label', $label->id);
 });

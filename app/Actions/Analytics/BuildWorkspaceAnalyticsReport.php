@@ -27,13 +27,14 @@ class BuildWorkspaceAnalyticsReport
     /**
      * @param  array{start?: string, end?: string, observed_through?: string, timezone?: string}  $selected
      * @param  array<string, string>|null  $channelKeys  Analytics key of each selected social account (already resolved for tenancy), keyed by account id; null means every channel.
+     * @param  PublicationFilter|null  $filter  Narrows post metrics only; followers stay account-wide.
      * @return array<string, mixed>
      */
-    public function forSelection(Workspace $workspace, array $selected = [], ?array $channelKeys = null, bool $clampToBounds = true, WeekStart $weekStart = WeekStart::DEFAULT): array
+    public function forSelection(Workspace $workspace, array $selected = [], ?array $channelKeys = null, bool $clampToBounds = true, WeekStart $weekStart = WeekStart::DEFAULT, ?PublicationFilter $filter = null): array
     {
         ['bounds' => $bounds, 'range' => $range] = $this->resolveRange($workspace, $selected, $this->keys($channelKeys), $clampToBounds);
 
-        return $this->forRange($workspace, $range, $bounds, $channelKeys, $weekStart);
+        return $this->forRange($workspace, $range, $bounds, $channelKeys, $weekStart, $filter);
     }
 
     /**

@@ -21,6 +21,7 @@ return [
         'delete' => 'Удалить метку',
         'more' => 'Другие действия',
         'view_posts' => 'Посмотреть посты',
+        'view_insights' => 'Посмотреть Insights',
     ],
 
     'create' => [

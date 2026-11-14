@@ -21,6 +21,7 @@ return [
         'delete' => 'Видалити мітку',
         'more' => 'Інші дії',
         'view_posts' => 'Переглянути дописи',
+        'view_insights' => 'Переглянути Insights',
     ],
 
     'create' => [

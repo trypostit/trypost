@@ -162,6 +162,63 @@ test('the web, api and mcp filter the workspace report by channel alike', functi
             ->etc());
 });
 
+test('the web, api and mcp filter the workspace report by label alike, leaving followers account-wide', function (Closure $query, int $posts) {
+    [, $tagged] = ($this->seedInsightsParityChannel)(Platform::Instagram, 120, 7, 'alpha');
+    ($this->seedInsightsParityChannel)(Platform::Facebook, 30, 5, 'bravo');
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount(SocialAccount::find($tagged->social_account_id))->published()->create(['user_id' => $this->user->id]);
+    $post->labels()->attach($label);
+    $tagged->update(['post_id' => $post->id]);
+    $filtered = [...$this->range, ...$query($label)];
+
+    $web = null;
+    $this->actingAs($this->user)
+        ->get(route('app.insights', $filtered))
+        ->assertInertia(function (Assert $page) use (&$web, $posts) {
+            $page->where('report.summary.posts.value', $posts)
+                ->where('report.summary.followers.value', 150)
+                ->etc();
+            $web = data_get($page->toArray(), 'props.report.summary');
+        });
+
+    auth()->forgetGuards();
+    $api = $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.analytics.index', $filtered))
+        ->assertOk()
+        ->assertJsonPath('summary.posts.value', $posts)
+        ->json('summary');
+
+    expect($api)->toEqual($web);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAnalyticsReportTool::class, $filtered)
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('summary', $web)
+            ->etc());
+})->with([
+    'one label' => [fn (WorkspaceLabel $label): array => ['labels' => [$label->id]], 1],
+    'untagged' => [fn (WorkspaceLabel $label): array => ['untagged' => true], 1],
+]);
+
+test('the workspace report refuses a label of another workspace alike on web, api and mcp', function () {
+    $query = [...$this->range, 'labels' => [WorkspaceLabel::factory()->create()->id]];
+
+    $web = $this->actingAs($this->user)
+        ->getJson(route('app.insights', $query))
+        ->assertUnprocessable()
+        ->json('errors')['labels.0'][0];
+    auth()->forgetGuards();
+
+    $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.analytics.index', $query))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['labels.0' => $web]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAnalyticsReportTool::class, $query)
+        ->assertHasErrors([$web]);
+});
+
 test('range presets are accepted and custom without dates is refused alike by web, api and mcp', function () {
     ($this->seedInsightsParityChannel)(Platform::Instagram, 120, 7, 'alpha');
 
