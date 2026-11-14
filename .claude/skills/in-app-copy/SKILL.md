@@ -99,6 +99,7 @@ Never a bare "Nothing here".
 ### Toasts and success feedback
 
 - No success toast after creating, editing, deleting or copying everyday resources: the visible change (a new row, an inline check) is the feedback (owner decision, September 2026). Errors still toast.
+- Exception: approving or rejecting a post toasts the result ("Post approved and scheduled", "Post rejected and moved to drafts", `posts.approvals.toasts.*`), because the card leaves the place the approver is looking at, often for a column or tab off screen (owner decision November 2026).
 - When a toast is needed, it names the result in the past tense of the action: "Added to queue" after "Add to queue".
 
 ### Settings descriptions and helper text

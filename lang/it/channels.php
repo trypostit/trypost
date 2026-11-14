@@ -7,6 +7,8 @@ return [
     'description' => 'Gestisci i canali di questo workspace.',
     'connect' => 'Collega canale',
     'settings' => 'Impostazioni del canale',
+    'manage' => 'Gestisci canali',
+    'set_goal' => 'Imposta un obiettivo di pubblicazione',
     'publish' => 'Pubblica',
     'insights' => 'Insights',
     'new_post' => 'Nuovo post in questo canale',
@@ -168,6 +170,25 @@ return [
         'description' => 'Questo elimina tutti i post di questo canale in TryPost, compresi bozze, post programmati e la cronologia dei pubblicati. I post già presenti sul social restano lì.',
         'keyword' => 'disconnetti',
         'cancel' => 'Annulla',
+    ],
+
+    'list' => [
+        'search' => 'Cerca per nome, @utente o social',
+        'networks' => 'Reti',
+        'networks_search' => 'Cerca reti',
+        'no_networks' => 'Nessuna rete trovata',
+        'columns' => [
+            'channel' => 'Canale',
+            'timezone' => 'Fuso orario',
+            'posting_times' => 'Orari',
+            'this_week' => 'Questa settimana',
+        ],
+        'posting_times_per_week' => ':count a settimana',
+        'no_posting_times' => 'Nessun orario',
+        'no_results' => 'Nessun canale corrisponde alla ricerca.',
+        'connection_lost' => 'Questo canale ha perso la connessione',
+        'settings' => 'Impostazioni',
+        'more_actions' => 'Altre azioni',
     ],
 
     'settings_page' => [

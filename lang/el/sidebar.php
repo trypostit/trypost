@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Επιλογή workspace',
     'create_workspace' => 'Δημιουργία workspace',
     'new' => 'Νέο',
+    'unfinished_post' => 'Έχετε μια ανάρτηση που δεν ολοκληρώσατε',
     'create' => 'Δημιουργία',
     'new_menu' => [
         'post' => 'Ανάρτηση',

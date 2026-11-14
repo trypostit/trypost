@@ -203,6 +203,24 @@ Vue components must have a single root element.
 
 # Project-Specific Rules
 
+## Branching reads top to bottom (PHP and TypeScript)
+
+A function that decides between several outcomes is a list of early returns, one case per `if`, read from top to bottom (owner decision November 2026). Never a ternary inside a ternary, a ternary inside an `if`, or a ternary whose condition joins several checks with `||` / `&&`.
+
+- One ternary with a single plain condition is fine (`filled($channel) ? 'channel' : 'all'`). Anything more becomes `if` blocks with braces.
+- Name a check used twice (`const imported = post.origin === PostOrigin.Network`) instead of repeating it in each branch.
+- When the outcome follows from what the user clicked, let each action say it (`publishNow()` toasts "publishing") instead of guessing it back from the payload.
+- A `match` lists every case it accepts and has no `default` that hides an unknown value; an unknown value should fail, not read as another case.
+- Code written before this rule moves to it when touched, not in a sweep. `PostTimelineCard`'s `scheduleMode` is the reference.
+
+### On the frontend, never inline a decision (owner decision November 2026)
+
+- **A function or computed that decides is a block with `if`s, never a one-expression body.** No `(x) => a ? b : c`, no `a || b ? … : …`, no `x === A || x === B` returned as a boolean, no `?.` / `??` chain that picks between several sources. Write each case as its own `if` with braces and an early return, as `postAttemptAt()`, `postChannelLabel()` and `accountTypeKey()` (`lib/postCard.ts`, `types/social-account.ts`) do.
+- **A set of values checked together is a named constant**, read with `.includes()` inside an `if` (`CONNECTION_LOST_STATUSES`, `PLATFORMS_WITH_ACCOUNT_TYPE`), not a chain of `===` joined by `||`.
+- **Templates hold no logic.** No ternary, `||` / `??` fallback, `.join()`, arithmetic or comparison inside `{{ }}`, `:class`, `:title`, `:aria-label` or a `v-if`: the template calls a named computed (`hasPostingTimes`, `textColor`) or a named function (`openLabel($t)`, `networkLine($t)`). A fallback that needs a translation is a function that takes the template's `$t` (see `.ai/rules/js.md`: never `trans()` in a script-level computed).
+- **A simple value is not a decision:** a plain read (`post.id`), a single `filled(x)` / `!isPending` in a `v-if`, and a `v-if` / `v-else` pair that swaps two elements stay as they are. Everything else gets a name.
+- `ChannelListItem.vue`, `PostBoardCard.vue` and `ApprovePostButton.vue` are the references.
+
 ## Frontend (Vue/TypeScript)
 
 - **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.
@@ -212,9 +230,10 @@ Vue components must have a single root element.
 - **A button that waits on a request shows it through the `Button` component's own `loading` prop whenever possible** (`<Button :loading="form.processing">`): it disables the button and swaps its label for the spinner, so every button waits the same way. Do not hand-roll a `<Spinner v-if>` inside the label or a separate disabled flag for this. When `loading` cannot fit (the label must stay visible next to the spinner, an `as-child` link, a control that is not our `Button`), keep the label and add the spinner next to it. Many existing buttons predate this rule; move them to `loading` when touching them, not in a sweep.
 - **Unsaved changes in the composer** go through `composables/composer/useUnsavedChanges.ts` (the history guard) and `useComposerUnsavedChanges.ts` (what counts as a change). The owner treats this guard as critical. How the guard works is written in the composable's docblock; three rules hold around it:
     - The composer's save visits (`router.put` / `router.post` in `pages/publish/Index.vue`) send `replace: true`, so the saved page takes the place of the edit's history entry instead of stacking on it.
-    - A composer opened from a page of the app (`lib/inAppHistory.ts`, `cameFromAppPage()`) leaves through history: closing goes back, and saving goes back once the saved page lands and reloads that page. So after a save or close, one browser Back reaches the page before the list, calendar or tab it was opened from. A composer reached by its link or a reload has nothing behind it and still replaces its entry with the list.
+    - A composer opened from a page of the app (`lib/inAppHistory.ts`, `cameFromAppPage()`) leaves through history: closing goes back, and saving goes back once the saved page lands and reloads that page. So after a save or close, one browser Back reaches the page before the list, calendar or tab it was opened from. A composer reached by its link or a reload has nothing behind it and still replaces its entry with the list. Duplicating a post (a POST that lands on the copy's composer) counts as opened from the page it was duplicated from (`rememberInAppPush()`), so closing the copy goes back to that List, Calendar or Board.
     - "Is there unsaved work" is decided by the snapshot comparison alone, never by `isSubmitting` or another request flag.
     - Every change to the guard ships with a browser test in `tests/Browser/ComposerUnsavedChangesTest.php` that fails without it, checked by removing the change and running the test. History bugs here showed up only in a real browser (Inertia's own popstate handler is part of every flow).
+- **A post's status badge is always `PostStatusBadge`** (`components/publish/PostStatusBadge.vue`, owner decision November 2026). Never build one by hand from `<Badge>`, an icon and `posts.status.*`. It takes two props only: `status`, the status to show (a `PostDisplayStatus`: the post's status, or `pending_review` / `deleted_on_network`; read a post's with `postDisplayStatus(post)` from `composables/usePostStatus.ts`), and `compact`, the smaller badge of a dense card (the board), which changes the size only, never the text. Color and icon come from `getPostStatusConfig()` in `usePostStatus.ts`, the label from `posts.status.<status>`: one short label per status, the same at both sizes and in every place it shows (no long and short variants, no per-screen override). A new status adds its row there and its key in the 16 locales and in `tests/fixtures/single-line-copy.php`. The calendar chip's icon-only marker (`CalendarPostChip`, `calendar.post_status.*` in its tooltip) is a separate thing and stays as it is.
 - **Composables are scoped by area.** A composable used by one area only lives in that area's folder, `resources/js/composables/<area>/` (e.g. `composables/composer/useComposerUnsavedChanges.ts`, `composables/echo/usePostEcho.ts`). Only composables shared across areas stay at the root of `resources/js/composables/`. When a scoped composable gains a consumer in another area, move it to the root in the same change.
 - Searching a list in the UI goes through `matchesSearch` / `filterBySearch` (`resources/js/lib/search.ts`): word by word, ignoring case and accents. Never hand-roll `.toLowerCase().includes(...)` for a search box.
 - **Value checks go through `@/lib/helpers`** (owner decision November 2026), the front-end mirror of Laravel's helpers, so a check reads the same on both sides: `blank()` / `filled()` for emptiness, `isEmpty()` (Laravel's `isEmpty()` on a string or a collection) when spaces count, instead of `=== ''` or `.length === 0`, `isString()` / `isNumber()` instead of `typeof x === 'string'`, `transform(value, callback, fallback)` instead of `value ? callback(value) : fallback`, and `clamp()` (Laravel's `Number::clamp`) instead of `Math.min(Math.max(...))`. Emptiness reads `filled(reply.media)`, not `reply.media.length > 0`; `filled(limits)`, not `limits !== null`. Every helper follows its PHP twin, kept equal by `tests/Unit/HelpersParityTest.php`: null, undefined, a whitespace-only string and an empty array or plain object are blank; numbers and booleans (zero and false included) never are. `filled()` narrows the type, so after `if (filled(reply))` the value is no longer null or undefined. Keep an exact `=== undefined` where an empty object is a real value (a poll or meta that may be `{}`), since `blank({})` is true. A new helper (Laravel's `transform`, `value`, …) goes in the same file with a case in the parity test. Existing hand-written checks move to the helpers when touched, not in a sweep.
@@ -983,6 +1002,15 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
 - Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
 
+## The current workspace is guaranteed by middleware
+
+Every app route that works on the current workspace sits behind `EnsureHasWorkspace` (`routes/app.php`), which redirects a user without one to `app.workspaces.create` before the controller runs (owner decision November 2026). A controller reads `$request->user()->currentWorkspace` and uses it; it never checks it again.
+
+- Never write `if (! $workspace) { return redirect()->route('app.workspaces.create'); }`, `abort_unless($workspace, ...)` or any other "no workspace" guard in a controller, a FormRequest or an action reached from those routes. The guard was copied into 27 controller actions and never ran; all of it was removed.
+- A new route that needs the current workspace goes inside the `EnsureHasWorkspace` group, never outside it with its own check. Its return type does not carry `|RedirectResponse` for that redirect.
+- A route that must work without a workspace (creating the first one, Welcome) stays outside the group and handles that case itself.
+- The redirect is covered once, for the middleware, by the tests that hit an app page without a workspace; a controller test does not repeat it.
+
 ## MCP tools list in one page
 
 `tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). The same page size applies to `resources/list`, `resources/templates/list` and `prompts/list`. Raise both before the server reaches 200 tools. A client may still ask for a smaller page (`per_page`, a laravel/mcp extension; the MCP spec only defines `cursor`) and follow `nextCursor`; a bigger request is capped at 200. `tests/Feature/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.
@@ -1102,7 +1130,7 @@ an `enabled` flag or posts with several channels. Posts created together share
   `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
   dialog, `isDeletedOnNetwork()` and `postPermalink()`
   (`lib/postNetwork.ts`) decide the badge and the link, and
-  `getPostCardStatusConfig()` (`usePostStatus.ts`) the status shown; the repurpose
+  `postDisplayStatus()` (`usePostStatus.ts`, shown by `PostStatusBadge`) the status shown; the repurpose
   activity list labels `publish_status` directly. Insights keep the historical
   numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every

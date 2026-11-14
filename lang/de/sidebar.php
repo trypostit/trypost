@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Workspace auswählen',
     'create_workspace' => 'Workspace erstellen',
     'new' => 'Neu',
+    'unfinished_post' => 'Du hast einen Beitrag nicht fertiggestellt',
     'create' => 'Erstellen',
     'new_menu' => [
         'post' => 'Beitrag',

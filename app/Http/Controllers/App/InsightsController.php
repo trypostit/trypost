@@ -10,6 +10,7 @@ use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Analytics\ResolveAnalyticsChannelFilter;
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\ExportFormat;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnalyticsReportRequest;
@@ -36,11 +37,13 @@ class InsightsController extends Controller
 
         ['range' => $range, 'selection' => $selection, 'clamped' => $clamped] = $presets->selection($request->validated(), $request->user()->timezone);
         ['channels' => $channels, 'selected' => $selectedChannels, 'keys' => $channelKeys] = $channelFilter->execute($workspace, $request->collect('channels'));
-        $report = $analytics->forSelection($workspace, $selection, $channelKeys, $clamped, weekStart: $request->user()->week_starts_on);
+        $filter = PublicationFilter::labelsFrom($request->safe());
+        $report = $analytics->forSelection($workspace, $selection, $channelKeys, $clamped, weekStart: $request->user()->week_starts_on, filter: $filter);
         $single = $selectedChannels->count() === 1 ? $selectedChannels->first() : null;
 
         return Inertia::render('insights/Index', [
             'channelOptions' => $channels,
+            'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'availableMetrics' => $single === null ? null : $availableMetrics->handle($single, data_get($channelKeys, $single->id)),
             'sync' => SyncCadence::toArray(),
             'report' => [
@@ -50,6 +53,8 @@ class InsightsController extends Controller
                     'start' => data_get($report, 'range.start'),
                     'end' => data_get($report, 'range.end'),
                     'channels' => $selectedChannels->pluck('id')->all(),
+                    'labels' => $filter->labelIds,
+                    'untagged' => $filter->untagged,
                 ],
             ],
         ]);
@@ -72,7 +77,7 @@ class InsightsController extends Controller
         ['keys' => $channelKeys] = $channelFilter->execute($workspace, $request->collect('channels'));
         $accountKeys = $analytics->keys($channelKeys);
         ['bounds' => $bounds, 'range' => $current] = $analytics->resolveRange($workspace, $selection, $accountKeys, $clamped);
-        $report = $analytics->forRange($workspace, $current, $bounds, $channelKeys, $request->user()->week_starts_on);
+        $report = $analytics->forRange($workspace, $current, $bounds, $channelKeys, $request->user()->week_starts_on, PublicationFilter::labelsFrom($request->safe()));
         $sections = $export->execute($workspace, $report, $current, $accountKeys, $timezone);
         $filename = 'trypost-insights-'.now($timezone)->toDateString().".{$format->value}";
 

@@ -17,13 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiKeyController extends Controller
 {
-    public function index(Request $request): InertiaResponse|RedirectResponse
+    public function index(Request $request): InertiaResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('manageTeam', $workspace);
 
@@ -52,10 +48,6 @@ class ApiKeyController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('manageTeam', $workspace);
 
         $created = CreateApiKey::execute(
@@ -71,10 +63,6 @@ class ApiKeyController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('manageTeam', $workspace);
 
         $regenerated = RegenerateApiKey::execute(
@@ -89,10 +77,6 @@ class ApiKeyController extends Controller
     public function destroy(Request $request, string $tokenId): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('manageTeam', $workspace);
 

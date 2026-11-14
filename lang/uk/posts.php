@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Список',
+    'board' => [
+        'view' => 'Дошка',
+        'group_by' => 'Групувати за',
+        'group_by_value' => 'Групувати за: :group',
+        'groups' => [
+            'status' => 'Статус',
+            'tag' => 'Мітка',
+            'channel' => 'Канал',
+        ],
+        'columns' => [
+            'draft' => 'Чернетка',
+            'approvals' => 'Схвалення',
+            'scheduled' => 'Заплановано',
+            'published' => 'Опубліковано',
+            'failed' => 'Помилка',
+            'untagged' => 'Без мітки',
+            'no_channel' => 'Немає каналу',
+        ],
+        'empty_column' => 'Тут порожньо',
+        'no_columns' => [
+            'title' => 'Нічого не відповідає цим фільтрам',
+            'description' => 'Скиньте фільтр за мітками або каналами, щоб побачити всі колонки.',
+        ],
+        'column_aria' => '{1} :name, постів: :count|[0,*] :name, постів: :count',
+    ],
     'view_switcher' => 'Перегляд розкладу',
     'all_posts' => 'Усі пости',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Очікує',
         'draft' => 'Чернетка',
-        'pending_approval' => 'Очікує схвалення',
+        'pending_approval' => 'Очікує',
         'scheduled' => 'Заплановано',
         'publishing' => 'Публікується',
         'retrying' => 'Повторна спроба',
         'published' => 'Опубліковано',
         'failed' => 'Помилка',
+        'pending_review' => 'На перевірці в Google',
+        'deleted_on_network' => 'Видалено',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Канали (:count)',
     ],
     'approvals' => [
-        'badge' => 'Схвалення',
         'time_passed' => 'Час минув',
         'approve' => 'Схвалити',
         'schedule' => 'Запланувати',
         'reject' => 'Відхилити',
         'revert' => 'Відкликати запит на схвалення',
         'requested' => 'Запит на схвалення надіслано',
+        'toasts' => [
+            'scheduled' => 'Пост схвалено й заплановано',
+            'queued' => 'Пост схвалено й додано до черги',
+            'publishing' => 'Пост схвалено, триває публікація',
+            'rejected' => 'Пост відхилено й переміщено до чернеток',
+        ],
         'errors' => [
             'not_pending' => 'Ця публікація більше не очікує схвалення.',
             'time_passed' => 'Запитаний час минув. Виберіть новий час.',

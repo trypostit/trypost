@@ -7,6 +7,8 @@ return [
     'description' => 'Bu çalışma alanının kanallarını yönetin.',
     'connect' => 'Kanal bağla',
     'settings' => 'Kanal ayarları',
+    'manage' => 'Kanalları yönet',
+    'set_goal' => 'Paylaşım hedefi belirle',
     'publish' => 'Yayınla',
     'insights' => 'Insights',
     'new_post' => 'Bu kanalda yeni gönderi',
@@ -168,6 +170,25 @@ return [
         'description' => 'Bu işlem, taslaklar, zamanlanmış gönderiler ve yayın geçmişi dahil olmak üzere bu kanalın TryPost’taki tüm gönderilerini siler. Ağda zaten bulunan gönderiler orada kalır.',
         'keyword' => 'bağlantıyı kes',
         'cancel' => 'İptal',
+    ],
+
+    'list' => [
+        'search' => 'Ada, @kullanıcı adına veya ağa göre ara',
+        'networks' => 'Ağlar',
+        'networks_search' => 'Ağ ara',
+        'no_networks' => 'Ağ bulunamadı',
+        'columns' => [
+            'channel' => 'Kanal',
+            'timezone' => 'Saat dilimi',
+            'posting_times' => 'Saatler',
+            'this_week' => 'Bu hafta',
+        ],
+        'posting_times_per_week' => 'Haftada :count',
+        'no_posting_times' => 'Saat yok',
+        'no_results' => 'Aramanızla eşleşen kanal yok.',
+        'connection_lost' => 'Bu kanalın bağlantısı koptu',
+        'settings' => 'Ayarlar',
+        'more_actions' => 'Diğer işlemler',
     ],
 
     'settings_page' => [

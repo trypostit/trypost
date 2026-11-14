@@ -28,6 +28,9 @@ class ShowAnalyticsReportRequest extends FormRequest
             'range' => ['sometimes', Rule::in(ResolveAnalyticsRangePreset::PRESETS)],
             'start' => [$exclude, ...$presence, 'date_format:Y-m-d'],
             'end' => [$exclude, ...$presence, 'date_format:Y-m-d', 'after_or_equal:start'],
+            'labels' => ['sometimes', 'array'],
+            'labels.*' => ['uuid'],
+            'untagged' => ['sometimes', 'boolean'],
         ];
     }
 }

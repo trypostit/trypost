@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => '목록',
+    'board' => [
+        'view' => '보드',
+        'group_by' => '그룹 기준',
+        'group_by_value' => '그룹 기준: :group',
+        'groups' => [
+            'status' => '상태',
+            'tag' => '라벨',
+            'channel' => '채널',
+        ],
+        'columns' => [
+            'draft' => '초안',
+            'approvals' => '승인',
+            'scheduled' => '예약됨',
+            'published' => '게시됨',
+            'failed' => '실패',
+            'untagged' => '라벨 없음',
+            'no_channel' => '채널 없음',
+        ],
+        'empty_column' => '내용 없음',
+        'no_columns' => [
+            'title' => '이 필터와 일치하는 항목이 없습니다',
+            'description' => '모든 열을 보려면 라벨 또는 채널 필터를 지우세요.',
+        ],
+        'column_aria' => '{1} :name, 게시물 :count개|[0,*] :name, 게시물 :count개',
+    ],
     'view_switcher' => '일정 보기',
     'all_posts' => '모든 게시물',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => '대기 중',
         'draft' => '초안',
-        'pending_approval' => '승인 대기 중',
+        'pending_approval' => '승인 대기',
         'scheduled' => '예약됨',
         'publishing' => '게시 중',
         'retrying' => '재시도 중',
         'published' => '게시됨',
         'failed' => '실패',
+        'pending_review' => 'Google 검토 중',
+        'deleted_on_network' => '삭제됨',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => '채널 (:count)',
     ],
     'approvals' => [
-        'badge' => '승인',
         'time_passed' => '시간이 지났습니다',
         'approve' => '승인하기',
         'schedule' => '예약',
         'reject' => '거절',
         'revert' => '승인 요청 취소',
         'requested' => '승인을 요청했습니다',
+        'toasts' => [
+            'scheduled' => '게시물을 승인하고 예약했습니다',
+            'queued' => '게시물을 승인하고 대기열에 추가했습니다',
+            'publishing' => '게시물을 승인했습니다. 지금 게시 중입니다',
+            'rejected' => '게시물을 거부하고 임시 저장으로 옮겼습니다',
+        ],
         'errors' => [
             'not_pending' => '이 게시물은 더 이상 승인 대기 중이 아닙니다.',
             'time_passed' => '요청한 시간이 지났습니다. 새 시간을 선택하세요.',

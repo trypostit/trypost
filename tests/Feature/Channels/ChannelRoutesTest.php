@@ -25,8 +25,8 @@ test('admins see the channel list of the current workspace only', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workspace/Channels', false)
-            ->has('connectedChannels', 1)
-            ->where('connectedChannels.0.id', $mine->id)
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $mine->id)
         );
 });
 

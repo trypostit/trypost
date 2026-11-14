@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { IconCheck, IconSend } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 
 import { approve } from '@/actions/App/Http/Controllers/App/PostApprovalController';
 import ComposerSchedulePicker from '@/components/posts/composer/ComposerSchedulePicker.vue';
@@ -11,19 +13,29 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { toastFirstError } from '@/composables/usePostCardActions';
+import {
+    POST_CARD_APPROVAL_RELOAD,
+    toastFirstError,
+    usePostCardReload,
+} from '@/composables/usePostCardActions';
 import date from '@/date';
-import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
 import { userTimezone } from '@/preferences';
 import { ScheduleMode } from '@/types/post';
 import type { PostCard } from '@/types/publish';
+
+type ApprovalPayload = { scheduled_at?: string; publish_now?: true };
 
 const props = defineProps<{
     post: PostCard;
     testKey: string;
 }>();
 
+const reload = usePostCardReload(POST_CARD_APPROVAL_RELOAD);
+
 const pickerOpen = ref(false);
+
+const approving = ref(false);
 
 const closePicker = (): void => {
     pickerOpen.value = false;
@@ -37,37 +49,68 @@ const postTimezone = computed(
     () => props.post.social_account?.timezone ?? userTimezone.value,
 );
 
-const needsTime = computed(
-    () =>
-        !isQueued.value &&
-        (!props.post.scheduled_at ||
-            dayjs(props.post.scheduled_at).isBefore(dayjs())),
-);
-
-const labelKey = computed(() => {
-    if (needsTime.value) {
-        return 'posts.approvals.approve';
+/** A custom-time post without a time still to come asks for one before it is approved. */
+const needsTime = computed((): boolean => {
+    if (isQueued.value) {
+        return false;
     }
 
-    return isQueued.value
-        ? 'posts.publish.actions.add_to_queue'
-        : 'posts.approvals.schedule';
+    const scheduledAt = props.post.scheduled_at;
+
+    if (!filled(scheduledAt)) {
+        return true;
+    }
+
+    return date.hasPassed(scheduledAt);
 });
 
-const send = (payload: { scheduled_at?: string; publish_now?: true }): void => {
+/** Approving a post as it was asked for: into the queue, or at its time. */
+const asRequested = computed(() => {
+    if (isQueued.value) {
+        return {
+            labelKey: 'posts.publish.actions.add_to_queue',
+            toastKey: 'posts.approvals.toasts.queued',
+        };
+    }
+
+    return {
+        labelKey: 'posts.approvals.schedule',
+        toastKey: 'posts.approvals.toasts.scheduled',
+    };
+});
+
+/** Sends the approval and toasts what it did, named after the button the approver clicked. */
+const send = (payload: ApprovalPayload, toastKey: string): void => {
     router.put(approve.url(props.post.id), payload, {
-        only: ['posts', 'counts', 'queue', 'hasData'],
-        reset: ['posts'],
+        ...reload(),
         preserveScroll: true,
+        onStart: () => {
+            approving.value = true;
+        },
+        onFinish: () => {
+            approving.value = false;
+        },
         onSuccess: () => {
-            pickerOpen.value = false;
+            closePicker();
+            toast.success(trans(toastKey), { testId: 'post-approval-toast' });
         },
         onError: toastFirstError,
     });
 };
 
-const confirmTime = (value: string): void => {
-    send({ scheduled_at: date.wallClockToUtc(value, postTimezone.value) });
+const approveAsRequested = (): void => {
+    send({}, asRequested.value.toastKey);
+};
+
+const approveAt = (value: string): void => {
+    send(
+        { scheduled_at: date.wallClockToUtc(value, postTimezone.value) },
+        'posts.approvals.toasts.scheduled',
+    );
+};
+
+const publishNow = (): void => {
+    send({ publish_now: true }, 'posts.approvals.toasts.publishing');
 };
 </script>
 
@@ -76,11 +119,11 @@ const confirmTime = (value: string): void => {
         <PopoverTrigger as-child>
             <Button
                 variant="outline"
-                class="text-success-text"
+                :loading="approving"
                 :data-testid="`post-approve-${testKey}`"
             >
-                <IconCheck class="size-4" />
-                {{ $t(labelKey) }}
+                <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
+                {{ $t('posts.approvals.approve') }}
             </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -93,14 +136,15 @@ const confirmTime = (value: string): void => {
                 model-value=""
                 :timezone="postTimezone"
                 @back="closePicker"
-                @confirm="confirmTime"
+                @confirm="approveAt"
             />
             <div class="border-t border-border-strong p-3">
                 <Button
                     variant="outline"
                     class="w-full"
+                    :loading="approving"
                     :data-testid="`post-approve-publish-now-${testKey}`"
-                    @click="send({ publish_now: true })"
+                    @click="publishNow"
                 >
                     <IconSend class="size-4" />
                     {{ $t('posts.publish.actions.publish_now') }}
@@ -111,11 +155,11 @@ const confirmTime = (value: string): void => {
     <Button
         v-else
         variant="outline"
-        class="text-success-text"
+        :loading="approving"
         :data-testid="`post-approve-${testKey}`"
-        @click="send({})"
+        @click="approveAsRequested"
     >
-        <IconCheck class="size-4" />
-        {{ $t(labelKey) }}
+        <IconCheck class="-mx-0.5 size-4 text-success-text" stroke-width="2.25" />
+        {{ $t(asRequested.labelKey) }}
     </Button>
 </template>

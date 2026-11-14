@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Редагувати мітку',
         'delete' => 'Видалити мітку',
         'more' => 'Інші дії',
+        'settings' => 'Налаштування',
         'view_posts' => 'Переглянути дописи',
+        'view_insights' => 'Переглянути Insights',
     ],
 
     'create' => [

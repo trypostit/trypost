@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Elenco',
+    'board' => [
+        'view' => 'Bacheca',
+        'group_by' => 'Raggruppa per',
+        'group_by_value' => 'Raggruppa per: :group',
+        'groups' => [
+            'status' => 'Stato',
+            'tag' => 'Etichetta',
+            'channel' => 'Canale',
+        ],
+        'columns' => [
+            'draft' => 'Bozza',
+            'approvals' => 'Approvazioni',
+            'scheduled' => 'Programmato',
+            'published' => 'Pubblicato',
+            'failed' => 'Non riuscito',
+            'untagged' => 'Senza etichetta',
+            'no_channel' => 'Nessun canale',
+        ],
+        'empty_column' => 'Niente qui',
+        'no_columns' => [
+            'title' => 'Nessun risultato per questi filtri',
+            'description' => 'Rimuovi il filtro per etichetta o canale per vedere tutte le colonne.',
+        ],
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count post',
+    ],
     'view_switcher' => 'Vista programmazione',
     'all_posts' => 'Tutti i post',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'In attesa',
         'draft' => 'Bozza',
-        'pending_approval' => 'In attesa di approvazione',
+        'pending_approval' => 'In attesa',
         'scheduled' => 'Programmato',
         'publishing' => 'In pubblicazione',
         'retrying' => 'Nuovo tentativo',
         'published' => 'Pubblicato',
         'failed' => 'Non riuscito',
+        'pending_review' => 'In revisione da Google',
+        'deleted_on_network' => 'Eliminato',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Canali (:count)',
     ],
     'approvals' => [
-        'badge' => 'Approvazione',
         'time_passed' => 'Orario superato',
         'approve' => 'Approva',
         'schedule' => 'Programma',
         'reject' => 'Rifiuta',
         'revert' => 'Ritira richiesta di approvazione',
         'requested' => 'Approvazione richiesta',
+        'toasts' => [
+            'scheduled' => 'Post approvato e programmato',
+            'queued' => 'Post approvato e aggiunto alla coda',
+            'publishing' => 'Post approvato, pubblicazione in corso',
+            'rejected' => 'Post rifiutato e spostato nelle bozze',
+        ],
         'errors' => [
             'not_pending' => 'Questo post non è più in attesa di approvazione.',
             'time_passed' => 'L\'orario richiesto è passato. Scegli un nuovo orario.',

@@ -835,3 +835,21 @@ test('the stage picker search ignores accents and matches each word in any order
         ->assertMissing('@idea-editor-stage-option-unassigned')
         ->assertNoJavaScriptErrors();
 });
+
+test('the idea editor label button shows the first two labels and counts the rest', function () {
+    [$user, $workspace] = createIdeaEditorSetup();
+    $labels = collect(['Alpha', 'Beta', 'Gamma'])
+        ->map(fn (string $name) => WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => $name]));
+    $idea = createIdeaEditorIdea($workspace, $user, ['title' => 'Greeting', 'body' => 'Hello']);
+    $idea->labels()->attach($labels->pluck('id'));
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.show', $idea));
+    waitForOpen($page, '@idea-editor');
+    waitForText($page, '@idea-editor-labels-chip-more', '+1');
+
+    $page->assertSeeIn('@idea-editor-labels', 'Alpha')
+        ->assertSeeIn('@idea-editor-labels', 'Beta')
+        ->assertDontSeeIn('@idea-editor-labels', 'Gamma')
+        ->assertNoJavaScriptErrors();
+});

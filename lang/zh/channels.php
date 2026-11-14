@@ -7,6 +7,8 @@ return [
     'description' => '管理此工作区的频道。',
     'connect' => '连接频道',
     'settings' => '频道设置',
+    'manage' => '管理频道',
+    'set_goal' => '设置发布目标',
     'publish' => '发布',
     'insights' => 'Insights',
     'new_post' => '在此频道发布新帖子',
@@ -168,6 +170,25 @@ return [
         'description' => '这会删除此频道在 TryPost 中的所有帖子，包括草稿、已排期的帖子和已发布历史。已在社交网络上的帖子会保留。',
         'keyword' => '断开连接',
         'cancel' => '取消',
+    ],
+
+    'list' => [
+        'search' => '按名称、@用户名或平台搜索',
+        'networks' => '网络',
+        'networks_search' => '搜索网络',
+        'no_networks' => '未找到网络',
+        'columns' => [
+            'channel' => '频道',
+            'timezone' => '时区',
+            'posting_times' => '发布时间',
+            'this_week' => '本周',
+        ],
+        'posting_times_per_week' => '每周 :count 次',
+        'no_posting_times' => '没有发布时间',
+        'no_results' => '没有符合搜索的频道。',
+        'connection_lost' => '此频道已断开连接',
+        'settings' => '设置',
+        'more_actions' => '更多操作',
     ],
 
     'settings_page' => [

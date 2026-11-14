@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/vue3';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import type { InjectionKey, Ref } from 'vue';
+import { inject, type InjectionKey, type Ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { duplicate as duplicatePost } from '@/actions/App/Http/Controllers/App/PostController';
@@ -8,6 +8,7 @@ import { update as updatePostLabels } from '@/actions/App/Http/Controllers/App/P
 import { update as updatePostSchedule } from '@/actions/App/Http/Controllers/App/PostScheduleController';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { filled } from '@/lib/helpers';
+import { rememberInAppPush } from '@/lib/inAppHistory';
 import { postPermalink } from '@/lib/postNetwork';
 import { copyToClipboard } from '@/lib/utils';
 import type { SidebarChannel } from '@/types/channel';
@@ -25,6 +26,36 @@ export const editPostCardUrlKey: InjectionKey<(post: PostCard) => string> =
 
 export const postCardLabelsKey: InjectionKey<Readonly<Ref<PostCardLabel[]>>> =
     Symbol('postCardLabels');
+
+export interface PostCardReload {
+    only: string[];
+    reset: string[];
+}
+
+/** What a List card's approval action (approve, reject, take back) reloads. */
+export const POST_CARD_APPROVAL_RELOAD: PostCardReload = {
+    only: ['posts', 'counts', 'queue', 'hasData'],
+    reset: ['posts'],
+};
+
+/** What a List card's label change reloads. */
+export const POST_CARD_LABELS_RELOAD: PostCardReload = {
+    only: ['posts', 'queue'],
+    reset: ['posts'],
+};
+
+/** The props a card action reloads, when the page lists its posts under other props than `posts`. */
+export const postCardReloadKey: InjectionKey<() => PostCardReload> =
+    Symbol('postCardReload');
+
+/** The reload a page asks its card actions for (the board's columns); none on the List, which does a full visit. */
+export const usePageReload = (): (() => Partial<PostCardReload>) =>
+    inject(postCardReloadKey, () => ({}));
+
+/** The reload a card action sends: the page's own when it provides one, else the List's. */
+export const usePostCardReload = (
+    fallback: PostCardReload,
+): (() => PostCardReload) => inject(postCardReloadKey, () => fallback);
 
 const successMessage = (
     action: PostScheduleAction,
@@ -54,6 +85,8 @@ export const schedulePostCard = (
         only?: string[];
         reset?: string[];
         requestsApproval?: boolean;
+        onStart?: () => void;
+        onFinish?: () => void;
     } = {},
 ): void => {
     const { requestsApproval = false, ...reload } = options;
@@ -77,7 +110,11 @@ export const schedulePostCard = (
 };
 
 export const duplicatePostCard = (post: PostCard): void => {
-    router.post(duplicatePost.url(post.id));
+    router.post(
+        duplicatePost.url(post.id),
+        {},
+        { onSuccess: rememberInAppPush },
+    );
 };
 
 /** Opens the composer with the sent post's link and every channel of the workspace. */
@@ -113,6 +150,7 @@ export const syncPostCardLabels = (
     postId: string,
     labelIds: string[],
     rollback: () => void,
+    reload: PostCardReload = POST_CARD_LABELS_RELOAD,
 ): void => {
     const fail = (): void => {
         rollback();
@@ -127,8 +165,7 @@ export const syncPostCardLabels = (
         {
             preserveScroll: true,
             preserveState: true,
-            only: ['posts', 'queue'],
-            reset: ['posts'],
+            ...reload,
             onError: fail,
             onHttpException: () => {
                 fail();

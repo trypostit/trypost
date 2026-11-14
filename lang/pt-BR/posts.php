@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lista',
+    'board' => [
+        'view' => 'Quadro',
+        'group_by' => 'Agrupar por',
+        'group_by_value' => 'Agrupar por: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Etiqueta',
+            'channel' => 'Canal',
+        ],
+        'columns' => [
+            'draft' => 'Rascunho',
+            'approvals' => 'Aprovações',
+            'scheduled' => 'Agendado',
+            'published' => 'Publicado',
+            'failed' => 'Falhou',
+            'untagged' => 'Sem etiqueta',
+            'no_channel' => 'Sem canal',
+        ],
+        'empty_column' => 'Nada por aqui',
+        'no_columns' => [
+            'title' => 'Nada corresponde a esses filtros',
+            'description' => 'Limpe o filtro de etiqueta ou de canal para ver todas as colunas.',
+        ],
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Visualização do agendamento',
     'all_posts' => 'Todos os Posts',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Pendente',
         'draft' => 'Rascunho',
-        'pending_approval' => 'Aguardando aprovação',
+        'pending_approval' => 'Pendente',
         'scheduled' => 'Agendado',
         'publishing' => 'Publicando',
         'retrying' => 'Tentando novamente',
         'published' => 'Publicado',
         'failed' => 'Falhou',
+        'pending_review' => 'Em revisão pelo Google',
+        'deleted_on_network' => 'Excluído',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Canais (:count)',
     ],
     'approvals' => [
-        'badge' => 'Aprovação',
         'time_passed' => 'O horário já passou',
         'approve' => 'Aprovar',
         'schedule' => 'Agendar',
         'reject' => 'Rejeitar',
         'revert' => 'Desfazer pedido de aprovação',
         'requested' => 'Aprovação solicitada',
+        'toasts' => [
+            'scheduled' => 'Post aprovado e agendado',
+            'queued' => 'Post aprovado e adicionado à fila',
+            'publishing' => 'Post aprovado e publicando agora',
+            'rejected' => 'Post rejeitado e movido para rascunhos',
+        ],
         'errors' => [
             'not_pending' => 'Este post não está mais aguardando aprovação.',
             'time_passed' => 'O horário pedido já passou. Escolha um novo horário.',

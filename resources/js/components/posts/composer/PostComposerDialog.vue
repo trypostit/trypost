@@ -48,6 +48,7 @@ import BottomSheet from '@/components/BottomSheet.vue';
 import CharacterCounter from '@/components/CharacterCounter.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FilterEmptyState from '@/components/FilterEmptyState.vue';
+import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
@@ -1023,6 +1024,8 @@ const selectedLabels = computed(() =>
         composition.labelIds.value.includes(label.id),
     ),
 );
+
+const hasSelectedLabels = computed(() => filled(selectedLabels.value));
 const addLabel = (label: {
     id: string;
     name: string;
@@ -2353,47 +2356,24 @@ const onDialogOpenChange = (value: boolean): void => {
                                 data-testid="composer-tags-trigger"
                             >
                                 <IconTag
-                                    v-if="!selectedLabels.length"
-                                    class="size-4"
+                                    class="size-4 shrink-0"
+                                    data-testid="composer-tags-icon"
                                 />
                                 <span
-                                    v-if="!selectedLabels.length"
+                                    v-if="!hasSelectedLabels"
                                     class="max-sm:sr-only"
                                     >{{
                                     $t('posts.edit.labels')
                                 }}</span>
-                                <span
+                                <LabelChips
                                     v-else
-                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
-                                >
-                                    <span
-                                        v-for="label in selectedLabels.slice(
-                                            0,
-                                            2,
-                                        )"
-                                        :key="label.id"
-                                        class="flex min-w-0 items-center gap-1"
-                                    >
-                                        <span
-                                            class="size-2 shrink-0 rounded-full"
-                                            :style="{
-                                                backgroundColor: label.color,
-                                            }"
-                                        />
-                                        <span class="truncate">{{
-                                            label.name
-                                        }}</span>
-                                    </span>
-                                    <span
-                                        v-if="selectedLabels.length > 2"
-                                        class="shrink-0 text-muted-foreground"
-                                        >+{{ selectedLabels.length - 2 }}</span
-                                    >
-                                </span>
+                                    :labels="selectedLabels"
+                                    test-id="composer-tags-chip"
+                                />
                                 <IconChevronDown
                                     class="size-4 shrink-0 text-muted-foreground"
                                     :class="{
-                                        'max-sm:hidden': !selectedLabels.length,
+                                        'max-sm:hidden': !hasSelectedLabels,
                                     }"
                                 />
                             </Button>

@@ -1,29 +1,59 @@
 <script setup lang="ts">
 import { IconExternalLink } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 
 type Props = {
     fullWidth?: boolean;
     centered?: boolean;
+    /** A page of columns (the channels list) gets more room than a form. */
+    wide?: boolean;
+    /** How many items the page lists, shown after the title: "Channels (12)". */
+    total?: number | null;
     title?: string;
     description?: string;
     /** Docs page linked as "Learn more" at the end of the description. */
     learnMoreUrl?: string;
 };
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
     fullWidth: false,
     centered: false,
+    wide: false,
+    total: null,
     title: undefined,
     description: undefined,
     learnMoreUrl: undefined,
 });
+
+/** The page drops the sidebar layout's width cap when it asks for full width, centers its content or is wide. */
+const layoutFullWidth = computed((): boolean => {
+    if (props.fullWidth) {
+        return true;
+    }
+
+    if (props.centered) {
+        return true;
+    }
+
+    return props.wide;
+});
+
+/** A page of columns (the channels list) gets more room than a form. */
+const pageWidth = computed((): string => {
+    if (props.wide) {
+        return 'max-w-[1120px]';
+    }
+
+    return 'max-w-[664px]';
+});
 </script>
 
 <template>
-    <AppSidebarLayout :full-width="fullWidth || centered">
+    <AppSidebarLayout :full-width="layoutFullWidth">
         <template #sidebar>
             <SettingsSidebar />
         </template>
@@ -46,17 +76,13 @@ withDefaults(defineProps<Props>(), {
 
         <div
             v-else-if="title"
-            class="mx-auto flex w-full max-w-[664px] flex-col gap-8 px-4 pt-2 pb-16 md:px-8 md:pt-10"
+            class="mx-auto flex w-full flex-col gap-8 px-4 pt-2 pb-16 md:px-8 md:pt-10"
+            :class="pageWidth"
             data-testid="settings-page"
         >
             <header class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <h1
-                        class="font-heading text-xl leading-tight font-medium text-foreground"
-                        data-testid="header-title"
-                    >
-                        {{ title }}
-                    </h1>
+                    <HeaderTitle :title="title" :total="total" />
                     <p
                         v-if="description"
                         class="mt-1 text-sm text-muted-foreground"

@@ -18,10 +18,10 @@ return [
         'created_at' => 'Erstellt',
     ],
 
-    'row_actions' => 'Signatur-Aktionen',
     'actions' => [
         'edit' => 'Signatur bearbeiten',
-        'delete' => 'Signatur löschen',
+        'delete' => 'Löschen',
+        'settings' => 'Einstellungen',
     ],
 
     'create' => [

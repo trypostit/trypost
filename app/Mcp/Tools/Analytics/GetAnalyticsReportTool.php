@@ -7,9 +7,11 @@ namespace App\Mcp\Tools\Analytics;
 use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
 use App\Actions\Analytics\ResolveAnalyticsChannelFilter;
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Dto\Analytics\PublicationFilter;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Workspace;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\ValidatedInput;
 use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -23,7 +25,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('Get the current workspace analytics report for a date range (range preset 7d, 30d, mtd or custom with start and end; defaults to the last 30 days in your time zone), optionally narrowed to some channels (unknown channel ids are ignored, like the web Insights page), including summary, follower and post charts, top posts, per-account performance, data bounds, and sync coverage.')]
+#[Description('Get the current workspace analytics report for a date range (range preset 7d, 30d, mtd or custom with start and end; defaults to the last 30 days in your time zone), optionally narrowed to some channels (unknown channel ids are ignored, like the web Insights page) and by labels or untagged posts (post metrics only; followers stay account-wide), including summary, follower and post charts, top posts, per-account performance, data bounds, and sync coverage.')]
 class GetAnalyticsReportTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -48,13 +50,23 @@ class GetAnalyticsReportTool extends Tool
             'range' => ['sometimes', Rule::in(ResolveAnalyticsRangePreset::PRESETS)],
             'start' => [$exclude, ...$presence, 'date_format:Y-m-d'],
             'end' => [$exclude, ...$presence, 'date_format:Y-m-d', 'after_or_equal:start'],
+            'labels' => ['sometimes', 'array'],
+            'labels.*' => ['uuid'],
+            'untagged' => ['sometimes', 'boolean'],
         ]);
         $user = $request->user();
 
         ['selection' => $selection, 'clamped' => $clamped] = $this->presets->selection($validated, $user->timezone);
         ['keys' => $channelKeys] = $this->channelFilter->execute($workspace, collect($request->get('channels', [])));
 
-        return Response::structured($this->analytics->forSelection($workspace, $selection, $channelKeys, $clamped, weekStart: $user->week_starts_on));
+        return Response::structured($this->analytics->forSelection(
+            $workspace,
+            $selection,
+            $channelKeys,
+            $clamped,
+            weekStart: $user->week_starts_on,
+            filter: PublicationFilter::labelsFrom(new ValidatedInput($validated)),
+        ));
     }
 
     /** @return array<string, mixed> */
@@ -65,6 +77,8 @@ class GetAnalyticsReportTool extends Tool
             'start' => $schema->string()->description('Optional start date in YYYY-MM-DD format.'),
             'end' => $schema->string()->description('Optional end date in YYYY-MM-DD format.'),
             'channels' => $schema->array()->items($schema->string())->description('Optional social account UUIDs to report on; omitted or empty reports every channel included in analytics.'),
+            'labels' => $schema->array()->items($schema->string())->description('Optional workspace label UUIDs; only posts with one of them count in the post metrics (followers stay account-wide). A deleted or unknown label matches nothing.'),
+            'untagged' => $schema->boolean()->description('Optional: include posts without labels (and posts published outside TryPost).'),
         ];
     }
 }

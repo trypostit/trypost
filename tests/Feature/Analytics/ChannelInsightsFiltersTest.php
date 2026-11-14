@@ -174,15 +174,21 @@ test('labels and post types combine', function () {
             ->etc());
 });
 
-test('a label of another workspace or a deleted label is refused', function () {
+test('a label of another workspace or a deleted label matches no post instead of failing', function () {
     $foreign = WorkspaceLabel::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
     $deleted = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    Post::query()->whereKey($this->reel->post_id)->sole()->labels()->attach($deleted);
     $deleted->delete();
 
     foreach ([$foreign, $deleted] as $label) {
         $this->actingAs($this->user)
             ->get(filteredInsightsUrl($this->instagram, ['labels' => [$label->id]]))
-            ->assertSessionHasErrors('labels.0');
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.labels', [$label->id])
+                ->where('report.summary.posts.value', 0)
+                ->has('publications.data', 0)
+                ->etc());
     }
 
     $this->actingAs($this->user)

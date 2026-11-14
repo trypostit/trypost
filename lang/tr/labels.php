@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Etiketi düzenle',
         'delete' => 'Etiketi sil',
         'more' => 'Diğer işlemler',
+        'settings' => 'Ayarlar',
         'view_posts' => 'Gönderileri görüntüle',
+        'view_insights' => 'Insights\'ı görüntüle',
     ],
 
     'create' => [

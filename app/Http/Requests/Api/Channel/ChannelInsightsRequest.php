@@ -7,7 +7,6 @@ namespace App\Http\Requests\Api\Channel;
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Dto\Analytics\PublicationFilter;
 use App\Models\SocialAccount;
-use App\Models\WorkspaceLabel;
 use App\Support\Analytics\ChannelMetrics;
 use Illuminate\Auth\Access\Response;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -38,9 +37,7 @@ class ChannelInsightsRequest extends FormRequest
             'period' => ['sometimes', Rule::in(['current', 'previous'])],
             'sort' => ['sometimes', Rule::in(ChannelMetrics::sortable())],
             'labels' => ['sometimes', 'array'],
-            'labels.*' => ['bail', 'uuid', Rule::exists(WorkspaceLabel::class, 'id')
-                ->where('workspace_id', $this->user()->current_workspace_id)
-                ->withoutTrashed()],
+            'labels.*' => ['uuid'],
             'untagged' => ['sometimes', 'boolean'],
             'types' => ['sometimes', 'array'],
             'types.*' => [Rule::in(PublicationFilter::typesFor($this->channel()->platform))],

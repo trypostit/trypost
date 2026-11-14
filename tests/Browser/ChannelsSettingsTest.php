@@ -6,6 +6,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostingSchedule;
 
 function channelsSettingsAdmin(): User
 {
@@ -106,10 +107,12 @@ test('a channel with a lost connection shows the disconnected dot in the list an
 
     $page->assertVisible("@channel-avatar-disconnected-{$lost->id}")
         ->assertMissing("@channel-avatar-disconnected-{$healthy->id}")
-        ->assertSeeIn("@channel-connection-lost-{$lost->id}", __('channels.connection_lost_hint'))
+        ->assertSeeIn("@channel-connection-lost-{$lost->id}", __('channels.list.connection_lost'))
         ->assertVisible("@channel-reconnect-{$lost->id}")
+        ->assertVisible("@channel-settings-{$lost->id}")
         ->assertMissing("@channel-connection-lost-{$healthy->id}")
         ->assertMissing("@channel-reconnect-{$healthy->id}")
+        ->assertSeeIn("@channel-reconnect-{$lost->id}", __('channels.reconnect'))
         ->assertNoJavaScriptErrors();
 
     $page = visit(route('app.channels.publish', $lost));
@@ -197,5 +200,122 @@ test('an instagram login channel offers to link a facebook page, which reconnect
 
     expect($page->script('window.__connectUrl'))->toContain("reconnect={$instagram->id}")
         ->and($page->script('new URL(window.__connectUrl).pathname'))->toBe((string) parse_url(route('app.social.instagram-facebook.connect'), PHP_URL_PATH));
+    $page->assertNoJavaScriptErrors();
+});
+
+test('each channel row shows its weekly posting goal without a popover, or a link to set one', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $withGoal = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id, 'posting_goal' => 5]);
+    $withoutGoal = SocialAccount::factory()->create(['workspace_id' => $user->current_workspace_id, 'platform' => Platform::X, 'posting_goal' => null]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-goal-{$withGoal->id}-progress");
+
+    $page->assertSeeIn("@channel-goal-{$withGoal->id}-progress", '0/5');
+
+    $page->click("@channel-goal-{$withGoal->id}-progress");
+
+    expect($page->script("document.querySelectorAll('[data-testid=\"channel-goal-{$withGoal->id}-popover\"]').length"))->toBe(0);
+
+    $page->click("@channel-goal-set-{$withoutGoal->id}");
+    waitForPath($page, route('app.channels.settings', $withoutGoal, absolute: false));
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('each channel row shows its time zone and posting times, and the list is searched and filtered by network', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $linkedin = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'display_name' => 'Acme LinkedIn',
+        'username' => 'acme',
+        'timezone' => 'America/Sao_Paulo',
+        'posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00')->withTime(3, '09:00'),
+    ]);
+    $x = SocialAccount::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform' => Platform::X,
+        'display_name' => 'Beta X',
+        'username' => null,
+        'timezone' => 'UTC',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-row-{$linkedin->id}");
+
+    $page->assertSeeIn("@channel-timezone-{$linkedin->id}", 'Sao Paulo')
+        ->assertSeeIn("@channel-posting-times-{$linkedin->id}", __('channels.list.posting_times_per_week', ['count' => 2]))
+        ->assertSeeIn("@channel-posting-times-{$x->id}", __('channels.list.no_posting_times'))
+        ->assertSeeIn("@channel-network-{$linkedin->id}", 'LinkedIn · @acme');
+
+    expect($page->text("@channel-network-{$x->id}"))->toBe('X');
+
+    $page
+        ->assertSeeIn('@header-title-total', '(2)');
+
+    $page->type('@header-search-input', 'beta');
+    waitForGone($page, "@channel-row-{$linkedin->id}");
+    $page->assertVisible("@channel-row-{$x->id}");
+
+    $page->type('@header-search-input', 'nothing like this');
+    waitFor($page, '@channels-no-results');
+
+    $page->clear('@header-search-input');
+    waitFor($page, "@channel-row-{$linkedin->id}");
+
+    $page->click('@channels-network-filter');
+    waitFor($page, '@channels-network-option-linkedin');
+    waitForState($page, '@channels-network-option-linkedin', 'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().bottom <= window.innerHeight');
+    $page->click('@channels-network-option-linkedin');
+    waitForGone($page, "@channel-row-{$x->id}");
+
+    $page->assertVisible("@channel-row-{$linkedin->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('the channels list loads its next page without repeating a channel', function () {
+    config(['app.pagination.default' => 2]);
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $channels = collect(range(0, 2))->map(fn (int $position) => SocialAccount::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'platform' => Platform::X,
+        'position' => $position,
+    ]));
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-row-{$channels[2]->id}");
+    waitForCount($page, '[data-testid^="channel-row-"]', 3);
+
+    $page->assertSeeIn('@header-title-total', '(3)')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the settings cog and the actions menu of a channel row show a tooltip, and the menu still opens', function () {
+    $user = channelsSettingsAdmin();
+    connectAiTo($user);
+    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(1280, 900);
+    waitFor($page, "@channel-settings-{$channel->id}");
+
+    $page->hover("@channel-settings-{$channel->id}");
+    waitFor($page, "@channel-settings-tooltip-{$channel->id}");
+    $page->assertSeeIn("@channel-settings-tooltip-{$channel->id}", __('channels.list.settings'));
+
+    $page->hover('@header-title')->hover("@channel-menu-{$channel->id}");
+    waitFor($page, "@channel-menu-tooltip-{$channel->id}");
+    $page->assertSeeIn("@channel-menu-tooltip-{$channel->id}", __('channels.list.more_actions'));
+
+    $page->click("@channel-menu-{$channel->id}");
+    waitFor($page, "@channel-disconnect-{$channel->id}");
+    waitForState($page, "@channel-disconnect-{$channel->id}", 'element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().top >= 0 && element.getBoundingClientRect().bottom <= window.innerHeight');
+
     $page->assertNoJavaScriptErrors();
 });

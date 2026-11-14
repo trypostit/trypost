@@ -338,6 +338,35 @@ class Post extends Model
     }
 
     /**
+     * Approval requests by when they are due, requests without a time last,
+     * then by when they were asked for.
+     */
+    public function scopeApprovalOrder(Builder $query): Builder
+    {
+        return $query->orderByRaw('posts.scheduled_at IS NULL')
+            ->orderBy('posts.scheduled_at')
+            ->orderBy('posts.approval_requested_at');
+    }
+
+    /**
+     * How many posts of the query each channel has, keyed by channel id, in
+     * one grouped count; a channel with none is absent.
+     *
+     * @param  Builder<Post>  $query
+     * @return array<string, int>
+     */
+    public static function countPerChannel(Builder $query): array
+    {
+        return $query->toBase()
+            ->select('posts.social_account_id')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('posts.social_account_id')
+            ->pluck('aggregate', 'social_account_id')
+            ->map(fn (mixed $count): int => (int) $count)
+            ->all();
+    }
+
+    /**
      * Posts on any of the channels; no filter when $channelIds is null.
      *
      * @param  list<string>|null  $channelIds

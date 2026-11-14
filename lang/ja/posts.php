@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'リスト',
+    'board' => [
+        'view' => 'ボード',
+        'group_by' => 'グループ化',
+        'group_by_value' => 'グループ化：:group',
+        'groups' => [
+            'status' => 'ステータス',
+            'tag' => 'ラベル',
+            'channel' => 'チャンネル',
+        ],
+        'columns' => [
+            'draft' => '下書き',
+            'approvals' => '承認',
+            'scheduled' => '予約済み',
+            'published' => '公開済み',
+            'failed' => '失敗',
+            'untagged' => 'ラベルなし',
+            'no_channel' => 'チャンネルなし',
+        ],
+        'empty_column' => '何もありません',
+        'no_columns' => [
+            'title' => 'このフィルターに一致するものはありません',
+            'description' => 'すべての列を表示するには、ラベルまたはチャンネルのフィルターを解除してください。',
+        ],
+        'column_aria' => '{1} :name、:count件の投稿|[0,*] :name、:count件の投稿',
+    ],
     'view_switcher' => 'スケジュール表示',
     'all_posts' => 'すべての投稿',
     'composer' => [
@@ -622,6 +647,8 @@ return [
         'retrying' => '再試行中',
         'published' => '公開済み',
         'failed' => '失敗',
+        'pending_review' => 'Google が審査中',
+        'deleted_on_network' => '削除済み',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'チャンネル (:count)',
     ],
     'approvals' => [
-        'badge' => '承認',
         'time_passed' => '時刻を過ぎています',
         'approve' => '承認する',
         'schedule' => '予約',
         'reject' => '却下',
         'revert' => '承認リクエストを取り消す',
         'requested' => '承認をリクエストしました',
+        'toasts' => [
+            'scheduled' => '投稿を承認して予約しました',
+            'queued' => '投稿を承認してキューに追加しました',
+            'publishing' => '投稿を承認しました。公開しています',
+            'rejected' => '投稿を却下して下書きに戻しました',
+        ],
         'errors' => [
             'not_pending' => 'この投稿はすでに承認待ちではありません。',
             'time_passed' => '希望時刻を過ぎています。新しい時刻を選択してください。',

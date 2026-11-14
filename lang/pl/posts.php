@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lista',
+    'board' => [
+        'view' => 'Tablica',
+        'group_by' => 'Grupuj według',
+        'group_by_value' => 'Grupuj według: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Etykieta',
+            'channel' => 'Kanał',
+        ],
+        'columns' => [
+            'draft' => 'Szkic',
+            'approvals' => 'Zatwierdzenia',
+            'scheduled' => 'Zaplanowany',
+            'published' => 'Opublikowany',
+            'failed' => 'Nieudany',
+            'untagged' => 'Bez etykiety',
+            'no_channel' => 'Brak kanału',
+        ],
+        'empty_column' => 'Nic tu nie ma',
+        'no_columns' => [
+            'title' => 'Nic nie pasuje do tych filtrów',
+            'description' => 'Wyczyść filtr etykiet lub kanałów, aby zobaczyć wszystkie kolumny.',
+        ],
+        'column_aria' => '{1} :name, liczba postów: :count|[0,*] :name, liczba postów: :count',
+    ],
     'view_switcher' => 'Widok harmonogramu',
     'all_posts' => 'Wszystkie posty',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Oczekuje',
         'draft' => 'Szkic',
-        'pending_approval' => 'Oczekuje na zatwierdzenie',
+        'pending_approval' => 'Oczekuje',
         'scheduled' => 'Zaplanowany',
         'publishing' => 'Publikowanie',
         'retrying' => 'Ponawianie',
         'published' => 'Opublikowany',
         'failed' => 'Nieudany',
+        'pending_review' => 'W weryfikacji przez Google',
+        'deleted_on_network' => 'Usunięto',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Kanały (:count)',
     ],
     'approvals' => [
-        'badge' => 'Zatwierdzenie',
         'time_passed' => 'Czas minął',
         'approve' => 'Zatwierdź',
         'schedule' => 'Zaplanuj',
         'reject' => 'Odrzuć',
         'revert' => 'Wycofaj prośbę o zatwierdzenie',
         'requested' => 'Wysłano prośbę o zatwierdzenie',
+        'toasts' => [
+            'scheduled' => 'Post zatwierdzony i zaplanowany',
+            'queued' => 'Post zatwierdzony i dodany do kolejki',
+            'publishing' => 'Post zatwierdzony, trwa publikacja',
+            'rejected' => 'Post odrzucony i przeniesiony do szkiców',
+        ],
         'errors' => [
             'not_pending' => 'Ten post nie czeka już na zatwierdzenie.',
             'time_passed' => 'Wybrany czas minął. Wybierz nowy czas.',

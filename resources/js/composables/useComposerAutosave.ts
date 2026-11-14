@@ -13,12 +13,42 @@ import {
     updateBrowserStorage,
     writeWorkspaceItem,
 } from '@/lib/browserStorage';
+import { filled } from '@/lib/helpers';
 import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import { classify, MediaType } from '@/lib/mediaType';
 import type { SharedData } from '@/types';
+import type { SidebarChannel } from '@/types/channel';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
+
+/**
+ * Bumped each time this tab writes or drops a draft, and when another tab
+ * changes the browser storage, so `useHasUnfinishedPost` reads it again: the
+ * drafts are written through the storage lib, which tells no ref of this tab.
+ */
+const draftChanges = ref(0);
+
+const draftChanged = (): void => {
+    draftChanges.value += 1;
+};
+
+/** Read inside a computed, it makes the computed read the draft again on every change. */
+const trackDraftChanges = (): void => {
+    void draftChanges.value;
+};
+
+let followsOtherTabs = false;
+
+/** Listens once per tab for a draft written or dropped in another tab. */
+const followOtherTabs = (): void => {
+    if (followsOtherTabs) {
+        return;
+    }
+
+    followsOtherTabs = true;
+    window.addEventListener('storage', draftChanged);
+};
 
 export interface AutosaveMediaRef {
     id: string;
@@ -104,6 +134,7 @@ export const clearComposerAutosave = (
     }
 
     writeWorkspaceItem(userId, workspaceId, 'composer.autosave', undefined);
+    draftChanged();
 };
 
 /** Drops the user's drafts in every workspace, on logout; their other items stay. */
@@ -117,6 +148,7 @@ export const clearAllComposerAutosaves = (userId: string): void => {
             ]),
         ),
     }));
+    draftChanged();
 };
 
 const isSnapshot = (value: unknown): value is AutosaveSnapshot => {
@@ -173,6 +205,7 @@ export const useComposerAutosave = (): {
     const write = (snapshot: AutosaveSnapshot): void => {
         if (workspaceId) {
             writeWorkspaceItem(userId, workspaceId, 'composer.autosave', snapshot);
+            draftChanged();
         }
     };
 
@@ -245,3 +278,50 @@ export const useAutosavePreview = (
                 .find(Boolean) ?? '',
     ),
 });
+
+/**
+ * Whether a saved draft holds what the resume dialog offers back
+ * (`useAutosavePreview`): text, a channel that still exists, or media still
+ * within the upload retention.
+ */
+const isUnfinished = (
+    snapshot: AutosaveSnapshot | null,
+    channelIds: string[],
+): boolean => {
+    if (!filled(snapshot)) {
+        return false;
+    }
+
+    if (filled(snapshot.content.trim())) {
+        return true;
+    }
+
+    if (snapshot.accountIds.some((id) => channelIds.includes(id))) {
+        return true;
+    }
+
+    const retentionHours = mediaUploadLimits().upload_retention_hours;
+
+    return snapshot.media.some((item) => !isExpiredUpload(item, retentionHours));
+};
+
+/**
+ * Whether the current workspace has a new post left unfinished in this
+ * browser, the one the composer offers to resume: the sidebar's New button
+ * marks it. It follows the drafts written and dropped in this tab and others.
+ */
+export const useHasUnfinishedPost = (): ComputedRef<boolean> => {
+    const page = usePage<SharedData>();
+    followOtherTabs();
+
+    return computed((): boolean => {
+        const { auth } = page.props;
+        const channels = (page.props.channels ?? []) as SidebarChannel[];
+        trackDraftChanges();
+
+        return isUnfinished(
+            read(auth.user.id, auth.currentWorkspace?.id),
+            channels.map((channel) => channel.id),
+        );
+    });
+};

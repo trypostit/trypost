@@ -18,10 +18,10 @@ return [
         'created_at' => 'تاريخ الإنشاء',
     ],
 
-    'row_actions' => 'إجراءات التوقيع',
     'actions' => [
         'edit' => 'تعديل التوقيع',
-        'delete' => 'حذف التوقيع',
+        'delete' => 'حذف',
+        'settings' => 'الإعدادات',
     ],
 
     'create' => [

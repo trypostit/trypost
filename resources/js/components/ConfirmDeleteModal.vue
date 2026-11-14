@@ -63,6 +63,7 @@ const confirmInput = ref('');
 const confirmText = ref('');
 const payload = ref<Record<string, unknown>>({});
 const request = ref<(() => Promise<void>) | null>(null);
+const visit = ref<{ only?: string[]; reset?: string[] }>({});
 
 const keywordCopied = ref(false);
 let keywordCopiedTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -121,6 +122,7 @@ const remove = () => {
     }
 
     const options = {
+        ...visit.value,
         preserveState: true,
         preserveScroll: true,
         onSuccess: () => {
@@ -151,8 +153,11 @@ const open = (data: {
     confirmText?: string;
     data?: Record<string, unknown>;
     request?: () => Promise<void>;
+    /** What the visit reloads, for a page that keeps its other props (a partial reload). */
+    visit?: { only?: string[]; reset?: string[] };
 }) => {
     url.value = data.url;
+    visit.value = data.visit ?? {};
     payload.value = data.data ?? {};
     request.value = data.request ?? null;
     confirmText.value = data.confirmText ?? '';

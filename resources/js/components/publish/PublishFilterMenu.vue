@@ -49,9 +49,6 @@ const setShowSlots = (value: boolean): void => {
 const selectStatus = (value: CalendarStatus): void => {
     status.value = value;
 };
-
-const rowClass =
-    'flex h-11 w-full items-center gap-2 rounded-md px-2 text-start text-base text-foreground transition-control hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:h-9 sm:text-sm';
 </script>
 
 <template>
@@ -89,7 +86,7 @@ const rowClass =
                         :key="option"
                         type="button"
                         :aria-pressed="status === option"
-                        :class="rowClass"
+                        class="menu-row"
                         :data-testid="`calendar-status-${option}`"
                         @click="selectStatus(option)"
                     >
@@ -121,7 +118,7 @@ const rowClass =
                     v-if="showSlots !== null"
                     type="button"
                     :aria-pressed="showSlots"
-                    :class="rowClass"
+                    class="menu-row"
                     :data-testid="`${testId}-toggle-slots`"
                     @click="setShowSlots(!showSlots)"
                 >
@@ -131,7 +128,7 @@ const rowClass =
                 <Link
                     v-if="manageSlotsHref"
                     :href="manageSlotsHref"
-                    :class="rowClass"
+                    class="menu-row"
                     :data-testid="`${testId}-manage-slots`"
                 >
                     {{ $t('posts.publish.menu.manage_posting_times') }}
@@ -140,7 +137,7 @@ const rowClass =
 
             <template v-if="$slots['compact-items']">
                 <div class="my-2 h-px bg-border" />
-                <slot name="compact-items" :row-class="rowClass" :close="close" />
+                <slot name="compact-items" :close="close" />
             </template>
         </template>
     </ResponsivePopover>

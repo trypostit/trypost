@@ -18,10 +18,10 @@ return [
         'created_at' => 'Creado',
     ],
 
-    'row_actions' => 'Acciones de la firma',
     'actions' => [
         'edit' => 'Editar firma',
-        'delete' => 'Eliminar firma',
+        'delete' => 'Eliminar',
+        'settings' => 'Configuración',
     ],
 
     'create' => [

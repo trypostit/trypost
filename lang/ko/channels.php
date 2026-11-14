@@ -7,6 +7,8 @@ return [
     'description' => '이 워크스페이스의 채널을 관리하세요.',
     'connect' => '채널 연결',
     'settings' => '채널 설정',
+    'manage' => '채널 관리',
+    'set_goal' => '게시 목표 설정',
     'publish' => '게시',
     'insights' => 'Insights',
     'new_post' => '이 채널에 새 게시물 작성',
@@ -168,6 +170,25 @@ return [
         'description' => 'TryPost에 있는 이 채널의 모든 게시물이 임시 저장, 예약 게시물, 게시 기록을 포함해 삭제됩니다. 네트워크에 이미 올라간 게시물은 그대로 남습니다.',
         'keyword' => '연결 해제',
         'cancel' => '취소',
+    ],
+
+    'list' => [
+        'search' => '이름, @사용자 이름 또는 네트워크로 검색',
+        'networks' => '네트워크',
+        'networks_search' => '네트워크 검색',
+        'no_networks' => '네트워크를 찾을 수 없습니다',
+        'columns' => [
+            'channel' => '채널',
+            'timezone' => '시간대',
+            'posting_times' => '게시 시간',
+            'this_week' => '이번 주',
+        ],
+        'posting_times_per_week' => '주 :count회',
+        'no_posting_times' => '게시 시간 없음',
+        'no_results' => '검색과 일치하는 채널이 없습니다.',
+        'connection_lost' => '이 채널의 연결이 끊어졌습니다',
+        'settings' => '설정',
+        'more_actions' => '추가 작업',
     ],
 
     'settings_page' => [

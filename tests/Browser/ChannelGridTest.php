@@ -201,3 +201,17 @@ test('the grid tooltip shows the sent time in the user zone, not the browser zon
         ->toBe("This post was sent {$reel->published_at->setTimezone('Asia/Tokyo')->format('F j, Y \\a\\t g:i A')}");
     $page->assertNoJavaScriptErrors();
 });
+
+test('the grid links to the channel board', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.channels.grid', $this->instagram))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+
+    $page->click('@schedule-view-board');
+
+    waitForPath($page, route('app.channels.board', $this->instagram, absolute: false));
+    waitFor($page, '@board-column-draft');
+
+    $page->assertNoJavaScriptErrors();
+});

@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lijst',
+    'board' => [
+        'view' => 'Bord',
+        'group_by' => 'Groeperen op',
+        'group_by_value' => 'Groeperen op: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Label',
+            'channel' => 'Kanaal',
+        ],
+        'columns' => [
+            'draft' => 'Concept',
+            'approvals' => 'Goedkeuringen',
+            'scheduled' => 'Gepland',
+            'published' => 'Gepubliceerd',
+            'failed' => 'Mislukt',
+            'untagged' => 'Zonder label',
+            'no_channel' => 'Geen kanaal',
+        ],
+        'empty_column' => 'Niets hier',
+        'no_columns' => [
+            'title' => 'Niets komt overeen met deze filters',
+            'description' => 'Wis het label- of kanaalfilter om alle kolommen te zien.',
+        ],
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Planningweergave',
     'all_posts' => 'Alle posts',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'In afwachting',
         'draft' => 'Concept',
-        'pending_approval' => 'Wacht op goedkeuring',
+        'pending_approval' => 'In afwachting',
         'scheduled' => 'Gepland',
         'publishing' => 'Publiceren',
         'retrying' => 'Opnieuw proberen',
         'published' => 'Gepubliceerd',
         'failed' => 'Mislukt',
+        'pending_review' => 'In beoordeling bij Google',
+        'deleted_on_network' => 'Verwijderd',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Kanalen (:count)',
     ],
     'approvals' => [
-        'badge' => 'Goedkeuring',
         'time_passed' => 'Tijdstip verstreken',
         'approve' => 'Goedkeuren',
         'schedule' => 'Inplannen',
         'reject' => 'Afwijzen',
         'revert' => 'Goedkeuringsverzoek intrekken',
         'requested' => 'Goedkeuring aangevraagd',
+        'toasts' => [
+            'scheduled' => 'Post goedgekeurd en ingepland',
+            'queued' => 'Post goedgekeurd en aan de wachtrij toegevoegd',
+            'publishing' => 'Post goedgekeurd, wordt nu gepubliceerd',
+            'rejected' => 'Post afgewezen en naar concepten verplaatst',
+        ],
         'errors' => [
             'not_pending' => 'Dit bericht wacht niet meer op goedkeuring.',
             'time_passed' => 'Het gevraagde tijdstip is voorbij. Kies een nieuw tijdstip.',

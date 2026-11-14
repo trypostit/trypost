@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Liste',
+    'board' => [
+        'view' => 'Pano',
+        'group_by' => 'Gruplandır',
+        'group_by_value' => 'Gruplandır: :group',
+        'groups' => [
+            'status' => 'Durum',
+            'tag' => 'Etiket',
+            'channel' => 'Kanal',
+        ],
+        'columns' => [
+            'draft' => 'Taslak',
+            'approvals' => 'Onaylar',
+            'scheduled' => 'Planlandı',
+            'published' => 'Yayınlandı',
+            'failed' => 'Başarısız',
+            'untagged' => 'Etiketsiz',
+            'no_channel' => 'Kanal yok',
+        ],
+        'empty_column' => 'Burada hiçbir şey yok',
+        'no_columns' => [
+            'title' => 'Bu filtrelerle eşleşen bir şey yok',
+            'description' => 'Tüm sütunları görmek için etiket veya kanal filtresini temizle.',
+        ],
+        'column_aria' => '{1} :name, :count gönderi|[0,*] :name, :count gönderi',
+    ],
     'view_switcher' => 'Takvim görünümü',
     'all_posts' => 'Tüm Gönderiler',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Beklemede',
         'draft' => 'Taslak',
-        'pending_approval' => 'Onay bekliyor',
+        'pending_approval' => 'Bekliyor',
         'scheduled' => 'Zamanlandı',
         'publishing' => 'Yayınlanıyor',
         'retrying' => 'Yeniden deneniyor',
         'published' => 'Yayınlandı',
         'failed' => 'Başarısız',
+        'pending_review' => 'Google incelemesinde',
+        'deleted_on_network' => 'Silindi',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Kanallar (:count)',
     ],
     'approvals' => [
-        'badge' => 'Onay',
         'time_passed' => 'Saat geçti',
         'approve' => 'Onayla',
         'schedule' => 'Zamanla',
         'reject' => 'Reddet',
         'revert' => 'Onay isteğini geri al',
         'requested' => 'Onay istendi',
+        'toasts' => [
+            'scheduled' => 'Gönderi onaylandı ve planlandı',
+            'queued' => 'Gönderi onaylandı ve kuyruğa eklendi',
+            'publishing' => 'Gönderi onaylandı, şimdi yayınlanıyor',
+            'rejected' => 'Gönderi reddedildi ve taslaklara taşındı',
+        ],
         'errors' => [
             'not_pending' => 'Bu gönderi artık onay beklemiyor.',
             'time_passed' => 'İstenen saat geçti. Yeni bir saat seçin.',

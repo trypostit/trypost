@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'List',
+    'board' => [
+        'view' => 'Board',
+        'group_by' => 'Group by',
+        'group_by_value' => 'Group by: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Label',
+            'channel' => 'Channel',
+        ],
+        'columns' => [
+            'draft' => 'Draft',
+            'approvals' => 'Approvals',
+            'scheduled' => 'Scheduled',
+            'published' => 'Published',
+            'failed' => 'Failed',
+            'untagged' => 'Untagged',
+            'no_channel' => 'No channel',
+        ],
+        'empty_column' => 'Nothing here',
+        'no_columns' => [
+            'title' => 'Nothing matches these filters',
+            'description' => 'Clear the label or channel filter to see every column.',
+        ],
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count posts',
+    ],
     'view_switcher' => 'Schedule view',
     'all_posts' => 'All Posts',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Pending',
         'draft' => 'Draft',
-        'pending_approval' => 'Pending approval',
+        'pending_approval' => 'Pending',
         'scheduled' => 'Scheduled',
         'publishing' => 'Publishing',
         'retrying' => 'Retrying',
         'published' => 'Published',
         'failed' => 'Failed',
+        'pending_review' => 'In review by Google',
+        'deleted_on_network' => 'Deleted',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Channels (:count)',
     ],
     'approvals' => [
-        'badge' => 'Approval',
         'time_passed' => 'Time has passed',
         'approve' => 'Approve',
         'schedule' => 'Schedule',
         'reject' => 'Reject',
         'revert' => 'Revert approval request',
         'requested' => 'Approval requested',
+        'toasts' => [
+            'scheduled' => 'Post approved and scheduled',
+            'queued' => 'Post approved and added to queue',
+            'publishing' => 'Post approved and publishing now',
+            'rejected' => 'Post rejected and moved to drafts',
+        ],
         'errors' => [
             'not_pending' => 'This post is no longer waiting for approval.',
             'time_passed' => 'The requested time has passed. Choose a new time.',

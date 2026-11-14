@@ -12,9 +12,11 @@ use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ListChannelPublicationPerformance;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Actions\Post\BuildBoardPageProps;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\BuildPublishPageProps;
 use App\Actions\SocialAccount\ListInstagramGridPosts;
+use App\Actions\SocialAccount\ListWorkspaceChannels;
 use App\Actions\SocialAccount\ReorderSocialAccounts;
 use App\Enums\Analytics\ExportFormat;
 use App\Enums\PostPlatform\ContentType;
@@ -22,7 +24,9 @@ use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Channel\ChannelInsightsRequest;
 use App\Http\Requests\App\Channel\DownloadChannelInsightsRequest;
+use App\Http\Requests\App\Channel\ListChannelsRequest;
 use App\Http\Requests\App\Channel\ReorderChannelsRequest;
+use App\Http\Resources\App\ChannelListRowResource;
 use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Http\Resources\App\InstagramGridTileResource;
 use App\Http\Resources\App\SocialAccountResource;
@@ -43,16 +47,23 @@ class ChannelController extends Controller
 {
     use EnsuresChannelInCurrentWorkspace, RendersPublishPage;
 
-    public function index(Request $request): Response
+    public function index(ListChannelsRequest $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        $this->authorize('manageAccounts', $workspace);
+        $weekStart = $request->user()->week_starts_on;
+        $search = $request->search();
+        $networks = $request->networks();
 
         return Inertia::render('settings/workspace/Channels', [
-            'connectedChannels' => SocialAccountResource::collection(
-                $workspace->socialAccounts()->get(),
-            )->resolve(),
+            'connectedChannels' => Inertia::scroll(fn () => ChannelListRowResource::collection(
+                ListWorkspaceChannels::page($workspace, $search, $networks, $weekStart),
+            ))->matchOn('data.id'),
+            'total' => fn (): int => $workspace->socialAccounts()->count(),
+            'networks' => fn (): array => $request->availableNetworks(),
+            'filters' => [
+                'search' => $search,
+                'networks' => $networks,
+            ],
         ]);
     }
 
@@ -123,6 +134,27 @@ class ChannelController extends Controller
         }
 
         return Inertia::render('posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, $account, $view));
+    }
+
+    public function board(Request $request, SocialAccount $account): Response|RedirectResponse
+    {
+        $this->ensureCurrentWorkspace($request, $account);
+        $workspace = $request->user()->currentWorkspace;
+        $this->authorize('view', $workspace);
+
+        if ($request->boolean('compose')) {
+            $this->authorize('createPost', $workspace);
+
+            return $this->redirectToComposer($request, 'app.channels.board', [
+                'account' => $account->id,
+                'group' => $request->query('group'),
+                'labels' => $request->query('labels'),
+                'untagged' => $request->query('untagged'),
+                'tz' => $request->query('tz'),
+            ]);
+        }
+
+        return Inertia::render(BuildBoardPageProps::COMPONENT, BuildBoardPageProps::handle($request, $workspace, $account));
     }
 
     public function insights(
