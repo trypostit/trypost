@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
@@ -335,4 +336,20 @@ test('on a touch screen a tap on a line’s label, which never leaves it, fades 
     expect($page->script('window.matchMedia("(hover: hover)").matches'))->toBeFalse()
         ->and($dimmed)->toBe(0);
     $page->assertNoJavaScriptErrors();
+});
+
+test('a follower change of a thousand or more reads short and signed, the same in every language', function () {
+    [$user, [$alpha]] = insightsChannelFilterFixture();
+    $user->update(['locale' => Locale::PortugueseBrazil]);
+    AnalyticsAccountDailySnapshot::query()
+        ->where('social_account_id', $alpha->id)
+        ->where('followers_count', 120)
+        ->update(['followers_count' => 1300]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@analytics-followers-change');
+
+    $page->assertSeeIn('@analytics-followers-change', '+1.2K')
+        ->assertNoJavaScriptErrors();
 });

@@ -608,3 +608,29 @@ test('editing a post from its board card lands back on the board after closing o
     'closing' => '@composer-close',
     'saving' => '@composer-save-draft',
 ]);
+
+test('tab moves through a card\'s controls in reading order, then to the next card', function () {
+    $scheduled = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-scheduled @board-card-open-{$scheduled->id}");
+
+    $focused = "board-card-open-{$this->draft->id}";
+    $order = [$focused];
+
+    foreach (range(1, 3) as $step) {
+        $page->keys("@{$focused}", 'Tab');
+        $focused = $page->script("document.activeElement?.closest('[data-testid]')?.dataset.testid ?? ''");
+        $order[] = $focused;
+    }
+
+    expect($order)->toBe([
+        "board-card-open-{$this->draft->id}",
+        "post-labels-board-{$this->draft->id}-trigger",
+        "board-card-menu-{$this->draft->id}",
+        "board-card-open-{$scheduled->id}",
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
