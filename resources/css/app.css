@@ -377,6 +377,11 @@
     grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) 13rem;
 }
 
+/* A row of a filter or group menu: tall enough to tap in a bottom sheet, menu sized from sm up. */
+@utility menu-row {
+    @apply flex h-11 w-full items-center gap-2 rounded-md px-2 text-start text-base text-foreground transition-control hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:h-9 sm:text-sm;
+}
+
 @layer components {
     /* The filled part runs from --range-from to --range-to (set by rangeFill()). */
     .editor-range {

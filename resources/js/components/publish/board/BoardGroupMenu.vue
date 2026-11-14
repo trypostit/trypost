@@ -38,9 +38,6 @@ const select = (value: BoardGroup): void => {
 const chooseFromMenu = (value: unknown): void => {
     select(value as BoardGroup);
 };
-
-const rowClass =
-    'flex h-11 w-full items-center gap-2 rounded-md px-2 text-start text-base text-foreground transition-control hover:bg-accent focus-visible:bg-accent focus-visible:outline-none';
 </script>
 
 <template>
@@ -75,7 +72,7 @@ const rowClass =
                     :key="option"
                     type="button"
                     :aria-pressed="option === group"
-                    :class="rowClass"
+                    class="menu-row"
                     :data-testid="`board-group-option-${option}`"
                     @click="select(option)"
                 >

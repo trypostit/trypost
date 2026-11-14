@@ -656,12 +656,12 @@ const goToDay = (key: string): void => {
                     >
                         <template
                             v-if="!isDesktop"
-                            #compact-items="{ rowClass, close }"
+                            #compact-items="{ close }"
                         >
                             <button
                                 type="button"
                                 :aria-pressed="undatedOpen"
-                                :class="rowClass"
+                                class="menu-row"
                                 data-testid="calendar-no-date-menu"
                                 @click="openUndatedFromMenu(close)"
                             >
