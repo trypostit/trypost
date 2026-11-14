@@ -399,3 +399,66 @@ test('picking untagged counts only the posts without a label and clearing the fi
 
     $page->assertNoJavaScriptErrors();
 });
+
+function insightsLabelledFixture(): array
+{
+    [$user, [$alpha]] = insightsChannelFilterFixture();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $alpha->workspace_id]);
+    $post = Post::factory()->forAccount($alpha)->published()->create(['user_id' => $user->id]);
+    $post->labels()->attach($label);
+    AnalyticsPublication::query()->where('social_account_id', $alpha->id)->update(['post_id' => $post->id]);
+
+    return [$user, $label];
+}
+
+function pickInsightsLabel(mixed $page, WorkspaceLabel $label): void
+{
+    $page->click('@analytics-label-filter');
+    waitFor($page, "@analytics-label-checkbox-{$label->id}");
+    $page->click("@analytics-label-checkbox-{$label->id}");
+    waitForCondition($page, "[...new URLSearchParams(location.search)].some(([key, value]) => key.startsWith('labels') && value === '{$label->id}')");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '1'");
+    $page->keys("@analytics-label-checkbox-{$label->id}", 'Escape');
+    waitForGone($page, "@analytics-label-checkbox-{$label->id}");
+}
+
+test('a picked label stays through a range change and goes into the export links', function () {
+    [$user, $label] = insightsLabelledFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+    pickInsightsLabel($page, $label);
+
+    $page->click('@insights-range-7d');
+    waitForQueryParameter($page, 'range', '7d');
+    waitForCondition($page, "[...new URLSearchParams(location.search)].some(([key, value]) => key.startsWith('labels') && value === '{$label->id}')");
+
+    $page->click('@insights-export');
+    waitFor($page, '@insights-export-csv');
+    expect(urldecode((string) $page->script('document.querySelector("[data-testid=insights-export-csv]").href')))
+        ->toContain($label->id)
+        ->toContain('range=7d');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('history back re-syncs the label filter of the workspace insights with the page', function () {
+    [$user, $label] = insightsLabelledFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->click('@insights-range-7d');
+    waitForQueryParameter($page, 'range', '7d');
+    pickInsightsLabel($page, $label);
+
+    $page->script('history.back()');
+    waitForCondition($page, "!location.search.includes('range=7d') && !location.search.includes('labels')");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->click('@analytics-label-filter');
+    waitFor($page, "@analytics-label-checkbox-{$label->id}");
+    $page->assertAttribute("@analytics-label-checkbox-{$label->id}", 'data-state', 'unchecked')
+        ->assertNoJavaScriptErrors();
+});

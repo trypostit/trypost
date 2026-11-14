@@ -98,3 +98,48 @@ test('the insights export counts only the posts of the picked labels', function 
     expect($rows)->toContain(['Posts', '1', '0', ''])
         ->and($rows)->toContain(['Reactions', '10', '', '']);
 });
+
+test('the label filter combines with the channel filter', function () {
+    $facebook = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Facebook]);
+    $post = Post::factory()->forAccount($facebook)->published()->create(['user_id' => $this->user->id]);
+    $post->labels()->attach($this->label);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $facebook->id,
+        'social_account_key' => $facebook->id,
+        'post_id' => $post->id,
+        'platform' => Platform::Facebook,
+        'network' => Platform::Facebook->network(),
+        'provider_published_at' => $this->day->setTime(12, 0),
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id, 'date' => $this->day->toDateString(), 'reactions_count' => 20]);
+
+    $report = fn (array $filters) => $this->actingAs($this->user)
+        ->get(route('app.insights', [...$this->range, ...$filters]))
+        ->assertOk();
+
+    $report(['labels' => [$this->label->id]])->assertInertia(fn (Assert $page) => $page
+        ->where('report.summary.posts.value', 2)
+        ->where('report.summary.reactions.value', 30)
+        ->etc());
+
+    $report(['labels' => [$this->label->id], 'channels' => [$this->account->id]])->assertInertia(fn (Assert $page) => $page
+        ->where('report.filters.channels', [$this->account->id])
+        ->where('report.filters.labels', [$this->label->id])
+        ->where('report.summary.posts.value', 1)
+        ->where('report.summary.reactions.value', 10)
+        ->etc());
+
+    $report(['untagged' => 1, 'channels' => [$facebook->id]])->assertInertia(fn (Assert $page) => $page
+        ->where('report.summary.posts.value', 0)
+        ->etc());
+});
+
+test('the workspace insights page refuses a deleted label, like the channel insights', function () {
+    $this->label->delete();
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.insights', [...$this->range, 'labels' => [$this->label->id]]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('labels.0');
+});
