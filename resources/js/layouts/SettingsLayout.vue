@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconExternalLink } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
@@ -18,7 +19,7 @@ type Props = {
     learnMoreUrl?: string;
 };
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
     fullWidth: false,
     centered: false,
     wide: false,
@@ -27,10 +28,32 @@ withDefaults(defineProps<Props>(), {
     description: undefined,
     learnMoreUrl: undefined,
 });
+
+/** The page drops the sidebar layout's width cap when it asks for full width, centers its content or is wide. */
+const layoutFullWidth = computed((): boolean => {
+    if (props.fullWidth) {
+        return true;
+    }
+
+    if (props.centered) {
+        return true;
+    }
+
+    return props.wide;
+});
+
+/** A page of columns (the channels list) gets more room than a form. */
+const pageWidth = computed((): string => {
+    if (props.wide) {
+        return 'max-w-[1120px]';
+    }
+
+    return 'max-w-[664px]';
+});
 </script>
 
 <template>
-    <AppSidebarLayout :full-width="fullWidth || centered || wide">
+    <AppSidebarLayout :full-width="layoutFullWidth">
         <template #sidebar>
             <SettingsSidebar />
         </template>
@@ -54,7 +77,7 @@ withDefaults(defineProps<Props>(), {
         <div
             v-else-if="title"
             class="mx-auto flex w-full flex-col gap-8 px-4 pt-2 pb-16 md:px-8 md:pt-10"
-            :class="wide ? 'max-w-[1120px]' : 'max-w-[664px]'"
+            :class="pageWidth"
             data-testid="settings-page"
         >
             <header class="flex items-start justify-between gap-3">

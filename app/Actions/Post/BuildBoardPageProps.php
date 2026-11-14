@@ -35,7 +35,7 @@ class BuildBoardPageProps
         $user = $request->user();
         $filters = PublishFilters::fromRequest($request, $channel, $user);
         $groups = self::groups($channel);
-        $group = self::group($request->query->getString('group'), $groups);
+        $group = self::group($request->query('group'), $groups);
 
         $accounts = filled($channel) ? collect() : $workspace->socialAccounts()->get();
         $labels = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
@@ -83,9 +83,11 @@ class BuildBoardPageProps
     }
 
     /**
+     * The group asked for when it is one of the page's, else Status (an unknown value or a hand-made `group[]=` alike).
+     *
      * @param  list<string>  $groups
      */
-    private static function group(string $requested, array $groups): string
+    private static function group(mixed $requested, array $groups): string
     {
         if (! collect($groups)->containsStrict($requested)) {
             return 'status';

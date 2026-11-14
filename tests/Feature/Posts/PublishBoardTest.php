@@ -380,3 +380,22 @@ test('a partial reload of a column builds no column for another workspace\'s lab
     expect(data_get($tag, 'columns', []))->toBe([])
         ->and(data_get($channel, 'columns', []))->toBe([]);
 });
+
+test('a group or a time zone sent as a list in the url opens the board on status in the user zone instead of failing', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.posts.board', ['group' => ['tag'], 'tz' => ['Asia/Tokyo']]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('group', 'status')
+            ->etc());
+});
+
+test('a time zone sent as a list in the url opens the list and the calendar in the user zone instead of failing', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tz' => ['Asia/Tokyo']]))
+        ->assertOk();
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'week', 'tz' => ['Asia/Tokyo']]))
+        ->assertOk();
+});

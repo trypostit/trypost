@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { filled } from '@/lib/helpers';
 import { postPermalink } from '@/lib/postNetwork';
 import { isRecurring } from '@/lib/recurrence';
 import { PostStatus } from '@/types/post';
@@ -55,6 +56,15 @@ const emit = defineEmits<{ select: [action: PostCardMenuAction] }>();
 
 const { canPublishDirectly } = useWorkspaceAbilities();
 
+/** The menu button's test id: the one its card names (the board's), else the list's. */
+const menuTriggerTestId = computed((): string => {
+    if (filled(props.triggerTestId)) {
+        return props.triggerTestId;
+    }
+
+    return `post-card-menu-${props.testKey}`;
+});
+
 const isScheduled = computed(
     () => props.post.status === PostStatus.Scheduled,
 );
@@ -81,7 +91,7 @@ const isMovable = computed(
                             size="icon"
                             class="data-[state=open]:bg-accent"
                             :aria-label="$t('posts.publish.actions.more')"
-                            :data-testid="triggerTestId ?? `post-card-menu-${testKey}`"
+                            :data-testid="menuTriggerTestId"
                         >
                             <IconDotsVertical class="size-4" />
                         </Button>

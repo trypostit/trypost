@@ -18,19 +18,6 @@ export const postChannelLabel = (post: PostCard): string => {
     return getPlatformLabel(post.platform);
 };
 
-/** When the post went out, is due, or was created: the instant its list and board sort by (`Post::scopeLatestAttempt`). */
-export const postAttemptAt = (post: PostCard): string => {
-    if (filled(post.published_at)) {
-        return post.published_at;
-    }
-
-    if (filled(post.scheduled_at)) {
-        return post.scheduled_at;
-    }
-
-    return post.created_at;
-};
-
 /** When the post went out or is due; none for a draft or approval request without a time. */
 export const postShownAt = (post: PostCard): string | null => {
     if (filled(post.published_at)) {
@@ -42,6 +29,17 @@ export const postShownAt = (post: PostCard): string | null => {
     }
 
     return null;
+};
+
+/** When the post went out, is due, or was created: the instant its list and board sort by (`Post::scopeLatestAttempt`). */
+export const postAttemptAt = (post: PostCard): string => {
+    const shownAt = postShownAt(post);
+
+    if (filled(shownAt)) {
+        return shownAt;
+    }
+
+    return post.created_at;
 };
 
 /** What a post without a time shows: the queue slot its approval request asks for, else "No time". */

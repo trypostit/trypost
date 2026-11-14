@@ -388,3 +388,15 @@ test('accounts index merges the next page of channels by id', function () {
 
     expect(data_get($page, 'matchPropsOn'))->toContain('connectedChannels.data.id');
 });
+
+test('accounts index shows a channel whose stored time zone php does not know in utc instead of failing', function () {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $channel->forceFill(['timezone' => 'Gone/Zone'])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->get(route('app.workspace.channels'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('connectedChannels.data.0.timezone_option', ['value' => 'UTC', 'label' => 'UTC', 'offset' => 'GMT'])
+            ->etc());
+});

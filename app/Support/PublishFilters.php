@@ -31,13 +31,14 @@ final class PublishFilters
     public static function fromRequest(Request $request, ?SocialAccount $channel, User $user): self
     {
         $requestedChannelIds = filled($channel) ? [] : RequestIds::uuidList($request->collect('channels')->unique());
+        $timezone = $request->query('tz');
 
         return new self(
             labelIds: RequestIds::uuidList($request->collect('labels')),
             untagged: $request->boolean('untagged'),
             requestedChannelIds: $requestedChannelIds,
             scopedChannelIds: self::scopedChannelIds($channel, $requestedChannelIds),
-            displayTimezone: Timezone::known($request->query->getString('tz')) ?? Timezone::normalize($user->timezone),
+            displayTimezone: Timezone::known(is_string($timezone) ? $timezone : null) ?? Timezone::normalize($user->timezone),
         );
     }
 

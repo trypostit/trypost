@@ -109,9 +109,14 @@ const openLabel = (translate: Translate): string =>
 
 const thumbnail = computed(() => postThumbnail(props.post));
 
-const hasVideoThumbnail = computed(
-    () => filled(thumbnail.value) && !isImage(thumbnail.value),
-);
+/** Whether the thumbnail is a video, whose frame loads only once the card shows. */
+const hasVideoThumbnail = computed((): boolean => {
+    if (!filled(thumbnail.value)) {
+        return false;
+    }
+
+    return !isImage(thumbnail.value);
+});
 
 const thumbnailFrame = ref<HTMLElement | null>(null);
 
@@ -120,10 +125,18 @@ const thumbnailFrame = ref<HTMLElement | null>(null);
  * image is lazy on its own and is not observed. The 200px margin widens the viewport only:
  * the column's scroller still clips, so a card scrolled out of its column counts as hidden.
  */
-const videoLoaded = useElementVisibility(
-    computed(() => (hasVideoThumbnail.value ? thumbnailFrame.value : null)),
-    { rootMargin: '200px', once: true },
-);
+const observedFrame = computed((): HTMLElement | null => {
+    if (!hasVideoThumbnail.value) {
+        return null;
+    }
+
+    return thumbnailFrame.value;
+});
+
+const videoLoaded = useElementVisibility(observedFrame, {
+    rootMargin: '200px',
+    once: true,
+});
 
 const contentTypeKey = computed(() =>
     transform(props.post.platform, (platform) =>
@@ -138,9 +151,14 @@ const isPending = computed(
 );
 
 
-const hasMenu = computed(
-    () => canCreatePost.value && props.post.status !== PostStatus.Publishing,
-);
+/** A member who can post gets the card's menu, except while the post is publishing. */
+const hasMenu = computed((): boolean => {
+    if (!canCreatePost.value) {
+        return false;
+    }
+
+    return props.post.status !== PostStatus.Publishing;
+});
 </script>
 
 <template>
