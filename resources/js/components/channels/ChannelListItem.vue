@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { CHANNEL_LIST_COLUMNS } from '@/lib/channelList';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { settings as settingsRoute } from '@/routes/app/channels';
 import {
     accountTypeKey,
@@ -58,10 +58,13 @@ const lost = computed(() => isConnectionLost(props.channel));
 const typeKey = computed(() => accountTypeKey(props.channel));
 
 /** The network and the handle under the name: "Instagram · @trypost.it". The network is translated in the template. */
-const networkLine = (network: string): string =>
-    filled(props.channel.handle_label)
-        ? `${network} · ${props.channel.handle_label}`
-        : network;
+const networkLine = (network: string): string => {
+    if (blank(props.channel.handle_label)) {
+        return network;
+    }
+
+    return `${network} · ${props.channel.handle_label}`;
+};
 </script>
 
 <template>
