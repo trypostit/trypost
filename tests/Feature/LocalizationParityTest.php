@@ -85,7 +85,7 @@ test('analytics interface copy does not fall back to English', function (string 
 test('the mcp authorize copy is translated in every locale', function (Locale $locale) {
     $english = require lang_path('en/mcp.php');
     $translated = require lang_path("{$locale->value}/mcp.php");
-    $allowedSameAsEnglish = ['workspace' => ['de', 'es', 'it', 'nl', 'pt-BR'], 'error_code' => ['es']];
+    $allowedSameAsEnglish = ['workspace' => ['de', 'es', 'it', 'nl', 'pt-BR', 'id'], 'error_code' => ['es']];
 
     $untranslated = collect($english['authorize'])
         ->filter(fn (string $value, string $key) => data_get($translated, "authorize.{$key}") === $value)

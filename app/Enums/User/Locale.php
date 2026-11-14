@@ -22,6 +22,7 @@ enum Locale: string
     case Russian = 'ru';
     case Turkish = 'tr';
     case Arabic = 'ar';
+    case Indonesian = 'id';
 
     public const DEFAULT = self::English;
 
@@ -44,6 +45,7 @@ enum Locale: string
             self::Russian => 'Русский',
             self::Turkish => 'Türkçe',
             self::Arabic => 'العربية',
+            self::Indonesian => 'Bahasa Indonesia',
         };
     }
 
@@ -66,6 +68,7 @@ enum Locale: string
             self::Russian => 'RU',
             self::Turkish => 'TR',
             self::Arabic => 'SA',
+            self::Indonesian => 'ID',
         };
     }
 
@@ -88,6 +91,7 @@ enum Locale: string
             self::Russian => 'Russian',
             self::Turkish => 'Turkish',
             self::Arabic => 'Arabic',
+            self::Indonesian => 'Indonesian',
         };
     }
 
