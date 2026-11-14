@@ -81,7 +81,11 @@ const columnName = (translate: (key: string) => string): string => {
         :data-testid="`board-column-${column.key}`"
     >
         <header class="flex h-12 shrink-0 items-center gap-2 ps-3 pe-3 pt-2">
-            <LabelBadge v-if="column.label" :label="column.label" />
+            <LabelBadge
+                v-if="column.label"
+                :label="column.label"
+                :data-testid="`board-column-label-${column.key}`"
+            />
             <template v-else-if="column.channel">
                 <ChannelAvatar
                     :platform="column.channel.platform"

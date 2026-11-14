@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import { formatNumberCompact } from '@/lib/utils';
 import { insights as insightsRoute } from '@/routes/app';
 import {
     destroy as labelsDestroy,
@@ -185,7 +184,7 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                     :data-testid="`label-posts-count-${label.id}`"
                                     >{{
                                         $tChoice('labels.meta.posts', label.posts_count, {
-                                            count: formatNumberCompact(label.posts_count),
+                                            count: String(label.posts_count),
                                         })
                                     }}</span
                                 >

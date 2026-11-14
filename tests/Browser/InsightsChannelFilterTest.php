@@ -375,3 +375,27 @@ test('picking a label narrows the post metrics and keeps the label in the url', 
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('picking untagged counts only the posts without a label and clearing the filter brings every post back', function () {
+    [$user, [$alpha]] = insightsChannelFilterFixture();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $alpha->workspace_id]);
+    $post = Post::factory()->forAccount($alpha)->published()->create(['user_id' => $user->id]);
+    $post->labels()->attach($label);
+    AnalyticsPublication::query()->where('social_account_id', $alpha->id)->update(['post_id' => $post->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->click('@analytics-label-filter');
+    waitFor($page, '@analytics-label-untagged-checkbox');
+    $page->click('@analytics-label-untagged-checkbox');
+    waitForCondition($page, "new URLSearchParams(location.search).get('untagged') === '1'");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '1'");
+
+    $page->click('@analytics-label-clear');
+    waitForCondition($page, "!new URLSearchParams(location.search).has('untagged')");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->assertNoJavaScriptErrors();
+});

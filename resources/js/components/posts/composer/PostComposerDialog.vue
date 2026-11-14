@@ -2386,6 +2386,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         v-for="label in shownSelectedLabels"
                                         :key="label.id"
                                         :label="label"
+                                        :data-testid="`composer-tags-chip-${label.id}`"
                                     />
                                     <span
                                         v-if="hasHiddenSelectedLabels"

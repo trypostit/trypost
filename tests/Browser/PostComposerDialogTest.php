@@ -1386,7 +1386,7 @@ test('the composer label button shows the first two labels as colored chips and 
     waitForText($page, '@composer-tags-trigger', '+1');
 
     $chips = $page->script(<<<'JS'
-        Array.from(document.querySelectorAll('[data-testid="composer-tags-trigger"] .rounded-full'), (chip) => ({
+        Array.from(document.querySelectorAll('[data-testid^="composer-tags-chip-"]'), (chip) => ({
             text: chip.innerText.trim(),
             background: getComputedStyle(chip).backgroundColor,
         }))

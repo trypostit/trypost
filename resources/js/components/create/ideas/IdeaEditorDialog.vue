@@ -527,6 +527,7 @@ const iconButtonClass =
                                         v-for="label in shownSelectedLabels"
                                         :key="label.id"
                                         :label="label"
+                                        :data-testid="`idea-editor-labels-chip-${label.id}`"
                                     />
                                     <span
                                         v-if="hasHiddenSelectedLabels"

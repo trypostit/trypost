@@ -108,3 +108,31 @@ test('the label filter search ignores accents and hides untagged when it does no
         ->assertVisible("@posts-label-option-{$launch->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('each label in the filter shows as a chip in its own color', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $green = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Green', 'color' => '#16a34a']);
+    $gray = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Gray', 'color' => '#d1d5db']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitFor($page, '@posts-label-filter');
+    $page->click('@posts-label-filter');
+    waitFor($page, "@posts-label-chip-{$green->id}");
+
+    $chip = fn (WorkspaceLabel $label): array => $page->script(<<<JS
+        (() => {
+            const style = getComputedStyle(document.querySelector('[data-testid="posts-label-chip-{$label->id}"]'));
+            return [style.backgroundColor, style.color];
+        })()
+    JS);
+
+    expect($chip($green))->toBe(['rgb(22, 163, 74)', 'rgb(255, 255, 255)'])
+        ->and($chip($gray))->toBe(['rgb(209, 213, 219)', 'rgb(10, 10, 10)']);
+    $page->assertSeeIn("@posts-label-chip-{$green->id}", 'Green')
+        ->assertNoJavaScriptErrors();
+});

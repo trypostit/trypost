@@ -62,7 +62,7 @@ test('the list links to the board and the board groups by status', function () {
 });
 
 test('group by tag shows a post in each of its tags', function () {
-    $alpha = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha']);
+    $alpha = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Alpha', 'color' => '#16a34a']);
     $beta = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Beta']);
     $this->draft->labels()->attach([$alpha->id, $beta->id]);
 
@@ -85,6 +85,8 @@ test('group by tag shows a post in each of its tags', function () {
     waitForCount($page, "@board-card-{$this->draft->id}", 2);
 
     $page->assertVisible("@board-column-label_{$beta->id}")
+        ->assertSeeIn("@board-column-label-label_{$alpha->id}", 'Alpha')
+        ->assertScript("getComputedStyle(document.querySelector('[data-testid=\"board-column-label-label_{$alpha->id}\"]')).backgroundColor", 'rgb(22, 163, 74)')
         ->assertNoJavaScriptErrors();
 });
 

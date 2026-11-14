@@ -195,7 +195,10 @@ const clear = (): void => {
             </div>
         </template>
         <template #option="{ option }">
-            <LabelBadge :label="labelFor(option.id)" />
+            <LabelBadge
+                :label="labelFor(option.id)"
+                :data-testid="`${testId}-chip-${option.id}`"
+            />
         </template>
         <template v-if="labels.length === 0" #empty>
             <FilterEmptyState
