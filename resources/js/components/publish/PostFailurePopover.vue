@@ -2,14 +2,13 @@
 import { computed } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
-import { Badge } from '@/components/ui/badge';
+import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import { PublishStatus } from '@/types/post';
 import type { PostCard } from '@/types/publish';
@@ -33,7 +32,6 @@ const CATEGORIES = [
     'job_failed',
 ];
 
-const status = computed(() => getPostStatusConfig(props.post.status));
 
 const failure = computed(() => {
     const post = props.post;
@@ -70,13 +68,7 @@ const failure = computed(() => {
                 :aria-label="$t('posts.publish.failure.title')"
                 :data-testid="`post-status-${testKey}`"
             >
-                <Badge
-                    :variant="status.variant"
-                    class="h-6 cursor-pointer gap-1 px-2 [&>svg]:size-4"
-                >
-                    <component :is="status.icon" />
-                    {{ $t(`posts.status.${post.status}`) }}
-                </Badge>
+                <PostStatusBadge :status="post.status" class="cursor-pointer" />
             </button>
         </PopoverTrigger>
         <PopoverContent

@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'In afwachting',
         'draft' => 'Concept',
-        'pending_approval' => 'Wacht op goedkeuring',
+        'pending_approval' => 'In afwachting',
         'scheduled' => 'Gepland',
         'publishing' => 'Publiceren',
         'retrying' => 'Opnieuw proberen',
         'published' => 'Gepubliceerd',
         'failed' => 'Mislukt',
+        'pending_review' => 'In beoordeling bij Google',
+        'deleted_on_network' => 'Verwijderd',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Kanalen (:count)',
     ],
     'approvals' => [
-        'badge' => 'Goedkeuring',
         'time_passed' => 'Tijdstip verstreken',
         'approve' => 'Goedkeuren',
         'schedule' => 'Inplannen',

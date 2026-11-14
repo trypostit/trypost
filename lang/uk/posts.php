@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'Очікує',
         'draft' => 'Чернетка',
-        'pending_approval' => 'Очікує схвалення',
+        'pending_approval' => 'Очікує',
         'scheduled' => 'Заплановано',
         'publishing' => 'Публікується',
         'retrying' => 'Повторна спроба',
         'published' => 'Опубліковано',
         'failed' => 'Помилка',
+        'pending_review' => 'На перевірці в Google',
+        'deleted_on_network' => 'Видалено',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Канали (:count)',
     ],
     'approvals' => [
-        'badge' => 'Схвалення',
         'time_passed' => 'Час минув',
         'approve' => 'Схвалити',
         'schedule' => 'Запланувати',

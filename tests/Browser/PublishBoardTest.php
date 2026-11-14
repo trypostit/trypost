@@ -227,6 +227,39 @@ test('an approver approves a pending post from its board card', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a pending card reads Pending and splits its approval buttons across the row', function () {
+    $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create([
+        'user_id' => $this->user->id,
+        'scheduled_at' => now()->addDays(2),
+    ]);
+    $requester = workspaceMember($this->workspace, 'approval');
+    $request = Post::factory()->forAccount($this->channel)->pendingApproval()->create([
+        'user_id' => $requester->id,
+        'approval_requested_by' => $requester->id,
+    ]);
+
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board', ['group' => 'channel']))->resize(1280, 900);
+    waitFor($page, "@post-reject-board-{$pending->id}");
+
+    $page->assertSeeIn("@board-card-status-{$pending->id}", __('posts.status.pending_approval'));
+
+    $widths = $page->script("(() => { const row = document.querySelector('[data-testid=\"board-card-approval-{$pending->id}\"]').getBoundingClientRect(); const approve = document.querySelector('[data-testid=\"post-approve-board-{$pending->id}\"]').getBoundingClientRect(); const reject = document.querySelector('[data-testid=\"post-reject-board-{$pending->id}\"]').getBoundingClientRect(); return { equal: Math.abs(approve.width - reject.width) < 1, fills: Math.abs(approve.width + reject.width + 8 - row.width) < 1 }; })()");
+
+    expect($widths)->toBe(['equal' => true, 'fills' => true]);
+
+    $this->actingAs($requester);
+
+    $own = visit(route('app.posts.board', ['group' => 'channel']))->resize(1280, 900);
+    waitFor($own, "@post-revert-board-{$request->id}");
+
+    $fills = $own->script("(() => { const row = document.querySelector('[data-testid=\"board-card-approval-{$request->id}\"]').getBoundingClientRect(); const revert = document.querySelector('[data-testid=\"post-revert-board-{$request->id}\"]').getBoundingClientRect(); return Math.abs(revert.width - row.width) < 1; })()");
+
+    expect($fills)->toBeTrue();
+    $own->assertNoJavaScriptErrors();
+});
+
 test('an approver rejects a pending post from its board card', function () {
     $pending = Post::factory()->forAccount($this->channel)->pendingApproval()->create(['user_id' => $this->user->id]);
 

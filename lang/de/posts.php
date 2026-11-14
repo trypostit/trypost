@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'Ausstehend',
         'draft' => 'Entwurf',
-        'pending_approval' => 'Wartet auf Freigabe',
+        'pending_approval' => 'Ausstehend',
         'scheduled' => 'Geplant',
         'publishing' => 'Wird veröffentlicht',
         'retrying' => 'Erneuter Versuch',
         'published' => 'Veröffentlicht',
         'failed' => 'Fehlgeschlagen',
+        'pending_review' => 'Google-Prüfung läuft',
+        'deleted_on_network' => 'Gelöscht',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Kanäle (:count)',
     ],
     'approvals' => [
-        'badge' => 'Freigabe',
         'time_passed' => 'Zeitpunkt verstrichen',
         'approve' => 'Freigeben',
         'schedule' => 'Planen',

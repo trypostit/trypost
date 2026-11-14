@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => '대기 중',
         'draft' => '초안',
-        'pending_approval' => '승인 대기 중',
+        'pending_approval' => '승인 대기',
         'scheduled' => '예약됨',
         'publishing' => '게시 중',
         'retrying' => '재시도 중',
         'published' => '게시됨',
         'failed' => '실패',
+        'pending_review' => 'Google 검토 중',
+        'deleted_on_network' => '삭제됨',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => '채널 (:count)',
     ],
     'approvals' => [
-        'badge' => '승인',
         'time_passed' => '시간이 지났습니다',
         'approve' => '승인하기',
         'schedule' => '예약',

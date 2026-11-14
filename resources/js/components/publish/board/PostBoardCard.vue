@@ -9,10 +9,11 @@ import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
+import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { usePostCardMenuActions } from '@/composables/publish/usePostCardMenuActions';
 import { getContentTypeBadgeKey } from '@/composables/usePlatformLogo';
-import { getPostCardStatusConfig } from '@/composables/usePostStatus';
+import { postDisplayStatus } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import { filled, transform } from '@/lib/helpers';
@@ -108,11 +109,12 @@ const contentTypeKey = computed(() =>
     ),
 );
 
-const statusConfig = computed(() => getPostCardStatusConfig(props.post));
+const displayStatus = computed(() => postDisplayStatus(props.post));
 
 const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
 );
+
 
 const hasMenu = computed(
     () => canCreatePost.value && props.post.status !== PostStatus.Publishing,
@@ -166,19 +168,12 @@ const hasMenu = computed(
             >
                 {{ $t(contentTypeKey) }}
             </Badge>
-            <Badge
+            <PostStatusBadge
                 v-if="showStatus"
-                :variant="statusConfig.variant"
-                class="h-5 gap-1 px-1.5 [&>svg]:size-3.5"
+                :status="displayStatus"
+                compact
                 :data-testid="`board-card-status-${post.id}`"
-            >
-                <component
-                    :is="statusConfig.icon"
-                    :class="statusConfig.iconClass"
-                    aria-hidden="true"
-                />
-                {{ $t(statusConfig.labelKey) }}
-            </Badge>
+            />
         </div>
 
         <p
@@ -227,7 +222,7 @@ const hasMenu = computed(
 
         <div
             v-if="isPending"
-            class="relative z-10 flex flex-wrap gap-2"
+            class="relative z-10 grid grid-cols-2 gap-2 [&>*>*:only-child]:col-span-2"
             :data-testid="`board-card-approval-${post.id}`"
         >
             <PostApprovalActions :post="post" :test-key="`board-${post.id}`" />

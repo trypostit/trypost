@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'قيد الانتظار',
         'draft' => 'مسودة',
-        'pending_approval' => 'بانتظار الموافقة',
+        'pending_approval' => 'قيد الانتظار',
         'scheduled' => 'مجدول',
         'publishing' => 'قيد النشر',
         'retrying' => 'إعادة المحاولة',
         'published' => 'منشور',
         'failed' => 'فشل',
+        'pending_review' => 'قيد مراجعة Google',
+        'deleted_on_network' => 'محذوف',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'القنوات (:count)',
     ],
     'approvals' => [
-        'badge' => 'موافقة',
         'time_passed' => 'انقضى الوقت',
         'approve' => 'وافق',
         'schedule' => 'جدولة',

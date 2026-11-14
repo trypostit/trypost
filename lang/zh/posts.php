@@ -646,6 +646,8 @@ return [
         'retrying' => '重试中',
         'published' => '已发布',
         'failed' => '已失败',
+        'pending_review' => 'Google 审核中',
+        'deleted_on_network' => '已删除',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => '频道 (:count)',
     ],
     'approvals' => [
-        'badge' => '审批',
         'time_passed' => '时间已过',
         'approve' => '批准',
         'schedule' => '排期',

@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'Beklemede',
         'draft' => 'Taslak',
-        'pending_approval' => 'Onay bekliyor',
+        'pending_approval' => 'Bekliyor',
         'scheduled' => 'Zamanlandı',
         'publishing' => 'Yayınlanıyor',
         'retrying' => 'Yeniden deneniyor',
         'published' => 'Yayınlandı',
         'failed' => 'Başarısız',
+        'pending_review' => 'Google incelemesinde',
+        'deleted_on_network' => 'Silindi',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Kanallar (:count)',
     ],
     'approvals' => [
-        'badge' => 'Onay',
         'time_passed' => 'Saat geçti',
         'approve' => 'Onayla',
         'schedule' => 'Zamanla',

@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'Σε εκκρεμότητα',
         'draft' => 'Πρόχειρο',
-        'pending_approval' => 'Σε αναμονή έγκρισης',
+        'pending_approval' => 'Σε αναμονή',
         'scheduled' => 'Προγραμματισμένη',
         'publishing' => 'Δημοσιεύεται',
         'retrying' => 'Επανάληψη',
         'published' => 'Δημοσιεύτηκε',
         'failed' => 'Απέτυχε',
+        'pending_review' => 'Σε έλεγχο από την Google',
+        'deleted_on_network' => 'Διαγράφηκε',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Κανάλια (:count)',
     ],
     'approvals' => [
-        'badge' => 'Προς έγκριση',
         'time_passed' => 'Η ώρα πέρασε',
         'approve' => 'Έγκριση',
         'schedule' => 'Προγραμματισμός',

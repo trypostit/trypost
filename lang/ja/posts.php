@@ -646,6 +646,8 @@ return [
         'retrying' => '再試行中',
         'published' => '公開済み',
         'failed' => '失敗',
+        'pending_review' => 'Google が審査中',
+        'deleted_on_network' => '削除済み',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'チャンネル (:count)',
     ],
     'approvals' => [
-        'badge' => '承認',
         'time_passed' => '時刻を過ぎています',
         'approve' => '承認する',
         'schedule' => '予約',

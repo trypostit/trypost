@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'В ожидании',
         'draft' => 'Черновик',
-        'pending_approval' => 'Ожидает одобрения',
+        'pending_approval' => 'Ожидает',
         'scheduled' => 'Запланирован',
         'publishing' => 'Публикуется',
         'retrying' => 'Повторная попытка',
         'published' => 'Опубликован',
         'failed' => 'Ошибка',
+        'pending_review' => 'На проверке в Google',
+        'deleted_on_network' => 'Удалён',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Каналы (:count)',
     ],
     'approvals' => [
-        'badge' => 'Одобрение',
         'time_passed' => 'Время прошло',
         'approve' => 'Одобрить',
         'schedule' => 'Запланировать',

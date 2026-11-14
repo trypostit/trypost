@@ -10,6 +10,15 @@ declare(strict_types=1);
 */
 
 return [
+    'posts.status.draft' => 9,
+    'posts.status.pending_approval' => 13,
+    'posts.status.scheduled' => 16,
+    'posts.status.publishing' => 20,
+    'posts.status.retrying' => 18,
+    'posts.status.published' => 14,
+    'posts.status.failed' => 14,
+    'posts.status.pending_review' => 28,
+    'posts.status.deleted_on_network' => 10,
     'accounts.connect.actions.back' => 8,
     'accounts.connect.actions.connect_again' => 17,
     'accounts.connect.actions.start_again' => 16,

@@ -640,12 +640,14 @@ return [
     'status' => [
         'pending' => 'Pending',
         'draft' => 'Draft',
-        'pending_approval' => 'Pending approval',
+        'pending_approval' => 'Pending',
         'scheduled' => 'Scheduled',
         'publishing' => 'Publishing',
         'retrying' => 'Retrying',
         'published' => 'Published',
         'failed' => 'Failed',
+        'pending_review' => 'In review by Google',
+        'deleted_on_network' => 'Deleted',
     ],
 
     'descriptions' => [
@@ -1126,7 +1128,6 @@ return [
         'channels' => 'Channels (:count)',
     ],
     'approvals' => [
-        'badge' => 'Approval',
         'time_passed' => 'Time has passed',
         'approve' => 'Approve',
         'schedule' => 'Schedule',

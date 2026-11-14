@@ -4,7 +4,6 @@ import {
     IconArrowsMaximize,
     IconCircleDashedPlus,
     IconCirclePlay,
-    IconEdit,
     IconExternalLink,
     IconGhost2,
     IconMessageCircle,
@@ -38,6 +37,7 @@ import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
+import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,7 +57,6 @@ import {
     getContentTypeBadgeKey,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
@@ -434,15 +433,11 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                     {{ $t(noTimeKey) }}
                 </span>
             </span>
-            <Badge
+            <PostStatusBadge
                 v-if="showsApprovalBadge"
-                variant="warning"
-                class="h-6 gap-1 px-2 [&>svg]:size-4"
+                status="pending_approval"
                 :data-testid="`post-approval-badge-${post.id}`"
-            >
-                <IconEdit />
-                {{ $t('posts.approvals.badge') }}
-            </Badge>
+            />
             <span
                 v-if="timePassed"
                 class="text-xs text-destructive-text"
@@ -476,18 +471,11 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                 :attempted-at="time"
                 :timezone="timezone"
             />
-            <Badge
+            <PostStatusBadge
                 v-else-if="showStatus && !isPublishing"
-                :variant="getPostStatusConfig(post.status).variant"
-                class="h-6 gap-1 px-2 [&>svg]:size-4"
+                :status="post.status"
                 :data-testid="`post-status-${post.id}`"
-            >
-                <component
-                    :is="getPostStatusConfig(post.status).icon"
-                    :class="getPostStatusConfig(post.status).iconClass"
-                />
-                {{ $t(`posts.status.${post.status}`) }}
-            </Badge>
+            />
         </div>
 
         <Collapsible :open="notesOpen" as-child @update:open="setNotesOpen">
