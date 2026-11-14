@@ -150,16 +150,30 @@ const isInGoogleReview = computed(
         props.post.publish_status === PublishStatus.PendingReview,
 );
 
+/** How the post was timed: on Sent for every post (one imported from the network counts as custom), elsewhere only while it waits to go out. */
 const scheduleMode = computed(() => {
-    if (props.post.origin === PostOrigin.Network) {
-        return props.tab === 'sent' ? ScheduleMode.Custom : null;
+    const imported = props.post.origin === PostOrigin.Network;
+
+    if (props.tab === 'sent' && imported) {
+        return ScheduleMode.Custom;
     }
 
-    return props.tab === 'sent' ||
+    if (props.tab === 'sent') {
+        return props.post.schedule_mode;
+    }
+
+    if (imported) {
+        return null;
+    }
+
+    if (
         props.post.status === PostStatus.Scheduled ||
         props.post.status === PostStatus.PendingApproval
-        ? props.post.schedule_mode
-        : null;
+    ) {
+        return props.post.schedule_mode;
+    }
+
+    return null;
 });
 
 const showNotes = computed(() => !isPublishing.value);

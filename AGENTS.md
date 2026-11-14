@@ -203,6 +203,16 @@ Vue components must have a single root element.
 
 # Project-Specific Rules
 
+## Branching reads top to bottom (PHP and TypeScript)
+
+A function that decides between several outcomes is a list of early returns, one case per `if`, read from top to bottom (owner decision November 2026). Never a ternary inside a ternary, a ternary inside an `if`, or a ternary whose condition joins several checks with `||` / `&&`.
+
+- One ternary with a single plain condition is fine (`filled($channel) ? 'channel' : 'all'`). Anything more becomes `if` blocks with braces.
+- Name a check used twice (`const imported = post.origin === PostOrigin.Network`) instead of repeating it in each branch.
+- When the outcome follows from what the user clicked, let each action say it (`publishNow()` toasts "publishing") instead of guessing it back from the payload.
+- A `match` lists every case it accepts and has no `default` that hides an unknown value; an unknown value should fail, not read as another case.
+- Code written before this rule moves to it when touched, not in a sweep. `PostTimelineCard`'s `scheduleMode` is the reference.
+
 ## Frontend (Vue/TypeScript)
 
 - **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.
