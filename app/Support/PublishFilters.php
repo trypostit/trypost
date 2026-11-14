@@ -36,13 +36,29 @@ final class PublishFilters
             labelIds: RequestIds::uuidList($request->collect('labels')),
             untagged: $request->boolean('untagged'),
             requestedChannelIds: $requestedChannelIds,
-            scopedChannelIds: match (true) {
-                filled($channel) => [$channel->id],
-                filled($requestedChannelIds) => $requestedChannelIds,
-                default => null,
-            },
+            scopedChannelIds: self::scopedChannelIds($channel, $requestedChannelIds),
             displayTimezone: Timezone::known($request->query->getString('tz')) ?? Timezone::normalize($user->timezone),
         );
+    }
+
+    /**
+     * The channels the posts are read from: the page's channel, else the ones
+     * asked for, else every channel (null).
+     *
+     * @param  list<string>  $requestedChannelIds
+     * @return list<string>|null
+     */
+    private static function scopedChannelIds(?SocialAccount $channel, array $requestedChannelIds): ?array
+    {
+        if (filled($channel)) {
+            return [$channel->id];
+        }
+
+        if (filled($requestedChannelIds)) {
+            return $requestedChannelIds;
+        }
+
+        return null;
     }
 
     /**

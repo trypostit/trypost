@@ -4,7 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { provideViewTimezone } from '@/composables/useViewTimezone';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { calendar } from '@/routes/app';
 import {
     board as channelBoard,
@@ -51,9 +51,16 @@ export const usePublishFilters = (
 ) => {
     const page = usePage();
 
-    const userTimezone = computed(
-        () => (page.props.auth.user as User).timezone || props.displayTimezone,
-    );
+    /** The signed-in user's zone; the page's display zone for a user without one. */
+    const userTimezone = computed((): string => {
+        const own = (page.props.auth.user as User).timezone;
+
+        if (filled(own)) {
+            return own;
+        }
+
+        return props.displayTimezone;
+    });
 
     const { timezone, setTimezone, dayKey } = useDisplayTimezone(
         props.displayTimezone,
@@ -75,42 +82,96 @@ export const usePublishFilters = (
     const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
     const selectedChannelIds = ref<string[]>(props.filters.channels ?? []);
 
+    const labelsQuery = (): string[] | undefined => {
+        if (blank(selectedLabelIds.value)) {
+            return undefined;
+        }
+
+        return selectedLabelIds.value;
+    };
+
+    const untaggedQuery = (): string | undefined => {
+        if (!selectedUntagged.value) {
+            return undefined;
+        }
+
+        return '1';
+    };
+
+    /** Channels are a filter of the all-channels page only; a channel page is already one channel. */
+    const channelsQuery = (): string[] | undefined => {
+        if (props.scope !== 'all') {
+            return undefined;
+        }
+
+        if (blank(selectedChannelIds.value)) {
+            return undefined;
+        }
+
+        return selectedChannelIds.value;
+    };
+
+    /** The zone goes in the URL only when it is not the user's own. */
+    const timezoneQuery = (): string | undefined => {
+        if (timezone.value === userTimezone.value) {
+            return undefined;
+        }
+
+        return timezone.value;
+    };
+
     const filterQuery = (): PublishQuery => ({
-        labels: filled(selectedLabelIds.value)
-            ? selectedLabelIds.value
-            : undefined,
-        untagged: selectedUntagged.value ? '1' : undefined,
-        channels:
-            props.scope === 'all' && filled(selectedChannelIds.value)
-                ? selectedChannelIds.value
-                : undefined,
-        tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
+        labels: labelsQuery(),
+        untagged: untaggedQuery(),
+        channels: channelsQuery(),
+        tz: timezoneQuery(),
     });
 
-    const listUrlFor = (query: PublishQuery = filterQuery()): string =>
-        props.channel
-            ? publish.url(props.channel.id, { query })
-            : postsIndex.url({ query });
+    const listUrlFor = (query: PublishQuery = filterQuery()): string => {
+        if (filled(props.channel)) {
+            return publish.url(props.channel.id, { query });
+        }
+
+        return postsIndex.url({ query });
+    };
 
     const calendarUrlFor = (
         view: CalendarView,
         query: PublishQuery = filterQuery(),
-    ): string =>
-        props.channel
-            ? channelCalendar.url({ account: props.channel.id, view }, { query })
-            : calendar.url({ view }, { query });
+    ): string => {
+        if (filled(props.channel)) {
+            return channelCalendar.url(
+                { account: props.channel.id, view },
+                { query },
+            );
+        }
 
-    const boardUrlFor = (query: PublishQuery = filterQuery()): string =>
-        props.channel
-            ? channelBoard.url(props.channel.id, { query })
-            : board.url({ query });
+        return calendar.url({ view }, { query });
+    };
+
+    const boardUrlFor = (query: PublishQuery = filterQuery()): string => {
+        if (filled(props.channel)) {
+            return channelBoard.url(props.channel.id, { query });
+        }
+
+        return board.url({ query });
+    };
 
     const isPhone = useBelowBreakpoint('md');
+
+    /** The calendar opens on days on a phone, on the week elsewhere. */
+    const calendarView = computed((): CalendarView => {
+        if (isPhone.value) {
+            return 'days';
+        }
+
+        return 'week';
+    });
 
     const listHref = computed((): string => listUrlFor());
 
     const calendarHref = computed((): string =>
-        calendarUrlFor(isPhone.value ? 'days' : 'week'),
+        calendarUrlFor(calendarView.value),
     );
 
     const boardHref = computed((): string => boardUrlFor());

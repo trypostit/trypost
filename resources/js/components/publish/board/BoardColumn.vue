@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import PostBoardCard from '@/components/publish/board/PostBoardCard.vue';
-import { blank } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { formatNumberCompact } from '@/lib/utils';
 import type { BoardColumnMeta, BoardGroup } from '@/types/board';
 import { channelName } from '@/types/channel';
@@ -31,21 +31,42 @@ const posts = computed(() => cards.value?.data ?? []);
 /** Every post of the column, loaded or not: the paginator's total. */
 const count = computed(() => cards.value?.total ?? 0);
 
-/** A status or Untagged column is named by a lang key. */
-const nameKey = computed((): string => {
-    const { type, key } = props.column;
+/** The exact count on hover, once the badge shortens it ("1.5K"). */
+const countTitle = computed((): string | undefined => {
+    if (count.value < 1000) {
+        return undefined;
+    }
 
-    return `posts.board.columns.${type === 'status' ? key : type}`;
+    return String(count.value);
 });
 
-/** A tag or channel column is named by the tag or the channel. */
-const ownName = computed((): string | null => {
-    if (props.column.label) {
+/** The cards show their status unless the columns already are the statuses. */
+const showsCardStatus = computed(() => props.group !== 'status');
+
+/** A status or Untagged column is named by a lang key. */
+const nameKey = computed((): string => {
+    if (props.column.type === 'status') {
+        return `posts.board.columns.${props.column.key}`;
+    }
+
+    return `posts.board.columns.${props.column.type}`;
+});
+
+/**
+ * The column's name: the tag's or the channel's own name, else its lang key
+ * resolved with the template's `$t`.
+ */
+const columnName = (translate: (key: string) => string): string => {
+    if (filled(props.column.label)) {
         return props.column.label.name;
     }
 
-    return props.column.channel ? channelName(props.column.channel) : null;
-});
+    if (filled(props.column.channel)) {
+        return channelName(props.column.channel);
+    }
+
+    return translate(nameKey.value);
+};
 </script>
 
 <template>
@@ -53,7 +74,7 @@ const ownName = computed((): string | null => {
         class="flex h-full w-[85vw] shrink-0 snap-start flex-col rounded-lg bg-muted sm:w-80"
         :aria-label="
             $tChoice('posts.board.column_aria', count, {
-                name: ownName ?? $t(nameKey),
+                name: columnName($t),
                 count: String(count),
             })
         "
@@ -87,7 +108,7 @@ const ownName = computed((): string | null => {
             <span
                 v-if="cards"
                 class="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-secondary px-1 text-xs leading-[18px] font-medium text-muted-foreground"
-                :title="count >= 1000 ? String(count) : undefined"
+                :title="countTitle"
                 :data-testid="`board-column-count-${column.key}`"
                 >{{ formatNumberCompact(count) }}</span
             >
@@ -121,7 +142,7 @@ const ownName = computed((): string | null => {
                         v-for="post in posts"
                         :key="post.id"
                         :post="post"
-                        :show-status="group !== 'status'"
+                        :show-status="showsCardStatus"
                         :timezone="timezone"
                     />
                     <p

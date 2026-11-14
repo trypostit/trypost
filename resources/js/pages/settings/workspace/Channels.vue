@@ -16,7 +16,7 @@ import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import { blank, filled } from '@/lib/helpers';
+import { blank } from '@/lib/helpers';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import { Platform } from '@/types/platform';
 import type {
@@ -45,15 +45,34 @@ const channels = computed<ChannelListRow[]>(() =>
 const search = ref(props.filters.search);
 const selectedNetworks = ref<string[]>(props.filters.networks);
 
+const hasChannels = computed(() => props.total > 0);
+
+/** The network filter shows once there is more than one network to pick from. */
+const showsNetworkFilter = computed(() => props.networks.length > 1);
+
+const searchQuery = (): string | undefined => {
+    if (blank(search.value)) {
+        return undefined;
+    }
+
+    return search.value;
+};
+
+const networksQuery = (): string[] | undefined => {
+    if (blank(selectedNetworks.value)) {
+        return undefined;
+    }
+
+    return selectedNetworks.value;
+};
+
 /** A new search or filter reloads the list from its first page. */
 const applyFilters = debounce((): void => {
     router.get(
         channelsSettings.url(),
         {
-            search: search.value || undefined,
-            networks: filled(selectedNetworks.value)
-                ? selectedNetworks.value
-                : undefined,
+            search: searchQuery(),
+            networks: networksQuery(),
         },
         {
             preserveState: true,
@@ -97,7 +116,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
     <SettingsLayout
         :title="$t('channels.title')"
         :description="$t('channels.description')"
-        :centered="total === 0"
+        :centered="!hasChannels"
         :total="total"
         wide
     >
@@ -108,7 +127,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
             </Button>
         </template>
 
-            <div v-if="total > 0" class="flex flex-col gap-3">
+            <div v-if="hasChannels" class="flex flex-col gap-3">
                 <div class="flex items-center gap-2" data-testid="channels-toolbar">
                     <SettingsSearch
                         v-model="search"
@@ -116,7 +135,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                         :placeholder="$t('channels.list.search')"
                     />
                     <NetworkFilter
-                        v-if="networks.length > 1"
+                        v-if="showsNetworkFilter"
                         v-model="selectedNetworks"
                         :networks="networks"
                         test-id="channels-network"

@@ -184,6 +184,7 @@ return [
             'this_week' => 'Bu hafta',
         ],
         'posting_times_per_week' => 'Haftada :count',
+        'no_posting_times' => 'Saat yok',
         'no_results' => 'Aramanızla eşleşen kanal yok.',
         'connection_lost' => 'Bu kanalın bağlantısı koptu',
         'settings' => 'Ayarlar',

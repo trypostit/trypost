@@ -27,11 +27,23 @@ export const usePublishView = (): {
     const isPhone = useBelowBreakpoint('md');
     const { urlIsActive } = useActiveUrl();
 
-    const publishView = computed((): PublishView =>
-        PUBLISH_VIEWS.includes(stored.value) ? stored.value : 'list',
-    );
+    /** The stored view when it is still one of the views, else the list. */
+    const publishView = computed((): PublishView => {
+        if (PUBLISH_VIEWS.includes(stored.value)) {
+            return stored.value;
+        }
 
-    const calendarView = computed((): string => (isPhone.value ? 'days' : 'week'));
+        return 'list';
+    });
+
+    /** The calendar opens on days on a phone, on the week elsewhere. */
+    const calendarView = computed((): string => {
+        if (isPhone.value) {
+            return 'days';
+        }
+
+        return 'week';
+    });
 
     const rememberPublishView = (view: PublishView): void => {
         if (stored.value !== view) {
@@ -44,7 +56,11 @@ export const usePublishView = (): {
             return calendar.url({ view: calendarView.value });
         }
 
-        return publishView.value === 'board' ? board.url() : postsIndex.url();
+        if (publishView.value === 'board') {
+            return board.url();
+        }
+
+        return postsIndex.url();
     });
 
     const channelPublishUrl = (channelId: string): string => {
@@ -52,9 +68,11 @@ export const usePublishView = (): {
             return channelCalendar.url({ account: channelId, view: calendarView.value });
         }
 
-        return publishView.value === 'board'
-            ? channelBoard.url(channelId)
-            : channelPublish.url(channelId);
+        if (publishView.value === 'board') {
+            return channelBoard.url(channelId);
+        }
+
+        return channelPublish.url(channelId);
     };
 
     /** Whether the page is one of a channel's Publish views, so its Publish link shows as current on any of them. */

@@ -184,6 +184,7 @@ return [
             'this_week' => 'Эта неделя',
         ],
         'posting_times_per_week' => ':count в неделю',
+        'no_posting_times' => 'Нет времени',
         'no_results' => 'Нет каналов по вашему запросу.',
         'connection_lost' => 'Канал потерял подключение',
         'settings' => 'Настройки',

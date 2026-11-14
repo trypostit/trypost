@@ -184,6 +184,7 @@ return [
             'this_week' => 'This week',
         ],
         'posting_times_per_week' => ':count per week',
+        'no_posting_times' => 'No posting times',
         'no_results' => 'No channels match your search.',
         'connection_lost' => 'This channel lost its connection',
         'settings' => 'Settings',

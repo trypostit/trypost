@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Carbon\CarbonInterface;
+use Carbon\CarbonTimeZone;
 use DateTimeZone;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -61,23 +63,25 @@ class Timezone
      */
     public static function options(): array
     {
+        $now = now();
+
         return collect(DateTimeZone::listIdentifiers())
-            ->map(fn (string $identifier): array => self::option($identifier))
+            ->map(fn (string $identifier): array => self::option($identifier, $now))
             ->all();
     }
 
     /**
      * A canonical time zone as the pickers show it: its city ("Sao Paulo") and
-     * its current offset ("GMT-3").
+     * its offset at that instant ("GMT-3").
      *
      * @return array{value: string, label: string, offset: string}
      */
-    public static function option(string $identifier): array
+    public static function option(string $identifier, ?CarbonInterface $at = null): array
     {
         return [
             'value' => $identifier,
             'label' => Str::of($identifier)->afterLast('/')->replace('_', ' ')->toString(),
-            'offset' => self::gmtOffset(now($identifier)->utcOffset()),
+            'offset' => self::gmtOffset(intdiv(CarbonTimeZone::create($identifier)->getOffset($at ?? now()), 60)),
         ];
     }
 

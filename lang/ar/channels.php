@@ -184,6 +184,7 @@ return [
             'this_week' => 'هذا الأسبوع',
         ],
         'posting_times_per_week' => ':count في الأسبوع',
+        'no_posting_times' => 'لا توجد أوقات نشر',
         'no_results' => 'لا توجد قنوات تطابق بحثك.',
         'connection_lost' => 'فقدت هذه القناة الاتصال',
         'settings' => 'الإعدادات',

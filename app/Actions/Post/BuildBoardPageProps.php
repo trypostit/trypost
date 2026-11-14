@@ -47,15 +47,9 @@ class BuildBoardPageProps
 
         $columnQuery = fn (array $column): Builder => self::columnQuery($column, clone $posts);
 
-        $columns = match (true) {
-            ! $hasChannels => collect(),
-            $group === 'tag' => self::tagColumns($labels, $filters),
-            $group === 'channel' => self::channelColumns($accounts, $filters),
-            default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
-        };
+        $columns = self::columns($group, $hasChannels, $labels, $accounts, $filters);
 
         return [
-            'workspace' => $workspace,
             'scope' => filled($channel) ? 'channel' : 'all',
             'channel' => fn (): ?array => transform($channel, fn (SocialAccount $channel): array => BuildPublishPageProps::channelHeader($channel, $user->week_starts_on)),
             'group' => $group,
@@ -71,7 +65,6 @@ class BuildBoardPageProps
             'filters' => $filters->toProp(),
             'filterAccounts' => fn () => SocialAccountResource::collection($accounts),
             'hasChannels' => $hasChannels,
-            'authUserId' => $user->id,
         ];
     }
 
@@ -99,6 +92,26 @@ class BuildBoardPageProps
         }
 
         return $requested;
+    }
+
+    /**
+     * The board's columns for the group, none while the workspace has no channel.
+     *
+     * @param  Collection<int, WorkspaceLabel>  $labels
+     * @param  Collection<int, SocialAccount>  $accounts
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function columns(string $group, bool $hasChannels, Collection $labels, Collection $accounts, PublishFilters $filters): Collection
+    {
+        if (! $hasChannels) {
+            return collect();
+        }
+
+        return match ($group) {
+            'status' => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
+            'tag' => self::tagColumns($labels, $filters),
+            'channel' => self::channelColumns($accounts, $filters),
+        };
     }
 
     /**

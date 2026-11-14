@@ -184,6 +184,7 @@ return [
             'this_week' => '이번 주',
         ],
         'posting_times_per_week' => '주 :count회',
+        'no_posting_times' => '게시 시간 없음',
         'no_results' => '검색과 일치하는 채널이 없습니다.',
         'connection_lost' => '이 채널의 연결이 끊어졌습니다',
         'settings' => '설정',

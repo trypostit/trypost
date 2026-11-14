@@ -1,3 +1,4 @@
+import { filled } from '@/lib/helpers';
 import type { MediaType } from '@/lib/mediaType';
 import { Platform } from '@/types/platform';
 import type { TimezoneOption } from '@/types/posting-schedule';
@@ -58,7 +59,7 @@ const PLATFORMS_WITH_ACCOUNT_TYPE: string[] = [
 export const isConnectionLost = (account: {
     status: SocialAccountStatusValue | null;
 }): boolean => {
-    if (account.status === null) {
+    if (!filled(account.status)) {
         return false;
     }
 

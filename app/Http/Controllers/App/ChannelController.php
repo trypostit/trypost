@@ -58,8 +58,8 @@ class ChannelController extends Controller
             'connectedChannels' => Inertia::scroll(fn () => ChannelListRowResource::collection(
                 ListWorkspaceChannels::page($workspace, $search, $networks, $weekStart),
             ))->matchOn('data.id'),
-            'total' => $workspace->socialAccounts()->count(),
-            'networks' => fn (): array => ListWorkspaceChannels::networks($workspace),
+            'total' => fn (): int => $workspace->socialAccounts()->count(),
+            'networks' => fn (): array => $request->availableNetworks(),
             'filters' => [
                 'search' => $search,
                 'networks' => $networks,

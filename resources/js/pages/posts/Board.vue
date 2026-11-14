@@ -80,8 +80,12 @@ const {
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
+/** Deleting a card reloads the columns only, like the card's other actions, so the board keeps its loaded pages. */
 provide(deletePostCardKey, (post: PostCard) => {
-    deleteModal.value?.open({ url: destroyPost.url(post.id) });
+    deleteModal.value?.open({
+        url: destroyPost.url(post.id),
+        visit: columnsReload(),
+    });
 });
 
 provide(
@@ -91,11 +95,17 @@ provide(
 
 const selectedGroup = ref<BoardGroup>(props.group);
 
+/** The group in the URL; Status is the default and stays out of it. */
+const groupQuery = (): BoardGroup | undefined => {
+    if (selectedGroup.value === 'status') {
+        return undefined;
+    }
+
+    return selectedGroup.value;
+};
+
 const boardUrl = (): string =>
-    boardUrlFor({
-        ...filterQuery(),
-        group: selectedGroup.value !== 'status' ? selectedGroup.value : undefined,
-    });
+    boardUrlFor({ ...filterQuery(), group: groupQuery() });
 
 const columnPaths = (): string[] =>
     props.boardColumns.map((column) => `columns.${column.key}`);
@@ -171,13 +181,40 @@ const connectChannel = (): void => {
     openConnectDialog();
 };
 
-const pageTitle = computed(() =>
-    props.channel ? channelName(props.channel) : null,
+/** The tab's title: the channel's name, else the view's, resolved with the template's `$t`. */
+const pageTitle = (translate: (key: string) => string): string => {
+    if (filled(props.channel)) {
+        return channelName(props.channel);
+    }
+
+    return translate('posts.board.view');
+};
+
+const showsChannelFilter = computed(
+    () => props.scope === 'all' && filled(props.filterAccounts),
 );
+
+/** The Instagram grid's link, for a channel that has one. */
+const gridHref = computed((): string | undefined => {
+    if (!props.channel?.has_grid) {
+        return undefined;
+    }
+
+    return grid.url(props.channel.id);
+});
+
+/** A new post starts on this page's channel, or on none from All channels. */
+const newPostAccountIds = computed((): string[] => {
+    if (filled(props.channel)) {
+        return [props.channel.id];
+    }
+
+    return [];
+});
 </script>
 
 <template>
-    <Head :title="pageTitle ?? $t('posts.board.view')" />
+    <Head :title="pageTitle($t)" />
 
     <AppLayout full-width>
         <template #header>
@@ -199,7 +236,7 @@ const pageTitle = computed(() =>
                     data-testid="board-filters"
                 >
                     <PostChannelFilter
-                        v-if="scope === 'all' && filled(filterAccounts)"
+                        v-if="showsChannelFilter"
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
                         sheet-below-sm
@@ -225,14 +262,10 @@ const pageTitle = computed(() =>
                                 :list-href="listHref"
                                 :calendar-href="calendarHref"
                                 :board-href="boardUrl()"
-                                :grid-href="
-                                    channel?.has_grid
-                                        ? grid.url(channel.id)
-                                        : undefined
-                                "
+                                :grid-href="gridHref"
                             />
                             <NewPostButton
-                                :social-account-ids="channel ? [channel.id] : []"
+                                :social-account-ids="newPostAccountIds"
                             />
                         </div>
                     </AppHeaderActions>

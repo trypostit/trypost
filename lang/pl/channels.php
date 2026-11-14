@@ -184,6 +184,7 @@ return [
             'this_week' => 'Ten tydzień',
         ],
         'posting_times_per_week' => ':count na tydzień',
+        'no_posting_times' => 'Brak godzin',
         'no_results' => 'Żaden kanał nie pasuje do wyszukiwania.',
         'connection_lost' => 'Ten kanał utracił połączenie',
         'settings' => 'Ustawienia',

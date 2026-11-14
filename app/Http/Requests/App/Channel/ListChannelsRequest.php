@@ -46,12 +46,21 @@ class ListChannelsRequest extends FormRequest
             return [];
         }
 
-        $available = ListWorkspaceChannels::networks($this->user()->currentWorkspace);
-
         return $requested
-            ->filter(fn (mixed $network): bool => in_array($network, $available, true))
+            ->filter(fn (mixed $network): bool => in_array($network, $this->availableNetworks(), true))
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Every network the workspace has a channel on, read once per request:
+     * the filter checks the networks asked for against it and the page lists it.
+     *
+     * @return list<string>
+     */
+    public function availableNetworks(): array
+    {
+        return once(fn (): array => ListWorkspaceChannels::networks($this->user()->currentWorkspace));
     }
 }

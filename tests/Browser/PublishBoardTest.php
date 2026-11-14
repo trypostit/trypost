@@ -279,6 +279,27 @@ test('moving a scheduled post to drafts from its board card menu reloads the col
     $page->assertNoJavaScriptErrors();
 });
 
+test('deleting a card from its menu reloads the columns in place', function () {
+    $this->actingAs($this->user);
+
+    $page = visit(route('app.posts.board'))->resize(1280, 900);
+    waitFor($page, "@board-column-draft @board-card-{$this->draft->id}");
+    waitFor($page, '@board-column-scroll-failed');
+    $page->script('document.querySelector(\'[data-testid="board-column-scroll-failed"]\').dataset.mounted = "before"');
+
+    $page->click("@board-card-menu-{$this->draft->id}");
+    waitForOpen($page, "@post-card-menu-content-board-{$this->draft->id}");
+    $page->click("@post-delete-board-{$this->draft->id}");
+    waitForOpen($page, '@confirm-delete-modal');
+    $page->click('@confirm-delete-action');
+
+    waitForGone($page, "@board-card-{$this->draft->id}");
+
+    expect($page->script('document.querySelector(\'[data-testid="board-column-scroll-failed"]\')?.dataset.mounted'))->toBe('before')
+        ->and(Post::query()->whereKey($this->draft->id)->exists())->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a video thumbnail loads only once its card comes near the screen', function () {
     $video = Post::factory()->forAccount($this->channel)->failed()->create([
         'user_id' => $this->user->id,

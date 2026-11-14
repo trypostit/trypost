@@ -184,6 +184,7 @@ return [
             'this_week' => 'Questa settimana',
         ],
         'posting_times_per_week' => ':count a settimana',
+        'no_posting_times' => 'Nessun orario',
         'no_results' => 'Nessun canale corrisponde alla ricerca.',
         'connection_lost' => 'Questo canale ha perso la connessione',
         'settings' => 'Impostazioni',

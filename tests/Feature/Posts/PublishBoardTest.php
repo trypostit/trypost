@@ -79,8 +79,7 @@ test('it renders the board on both pages', function () {
             ->where('channel', null)
             ->where('group', 'status')
             ->where('groups', ['status', 'tag', 'channel'])
-            ->where('hasChannels', true)
-            ->where('authUserId', $this->user->id));
+            ->where('hasChannels', true));
 
     $this->actingAs($this->user)
         ->get(route('app.channels.board', $this->channel))

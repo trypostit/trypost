@@ -231,6 +231,7 @@ test('each channel row shows its time zone and posting times, and the list is se
     $linkedin = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $user->current_workspace_id,
         'display_name' => 'Acme LinkedIn',
+        'username' => 'acme',
         'timezone' => 'America/Sao_Paulo',
         'posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00')->withTime(3, '09:00'),
     ]);
@@ -238,6 +239,7 @@ test('each channel row shows its time zone and posting times, and the list is se
         'workspace_id' => $user->current_workspace_id,
         'platform' => Platform::X,
         'display_name' => 'Beta X',
+        'username' => null,
         'timezone' => 'UTC',
     ]);
     $this->actingAs($user);
@@ -247,7 +249,12 @@ test('each channel row shows its time zone and posting times, and the list is se
 
     $page->assertSeeIn("@channel-timezone-{$linkedin->id}", 'Sao Paulo')
         ->assertSeeIn("@channel-posting-times-{$linkedin->id}", __('channels.list.posting_times_per_week', ['count' => 2]))
-        ->assertSeeIn("@channel-posting-times-{$x->id}", __('channels.settings_page.day_empty'))
+        ->assertSeeIn("@channel-posting-times-{$x->id}", __('channels.list.no_posting_times'))
+        ->assertSeeIn("@channel-network-{$linkedin->id}", 'LinkedIn · @acme');
+
+    expect($page->text("@channel-network-{$x->id}"))->toBe('X');
+
+    $page
         ->assertSeeIn('@header-title-total', '(2)');
 
     $page->type('@header-search-input', 'beta');

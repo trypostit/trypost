@@ -184,6 +184,7 @@ return [
             'this_week' => '今週',
         ],
         'posting_times_per_week' => '週:count回',
+        'no_posting_times' => '投稿時間なし',
         'no_results' => '検索に一致するチャンネルはありません。',
         'connection_lost' => 'このチャンネルの接続が切れました',
         'settings' => '設定',

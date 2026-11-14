@@ -184,6 +184,7 @@ return [
             'this_week' => 'Αυτή την εβδομάδα',
         ],
         'posting_times_per_week' => ':count την εβδομάδα',
+        'no_posting_times' => 'Χωρίς ώρες',
         'no_results' => 'Κανένα κανάλι δεν ταιριάζει με την αναζήτηση.',
         'connection_lost' => 'Αυτό το κανάλι έχασε τη σύνδεση',
         'settings' => 'Ρυθμίσεις',

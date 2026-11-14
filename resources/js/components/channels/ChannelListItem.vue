@@ -81,15 +81,15 @@ const networkName = (translate: Translate): string => {
     return getPlatformLabel(props.channel.platform);
 };
 
-/** The network and the handle under the name: "Instagram · @trypost.it". */
+/** The network and the username under the name: "Instagram · @trypost.it"; the network alone for an account without one (a Facebook Page). */
 const networkLine = (translate: Translate): string => {
     const network = networkName(translate);
 
-    if (blank(props.channel.handle_label)) {
+    if (blank(props.channel.username)) {
         return network;
     }
 
-    return `${network} · ${props.channel.handle_label}`;
+    return `${network} · @${props.channel.username}`;
 };
 
 const reconnect = (): void => {
@@ -176,7 +176,7 @@ const disconnect = (): void => {
                 class="min-w-0 truncate text-muted-foreground"
                 :data-testid="`channel-posting-times-${channel.id}`"
             >
-                {{ $t('channels.settings_page.day_empty') }}
+                {{ $t('channels.list.no_posting_times') }}
             </p>
             <div class="flex min-w-0 text-muted-foreground">
                 <GoalProgress

@@ -184,6 +184,7 @@ return [
             'this_week' => 'Deze week',
         ],
         'posting_times_per_week' => ':count per week',
+        'no_posting_times' => 'Geen tijden',
         'no_results' => 'Geen kanalen gevonden voor je zoekopdracht.',
         'connection_lost' => 'Dit kanaal heeft de verbinding verloren',
         'settings' => 'Instellingen',

@@ -184,6 +184,7 @@ return [
             'this_week' => '本周',
         ],
         'posting_times_per_week' => '每周 :count 次',
+        'no_posting_times' => '没有发布时间',
         'no_results' => '没有符合搜索的频道。',
         'connection_lost' => '此频道已断开连接',
         'settings' => '设置',

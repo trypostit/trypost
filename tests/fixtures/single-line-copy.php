@@ -83,6 +83,7 @@ return [
     'channels.list.more_actions' => 22,
     'channels.list.networks' => 9,
     'channels.list.posting_times_per_week' => 15,
+    'channels.list.no_posting_times' => 17,
     'channels.list.settings' => 13,
     'channels.grid.title' => 10,
     'channels.settings_page.cancel' => 9,
