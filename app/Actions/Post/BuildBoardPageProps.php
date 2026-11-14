@@ -6,9 +6,7 @@ namespace App\Actions\Post;
 
 use App\Http\Resources\App\PostCardResource;
 use App\Http\Resources\App\SocialAccountResource;
-use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PublishFilters;
@@ -25,13 +23,13 @@ class BuildBoardPageProps
 {
     public const COMPONENT = 'posts/Board';
 
-    public const GROUPS = ['status', 'tag', 'channel'];
+    private const GROUPS = ['status', 'tag', 'channel'];
 
-    public const STATUS_COLUMNS = ['draft', 'approvals', 'scheduled', 'published', 'failed'];
+    private const STATUS_COLUMNS = ['draft', 'approvals', 'scheduled', 'published', 'failed'];
 
-    public const UNTAGGED = 'untagged';
+    private const UNTAGGED_COLUMN = ['key' => 'untagged', 'type' => 'untagged'];
 
-    public const NO_CHANNEL = 'no_channel';
+    private const NO_CHANNEL_COLUMN = ['key' => 'no_channel', 'type' => 'no_channel'];
 
     /**
      * @return array<string, mixed>
@@ -39,55 +37,44 @@ class BuildBoardPageProps
     public static function handle(Request $request, Workspace $workspace, ?SocialAccount $channel): array
     {
         $user = $request->user();
-        $requester = BuildPublishPageProps::pendingApprovalsRequester($user, $workspace);
-        $group = self::group($request->query('group'), $channel);
-
         $filters = PublishFilters::fromRequest($request, $channel, $user);
-        $labelIds = $filters->labelIds;
-        $untagged = $filters->untagged;
-        $requestedChannelIds = $filters->requestedChannelIds;
+        $groups = self::groups($channel);
+        $group = self::group($request->query('group'), $groups);
 
-        $basePosts = $workspace->posts()->onChannels($filters->scopedChannelIds);
+        $accounts = filled($channel) ? EloquentCollection::make() : $workspace->socialAccounts()->get();
+        $labels = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
+        $hasChannels = filled($channel) || $accounts->isNotEmpty();
 
-        $loadedAccounts = null;
-        $workspaceAccounts = function () use (&$loadedAccounts, $workspace, $channel): EloquentCollection {
-            return $loadedAccounts ??= $channel ? EloquentCollection::make() : $workspace->socialAccounts()->get();
-        };
+        $groupedByTag = $group === 'tag';
+        $posts = BuildPublishPageProps::cardQuery(
+            $workspace->posts()->onChannels($filters->scopedChannelIds),
+            $groupedByTag ? [] : $filters->labelIds,
+            $groupedByTag ? false : $filters->untagged,
+        )->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($user, $workspace));
 
-        $workspaceLabels = null;
-        $labels = function () use (&$workspaceLabels, $workspace): Collection {
-            return $workspaceLabels ??= $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
-        };
+        $columnQuery = fn (array $column): Builder => self::columnQuery($column, clone $posts);
 
-        $hasChannels = fn (): bool => filled($channel) || filled($workspaceAccounts());
-
-        $columnQuery = fn (array $column): Builder => self::columnQuery(
-            $column,
-            BuildPublishPageProps::cardQuery(clone $basePosts, $group === 'tag' ? [] : $labelIds, $group === 'tag' ? false : $untagged),
-            $requester,
-        );
-
-        $boardColumns = match (true) {
-            ! $hasChannels() => collect(),
-            $group === 'tag' => self::tagColumns($labels(), $labelIds, $untagged),
+        $columns = match (true) {
+            ! $hasChannels => collect(),
+            $group === 'tag' => self::tagColumns($labels, $filters),
             $group === 'channel' => self::channelColumns(
-                $workspaceAccounts(),
-                $requestedChannelIds,
-                fn (): bool => $columnQuery(['key' => self::NO_CHANNEL, 'type' => 'no_channel'])->exists(),
+                $accounts,
+                $filters,
+                fn (): bool => $columnQuery(self::NO_CHANNEL_COLUMN)->exists(),
             ),
             default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
         };
 
         return [
             'workspace' => $workspace,
-            'scope' => $channel ? 'channel' : 'all',
-            'channel' => fn (): ?array => $channel ? BuildPublishPageProps::channelHeader($channel, $user->week_starts_on) : null,
+            'scope' => filled($channel) ? 'channel' : 'all',
+            'channel' => fn (): ?array => transform($channel, fn (SocialAccount $channel): array => BuildPublishPageProps::channelHeader($channel, $user->week_starts_on)),
             'group' => $group,
-            'groups' => collect(self::GROUPS)->when(filled($channel), fn (Collection $groups): Collection => $groups->reject(fn (string $group): bool => $group === 'channel'))->values()->all(),
-            'boardColumns' => $boardColumns->map(fn (array $column): array => collect($column)->except('id')->all())->values()->all(),
-            'columns' => $boardColumns
+            'groups' => $groups,
+            'boardColumns' => $columns->all(),
+            'columns' => $columns
                 ->mapWithKeys(fn (array $column): array => [
-                    data_get($column, 'key') => Inertia::scroll(fn () => self::page($column, $columnQuery($column)))
+                    data_get($column, 'key') => Inertia::scroll(fn () => self::page(data_get($column, 'key'), $columnQuery($column)))
                         ->defer()
                         ->matchOn('data.id'),
                 ])
@@ -96,15 +83,32 @@ class BuildBoardPageProps
             'timezones' => fn (): array => Timezone::options(),
             'labels' => $labels,
             'filters' => $filters->toProp(),
-            'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts()),
+            'filterAccounts' => fn () => SocialAccountResource::collection($accounts),
             'hasChannels' => $hasChannels,
             'authUserId' => $user->id,
         ];
     }
 
-    public static function group(mixed $requested, ?SocialAccount $channel): string
+    /**
+     * A channel page has a single channel, so it cannot be grouped by channel.
+     *
+     * @return list<string>
+     */
+    private static function groups(?SocialAccount $channel): array
     {
-        if (! collect(self::GROUPS)->containsStrict($requested) || (filled($channel) && $requested === 'channel')) {
+        if (filled($channel)) {
+            return collect(self::GROUPS)->diff(['channel'])->values()->all();
+        }
+
+        return self::GROUPS;
+    }
+
+    /**
+     * @param  list<string>  $groups
+     */
+    private static function group(mixed $requested, array $groups): string
+    {
+        if (! in_array($requested, $groups, true)) {
             return 'status';
         }
 
@@ -112,47 +116,50 @@ class BuildBoardPageProps
     }
 
     /**
+     * One column per tag (only the filtered ones while filtering), then Untagged
+     * unless the filter leaves it out.
+     *
      * @param  Collection<int, WorkspaceLabel>  $labels
-     * @param  list<string>  $labelIds
      * @return Collection<int, array<string, mixed>>
      */
-    private static function tagColumns(Collection $labels, array $labelIds, bool $untagged): Collection
+    private static function tagColumns(Collection $labels, PublishFilters $filters): Collection
     {
-        $filtering = filled($labelIds) || $untagged;
+        $filtering = filled($filters->labelIds) || $filters->untagged;
 
         $columns = $labels
-            ->when($filtering, fn (Collection $labels): Collection => $labels->whereIn('id', $labelIds))
+            ->when($filtering, fn (Collection $labels): Collection => $labels->whereIn('id', $filters->labelIds))
             ->map(fn (WorkspaceLabel $label): array => [
                 'key' => "label_{$label->id}",
                 'type' => 'label',
                 'label' => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color],
-                'id' => $label->id,
             ])
             ->values();
 
-        return $filtering && ! $untagged ? $columns : $columns->push(['key' => self::UNTAGGED, 'type' => 'untagged']);
+        if ($filtering && ! $filters->untagged) {
+            return $columns;
+        }
+
+        return $columns->push(self::UNTAGGED_COLUMN);
     }
 
     /**
-     * One column per channel, after a No channel column while the board would
-     * show a post there (the same query the column runs).
+     * One column per channel (only the filtered ones while filtering), after a
+     * No channel column while the board would show a post there.
      *
      * @param  Collection<int, SocialAccount>  $accounts
-     * @param  list<string>  $requestedChannelIds
      * @param  Closure(): bool  $hasChannelLessPosts
      * @return Collection<int, array<string, mixed>>
      */
-    private static function channelColumns(Collection $accounts, array $requestedChannelIds, Closure $hasChannelLessPosts): Collection
+    private static function channelColumns(Collection $accounts, PublishFilters $filters, Closure $hasChannelLessPosts): Collection
     {
-        $filtering = filled($requestedChannelIds);
+        $filtering = filled($filters->requestedChannelIds);
 
         $columns = $accounts
-            ->when($filtering, fn (Collection $accounts): Collection => $accounts->whereIn('id', $requestedChannelIds))
+            ->when($filtering, fn (Collection $accounts): Collection => $accounts->whereIn('id', $filters->requestedChannelIds))
             ->map(fn (SocialAccount $account): array => [
                 'key' => "channel_{$account->id}",
                 'type' => 'channel',
                 'channel' => SocialAccountResource::make($account)->resolve(),
-                'id' => $account->id,
             ])
             ->values();
 
@@ -160,48 +167,40 @@ class BuildBoardPageProps
             return $columns;
         }
 
-        return $columns->prepend(['key' => self::NO_CHANNEL, 'type' => 'no_channel']);
+        return $columns->prepend(self::NO_CHANNEL_COLUMN);
     }
 
     /**
      * @param  array<string, mixed>  $column
      */
-    private static function columnQuery(array $column, Builder $query, ?User $requester): Builder
+    private static function columnQuery(array $column, Builder $posts): Builder
     {
-        $type = data_get($column, 'type');
-
-        $query = match ($type) {
-            'status' => match (data_get($column, 'key')) {
-                'draft' => $query->draft()
-                    ->latest('posts.created_at'),
-                'approvals' => $query->pendingApproval()
-                    ->visiblePendingApprovalsFor($requester)
-                    ->approvalOrder(),
-                'scheduled' => $query->whereIn('status', BuildPublishPageProps::QUEUE_STATUSES)
-                    ->orderBy('posts.scheduled_at'),
-                'published' => $query->published()->latestAttempt(),
-                default => $query->failed()->latestAttempt(),
-            },
-            'label' => $query->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey(data_get($column, 'id'))),
-            'untagged' => $query->whereDoesntHave('labels'),
-            'channel' => $query->where('posts.social_account_id', data_get($column, 'id')),
-            default => $query->whereNull('posts.platform'),
+        return match (data_get($column, 'type')) {
+            'status' => self::statusQuery(data_get($column, 'key'), $posts),
+            'label' => $posts->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey(data_get($column, 'label.id')))->latestAttempt(),
+            'untagged' => $posts->whereDoesntHave('labels')->latestAttempt(),
+            'channel' => $posts->where('posts.social_account_id', data_get($column, 'channel.id'))->latestAttempt(),
+            'no_channel' => $posts->whereNull('posts.platform')->latestAttempt(),
         };
+    }
 
-        return $query->when($type !== 'status', fn (Builder $query): Builder => $query
-            ->visiblePendingApprovalsFor($requester)
-            ->latestAttempt());
+    private static function statusQuery(string $status, Builder $posts): Builder
+    {
+        return match ($status) {
+            'draft' => $posts->draft()->latest('posts.created_at'),
+            'approvals' => $posts->pendingApproval()->approvalOrder(),
+            'scheduled' => $posts->whereIn('posts.status', BuildPublishPageProps::QUEUE_STATUSES)->orderBy('posts.scheduled_at'),
+            'published' => $posts->published()->latestAttempt(),
+            'failed' => $posts->failed()->latestAttempt(),
+        };
     }
 
     /**
      * One page of a column, its cards ready for the board: the viewer's
      * permissions, the sent posts' metrics, each channel serialized once.
-     *
-     * @param  array<string, mixed>  $column
      */
-    private static function page(array $column, Builder $query): LengthAwarePaginator
+    private static function page(string $key, Builder $query): LengthAwarePaginator
     {
-        $key = data_get($column, 'key');
         $page = $query->orderBy('posts.id')->paginate((int) config('app.pagination.default'), pageName: "{$key}_page");
 
         BuildPublishPageProps::decorate($page->getCollection());
