@@ -383,7 +383,7 @@ const reconnect = (channel: SidebarChannel): void => {
                             <SidebarMenuButton
                                 as-child
                                 :is-active="isCurrentChannel(channel)"
-                                class="h-9 gap-2 py-1 ps-2 max-md:pe-16 group-hover/channel:pe-16 group-has-focus-visible/channel:pe-16 data-[active=true]:bg-transparent data-[active=true]:hover:bg-sidebar-accent [&:has(~[data-sidebar=group-action]:hover)]:bg-sidebar-accent group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:p-0.5! group-data-[collapsible=icon]:data-[active=true]:bg-sidebar-accent"
+                                class="h-9 gap-2 py-1 ps-2 pe-8 max-md:pe-16 group-hover/channel:pe-16 group-has-focus-visible/channel:pe-16 data-[active=true]:bg-transparent data-[active=true]:hover:bg-sidebar-accent [&:has(~[data-sidebar=group-action]:hover)]:bg-sidebar-accent group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:p-0.5! group-data-[collapsible=icon]:data-[active=true]:bg-sidebar-accent"
                             >
                                 <Link
                                     :href="channelPublishUrl(channel.id)"
@@ -400,7 +400,11 @@ const reconnect = (channel: SidebarChannel): void => {
                                         :status="canManageAccounts ? null : channel.status"
                                         :account-id="channel.id"
                                     />
-                                    <span class="truncate text-sm group-data-[collapsible=icon]:hidden">{{ channelName(channel) }}</span>
+                                    <span
+                                        class="truncate text-sm group-data-[collapsible=icon]:hidden"
+                                        :data-testid="`sidebar-channel-name-${channel.id}`"
+                                        >{{ channelName(channel) }}</span
+                                    >
                                 </Link>
                             </SidebarMenuButton>
                         </HoverCardTrigger>

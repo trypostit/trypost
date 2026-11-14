@@ -497,7 +497,12 @@ test('the sidebar new button marks an unfinished post as soon as the composer cl
     closeComposerForAutosave($page);
     waitFor($page, '@sidebar-new-unfinished');
 
-    $page->assertSeeIn('@sidebar-new-unfinished', __('sidebar.unfinished_post'));
+    $page->hover('@sidebar-new');
+    waitForText($page, '@sidebar-new-unfinished-tooltip', __('sidebar.unfinished_post'));
+    $page->click('@sidebar-new');
+    waitForOpen($page, '@sidebar-new-menu');
+    $page->keys('@sidebar-new-post', 'Escape');
+    waitForGone($page, '@sidebar-new-menu');
 
     openComposerForAutosave($page);
     waitFor($page, '@composer-resume-dialog');
@@ -506,7 +511,10 @@ test('the sidebar new button marks an unfinished post as soon as the composer cl
     closeComposerForAutosave($page);
 
     waitForGone($page, '@sidebar-new-unfinished');
-    $page->assertNoJavaScriptErrors();
+    $page->hover('@sidebar-new');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+    $page->assertMissing('@sidebar-new-unfinished-tooltip')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the sidebar new button marks an unfinished post kept from an earlier visit, but not a draft holding only labels', function () {

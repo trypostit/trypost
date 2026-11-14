@@ -415,3 +415,29 @@ test('the collapsed sidebar shows every channel network badge without clipping i
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a long channel name stops before its post count and ends in an ellipsis', function () {
+    $user = sidebarChannelsUser('admin');
+    $channel = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'display_name' => 'Acme Shop on Google Business Profile Downtown',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, "@sidebar-channel-count-{$channel->id}");
+
+    $layout = $page->script(<<<JS
+        (() => {
+            const name = document.querySelector('[data-testid="sidebar-channel-name-{$channel->id}"]');
+            const count = document.querySelector('[data-testid="sidebar-channel-count-{$channel->id}"]').getBoundingClientRect();
+            return {
+                clearsCount: name.getBoundingClientRect().right <= count.left,
+                ellipsis: getComputedStyle(name).textOverflow === 'ellipsis' && name.scrollWidth > name.clientWidth,
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe(['clearsCount' => true, 'ellipsis' => true]);
+    $page->assertNoJavaScriptErrors();
+});
