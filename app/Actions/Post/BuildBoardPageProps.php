@@ -11,7 +11,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PublishFilters;
 use App\Support\Timezone;
-use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -27,8 +26,6 @@ class BuildBoardPageProps
     private const STATUS_COLUMNS = ['draft', 'approvals', 'scheduled', 'published', 'failed'];
 
     private const UNTAGGED_COLUMN = ['key' => 'untagged', 'type' => 'untagged'];
-
-    private const NO_CHANNEL_COLUMN = ['key' => 'no_channel', 'type' => 'no_channel'];
 
     /**
      * @return array<string, mixed>
@@ -53,11 +50,7 @@ class BuildBoardPageProps
         $columns = match (true) {
             ! $hasChannels => collect(),
             $group === 'tag' => self::tagColumns($labels, $filters),
-            $group === 'channel' => self::channelColumns(
-                $accounts,
-                $filters,
-                fn (): bool => $columnQuery(self::NO_CHANNEL_COLUMN)->exists(),
-            ),
+            $group === 'channel' => self::channelColumns($accounts, $filters),
             default => collect(self::STATUS_COLUMNS)->map(fn (string $key): array => ['key' => $key, 'type' => 'status']),
         };
 
@@ -136,31 +129,21 @@ class BuildBoardPageProps
     }
 
     /**
-     * One column per channel (only the filtered ones while filtering), after a
-     * No channel column while the board would show a post there.
+     * One column per channel, only the filtered ones while filtering.
      *
      * @param  Collection<int, SocialAccount>  $accounts
-     * @param  Closure(): bool  $hasChannelLessPosts
      * @return Collection<int, array<string, mixed>>
      */
-    private static function channelColumns(Collection $accounts, PublishFilters $filters, Closure $hasChannelLessPosts): Collection
+    private static function channelColumns(Collection $accounts, PublishFilters $filters): Collection
     {
-        $filtering = filled($filters->requestedChannelIds);
-
-        $columns = $accounts
-            ->when($filtering, fn (Collection $accounts): Collection => $accounts->whereIn('id', $filters->requestedChannelIds))
+        return $accounts
+            ->when(filled($filters->requestedChannelIds), fn (Collection $accounts): Collection => $accounts->whereIn('id', $filters->requestedChannelIds))
             ->map(fn (SocialAccount $account): array => [
                 'key' => "channel_{$account->id}",
                 'type' => 'channel',
                 'channel' => SocialAccountResource::make($account)->resolve(),
             ])
             ->values();
-
-        if ($filtering || ! $hasChannelLessPosts()) {
-            return $columns;
-        }
-
-        return $columns->prepend(self::NO_CHANNEL_COLUMN);
     }
 
     /**
@@ -173,7 +156,6 @@ class BuildBoardPageProps
             'label' => $posts->whereRelation('labels', 'workspace_labels.id', data_get($column, 'label.id'))->latestAttempt(),
             'untagged' => $posts->whereDoesntHave('labels')->latestAttempt(),
             'channel' => $posts->where('posts.social_account_id', data_get($column, 'channel.id'))->latestAttempt(),
-            'no_channel' => $posts->whereNull('posts.platform')->latestAttempt(),
         };
     }
 

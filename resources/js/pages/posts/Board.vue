@@ -128,7 +128,7 @@ const columnsReload = (): PostCardReload => ({
 /** A card's actions (approve, reject, labels) reload every column from its first page. */
 provide(postCardReloadKey, columnsReload);
 
-/** The first page of each column the reloaded list brought that was not on the board (a new tag, No channel). */
+/** The first page of each column the reloaded list brought that was not on the board (a new tag). */
 const loadNewColumns = (): void => {
     const loaded = (page.props.columns ?? {}) as Record<string, unknown>;
     const paths = props.boardColumns

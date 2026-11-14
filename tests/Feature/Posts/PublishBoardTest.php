@@ -205,13 +205,13 @@ test('it limits tag columns to the label filter', function () {
             ->has('boardColumns', 2));
 });
 
-test('it groups by channel with drafts without a channel first', function () {
+test('it groups by channel in the sidebar order and leaves drafts without a channel out', function () {
     $second = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::X,
         'position' => 0,
     ]);
-    $orphan = Post::factory()->create([
+    Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
@@ -224,19 +224,13 @@ test('it groups by channel with drafts without a channel first', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('group', 'channel')
-            ->where('boardColumns.0', ['key' => 'no_channel', 'type' => 'no_channel'])
-            ->where('boardColumns.1.key', "channel_{$second->id}")
-            ->where('boardColumns.1.type', 'channel')
-            ->where('boardColumns.1.channel.id', $second->id)
-            ->where('boardColumns.2.key', "channel_{$this->channel->id}")
-            ->has('boardColumns', 3)
-            ->loadDeferredProps(function (Assert $reload) use ($orphan, $onFirst, $onSecond, $second): void {
-                $reload->where('columns.no_channel.total', 1)
-                    ->where("columns.channel_{$second->id}.total", 1)
-                    ->where("columns.channel_{$this->channel->id}.total", 1);
-
-                expect(boardColumnIds($reload, 'no_channel'))->toBe([$orphan->id])
-                    ->and(boardColumnIds($reload, "channel_{$second->id}"))->toBe([$onSecond->id])
+            ->where('boardColumns.0.key', "channel_{$second->id}")
+            ->where('boardColumns.0.type', 'channel')
+            ->where('boardColumns.0.channel.id', $second->id)
+            ->where('boardColumns.1.key', "channel_{$this->channel->id}")
+            ->has('boardColumns', 2)
+            ->loadDeferredProps(function (Assert $reload) use ($onFirst, $onSecond, $second): void {
+                expect(boardColumnIds($reload, "channel_{$second->id}"))->toBe([$onSecond->id])
                     ->and(boardColumnIds($reload, "channel_{$this->channel->id}"))->toBe([$onFirst->id]);
             }));
 
@@ -246,50 +240,6 @@ test('it groups by channel with drafts without a channel first', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->where('boardColumns.0.key', "channel_{$second->id}")
             ->has('boardColumns', 1));
-});
-
-test('it leaves out the no channel column when every post has a channel', function () {
-    boardPost($this->channel, 'scheduled');
-
-    $this->actingAs($this->user)
-        ->get(route('app.posts.board', ['group' => 'channel']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
-            ->has('boardColumns', 1));
-});
-
-test('it leaves out the no channel column when its only posts are hidden by the label filter or by approval visibility', function () {
-    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
-    $author = workspaceMember($this->workspace, 'approval');
-    Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $author->id,
-        'status' => PostStatus::PendingApproval,
-        'approval_requested_by' => $author->id,
-    ]);
-    $requester = workspaceMember($this->workspace, 'approval');
-
-    $this->actingAs($requester)
-        ->get(route('app.posts.board', ['group' => 'channel']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
-            ->has('boardColumns', 1));
-
-    $this->actingAs($this->user)
-        ->get(route('app.posts.board', ['group' => 'channel', 'labels' => [$label->id]]))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('boardColumns.0.key', "channel_{$this->channel->id}")
-            ->has('boardColumns', 1));
-
-    $this->actingAs($this->user)
-        ->get(route('app.posts.board', ['group' => 'channel']))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('boardColumns.0.key', 'no_channel')
-            ->has('boardColumns', 2));
 });
 
 test('it builds no column for a workspace without channels', function () {

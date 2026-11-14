@@ -31,7 +31,7 @@ const posts = computed(() => cards.value?.data ?? []);
 /** Every post of the column, loaded or not: the paginator's total. */
 const count = computed(() => cards.value?.total ?? 0);
 
-/** A status, Untagged or No channel column is named by a lang key. */
+/** A status or Untagged column is named by a lang key. */
 const nameKey = computed((): string => {
     const { type, key } = props.column;
 
