@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 
+import { filled } from '@/lib/helpers';
+
 defineProps<{
     title?: string;
     total?: number | null;
@@ -28,8 +30,9 @@ defineProps<{
                 >
                     {{ title }}
                     <span
-                        v-if="total != null && total > 0"
+                        v-if="filled(total) && total > 0"
                         class="text-muted-foreground"
+                        data-testid="header-title-total"
                     >
                         ({{ total }})
                     </span>

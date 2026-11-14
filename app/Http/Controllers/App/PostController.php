@@ -107,7 +107,7 @@ class PostController extends Controller
             ]);
         }
 
-        return Inertia::render('posts/Board', BuildBoardPageProps::handle($request, $workspace, null));
+        return Inertia::render(BuildBoardPageProps::COMPONENT, BuildBoardPageProps::handle($request, $workspace, null));
     }
 
     public function create(Request $request): RedirectResponse

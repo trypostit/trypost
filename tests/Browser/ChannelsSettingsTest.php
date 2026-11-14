@@ -248,7 +248,7 @@ test('each channel row shows its time zone and posting times, and the list is se
     $page->assertSeeIn("@channel-timezone-{$linkedin->id}", 'Sao Paulo')
         ->assertSeeIn("@channel-posting-times-{$linkedin->id}", __('channels.list.posting_times_per_week', ['count' => 2]))
         ->assertSeeIn("@channel-posting-times-{$x->id}", __('channels.settings_page.day_empty'))
-        ->assertSeeIn('@settings-page-total', '(2)');
+        ->assertSeeIn('@header-title-total', '(2)');
 
     $page->type('@header-search-input', 'beta');
     waitForGone($page, "@channel-row-{$linkedin->id}");
@@ -285,7 +285,7 @@ test('the channels list loads its next page without repeating a channel', functi
     waitFor($page, "@channel-row-{$channels[2]->id}");
     waitForCount($page, '[data-testid^="channel-row-"]', 3);
 
-    $page->assertSeeIn('@settings-page-total', '(3)')
+    $page->assertSeeIn('@header-title-total', '(3)')
         ->assertNoJavaScriptErrors();
 });
 

@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
 import { useElementVisibility } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
-import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
+import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
+import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import { Badge } from '@/components/ui/badge';
+import { usePostCardMenuActions } from '@/composables/publish/usePostCardMenuActions';
 import { getContentTypeBadgeKey } from '@/composables/usePlatformLogo';
-import {
-    getPostCardStatusConfig,
-    publishTabFor,
-} from '@/composables/usePostStatus';
+import { getPostCardStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import { limitText } from '@/lib/characters';
@@ -22,7 +21,7 @@ import { postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus } from '@/types/post';
-import type { PostCard, PostCardMenuAction, PublishTab } from '@/types/publish';
+import type { PostCard } from '@/types/publish';
 
 const props = defineProps<{
     post: PostCard;
@@ -32,35 +31,25 @@ const props = defineProps<{
 
 const { canCreatePost } = useWorkspaceAbilities();
 
-const card = ref<InstanceType<typeof PostTimelineCard> | null>(null);
-const cardMounted = ref(false);
-
-/**
- * The details dialog and the menu's actions live in the List's card, mounted
- * hidden on the first click only, so a full board doesn't mount one per post.
- */
-const mountCard = async (): Promise<InstanceType<
-    typeof PostTimelineCard
-> | null> => {
-    cardMounted.value = true;
-    await nextTick();
-
-    return card.value;
-};
-
-const openDetails = async (): Promise<void> => {
-    (await mountCard())?.openDetails();
-};
-
-const runMenuAction = async (action: PostCardMenuAction): Promise<void> => {
-    (await mountCard())?.runMenuAction(action);
-};
-
-const tab = computed((): PublishTab => publishTabFor(props.post));
+/** The details and recurrence dialogs mount on the first click only, so a full board doesn't mount them per post. */
+const {
+    dialogsMounted,
+    detailsOpen,
+    recurrenceOpen,
+    recurrenceTarget,
+    openDetails,
+    edit,
+    runPostAction,
+    runMenuAction,
+} = usePostCardMenuActions(() => props.post, { lazy: true });
 
 const account = computed(() => props.post.social_account ?? null);
 
 const channelLabel = computed(() => postChannelLabel(props.post));
+
+const recurrenceTimezone = computed(
+    () => account.value?.timezone ?? props.timezone,
+);
 
 const time = computed(() =>
     date.formatMonthDayTimeInTimezone(
@@ -255,14 +244,21 @@ const hasMenu = computed(
             />
         </div>
 
-        <div v-if="cardMounted" hidden>
-            <PostTimelineCard
-                ref="card"
+        <template v-if="canCreatePost && dialogsMounted">
+            <PostDetailsDialog
+                v-model:open="detailsOpen"
                 :post="post"
-                :tab="tab"
-                :display-timezone="timezone"
-                :movable="false"
+                :test-key="post.id"
+                :timezone="timezone"
+                @select="runPostAction"
+                @edit="edit"
             />
-        </div>
+            <PostRecurrenceDialog
+                v-model:open="recurrenceOpen"
+                :post="recurrenceTarget"
+                :test-key="post.id"
+                :timezone="recurrenceTimezone"
+            />
+        </template>
     </article>
 </template>

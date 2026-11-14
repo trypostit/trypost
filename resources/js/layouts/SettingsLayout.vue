@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { IconExternalLink } from '@tabler/icons-vue';
 
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
-import { filled } from '@/lib/helpers';
 
 type Props = {
     fullWidth?: boolean;
@@ -59,18 +59,7 @@ withDefaults(defineProps<Props>(), {
         >
             <header class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <h1
-                        class="font-heading text-xl leading-tight font-medium text-foreground"
-                        data-testid="header-title"
-                    >
-                        {{ title }}
-                        <span
-                            v-if="filled(total)"
-                            class="text-muted-foreground"
-                            data-testid="settings-page-total"
-                            >({{ total }})</span
-                        >
-                    </h1>
+                    <HeaderTitle :title="title" :total="total" />
                     <p
                         v-if="description"
                         class="mt-1 text-sm text-muted-foreground"

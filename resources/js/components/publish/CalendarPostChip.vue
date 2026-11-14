@@ -11,17 +11,19 @@ import {
     IconSend,
     IconTrashX,
 } from '@tabler/icons-vue';
-import { computed, nextTick, ref, type Component } from 'vue';
+import { computed, type Component } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
-import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
+import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
+import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
-import { publishTabFor } from '@/composables/usePostStatus';
+import { usePostCardMenuActions } from '@/composables/publish/usePostCardMenuActions';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import { isImage } from '@/lib/mediaType';
 import { postChannelLabel, postThumbnail } from '@/lib/postCard';
@@ -29,7 +31,7 @@ import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus, ScheduleMode } from '@/types/post';
-import type { CalendarPost, PublishTab } from '@/types/publish';
+import type { CalendarPost } from '@/types/publish';
 
 defineOptions({ inheritAttrs: false });
 
@@ -43,20 +45,26 @@ const { draggingPostId, vCalendarPost } = useCalendarDragContext();
 
 const isDragging = computed(() => draggingPostId.value === props.post.id);
 
-const card = ref<InstanceType<typeof PostTimelineCard> | null>(null);
-const cardMounted = ref(false);
+const { canCreatePost } = useWorkspaceAbilities();
 
 /**
- * A click opens the post's details. The card that holds the details dialog
- * mounts on the first click only, so a busy calendar doesn't mount one per chip.
+ * A click opens the post's details. The details dialog (and the recurrence
+ * dialog its menu opens) mounts on the first click only, so a busy calendar
+ * doesn't mount them per chip.
  */
-const openDetails = async (): Promise<void> => {
-    cardMounted.value = true;
-    await nextTick();
-    card.value?.openDetails();
-};
+const {
+    dialogsMounted,
+    detailsOpen,
+    recurrenceOpen,
+    recurrenceTarget,
+    openDetails,
+    edit,
+    runPostAction,
+} = usePostCardMenuActions(() => props.post, { lazy: true });
 
-const tab = computed((): PublishTab => publishTabFor(props.post));
+const recurrenceTimezone = computed(
+    () => props.post.social_account?.timezone ?? props.timezone,
+);
 
 const channels = computed(() => postChannelLabel(props.post));
 
@@ -211,14 +219,21 @@ const chipClass = computed(() => [
                 </template>
             </span>
         </button>
-        <div v-if="cardMounted" hidden>
-            <PostTimelineCard
-                ref="card"
+        <template v-if="canCreatePost && dialogsMounted">
+            <PostDetailsDialog
+                v-model:open="detailsOpen"
                 :post="post"
-                :tab="tab"
-                :display-timezone="timezone"
-                :movable="false"
+                :test-key="post.id"
+                :timezone="timezone"
+                @select="runPostAction"
+                @edit="edit"
             />
-        </div>
+            <PostRecurrenceDialog
+                v-model:open="recurrenceOpen"
+                :post="recurrenceTarget"
+                :test-key="post.id"
+                :timezone="recurrenceTimezone"
+            />
+        </template>
     </div>
 </template>

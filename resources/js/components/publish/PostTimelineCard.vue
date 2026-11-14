@@ -19,9 +19,8 @@ import {
     IconRepeat,
     IconSend,
 } from '@tabler/icons-vue';
-import { type Component, computed, inject, ref, watch } from 'vue';
+import { type Component, computed, ref, watch } from 'vue';
 
-import { edit as editPostRoute } from '@/actions/App/Http/Controllers/App/PostController';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
@@ -52,20 +51,12 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePostCardMenuActions } from '@/composables/publish/usePostCardMenuActions';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import {
     getContentTypeBadgeKey,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import {
-    deletePostCardKey,
-    copyPostCardLink,
-    duplicatePostCard,
-    editPostCardUrlKey,
-    postCardReloadKey,
-    schedulePostCard,
-    sharePostCardLink,
-} from '@/composables/usePostCardActions';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
@@ -123,10 +114,6 @@ const MAX_THUMBNAILS = 4;
 
 const page = usePage();
 const { canCreatePost, canPublishDirectly } = useWorkspaceAbilities();
-const deletePost = inject(deletePostCardKey, () => {});
-const editUrl = inject(editPostCardUrlKey, (post: PostCard) =>
-    editPostRoute.url(post.id),
-);
 const { timezone, formatTime } = useDisplayTimezone(props.displayTimezone, []);
 
 watch(
@@ -355,20 +342,20 @@ const recurrence = computed(() =>
         : null,
 );
 
-const detailsOpen = ref(openPostDetailsId.value === props.post.id);
-
-const openDetails = (): void => {
-    detailsOpen.value = true;
-};
-
-const recurrenceOpen = ref(false);
+const {
+    detailsOpen,
+    recurrenceOpen,
+    recurrenceTarget,
+    openDetails,
+    edit,
+    publishNow,
+    runPostAction,
+    runMenuAction,
+} = usePostCardMenuActions(() => props.post, {
+    detailsOpen: openPostDetailsId.value === props.post.id,
+});
 
 watch(detailsOpen, (open) => emit('details', open));
-const recurrencePost = ref<PostCard>(props.post);
-
-const edit = (post: PostCard = props.post): void => {
-    router.visit(editUrl(post));
-};
 
 const open = (): void => {
     if (isEditable.value) {
@@ -378,47 +365,6 @@ const open = (): void => {
     }
 
     openDetails();
-};
-
-/** A page that lists posts under other props than `posts` (the board) reloads its own; the List does a full visit. */
-const pageReload = inject(postCardReloadKey, null);
-
-const schedule = (post: PostCard, action: 'publish_now' | 'draft'): void => {
-    schedulePostCard(post.id, action, pageReload?.() ?? {});
-};
-
-const publishNow = (): void => {
-    schedule(props.post, 'publish_now');
-};
-
-const runPostAction = (action: PostCardMenuAction, post: PostCard): void => {
-    switch (action) {
-        case 'publish_now':
-            schedule(post, 'publish_now');
-            break;
-        case 'duplicate':
-            duplicatePostCard(post);
-            break;
-        case 'recurrence':
-            recurrencePost.value = post;
-            recurrenceOpen.value = true;
-            break;
-        case 'move_drafts':
-            schedule(post, 'draft');
-            break;
-        case 'details':
-            detailsOpen.value = true;
-            break;
-        case 'share_link':
-            sharePostCardLink(post);
-            break;
-        case 'copy_link':
-            copyPostCardLink(post);
-            break;
-        case 'delete':
-            deletePost(post);
-            break;
-    }
 };
 
 const onMenuSelect = (action: PostCardMenuAction): void => {
@@ -433,11 +379,10 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
             emit('move', 'down');
             break;
         default:
-            runPostAction(action, props.post);
+            runMenuAction(action);
     }
 };
 
-defineExpose({ openDetails, runMenuAction: onMenuSelect });
 </script>
 
 <template>
@@ -941,9 +886,7 @@ defineExpose({ openDetails, runMenuAction: onMenuSelect });
                         <PostRecurrenceDialog
                             v-if="canCreatePost"
                             v-model:open="recurrenceOpen"
-                            :post="
-                                recurrencePost.id === post.id ? post : recurrencePost
-                            "
+                            :post="recurrenceTarget"
                             :test-key="post.id"
                             :timezone="recurrenceTimezone"
                         />

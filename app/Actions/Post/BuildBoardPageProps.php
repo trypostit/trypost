@@ -25,6 +25,8 @@ use Inertia\Support\Header;
 
 class BuildBoardPageProps
 {
+    public const COMPONENT = 'posts/Board';
+
     public const GROUPS = ['status', 'tag', 'channel'];
 
     public const STATUS_COLUMNS = ['draft', 'approvals', 'scheduled', 'published', 'failed'];
@@ -48,14 +50,18 @@ class BuildBoardPageProps
         $scopedChannelIds = $channel ? [$channel->id] : (filled($requestedChannelIds) ? $requestedChannelIds : null);
 
         $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
-        $workspaceAccounts = $channel ? collect() : $workspace->socialAccounts()->get();
+
+        $loadedAccounts = null;
+        $workspaceAccounts = function () use (&$loadedAccounts, $workspace, $channel): EloquentCollection {
+            return $loadedAccounts ??= $channel ? EloquentCollection::make() : $workspace->socialAccounts()->get();
+        };
 
         $workspaceLabels = null;
         $labels = function () use (&$workspaceLabels, $workspace): Collection {
             return $workspaceLabels ??= $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
         };
 
-        $hasChannels = filled($channel) || filled($workspaceAccounts);
+        $hasChannels = fn (): bool => filled($channel) || filled($workspaceAccounts());
 
         $columnQuery = fn (array $column): Builder => self::columnQuery(
             $column,
@@ -64,11 +70,22 @@ class BuildBoardPageProps
             $requester,
         );
 
+        $partialColumnKeys = self::partialColumnKeys($request);
+
         $boardColumns = match (true) {
-            ! $hasChannels => collect(),
+            filled($partialColumnKeys) => self::columnsFromKeys(
+                $partialColumnKeys,
+                $workspace,
+                $channel,
+                $group,
+                $labelIds,
+                $untagged,
+                $requestedChannelIds,
+            ),
+            ! $hasChannels() => collect(),
             $group === 'tag' => self::tagColumns($labels(), $labelIds, $untagged),
             $group === 'channel' => self::channelColumns(
-                $workspaceAccounts,
+                $workspaceAccounts(),
                 $requestedChannelIds,
                 fn (): bool => $columnQuery(['key' => self::NO_CHANNEL, 'type' => 'no_channel'])->exists(),
             ),
@@ -102,7 +119,7 @@ class BuildBoardPageProps
                 'untagged' => $untagged,
                 'channels' => $requestedChannelIds,
             ],
-            'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts),
+            'filterAccounts' => fn () => SocialAccountResource::collection($workspaceAccounts()),
             'hasChannels' => $hasChannels,
             'authUserId' => $user->id,
         ];
@@ -167,6 +184,137 @@ class BuildBoardPageProps
         }
 
         return $columns->prepend(['key' => self::NO_CHANNEL, 'type' => 'no_channel']);
+    }
+
+    /**
+     * The column keys a partial reload asks for when it asks for columns only
+     * (a column paging on, the deferred first pages, a reload of some
+     * columns), else null: a full visit, or a reload that also wants
+     * `boardColumns`, builds every column.
+     *
+     * @return list<string>|null
+     */
+    private static function partialColumnKeys(Request $request): ?array
+    {
+        if ($request->header(Header::PARTIAL_COMPONENT) !== self::COMPONENT) {
+            return null;
+        }
+
+        $only = Str::of((string) $request->header(Header::PARTIAL_ONLY))
+            ->explode(',')
+            ->map(fn (string $prop): string => trim($prop))
+            ->filter();
+
+        if ($only->isEmpty() || $only->contains(fn (string $prop): bool => ! Str::startsWith($prop, 'columns.'))) {
+            return null;
+        }
+
+        return $only->map(fn (string $prop): string => Str::after($prop, 'columns.'))->unique()->values()->all();
+    }
+
+    /**
+     * The columns a partial reload names, built from their keys alone: a key
+     * the board would not show for this group and filter, or naming a label
+     * or channel of another workspace, builds no column. The No channel
+     * column is built without asking whether it has posts: its page answers.
+     *
+     * @param  list<string>  $keys
+     * @param  list<string>  $labelIds
+     * @param  list<string>  $requestedChannelIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function columnsFromKeys(
+        array $keys,
+        Workspace $workspace,
+        ?SocialAccount $channel,
+        string $group,
+        array $labelIds,
+        bool $untagged,
+        array $requestedChannelIds,
+    ): Collection {
+        $keys = collect($keys);
+
+        $columns = match ($group) {
+            'tag' => self::labelColumnsFromKeys($keys, $workspace, $labelIds, $untagged),
+            'channel' => self::channelColumnsFromKeys($keys, $workspace, $requestedChannelIds),
+            default => $keys
+                ->intersect(self::STATUS_COLUMNS)
+                ->map(fn (string $key): array => ['key' => $key, 'type' => 'status'])
+                ->values(),
+        };
+
+        if ($columns->isEmpty() || filled($channel) || ($group === 'channel' && $columns->contains('type', 'channel'))) {
+            return $columns;
+        }
+
+        return $workspace->socialAccounts()->exists() ? $columns : collect();
+    }
+
+    /**
+     * @param  Collection<int, string>  $keys
+     * @param  list<string>  $labelIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function labelColumnsFromKeys(Collection $keys, Workspace $workspace, array $labelIds, bool $untagged): Collection
+    {
+        $filtering = filled($labelIds) || $untagged;
+
+        $ids = self::idsFromKeys($keys, 'label_')
+            ->when($filtering, fn (Collection $ids): Collection => $ids->intersect($labelIds));
+
+        $columns = (filled($ids) ? $workspace->labels()->whereKey($ids->all())->get(['id', 'name', 'color']) : collect())
+            ->map(fn (WorkspaceLabel $label): array => [
+                'key' => "label_{$label->id}",
+                'type' => 'label',
+                'label' => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color],
+                'id' => $label->id,
+            ])
+            ->values();
+
+        return $keys->contains(self::UNTAGGED) && (! $filtering || $untagged)
+            ? $columns->push(['key' => self::UNTAGGED, 'type' => 'untagged'])
+            : $columns;
+    }
+
+    /**
+     * @param  Collection<int, string>  $keys
+     * @param  list<string>  $requestedChannelIds
+     * @return Collection<int, array<string, mixed>>
+     */
+    private static function channelColumnsFromKeys(Collection $keys, Workspace $workspace, array $requestedChannelIds): Collection
+    {
+        $filtering = filled($requestedChannelIds);
+
+        $ids = self::idsFromKeys($keys, 'channel_')
+            ->when($filtering, fn (Collection $ids): Collection => $ids->intersect($requestedChannelIds));
+
+        $columns = (filled($ids) ? $workspace->socialAccounts()->whereKey($ids->all())->get() : collect())
+            ->map(fn (SocialAccount $account): array => [
+                'key' => "channel_{$account->id}",
+                'type' => 'channel',
+                'channel' => SocialAccountResource::make($account)->resolve(),
+                'id' => $account->id,
+            ])
+            ->values();
+
+        return $keys->contains(self::NO_CHANNEL) && ! $filtering
+            ? $columns->prepend(['key' => self::NO_CHANNEL, 'type' => 'no_channel'])
+            : $columns;
+    }
+
+    /**
+     * The uuids of the keys with that prefix (`label_<uuid>`, `channel_<uuid>`).
+     *
+     * @param  Collection<int, string>  $keys
+     * @return Collection<int, string>
+     */
+    private static function idsFromKeys(Collection $keys, string $prefix): Collection
+    {
+        return collect(RequestIds::uuidList(
+            $keys
+                ->filter(fn (string $key): bool => Str::startsWith($key, $prefix))
+                ->map(fn (string $key): string => Str::after($key, $prefix)),
+        ))->values();
     }
 
     /**

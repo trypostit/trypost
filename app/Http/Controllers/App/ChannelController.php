@@ -170,7 +170,7 @@ class ChannelController extends Controller
             ]);
         }
 
-        return Inertia::render('posts/Board', BuildBoardPageProps::handle($request, $workspace, $account));
+        return Inertia::render(BuildBoardPageProps::COMPONENT, BuildBoardPageProps::handle($request, $workspace, $account));
     }
 
     public function insights(

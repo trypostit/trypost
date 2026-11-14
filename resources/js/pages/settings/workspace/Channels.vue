@@ -99,7 +99,7 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
         :title="$t('channels.title')"
         :description="$t('channels.description')"
         :centered="total === 0"
-        :total="total > 0 ? total : null"
+        :total="total"
         wide
     >
         <template #actions>
