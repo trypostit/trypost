@@ -5,7 +5,7 @@ import {
     IconLayoutGrid,
     IconPencil,
     IconPlus,
-    IconTag,
+    IconSettings,
     IconTrash,
 } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
@@ -26,6 +26,11 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TableLoadMore } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import {
@@ -163,15 +168,11 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                         >
                             <template #media>
                                 <span
-                                    class="relative inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-                                    :style="{ color: label.color }"
+                                    class="size-4 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: label.color }"
+                                    aria-hidden="true"
                                     :data-testid="`label-swatch-${label.id}`"
-                                >
-                                    <span
-                                        class="absolute inset-0 bg-current opacity-15"
-                                    />
-                                    <IconTag class="relative size-5" />
-                                </span>
+                                />
                             </template>
                             <p
                                 class="truncate text-sm leading-tight font-emphasis text-foreground"
@@ -188,6 +189,23 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                                 }}</span>
                             </p>
                             <template #actions>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            class="shrink-0 text-muted-foreground"
+                                            :aria-label="$t('labels.actions.edit')"
+                                            :data-testid="`label-settings-${label.id}`"
+                                            @click.stop="openEditDialog(label)"
+                                        >
+                                            <IconSettings class="size-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        {{ $t('labels.actions.edit') }}
+                                    </TooltipContent>
+                                </Tooltip>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger as-child>
                                         <Button

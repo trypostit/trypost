@@ -176,7 +176,7 @@ test('a label row shows its color, how many posts use it and its actions in one 
 
     $page->assertSeeIn("@label-posts-count-{$label->id}", trans_choice('labels.meta.posts', 1, ['count' => 1]));
 
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"label-swatch-{$label->id}\"]')).color"))
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"label-swatch-{$label->id}\"]')).backgroundColor"))
         ->toBe('rgb(22, 163, 74)');
 
     $page->click("@label-menu-{$label->id}");
@@ -187,4 +187,19 @@ test('a label row shows its color, how many posts use it and its actions in one 
     waitFor($page, '@edit-label-dialog');
 
     $page->assertVisible('@edit-label-dialog')->assertNoJavaScriptErrors();
+});
+
+test('the cog on a label row opens its edit dialog', function () {
+    [$user, $label] = labelMenuOwner();
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'));
+    waitFor($page, "@label-settings-{$label->id}");
+
+    $page->click("@label-settings-{$label->id}");
+    waitForOpen($page, '@edit-label-dialog');
+
+    $page->assertVisible('@edit-label-dialog')
+        ->assertMissing("@edit-label-{$label->id}")
+        ->assertNoJavaScriptErrors();
 });

@@ -4,6 +4,7 @@ import { IconPlus, IconSettings, IconTag, IconX } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import FilterEmptyState from '@/components/FilterEmptyState.vue';
+import LabelBadge from '@/components/labels/LabelBadge.vue';
 import LabelForm from '@/components/labels/LabelForm.vue';
 import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import { Button } from '@/components/ui/button';
@@ -194,16 +195,7 @@ const clear = (): void => {
             </div>
         </template>
         <template #option="{ option }">
-            <span
-                class="flex min-w-0 items-center gap-2.5 text-sm leading-5 text-foreground"
-            >
-                <span
-                    class="size-2.5 shrink-0 rounded-full"
-                    :style="{ backgroundColor: labelFor(option.id).color }"
-                    aria-hidden="true"
-                />
-                <span class="truncate">{{ labelFor(option.id).name }}</span>
-            </span>
+            <LabelBadge :label="labelFor(option.id)" />
         </template>
         <template v-if="labels.length === 0" #empty>
             <FilterEmptyState

@@ -48,6 +48,7 @@ import BottomSheet from '@/components/BottomSheet.vue';
 import CharacterCounter from '@/components/CharacterCounter.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import FilterEmptyState from '@/components/FilterEmptyState.vue';
+import LabelBadge from '@/components/labels/LabelBadge.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
@@ -1022,6 +1023,21 @@ const selectedLabels = computed(() =>
     availableLabels.value.filter((label) =>
         composition.labelIds.value.includes(label.id),
     ),
+);
+
+/** The trigger shows the first two picked labels and counts the rest. */
+const SHOWN_LABELS_IN_TRIGGER = 2;
+
+const shownSelectedLabels = computed(() =>
+    selectedLabels.value.slice(0, SHOWN_LABELS_IN_TRIGGER),
+);
+
+const hiddenSelectedLabelCount = computed(
+    () => selectedLabels.value.length - shownSelectedLabels.value.length,
+);
+
+const hasHiddenSelectedLabels = computed(
+    () => hiddenSelectedLabelCount.value > 0,
 );
 const addLabel = (label: {
     id: string;
@@ -2366,28 +2382,15 @@ const onDialogOpenChange = (value: boolean): void => {
                                     v-else
                                     class="flex min-w-0 items-center gap-1.5 overflow-hidden"
                                 >
-                                    <span
-                                        v-for="label in selectedLabels.slice(
-                                            0,
-                                            2,
-                                        )"
+                                    <LabelBadge
+                                        v-for="label in shownSelectedLabels"
                                         :key="label.id"
-                                        class="flex min-w-0 items-center gap-1"
-                                    >
-                                        <span
-                                            class="size-2 shrink-0 rounded-full"
-                                            :style="{
-                                                backgroundColor: label.color,
-                                            }"
-                                        />
-                                        <span class="truncate">{{
-                                            label.name
-                                        }}</span>
-                                    </span>
+                                        :label="label"
+                                    />
                                     <span
-                                        v-if="selectedLabels.length > 2"
+                                        v-if="hasHiddenSelectedLabels"
                                         class="shrink-0 text-muted-foreground"
-                                        >+{{ selectedLabels.length - 2 }}</span
+                                        >+{{ hiddenSelectedLabelCount }}</span
                                     >
                                 </span>
                                 <IconChevronDown

@@ -216,17 +216,18 @@ test('the first label of the card picker sits apart from its search box', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('a card label shows its name as typed, in a chip as tall as the label button beside it', function () {
+test('a card label shows its name as typed on its own color, in a chip as tall as the label button beside it', function () {
     [$user, $workspace, $channel] = cardLabelsSetup();
-    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Coca Cola']);
+    $light = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Coca Cola', 'color' => '#d1d5db']);
+    $dark = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Green', 'color' => '#16a34a']);
     $post = cardLabelsPost($user, $workspace, $channel);
-    $post->labels()->attach($label);
+    $post->labels()->attach([$light->id, $dark->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitFor($page, "@post-label-chip-{$post->id}-{$label->id}");
+    waitFor($page, "@post-label-chip-{$post->id}-{$dark->id}");
 
-    $chip = $page->script(<<<JS
+    $chip = fn (WorkspaceLabel $label) => $page->script(<<<JS
         (() => {
             const chip = document.querySelector('[data-testid="post-label-chip-{$post->id}-{$label->id}"]');
             const button = document.querySelector('[data-testid="post-labels-{$post->id}-edit"]');
@@ -236,20 +237,23 @@ test('a card label shows its name as typed, in a chip as tall as the label butto
                 text: chip.innerText.trim(),
                 transform: style.textTransform,
                 fontSize: style.fontSize,
-                radius: style.borderTopLeftRadius,
-                shadow: style.boxShadow,
+                background: style.backgroundColor,
+                color: style.color,
                 sameHeight: Math.round(chip.getBoundingClientRect().height) === Math.round(button.getBoundingClientRect().height),
             };
         })()
     JS);
 
-    expect($chip)->toBe([
+    expect($chip($light))->toBe([
         'text' => 'Coca Cola',
         'transform' => 'none',
         'fontSize' => '12px',
-        'radius' => '6px',
-        'shadow' => 'none',
+        'background' => 'rgb(209, 213, 219)',
+        'color' => 'rgb(10, 10, 10)',
         'sameHeight' => true,
+    ])->and($chip($dark))->toMatchArray([
+        'background' => 'rgb(22, 163, 74)',
+        'color' => 'rgb(255, 255, 255)',
     ]);
     $page->assertNoJavaScriptErrors();
 });
