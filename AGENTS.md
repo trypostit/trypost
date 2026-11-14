@@ -213,6 +213,14 @@ A function that decides between several outcomes is a list of early returns, one
 - A `match` lists every case it accepts and has no `default` that hides an unknown value; an unknown value should fail, not read as another case.
 - Code written before this rule moves to it when touched, not in a sweep. `PostTimelineCard`'s `scheduleMode` is the reference.
 
+### On the frontend, never inline a decision (owner decision November 2026)
+
+- **A function or computed that decides is a block with `if`s, never a one-expression body.** No `(x) => a ? b : c`, no `a || b ? … : …`, no `x === A || x === B` returned as a boolean, no `?.` / `??` chain that picks between several sources. Write each case as its own `if` with braces and an early return, as `postAttemptAt()`, `postChannelLabel()` and `accountTypeKey()` (`lib/postCard.ts`, `types/social-account.ts`) do.
+- **A set of values checked together is a named constant**, read with `.includes()` inside an `if` (`CONNECTION_LOST_STATUSES`, `PLATFORMS_WITH_ACCOUNT_TYPE`), not a chain of `===` joined by `||`.
+- **Templates hold no logic.** No ternary, `||` / `??` fallback, `.join()`, arithmetic or comparison inside `{{ }}`, `:class`, `:title`, `:aria-label` or a `v-if`: the template calls a named computed (`hasPostingTimes`, `textColor`) or a named function (`openLabel($t)`, `networkLine($t)`). A fallback that needs a translation is a function that takes the template's `$t` (see `.ai/rules/js.md`: never `trans()` in a script-level computed).
+- **A simple value is not a decision:** a plain read (`post.id`), a single `filled(x)` / `!isPending` in a `v-if`, and a `v-if` / `v-else` pair that swaps two elements stay as they are. Everything else gets a name.
+- `ChannelListItem.vue`, `PostBoardCard.vue` and `ApprovePostButton.vue` are the references.
+
 ## Frontend (Vue/TypeScript)
 
 - **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.

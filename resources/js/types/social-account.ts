@@ -1,7 +1,10 @@
 import type { MediaType } from '@/lib/mediaType';
 import { Platform } from '@/types/platform';
 import type { TimezoneOption } from '@/types/posting-schedule';
-import type { SocialAccountStatusValue } from '@/types/social-account-status';
+import {
+    SocialAccountStatus,
+    type SocialAccountStatusValue,
+} from '@/types/social-account-status';
 
 export interface AvailablePlatform {
     value: string;
@@ -40,16 +43,36 @@ export interface ConnectedAccount {
     status: SocialAccountStatusValue | null;
 }
 
+const CONNECTION_LOST_STATUSES: SocialAccountStatusValue[] = [
+    SocialAccountStatus.Disconnected,
+    SocialAccountStatus.TokenExpired,
+];
+
+/** Networks connected in several ways, whose accounts name the way they were connected ("LinkedIn Page"). */
+const PLATFORMS_WITH_ACCOUNT_TYPE: string[] = [
+    Platform.LinkedInPage,
+    Platform.InstagramFacebook,
+];
+
+/** A channel that can no longer publish until it is reconnected. */
 export const isConnectionLost = (account: {
     status: SocialAccountStatusValue | null;
-}): boolean =>
-    account.status === 'disconnected' || account.status === 'token_expired';
+}): boolean => {
+    if (account.status === null) {
+        return false;
+    }
 
-export const accountTypeKey = (account: { platform: string }): string | null =>
-    account.platform === Platform.LinkedInPage ||
-    account.platform === Platform.InstagramFacebook
-        ? `channels.variants.${account.platform}`
-        : null;
+    return CONNECTION_LOST_STATUSES.includes(account.status);
+};
+
+/** The lang key of an account's type ("LinkedIn Page"); none on a network connected one way only. */
+export const accountTypeKey = (account: { platform: string }): string | null => {
+    if (!PLATFORMS_WITH_ACCOUNT_TYPE.includes(account.platform)) {
+        return null;
+    }
+
+    return `channels.variants.${account.platform}`;
+};
 
 /** The verification badge a network shows next to an account (only X reports one today). */
 export type VerifiedBadge = 'blue' | 'business' | 'government';
