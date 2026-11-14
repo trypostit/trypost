@@ -173,7 +173,7 @@ return [
     ],
 
     'list' => [
-        'search' => '按名称或 @用户名搜索',
+        'search' => '按名称、@用户名或平台搜索',
         'networks' => '网络',
         'networks_search' => '搜索网络',
         'no_networks' => '未找到网络',

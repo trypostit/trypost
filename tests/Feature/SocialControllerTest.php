@@ -181,6 +181,26 @@ test('accounts index finds a username searched with a leading @', function () {
             ->where('connectedChannels.data.0.id', $acme->id));
 });
 
+test('accounts index finds the channels of a network searched by its name', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube, 'display_name' => 'Acme Videos', 'username' => 'acmevideos']);
+    $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'display_name' => 'Acme Store', 'username' => 'acmestore']);
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'YouTube']))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $youtube->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'acme youtube']))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $youtube->id));
+
+    $this->actingAs($this->user)->get(route('app.workspace.channels', ['search' => 'store']))
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedChannels.data', 1)
+            ->where('connectedChannels.data.0.id', $x->id));
+});
+
 test('accounts index drops a network filter the workspace no longer has a channel on', function () {
     $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
 

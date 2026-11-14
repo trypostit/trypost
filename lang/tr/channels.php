@@ -173,7 +173,7 @@ return [
     ],
 
     'list' => [
-        'search' => 'Ada veya @kullanıcı adına göre ara',
+        'search' => 'Ada, @kullanıcı adına veya ağa göre ara',
         'networks' => 'Ağlar',
         'networks_search' => 'Ağ ara',
         'no_networks' => 'Ağ bulunamadı',

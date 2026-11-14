@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\User\WeekStart;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -16,19 +17,15 @@ class ListWorkspaceChannels
 {
     /**
      * The workspace's channels in the sidebar order, matching every word of the
-     * search in the name or the username (stored without "@", so a word's
-     * leading "@" is dropped), on the networks asked for.
+     * search in the name, the username (stored without "@", so a word's leading
+     * "@" is dropped) or the network's name ("youtube"), on the networks asked for.
      *
      * @param  list<string>  $networks
      * @return Builder<SocialAccount>
      */
     public static function query(Workspace $workspace, string $search = '', array $networks = []): Builder
     {
-        $platforms = collect(Platform::cases())
-            ->filter(fn (Platform $platform): bool => in_array($platform->network(), $networks, true))
-            ->map(fn (Platform $platform): string => $platform->value)
-            ->values()
-            ->all();
+        $platforms = self::platformsWhere(fn (Platform $platform): bool => in_array($platform->network(), $networks, true));
 
         return $workspace->socialAccounts()->getQuery()
             ->when(filled($networks), fn (Builder $query): Builder => $query->whereIn('platform', $platforms))
@@ -40,7 +37,8 @@ class ListWorkspaceChannels
                 foreach ($words as $word) {
                     $query->where(fn (Builder $match): Builder => $match
                         ->whereLike('display_name', "%{$word}%")
-                        ->orWhereLike('username', "%{$word}%"));
+                        ->orWhereLike('username', "%{$word}%")
+                        ->orWhereIn('platform', self::platformsWhere(fn (Platform $platform): bool => Str::contains($platform->label(), $word, ignoreCase: true))));
                 }
 
                 return $query;
@@ -79,6 +77,21 @@ class ListWorkspaceChannels
             ->pluck('platform')
             ->map(fn (Platform $platform): string => $platform->network())
             ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The platforms that pass the check, as stored on the accounts.
+     *
+     * @param  Closure(Platform): bool  $check
+     * @return list<string>
+     */
+    private static function platformsWhere(Closure $check): array
+    {
+        return collect(Platform::cases())
+            ->filter($check)
+            ->map(fn (Platform $platform): string => $platform->value)
             ->values()
             ->all();
     }

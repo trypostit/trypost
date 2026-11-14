@@ -173,7 +173,7 @@ return [
     ],
 
     'list' => [
-        'search' => 'Buscar por nombre o @usuario',
+        'search' => 'Buscar por nombre, @usuario o red',
         'networks' => 'Redes',
         'networks_search' => 'Buscar redes',
         'no_networks' => 'No se encontraron redes',

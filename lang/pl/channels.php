@@ -173,7 +173,7 @@ return [
     ],
 
     'list' => [
-        'search' => 'Szukaj po nazwie lub @nazwie użytkownika',
+        'search' => 'Szukaj po nazwie, @nazwie użytkownika lub sieci',
         'networks' => 'Sieci',
         'networks_search' => 'Szukaj sieci',
         'no_networks' => 'Nie znaleziono sieci',
