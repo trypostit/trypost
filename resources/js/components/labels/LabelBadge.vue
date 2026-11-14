@@ -17,7 +17,7 @@ const colors = computed(() => ({
 
 <template>
     <span
-        class="inline-flex h-6 max-w-full min-w-0 items-center rounded-full px-2.5 text-xs font-medium"
+        class="inline-flex h-6 max-w-full min-w-0 items-center rounded-full px-2.5 text-xs font-medium text-foreground"
         :style="colors"
     >
         <span class="truncate">{{ label.name }}</span>

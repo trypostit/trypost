@@ -9,9 +9,11 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 use Illuminate\Support\Facades\Queue;
 
 /** @return array{0: User, 1: list<SocialAccount>} */
@@ -352,4 +354,24 @@ test('a follower change of a thousand or more reads short and signed, the same i
 
     $page->assertSeeIn('@analytics-followers-change', '+1.2K')
         ->assertNoJavaScriptErrors();
+});
+
+test('picking a label narrows the post metrics and keeps the label in the url', function () {
+    [$user, [$alpha]] = insightsChannelFilterFixture();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $alpha->workspace_id, 'name' => 'Launch']);
+    $post = Post::factory()->forAccount($alpha)->published()->create(['user_id' => $user->id]);
+    $post->labels()->attach($label);
+    AnalyticsPublication::query()->where('social_account_id', $alpha->id)->update(['post_id' => $post->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '2'");
+
+    $page->click('@analytics-label-filter');
+    waitFor($page, "@analytics-label-checkbox-{$label->id}");
+    $page->click("@analytics-label-checkbox-{$label->id}");
+    waitForCondition($page, "[...new URLSearchParams(location.search)].some(([key, value]) => key.startsWith('labels') && value === '{$label->id}')");
+    waitForState($page, '@analytics-summary-posts .font-heading', "element.textContent.trim() === '1'");
+
+    $page->assertNoJavaScriptErrors();
 });

@@ -4,6 +4,9 @@
  */
 const WHITE_TEXT_UP_TO_LUMINANCE = 0.3;
 
+/** A label's color as every entry point stores it (`LabelRequestRules`). */
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
 const DARK_TEXT = '#0a0a0a';
 const LIGHT_TEXT = '#ffffff';
 
@@ -21,9 +24,14 @@ const linear = (channel: number): number => {
 /**
  * The text color of a label's chip on its color (`#RRGGBB`): white whenever it
  * still reads (green, blue, red, purple), near black only on a light color
- * (light gray, yellow) where white would fade.
+ * (light gray, yellow) where white would fade. Anything else is no color to
+ * read, so it gets none and the chip keeps the theme's text color.
  */
-export const labelTextColor = (hex: string): string => {
+export const labelTextColor = (hex: string): string | undefined => {
+    if (!HEX_COLOR.test(hex)) {
+        return undefined;
+    }
+
     const [red, green, blue] = [1, 3, 5].map((start) =>
         linear(Number.parseInt(hex.slice(start, start + 2), 16)),
     );
