@@ -15,13 +15,15 @@ import { getContentTypeBadgeKey } from '@/composables/usePlatformLogo';
 import { getPostCardStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
-import { transform } from '@/lib/helpers';
+import { filled, transform } from '@/lib/helpers';
 import { isImage } from '@/lib/mediaType';
 import { postAttemptAt, postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus } from '@/types/post';
 import type { PostCard } from '@/types/publish';
+
+type Translate = (key: string) => string;
 
 const props = defineProps<{
     post: PostCard;
@@ -59,7 +61,34 @@ const time = computed(() =>
 
 const text = computed(() => htmlToPlainText(props.post.content ?? ''));
 
+const hasText = computed(() => filled(text.value));
+
+const textColor = computed(() =>
+    hasText.value ? 'text-foreground' : 'text-muted-foreground',
+);
+
+/** The channel the card names, or "No channel". Takes the template's `$t`, like the helpers below. */
+const channelOrNone = (translate: Translate): string =>
+    channelLabel.value || translate('posts.board.columns.no_channel');
+
+/** The post's text, or "No content". */
+const textOrNone = (translate: Translate): string => {
+    if (hasText.value) {
+        return text.value;
+    }
+
+    return translate('calendar.no_content');
+};
+
+/** What a screen reader says on the card, as the calendar chip does: channel, time and text. */
+const openLabel = (translate: Translate): string =>
+    [channelOrNone(translate), time.value, textOrNone(translate)].join(' · ');
+
 const thumbnail = computed(() => postThumbnail(props.post));
+
+const hasVideoThumbnail = computed(
+    () => filled(thumbnail.value) && !isImage(thumbnail.value),
+);
 
 const thumbnailFrame = ref<HTMLElement | null>(null);
 
@@ -69,11 +98,7 @@ const thumbnailFrame = ref<HTMLElement | null>(null);
  * the column's scroller still clips, so a card scrolled out of its column counts as hidden.
  */
 const videoLoaded = useElementVisibility(
-    computed(() =>
-        transform(thumbnail.value, (item) =>
-            isImage(item) ? null : thumbnailFrame.value,
-        ),
-    ),
+    computed(() => (hasVideoThumbnail.value ? thumbnailFrame.value : null)),
     { rootMargin: '200px', once: true },
 );
 
@@ -102,13 +127,7 @@ const hasMenu = computed(
         <button
             type="button"
             class="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-            :aria-label="
-                [
-                    channelLabel || $t('posts.board.columns.no_channel'),
-                    time,
-                    text || $t('calendar.no_content'),
-                ].join(' · ')
-            "
+            :aria-label="openLabel($t)"
             :data-testid="`board-card-open-${post.id}`"
             @click="openDetails"
         />
@@ -127,7 +146,7 @@ const hasMenu = computed(
             <p
                 class="min-w-0 truncate text-sm leading-tight font-emphasis text-foreground"
             >
-                {{ channelLabel || $t('posts.board.columns.no_channel') }}
+                {{ channelOrNone($t) }}
             </p>
         </div>
 
@@ -164,9 +183,9 @@ const hasMenu = computed(
 
         <p
             class="line-clamp-6 text-sm break-words whitespace-pre-line"
-            :class="text ? 'text-foreground' : 'text-muted-foreground'"
+            :class="textColor"
         >
-            {{ text || $t('calendar.no_content') }}
+            {{ textOrNone($t) }}
         </p>
 
         <div
@@ -176,7 +195,7 @@ const hasMenu = computed(
             :data-testid="`board-card-thumbnail-${post.id}`"
         >
             <img
-                v-if="isImage(thumbnail)"
+                v-if="!hasVideoThumbnail"
                 :src="thumbnail.url"
                 alt=""
                 loading="lazy"
