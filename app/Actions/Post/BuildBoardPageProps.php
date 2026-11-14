@@ -13,7 +13,6 @@ use App\Support\PublishFilters;
 use App\Support\Timezone;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -39,18 +38,15 @@ class BuildBoardPageProps
         $user = $request->user();
         $filters = PublishFilters::fromRequest($request, $channel, $user);
         $groups = self::groups($channel);
-        $group = self::group($request->query('group'), $groups);
+        $group = self::group($request->query->getString('group'), $groups);
 
-        $accounts = filled($channel) ? EloquentCollection::make() : $workspace->socialAccounts()->get();
+        $accounts = filled($channel) ? collect() : $workspace->socialAccounts()->get();
         $labels = $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']);
-        $hasChannels = filled($channel) || $accounts->isNotEmpty();
+        $hasChannels = filled($channel) || filled($accounts);
 
-        $groupedByTag = $group === 'tag';
-        $posts = BuildPublishPageProps::cardQuery(
-            $workspace->posts()->onChannels($filters->scopedChannelIds),
-            $groupedByTag ? [] : $filters->labelIds,
-            $groupedByTag ? false : $filters->untagged,
-        )->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($user, $workspace));
+        $posts = BuildPublishPageProps::cardQuery($workspace->posts()->onChannels($filters->scopedChannelIds), [], false)
+            ->when($group !== 'tag', fn (Builder $posts): Builder => $posts->matchingLabelFilter($filters->labelIds, $filters->untagged))
+            ->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($user, $workspace));
 
         $columnQuery = fn (array $column): Builder => self::columnQuery($column, clone $posts);
 
@@ -73,11 +69,8 @@ class BuildBoardPageProps
             'groups' => $groups,
             'boardColumns' => $columns->all(),
             'columns' => $columns
-                ->mapWithKeys(fn (array $column): array => [
-                    data_get($column, 'key') => Inertia::scroll(fn () => self::page(data_get($column, 'key'), $columnQuery($column)))
-                        ->defer()
-                        ->matchOn('data.id'),
-                ])
+                ->keyBy('key')
+                ->map(fn (array $column) => Inertia::scroll(fn () => self::page($column, $columnQuery($column)))->defer()->matchOn('data.id'))
                 ->all(),
             'displayTimezone' => $filters->displayTimezone,
             'timezones' => fn (): array => Timezone::options(),
@@ -106,9 +99,9 @@ class BuildBoardPageProps
     /**
      * @param  list<string>  $groups
      */
-    private static function group(mixed $requested, array $groups): string
+    private static function group(string $requested, array $groups): string
     {
-        if (! in_array($requested, $groups, true)) {
+        if (! collect($groups)->containsStrict($requested)) {
             return 'status';
         }
 
@@ -177,7 +170,7 @@ class BuildBoardPageProps
     {
         return match (data_get($column, 'type')) {
             'status' => self::statusQuery(data_get($column, 'key'), $posts),
-            'label' => $posts->whereHas('labels', fn (Builder $labels): Builder => $labels->whereKey(data_get($column, 'label.id')))->latestAttempt(),
+            'label' => $posts->whereRelation('labels', 'workspace_labels.id', data_get($column, 'label.id'))->latestAttempt(),
             'untagged' => $posts->whereDoesntHave('labels')->latestAttempt(),
             'channel' => $posts->where('posts.social_account_id', data_get($column, 'channel.id'))->latestAttempt(),
             'no_channel' => $posts->whereNull('posts.platform')->latestAttempt(),
@@ -198,10 +191,13 @@ class BuildBoardPageProps
     /**
      * One page of a column, its cards ready for the board: the viewer's
      * permissions, the sent posts' metrics, each channel serialized once.
+     *
+     * @param  array<string, mixed>  $column
      */
-    private static function page(string $key, Builder $query): LengthAwarePaginator
+    private static function page(array $column, Builder $query): LengthAwarePaginator
     {
-        $page = $query->orderBy('posts.id')->paginate((int) config('app.pagination.default'), pageName: "{$key}_page");
+        $key = data_get($column, 'key');
+        $page = $query->orderBy('posts.id')->paginate(config()->integer('app.pagination.default'), pageName: "{$key}_page");
 
         BuildPublishPageProps::decorate($page->getCollection());
         BuildPublishPageProps::attachMetrics($page->getCollection());
