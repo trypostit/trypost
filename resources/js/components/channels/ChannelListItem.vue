@@ -52,17 +52,46 @@ const emit = defineEmits<{
     disconnect: [channel: ConnectedAccount];
 }>();
 
+const name = computed(
+    () => props.channel.display_name || props.channel.username,
+);
+
 const lost = computed(() => isConnectionLost(props.channel));
 
-const typeKey = computed(() => accountTypeKey(props.channel));
+const timezone = computed(() => props.channel.timezone_option);
 
-/** The network and the handle under the name: "Instagram · @trypost.it". The network is translated in the template. */
-const networkLine = (network: string): string => {
+/** UTC needs no offset next to it: "UTC GMT" says nothing more. */
+const showsOffset = computed(() => timezone.value.label !== 'UTC');
+
+const hasPostingTimes = computed(() => props.channel.posting_times_per_week > 0);
+
+/**
+ * The network and the handle under the name: "Instagram · @trypost.it". It takes the
+ * template's `$t`, so the account type ("LinkedIn Page") follows the loaded language.
+ */
+const networkLine = (translate: (key: string) => string): string => {
+    const typeKey = accountTypeKey(props.channel);
+    const network = typeKey
+        ? translate(typeKey)
+        : getPlatformLabel(props.channel.platform);
+
     if (blank(props.channel.handle_label)) {
         return network;
     }
 
     return `${network} · ${props.channel.handle_label}`;
+};
+
+const reconnect = (): void => {
+    emit('reconnect', props.channel);
+};
+
+const linkFacebook = (): void => {
+    emit('linkFacebook', props.channel);
+};
+
+const disconnect = (): void => {
+    emit('disconnect', props.channel);
 };
 </script>
 
@@ -78,7 +107,7 @@ const networkLine = (network: string): string => {
                 :platform="channel.platform"
                 :src="channel.avatar_url"
                 :verified="channel.verified_badge"
-                :name="channel.display_name || channel.username"
+                :name="name"
                 :size="32"
                 ring="card"
             />
@@ -87,7 +116,7 @@ const networkLine = (network: string): string => {
                     class="truncate text-sm leading-tight font-emphasis text-foreground"
                     :data-testid="`channel-name-${channel.id}`"
                 >
-                    {{ channel.display_name || channel.username }}
+                    {{ name }}
                 </p>
                 <p
                     v-if="lost"
@@ -100,22 +129,10 @@ const networkLine = (network: string): string => {
                 <p
                     v-else
                     class="truncate text-sm text-muted-foreground"
-                    :title="
-                        networkLine(
-                            typeKey
-                                ? $t(typeKey)
-                                : getPlatformLabel(channel.platform),
-                        )
-                    "
+                    :title="networkLine($t)"
                     :data-testid="`channel-network-${channel.id}`"
                 >
-                    {{
-                        networkLine(
-                            typeKey
-                                ? $t(typeKey)
-                                : getPlatformLabel(channel.platform),
-                        )
-                    }}
+                    {{ networkLine($t) }}
                 </p>
             </div>
         </div>
@@ -125,32 +142,31 @@ const networkLine = (network: string): string => {
         >
             <p
                 class="min-w-0 truncate text-foreground"
-                :title="channel.timezone_option.value"
+                :title="timezone.value"
                 :data-testid="`channel-timezone-${channel.id}`"
             >
-                {{ channel.timezone_option.label }}
-                <span
-                    v-if="channel.timezone_option.label !== 'UTC'"
-                    class="text-muted-foreground"
-                    >{{ channel.timezone_option.offset }}</span
-                >
+                {{ timezone.label }}
+                <span v-if="showsOffset" class="text-muted-foreground">{{
+                    timezone.offset
+                }}</span>
             </p>
             <p
-                class="min-w-0 truncate"
-                :class="
-                    channel.posting_times_per_week > 0
-                        ? 'text-foreground'
-                        : 'text-muted-foreground'
-                "
+                v-if="hasPostingTimes"
+                class="min-w-0 truncate text-foreground"
                 :data-testid="`channel-posting-times-${channel.id}`"
             >
                 {{
-                    channel.posting_times_per_week > 0
-                        ? $t('channels.list.posting_times_per_week', {
-                              count: String(channel.posting_times_per_week),
-                          })
-                        : $t('channels.settings_page.day_empty')
+                    $t('channels.list.posting_times_per_week', {
+                        count: String(channel.posting_times_per_week),
+                    })
                 }}
+            </p>
+            <p
+                v-else
+                class="min-w-0 truncate text-muted-foreground"
+                :data-testid="`channel-posting-times-${channel.id}`"
+            >
+                {{ $t('channels.settings_page.day_empty') }}
             </p>
             <div class="flex min-w-0 text-muted-foreground">
                 <GoalProgress
@@ -180,7 +196,7 @@ const networkLine = (network: string): string => {
                 size="sm"
                 class="max-md:hidden"
                 :data-testid="`channel-reconnect-${channel.id}`"
-                @click="emit('reconnect', channel)"
+                @click="reconnect"
             >
                 <IconRefresh class="size-4" />
                 {{ $t('channels.reconnect') }}
@@ -234,14 +250,14 @@ const networkLine = (network: string): string => {
                                 <DropdownMenuItem
                                     v-if="canLinkFacebook"
                                     :data-testid="`channel-menu-link-facebook-${channel.id}`"
-                                    @click="emit('linkFacebook', channel)"
+                                    @click="linkFacebook"
                                 >
                                     <IconBrandFacebook class="size-4" />
                                     {{ $t('channels.link_facebook_page') }}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     :data-testid="`channel-menu-reconnect-${channel.id}`"
-                                    @click="emit('reconnect', channel)"
+                                    @click="reconnect"
                                 >
                                     <IconRefresh class="size-4" />
                                     {{ $t('channels.refresh_connection') }}
@@ -250,7 +266,7 @@ const networkLine = (network: string): string => {
                                 <DropdownMenuItem
                                     variant="destructive"
                                     :data-testid="`channel-disconnect-${channel.id}`"
-                                    @click="emit('disconnect', channel)"
+                                    @click="disconnect"
                                 >
                                     <IconTrash class="size-4" />
                                     {{ $t('channels.disconnect') }}
@@ -273,7 +289,7 @@ const networkLine = (network: string): string => {
             size="sm"
             class="col-span-2 order-4 md:hidden"
             :data-testid="`channel-reconnect-phone-${channel.id}`"
-            @click="emit('reconnect', channel)"
+            @click="reconnect"
         >
             <IconRefresh class="size-4" />
             {{ $t('channels.reconnect') }}
