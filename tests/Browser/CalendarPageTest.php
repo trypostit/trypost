@@ -725,7 +725,9 @@ test('on a phone the calendar tab of the view switch keeps the three days view, 
     $calendarTabPath = 'new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname';
 
     $page = visit(route('app.calendar', ['view' => 'days']))->resize(390, 844);
-    waitFor($page, '@schedule-view-calendar');
+    waitFor($page, '@schedule-view-trigger');
+    $page->click('@schedule-view-trigger');
+    waitForOpen($page, '@schedule-view-menu');
     $page->assertScript($calendarTabPath, route('app.calendar', ['view' => 'days'], false))
         ->click('@schedule-view-calendar');
     waitFor($page, '@calendar-time-grid');

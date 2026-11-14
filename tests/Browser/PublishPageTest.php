@@ -404,7 +404,7 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
             return {
                 oneRow: row.every((box) => Math.abs(middle(box) - middle(row[0])) <= 2),
-                viewSwitchInHeader: Boolean(document.querySelector('[data-testid="app-header"] [data-testid="schedule-view-list"]')?.getClientRects().length),
+                viewSwitchInHeader: Boolean(document.querySelector('[data-testid="app-header"] [data-testid="schedule-view-trigger"]')?.getClientRects().length),
                 noDateButton: visible(document.querySelector('[data-testid="calendar-no-date"]')),
                 channelText: [...channelFilter.querySelectorAll('span')].filter((span) => visible(span) && span.textContent.trim() !== '').length,
                 tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')?.getClientRects().length),
@@ -505,7 +505,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
         (() => {
             const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
             const middle = (box) => Math.round(box.top + box.height / 2);
-            const row = ['publish-tabs-mobile-trigger', 'publish-menu', 'schedule-view-list', 'posts-new-post'].map(rect);
+            const row = ['publish-tabs-mobile-trigger', 'publish-menu', 'schedule-view-trigger', 'posts-new-post'].map(rect);
 
             return {
                 oneRow: row.every((box) => Math.abs(middle(box) - middle(row[0])) <= 2),
@@ -517,8 +517,15 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
     JS);
 
     expect($phone)->toBe(['oneRow' => true, 'belowGoal' => true, 'tags' => false, 'overflow' => false])
-        ->and($page->script($calendarPath))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'days'], false))
         ->and($page->script('Boolean(document.querySelector(\'[data-testid="publish-timezone-trigger"]\'))'))->toBeFalse();
+
+    $page->click('@schedule-view-trigger');
+    waitForOpen($page, '@schedule-view-menu');
+
+    expect($page->script($calendarPath))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'days'], false));
+
+    $page->keys('@schedule-view-menu', 'Escape');
+    waitForGone($page, '@schedule-view-menu');
 
     $page->click('@publish-menu');
     waitFor($page, '@publish-menu-content');
@@ -573,9 +580,13 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
         ->assertMissing('@publish-tabs-sheet');
 
     $page->navigate(route('app.posts.index'));
-    waitFor($page, '@schedule-view-calendar');
+    waitFor($page, '@schedule-view-trigger');
+    $page->click('@schedule-view-trigger');
+    waitForOpen($page, '@schedule-view-menu');
     expect($page->script($calendarPath))->toBe(route('app.calendar', ['view' => 'days'], false));
 
+    $page->keys('@schedule-view-menu', 'Escape');
+    waitForGone($page, '@schedule-view-menu');
     $page->resize(1280, 800);
     waitForCondition($page, $calendarPath.'.endsWith("/week")');
     expect($page->script($calendarPath))->toBe(route('app.calendar', ['view' => 'week'], false));
@@ -615,7 +626,7 @@ test('on a phone the view switch and the new post button fit inside the card, on
     $fits = $page->script(<<<'JS'
         (() => {
             const card = document.querySelector('[data-testid="publish-page"]').getBoundingClientRect();
-            return ['posts-new-post', 'schedule-view-calendar'].every((testId) => {
+            return ['posts-new-post', 'schedule-view-trigger'].every((testId) => {
                 const box = document.querySelector(`[data-testid="${testId}"]`).getBoundingClientRect();
                 return box.width > 0 && box.left >= card.left && box.right <= card.right;
             });
