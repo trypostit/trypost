@@ -15,8 +15,7 @@ import { getContentTypeBadgeKey } from '@/composables/usePlatformLogo';
 import { getPostCardStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
-import { limitText } from '@/lib/characters';
-import { filled, transform } from '@/lib/helpers';
+import { transform } from '@/lib/helpers';
 import { isImage } from '@/lib/mediaType';
 import { postAttemptAt, postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
@@ -59,13 +58,6 @@ const time = computed(() =>
 );
 
 const text = computed(() => htmlToPlainText(props.post.content ?? ''));
-
-/** The overlay's name: channel, time and the start of the post, never its whole text. */
-const openLabel = computed(() =>
-    [channelLabel.value, time.value, limitText(text.value, 100)]
-        .filter(Boolean)
-        .join(' · '),
-);
 
 const thumbnail = computed(() => postThumbnail(props.post));
 
@@ -111,9 +103,11 @@ const hasMenu = computed(
             type="button"
             class="absolute inset-0 rounded-lg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             :aria-label="
-                filled(text)
-                    ? openLabel
-                    : `${openLabel} · ${$t('calendar.no_content')}`
+                [
+                    channelLabel || $t('posts.board.columns.no_channel'),
+                    time,
+                    text || $t('calendar.no_content'),
+                ].join(' · ')
             "
             :data-testid="`board-card-open-${post.id}`"
             @click="openDetails"
