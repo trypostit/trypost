@@ -45,7 +45,7 @@ enum Locale: string
             self::Russian => 'Русский',
             self::Turkish => 'Türkçe',
             self::Arabic => 'العربية',
-            self::Indonesian => 'Bahasa Indonesia',
+            self::Indonesian => 'Indonesia',
         };
     }
 
