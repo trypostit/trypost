@@ -181,7 +181,12 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
     $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
     waitFor($page, '@app-content-shell');
-    expect($page->script('document.querySelector(\'[data-testid="mcp-prompt"]\') !== null'))->toBe(! $aiConnected);
+    if ($aiConnected) {
+        letPageRun($page, 600);
+        $page->assertMissing('@mcp-prompt');
+    } else {
+        waitFor($page, '@mcp-prompt');
+    }
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");

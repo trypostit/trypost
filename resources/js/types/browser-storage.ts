@@ -2,6 +2,7 @@ import type { AutosaveSnapshot } from '@/composables/useComposerAutosave';
 import type { PerformanceMetric, SummaryMetric } from '@/types/analytics';
 import type { PlatformValue } from '@/types/platform';
 import type { PublishView } from '@/types/publish';
+import type { TourName, TourProgress } from '@/types/tour';
 
 /** The columns picked for each network's per-post table on the channel insights. */
 type ChannelColumns = {
@@ -13,7 +14,6 @@ type ChannelColumns = {
  * (`area.thing`, like lang keys). An item never set is absent.
  */
 export interface UserStorage extends ChannelColumns {
-    'mcp.promptDismissed': boolean;
     'calendar.skipCustomTimeConfirm': boolean;
     'publish.tz': string;
     'publish.showSlots': boolean;
@@ -21,6 +21,7 @@ export interface UserStorage extends ChannelColumns {
     'insights.performanceColumns': PerformanceMetric[];
     'composer.instagramCollaboratorsNoticeSeen': boolean;
     'emoji.recents': string[];
+    tours: Partial<Record<TourName, TourProgress>>;
 }
 
 /** What the app keeps for a user in one workspace: channel and post ids, the draft. */

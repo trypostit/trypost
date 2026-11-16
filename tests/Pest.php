@@ -50,7 +50,10 @@ pest()->extend(TestCase::class)
 
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(fn () => fakePwnedPasswords())
+    ->beforeEach(function (): void {
+        fakePwnedPasswords();
+        config(['trypost.tours.enabled' => false]);
+    })
     ->in('Browser');
 
 pest()->in('Feature/Social')
@@ -575,7 +578,7 @@ function mcpAccessToken(
 
 /**
  * Connects an AI to the user's current workspace, as connecting one through
- * MCP does, so the in-app invitation to connect one (`McpPromptCard`) is not
+ * MCP does, so the in-app invitation to connect one (`McpPromptTour`) is not
  * shown. A browser test whose page should not carry the card calls it.
  */
 function connectAiTo(User $user): void
@@ -788,13 +791,33 @@ function jsSelector(string $selector): string
 
 /**
  * Wait until the note editor matching the selector shows that text, trimmed.
- * The editor is a contenteditable, so it has no value to assert.
+ * The editor is a contenteditable, so it has no value to assert. When it never
+ * does, the failure says what the editor shows instead and where the focus is.
  */
 function waitForEditorText(mixed $page, string $selector, string $text): void
 {
-    $text = json_encode($text, JSON_THROW_ON_ERROR);
+    $expected = json_encode($text, JSON_THROW_ON_ERROR);
+    $element = 'document.querySelector('.jsSelector($selector).')';
 
-    waitForState($page, $selector, "element.innerText.trim() === {$text}");
+    $result = $page->script(<<<JS
+        (async () => {
+            const read = () => {$element}?.innerText.trim() ?? null;
+
+            for (let i = 0; i < 600; i++) {
+                if (read() === {$expected}) return { met: true };
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const focused = document.activeElement;
+
+            return { met: false, shown: read(), focus: focused?.dataset?.testid ?? focused?.tagName ?? null };
+        })();
+    JS);
+
+    $shown = json_encode(data_get($result, 'shown'), JSON_UNESCAPED_UNICODE);
+    $focus = json_encode(data_get($result, 'focus'));
+
+    expect(data_get($result, 'met'))->toBeTrue("Waited 30s for {$selector} to show {$expected}; it shows {$shown}, with the focus on {$focus}.");
 }
 
 /**
@@ -806,6 +829,36 @@ function waitForState(mixed $page, string $selector, string $expression, int $se
     $selector = jsSelector($selector);
 
     waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))", $seconds);
+}
+
+/**
+ * Keeps the element matching the selector as `window.__remembered[$name]`, so
+ * a later wait can tell whether the page still shows that same element
+ * (`element === window.__remembered.<name>`) or replaced it.
+ */
+function rememberElement(mixed $page, string $selector, string $name): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+    $name = json_encode($name);
+
+    $page->script("(() => { window.__remembered = { ...window.__remembered, [{$name}]: document.querySelector({$selector}) }; })()");
+}
+
+/**
+ * Presses the pointer down on the element matching the selector, the start of
+ * a click: an open modal layer takes the pointer events of the page around
+ * it, so a real click cannot reach that element, while the layer still hears
+ * the press as one outside it.
+ */
+function pointerDownOn(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))");
 }
 
 /**
@@ -898,6 +951,106 @@ function browserStorageItemJs(User $user, string $item, ?string $workspaceId = n
 function browserStorageItem(mixed $page, User $user, string $item, ?string $workspaceId = null): mixed
 {
     return $page->script(browserStorageItemJs($user, $item, $workspaceId));
+}
+
+/**
+ * The whole value of a user's browser storage key (`trypost:<user id>`), as
+ * the page keeps it, or null when it holds none or no JSON.
+ */
+function browserStorage(mixed $page, User $user): mixed
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    return $page->script("(() => { try { return JSON.parse(localStorage.getItem({$key})); } catch { return null; } })()");
+}
+
+/**
+ * Every key the page keeps in its localStorage.
+ *
+ * @return list<string>
+ */
+function localStorageKeys(mixed $page): array
+{
+    return $page->script('Object.keys(localStorage)');
+}
+
+/**
+ * Writes a raw text as a user's browser storage value, for the values the app
+ * must read past (not JSON, another version, a wrong shape); a well-formed
+ * item goes through `setBrowserStorageItem()`.
+ */
+function setRawBrowserStorage(mixed $page, User $user, string $raw): void
+{
+    $key = json_encode("trypost:{$user->id}");
+    $raw = json_encode($raw);
+
+    $page->script("localStorage.setItem({$key}, {$raw})");
+}
+
+/**
+ * Makes the page's browser refuse its storage from now on, as a private
+ * window or blocked site data does, and fails when it still allows it.
+ */
+function refuseBrowserStorage(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const refuse = () => { throw new DOMException('denied', 'SecurityError'); };
+            Storage.prototype.getItem = refuse;
+            Storage.prototype.setItem = refuse;
+        })()
+    JS);
+
+    expect($page->script("(() => { try { localStorage.getItem('x'); return 'allowed'; } catch { return 'refused'; } })()"))->toBe('refused');
+}
+
+/**
+ * The value of an expression about `element` for every element matching the
+ * selector, in page order.
+ *
+ * @return list<mixed>
+ */
+function elementsMap(mixed $page, string $selector, string $expression): array
+{
+    $selector = jsSelector($selector);
+
+    return $page->script("[...document.querySelectorAll({$selector})].map((element) => ({$expression}))");
+}
+
+/**
+ * Lets the page run for a while without waiting on anything, to show that
+ * something stays as it is (a dialog left open across polls). Never a
+ * PHP `sleep()`, which would stop the page's own requests.
+ */
+function letPageRun(mixed $page, int $milliseconds): void
+{
+    $page->script("new Promise((resolve) => setTimeout(resolve, {$milliseconds}))");
+}
+
+/**
+ * Fires a click on the element matching the selector without moving the
+ * pointer there, for an element an open modal layer keeps out of the
+ * pointer's reach (a click through `$page->click()` would never land).
+ */
+function clickWithoutPointer(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).click()");
+}
+
+/**
+ * Tells the page that the user's browser storage changed in another tab, as
+ * the browser does with a `storage` event: seed the change with
+ * `setBrowserStorageItem()` first.
+ */
+function announceBrowserStorageFromAnotherTab(mixed $page, User $user): void
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    $page->script("window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: localStorage.getItem({$key}) }))");
 }
 
 /**

@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
+import TourStep from '@/components/tours/TourStep.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
@@ -185,30 +186,40 @@ const accountColors = computed<Record<string, string>>(() => {
                     class="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border-strong pt-2 pb-3"
                     data-testid="analytics-toolbar"
                 >
-                    <AnalyticsRangePresets
-                        :filters="report.filters"
-                        :bounds="report.bounds"
-                        :url="insightsRoute.url()"
-                        :range="report.range"
-                        :keep="filterQuery"
-                    />
+                    <TourStep
+                        tour="insights.filters"
+                        step="range"
+                        align="start"
+                    >
+                        <AnalyticsRangePresets
+                            :filters="report.filters"
+                            :bounds="report.bounds"
+                            :url="insightsRoute.url()"
+                            :range="report.range"
+                            :keep="filterQuery"
+                        />
+                    </TourStep>
                     <div
                         class="flex min-w-0 flex-wrap items-center gap-2"
                         data-testid="analytics-filters"
                     >
-                        <PostChannelFilter
-                            v-model="selectedChannelIds"
-                            :channels="channelOptions"
-                            test-id="analytics-channel"
-                            sheet-below-sm
-                        />
-                        <LabelFilter
-                            v-model="selectedLabelIds"
-                            v-model:untagged="selectedUntagged"
-                            :labels="labels"
-                            test-id="analytics-label"
-                            sheet-below-sm
-                        />
+                        <TourStep tour="insights.filters" step="channels">
+                            <PostChannelFilter
+                                v-model="selectedChannelIds"
+                                :channels="channelOptions"
+                                test-id="analytics-channel"
+                                sheet-below-sm
+                            />
+                        </TourStep>
+                        <TourStep tour="insights.filters" step="labels">
+                            <LabelFilter
+                                v-model="selectedLabelIds"
+                                v-model:untagged="selectedUntagged"
+                                :labels="labels"
+                                test-id="analytics-label"
+                                sheet-below-sm
+                            />
+                        </TourStep>
                     </div>
                 </div>
             </header>

@@ -1,6 +1,6 @@
 ---
 name: in-app-copy
-description: "Use this skill to write, rewrite or review any text the end user reads inside the TryPost app: lang keys in lang/*/*.php, labels, buttons, tabs, menu items, tooltips, popovers that ask for an action, empty states, dialogs and confirmations, errors, validation messages, toasts, settings descriptions and onboarding steps. Trigger on requests like 'improve this text', 'rewrite this popover', 'this copy is bad', 'review the product copy', 'translate this key', or any new UI string. Covers the three-step pattern for action prompts, tone, per-component rules, the 16-locale workflow and a review checklist. Not for marketing pages, emails' visual layout or AI prompts (see copywriting, the Maizzle rules and the AI agents rules)."
+description: "Use this skill to write, rewrite or review any text the end user reads inside the TryPost app: lang keys in lang/*/*.php, labels, buttons, tabs, menu items, tooltips, popovers that ask for an action, empty states, dialogs and confirmations, errors, validation messages, toasts, tour steps, settings descriptions and onboarding steps. Trigger on requests like 'improve this text', 'rewrite this popover', 'this copy is bad', 'review the product copy', 'translate this key', or any new UI string. Covers the three-step pattern for action prompts, tone, per-component rules, the 16-locale workflow and a review checklist. Not for marketing pages, emails' visual layout or AI prompts (see copywriting, the Maizzle rules and the AI agents rules)."
 metadata:
   author: trypost
 ---
@@ -106,6 +106,27 @@ Never a bare "Nothing here".
 
 - The line under a settings page title stays on one line in every locale.
 - Helper text under a field explains the effect of the setting, not its name.
+
+### Tours
+
+A tour step (`TourStep`, `lang/*/tours.php`) sits right next to the control it points at, so the user already sees the control's own words. The step says what the control does for them, not what it contains (owner decision November 2026).
+
+- **Title: the action the control gives, verb + object**, in the words on the control: "Filter by period", "Filter by channel", "Switch views". Not a question, not "New feature".
+- **Description: one short sentence on what the user gets out of it.** Never list the options the control already shows (the presets, the view names): the user is looking at them.
+- **No mechanism, no settings, no "next time".** What the app remembers or how the filter is built does not belong in a tour.
+- **Short enough to read at a glance:** the card is 320px wide; aim for one line of title and one or two lines of description in the longest locale.
+
+Reference: the Insights filters tour (`tours.insights.filters`).
+
+Before (rejected, lists what the control shows):
+
+> **Pick the period**
+> Look at the last 7 or 30 days, this month so far, or pick your own dates.
+
+After (approved):
+
+> **Filter by period**
+> Filter your data by recent days or by specific dates.
 
 ## Localization (16 locales)
 

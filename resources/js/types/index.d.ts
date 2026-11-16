@@ -117,6 +117,7 @@ export interface SharedData {
     changelog?: SharedChangelog | null;
     changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;
+    toursEnabled?: boolean;
     [key: string]: unknown;
 }
 
