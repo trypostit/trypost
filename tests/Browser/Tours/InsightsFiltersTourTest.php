@@ -171,6 +171,23 @@ test('leaving the page midway records nothing, so the tour opens again from its 
     $page->assertNoJavaScriptErrors();
 });
 
+test('narrowing the window to a phone hides the tour, and widening it opens the tour at the same step', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->resize(390, 844);
+    waitForGone($page, '@tour-backdrop');
+    $page->assertMissing('@tour-insights-filters-channels-content');
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
+
+    $page->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('on a phone no tour opens', function () {
     $page = visit(route('app.insights'))->resize(390, 844);
     waitFor($page, '@analytics-filters');

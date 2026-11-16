@@ -146,7 +146,8 @@ interface TourStepState {
  * the step it was on while the app stays open; closing it in another tab
  * closes it here. Once it closes, the next tour waiting on the page opens. A
  * tour waits while the page is busy (the composer, a dialog, the referral
- * survey). Tours are a desktop thing: on a phone none opens.
+ * survey). Tours are a desktop thing: on a phone none opens, and narrowing
+ * the window to a phone's width hides the open one until it widens again.
  * A step that is not `enabled` (a page where its copy does not fit) never
  * counts as on the page.
  */
@@ -298,6 +299,31 @@ export const useTourStep = <Tour extends TourName>(
         }
 
         start();
+    });
+
+    /**
+     * A window narrowed to a phone's width hides the open tour without a
+     * record, and widening it again opens the tour at the step it was on.
+     */
+    watch(isPhone, (phone) => {
+        if (!phone) {
+            start();
+
+            return;
+        }
+
+        const current = active.value;
+
+        if (!filled(current)) {
+            return;
+        }
+
+        if (current.tour !== tour) {
+            return;
+        }
+
+        resumeAt = current;
+        closeActive();
     });
 
     /** Takes one mount of this step off the page, keeping any other mount of it. */
