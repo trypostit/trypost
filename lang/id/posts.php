@@ -696,7 +696,7 @@ return [
         'add' => 'Tambahkan',
         'publish_to' => 'Terbitkan ke',
         'organize' => 'Atur',
-        'signatures' => 'Signature',
+        'signatures' => 'Tanda tangan',
         'view_on_platform' => 'Lihat di platform',
         'platform_status' => 'Status platform',
         'compliance_incomplete' => 'Beberapa pengaturan platform belum lengkap atau tidak cocok dengan media yang dilampirkan.',
@@ -781,8 +781,8 @@ return [
         ],
 
         'signatures_modal' => [
-            'search' => 'Cari signature...',
-            'no_results' => 'Signature tidak ditemukan.',
+            'search' => 'Cari tanda tangan...',
+            'no_results' => 'Tanda tangan tidak ditemukan.',
         ],
 
         'validation' => [

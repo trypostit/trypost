@@ -21,7 +21,7 @@ return [
             'general' => 'Umum',
             'channels' => 'Channel',
             'members' => 'Anggota',
-            'signatures' => 'Signature',
+            'signatures' => 'Tanda tangan',
             'labels' => 'Label',
             'webhooks' => 'Webhook',
             'api_keys' => 'API',

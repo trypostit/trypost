@@ -28,7 +28,7 @@ return [
         'per_year' => '/tahun',
         'workspaces_one' => 'Satu workspace',
         'workspaces_unlimited' => 'Workspace tanpa batas',
-        'workspaces_tooltip' => 'Workspace adalah satu brand atau klien yang terpisah dari yang lain, dengan akun media sosial, signature, label, analitik, izin anggota, dan koneksi MCP-nya sendiri.',
+        'workspaces_tooltip' => 'Workspace adalah satu brand atau klien yang terpisah dari yang lain, dengan akun media sosial, tanda tangan, label, analitik, izin anggota, dan koneksi MCP-nya sendiri.',
         'current' => 'Paket saat ini',
         'switch_to_yearly' => 'Beralih ke tahunan',
         'switch_to_monthly' => 'Beralih ke bulanan',
