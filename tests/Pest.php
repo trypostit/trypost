@@ -791,13 +791,33 @@ function jsSelector(string $selector): string
 
 /**
  * Wait until the note editor matching the selector shows that text, trimmed.
- * The editor is a contenteditable, so it has no value to assert.
+ * The editor is a contenteditable, so it has no value to assert. When it never
+ * does, the failure says what the editor shows instead and where the focus is.
  */
 function waitForEditorText(mixed $page, string $selector, string $text): void
 {
-    $text = json_encode($text, JSON_THROW_ON_ERROR);
+    $expected = json_encode($text, JSON_THROW_ON_ERROR);
+    $element = 'document.querySelector('.jsSelector($selector).')';
 
-    waitForState($page, $selector, "element.innerText.trim() === {$text}");
+    $result = $page->script(<<<JS
+        (async () => {
+            const read = () => {$element}?.innerText.trim() ?? null;
+
+            for (let i = 0; i < 600; i++) {
+                if (read() === {$expected}) return { met: true };
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const focused = document.activeElement;
+
+            return { met: false, shown: read(), focus: focused?.dataset?.testid ?? focused?.tagName ?? null };
+        })();
+    JS);
+
+    $shown = json_encode(data_get($result, 'shown'), JSON_UNESCAPED_UNICODE);
+    $focus = json_encode(data_get($result, 'focus'));
+
+    expect(data_get($result, 'met'))->toBeTrue("Waited 30s for {$selector} to show {$expected}; it shows {$shown}, with the focus on {$focus}.");
 }
 
 /**
