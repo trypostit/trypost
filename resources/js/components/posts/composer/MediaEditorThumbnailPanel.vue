@@ -4,46 +4,20 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
-import { formatCoverOffset, type MediaEdit } from '@/lib/mediaEditor';
+import { type CoverSource, type MediaEdit } from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
-import { rangeFill } from '@/lib/rangeFill';
-
-type CoverSource = 'frame' | 'image';
 
 const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
 
 const props = defineProps<{
-    duration: number | null;
     supportsCustomCover: boolean;
 }>();
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
+const source = defineModel<CoverSource>('source', { required: true });
 
-/** A cover image without a picked frame is one the user uploaded; a captured frame keeps its time. */
-const initialSource = (): CoverSource => {
-    if (!filled(edit.value.coverImage)) {
-        return 'frame';
-    }
-
-    if (filled(edit.value.coverOffsetMs)) {
-        return 'frame';
-    }
-
-    return 'image';
-};
-
-const source = ref<CoverSource>(initialSource());
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const maxSeconds = computed(() =>
-    Math.max(0, Math.floor((props.duration ?? 0) * 10) / 10),
-);
-const seconds = computed({
-    get: () => (edit.value.coverOffsetMs ?? 0) / 1000,
-    set: (value: number) => {
-        edit.value.coverOffsetMs = Math.round(value * 1000);
-    },
-});
 const showsImage = computed(() => {
     if (!props.supportsCustomCover) {
         return false;
@@ -52,7 +26,6 @@ const showsImage = computed(() => {
     return source.value === 'image';
 });
 const hasCoverImage = computed(() => filled(edit.value.coverImage));
-const coverImageUrl = computed(() => edit.value.coverImage?.url);
 const accept = stillImageAcceptAttribute();
 
 const sourceClass = (option: CoverSource): string => {
@@ -133,14 +106,7 @@ const onImagePicked = (event: Event): void => {
                 {{ $t(`posts.composer.media_editor.thumbnail_source_${option}`) }}
             </button>
         </div>
-        <div v-if="showsImage" class="space-y-3">
-            <img
-                v-if="hasCoverImage"
-                :src="coverImageUrl"
-                :alt="$t('posts.composer.media_editor.thumbnail_image_alt')"
-                data-testid="media-editor-cover-image"
-                class="aspect-9/16 w-32 rounded-lg bg-muted object-cover"
-            />
+        <template v-if="showsImage">
             <input
                 ref="fileInput"
                 type="file"
@@ -164,33 +130,6 @@ const onImagePicked = (event: Event): void => {
                     $t('posts.composer.media_editor.thumbnail_image_upload')
                 }}</span>
             </Button>
-        </div>
-        <label v-else class="block space-y-1 text-sm">
-            <span class="flex justify-between">
-                <span>{{
-                    $t('posts.composer.media_editor.thumbnail_tab')
-                }}</span>
-                <span
-                    class="text-muted-foreground tabular-nums"
-                    data-testid="media-editor-cover-value"
-                    >{{ formatCoverOffset(edit.coverOffsetMs ?? 0) }}</span
-                >
-            </span>
-            <input
-                v-model.number="seconds"
-                data-testid="media-editor-cover"
-                :style="rangeFill(seconds, 0, maxSeconds)"
-                type="range"
-                min="0"
-                :max="maxSeconds"
-                step="0.1"
-                :aria-valuetext="
-                    $t('posts.composer.media_editor.thumbnail_value', {
-                        seconds: seconds.toFixed(1),
-                    })
-                "
-                class="editor-range w-full"
-            />
-        </label>
+        </template>
     </div>
 </template>

@@ -9,6 +9,7 @@ import MediaEditorAppearancePanel from '@/components/posts/composer/MediaEditorA
 import MediaEditorCropPanel from '@/components/posts/composer/MediaEditorCropPanel.vue';
 import MediaEditorTagsPanel from '@/components/posts/composer/MediaEditorTagsPanel.vue';
 import MediaEditorThumbnailPanel from '@/components/posts/composer/MediaEditorThumbnailPanel.vue';
+import MediaEditorVideoTimeline from '@/components/posts/composer/MediaEditorVideoTimeline.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,14 +22,17 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
 import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
+import { filled, transform } from '@/lib/helpers';
 import {
     createMediaEdit,
     type CoverImage,
+    type CoverSource,
     cropPresetsFor,
     editorTabsFor,
     type EditorTab,
     hasMetaChanges,
     hasPixelChanges,
+    initialCoverSource,
     needsFrameCapture,
     type CropPresetValue,
     type MediaEdit,
@@ -126,6 +130,8 @@ const activeIsVideo = computed(() =>
 );
 const stageVideoEl = ref<HTMLVideoElement | null>(null);
 const stageVideoDurations = ref<Record<number, number>>({});
+const coverSource = ref<CoverSource>('frame');
+
 const seekStageVideo = (): void => {
     if (stageVideoEl.value && stageVideoEl.value.readyState > 0) {
         stageVideoEl.value.currentTime =
@@ -145,6 +151,38 @@ const activeVideoDuration = computed<number | null>(
         stageVideoDurations.value[activeIndex.value] ??
         null,
 );
+/** On the Thumbnail tab of a video: the picked cover image takes the stage. */
+const showsCoverImageOnStage = computed(() => {
+    if (!activeIsVideo.value) {
+        return false;
+    }
+
+    if (tab.value !== 'thumbnail') {
+        return false;
+    }
+
+    if (coverSource.value !== 'image') {
+        return false;
+    }
+
+    return filled(edit.value?.coverImage);
+});
+
+/** On the Thumbnail tab of a video picking a frame: the strip to drag along. */
+const showsTimeline = computed(() => {
+    if (!activeIsVideo.value) {
+        return false;
+    }
+
+    if (tab.value !== 'thumbnail') {
+        return false;
+    }
+
+    return coverSource.value === 'frame';
+});
+
+const coverImageUrl = computed(() => edit.value?.coverImage?.url);
+
 const supportsCustomCover = computed(() =>
     rules.value.some((rule) => rule.supportsCustomVideoCover),
 );
@@ -209,6 +247,7 @@ const selectItem = (index: number): void => {
     tagging.value = false;
     movingIndex.value = null;
     tab.value = tabFor(tab.value);
+    coverSource.value = initialCoverSource(edit.value);
 };
 
 const onStagePress = (point: { x: number; y: number }): void => {
@@ -351,6 +390,11 @@ watch(
         movingIndex.value = null;
         failed.value = false;
         captureFailed.value = false;
+            coverSource.value = transform(
+            edits.value[activeIndex.value],
+            initialCoverSource,
+            'frame',
+        );
     },
 );
 
@@ -403,8 +447,15 @@ watch(tagging, (isTagging) => {
                     <div
                         class="relative flex min-h-[45vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-muted select-none dark:bg-accent lg:min-h-0"
                     >
+                        <img
+                            v-if="showsCoverImageOnStage"
+                            :src="coverImageUrl"
+                            :alt="$t('posts.composer.media_editor.thumbnail_image_alt')"
+                            data-testid="media-editor-cover-image"
+                            class="absolute inset-6 size-[calc(100%-3rem)] object-contain"
+                        />
                         <video
-                            v-if="activeItem && activeIsVideo"
+                            v-else-if="activeItem && activeIsVideo"
                             ref="stageVideoEl"
                             :key="activeItem.url"
                             :src="activeItem.url"
@@ -481,6 +532,13 @@ watch(tagging, (isTagging) => {
                         </ImageCropStage>
                     </div>
 
+                    <MediaEditorVideoTimeline
+                        v-if="showsTimeline && activeItem && edit"
+                        :key="activeItem.url"
+                        v-model:edit="edit"
+                        :src="activeItem.url"
+                        :duration="activeVideoDuration"
+                    />
                     <div
                         v-if="!isPhoto"
                         class="flex justify-center gap-3 overflow-x-auto px-1 pt-3 pb-1.5 [scrollbar-width:thin]"
@@ -603,7 +661,7 @@ watch(tagging, (isTagging) => {
                         v-else-if="tab === 'thumbnail' && edit"
                         :key="activeIndex"
                         v-model:edit="edit"
-                        :duration="activeVideoDuration"
+                        v-model:source="coverSource"
                         :supports-custom-cover="supportsCustomCover"
                     />
                     <MediaEditorAltTextPanel

@@ -214,6 +214,22 @@ export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     coverImage: storedCoverImage(item),
 });
 
+/** Where a video's cover comes from: a frame of the video, or an image. */
+export type CoverSource = 'frame' | 'image';
+
+/** A cover image without a picked frame is one the user uploaded; a captured frame keeps its time. */
+export const initialCoverSource = (edit: MediaEdit): CoverSource => {
+    if (!filled(edit.coverImage)) {
+        return 'frame';
+    }
+
+    if (filled(edit.coverOffsetMs)) {
+        return 'frame';
+    }
+
+    return 'image';
+};
+
 /** Whether the edit picks another cover image than the item has. */
 export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
     const stored = item.meta?.cover;

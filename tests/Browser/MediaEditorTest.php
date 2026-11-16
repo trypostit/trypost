@@ -906,6 +906,30 @@ test('a feed video offers only the cover frame', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('the thumbnail tab picks the frame by dragging along a strip under the video', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+    waitForState($page, '@media-editor-cover-timeline canvas:last-of-type', 'element.width > 0');
+
+    $page->assertMissing('@media-editor-play');
+
+    $page->script(<<<'JS'
+        (() => {
+            const slider = document.querySelector('[data-testid="media-editor-cover"]');
+            slider.value = '3';
+            slider.dispatchEvent(new Event('input', { bubbles: true }));
+        })();
+    JS);
+    waitForState($page, '@media-editor-cover-selector', 'Math.abs(element.getBoundingClientRect().right - element.parentElement.getBoundingClientRect().right) < 2');
+
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-cover-value\"]').textContent.trim()"))->toBe('0:03.0');
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a video on an X post shows no pencil', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::XPost);
     $accountId = $post->social_account_id;
