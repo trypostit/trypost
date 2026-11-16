@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => 'Döneme göre filtrele',
+                    'description' => 'Verilerini son günlere veya belirli tarihlere göre filtrele.',
+                ],
+                'channels' => [
+                    'title' => 'Kanala göre filtrele',
+                    'description' => 'Bir kanalın rakamlarını gör veya birkaçını karşılaştır.',
+                ],
+                'labels' => [
+                    'title' => 'Etikete göre filtrele',
+                    'description' => 'Bir kampanyayı veya seriyi etiketleriyle takip et.',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

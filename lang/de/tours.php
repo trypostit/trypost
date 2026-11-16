@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => 'Nach Zeitraum filtern',
+                    'description' => 'Filtere deine Zahlen nach den letzten Tagen oder einem eigenen Zeitraum.',
+                ],
+                'channels' => [
+                    'title' => 'Nach Kanal filtern',
+                    'description' => 'Sieh dir die Zahlen eines Kanals an oder vergleiche mehrere.',
+                ],
+                'labels' => [
+                    'title' => 'Nach Label filtern',
+                    'description' => 'Verfolge eine Kampagne oder Serie über ihre Labels.',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

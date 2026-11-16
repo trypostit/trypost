@@ -1,0 +1,118 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\PostHog\TourEvent;
+use App\Enums\User\Locale;
+use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    config(['trypost.tours.enabled' => true]);
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+
+    $this->user = User::factory()->create(['timezone' => 'UTC', 'locale' => Locale::DEFAULT]);
+    $workspace = Workspace::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->user->account_id]);
+    $workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($this->user->account);
+    $this->user = $this->user->fresh();
+    connectAiTo($this->user);
+
+    $this->actingAs($this->user);
+});
+
+/**
+ * Whether the end of the filters tour reached PostHog's queue with this
+ * outcome and step.
+ */
+function insightsTourTracked(User $user, TourEvent $event, int $step): bool
+{
+    return Queue::pushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === $event
+        && $job->distinctId === (string) $user->id
+        && $job->properties['tour'] === 'insights.filters'
+        && $job->properties['step'] === $step
+        && $job->properties['steps'] === 3)->isNotEmpty();
+}
+
+test('the filters tour walks the period, channels and labels with Next and Back, and Done completes it', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    $page->assertSeeIn('@tour-insights-filters-range-content', 'Filter by period')
+        ->assertSeeIn('@tour-insights-filters-range-progress', '1 of 3')
+        ->assertMissing('@tour-insights-filters-range-back')
+        ->assertSeeIn('@tour-insights-filters-range-next', 'Next');
+
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    waitForGone($page, '@tour-insights-filters-range-content');
+    $page->assertSeeIn('@tour-insights-filters-channels-content', 'Filter by channel')
+        ->assertSeeIn('@tour-insights-filters-channels-progress', '2 of 3');
+
+    $page->click('@tour-insights-filters-channels-back');
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    waitForGone($page, '@tour-insights-filters-channels-content');
+
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    $page->click('@tour-insights-filters-channels-next');
+    waitForOpen($page, '@tour-insights-filters-labels-content');
+    $page->assertSeeIn('@tour-insights-filters-labels-content', 'Filter by label')
+        ->assertSeeIn('@tour-insights-filters-labels-progress', '3 of 3')
+        ->assertSeeIn('@tour-insights-filters-labels-next', 'Done');
+
+    $page->click('@tour-insights-filters-labels-next');
+    waitForGone($page, '@tour-insights-filters-labels-content');
+    waitForGone($page, '@tour-insights-filters-labels-backdrop');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'completed', 'step' => 3]]);
+    waitForDatabase($page, fn (): bool => insightsTourTracked($this->user, TourEvent::Completed, 3));
+
+    $page->navigate(route('app.insights'));
+    waitFor($page, '@analytics-filters');
+    $page->assertMissing('@tour-insights-filters-range-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('Skip tour on a middle step records the step reached', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    $page->click('@tour-insights-filters-channels-skip');
+    waitForGone($page, '@tour-insights-filters-channels-backdrop');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'skipped', 'step' => 2]]);
+    waitForDatabase($page, fn (): bool => insightsTourTracked($this->user, TourEvent::Skipped, 2));
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('leaving the page midway records nothing, so the tour opens again from its first step', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->navigate(route('app.insights'));
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on a phone no tour opens', function () {
+    $page = visit(route('app.insights'))->resize(390, 844);
+    waitFor($page, '@analytics-filters');
+
+    $page->assertMissing('@tour-insights-filters-range-content');
+
+    $page->assertNoJavaScriptErrors();
+});

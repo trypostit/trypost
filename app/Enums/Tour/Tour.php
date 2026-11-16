@@ -11,5 +11,6 @@ namespace App\Enums\Tour;
 enum Tour: string
 {
     case PublishViews = 'publish.views';
+    case InsightsFilters = 'insights.filters';
     case McpPrompt = 'mcp.prompt';
 }

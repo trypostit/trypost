@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => 'Filtrez par période',
+                    'description' => 'Filtrez vos données sur les derniers jours ou sur des dates précises.',
+                ],
+                'channels' => [
+                    'title' => 'Filtrez par canal',
+                    'description' => 'Affichez les chiffres d\'un canal ou comparez-en plusieurs.',
+                ],
+                'labels' => [
+                    'title' => 'Filtrez par étiquette',
+                    'description' => 'Suivez une campagne ou une série grâce à ses étiquettes.',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => 'Filter op periode',
+                    'description' => 'Filter je gegevens op de afgelopen dagen of op specifieke datums.',
+                ],
+                'channels' => [
+                    'title' => 'Filter op kanaal',
+                    'description' => 'Bekijk de cijfers van één kanaal of vergelijk er meerdere.',
+                ],
+                'labels' => [
+                    'title' => 'Filter op label',
+                    'description' => 'Volg een campagne of reeks via de labels.',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

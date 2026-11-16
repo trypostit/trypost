@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => '按时间段筛选',
+                    'description' => '按最近几天或指定日期筛选你的数据。',
+                ],
+                'channels' => [
+                    'title' => '按频道筛选',
+                    'description' => '查看一个频道的数据，或比较多个频道。',
+                ],
+                'labels' => [
+                    'title' => '按标签筛选',
+                    'description' => '通过标签跟踪一次活动或一个系列。',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

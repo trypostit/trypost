@@ -24,6 +24,24 @@ return [
             ],
         ],
     ],
+    'insights' => [
+        'filters' => [
+            'steps' => [
+                'range' => [
+                    'title' => '期間で絞り込む',
+                    'description' => '直近の日数や特定の日付でデータを絞り込めます。',
+                ],
+                'channels' => [
+                    'title' => 'チャンネルで絞り込む',
+                    'description' => '1つのチャンネルの数値を見たり、複数を比較したりできます。',
+                ],
+                'labels' => [
+                    'title' => 'ラベルで絞り込む',
+                    'description' => 'ラベルでキャンペーンやシリーズの成果を追えます。',
+                ],
+            ],
+        ],
+    ],
     'mcp' => [
         'prompt' => [
             'steps' => [

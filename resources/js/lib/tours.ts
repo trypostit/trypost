@@ -9,6 +9,7 @@
  */
 export const TOURS = {
     'publish.views': ['views'],
+    'insights.filters': ['range', 'channels', 'labels'],
     'mcp.prompt': ['card'],
 } as const satisfies Record<string, readonly string[]>;
 

@@ -21,7 +21,8 @@ import type { TourName, TourStepName } from '@/types/tour';
  * one-step tour); Escape or a click elsewhere skips it. A `tag` (already
  * translated, like `$t('tours.tags.new')`) shows above the title as a chip of
  * `tagColor`, the way a label shows (the brand purple unless set). A
- * `disabled` step renders its control and never opens.
+ * `disabled` step renders its control and never opens. `align` places the
+ * card along the control (`end` by default, `start` for a control on the left).
  */
 const props = withDefaults(
     defineProps<{
@@ -30,8 +31,9 @@ const props = withDefaults(
         tag?: string;
         tagColor?: string;
         disabled?: boolean;
+        align?: 'start' | 'center' | 'end';
     }>(),
-    { tag: undefined, tagColor: '#7c3aed', disabled: false },
+    { tag: undefined, tagColor: '#7c3aed', disabled: false, align: 'end' },
 );
 
 const { isActive, position, total, next, back, skip } = useTourStep(
@@ -71,10 +73,19 @@ const descriptionKey = computed(() => `${copyKey.value}.description`);
 const hasSeveralSteps = computed(() => total.value > 1);
 const isFirst = computed(() => position.value === 1);
 
-/** The tag and, in a longer tour, where the user is ("2 of 3") sit above the title. */
-const hasHeader = computed((): boolean => {
+/** In a longer tour, where the user is ("2 of 3") sits next to the tag, above the title. */
+const progressBesideTag = computed((): boolean => {
+    if (!filled(props.tag)) {
+        return false;
+    }
+
+    return hasSeveralSteps.value;
+});
+
+/** Without a tag, it sits on the title's line instead, so the title stays at the top. */
+const progressBesideTitle = computed((): boolean => {
     if (filled(props.tag)) {
-        return true;
+        return false;
     }
 
     return hasSeveralSteps.value;
@@ -175,7 +186,7 @@ const closeTour = (open: boolean): void => {
                 />
             </Teleport>
             <PopoverContent
-                align="end"
+                :align="align"
                 :side-offset="12"
                 class="z-[60] w-80"
                 :aria-labelledby="titleId"
@@ -183,12 +194,8 @@ const closeTour = (open: boolean): void => {
                 :data-testid="`${testId}-content`"
                 @pointer-down-outside="followControl"
             >
-                <div
-                    v-if="hasHeader"
-                    class="mb-2 flex min-h-6 items-center gap-2"
-                >
+                <div v-if="filled(tag)" class="mb-2 flex items-center gap-2">
                     <span
-                        v-if="filled(tag)"
                         class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium text-foreground"
                         :style="tagStyle"
                         :data-testid="`${testId}-tag`"
@@ -196,16 +203,25 @@ const closeTour = (open: boolean): void => {
                         {{ tag }}
                     </span>
                     <span
-                        v-if="hasSeveralSteps"
+                        v-if="progressBesideTag"
                         class="ms-auto text-xs text-muted-foreground"
                         :data-testid="`${testId}-progress`"
                     >
                         {{ progressLabel($t) }}
                     </span>
                 </div>
-                <p :id="titleId" class="text-base font-semibold">
-                    {{ $t(titleKey) }}
-                </p>
+                <div class="flex items-baseline gap-2">
+                    <p :id="titleId" class="text-base font-semibold">
+                        {{ $t(titleKey) }}
+                    </p>
+                    <span
+                        v-if="progressBesideTitle"
+                        class="ms-auto shrink-0 text-xs text-muted-foreground"
+                        :data-testid="`${testId}-progress`"
+                    >
+                        {{ progressLabel($t) }}
+                    </span>
+                </div>
                 <p
                     :id="descriptionId"
                     class="mt-1 text-sm text-muted-foreground"
