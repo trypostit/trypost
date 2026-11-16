@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current van :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Bordweergave',
-                    'description' => 'Bekijk je posts in kolommen per status, label of kanaal.',
+                'views' => [
+                    'title' => 'Kies hoe je je posts ziet',
+                    'description' => 'Wissel tussen lijst, kalender en bord om je posts op jouw manier te plannen.',
                 ],
             ],
         ],

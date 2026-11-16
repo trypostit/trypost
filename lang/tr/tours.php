@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current / :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Pano görünümü',
-                    'description' => 'Gönderilerini duruma, etikete veya kanala göre sütunlarda gör.',
+                'views' => [
+                    'title' => 'Gönderilerini nasıl göreceğini seç',
+                    'description' => 'Gönderilerini kendi tarzında planlamak için liste, takvim ve pano arasında geçiş yap.',
                 ],
             ],
         ],

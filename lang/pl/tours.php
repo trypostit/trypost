@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current z :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Widok tablicy',
-                    'description' => 'Zobacz posty w kolumnach według statusu, etykiety lub kanału.',
+                'views' => [
+                    'title' => 'Wybierz, jak widzieć posty',
+                    'description' => 'Przełączaj się między listą, kalendarzem i tablicą, by planować posty po swojemu.',
                 ],
             ],
         ],

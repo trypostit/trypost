@@ -172,9 +172,8 @@ const viewLinkClass = (key: string): string => {
     </DropdownMenu>
     <TourStep
         v-else
-        tour="publish.board"
-        step="board"
-        :tag="$t('tours.tags.new')"
+        tour="publish.views"
+        step="views"
     >
         <TooltipProvider :delay-duration="0">
             <nav

@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current de :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Vista de tablero',
-                    'description' => 'Mira tus publicaciones en columnas por estado, etiqueta o canal.',
+                'views' => [
+                    'title' => 'Elige cómo ver tus publicaciones',
+                    'description' => 'Cambia entre lista, calendario y tablero para planificar tus publicaciones a tu manera.',
                 ],
             ],
         ],

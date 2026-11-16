@@ -7,7 +7,7 @@
  * only records its "Not now" here.
  */
 export const TOURS = {
-    'publish.board': ['board'],
+    'publish.views': ['views'],
     'mcp.prompt': ['card'],
 } as const satisfies Record<string, readonly string[]>;
 

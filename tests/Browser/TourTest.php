@@ -20,55 +20,54 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
-test('the board tour opens over a dark page once: "Got it" completes it on every page that has the view switch', function () {
+test('the views tour opens over a dark page once: "Got it" completes it on every page that has the view switch', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
-    waitForOpen($page, '@tour-publish-board-board-content');
-    waitFor($page, '@tour-publish-board-board-backdrop');
+    waitForOpen($page, '@tour-publish-views-views-content');
+    waitFor($page, '@tour-publish-views-views-backdrop');
 
     $layers = $page->script(<<<'JS'
         (() => {
             const zIndex = (element) => Number(getComputedStyle(element).zIndex);
-            const content = document.querySelector('[data-testid="tour-publish-board-board-content"]');
+            const content = document.querySelector('[data-testid="tour-publish-views-views-content"]');
 
             return {
                 card: zIndex(content.closest('[data-reka-popper-content-wrapper]')),
-                backdrop: zIndex(document.querySelector('[data-testid="tour-publish-board-board-backdrop"]')),
+                backdrop: zIndex(document.querySelector('[data-testid="tour-publish-views-views-backdrop"]')),
             };
         })()
     JS);
     expect($layers['card'])->toBeGreaterThan($layers['backdrop']);
 
-    $page->assertSeeIn('@tour-publish-board-board-tag', 'New');
-    waitForState($page, '@tour-publish-board-board-tag', "getComputedStyle(element).backgroundColor === 'rgb(124, 58, 237)' && getComputedStyle(element).color === 'rgb(255, 255, 255)'");
-    $page->assertSeeIn('@tour-publish-board-board-content', 'Board view');
-    $page->assertMissing('@tour-publish-board-board-progress');
+    $page->assertSeeIn('@tour-publish-views-views-content', 'Pick how you see your posts');
+    $page->assertMissing('@tour-publish-views-views-tag');
+    $page->assertMissing('@tour-publish-views-views-progress');
 
-    $page->click('@tour-publish-board-board-next');
-    waitForGone($page, '@tour-publish-board-board-content');
-    waitForGone($page, '@tour-publish-board-board-backdrop');
+    $page->click('@tour-publish-views-views-next');
+    waitForGone($page, '@tour-publish-views-views-content');
+    waitForGone($page, '@tour-publish-views-views-backdrop');
 
-    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.board' => ['status' => 'completed', 'step' => 1]]);
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'completed', 'step' => 1]]);
 
     $page->click('@schedule-view-calendar');
     waitForPath($page, route('app.calendar', ['view' => 'week'], absolute: false));
     waitFor($page, '@schedule-view-board');
-    $page->assertMissing('@tour-publish-board-board-content');
+    $page->assertMissing('@tour-publish-views-views-content');
 
     $page->assertNoJavaScriptErrors();
 });
 
 test('closing the tour with Escape skips it for good', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
-    waitForOpen($page, '@tour-publish-board-board-content');
+    waitForOpen($page, '@tour-publish-views-views-content');
 
-    $page->keys('@tour-publish-board-board-content', 'Escape');
-    waitForGone($page, '@tour-publish-board-board-backdrop');
+    $page->keys('@tour-publish-views-views-content', 'Escape');
+    waitForGone($page, '@tour-publish-views-views-backdrop');
 
-    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.board' => ['status' => 'skipped', 'step' => 1]]);
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
 
     $page->navigate(route('app.posts.index'));
     waitFor($page, '@schedule-view-board');
-    $page->assertMissing('@tour-publish-board-board-content');
+    $page->assertMissing('@tour-publish-views-views-content');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -78,7 +77,7 @@ test('tours stay closed when they are turned off', function () {
 
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitFor($page, '@schedule-view-board');
-    $page->assertMissing('@tour-publish-board-board-content');
+    $page->assertMissing('@tour-publish-views-views-content');
 
     $page->assertNoJavaScriptErrors();
 });

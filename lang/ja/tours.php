@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current / :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'ボード表示',
-                    'description' => '投稿をステータス、ラベル、チャンネルごとの列で表示できます。',
+                'views' => [
+                    'title' => '投稿の表示方法を選ぶ',
+                    'description' => 'リスト、カレンダー、ボードを切り替えて、自分に合った方法で投稿を計画できます。',
                 ],
             ],
         ],

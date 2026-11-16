@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current of :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Board view',
-                    'description' => 'See your posts in columns by status, label or channel.',
+                'views' => [
+                    'title' => 'Pick how you see your posts',
+                    'description' => 'Switch between list, calendar and board to plan your posts your way.',
                 ],
             ],
         ],

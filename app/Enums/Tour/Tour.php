@@ -10,5 +10,5 @@ namespace App\Enums\Tour;
  */
 enum Tour: string
 {
-    case PublishBoard = 'publish.board';
+    case PublishViews = 'publish.views';
 }

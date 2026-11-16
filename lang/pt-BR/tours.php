@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current de :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Visão em quadro',
-                    'description' => 'Veja seus posts em colunas por status, etiqueta ou canal.',
+                'views' => [
+                    'title' => 'Escolha como ver seus posts',
+                    'description' => 'Alterne entre lista, calendário e quadro para planejar seus posts do seu jeito.',
                 ],
             ],
         ],

@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current sur :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Vue tableau',
-                    'description' => 'Voyez vos publications en colonnes par statut, étiquette ou canal.',
+                'views' => [
+                    'title' => 'Choisissez comment voir vos publications',
+                    'description' => 'Passez de la liste au calendrier ou au tableau pour planifier vos publications à votre façon.',
                 ],
             ],
         ],

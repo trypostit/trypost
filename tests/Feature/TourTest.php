@@ -26,13 +26,13 @@ test('how a tour ended is tracked for the workspace account, with the step reach
     Queue::fake([CaptureAccountEvent::class]);
 
     $this->actingAs($this->user)
-        ->post(route('app.tours.store'), ['tour' => 'publish.board', 'outcome' => $outcome, 'step' => $step, 'steps' => 3])
+        ->post(route('app.tours.store'), ['tour' => 'publish.views', 'outcome' => $outcome, 'step' => $step, 'steps' => 3])
         ->assertNoContent();
 
     Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === $event
         && $job->distinctId === (string) $this->user->id
         && $job->accountId === (string) $this->workspace->account_id
-        && $job->properties === ['tour' => 'publish.board', 'step' => $step, 'steps' => 3, 'workspace_id' => $this->workspace->id]);
+        && $job->properties === ['tour' => 'publish.views', 'step' => $step, 'steps' => 3, 'workspace_id' => $this->workspace->id]);
 })->with([
     'completed' => ['completed', TourEvent::Completed, 3],
     'skipped' => ['skipped', TourEvent::Skipped, 2],
@@ -43,7 +43,7 @@ test('an unknown tour or outcome, or a step past the last, is refused and tracks
     Queue::fake([CaptureAccountEvent::class]);
 
     $this->actingAs($this->user)
-        ->postJson(route('app.tours.store'), [...['tour' => 'publish.board', 'outcome' => 'completed', 'step' => 1, 'steps' => 1], ...$payload])
+        ->postJson(route('app.tours.store'), [...['tour' => 'publish.views', 'outcome' => 'completed', 'step' => 1, 'steps' => 1], ...$payload])
         ->assertUnprocessable()
         ->assertJsonValidationErrors($field);
 

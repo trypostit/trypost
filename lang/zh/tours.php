@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current / :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => '看板视图',
-                    'description' => '按状态、标签或频道分列查看你的帖子。',
+                'views' => [
+                    'title' => '选择查看帖子的方式',
+                    'description' => '在列表、日历和看板之间切换，用你习惯的方式规划帖子。',
                 ],
             ],
         ],

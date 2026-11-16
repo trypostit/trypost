@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current / :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => '보드 보기',
-                    'description' => '게시물을 상태, 라벨, 채널별 열로 확인하세요.',
+                'views' => [
+                    'title' => '게시물 보기 방식 선택',
+                    'description' => '목록, 캘린더, 보드를 오가며 원하는 방식으로 게시물을 계획하세요.',
                 ],
             ],
         ],

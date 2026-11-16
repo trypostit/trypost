@@ -15,11 +15,11 @@ return [
     ],
     'progress' => ':current di :total',
     'publish' => [
-        'board' => [
+        'views' => [
             'steps' => [
-                'board' => [
-                    'title' => 'Vista bacheca',
-                    'description' => 'Guarda i tuoi post in colonne per stato, etichetta o canale.',
+                'views' => [
+                    'title' => 'Scegli come vedere i tuoi post',
+                    'description' => 'Passa da elenco a calendario o bacheca per pianificare i tuoi post a modo tuo.',
                 ],
             ],
         ],
