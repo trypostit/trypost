@@ -177,7 +177,11 @@ onBeforeUnmount(() => {
                 data-testid="mcp-prompt"
             >
                 <div class="flex items-start justify-between gap-3">
-                    <div class="flex -space-x-2" aria-hidden="true">
+                    <div
+                        class="flex -space-x-2"
+                        aria-hidden="true"
+                        data-testid="mcp-prompt-avatars"
+                    >
                         <span
                             v-for="(app, position) in avatars"
                             :key="app.id"

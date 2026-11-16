@@ -934,6 +934,80 @@ function browserStorageItem(mixed $page, User $user, string $item, ?string $work
 }
 
 /**
+ * The whole value of a user's browser storage key (`trypost:<user id>`), as
+ * the page keeps it, or null when it holds none or no JSON.
+ */
+function browserStorage(mixed $page, User $user): mixed
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    return $page->script("(() => { try { return JSON.parse(localStorage.getItem({$key})); } catch { return null; } })()");
+}
+
+/**
+ * Every key the page keeps in its localStorage.
+ *
+ * @return list<string>
+ */
+function localStorageKeys(mixed $page): array
+{
+    return $page->script('Object.keys(localStorage)');
+}
+
+/**
+ * Writes a raw text as a user's browser storage value, for the values the app
+ * must read past (not JSON, another version, a wrong shape); a well-formed
+ * item goes through `setBrowserStorageItem()`.
+ */
+function setRawBrowserStorage(mixed $page, User $user, string $raw): void
+{
+    $key = json_encode("trypost:{$user->id}");
+    $raw = json_encode($raw);
+
+    $page->script("localStorage.setItem({$key}, {$raw})");
+}
+
+/**
+ * Makes the page's browser refuse its storage from now on, as a private
+ * window or blocked site data does, and fails when it still allows it.
+ */
+function refuseBrowserStorage(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const refuse = () => { throw new DOMException('denied', 'SecurityError'); };
+            Storage.prototype.getItem = refuse;
+            Storage.prototype.setItem = refuse;
+        })()
+    JS);
+
+    expect($page->script("(() => { try { localStorage.getItem('x'); return 'allowed'; } catch { return 'refused'; } })()"))->toBe('refused');
+}
+
+/**
+ * The value of an expression about `element` for every element matching the
+ * selector, in page order.
+ *
+ * @return list<mixed>
+ */
+function elementsMap(mixed $page, string $selector, string $expression): array
+{
+    $selector = jsSelector($selector);
+
+    return $page->script("[...document.querySelectorAll({$selector})].map((element) => ({$expression}))");
+}
+
+/**
+ * Lets the page run for a while without waiting on anything, to show that
+ * something stays as it is (a dialog left open across polls). Never a
+ * PHP `sleep()`, which would stop the page's own requests.
+ */
+function letPageRun(mixed $page, int $milliseconds): void
+{
+    $page->script("new Promise((resolve) => setTimeout(resolve, {$milliseconds}))");
+}
+
+/**
  * Tells the page that the user's browser storage changed in another tab, as
  * the browser does with a `storage` event: seed the change with
  * `setBrowserStorageItem()` first.
