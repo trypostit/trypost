@@ -87,7 +87,7 @@ return [
         'title' => 'Template',
         'new' => 'Template baru',
         'scopes' => [
-            'discover' => 'Discover',
+            'discover' => 'Jelajahi',
             'team' => 'Tim',
             'personal' => 'Pribadi',
         ],

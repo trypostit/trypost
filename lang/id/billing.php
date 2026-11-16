@@ -69,7 +69,7 @@ return [
             'past_due' => 'Menunggak',
         ],
         'change' => 'Ganti paket',
-        'subscribe' => 'Berlangganan sekarang',
+        'subscribe' => 'Berlangganan',
         'trial_until' => 'Trial sampai :date',
         'cancelled' => 'Dibatalkan, berakhir pada :date',
         'discount_until' => 'Diskon :discount sampai :date',
@@ -79,7 +79,7 @@ return [
 
     'subscription' => [
         'title' => 'Metode pembayaran',
-        'default' => 'Default',
+        'default' => 'Bawaan',
         'description' => 'Perbarui kartu atau detail tagihan kamu di Stripe.',
         'no_payment_method' => 'Belum ada metode pembayaran tersimpan.',
         'expires_on' => 'Berlaku sampai :month/:year',

@@ -20,7 +20,7 @@ return [
         'pending_approval' => 'Menunggu persetujuan',
         'queue' => 'Dalam queue',
         'custom' => 'Waktu kustom',
-        'recurring' => 'Recurring',
+        'recurring' => 'Berulang',
         'publishing' => 'Sedang terbit',
         'published' => 'Sudah terbit',
         'deleted' => 'Dihapus',

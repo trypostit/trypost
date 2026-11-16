@@ -76,10 +76,4 @@ return [
         ],
         'waiting' => 'Menunggu AI kamu terhubung…',
     ],
-    'prompt' => [
-        'title' => 'Kamu belum menghubungkan AI',
-        'body' => 'Hubungkan Claude atau ChatGPT untuk membuat, menjadwalkan, dan menganalisis post kamu hanya dengan bertanya.',
-        'not_now' => 'Nanti saja',
-    ],
-
 ];

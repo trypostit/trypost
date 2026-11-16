@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Edit label',
         'delete' => 'Hapus label',
         'more' => 'Aksi lainnya',
+        'settings' => 'Pengaturan',
         'view_posts' => 'Lihat post',
+        'view_insights' => 'Lihat insight',
     ],
 
     'create' => [

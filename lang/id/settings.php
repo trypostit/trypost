@@ -233,7 +233,7 @@ return [
             'member' => 'Anggota',
         ],
         'access' => [
-            'admin_description' => 'Bisa mengelola anggota dan pengaturan workspace',
+            'admin_description' => 'Kelola anggota dan pengaturan workspace',
             'publishing' => 'Penerbitan',
             'publishes_directly' => 'Terbit langsung',
             'needs_approval' => 'Perlu persetujuan',

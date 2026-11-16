@@ -20,7 +20,7 @@ return [
         'directories' => 'Direktori (G2, Capterra…)',
         'ai_assistant' => 'ChatGPT / Claude',
         'friend' => 'Teman atau rekan kerja',
-        'founder' => 'Founder',
+        'founder' => 'Pendiri',
         'blog' => 'Blog / newsletter',
         'other' => 'Lainnya',
     ],

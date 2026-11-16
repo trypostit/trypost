@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Pilih workspace',
     'create_workspace' => 'Buat workspace',
     'new' => 'Baru',
+    'unfinished_post' => 'Ada post yang belum kamu selesaikan',
     'create' => 'Buat',
     'new_menu' => [
         'post' => 'Post',

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'Command palette',
+    'title' => 'Palet perintah',
     'description' => 'Cari channel, halaman, dan aksi.',
     'placeholder' => 'Cari channel, halaman...',
     'path' => ':parent → :child',

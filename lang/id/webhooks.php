@@ -38,7 +38,7 @@ return [
         'description' => 'Konfigurasikan endpoint untuk menerima notifikasi webhook.',
         'endpoint' => 'URL Endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
-        'endpoint_help' => 'Kami akan mengirim permintaan POST dengan payload JSON ke URL ini.',
+        'endpoint_help' => 'Kami kirim permintaan POST berisi JSON ke URL ini.',
         'events' => 'Event',
         'events_count_selected' => ':count dari :total dipilih',
         'submit' => 'Buat webhook',
@@ -101,7 +101,7 @@ return [
         'post_failed' => 'Saat post gagal diterbitkan.',
         'post_deleted' => 'Saat post dihapus.',
         'post_deleted_on_network' => 'Saat post yang sudah terbit dihapus di jaringannya.',
-        'post_restored' => 'Saat post yang ditandai dihapus kembali muncul di jaringannya.',
+        'post_restored' => 'Saat post bertanda dihapus kembali ada di jaringannya.',
     ],
     'http_reasons' => [
         'unknown' => 'Tidak diketahui',

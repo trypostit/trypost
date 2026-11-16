@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Signature',
-    'description' => 'Teks yang bisa dipakai ulang untuk ditambahkan ke post kamu.',
+    'description' => 'Teks siap pakai untuk ditambahkan ke post.',
     'save_failed' => 'Signature gagal disimpan. Coba lagi.',
     'search' => 'Cari signature...',
     'new' => 'Signature baru',
@@ -18,10 +18,10 @@ return [
         'created_at' => 'Dibuat',
     ],
 
-    'row_actions' => 'Aksi signature',
     'actions' => [
         'edit' => 'Edit signature',
-        'delete' => 'Hapus signature',
+        'delete' => 'Hapus',
+        'settings' => 'Pengaturan',
     ],
 
     'create' => [

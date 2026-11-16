@@ -132,7 +132,7 @@ return [
         'preview' => 'Post kamu berhasil diterbitkan.',
         'heading' => 'Post kamu sudah terbit',
         'body' => 'Post kamu di workspace :workspace berhasil diterbitkan.',
-        'button' => 'Lihat di jaringan sosial media',
+        'button' => 'Lihat di jaringan',
         'open_in_app' => 'Buka di TryPost',
     ],
 

@@ -3,7 +3,32 @@
 declare(strict_types=1);
 
 return [
-    'list_view' => 'List',
+    'list_view' => 'Daftar',
+    'board' => [
+        'view' => 'Papan',
+        'group_by' => 'Kelompokkan',
+        'group_by_value' => 'Kelompokkan: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Label',
+            'channel' => 'Channel',
+        ],
+        'columns' => [
+            'draft' => 'Draft',
+            'approvals' => 'Persetujuan',
+            'scheduled' => 'Terjadwal',
+            'published' => 'Terbit',
+            'failed' => 'Gagal',
+            'untagged' => 'Tanpa label',
+            'no_channel' => 'Tanpa channel',
+        ],
+        'empty_column' => 'Belum ada apa-apa',
+        'no_columns' => [
+            'title' => 'Tidak ada yang cocok dengan filter ini',
+            'description' => 'Hapus filter label atau channel untuk melihat semua kolom.',
+        ],
+        'column_aria' => '{1} :name, :count post|[0,*] :name, :count post',
+    ],
     'view_switcher' => 'Tampilan jadwal',
     'all_posts' => 'Semua post',
     'composer' => [
@@ -47,13 +72,13 @@ return [
             'select_from' => 'Pilih dari :source',
             'importing' => 'Mengimpor…',
             'canva_presets' => [
-                'square' => 'Square 1:1',
-                'portrait_4_5' => 'Portrait 4:5',
-                'portrait_3_4' => 'Portrait 3:4',
-                'landscape' => 'Landscape 1.91:1',
+                'square' => 'Persegi 1:1',
+                'portrait_4_5' => 'Potret 4:5',
+                'portrait_3_4' => 'Potret 3:4',
+                'landscape' => 'Lanskap 1.91:1',
                 'story' => 'Story 9:16',
             ],
-            'canva_default' => 'Default',
+            'canva_default' => 'Bawaan',
             'edit_in_canva' => 'Edit :name di Canva',
             'errors' => [
                 'import_failed' => 'File tidak bisa diimpor. Coba lagi.',
@@ -86,7 +111,7 @@ return [
             'reorder' => 'Tarik untuk mengurutkan ulang',
             'remove' => 'Hapus',
             'edit' => 'Edit',
-            'alt' => 'Alt text',
+            'alt' => 'Teks alt',
             'tag_people' => 'Tag orang',
             'edit_in_canva' => 'Edit di Canva',
         ],
@@ -196,7 +221,7 @@ return [
             'title' => 'Edit media',
             'description' => 'Potong, sesuaikan, jelaskan, dan tag gambar-gambar post ini.',
             'edit_tab' => 'Edit',
-            'alt_tab' => 'Alt Text',
+            'alt_tab' => 'Teks alt',
             'tags_tab' => 'Tag orang',
             'crop_tab' => 'Potong',
             'appearance_tab' => 'Tampilan',
@@ -215,7 +240,7 @@ return [
             'flip_vertical' => 'Balik vertikal',
             'straighten' => 'Luruskan',
             'center' => 'Tengahkan',
-            'reset' => 'Reset',
+            'reset' => 'Atur ulang',
             'filters_heading' => 'Filter',
             'adjust_heading' => 'Sesuaikan',
             'filter_original' => 'Asli',
@@ -371,7 +396,7 @@ return [
                 'requires_facebook' => 'Musik butuh akun Instagram yang terhubung lewat Facebook.',
                 'link_title' => 'Hubungkan lewat Facebook untuk menerbitkan reels dengan musik',
                 'link_body' => 'Untuk menerbitkan reels Instagram dengan musik, tautkan Instagram ke Facebook Page kamu. Post kamu kami simpan sebagai draft sebelum menautkan. Buka lagi dari Draft setelahnya untuk menambahkan musik.',
-                'maybe_later' => 'Mungkin nanti',
+                'maybe_later' => 'Nanti saja',
                 'save_and_link' => 'Simpan & tautkan',
                 'save_and_link_blocked' => 'Post ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang disorot, lalu coba lagi.',
                 'save_and_link_pending' => 'Post ini menunggu persetujuan. Setujui atau pindahkan ke draft sebelum menautkan Facebook.',
@@ -456,7 +481,7 @@ return [
             'license_creative_common' => 'Creative Commons - Atribusi',
             'notify_subscribers' => 'Beri tahu subscriber',
             'embeddable' => 'Izinkan embed',
-            'made_for_kids' => 'Dibuat untuk anak-anak',
+            'made_for_kids' => 'Konten anak',
             'categories' => [
                 'autos_and_vehicles' => 'Otomotif & Kendaraan',
                 'comedy' => 'Komedi',
@@ -493,7 +518,7 @@ return [
             'reply_empty' => 'Ada balasan di thread yang kosong.',
             'reply_too_long' => 'Ada balasan yang melebihi batas :limit karakter sebanyak :over.',
             'too_many' => '{1} Hanya satu komentar yang bisa mengikuti post ini.|[0,*] Maksimal :max balasan bisa mengikuti post ini.',
-            'add_comment' => 'Tambahkan komentar',
+            'add_comment' => 'Tambah komentar',
             'comment_placeholder' => 'Tambahkan link atau konteks lainnya',
             'comment_label' => 'Komentar kamu',
             'remove_comment' => 'Hapus komentar',
@@ -551,10 +576,10 @@ return [
             ],
             'topic_type_help' => [
                 'standard' => 'Bagikan kabar, informasi, dan update tentang bisnis kamu.',
-                'offer' => "Promosikan diskon atau penawaran. Tombol \"Lihat penawaran\" ditambahkan ke post secara otomatis.",
-                'event' => "Promosikan acara. Acara yang memenuhi kriteria Google juga bisa tampil di tab Overview Business Profile kamu.",
+                'offer' => 'Promosikan diskon atau penawaran. Tombol "Lihat penawaran" ditambahkan ke post secara otomatis.',
+                'event' => 'Promosikan acara. Acara yang memenuhi kriteria Google juga bisa tampil di tab Overview Business Profile kamu.',
             ],
-            'add_more_details' => 'Tambahkan detail lainnya',
+            'add_more_details' => 'Tambah detail lain',
             'add_time' => 'Tambahkan waktu',
             'cta_label' => 'Tombol',
             'cta_none' => 'Tidak ada',
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Menunggu',
         'draft' => 'Draft',
-        'pending_approval' => 'Menunggu persetujuan',
+        'pending_approval' => 'Menunggu',
         'scheduled' => 'Terjadwal',
         'publishing' => 'Sedang terbit',
         'retrying' => 'Mencoba lagi',
         'published' => 'Terbit',
         'failed' => 'Gagal',
+        'pending_review' => 'Ditinjau Google',
+        'deleted_on_network' => 'Dihapus',
     ],
 
     'descriptions' => [
@@ -701,8 +728,8 @@ return [
         ],
 
         'alt_text' => [
-            'label' => 'Alt text',
-            'edit' => 'Edit alt text',
+            'label' => 'Teks alt',
+            'edit' => 'Edit teks alt',
             'placeholder' => 'Jelaskan gambar ini untuk orang yang memakai screen reader',
             'hint' => 'Diterbitkan ke platform yang mendukung deskripsi gambar.',
             'save' => 'Simpan',
@@ -969,7 +996,7 @@ return [
     ],
 
     'publish' => [
-        'title' => 'Publish',
+        'title' => 'Terbitkan',
         'all_channels' => 'Semua channel',
         'tabs' => [
             'label' => 'Status',
@@ -979,7 +1006,7 @@ return [
             'sent' => 'Terkirim',
         ],
         'view' => [
-            'list' => 'List',
+            'list' => 'Daftar',
             'calendar' => 'Kalender',
         ],
         'metrics' => [
@@ -1002,7 +1029,7 @@ return [
         'slot_aria' => 'Tambahkan post ke :channel di :network pada :time',
         'no_time' => 'Tanpa waktu',
         'pending_slot' => [
-            'next' => 'Slot berikutnya',
+            'next' => 'Slot berikut',
             'top' => 'Puncak queue',
         ],
         'new_in_slot' => 'Baru',
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Channel (:count)',
     ],
     'approvals' => [
-        'badge' => 'Persetujuan',
         'time_passed' => 'Waktunya sudah lewat',
         'approve' => 'Setujui',
         'schedule' => 'Jadwalkan',
         'reject' => 'Tolak',
         'revert' => 'Batalkan permintaan persetujuan',
         'requested' => 'Permintaan persetujuan dikirim',
+        'toasts' => [
+            'scheduled' => 'Post disetujui dan dijadwalkan',
+            'queued' => 'Post disetujui dan masuk ke queue',
+            'publishing' => 'Post disetujui dan sedang diterbitkan',
+            'rejected' => 'Post ditolak dan dipindahkan ke draft',
+        ],
         'errors' => [
             'not_pending' => 'Post ini tidak lagi menunggu persetujuan.',
             'time_passed' => 'Waktu yang diminta sudah lewat. Pilih waktu baru.',

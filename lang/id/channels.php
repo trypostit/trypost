@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Channel',
-    'description' => 'Kelola channel yang terhubung di workspace ini.',
+    'description' => 'Kelola channel terhubung di workspace ini.',
     'connect' => 'Hubungkan channel',
     'settings' => 'Pengaturan channel',
+    'manage' => 'Kelola channel',
+    'set_goal' => 'Atur target posting',
     'publish' => 'Terbitkan',
     'insights' => 'Insight',
     'new_post' => 'Post baru di channel ini',
@@ -170,6 +172,25 @@ return [
         'cancel' => 'Batal',
     ],
 
+    'list' => [
+        'search' => 'Cari nama, @username, atau jaringan',
+        'networks' => 'Jaringan',
+        'networks_search' => 'Cari jaringan',
+        'no_networks' => 'Jaringan tidak ditemukan',
+        'columns' => [
+            'channel' => 'Channel',
+            'timezone' => 'Zona waktu',
+            'posting_times' => 'Waktu posting',
+            'this_week' => 'Minggu ini',
+        ],
+        'posting_times_per_week' => ':count per minggu',
+        'no_posting_times' => 'Belum ada jadwal',
+        'no_results' => 'Tidak ada channel yang cocok dengan pencarianmu.',
+        'connection_lost' => 'Channel ini kehilangan koneksinya',
+        'settings' => 'Pengaturan',
+        'more_actions' => 'Aksi lainnya',
+    ],
+
     'settings_page' => [
         'subtitle' => 'Pengaturan channel',
         'back' => 'Kembali ke channel',
@@ -218,7 +239,7 @@ return [
 
     'goal_dialog' => [
         'title' => 'Berapa kali seminggu kamu ingin posting?',
-        'description' => 'Kami akan menambahkan waktu posting ke queue kamu sesuai targetmu.',
+        'description' => 'Kami tambahkan waktu posting ke queue sesuai targetmu.',
         'options' => [
             'steady' => 'Tetap konsisten',
             'presence' => 'Bangun kehadiran',
