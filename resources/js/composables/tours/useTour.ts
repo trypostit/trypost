@@ -45,11 +45,12 @@ const active = shallowRef<{ tour: TourName; step: string } | null>(null);
 const openStep = shallowRef<OpenTourStep | null>(null);
 
 /**
- * The step a tour was on when its control left the page without the tour
- * ending (a visit that remounts the page, like picking a period on
- * Insights): the tour picks up there when that step is back on the page.
+ * The step each tour was on when it was put away without ending (a visit
+ * that remounts the page, a dialog opened over it, a window narrowed to a
+ * phone's width), keyed by user and tour (`<user id>:<tour>`): the tour picks
+ * up there when that step is back on the page, for that user only.
  */
-let resumeAt: { tour: TourName; step: string } | null = null;
+const resumeAt = new Map<string, string>();
 
 /** The start of every step on the page, in mount order: tried again whenever no tour is open. */
 const starters = new Set<() => void>();
@@ -190,21 +191,37 @@ export const useTourStep = <Tour extends TourName>(
         return isDialogBlockingTours.value;
     });
 
-    /** The step the tour opens on: where it was left, while that step is on the page, else its first. */
+    const resumeKey = (): string => `${page.props.auth.user.id}:${tour}`;
+
+    /** The step the tour opens on: where this user left it, while that step is on the page, else its first. */
     const openingStep = (): string | null => {
-        if (!filled(resumeAt)) {
+        const resumed = resumeAt.get(resumeKey());
+
+        if (!filled(resumed)) {
             return firstStep(shown.value);
         }
 
-        if (resumeAt.tour !== tour) {
+        if (!shown.value.includes(resumed)) {
             return firstStep(shown.value);
         }
 
-        if (!shown.value.includes(resumeAt.step)) {
-            return firstStep(shown.value);
+        return resumed;
+    };
+
+    /** Puts this tour away, when it is the open one, to pick it up at the same step later. */
+    const putAway = (): void => {
+        const current = active.value;
+
+        if (!filled(current)) {
+            return;
         }
 
-        return resumeAt.step;
+        if (current.tour !== tour) {
+            return;
+        }
+
+        resumeAt.set(resumeKey(), current.step);
+        closeActive();
     };
 
     const start = (): void => {
@@ -234,7 +251,7 @@ export const useTourStep = <Tour extends TourName>(
             return;
         }
 
-        resumeAt = null;
+        resumeAt.delete(resumeKey());
         active.value = { tour, step: opening };
     };
 
@@ -292,9 +309,15 @@ export const useTourStep = <Tour extends TourName>(
         closeActive();
     });
 
-    /** Once the page is free again (the dialog closed, the survey answered), the tour may open. */
+    /**
+     * A dialog opened over the open tour (the command palette, the composer)
+     * puts it away; once the page is free again (the dialog closed, the survey
+     * answered), the tour opens, at the step it was on.
+     */
     watch(isPageBusy, (busy) => {
         if (busy) {
+            putAway();
+
             return;
         }
 
@@ -312,30 +335,18 @@ export const useTourStep = <Tour extends TourName>(
             return;
         }
 
-        const current = active.value;
-
-        if (!filled(current)) {
-            return;
-        }
-
-        if (current.tour !== tour) {
-            return;
-        }
-
-        resumeAt = current;
-        closeActive();
+        putAway();
     });
 
     /** Takes one mount of this step off the page, keeping any other mount of it. */
     const leavePage = (): void => {
         const mounted = [...(onPage.get(tour) ?? [])];
-        const index = mounted.indexOf(step);
 
-        if (index === -1) {
+        if (!mounted.includes(step)) {
             return;
         }
 
-        mounted.splice(index, 1);
+        mounted.splice(mounted.indexOf(step), 1);
         onPage.set(tour, mounted);
     };
 
@@ -358,8 +369,7 @@ export const useTourStep = <Tour extends TourName>(
         starters.delete(start);
 
         if (isOpenStep(tour, step)) {
-            resumeAt = { tour, step };
-            closeActive();
+            putAway();
         }
     });
 

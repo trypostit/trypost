@@ -11,7 +11,7 @@ return [
         'back' => 'Retour',
         'next' => 'Suivant',
         'done' => 'Terminé',
-        'skip' => 'Passer la visite',
+        'skip' => 'Passer',
     ],
     'progress' => ':current sur :total',
     'publish' => [

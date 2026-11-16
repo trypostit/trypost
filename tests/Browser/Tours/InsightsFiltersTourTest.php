@@ -142,6 +142,63 @@ test('picking a period from the highlighted control moves the tour on, and the v
     $page->assertNoJavaScriptErrors();
 });
 
+test('a dialog opened over the tour puts it away, and the tour comes back at the same step once the dialog closes', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->keys('@tour-insights-filters-channels-content', 'ControlOrMeta+k');
+    waitFor($page, '@command-palette-input');
+    waitForGone($page, '@tour-backdrop');
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
+
+    $page->keys('@command-palette-input', 'Escape');
+    waitForGone($page, '@command-palette-input');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('where one user left a tour is never where it opens for the next user signed in on the same tab', function () {
+    $next = User::factory()->create(['timezone' => 'UTC', 'locale' => Locale::DEFAULT]);
+    $workspace = Workspace::factory()->create(['user_id' => $next->id, 'account_id' => $next->account_id]);
+    $workspace->members()->attach($next->id, membershipPivot('admin'));
+    $next->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($next->account);
+    connectAiTo($next->fresh());
+
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    setBrowserStorageItem($page, $this->user, 'tours', ['publish.views' => ['status' => 'completed', 'step' => 1]]);
+    announceBrowserStorageFromAnotherTab($page, $this->user);
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    $page->keys('@tour-insights-filters-channels-content', 'ControlOrMeta+k');
+    waitFor($page, '@command-palette-item-nav-publish');
+    $page->click('@command-palette-item-nav-publish');
+    waitForPath($page, route('app.posts.index', absolute: false));
+
+    $page->click('@sidebar-workspace-menu');
+    waitFor($page, '@logout-button');
+    $page->click('@logout-button');
+    waitFor($page, '@login-email');
+    $page->type('@login-email', $next->email)
+        ->type('@login-password', 'password')
+        ->click('@login-submit');
+    waitForOpen($page, '@tour-publish-views-views-content');
+    $page->click('@tour-publish-views-views-next');
+    waitForGone($page, '@tour-backdrop');
+
+    $insightsPath = route('app.insights', absolute: false);
+    $page->click("@nav-{$insightsPath}");
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    $page->assertSeeIn('@tour-insights-filters-range-progress', '1 of 3');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('Skip tour on a middle step records the step reached', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');

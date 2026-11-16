@@ -155,6 +155,23 @@ test('the tour waits while a post opens in the composer, and opens once it close
     $page->assertNoJavaScriptErrors();
 });
 
+test('the tour waits while the user is asked where they found us, and opens once they answer', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->forceFill(['referral_source' => null, 'created_at' => now()->subDays(2)])->save();
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@referral-source-survey');
+    letPageRun($page, 500);
+    $page->assertMissing('@tour-publish-views-views-content');
+
+    $page->click('@referral-source-option-google');
+    $page->click('@referral-source-submit');
+    waitForGone($page, '@referral-source-survey');
+    waitForOpen($page, '@tour-publish-views-views-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('closing the tour in another tab closes it here at once', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');

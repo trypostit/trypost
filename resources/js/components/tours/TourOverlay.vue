@@ -190,11 +190,21 @@ const followControl = (event: PointerDownOutside): void => {
 
 /**
  * The control waiting for the click a press on it started. A press that ends
- * off the control never clicks, so its listener goes when the step changes.
+ * off the control never clicks, so its listener goes when the step changes
+ * (another control), never when the same step only moves on screen.
  */
 let pendingControl: HTMLElement | null = null;
 
-watch(openStep, () => {
+/** The open step's control: the same while the step only moves on screen. */
+const openControl = (): HTMLElement | null => {
+    if (!filled(openStep.value)) {
+        return null;
+    }
+
+    return openStep.value.control;
+};
+
+watch(openControl, () => {
     if (!filled(pendingControl)) {
         return;
     }

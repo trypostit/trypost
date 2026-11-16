@@ -169,7 +169,7 @@ return [
     'tours.actions.back' => 8,
     'tours.actions.next' => 9,
     'tours.actions.done' => 8,
-    'tours.actions.skip' => 16,
+    'tours.actions.skip' => 13,
     'posts.form.instagram.collaborators.label' => 16,
     'posts.form.instagram.music.add' => 16,
     'posts.form.instagram.music.audio_volume' => 8,

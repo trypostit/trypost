@@ -11,7 +11,7 @@ return [
         'back' => 'Назад',
         'next' => 'Далее',
         'done' => 'Готово',
-        'skip' => 'Пропустить тур',
+        'skip' => 'Пропустить',
     ],
     'progress' => ':current из :total',
     'publish' => [
