@@ -15,7 +15,7 @@ import CommandPalette from '@/components/command-palette/CommandPalette.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
 import Toast from '@/components/Toast.vue';
-import McpPromptCard from '@/components/tours/McpPromptCard.vue';
+import McpPromptTour from '@/components/tours/McpPromptTour.vue';
 import {
     SidebarInset,
     SidebarProvider,
@@ -123,6 +123,6 @@ watch(isCompactViewport, (isCompact) => {
     <ChangelogDialog />
     <CommandPalette />
     <ReferralSourceSurvey />
-    <McpPromptCard />
+    <McpPromptTour />
     <Toast />
 </template>

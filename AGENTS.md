@@ -280,7 +280,7 @@ Everything the app keeps in the browser for a user lives in one key per user, `t
 
 ## Inviting a user to connect an AI (MCP)
 
-There is no MCP step in Welcome (owner decision November 2026): it was friction before the user ever saw the app, and phones could rarely finish it. Processing always opens the schedule. Instead, `components/tours/McpPromptCard.vue` (mounted in `AppSidebarLayout`) invites the user from inside the app:
+There is no MCP step in Welcome (owner decision November 2026): it was friction before the user ever saw the app, and phones could rarely finish it. Processing always opens the schedule. Instead, `components/tours/McpPromptTour.vue` (mounted in `AppSidebarLayout`) invites the user from inside the app:
 
 - **Shown** while the shared `mcpPrompt` prop is set (`HandleInertiaRequests::mcpPrompt()`, with the MCP URL the steps show: a current workspace whose account has app access, or self-hosted, and no AI of the user connected to that workspace (`HasConnectedMcpClient`, the rule the MCP settings list follows); the connection is cached five minutes per user and workspace, while app access is read on every page, so the card and the referral survey show on the first page after an account gets app access), on `sm` and up, never on the MCP settings page, and never while the "How did you find us?" survey shows (the survey goes first).
 - **Closing it** (the X, labeled "Not now") is kept in the browser storage as the `mcp.prompt` entry of `tours` (`useTourProgress('mcp.prompt')`, see "Browser storage"): no database column. Another browser shows it once more. Connecting an AI hides it everywhere, because that comes from the server.

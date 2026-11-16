@@ -44,7 +44,7 @@ const CLAUDE_ADD_CONNECTOR_URL =
 
 /**
  * First-class MCP clients surfaced on workspace MCP settings and the in-app
- * card that invites the user to connect an AI (`McpPromptCard`).
+ * card that invites the user to connect an AI (`McpPromptTour`).
  * `settingsUrl` is where the user adds a connector in that client.
  */
 export const mcpClients: McpClient[] = [

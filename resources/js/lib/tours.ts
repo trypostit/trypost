@@ -3,7 +3,7 @@
  * each step's copy from `tours.<tour>.steps.<step>.title` and `.description`
  * in `lang/<locale>/tours.php` and is tracked through `app.tours.store`, whose
  * `App\Enums\Tour\Tour` names it. `mcp.prompt` is the card inviting the user
- * to connect an AI (`McpPromptCard`), which keeps its own copy and tracking and
+ * to connect an AI (`McpPromptTour`), which keeps its own copy and tracking and
  * only records its "Not now" here.
  */
 export const TOURS = {

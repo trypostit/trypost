@@ -578,7 +578,7 @@ function mcpAccessToken(
 
 /**
  * Connects an AI to the user's current workspace, as connecting one through
- * MCP does, so the in-app invitation to connect one (`McpPromptCard`) is not
+ * MCP does, so the in-app invitation to connect one (`McpPromptTour`) is not
  * shown. A browser test whose page should not carry the card calls it.
  */
 function connectAiTo(User $user): void
