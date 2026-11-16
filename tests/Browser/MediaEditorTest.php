@@ -764,7 +764,7 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     $page->click('@media-editor-thumbnail-tab')
         ->assertSee('Choose a thumbnail')
         ->assertVisible('@media-editor-stage-video')
-        ->assertAttribute('@media-editor-thumb-0', 'aria-label', 'Video 1');
+        ->assertMissing('@media-editor-thumbnails');
     waitForState($page, '@media-editor-cover', "element.max === '3'");
 
     expect($page->script("document.querySelector('[data-testid=\"media-editor-cover\"]').max"))->toBe('3');

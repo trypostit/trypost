@@ -183,6 +183,15 @@ const showsTimeline = computed(() => {
 
 const coverImageUrl = computed(() => edit.value?.coverImage?.url);
 
+/** The row of items to switch between, when there is more than one to edit. */
+const showsItemPicker = computed(() => {
+    if (isPhoto.value) {
+        return false;
+    }
+
+    return editingItems.value.length > 1;
+});
+
 const supportsCustomCover = computed(() =>
     rules.value.some((rule) => rule.supportsCustomVideoCover),
 );
@@ -540,7 +549,7 @@ watch(tagging, (isTagging) => {
                         :duration="activeVideoDuration"
                     />
                     <div
-                        v-if="!isPhoto"
+                        v-if="showsItemPicker"
                         class="flex justify-center gap-3 overflow-x-auto px-1 pt-3 pb-1.5 [scrollbar-width:thin]"
                         data-testid="media-editor-thumbnails"
                     >
