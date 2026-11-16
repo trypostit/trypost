@@ -87,6 +87,28 @@ test('the card shows once a tour open here is closed in another tab', function (
     $page->assertNoJavaScriptErrors();
 });
 
+test('answering where they found us opens the waiting tour first, and the card still waits for it', function () {
+    config(['trypost.tours.enabled' => true]);
+    $this->actingAs(mcpPromptUser(['referral_source' => null, 'created_at' => now()->subDays(2)]));
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@referral-source-survey');
+    $page->assertMissing('@mcp-prompt')
+        ->assertMissing('@tour-publish-views-views-content');
+
+    $page->click('@referral-source-option-google');
+    $page->click('@referral-source-submit');
+    waitForOpen($page, '@tour-publish-views-views-content');
+    letPageRun($page, 1000);
+
+    $page->assertMissing('@mcp-prompt');
+
+    $page->click('@tour-publish-views-views-next');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('closing the card keeps it in the user\'s one browser storage key, leaving the workspaces block as it was', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);

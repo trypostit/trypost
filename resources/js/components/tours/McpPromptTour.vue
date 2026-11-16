@@ -78,6 +78,34 @@ const visible = computed((): boolean => {
     return page.component !== 'settings/workspace/Mcp';
 });
 
+/** How long the card waits before it shows, in milliseconds. */
+const SHOW_DELAY_MS = 400;
+
+/**
+ * Whether the card is on screen. It shows a moment after it may, and hides at
+ * once: a tour opening on the same page load (the visit after answering the
+ * referral survey remounts the layout) goes first, instead of the card
+ * flashing in under it and its transition being cut off halfway.
+ */
+const shown = ref(false);
+let showTimer: ReturnType<typeof setTimeout> | undefined;
+
+const followVisible = (canShow: boolean): void => {
+    clearTimeout(showTimer);
+
+    if (!canShow) {
+        shown.value = false;
+
+        return;
+    }
+
+    showTimer = setTimeout(() => {
+        shown.value = true;
+    }, SHOW_DELAY_MS);
+};
+
+watch(visible, followVisible, { immediate: true });
+
 const connectHttp = useHttp<{ answer: 'connect'; client: McpClientId }>({
     answer: 'connect',
     client: 'claude',
@@ -144,7 +172,7 @@ const followCard = (onScreen: boolean): void => {
 
 /** The card or its steps are on screen. */
 const isOnScreen = computed((): boolean => {
-    if (visible.value) {
+    if (shown.value) {
         return true;
     }
 
@@ -154,6 +182,7 @@ const isOnScreen = computed((): boolean => {
 watch(isOnScreen, followCard, { immediate: true });
 
 onBeforeUnmount(() => {
+    clearTimeout(showTimer);
     poll.pause();
     stopConfetti();
 });
@@ -165,7 +194,7 @@ onBeforeUnmount(() => {
             enter-active-class="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
         >
             <aside
-                v-if="visible"
+                v-if="shown"
                 class="fixed end-4 bottom-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-xl bg-popover p-4 text-popover-foreground shadow-lg dark:border dark:border-border"
                 aria-labelledby="mcp-prompt-title"
                 aria-describedby="mcp-prompt-body"
