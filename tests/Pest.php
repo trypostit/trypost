@@ -1008,6 +1008,20 @@ function letPageRun(mixed $page, int $milliseconds): void
 }
 
 /**
+ * Fires a click on the element matching the selector without moving the
+ * pointer there, for an element an open modal layer keeps out of the
+ * pointer's reach (a click through `$page->click()` would never land).
+ */
+function clickWithoutPointer(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).click()");
+}
+
+/**
  * Tells the page that the user's browser storage changed in another tab, as
  * the browser does with a `storage` event: seed the change with
  * `setBrowserStorageItem()` first.

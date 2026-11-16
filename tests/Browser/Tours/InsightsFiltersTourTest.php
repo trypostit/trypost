@@ -199,6 +199,40 @@ test('where one user left a tour is never where it opens for the next user signe
     $page->assertNoJavaScriptErrors();
 });
 
+test('in a right-to-left language the left arrow moves the tour on and the right arrow moves it back', function () {
+    $this->user->update(['locale' => Locale::Arabic]);
+
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-range-content', 'ArrowLeft');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    waitForGone($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-channels-content', 'ArrowRight');
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    waitForGone($page, '@tour-insights-filters-channels-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a press on the highlighted control that never became a click does not move the tour on later', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    pointerDownOn($page, '@insights-range-presets');
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+
+    clickWithoutPointer($page, '@insights-range-presets');
+    letPageRun($page, 500);
+
+    $page->assertVisible('@tour-insights-filters-channels-content')
+        ->assertMissing('@tour-insights-filters-labels-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('Skip tour on a middle step records the step reached', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');
