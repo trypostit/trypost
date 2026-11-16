@@ -43,6 +43,12 @@ const { createOrUpgrade } = useWorkspaceLimit(
 
 const workspaceUpgradeDialogOpen = ref(false);
 
+const isMenuOpen = ref(false);
+
+const closeMenu = (): void => {
+    isMenuOpen.value = false;
+};
+
 const openWorkspaceUpgradeDialog = (): void => {
     workspaceUpgradeDialogOpen.value = true;
 };
@@ -80,7 +86,7 @@ const handleCreateWorkspace = (): void => {
         <div
             class="flex items-center gap-2 border-t border-sidebar-border px-4 py-2.5 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-1 group-data-[collapsible=icon]:px-2.5"
         >
-            <DropdownMenu>
+            <DropdownMenu v-model:open="isMenuOpen">
                 <DropdownMenuTrigger as-child>
                     <button
                         type="button"
@@ -125,6 +131,7 @@ const handleCreateWorkspace = (): void => {
                         :workspaces="workspaces"
                         :can-create-workspace="canCreateWorkspace"
                         @create-workspace="handleCreateWorkspace"
+                        @close="closeMenu"
                     />
                 </DropdownMenuContent>
             </DropdownMenu>
