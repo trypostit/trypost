@@ -14,7 +14,8 @@ import type { TourName, TourStepName } from '@/types/tour';
  * translated, like `$t('tours.tags.new')`) shows above the title as a chip of
  * `tagColor`, the way a label shows (the brand purple unless set). `align`
  * places the card along the control (`end` by default, `start` for a control
- * on the left). A `disabled` step renders its control and never opens.
+ * on the left). A `disabled` step renders its control and never opens; it is
+ * read once, when the step mounts.
  */
 const props = withDefaults(
     defineProps<{

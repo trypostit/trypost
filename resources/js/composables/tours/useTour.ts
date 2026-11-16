@@ -10,43 +10,32 @@ import {
     watch,
 } from 'vue';
 
+import { isDialogBlockingTours } from '@/composables/tours/useTourWaitsForDialogs';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useUserStorage } from '@/composables/useBrowserStorage';
+import { isPostComposerOpen } from '@/composables/useGlobalPostComposer';
 import { filled } from '@/lib/helpers';
-import { shownSteps, stepAfter, stepBefore, TOURS } from '@/lib/tours';
+import {
+    firstStep,
+    shownSteps,
+    stepAfter,
+    stepBefore,
+    TOURS,
+} from '@/lib/tours';
 import { store as storeTour } from '@/routes/app/tours';
 import type { SharedData } from '@/types';
-import type { TourName, TourOutcome, TourStepName } from '@/types/tour';
+import type {
+    OpenTourStep,
+    TourName,
+    TourOutcome,
+    TourStepName,
+} from '@/types/tour';
 
 /** The steps of each tour whose control is on the page. */
 const onPage = reactive(new Map<TourName, string[]>());
 
 /** The tour on screen and its step: one tour at a time, the first one on the page. */
 const active = shallowRef<{ tour: TourName; step: string } | null>(null);
-
-/** Where the open step's control is on screen, in pixels. */
-export interface TourSpotlight {
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-}
-
-/** What the open step shows and does, drawn by the one overlay of every tour (`TourOverlay`). */
-export interface OpenTourStep {
-    tour: TourName;
-    step: string;
-    position: number;
-    total: number;
-    tag?: string;
-    tagColor: string;
-    align: 'start' | 'center' | 'end';
-    control: HTMLElement;
-    frame: TourSpotlight;
-    next: () => void;
-    back: () => void;
-    skip: () => void;
-}
 
 /**
  * The open step, published by its `TourStep`: one backdrop and one card for
@@ -55,17 +44,27 @@ export interface OpenTourStep {
  */
 const openStep = shallowRef<OpenTourStep | null>(null);
 
+/**
+ * The step a tour was on when its control left the page without the tour
+ * ending (a visit that remounts the page, like picking a period on
+ * Insights): the tour picks up there when that step is back on the page.
+ */
+let resumeAt: { tour: TourName; step: string } | null = null;
+
 /** The start of every step on the page, in mount order: tried again whenever no tour is open. */
 const starters = new Set<() => void>();
+
+/** Tries every step on the page, so the first tour that may open opens. */
+const startWaitingTours = (): void => {
+    starters.forEach((start) => start());
+};
 
 /** Closes the open tour and opens the next one waiting on the page, if any. */
 const closeActive = (): void => {
     active.value = null;
     openStep.value = null;
 
-    nextTick(() => {
-        starters.forEach((start) => start());
-    });
+    nextTick(startWaitingTours);
 };
 
 /** Whether this tour's step is the one open. */
@@ -143,9 +142,11 @@ interface TourStepState {
  * One step of a tour, on the control it points at. The tour opens on its
  * first step on the page, once per user in this browser: reaching the end or
  * closing it before is recorded (`useTourProgress`) and tracked.
- * Leaving the page midway closes it without a record, so it opens again;
- * closing it in another tab closes it here. Once it closes, the next tour
- * waiting on the page opens. Tours are a desktop thing: on a phone none opens.
+ * Leaving the page midway closes it without a record, so it opens again, at
+ * the step it was on while the app stays open; closing it in another tab
+ * closes it here. Once it closes, the next tour waiting on the page opens. A
+ * tour waits while the page is busy (the composer, a dialog, the referral
+ * survey). Tours are a desktop thing: on a phone none opens.
  * A step that is not `enabled` (a page where its copy does not fit) never
  * counts as on the page.
  */
@@ -172,6 +173,39 @@ export const useTourStep = <Tour extends TourName>(
 
     const isActive = computed(() => isOpenStep(tour, step));
 
+    /**
+     * Something on the page goes first: the composer, any open dialog, or the
+     * "How did you find us?" survey.
+     */
+    const isPageBusy = computed((): boolean => {
+        if (isPostComposerOpen.value) {
+            return true;
+        }
+
+        if (filled(page.props.referralSources)) {
+            return true;
+        }
+
+        return isDialogBlockingTours.value;
+    });
+
+    /** The step the tour opens on: where it was left, while that step is on the page, else its first. */
+    const openingStep = (): string | null => {
+        if (!filled(resumeAt)) {
+            return firstStep(shown.value);
+        }
+
+        if (resumeAt.tour !== tour) {
+            return firstStep(shown.value);
+        }
+
+        if (!shown.value.includes(resumeAt.step)) {
+            return firstStep(shown.value);
+        }
+
+        return resumeAt.step;
+    };
+
     const start = (): void => {
         if (page.props.toursEnabled !== true) {
             return;
@@ -189,13 +223,18 @@ export const useTourStep = <Tour extends TourName>(
             return;
         }
 
-        const [first] = shown.value;
+        const opening = openingStep();
 
-        if (!filled(first)) {
+        if (!filled(opening)) {
             return;
         }
 
-        active.value = { tour, step: first };
+        if (isPageBusy.value) {
+            return;
+        }
+
+        resumeAt = null;
+        active.value = { tour, step: opening };
     };
 
     const finish = (outcome: TourOutcome, reached: number): void => {
@@ -252,6 +291,15 @@ export const useTourStep = <Tour extends TourName>(
         closeActive();
     });
 
+    /** Once the page is free again (the dialog closed, the survey answered), the tour may open. */
+    watch(isPageBusy, (busy) => {
+        if (busy) {
+            return;
+        }
+
+        start();
+    });
+
     /** Takes one mount of this step off the page, keeping any other mount of it. */
     const leavePage = (): void => {
         const mounted = [...(onPage.get(tour) ?? [])];
@@ -284,6 +332,7 @@ export const useTourStep = <Tour extends TourName>(
         starters.delete(start);
 
         if (isOpenStep(tour, step)) {
+            resumeAt = { tour, step };
             closeActive();
         }
     });

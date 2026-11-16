@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\PostHog\TourEvent;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -126,6 +128,28 @@ test('the tour stays closed on a channel\'s Instagram grid, whose switch has a f
     $page->assertMissing('@tour-publish-views-views-content');
 
     $page->navigate(route('app.posts.index'));
+    waitForOpen($page, '@tour-publish-views-views-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the tour waits while a post opens in the composer, and opens once it closes', function () {
+    $channel = SocialAccount::factory()->create([
+        'workspace_id' => $this->user->current_workspace_id,
+        'platform' => Platform::LinkedIn,
+    ]);
+    $post = Post::factory()->forAccount($channel, ContentType::LinkedInPost)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Waiting for the composer',
+    ]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForOpen($page, '@post-composer-dialog');
+    letPageRun($page, 500);
+    $page->assertMissing('@tour-publish-views-views-content');
+
+    $page->click('@composer-close');
+    waitForGone($page, '@post-composer-dialog');
     waitForOpen($page, '@tour-publish-views-views-content');
 
     $page->assertNoJavaScriptErrors();

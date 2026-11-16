@@ -22,6 +22,15 @@ export const shownSteps = (
     onPage: readonly string[],
 ): string[] => steps.filter((step) => onPage.includes(step));
 
+/** The step a tour opens on: the first of those shown, or null when none of its controls is on the page. */
+export const firstStep = (shown: readonly string[]): string | null => {
+    if (shown.length === 0) {
+        return null;
+    }
+
+    return shown[0];
+};
+
 /** The step after `current` among those shown, or null when it is the last. */
 export const stepAfter = (
     shown: readonly string[],

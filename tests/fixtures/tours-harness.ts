@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 const [sourceFile, casesJson] = process.argv.slice(2);
 
-const { TOURS, shownSteps, stepAfter, stepBefore } = await import(
+const { TOURS, firstStep, shownSteps, stepAfter, stepBefore } = await import(
     pathToFileURL(path.resolve(sourceFile)).href
 );
 
@@ -26,6 +26,7 @@ console.log(
 
             return {
                 shown,
+                first: firstStep(shown),
                 after: stepAfter(shown, current),
                 before: stepBefore(shown, current),
             };

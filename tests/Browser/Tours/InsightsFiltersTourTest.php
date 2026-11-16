@@ -126,6 +126,22 @@ test('the arrow keys move a longer tour on and back, never past its first or las
     $page->assertNoJavaScriptErrors();
 });
 
+test('picking a period from the highlighted control moves the tour on, and the visit it makes keeps it there', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->click('@insights-range-7d');
+    waitForQueryParameter($page, 'range', '7d');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    letPageRun($page, 500);
+
+    $page->assertVisible('@tour-insights-filters-channels-content')
+        ->assertMissing('@tour-insights-filters-range-content');
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('Skip tour on a middle step records the step reached', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');

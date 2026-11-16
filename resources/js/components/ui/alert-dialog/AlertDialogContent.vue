@@ -8,6 +8,7 @@ import {
   AlertDialogPortal,
   useForwardPropsEmits,
 } from "reka-ui"
+import { trackDialogForTours } from "@/composables/tours/useTourWaitsForDialogs"
 import { cn } from "@/lib/utils"
 
 defineOptions({
@@ -20,6 +21,8 @@ const emits = defineEmits<AlertDialogContentEmits>()
 const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+trackDialogForTours()
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconChevronsLeft, IconChevronsRight } from '@tabler/icons-vue';
-import { computed, useId, useTemplateRef } from 'vue';
+import { computed, useId, useTemplateRef, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -184,8 +184,24 @@ const followControl = (event: PointerDownOutside): void => {
         return;
     }
 
-    openStep.value.control.addEventListener('click', next, { once: true });
+    pendingControl = openStep.value.control;
+    pendingControl.addEventListener('click', next, { once: true });
 };
+
+/**
+ * The control waiting for the click a press on it started. A press that ends
+ * off the control never clicks, so its listener goes when the step changes.
+ */
+let pendingControl: HTMLElement | null = null;
+
+watch(openStep, () => {
+    if (!filled(pendingControl)) {
+        return;
+    }
+
+    pendingControl.removeEventListener('click', next);
+    pendingControl = null;
+});
 
 /** Focus leaving the card does not close the tour either. */
 const keepTourOpen = (event: Event): void => {

@@ -28,15 +28,15 @@ return [
         'filters' => [
             'steps' => [
                 'range' => [
-                    'title' => '기간으로 필터',
+                    'title' => '기간으로 필터링하세요',
                     'description' => '최근 며칠 또는 특정 날짜로 데이터를 필터링하세요.',
                 ],
                 'channels' => [
-                    'title' => '채널로 필터',
+                    'title' => '채널로 필터링하세요',
                     'description' => '한 채널의 수치를 보거나 여러 채널을 비교하세요.',
                 ],
                 'labels' => [
-                    'title' => '라벨로 필터',
+                    'title' => '라벨로 필터링하세요',
                     'description' => '라벨로 캠페인이나 시리즈의 성과를 확인하세요.',
                 ],
             ],

@@ -9,18 +9,13 @@ import { Button } from '@/components/ui/button';
 import { useTourOnScreen, useTourProgress } from '@/composables/tours/useTour';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { filled } from '@/lib/helpers';
-import {
-    mcpAppLogos,
-    mcpClients,
-    type McpAppLogo,
-    type McpClient,
-    type McpClientId,
-} from '@/lib/mcpClients';
+import { claudeMcpClient, mcpAppLogos, mcpClients } from '@/lib/mcpClients';
 import {
     show as showConnectionStatus,
     store as storePromptAnswer,
 } from '@/routes/app/mcp/prompt';
 import type { SharedData } from '@/types';
+import type { McpAppLogo, McpClient, McpClientId } from '@/types/mcp';
 import { fireCelebration } from '@/utils/confetti';
 
 interface McpConnectionStatus {
@@ -96,7 +91,7 @@ const dismiss = (): void => {
 };
 
 const dialogOpen = ref(false);
-const activeClient = ref<McpClient>(mcpClients[0]);
+const activeClient = ref<McpClient>(claudeMcpClient);
 const mcpUrl = ref('');
 
 const connect = (client: McpClient): void => {

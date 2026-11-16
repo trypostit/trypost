@@ -13,7 +13,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import type { McpClient, McpClientId } from '@/lib/mcpClients';
+import type { McpClient, McpClientId } from '@/types/mcp';
 
 const props = defineProps<{
     client: McpClient;
