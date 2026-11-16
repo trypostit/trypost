@@ -199,7 +199,7 @@ return [
             'title' => 'Undang anggota',
             'description' => 'Kirim undangan lewat email untuk menambahkan kolaborator',
             'email' => 'Email',
-            'email_placeholder' => 'collaborator@email.com',
+            'email_placeholder' => 'rekan@email.com',
             'submit' => 'Kirim undangan',
         ],
 
