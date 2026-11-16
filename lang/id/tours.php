@@ -19,7 +19,7 @@ return [
             'steps' => [
                 'views' => [
                     'title' => 'Ganti tampilan',
-                    'description' => 'Rencanakan post kamu dengan tampilan yang paling cocok untukmu.',
+                    'description' => 'Rencanakan postinganmu dengan tampilan yang paling cocok untukmu.',
                 ],
             ],
         ],
@@ -28,16 +28,16 @@ return [
         'filters' => [
             'steps' => [
                 'range' => [
-                    'title' => 'Filter per periode',
-                    'description' => 'Filter datamu berdasarkan hari terakhir atau tanggal tertentu.',
+                    'title' => 'Filter menurut periode',
+                    'description' => 'Filter datamu berdasarkan beberapa hari terakhir atau tanggal tertentu.',
                 ],
                 'channels' => [
-                    'title' => 'Filter per channel',
-                    'description' => 'Lihat angka satu channel atau bandingkan beberapa sekaligus.',
+                    'title' => 'Filter menurut channel',
+                    'description' => 'Lihat angka satu channel atau bandingkan beberapa channel sekaligus.',
                 ],
                 'labels' => [
-                    'title' => 'Filter per label',
-                    'description' => 'Ikuti kampanye atau seri post lewat labelnya.',
+                    'title' => 'Filter menurut label',
+                    'description' => 'Pantau kampanye atau seri postingan lewat labelnya.',
                 ],
             ],
         ],
@@ -47,7 +47,7 @@ return [
             'steps' => [
                 'card' => [
                     'title' => 'Kamu belum menghubungkan AI',
-                    'description' => 'Hubungkan Claude atau ChatGPT untuk membuat, menjadwalkan, dan menganalisis post kamu hanya dengan bertanya.',
+                    'description' => 'Hubungkan Claude atau ChatGPT untuk membuat, menjadwalkan, dan menganalisis postinganmu cukup dengan meminta.',
                     'not_now' => 'Nanti saja',
                 ],
             ],

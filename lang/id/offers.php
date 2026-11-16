@@ -21,12 +21,12 @@ return [
     'ft7d' => [
         'price' => 'Gratis',
         'period' => 'selama 7 hari',
-        'checkout_button' => 'Mulai coba gratis',
+        'checkout_button' => 'Mulai uji coba gratis',
     ],
     'ft7dnc' => [
         'price' => 'Gratis',
         'period' => 'selama 7 hari',
-        'checkout_button' => 'Mulai coba gratis',
-        'terms' => 'Tanpa kartu kredit',
+        'checkout_button' => 'Mulai uji coba gratis',
+        'terms' => 'Tidak perlu kartu kredit',
     ],
 ];

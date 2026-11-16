@@ -16,9 +16,9 @@ return [
     */
 
     'reset' => 'Kata sandimu sudah direset.',
-    'sent' => 'Kami sudah mengirim email berisi tautan reset kata sandimu.',
+    'sent' => 'Kami sudah mengirim tautan reset kata sandi ke emailmu.',
     'throttled' => 'Mohon tunggu sebentar sebelum mencoba lagi.',
     'token' => 'Token reset kata sandi ini tidak valid.',
-    'user' => "Kami tidak menemukan pengguna dengan alamat email itu.",
+    'user' => 'Kami tidak menemukan pengguna dengan alamat email itu.',
 
 ];

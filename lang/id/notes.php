@@ -13,14 +13,14 @@ return [
     'save' => 'Simpan',
     'cancel' => 'Batal',
     'send' => 'Kirim',
-    'empty' => 'Belum ada catatan. Hanya tim kamu yang bisa melihatnya.',
+    'empty' => 'Belum ada catatan. Hanya timmu yang bisa melihatnya.',
     'actions' => 'Aksi catatan',
     'react' => 'Tambah reaksi',
     'no_mentionables' => 'Tidak ada anggota tim yang cocok',
     'mention_unknown' => 'tidak diketahui',
     'mention_everyone' => [
         'word' => 'semua',
-        'description' => 'Semua orang di post ini',
+        'description' => 'Semua orang di postingan ini',
     ],
     'mention_card' => [
         'local_time' => ':time waktu lokal',

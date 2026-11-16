@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'Label',
-    'description' => 'Rapikan dan filter post kamu dengan label.',
+    'description' => 'Atur dan filter postinganmu dengan label.',
     'search' => 'Cari label...',
     'new_label' => 'Label baru',
     'no_labels_yet' => 'Belum ada label',
@@ -13,24 +13,24 @@ return [
     'create_first_label' => 'Buat label pertamamu',
 
     'meta' => [
-        'posts' => '{0} Tidak ada post|{1} :count post|[2,*] :count post',
+        'posts' => '{0} Tanpa postingan|{1} :count postingan|[2,*] :count postingan',
     ],
 
     'actions' => [
         'delete' => 'Hapus label',
         'more' => 'Aksi lainnya',
         'settings' => 'Pengaturan',
-        'view_posts' => 'Lihat post',
+        'view_posts' => 'Lihat postingan',
         'view_insights' => 'Lihat insight',
     ],
 
     'create' => [
         'title' => 'Buat label',
-        'description' => 'Beri nama untuk label kamu dan pilih warnanya',
+        'description' => 'Beri nama labelmu dan pilih warnanya',
         'name' => 'Nama',
         'name_placeholder' => 'Masukkan nama label...',
         'color' => 'Warna',
-        'submit' => 'Buat Label',
+        'submit' => 'Buat label',
         'submitting' => 'Membuat...',
     ],
 
@@ -40,7 +40,7 @@ return [
         'name' => 'Nama',
         'name_placeholder' => 'Masukkan nama label...',
         'color' => 'Warna',
-        'submit' => 'Simpan Perubahan',
+        'submit' => 'Simpan perubahan',
         'submitting' => 'Menyimpan...',
     ],
 

@@ -11,7 +11,7 @@ return [
 
         'title' => 'Buang perubahan?',
 
-        'description' => 'Perubahanmu pada post ini belum tersimpan. Kalau keluar sekarang, semuanya hilang.',
+        'description' => 'Perubahanmu pada postingan ini belum disimpan. Kalau keluar sekarang, perubahan itu akan hilang.',
 
         'discard' => 'Buang',
 
@@ -30,8 +30,8 @@ return [
         'remove' => 'Hapus foto',
         'hint' => 'Disarankan: gambar persegi, maksimal 2 MB.',
         'crop_title' => 'Potong gambar',
-        'crop_description' => 'Pilih area yang ingin dipertahankan.',
-        'crop_hint' => 'Geser untuk memindahkan, tarik sudutnya untuk mengubah ukuran.',
+        'crop_description' => 'Pilih area yang ingin kamu pertahankan.',
+        'crop_hint' => 'Geser untuk memindahkan, atau tarik sudutnya untuk mengubah ukuran.',
         'crop_save' => 'Simpan',
         'crop_cancel' => 'Batal',
         'crop_error' => 'Gambar ini gagal dimuat. Coba file lain.',
@@ -76,7 +76,7 @@ return [
 
     'actions' => [
         'copy' => 'Salin',
-        'copied' => 'Tersalin',
+        'copied' => 'Disalin',
         'copy_failed' => 'Gagal menyalin ke clipboard',
     ],
 

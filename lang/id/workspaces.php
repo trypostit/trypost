@@ -8,9 +8,9 @@ return [
     'select_description' => 'Pilih workspace untuk melanjutkan',
     'current' => 'Saat ini',
     'connections' => ':count koneksi',
-    'posts' => ':count post',
+    'posts' => ':count postingan',
     'subscription_required' => 'Berlangganan untuk membuat lebih banyak workspace.',
-    'limit_reached' => 'Paketmu mencakup satu workspace. Upgrade untuk menambah lagi.',
+    'limit_reached' => 'Paketmu mencakup satu workspace. Upgrade untuk menambah workspace.',
 
     'upgrade_dialog' => [
         'title' => 'Upgrade untuk menambah workspace',
@@ -20,11 +20,11 @@ return [
     'create' => [
         'page_title' => 'Buat workspace kamu',
         'title' => 'Siapkan workspace kamu',
-        'description' => 'Beri nama untuk workspace kamu. Kamu bisa menggantinya nanti.',
+        'description' => 'Beri nama workspace kamu. Kamu bisa mengubahnya nanti.',
         'name' => 'Nama workspace',
         'name_placeholder' => 'misal: Acme Inc',
         'submit' => 'Buat workspace',
-        'success' => 'Workspace berhasil dibuat. Hubungkan akun sosial media untuk mulai posting.',
+        'success' => 'Workspace berhasil dibuat. Hubungkan akun media sosial untuk mulai memposting.',
     ],
 
     'cannot_delete_last' => 'Kamu tidak bisa menghapus satu-satunya workspace kamu. Batalkan langganan di pengaturan tagihan untuk menutup akun.',
