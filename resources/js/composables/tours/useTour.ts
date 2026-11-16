@@ -7,6 +7,7 @@ import {
     onMounted,
     reactive,
     shallowRef,
+    watch,
 } from 'vue';
 
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
@@ -22,6 +23,33 @@ const onPage = reactive(new Map<TourName, string[]>());
 
 /** The tour on screen and its step: one tour at a time, the first one on the page. */
 const active = shallowRef<{ tour: TourName; step: string } | null>(null);
+
+/** The start of every step on the page, in mount order: tried again whenever no tour is open. */
+const starters = new Set<() => void>();
+
+/** Closes the open tour and opens the next one waiting on the page, if any. */
+const closeActive = (): void => {
+    active.value = null;
+
+    nextTick(() => {
+        starters.forEach((start) => start());
+    });
+};
+
+/** Whether this tour's step is the one open. */
+const isOpenStep = (tour: TourName, step: string): boolean => {
+    const current = active.value;
+
+    if (!filled(current)) {
+        return false;
+    }
+
+    if (current.tour !== tour) {
+        return false;
+    }
+
+    return current.step === step;
+};
 
 /** Whether a tour is open on the page, so what would sit over it (the MCP card) waits. */
 export const useTourOnScreen = (): ComputedRef<boolean> =>
@@ -69,12 +97,15 @@ interface TourStepState {
  * first step on the page, once per user in this browser: reaching the end or
  * closing it before is recorded (`useTourProgress`) and tracked.
  * Leaving the page midway closes it without a record, so it opens again;
- * closing it in another tab closes it here.
- * Tours are a desktop thing: on a phone none opens.
+ * closing it in another tab closes it here. Once it closes, the next tour
+ * waiting on the page opens. Tours are a desktop thing: on a phone none opens.
+ * A step that is not `enabled` (a page where its copy does not fit) never
+ * counts as on the page.
  */
 export const useTourStep = <Tour extends TourName>(
     tour: Tour,
     step: TourStepName<Tour>,
+    enabled = true,
 ): TourStepState => {
     const page = usePage<SharedData>();
     const isPhone = useBelowBreakpoint('sm');
@@ -92,23 +123,7 @@ export const useTourStep = <Tour extends TourName>(
     const position = computed(() => shown.value.indexOf(step) + 1);
     const total = computed(() => shown.value.length);
 
-    const isActive = computed((): boolean => {
-        if (wentThrough.value) {
-            return false;
-        }
-
-        const current = active.value;
-
-        if (!filled(current)) {
-            return false;
-        }
-
-        if (current.tour !== tour) {
-            return false;
-        }
-
-        return current.step === step;
-    });
+    const isActive = computed(() => isOpenStep(tour, step));
 
     const start = (): void => {
         if (page.props.toursEnabled !== true) {
@@ -137,7 +152,7 @@ export const useTourStep = <Tour extends TourName>(
     };
 
     const finish = (outcome: TourOutcome, reached: number): void => {
-        active.value = null;
+        closeActive();
 
         if (wentThrough.value) {
             return;
@@ -177,19 +192,52 @@ export const useTourStep = <Tour extends TourName>(
         finish('skipped', position.value);
     };
 
+    /** Closing the tour in another tab closes it here, and lets the next one open. */
+    watch(wentThrough, (went) => {
+        if (!went) {
+            return;
+        }
+
+        if (active.value?.tour !== tour) {
+            return;
+        }
+
+        closeActive();
+    });
+
+    /** Takes one mount of this step off the page, keeping any other mount of it. */
+    const leavePage = (): void => {
+        const mounted = [...(onPage.get(tour) ?? [])];
+        const index = mounted.indexOf(step);
+
+        if (index === -1) {
+            return;
+        }
+
+        mounted.splice(index, 1);
+        onPage.set(tour, mounted);
+    };
+
     onMounted(() => {
+        if (!enabled) {
+            return;
+        }
+
         onPage.set(tour, [...(onPage.get(tour) ?? []), step]);
+        starters.add(start);
         nextTick(start);
     });
 
     onBeforeUnmount(() => {
-        onPage.set(
-            tour,
-            (onPage.get(tour) ?? []).filter((mounted) => mounted !== step),
-        );
+        if (!enabled) {
+            return;
+        }
 
-        if (isActive.value) {
-            active.value = null;
+        leavePage();
+        starters.delete(start);
+
+        if (isOpenStep(tour, step)) {
+            closeActive();
         }
     });
 

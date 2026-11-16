@@ -68,6 +68,9 @@ const gridNote = (): string | null => {
     return 'channels.grid.info';
 };
 
+/** The channel's Instagram grid is one more view here; the views tour speaks of list, calendar and board only, so it stays closed. */
+const hasGrid = computed(() => filled(props.gridHref));
+
 /** The views of the page; the Instagram grid comes first on a channel that has one. */
 const views = computed((): ScheduleView[] => {
     const publishViews: ScheduleView[] = [
@@ -174,6 +177,7 @@ const viewLinkClass = (key: string): string => {
         v-else
         tour="publish.views"
         step="views"
+        :disabled="hasGrid"
     >
         <TooltipProvider :delay-duration="0">
             <nav

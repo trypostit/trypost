@@ -65,6 +65,30 @@ test('the card waits while a tour is open and shows once the tour closes', funct
     $page->assertNoJavaScriptErrors();
 });
 
+test('the card shows once a tour open here is closed in another tab', function () {
+    config(['trypost.tours.enabled' => true]);
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+    $key = json_encode("trypost:{$user->id}");
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+    $page->assertMissing('@mcp-prompt');
+
+    $page->script(<<<JS
+        (() => {
+            const value = JSON.stringify({ version: 1, user: { tours: { 'publish.views': { status: 'completed', step: 1 } } }, workspaces: {} });
+            localStorage.setItem({$key}, value);
+            window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: value }));
+        })()
+    JS);
+
+    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('closing the card keeps it in the user\'s one browser storage key, leaving the workspaces block as it was', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);

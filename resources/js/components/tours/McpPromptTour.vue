@@ -6,8 +6,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
+import { useTourOnScreen, useTourProgress } from '@/composables/tours/useTour';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
-import { useTourOnScreen, useTourProgress } from '@/composables/useTour';
 import { filled } from '@/lib/helpers';
 import {
     mcpAppLogos,
@@ -36,6 +36,11 @@ const AVATAR_APPS = ['chatgpt', 'claude', 'grok', 'gemini', 'cursor', 'n8n'];
 const avatars: McpAppLogo[] = AVATAR_APPS.flatMap((id) =>
     mcpAppLogos.filter((app) => app.id === id),
 );
+
+/** Each avatar sits over the next one: the first is on top. */
+const avatarStyle = (position: number): { zIndex: number } => ({
+    zIndex: avatars.length - position,
+});
 
 const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
@@ -142,7 +147,16 @@ const followCard = (onScreen: boolean): void => {
     poll.pause();
 };
 
-watch(() => visible.value || dialogOpen.value, followCard, { immediate: true });
+/** The card or its steps are on screen. */
+const isOnScreen = computed((): boolean => {
+    if (visible.value) {
+        return true;
+    }
+
+    return dialogOpen.value;
+});
+
+watch(isOnScreen, followCard, { immediate: true });
 
 onBeforeUnmount(() => {
     poll.pause();
@@ -168,7 +182,7 @@ onBeforeUnmount(() => {
                             v-for="(app, position) in avatars"
                             :key="app.id"
                             class="relative inline-flex size-9 items-center justify-center rounded-lg bg-muted ring-2 ring-popover"
-                            :style="{ zIndex: avatars.length - position }"
+                            :style="avatarStyle(position)"
                             :data-testid="`mcp-prompt-avatar-${app.id}`"
                         >
                             <component

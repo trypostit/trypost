@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="Tour extends TourName">
 import { useElementBounding } from '@vueuse/core';
-import { computed, useTemplateRef } from 'vue';
+import { computed, useId, useTemplateRef } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +8,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
-import { useTourStep } from '@/composables/useTour';
+import { useTourStep } from '@/composables/tours/useTour';
 import { filled } from '@/lib/helpers';
 import { labelTextColor } from '@/lib/labelColor';
 import type { TourName, TourStepName } from '@/types/tour';
@@ -17,9 +17,11 @@ import type { TourName, TourStepName } from '@/types/tour';
  * One step of a tour (`TOURS` in `lib/tours.ts`), on the control in its slot.
  * While it is the tour's current step, the page goes dark around the control
  * and the step's title and description (`tours.<tour>.steps.<step>.*`) open
- * next to it. Escape or a click outside skips the tour. A `tag` (already
+ * next to it. Using the control itself moves the tour on (it completes a
+ * one-step tour); Escape or a click elsewhere skips it. A `tag` (already
  * translated, like `$t('tours.tags.new')`) shows above the title as a chip of
- * `tagColor`, the way a label shows (the brand purple unless set).
+ * `tagColor`, the way a label shows (the brand purple unless set). A
+ * `disabled` step renders its control and never opens.
  */
 const props = withDefaults(
     defineProps<{
@@ -27,14 +29,19 @@ const props = withDefaults(
         step: TourStepName<Tour>;
         tag?: string;
         tagColor?: string;
+        disabled?: boolean;
     }>(),
-    { tag: undefined, tagColor: '#7c3aed' },
+    { tag: undefined, tagColor: '#7c3aed', disabled: false },
 );
 
 const { isActive, position, total, next, back, skip } = useTourStep(
     props.tour,
     props.step,
+    !props.disabled,
 );
+
+const titleId = useId();
+const descriptionId = useId();
 
 /** The tag's color as the background, with the text color that reads on it, as `LabelBadge` does. */
 const tagStyle = computed(() => ({
@@ -103,6 +110,45 @@ const testId = computed(
     () => `tour-${props.tour.replaceAll('.', '-')}-${props.step}`,
 );
 
+/**
+ * The open tour blocks the page around it; the control it points at stays
+ * usable, so it still reacts to the click that moves the tour on.
+ */
+const targetClass = computed((): string | undefined => {
+    if (isActive.value) {
+        return 'pointer-events-auto';
+    }
+
+    return undefined;
+});
+
+type PointerDownOutside = CustomEvent<{ originalEvent: PointerEvent }>;
+
+/**
+ * A press on the control the step points at keeps the tour open until the
+ * click lands on the control, then moves the tour on, instead of skipping it:
+ * closing it at once would take the control's pointer events away before the
+ * click.
+ */
+const followControl = (event: PointerDownOutside): void => {
+    const clicked = event.detail.originalEvent.target;
+
+    if (!(clicked instanceof Node)) {
+        return;
+    }
+
+    if (!filled(target.value)) {
+        return;
+    }
+
+    if (!target.value.contains(clicked)) {
+        return;
+    }
+
+    event.preventDefault();
+    target.value.addEventListener('click', next, { once: true });
+};
+
 const closeTour = (open: boolean): void => {
     if (open) {
         return;
@@ -113,7 +159,7 @@ const closeTour = (open: boolean): void => {
 </script>
 
 <template>
-    <div ref="target" class="inline-flex">
+    <div ref="target" class="inline-flex" :class="targetClass">
         <Popover :open="isActive" modal @update:open="closeTour">
             <PopoverAnchor as-child>
                 <div class="inline-flex">
@@ -132,7 +178,10 @@ const closeTour = (open: boolean): void => {
                 align="end"
                 :side-offset="12"
                 class="z-[60] w-80"
+                :aria-labelledby="titleId"
+                :aria-describedby="descriptionId"
                 :data-testid="`${testId}-content`"
+                @pointer-down-outside="followControl"
             >
                 <div
                     v-if="hasHeader"
@@ -154,8 +203,13 @@ const closeTour = (open: boolean): void => {
                         {{ progressLabel($t) }}
                     </span>
                 </div>
-                <p class="text-base font-semibold">{{ $t(titleKey) }}</p>
-                <p class="mt-1 text-sm text-muted-foreground">
+                <p :id="titleId" class="text-base font-semibold">
+                    {{ $t(titleKey) }}
+                </p>
+                <p
+                    :id="descriptionId"
+                    class="mt-1 text-sm text-muted-foreground"
+                >
                     {{ $t(descriptionKey) }}
                 </p>
                 <div

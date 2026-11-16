@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\PostHog\TourEvent;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
@@ -92,6 +94,49 @@ test('closing the tour with Escape skips it for good', function () {
     $page->navigate(route('app.posts.index'));
     waitFor($page, '@schedule-view-board');
     $page->assertMissing('@tour-publish-views-views-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('using the control the tour points at works and completes the tour', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+
+    $page->click('@schedule-view-calendar');
+    waitForPath($page, route('app.calendar', ['view' => 'week'], absolute: false));
+    waitForGone($page, '@tour-publish-views-views-backdrop');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'completed', 'step' => 1]]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a click elsewhere on the page skips the tour', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+
+    $page->script(<<<'JS'
+        document.querySelector('[data-testid="app-header"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    JS);
+    waitForGone($page, '@tour-publish-views-views-backdrop');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the tour stays closed on a channel\'s Instagram grid, whose switch has a fourth view, and opens on the list of all channels', function () {
+    $instagram = SocialAccount::factory()->create([
+        'workspace_id' => $this->user->current_workspace_id,
+        'platform' => Platform::Instagram,
+    ]);
+
+    $page = visit(route('app.channels.grid', $instagram))->resize(1280, 900);
+    waitFor($page, '@schedule-view-board');
+    $page->assertMissing('@tour-publish-views-views-content');
+
+    $page->navigate(route('app.posts.index'));
+    waitForOpen($page, '@tour-publish-views-views-content');
 
     $page->assertNoJavaScriptErrors();
 });
