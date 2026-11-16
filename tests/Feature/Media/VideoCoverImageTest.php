@@ -1,0 +1,192 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Actions\Media\AuditMedia;
+use App\Actions\Post\DeletePost;
+use App\Actions\Post\DuplicatePost;
+use App\Dto\MediaItem;
+use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\Media;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+
+beforeEach(function () {
+    Storage::fake();
+    Queue::fake();
+
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->user->update(['current_workspace_id' => $this->workspace->id]);
+
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
+    $this->post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
+        'user_id' => $this->user->id,
+        'status' => Status::Draft,
+        'scheduled_at' => null,
+    ]);
+    $this->video = Media::factory()->video()->ownedByPost($this->post)->stored()->create(['meta' => ['duration' => 10]]);
+    $this->post->update(['media' => [MediaItem::fromMedia($this->video)->toArray()]]);
+});
+
+/**
+ * @param  array<string, mixed>|null  $cover
+ * @return array<string, mixed>
+ */
+function videoCoverImageItem(Media $video, ?array $cover): array
+{
+    $item = MediaItem::fromMedia($video)->toArray();
+
+    if ($cover === null) {
+        return $item;
+    }
+
+    return [...$item, 'meta' => [...$item['meta'], 'cover' => $cover]];
+}
+
+/**
+ * @param  array<int, array<string, mixed>>  $media
+ */
+function updateVideoCoverImageOnWeb(object $test, array $media): mixed
+{
+    return $test->actingAs($test->user)->put(route('app.posts.update', $test->post), [
+        'status' => 'draft',
+        'content' => 'hi',
+        'media' => $media,
+    ]);
+}
+
+/**
+ * @return array<string, string>
+ */
+function videoCoverImageApiHeaders(Workspace $workspace): array
+{
+    return ['Authorization' => 'Bearer '.createApiTestToken(['workspace' => $workspace])['plain_token']];
+}
+
+test('the web composer adopts an uploaded image as the video cover', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())])
+        ->assertSessionHasNoErrors();
+
+    $cover = data_get($this->post->fresh()->media, '0.meta.cover');
+
+    expect(data_get($cover, 'id'))->toBe($upload->id)
+        ->and(data_get($cover, 'url'))->toBe($upload->fresh()->url)
+        ->and($cover)->not->toHaveKey('upload_token')
+        ->and($upload->fresh()->post_id)->toBe($this->post->id)
+        ->and($upload->fresh()->upload_token)->toBeNull();
+});
+
+test('removing the cover deletes its row and keeps the video', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())]);
+
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, null)])->assertSessionHasNoErrors();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(Media::query()->whereKey($upload->id)->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($this->video->id)->exists())->toBeTrue();
+});
+
+test('the web composer keeps a stored cover when the video item is sent again', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())]);
+    $stored = $this->post->fresh()->media;
+
+    updateVideoCoverImageOnWeb($this, $stored)->assertSessionHasNoErrors();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover.id'))->toBe($upload->id)
+        ->and(Media::query()->whereKey($upload->id)->exists())->toBeTrue();
+});
+
+test('a cover that is not a still image is refused', function (Closure $makeCover) {
+    $cover = $makeCover($this->workspace);
+
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($cover)->toArray())])
+        ->assertSessionHasErrors(['media.0.meta.cover' => 'The video cover must be a JPEG, PNG or WebP image.']);
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and($cover->fresh()->post_id)->toBeNull();
+})->with([
+    'a video' => [fn (Workspace $workspace): Media => Media::factory()->video()->stored()->temporaryUpload($workspace)->create()],
+    'a gif' => [fn (Workspace $workspace): Media => Media::factory()->stored()->temporaryUpload($workspace)->create(['mime_type' => 'image/gif', 'path' => 'media/cover.gif'])],
+]);
+
+test('a cover without a file reference is refused', function (mixed $cover) {
+    $this->withHeaders(videoCoverImageApiHeaders($this->workspace))->putJson(route('api.posts.update', $this->post), [
+        'status' => 'draft',
+        'media' => [['id' => $this->video->id, 'meta' => ['cover' => $cover]]],
+    ])->assertUnprocessable()->assertJsonValidationErrors(['media.0.meta' => 'Choose an image for the video cover.']);
+})->with([
+    'a string' => ['https://example.com/cover.jpg'],
+    'an empty object' => [['alt_text' => 'cover']],
+]);
+
+test('the rest api takes the cover as an upload token', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    $this->withHeaders(videoCoverImageApiHeaders($this->workspace))->putJson(route('api.posts.update', $this->post), [
+        'status' => 'draft',
+        'media' => [['id' => $this->video->id, 'meta' => ['cover' => ['upload_token' => $upload->upload_token]]]],
+    ])->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover.id'))->toBe($upload->id)
+        ->and($upload->fresh()->post_id)->toBe($this->post->id);
+});
+
+test('mcp takes the cover as a media id of the workspace and copies it', function () {
+    $otherPost = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $otherPostImage = Media::factory()->stored()->ownedByPost($otherPost)->create();
+
+    TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
+        'post_id' => $this->post->id,
+        'media' => [['id' => $this->video->id, 'meta' => ['cover' => ['id' => $otherPostImage->id]]]],
+    ])->assertHasNoErrors();
+
+    $coverId = data_get($this->post->fresh()->media, '0.meta.cover.id');
+
+    expect($coverId)->not->toBe($otherPostImage->id)
+        ->and(Media::query()->find($coverId)->post_id)->toBe($this->post->id)
+        ->and($otherPostImage->fresh()->post_id)->toBe($otherPost->id);
+});
+
+test('a duplicate copies the cover and deleting the post deletes it', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())]);
+
+    $copy = DuplicatePost::execute($this->post->fresh(), $this->user);
+    $copiedId = data_get($copy->fresh()->media, '0.meta.cover.id');
+
+    expect($copiedId)->not->toBe($upload->id)
+        ->and(Media::query()->find($copiedId)->post_id)->toBe($copy->id);
+
+    DeletePost::execute($this->post->fresh());
+
+    expect(Media::query()->whereKey($upload->id)->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($copiedId)->exists())->toBeTrue();
+});
+
+test('the media audit counts a cover as referenced by its post', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())]);
+
+    expect(collect(AuditMedia::execute(checkMissingFiles: false)['json_drift'])->pluck('media_id'))->not->toContain($upload->id);
+});
+
+test('the media item reads its cover image', function () {
+    $cover = MediaItem::fromArray(['meta' => ['cover' => ['id' => 'c', 'path' => 'media/c.jpg', 'url' => 'https://cdn.test/c.jpg', 'mime_type' => 'image/jpeg']]])->cover();
+
+    expect($cover?->url)->toBe('https://cdn.test/c.jpg')
+        ->and($cover?->isStillImage())->toBeTrue()
+        ->and(MediaItem::fromArray(['meta' => []])->cover())->toBeNull();
+});

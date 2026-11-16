@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
 use App\Exceptions\PlatformUnavailableException;
@@ -12,6 +13,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
@@ -30,6 +32,9 @@ class YouTubePublisher
     use HasSocialHttpClient;
 
     private const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+
+    /** @var list<string> */
+    private const array COVER_MIME_TYPES = ['image/jpeg', 'image/png'];
 
     public function publish(Post $post): array
     {
@@ -72,6 +77,84 @@ class YouTubePublisher
         }
 
         return $this->publishShort($firstMedia, $account, $content, $description, $post->meta ?? []);
+    }
+
+    /**
+     * Where YouTube is with a video it already has
+     * (`processingDetails.processingStatus`: processing, succeeded, failed or
+     * terminated), or null when it no longer lists the video.
+     *
+     * @throws Exception
+     */
+    public function processingStatus(Post $post): ?string
+    {
+        $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
+        $video = data_get($youtube->videos->listVideos('processingDetails', ['id' => $post->platform_post_id])->getItems(), 0);
+
+        return $video?->getProcessingDetails()?->getProcessingStatus();
+    }
+
+    /**
+     * Sets the post's cover image (`media.0.meta.cover`) as the thumbnail of
+     * its video, which YouTube takes as a JPEG or a PNG. Call it once the
+     * video is processed: a Short may otherwise keep its own frame.
+     *
+     * @see https://developers.google.com/youtube/v3/docs/thumbnails/set
+     *
+     * @throws Exception
+     */
+    public function setCover(Post $post): void
+    {
+        $cover = $post->mediaItems->first()?->cover();
+
+        if ($cover === null) {
+            return;
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'yt_cover_');
+
+        try {
+            $response = Http::sink($tempFile)->timeout(120)->get($cover->url);
+
+            if ($response->failed()) {
+                throw new YouTubePublishException(
+                    userMessage: 'Failed to download the cover image for YouTube',
+                    category: ErrorCategory::ServerError,
+                );
+            }
+
+            [$path, $mimeType] = $this->coverFile($cover, $tempFile);
+
+            try {
+                $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
+                $youtube->thumbnails->set($post->platform_post_id, [
+                    'data' => (string) file_get_contents($path),
+                    'mimeType' => $mimeType,
+                    'uploadType' => 'media',
+                ]);
+            } finally {
+                if ($path !== $tempFile) {
+                    @unlink($path);
+                }
+            }
+        } finally {
+            @unlink($tempFile);
+        }
+    }
+
+    /**
+     * The downloaded cover as YouTube takes it: a JPEG or a PNG as is, any
+     * other image re-encoded as a JPEG.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function coverFile(MediaItem $cover, string $path): array
+    {
+        if (in_array($cover->mime_type, self::COVER_MIME_TYPES, true)) {
+            return [$path, (string) $cover->mime_type];
+        }
+
+        return [app(MediaOptimizer::class)->optimizeImage($path, Platform::YouTube), 'image/jpeg'];
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient

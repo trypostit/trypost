@@ -12,6 +12,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -114,36 +115,26 @@ class HostInlineMedia
         }
 
         $media = collect($media)->sortKeys()->values()->all();
-        $byToken = ResolveWorkspaceMedia::byUploadTokens($workspace, self::column($media, 'upload_token'));
-        $byId = ResolveWorkspaceMedia::execute($workspace, array_values(array_filter(self::column($media, 'id'), Str::isUuid(...))));
+        $references = [...$media, ...self::covers($media)];
+        $byToken = ResolveWorkspaceMedia::byUploadTokens($workspace, self::column($references, 'upload_token'));
+        $byId = ResolveWorkspaceMedia::execute($workspace, array_values(array_filter(self::column($references, 'id'), Str::isUuid(...))));
 
         try {
             return collect($media)->map(function (array $item, int $index) use ($workspace, $allowedTypes, $errorKey, $byToken, $byId, &$fetched): array {
                 $key = "{$errorKey}.{$index}";
+                $hosted = self::host($workspace, $allowedTypes, $item, $key, $byToken, $byId, $fetched);
+                $cover = data_get($item, 'meta.cover');
 
-                if (filled($token = data_get($item, 'upload_token'))) {
-                    $row = $byToken->get($token) ?? throw ValidationException::withMessages(["{$key}.upload_token" => __('posts.errors.media_expired')]);
-
-                    return [...self::item($row, $item), 'upload_token' => $token];
+                if (! is_array($cover)) {
+                    return $hosted;
                 }
 
-                if (filled($id = data_get($item, 'id'))) {
-                    $row = $byId->get($id) ?? throw ValidationException::withMessages(["{$key}.id" => __('validation.exists', ['attribute' => 'media'])]);
+                $hosted['meta'] = [
+                    ...(array) data_get($hosted, 'meta', []),
+                    'cover' => self::host($workspace, [MediaType::Image], $cover, "{$key}.meta.cover", $byToken, $byId, $fetched),
+                ];
 
-                    return self::item($row, $item);
-                }
-
-                $url = (string) data_get($item, 'url');
-
-                if (! array_key_exists($url, $fetched)) {
-                    $imported = app(MediaAttacher::class)->importUpload($workspace, $allowedTypes, $url);
-                    $upload = $imported->media
-                        ?? throw ValidationException::withMessages(["{$key}.url" => MediaAttacher::failureMessage($imported, $url)]);
-
-                    $fetched[$url] = $upload->id;
-                }
-
-                return self::item(Media::query()->findOrFail($fetched[$url]), $item);
+                return $hosted;
             })->all();
         } catch (ValidationException $exception) {
             if ($fetched !== []) {
@@ -153,6 +144,60 @@ class HostInlineMedia
 
             throw $exception;
         }
+    }
+
+    /**
+     * One reference (`upload_token`, `id` or `url`) as a hosted item.
+     *
+     * @param  array<MediaType>  $allowedTypes
+     * @param  array<string, mixed>  $item
+     * @param  Collection<string, Media>  $byToken
+     * @param  Collection<string, Media>  $byId
+     * @param  array<string, string>  $fetched
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    private static function host(Workspace $workspace, array $allowedTypes, array $item, string $key, Collection $byToken, Collection $byId, array &$fetched): array
+    {
+        if (filled($token = data_get($item, 'upload_token'))) {
+            $row = $byToken->get($token) ?? throw ValidationException::withMessages(["{$key}.upload_token" => __('posts.errors.media_expired')]);
+
+            return [...self::item($row, $item), 'upload_token' => $token];
+        }
+
+        if (filled($id = data_get($item, 'id'))) {
+            $row = $byId->get($id) ?? throw ValidationException::withMessages(["{$key}.id" => __('validation.exists', ['attribute' => 'media'])]);
+
+            return self::item($row, $item);
+        }
+
+        $url = (string) data_get($item, 'url');
+
+        if (! array_key_exists($url, $fetched)) {
+            $imported = app(MediaAttacher::class)->importUpload($workspace, $allowedTypes, $url);
+            $upload = $imported->media
+                ?? throw ValidationException::withMessages(["{$key}.url" => MediaAttacher::failureMessage($imported, $url)]);
+
+            $fetched[$url] = $upload->id;
+        }
+
+        return self::item(Media::query()->findOrFail($fetched[$url]), $item);
+    }
+
+    /**
+     * The cover references of a list of media items (`meta.cover`).
+     *
+     * @param  array<int, array<string, mixed>>  $media
+     * @return list<array<string, mixed>>
+     */
+    private static function covers(array $media): array
+    {
+        return collect($media)
+            ->map(fn (array $item): mixed => data_get($item, 'meta.cover'))
+            ->filter(fn (mixed $cover): bool => is_array($cover))
+            ->values()
+            ->all();
     }
 
     /**

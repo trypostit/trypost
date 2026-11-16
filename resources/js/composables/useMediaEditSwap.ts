@@ -1,6 +1,8 @@
 import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
+import { filled } from '@/lib/helpers';
+import type { CoverImage } from '@/lib/mediaEditor';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
 import type { MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -8,27 +10,53 @@ import { uploadChunked } from '@/utils/chunkedUpload';
 const editedMeta = (
     meta: MediaItem['meta'],
     change: MediaEditChange,
+    cover: MediaItem | null,
 ): MediaItem['meta'] => {
     const next = { ...(meta ?? {}) };
     delete next.alt_text;
     delete next.user_tags;
     delete next.cover_offset_ms;
+    delete next.cover;
 
-    return {
-        ...next,
-        ...(change.width && change.height
-            ? { width: change.width, height: change.height }
-            : {}),
-        ...(change.altText ? { alt_text: change.altText } : {}),
-        ...(change.userTags.length ? { user_tags: change.userTags } : {}),
-        ...(change.coverOffsetMs !== null
-            ? { cover_offset_ms: change.coverOffsetMs }
-            : {}),
-    };
+    if (filled(change.width) && filled(change.height)) {
+        next.width = change.width;
+        next.height = change.height;
+    }
+
+    if (filled(change.altText)) {
+        next.alt_text = change.altText;
+    }
+
+    if (filled(change.userTags)) {
+        next.user_tags = change.userTags;
+    }
+
+    if (filled(change.coverOffsetMs)) {
+        next.cover_offset_ms = change.coverOffsetMs;
+    }
+
+    if (filled(cover)) {
+        next.cover = cover;
+    }
+
+    return next;
+};
+
+/** The cover image to store: the picked file uploaded, or the item it already was. */
+const coverItem = async (cover: CoverImage | null): Promise<MediaItem | null> => {
+    if (!filled(cover)) {
+        return null;
+    }
+
+    if (!filled(cover.file)) {
+        return cover.item;
+    }
+
+    return uploadChunked({ file: cover.file, url: mediaStoreChunked.url() });
 };
 
 const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
-    const meta = editedMeta(change.media.meta, change);
+    const meta = editedMeta(change.media.meta, change, await coverItem(change.coverImage));
     if (!change.file) {
         return { ...change.media, meta };
     }

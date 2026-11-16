@@ -26,6 +26,7 @@ export type MediaRules = {
     supportsAltText: boolean;
     supportsUserTags: boolean;
     supportsVideoCover: boolean;
+    supportsCustomVideoCover: boolean;
     platformLabel?: string;
     imageMinWidth?: number;
     imageMinHeight?: number;
@@ -59,6 +60,7 @@ export type ContentTypeMediaRule = {
     supports_alt_text: boolean;
     supports_user_tags: boolean;
     supports_video_cover: boolean;
+    supports_custom_video_cover: boolean;
     platform_label: string;
     image_min_width: number | null;
     image_min_height: number | null;
@@ -115,6 +117,7 @@ export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => ({
     supportsAltText: rule.supports_alt_text,
     supportsUserTags: rule.supports_user_tags,
     supportsVideoCover: rule.supports_video_cover,
+    supportsCustomVideoCover: rule.supports_custom_video_cover,
     platformLabel: rule.platform_label,
     imageMinWidth: rule.image_min_width ?? undefined,
     imageMinHeight: rule.image_min_height ?? undefined,

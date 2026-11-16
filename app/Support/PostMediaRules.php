@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Enums\Media\Source;
 use Closure;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 /**
@@ -25,6 +26,11 @@ class PostMediaRules
      * Instagram accepts at most 20 people tagged on one image.
      */
     public const USER_TAGS_MAX = 20;
+
+    /**
+     * Longest reference (upload token, URL or id) a video cover may give.
+     */
+    public const int COVER_REFERENCE_MAX_LENGTH = 2048;
 
     /**
      * Instagram usernames: letters, numbers, periods and underscores, up to 30.
@@ -94,7 +100,44 @@ class PostMediaRules
             self::validateAltText(data_get($value, 'alt_text'), $fail);
             self::validateUserTags(data_get($value, 'user_tags'), $fail);
             self::validateCoverOffset(data_get($value, 'cover_offset_ms'), data_get($value, 'duration'), $fail);
+            self::validateCover(data_get($value, 'cover'), $fail);
         }];
+    }
+
+    /**
+     * The image uploaded as a video's cover: a reference to one file like a
+     * media item (an `upload_token`, a `url` or an `id`; the web sends the
+     * whole hosted item). Its type is checked once the file is resolved.
+     */
+    private static function validateCover(mixed $cover, Closure $fail): void
+    {
+        if ($cover === null) {
+            return;
+        }
+
+        if (! is_array($cover)) {
+            $fail('posts.errors.cover_invalid')->translate();
+
+            return;
+        }
+
+        $references = collect(Arr::only($cover, ['upload_token', 'url', 'id']))->filter(filled(...));
+
+        if ($references->isEmpty()) {
+            $fail('posts.errors.cover_invalid')->translate();
+
+            return;
+        }
+
+        if ($references->contains(fn (mixed $reference): bool => ! is_string($reference))) {
+            $fail('posts.errors.cover_invalid')->translate();
+
+            return;
+        }
+
+        if ($references->contains(fn (string $reference): bool => mb_strlen($reference) > self::COVER_REFERENCE_MAX_LENGTH)) {
+            $fail('posts.errors.cover_invalid')->translate();
+        }
     }
 
     /**

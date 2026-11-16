@@ -23,11 +23,13 @@ import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
 import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
 import {
     createMediaEdit,
+    type CoverImage,
     cropPresetsFor,
     editorTabsFor,
     type EditorTab,
     hasMetaChanges,
     hasPixelChanges,
+    needsFrameCapture,
     type CropPresetValue,
     type MediaEdit,
     presetValuesFor,
@@ -37,6 +39,7 @@ import {
     USER_TAGS_MAX,
 } from '@/lib/mediaEditor';
 import { isVideo } from '@/lib/mediaType';
+import { captureVideoFrame } from '@/lib/videoFrame';
 import type { MediaItem, MediaUserTag } from '@/types/media';
 
 export type MediaEditChange = {
@@ -48,6 +51,7 @@ export type MediaEditChange = {
     altText: string | null;
     userTags: MediaUserTag[];
     coverOffsetMs: number | null;
+    coverImage: CoverImage | null;
 };
 
 const props = withDefaults(
@@ -100,6 +104,7 @@ const tagging = ref(false);
 const movingIndex = ref<number | null>(null);
 const applying = ref(false);
 const failed = ref(false);
+const captureFailed = ref(false);
 const imageErrors = ref<Record<number, boolean>>({});
 
 const isPhoto = computed(() => props.mode === 'photo');
@@ -139,6 +144,9 @@ const activeVideoDuration = computed<number | null>(
         activeItem.value?.meta?.duration ??
         stageVideoDurations.value[activeIndex.value] ??
         null,
+);
+const supportsCustomCover = computed(() =>
+    rules.value.some((rule) => rule.supportsCustomVideoCover),
 );
 const tabs = computed<EditorTab[]>(() =>
     activeItem.value ? editorTabsFor(activeItem.value, rules.value) : [],
@@ -244,9 +252,38 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
         image.src = src;
     });
 
+/** The cover to save: the picked frame captured as an image when the network takes one, else the edit's own. */
+const coverImageFor = async (
+    media: MediaItem,
+    itemEdit: MediaEdit,
+): Promise<CoverImage | null> => {
+    if (!needsFrameCapture(media, itemEdit, rules.value)) {
+        return itemEdit.coverImage;
+    }
+
+    try {
+        const file = await captureVideoFrame(media.url, itemEdit.coverOffsetMs ?? 0);
+
+        return { url: URL.createObjectURL(file), item: null, file };
+    } catch (error) {
+        captureFailed.value = true;
+
+        throw error;
+    }
+};
+
+const failureKey = computed(() => {
+    if (captureFailed.value) {
+        return 'posts.composer.media_editor.thumbnail_capture_failed';
+    }
+
+    return 'posts.composer.media_editor.apply_failed';
+});
+
 const apply = async (): Promise<void> => {
     applying.value = true;
     failed.value = false;
+    captureFailed.value = false;
     try {
         const changes = await Promise.all(
             changedIndexes.value.map(
@@ -276,6 +313,7 @@ const apply = async (): Promise<void> => {
                         altText: itemEdit.altText.trim() || null,
                         userTags: itemEdit.userTags,
                         coverOffsetMs: itemEdit.coverOffsetMs,
+                        coverImage: await coverImageFor(media, itemEdit),
                     };
                 },
             ),
@@ -312,6 +350,7 @@ watch(
         tagging.value = false;
         movingIndex.value = null;
         failed.value = false;
+        captureFailed.value = false;
     },
 );
 
@@ -562,8 +601,10 @@ watch(tagging, (isTagging) => {
                     </template>
                     <MediaEditorThumbnailPanel
                         v-else-if="tab === 'thumbnail' && edit"
+                        :key="activeIndex"
                         v-model:edit="edit"
                         :duration="activeVideoDuration"
+                        :supports-custom-cover="supportsCustomCover"
                     />
                     <MediaEditorAltTextPanel
                         v-else-if="tab === 'alt' && edit"
@@ -586,7 +627,7 @@ watch(tagging, (isTagging) => {
                     class="mr-auto text-sm text-destructive"
                     data-testid="media-editor-error"
                 >
-                    {{ $t('posts.composer.media_editor.apply_failed') }}
+                    {{ $t(failureKey) }}
                 </p>
                 <Button
                     type="button"

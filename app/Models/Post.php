@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Actions\Media\SyncOwnedMedia;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type;
+use App\Enums\Post\CoverWarning;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
@@ -477,6 +478,36 @@ class Post extends Model
             && filled($this->platform_post_id)
             && ! ctype_digit($this->platform_post_id)
             && PrivacyLevel::tryFrom((string) data_get($this->meta, 'privacy_level')) === PrivacyLevel::PublicToEveryone;
+    }
+
+    /**
+     * A YouTube video TryPost published with an image picked as its cover,
+     * which YouTube only takes once the video is processed (`SetYouTubeCover`).
+     */
+    public function awaitsYouTubeCover(): bool
+    {
+        return $this->platform === Platform::YouTube
+            && $this->origin === Origin::TryPost
+            && $this->publish_status === PublishStatus::Published
+            && filled($this->platform_post_id)
+            && filled($this->mediaItems->first()?->cover());
+    }
+
+    /**
+     * Why the network did not apply the cover image of this live post, if it did not.
+     */
+    public function coverWarning(): ?CoverWarning
+    {
+        return CoverWarning::tryFrom((string) data_get($this->error_context, 'cover_warning'));
+    }
+
+    /**
+     * The post stays published: the warning sits next to the publication
+     * result, which publishing again clears.
+     */
+    public function recordCoverWarning(CoverWarning $warning): void
+    {
+        $this->writePublication(['error_context' => [...($this->error_context ?? []), 'cover_warning' => $warning->value]]);
     }
 
     /**

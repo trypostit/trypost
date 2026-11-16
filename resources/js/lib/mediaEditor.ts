@@ -4,6 +4,7 @@ import {
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
+import { filled } from '@/lib/helpers';
 import {
     fullSelection,
     resolveOutputFileName,
@@ -68,6 +69,18 @@ export type MediaEdit = {
     altText: string;
     userTags: MediaUserTag[];
     coverOffsetMs: number | null;
+    coverImage: CoverImage | null;
+};
+
+/**
+ * An image picked as a video's cover: the stored item, or a file picked in
+ * the editor and uploaded when the edit is applied. `url` is what the panel
+ * shows.
+ */
+export type CoverImage = {
+    url: string;
+    item: MediaItem | null;
+    file: File | null;
 };
 
 export const USER_TAGS_MAX = 20;
@@ -131,15 +144,22 @@ export const presetValuesFor = (
 
 export type EditorTab = 'edit' | 'thumbnail' | 'alt' | 'tags';
 
+/** A video gets a Thumbnail tab when its network takes a frame or an image as its cover. */
+const hasThumbnail = (rule: MediaRules): boolean => {
+    if (rule.supportsVideoCover) {
+        return true;
+    }
+
+    return rule.supportsCustomVideoCover;
+};
+
 /** Tabs the editor offers for an item; an empty list means no pencil. */
 export const editorTabsFor = (
     item: MediaItem,
     rules: MediaRules[],
 ): EditorTab[] => {
     if (isVideo(item)) {
-        return rules.some((rule) => rule.supportsVideoCover)
-            ? ['thumbnail']
-            : [];
+        return rules.some(hasThumbnail) ? ['thumbnail'] : [];
     }
 
     if (!isImage(item) || isGif(item)) {
@@ -173,14 +193,70 @@ export const blankMediaEdit = (
     altText: '',
     userTags: [],
     coverOffsetMs: null,
+    coverImage: null,
 });
+
+const storedCoverImage = (item: MediaItem): CoverImage | null => {
+    const cover = item.meta?.cover;
+
+    if (!filled(cover)) {
+        return null;
+    }
+
+    return { url: cover.url, item: cover, file: null };
+};
 
 export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     ...blankMediaEdit(),
     altText: item.meta?.alt_text ?? '',
     userTags: [...(item.meta?.user_tags ?? [])],
     coverOffsetMs: item.meta?.cover_offset_ms ?? null,
+    coverImage: storedCoverImage(item),
 });
+
+/** Whether the edit picks another cover image than the item has. */
+export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
+    const stored = item.meta?.cover;
+
+    if (!filled(edit.coverImage)) {
+        return filled(stored);
+    }
+
+    if (filled(edit.coverImage.file)) {
+        return true;
+    }
+
+    return edit.coverImage.item?.id !== stored?.id;
+};
+
+/**
+ * Whether applying the edit takes a screenshot of the video as its cover: a
+ * network that takes a cover image (Instagram Reels, YouTube) gets the picked
+ * frame as that image, unless the stored cover is already that frame.
+ */
+export const needsFrameCapture = (
+    item: MediaItem,
+    edit: MediaEdit,
+    rules: MediaRules[],
+): boolean => {
+    if (!isVideo(item)) {
+        return false;
+    }
+
+    if (!rules.some((rule) => rule.supportsCustomVideoCover)) {
+        return false;
+    }
+
+    if (!filled(edit.coverOffsetMs)) {
+        return false;
+    }
+
+    if (!filled(edit.coverImage)) {
+        return true;
+    }
+
+    return edit.coverOffsetMs !== item.meta?.cover_offset_ms;
+};
 
 export const hasPixelChanges = (edit: MediaEdit): boolean =>
     edit.selection !== null ||
@@ -192,11 +268,21 @@ export const hasPixelChanges = (edit: MediaEdit): boolean =>
     (edit.filter !== 'original' && edit.filterIntensity > 0) ||
     ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
 
-export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean =>
-    edit.altText.trim() !== (item.meta?.alt_text ?? '').trim() ||
-    JSON.stringify(edit.userTags) !==
-        JSON.stringify(item.meta?.user_tags ?? []) ||
-    (edit.coverOffsetMs ?? 0) !== (item.meta?.cover_offset_ms ?? 0);
+export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
+    if (edit.altText.trim() !== (item.meta?.alt_text ?? '').trim()) {
+        return true;
+    }
+
+    if (JSON.stringify(edit.userTags) !== JSON.stringify(item.meta?.user_tags ?? [])) {
+        return true;
+    }
+
+    if ((edit.coverOffsetMs ?? 0) !== (item.meta?.cover_offset_ms ?? 0)) {
+        return true;
+    }
+
+    return hasCoverImageChange(edit, item);
+};
 
 /** A cover offset in milliseconds as `m:ss.s`. */
 export const formatCoverOffset = (milliseconds: number): string => {

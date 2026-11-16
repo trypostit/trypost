@@ -2378,6 +2378,84 @@ test('instagram reel sends the chosen cover frame as thumb_offset in millisecond
     'no offset' => [null],
 ]);
 
+/**
+ * @param  array<string, mixed>  $cover
+ * @return array<string, mixed>
+ */
+function instagramVideoWithCover(array $cover): array
+{
+    return [
+        'id' => 'test-media-video',
+        'path' => 'media/2026-01/test-video.mp4',
+        'url' => 'https://example.com/media/2026-01/test-video.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'test.mp4',
+        'meta' => ['duration' => 10, 'cover_offset_ms' => 1500, 'cover' => [
+            'id' => 'test-media-cover',
+            'path' => 'media/2026-01/cover.jpg',
+            'url' => 'https://example.com/media/2026-01/cover.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'size' => 200000,
+            ...$cover,
+        ]],
+    ];
+}
+
+function fakeInstagramReelPublish(): string
+{
+    $graph = Platform::Instagram->graphApiUrl();
+
+    Http::fake([
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123']),
+        "{$graph}/container-123*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/ig_123456789/media_publish" => Http::response(['id' => 'reel-123']),
+        "{$graph}/reel-123*" => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/']),
+        '*' => Http::response(fakeJpegBytes(1080, 1920), 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    return "{$graph}/ig_123456789/media";
+}
+
+test('instagram reel sends an uploaded jpeg cover as cover_url instead of the frame', function () {
+    $this->post->update(['content_type' => ContentType::InstagramReel, 'media' => [instagramVideoWithCover([])]]);
+    $containerUrl = fakeInstagramReelPublish();
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === $containerUrl
+        && data_get($request->data(), 'cover_url') === 'https://example.com/media/2026-01/cover.jpg'
+        && data_get($request->data(), 'thumb_offset') === null);
+});
+
+test('instagram reel re-encodes a cover that is not a jpeg of up to 8 mb', function (array $cover) {
+    Storage::fake();
+    $this->post->update(['content_type' => ContentType::InstagramReel, 'media' => [instagramVideoWithCover($cover)]]);
+    $containerUrl = fakeInstagramReelPublish();
+
+    $this->publisher->publish($this->post);
+
+    $hosted = collect(Storage::allFiles())->first(fn (string $path): bool => str_starts_with($path, InstagramPublisher::CROP_DIRECTORY.'/'));
+
+    expect($hosted)->toEndWith('.jpg');
+    Http::assertSent(fn (Request $request): bool => $request->url() === $containerUrl
+        && data_get($request->data(), 'cover_url') === Storage::url($hosted));
+})->with([
+    'a png' => [['path' => 'media/2026-01/cover.png', 'url' => 'https://example.com/media/2026-01/cover.png', 'mime_type' => 'image/png']],
+    'a jpeg over 8 mb' => [['size' => 9 * 1024 * 1024]],
+]);
+
+test('a feed video keeps its cover frame, since only a reel takes a cover image', function () {
+    $this->post->update(['content_type' => ContentType::InstagramFeed, 'media' => [instagramVideoWithCover([])]]);
+    $containerUrl = fakeInstagramReelPublish();
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === $containerUrl
+        && data_get($request->data(), 'cover_url') === null
+        && data_get($request->data(), 'thumb_offset') === 1500);
+});
+
 test('instagram carousel video child sends its cover frame as thumb_offset', function () {
     $this->post->update([
         'media' => [

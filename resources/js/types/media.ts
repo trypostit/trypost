@@ -29,6 +29,7 @@ export interface MediaItem {
         alt_text?: string;
         user_tags?: MediaUserTag[];
         cover_offset_ms?: number;
+        cover?: MediaItem;
         source?: MediaSource;
         source_meta?: Record<string, SourceMetaValue>;
     };

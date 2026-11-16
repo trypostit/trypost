@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
 import {
+    IconAlertTriangle,
     IconArrowsMaximize,
     IconCircleDashedPlus,
     IconCirclePlay,
@@ -290,6 +291,17 @@ const contentTypeKey = computed(() =>
 
 const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
 
+/** The lang key of why the network did not apply this post's cover image, if it did not. */
+const coverWarningKey = computed<string | null>(() => {
+    const warning = props.post.cover_warning;
+
+    if (!filled(warning)) {
+        return null;
+    }
+
+    return `posts.publish.cover_warning.${warning}`;
+});
+
 const permalink = computed(() => postPermalink(props.post));
 
 const metricsDetail = computed(() => {
@@ -485,6 +497,17 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                         :remaining="recurrence.times"
                         :origin-at="post.recurrence_origin_at"
                     />
+                </p>
+                <p
+                    v-if="coverWarningKey"
+                    class="flex items-start gap-2 border-b border-border-strong bg-secondary px-4 py-2.5 text-sm text-foreground"
+                    :data-testid="`post-cover-warning-${post.id}`"
+                >
+                    <IconAlertTriangle
+                        class="mt-0.5 size-4 shrink-0 text-warning"
+                        aria-hidden="true"
+                    />
+                    {{ $t(coverWarningKey) }}
                 </p>
                 <div
                     v-if="isPublishing"

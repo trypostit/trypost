@@ -118,7 +118,7 @@ class PostCompositionValidator
                 }
 
                 $canonical = MediaItem::fromMedia($asset)->toArray();
-                $edits = array_intersect_key((array) data_get($media, 'meta', []), array_flip(SyncOwnedMedia::EDITABLE_META));
+                $edits = array_intersect_key((array) data_get($media, 'meta', []), array_flip(SyncOwnedMedia::OWNER_META));
                 if ($edits !== []) {
                     $canonical['meta'] = [...($asset->meta ?? []), ...$edits];
                 }
@@ -292,8 +292,8 @@ class PostCompositionValidator
     }
 
     /**
-     * Alt text, people tags and the video cover offset (`SyncOwnedMedia::EDITABLE_META`)
-     * are the per-post edits the composer may make to a media item it did not
+     * Alt text, people tags, the video cover offset and the cover image
+     * (`SyncOwnedMedia::OWNER_META`) are the per-post edits the composer may make to a media item it did not
      * upload, so they are ignored when matching it to the post's stored media.
      * Keys are sorted because neither the browser nor MySQL's JSON column keeps
      * the stored key order.
@@ -304,7 +304,7 @@ class PostCompositionValidator
     private static function comparableMedia(array $media): array
     {
         if (is_array(data_get($media, 'meta'))) {
-            $media['meta'] = array_diff_key($media['meta'], array_flip(SyncOwnedMedia::EDITABLE_META));
+            $media['meta'] = array_diff_key($media['meta'], array_flip(SyncOwnedMedia::OWNER_META));
         }
 
         $media = array_filter($media, fn (mixed $value): bool => $value !== null && $value !== []);

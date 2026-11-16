@@ -87,6 +87,18 @@ class MediaItem
         return $this->kind() === Type::Image;
     }
 
+    /**
+     * An image that is not animated: what a video cover can be.
+     */
+    public function isStillImage(): bool
+    {
+        if (! $this->isImage()) {
+            return false;
+        }
+
+        return ! Type::isGif($this->mime_type);
+    }
+
     public function isDocument(): bool
     {
         return $this->kind() === Type::Document;
@@ -146,6 +158,21 @@ class MediaItem
         $offset = data_get($this->meta, 'cover_offset_ms');
 
         return is_numeric($offset) && $offset >= 0 ? (int) $offset : null;
+    }
+
+    /**
+     * The image the user uploaded as this video's cover, stored as a whole
+     * media item in `meta.cover`.
+     */
+    public function cover(): ?self
+    {
+        $cover = data_get($this->meta, 'cover');
+
+        if (! is_array($cover) || blank(data_get($cover, 'url'))) {
+            return null;
+        }
+
+        return self::fromArray($cover);
     }
 
     /**

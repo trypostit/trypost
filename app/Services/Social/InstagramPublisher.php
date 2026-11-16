@@ -38,6 +38,10 @@ class InstagramPublisher
     /** Two hours of delayed retries for processing and transient Graph failures. */
     private const int STATUS_MAX_RETRIES = 120;
 
+    private const string COVER_MIME_TYPE = 'image/jpeg';
+
+    private const int COVER_MAX_BYTES = 8 * 1024 * 1024;
+
     private const string WORKFLOW_CAROUSEL_CHILDREN = 'carousel_children';
 
     private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
@@ -131,7 +135,7 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-            ...$this->thumbOffsetParam($media),
+            ...$this->reelCoverParam($media),
             ...$this->sharedOptions(),
             ...$this->collaboratorsParam(),
             ...$this->reelOptions(),
@@ -326,6 +330,49 @@ class InstagramPublisher
         return $this->jsonListParam('collaborators', PostPlatformMetaRules::instagramCollaborators(
             (array) data_get($this->post->meta, 'collaborators', []),
         ));
+    }
+
+    /**
+     * A Reel's cover: the uploaded image when the user picked the Reel type
+     * (Instagram takes `cover_url` on Reels only and prefers it over
+     * `thumb_offset`), else the picked frame.
+     *
+     * @return array{cover_url?: string, thumb_offset?: int}
+     */
+    private function reelCoverParam(MediaItem $media): array
+    {
+        $cover = $media->cover();
+
+        if ($cover === null) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        if (! $this->post->content_type?->supportsCustomVideoCover()) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        return ['cover_url' => $this->coverUrl($cover)];
+    }
+
+    /**
+     * Instagram fetches a Reel cover only as a JPEG of up to 8 MB, so any
+     * other image is re-encoded first.
+     */
+    private function coverUrl(MediaItem $cover): string
+    {
+        if ($cover->mime_type !== self::COVER_MIME_TYPE) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+        }
+
+        if (blank($cover->size)) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+        }
+
+        if ($cover->size > self::COVER_MAX_BYTES) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+        }
+
+        return $cover->url;
     }
 
     /**

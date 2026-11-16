@@ -25,6 +25,7 @@ const DEFAULT_RULES: MediaRules = {
     supportsAltText: false,
     supportsUserTags: false,
     supportsVideoCover: false,
+    supportsCustomVideoCover: false,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {
