@@ -431,7 +431,7 @@ return [
             'topic' => 'Tópico',
             'topic_placeholder' => 'Digite o tópico',
             'topic_invalid' => 'O tópico deve ter de 1 a 50 caracteres, sem . ou &.',
-            'ghost_post_attachments' => 'Posts fantasma não aceitam anexos',
+            'ghost_post_attachments' => 'Posts temporários não aceitam anexos',
         ],
         'x' => [
             'poll' => [
@@ -857,7 +857,7 @@ return [
             'description' => 'Post de texto com mídia opcional',
         ],
         'threads_ghost_post' => [
-            'label' => 'Post fantasma',
+            'label' => 'Post temporário',
             'description' => 'Post só de texto, arquivado após 24 horas',
         ],
         'pinterest_pin' => [
