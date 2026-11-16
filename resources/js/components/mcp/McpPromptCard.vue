@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
                         variant="ghost"
                         size="icon"
                         class="-me-1.5 -mt-1.5 size-7 text-muted-foreground"
-                        :aria-label="$t('mcp.prompt.not_now')"
+                        :aria-label="$t('tours.mcp.prompt.steps.card.not_now')"
                         data-testid="mcp-prompt-close"
                         @click="dismiss"
                     >
@@ -173,13 +173,13 @@ onBeforeUnmount(() => {
                     id="mcp-prompt-title"
                     class="mt-3 text-sm font-medium text-foreground"
                 >
-                    {{ $t('mcp.prompt.title') }}
+                    {{ $t('tours.mcp.prompt.steps.card.title') }}
                 </h2>
                 <p
                     id="mcp-prompt-body"
                     class="mt-1 text-sm text-muted-foreground"
                 >
-                    {{ $t('mcp.prompt.body') }}
+                    {{ $t('tours.mcp.prompt.steps.card.description') }}
                 </p>
 
                 <div class="mt-4 grid grid-cols-2 gap-2">

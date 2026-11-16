@@ -24,4 +24,15 @@ return [
             ],
         ],
     ],
+    'mcp' => [
+        'prompt' => [
+            'steps' => [
+                'card' => [
+                    'title' => 'Henüz bir yapay zekâ bağlamadın',
+                    'description' => 'Gönderilerini sadece isteyerek oluşturmak, planlamak ve analiz etmek için Claude veya ChatGPT\'yi bağla.',
+                    'not_now' => 'Şimdi değil',
+                ],
+            ],
+        ],
+    ],
 ];

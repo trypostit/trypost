@@ -24,4 +24,15 @@ return [
             ],
         ],
     ],
+    'mcp' => [
+        'prompt' => [
+            'steps' => [
+                'card' => [
+                    'title' => 'まだAIを接続していません',
+                    'description' => 'ClaudeやChatGPTを接続すると、頼むだけで投稿の作成・予約・分析ができます。',
+                    'not_now' => '今はしない',
+                ],
+            ],
+        ],
+    ],
 ];

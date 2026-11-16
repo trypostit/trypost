@@ -24,4 +24,15 @@ return [
             ],
         ],
     ],
+    'mcp' => [
+        'prompt' => [
+            'steps' => [
+                'card' => [
+                    'title' => 'Je hebt nog geen AI gekoppeld',
+                    'description' => 'Koppel Claude of ChatGPT om posts te maken, te plannen en te analyseren door het gewoon te vragen.',
+                    'not_now' => 'Niet nu',
+                ],
+            ],
+        ],
+    ],
 ];

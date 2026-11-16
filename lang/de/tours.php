@@ -24,4 +24,15 @@ return [
             ],
         ],
     ],
+    'mcp' => [
+        'prompt' => [
+            'steps' => [
+                'card' => [
+                    'title' => 'Du hast noch keine KI verbunden',
+                    'description' => 'Verbinde Claude oder ChatGPT, um Posts einfach per Nachricht zu erstellen, zu planen und zu analysieren.',
+                    'not_now' => 'Nicht jetzt',
+                ],
+            ],
+        ],
+    ],
 ];

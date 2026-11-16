@@ -38,7 +38,7 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
     expect(mcpPromptAvatars($page))->toBe(['chatgpt', 'claude', 'grok', 'gemini', 'cursor', 'n8n'])
         ->and($page->script("(() => { const layers = [...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => Number(getComputedStyle(avatar).zIndex)); return layers.every((layer, index) => index === 0 || layer < layers[index - 1]); })()"))->toBeTrue();
 
-    $page->assertSeeIn('@mcp-prompt', __('mcp.prompt.title'))
+    $page->assertSeeIn('@mcp-prompt', __('tours.mcp.prompt.steps.card.title'))
         ->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
 
