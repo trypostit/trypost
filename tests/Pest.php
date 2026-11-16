@@ -812,6 +812,36 @@ function waitForState(mixed $page, string $selector, string $expression, int $se
 }
 
 /**
+ * Keeps the element matching the selector as `window.__remembered[$name]`, so
+ * a later wait can tell whether the page still shows that same element
+ * (`element === window.__remembered.<name>`) or replaced it.
+ */
+function rememberElement(mixed $page, string $selector, string $name): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+    $name = json_encode($name);
+
+    $page->script("(() => { window.__remembered = { ...window.__remembered, [{$name}]: document.querySelector({$selector}) }; })()");
+}
+
+/**
+ * Presses the pointer down on the element matching the selector, the start of
+ * a click: an open modal layer takes the pointer events of the page around
+ * it, so a real click cannot reach that element, while the layer still hears
+ * the press as one outside it.
+ */
+function pointerDownOn(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))");
+}
+
+/**
  * Wait until an element matching the selector is mounted and laid out.
  */
 function waitFor(mixed $page, string $selector, int $seconds = 30): void
@@ -901,6 +931,18 @@ function browserStorageItemJs(User $user, string $item, ?string $workspaceId = n
 function browserStorageItem(mixed $page, User $user, string $item, ?string $workspaceId = null): mixed
 {
     return $page->script(browserStorageItemJs($user, $item, $workspaceId));
+}
+
+/**
+ * Tells the page that the user's browser storage changed in another tab, as
+ * the browser does with a `storage` event: seed the change with
+ * `setBrowserStorageItem()` first.
+ */
+function announceBrowserStorageFromAnotherTab(mixed $page, User $user): void
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    $page->script("window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: localStorage.getItem({$key}) }))");
 }
 
 /**

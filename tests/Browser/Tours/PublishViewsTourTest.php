@@ -46,18 +46,8 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
     waitForOpen($page, '@tour-publish-views-views-content');
     waitFor($page, '@tour-backdrop');
 
-    $layers = $page->script(<<<'JS'
-        (() => {
-            const zIndex = (element) => Number(getComputedStyle(element).zIndex);
-            const content = document.querySelector('[data-testid="tour-publish-views-views-content"]');
-
-            return {
-                card: zIndex(content.closest('[data-reka-popper-content-wrapper]')),
-                backdrop: zIndex(document.querySelector('[data-testid="tour-backdrop"]')),
-            };
-        })()
-    JS);
-    expect($layers['card'])->toBeGreaterThan($layers['backdrop']);
+    rememberElement($page, '@tour-backdrop', 'backdrop');
+    waitForState($page, '@tour-publish-views-views-content', "Number(getComputedStyle(element.closest('[data-reka-popper-content-wrapper]')).zIndex) > Number(getComputedStyle(window.__remembered.backdrop).zIndex)");
 
     $page->assertSeeIn('@tour-publish-views-views-content', 'Switch views');
     $page->assertMissing('@tour-publish-views-views-tag');
@@ -115,9 +105,7 @@ test('a click elsewhere on the page skips the tour', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
 
-    $page->script(<<<'JS'
-        document.querySelector('[data-testid="app-header"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
-    JS);
+    pointerDownOn($page, '@app-header');
     waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
@@ -145,14 +133,8 @@ test('closing the tour in another tab closes it here at once', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
 
-    $key = json_encode("trypost:{$this->user->id}");
-    $page->script(<<<JS
-        (() => {
-            const value = JSON.stringify({ version: 1, user: { tours: { 'publish.views': { status: 'completed', step: 1 } } }, workspaces: {} });
-            localStorage.setItem({$key}, value);
-            window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: value }));
-        })()
-    JS);
+    setBrowserStorageItem($page, $this->user, 'tours', ['publish.views' => ['status' => 'completed', 'step' => 1]]);
+    announceBrowserStorageFromAnotherTab($page, $this->user);
 
     waitForGone($page, '@tour-publish-views-views-content');
     waitForGone($page, '@tour-backdrop');

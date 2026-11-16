@@ -82,18 +82,13 @@ test('the filters tour walks the period, channels and labels with Next and Back,
 test('moving to the next step slides the one backdrop and its card to the next control together, instead of replacing them', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');
-    waitFor($page, '@tour-backdrop');
-    $page->script(<<<'JS'
-        (() => {
-            window.__tourBackdrop = document.querySelector('[data-testid="tour-backdrop"]');
-            window.__tourCard = document.querySelector('[data-testid="tour-insights-filters-range-content"]');
-        })()
-    JS);
+    rememberElement($page, '@tour-backdrop', 'backdrop');
+    rememberElement($page, '@tour-insights-filters-range-content', 'card');
 
     $page->click('@tour-insights-filters-range-next');
     waitForOpen($page, '@tour-insights-filters-channels-content');
-    waitForState($page, '@tour-backdrop', 'element === window.__tourBackdrop && element.getBoundingClientRect().left > 640');
-    waitForState($page, '@tour-insights-filters-channels-content', 'element === window.__tourCard && element.getBoundingClientRect().left > 640');
+    waitForState($page, '@tour-backdrop', 'element === window.__remembered.backdrop && element.getBoundingClientRect().left > 640');
+    waitForState($page, '@tour-insights-filters-channels-content', 'element === window.__remembered.card && element.getBoundingClientRect().left > 640');
 
     $page->assertNoJavaScriptErrors();
 });

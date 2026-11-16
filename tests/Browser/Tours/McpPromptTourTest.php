@@ -69,19 +69,13 @@ test('the card shows once a tour open here is closed in another tab', function (
     config(['trypost.tours.enabled' => true]);
     $user = mcpPromptUser();
     $this->actingAs($user);
-    $key = json_encode("trypost:{$user->id}");
 
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
     $page->assertMissing('@mcp-prompt');
 
-    $page->script(<<<JS
-        (() => {
-            const value = JSON.stringify({ version: 1, user: { tours: { 'publish.views': { status: 'completed', step: 1 } } }, workspaces: {} });
-            localStorage.setItem({$key}, value);
-            window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: value }));
-        })()
-    JS);
+    setBrowserStorageItem($page, $user, 'tours', ['publish.views' => ['status' => 'completed', 'step' => 1]]);
+    announceBrowserStorageFromAnotherTab($page, $user);
 
     waitForGone($page, '@tour-backdrop');
     waitFor($page, '@mcp-prompt');
