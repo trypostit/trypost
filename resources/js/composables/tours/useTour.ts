@@ -32,11 +32,28 @@ export interface TourSpotlight {
     height: number;
 }
 
+/** What the open step shows and does, drawn by the one overlay of every tour (`TourOverlay`). */
+export interface OpenTourStep {
+    tour: TourName;
+    step: string;
+    position: number;
+    total: number;
+    tag?: string;
+    tagColor: string;
+    align: 'start' | 'center' | 'end';
+    control: HTMLElement;
+    frame: TourSpotlight;
+    next: () => void;
+    back: () => void;
+    skip: () => void;
+}
+
 /**
- * The control the open step frames: one for the whole tour, so the dark
- * backdrop (`TourBackdrop`) moves from one step's control to the next.
+ * The open step, published by its `TourStep`: one backdrop and one card for
+ * the whole tour, so moving to the next step moves them to the next control
+ * instead of closing one and opening another.
  */
-const spotlight = shallowRef<TourSpotlight | null>(null);
+const openStep = shallowRef<OpenTourStep | null>(null);
 
 /** The start of every step on the page, in mount order: tried again whenever no tour is open. */
 const starters = new Set<() => void>();
@@ -44,7 +61,7 @@ const starters = new Set<() => void>();
 /** Closes the open tour and opens the next one waiting on the page, if any. */
 const closeActive = (): void => {
     active.value = null;
-    spotlight.value = null;
+    openStep.value = null;
 
     nextTick(() => {
         starters.forEach((start) => start());
@@ -70,19 +87,19 @@ const isOpenStep = (tour: TourName, step: string): boolean => {
 export const useTourOnScreen = (): ComputedRef<boolean> =>
     computed(() => filled(active.value));
 
-/** The open step frames its control. */
-export const frameTourControl = (frame: TourSpotlight): void => {
-    spotlight.value = frame;
+/** The open step shows itself on its control. */
+export const showTourStep = (step: OpenTourStep): void => {
+    openStep.value = step;
 };
 
-/** The control the open tour frames, or none while no tour is open. */
-export const useTourSpotlight = (): ComputedRef<TourSpotlight | null> =>
+/** The step the overlay shows, or none while no tour is open. */
+export const useOpenTourStep = (): ComputedRef<OpenTourStep | null> =>
     computed(() => {
         if (!filled(active.value)) {
             return null;
         }
 
-        return spotlight.value;
+        return openStep.value;
     });
 
 interface TourProgressState {

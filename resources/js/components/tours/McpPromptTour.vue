@@ -187,7 +187,10 @@ onBeforeUnmount(() => {
                         >
                             <component
                                 :is="app.logo"
-                                :class="['size-5 text-foreground', app.logoClass]"
+                                :class="[
+                                    'size-5 text-foreground',
+                                    app.logoClass,
+                                ]"
                             />
                         </span>
                     </div>
@@ -226,7 +229,10 @@ onBeforeUnmount(() => {
                         :data-testid="`mcp-prompt-connect-${client.id}`"
                         @click="connect(client)"
                     >
-                        <component :is="client.logo" class="size-4 fill-current" />
+                        <component
+                            :is="client.logo"
+                            class="size-4 fill-current"
+                        />
                         {{ client.label }}
                     </Button>
                 </div>

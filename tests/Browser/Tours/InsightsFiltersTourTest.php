@@ -79,17 +79,21 @@ test('the filters tour walks the period, channels and labels with Next and Back,
     $page->assertNoJavaScriptErrors();
 });
 
-test('moving to the next step slides the one backdrop to the next control instead of replacing it', function () {
+test('moving to the next step slides the one backdrop and its card to the next control together, instead of replacing them', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');
     waitFor($page, '@tour-backdrop');
     $page->script(<<<'JS'
-        window.__tourBackdrop = document.querySelector('[data-testid="tour-backdrop"]')
+        (() => {
+            window.__tourBackdrop = document.querySelector('[data-testid="tour-backdrop"]');
+            window.__tourCard = document.querySelector('[data-testid="tour-insights-filters-range-content"]');
+        })()
     JS);
 
     $page->click('@tour-insights-filters-range-next');
     waitForOpen($page, '@tour-insights-filters-channels-content');
     waitForState($page, '@tour-backdrop', 'element === window.__tourBackdrop && element.getBoundingClientRect().left > 640');
+    waitForState($page, '@tour-insights-filters-channels-content', 'element === window.__tourCard && element.getBoundingClientRect().left > 640');
 
     $page->assertNoJavaScriptErrors();
 });

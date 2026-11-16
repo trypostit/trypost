@@ -16,7 +16,7 @@ import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.v
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
 import Toast from '@/components/Toast.vue';
 import McpPromptTour from '@/components/tours/McpPromptTour.vue';
-import TourBackdrop from '@/components/tours/TourBackdrop.vue';
+import TourOverlay from '@/components/tours/TourOverlay.vue';
 import {
     SidebarInset,
     SidebarProvider,
@@ -125,6 +125,6 @@ watch(isCompactViewport, (isCompact) => {
     <CommandPalette />
     <ReferralSourceSurvey />
     <McpPromptTour />
-    <TourBackdrop />
+    <TourOverlay />
     <Toast />
 </template>
