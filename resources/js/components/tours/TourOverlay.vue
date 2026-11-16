@@ -19,7 +19,7 @@ import { labelTextColor } from '@/lib/labelColor';
  * next step slides both to the next control together. Using the control
  * itself moves the tour on; a click elsewhere on the page does nothing, and
  * Escape skips it. In a longer
- * tour the arrow keys do what Next and Back do.
+ * tour the arrow keys move between the steps, without ever ending it.
  */
 const openStep = useOpenTourStep();
 const backdrop = useTemplateRef<HTMLElement>('backdrop');
@@ -209,7 +209,11 @@ const backwardKey = (): string => {
     return 'ArrowLeft';
 };
 
-/** In a longer tour, the arrow keys do what Next (or Done) and Back do. */
+/**
+ * In a longer tour, the arrow keys move between the steps like Next and
+ * Back. They never end the tour: on the last step the forward arrow does
+ * nothing, and only Done closes it.
+ */
 const followArrowKey = (event: KeyboardEvent): void => {
     if (!hasSeveralSteps.value) {
         return;
@@ -217,6 +221,11 @@ const followArrowKey = (event: KeyboardEvent): void => {
 
     if (event.key === forwardKey()) {
         event.preventDefault();
+
+        if (isLast.value) {
+            return;
+        }
+
         next();
 
         return;

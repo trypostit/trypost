@@ -93,9 +93,13 @@ test('moving to the next step slides the one backdrop and its card to the next c
     $page->assertNoJavaScriptErrors();
 });
 
-test('the arrow keys move a longer tour on and back, and the right arrow on the last step completes it', function () {
+test('the arrow keys move a longer tour on and back, never past its first or last step, and leave it open for Done', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-range-content', 'ArrowLeft');
+    letPageRun($page, 500);
+    $page->assertVisible('@tour-insights-filters-range-content');
 
     $page->keys('@tour-insights-filters-range-content', 'ArrowRight');
     waitForOpen($page, '@tour-insights-filters-channels-content');
@@ -109,6 +113,12 @@ test('the arrow keys move a longer tour on and back, and the right arrow on the 
     $page->keys('@tour-insights-filters-channels-content', 'ArrowRight');
     waitForOpen($page, '@tour-insights-filters-labels-content');
     $page->keys('@tour-insights-filters-labels-content', 'ArrowRight');
+    letPageRun($page, 500);
+
+    $page->assertVisible('@tour-insights-filters-labels-content');
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
+
+    $page->click('@tour-insights-filters-labels-next');
     waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'completed', 'step' => 3]]);
