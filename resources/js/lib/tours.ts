@@ -31,34 +31,30 @@ export const firstStep = (shown: readonly string[]): string | null => {
     return shown[0];
 };
 
-/** The step after `current` among those shown, or null when it is the last. */
+/** The last of the steps shown, or null when none is. */
+export const lastStep = (shown: readonly string[]): string | null =>
+    firstStep([...shown].reverse());
+
+/** The step after `current` among those shown: the first of those after it, or null when it is the last. */
 export const stepAfter = (
     shown: readonly string[],
     current: string,
 ): string | null => {
-    const index = shown.indexOf(current);
-
-    if (index === -1) {
+    if (!shown.includes(current)) {
         return null;
     }
 
-    if (index === shown.length - 1) {
-        return null;
-    }
-
-    return shown[index + 1];
+    return firstStep(shown.slice(shown.indexOf(current) + 1));
 };
 
-/** The step before `current` among those shown, or null when it is the first. */
+/** The step before `current` among those shown: the last of those before it, or null when it is the first. */
 export const stepBefore = (
     shown: readonly string[],
     current: string,
 ): string | null => {
-    const index = shown.indexOf(current);
-
-    if (index <= 0) {
+    if (!shown.includes(current)) {
         return null;
     }
 
-    return shown[index - 1];
+    return lastStep(shown.slice(0, shown.indexOf(current)));
 };
