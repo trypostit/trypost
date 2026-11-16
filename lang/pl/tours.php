@@ -11,7 +11,7 @@ return [
         'back' => 'Wstecz',
         'next' => 'Dalej',
         'done' => 'Gotowe',
-        'skip' => 'Pomiń przewodnik',
+        'skip' => 'Pomiń',
     ],
     'progress' => ':current z :total',
     'publish' => [

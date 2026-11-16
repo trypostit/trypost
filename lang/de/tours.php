@@ -11,7 +11,7 @@ return [
         'back' => 'Zurück',
         'next' => 'Weiter',
         'done' => 'Fertig',
-        'skip' => 'Tour überspringen',
+        'skip' => 'Überspringen',
     ],
     'progress' => ':current von :total',
     'publish' => [

@@ -11,7 +11,7 @@ return [
         'back' => 'Terug',
         'next' => 'Volgende',
         'done' => 'Klaar',
-        'skip' => 'Tour overslaan',
+        'skip' => 'Overslaan',
     ],
     'progress' => ':current van :total',
     'publish' => [

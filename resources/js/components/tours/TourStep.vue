@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="Tour extends TourName">
+import { IconChevronsLeft, IconChevronsRight } from '@tabler/icons-vue';
 import { useElementBounding } from '@vueuse/core';
 import { computed, useId, useTemplateRef } from 'vue';
 
@@ -72,6 +73,7 @@ const descriptionKey = computed(() => `${copyKey.value}.description`);
 /** A tour of one step only says "Got it"; a longer one shows where the user is, Skip, Back and Next. */
 const hasSeveralSteps = computed(() => total.value > 1);
 const isFirst = computed(() => position.value === 1);
+const isLast = computed(() => position.value === total.value);
 
 /** In a longer tour, where the user is ("2 of 3") sits next to the tag, above the title. */
 const progressBesideTag = computed((): boolean => {
@@ -101,7 +103,7 @@ const nextButtonClass = computed((): string | undefined => {
 });
 
 const nextLabelKey = computed((): string => {
-    if (position.value === total.value) {
+    if (isLast.value) {
         return 'tours.actions.done';
     }
 
@@ -160,6 +162,42 @@ const followControl = (event: PointerDownOutside): void => {
     target.value.addEventListener('click', next, { once: true });
 };
 
+/** The arrow key that reads forward: right, or left in a right-to-left language. */
+const forwardKey = (): string => {
+    if (document.documentElement.dir === 'rtl') {
+        return 'ArrowLeft';
+    }
+
+    return 'ArrowRight';
+};
+
+const backwardKey = (): string => {
+    if (document.documentElement.dir === 'rtl') {
+        return 'ArrowRight';
+    }
+
+    return 'ArrowLeft';
+};
+
+/** In a longer tour, the arrow keys do what Next (or Done) and Back do. */
+const followArrowKey = (event: KeyboardEvent): void => {
+    if (!hasSeveralSteps.value) {
+        return;
+    }
+
+    if (event.key === forwardKey()) {
+        event.preventDefault();
+        next();
+
+        return;
+    }
+
+    if (event.key === backwardKey()) {
+        event.preventDefault();
+        back();
+    }
+};
+
 const closeTour = (open: boolean): void => {
     if (open) {
         return;
@@ -193,6 +231,7 @@ const closeTour = (open: boolean): void => {
                 :aria-describedby="descriptionId"
                 :data-testid="`${testId}-content`"
                 @pointer-down-outside="followControl"
+                @keydown="followArrowKey"
             >
                 <div v-if="filled(tag)" class="mb-2 flex items-center gap-2">
                     <span
@@ -248,6 +287,7 @@ const closeTour = (open: boolean): void => {
                         :data-testid="`${testId}-back`"
                         @click="back"
                     >
+                        <IconChevronsLeft class="size-4 rtl:-scale-x-100" />
                         {{ $t('tours.actions.back') }}
                     </Button>
                     <Button
@@ -257,6 +297,10 @@ const closeTour = (open: boolean): void => {
                         @click="next"
                     >
                         {{ $t(nextLabelKey) }}
+                        <IconChevronsRight
+                            v-if="!isLast"
+                            class="size-4 rtl:-scale-x-100"
+                        />
                     </Button>
                 </div>
                 <div v-else class="mt-4 flex justify-end">

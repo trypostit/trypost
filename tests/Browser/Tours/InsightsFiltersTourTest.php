@@ -79,6 +79,29 @@ test('the filters tour walks the period, channels and labels with Next and Back,
     $page->assertNoJavaScriptErrors();
 });
 
+test('the arrow keys move a longer tour on and back, and the right arrow on the last step completes it', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-range-content', 'ArrowRight');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    waitForGone($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-channels-content', 'ArrowLeft');
+    waitForOpen($page, '@tour-insights-filters-range-content');
+
+    $page->keys('@tour-insights-filters-range-content', 'ArrowRight');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    $page->keys('@tour-insights-filters-channels-content', 'ArrowRight');
+    waitForOpen($page, '@tour-insights-filters-labels-content');
+    $page->keys('@tour-insights-filters-labels-content', 'ArrowRight');
+    waitForGone($page, '@tour-insights-filters-labels-backdrop');
+
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'completed', 'step' => 3]]);
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('Skip tour on a middle step records the step reached', function () {
     $page = visit(route('app.insights'))->resize(1280, 900);
     waitForOpen($page, '@tour-insights-filters-range-content');
