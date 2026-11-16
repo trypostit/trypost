@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="Tour extends TourName">
 import { IconChevronsLeft, IconChevronsRight } from '@tabler/icons-vue';
 import { useElementBounding } from '@vueuse/core';
-import { computed, useId, useTemplateRef } from 'vue';
+import { computed, useId, useTemplateRef, watchEffect } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -9,7 +9,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
-import { useTourStep } from '@/composables/tours/useTour';
+import { frameTourControl, useTourStep } from '@/composables/tours/useTour';
 import { filled } from '@/lib/helpers';
 import { labelTextColor } from '@/lib/labelColor';
 import type { TourName, TourStepName } from '@/types/tour';
@@ -17,8 +17,8 @@ import type { TourName, TourStepName } from '@/types/tour';
 /**
  * One step of a tour (`TOURS` in `lib/tours.ts`), on the control in its slot.
  * While it is the tour's current step, the page goes dark around the control
- * and the step's title and description (`tours.<tour>.steps.<step>.*`) open
- * next to it. Using the control itself moves the tour on (it completes a
+ * (`TourBackdrop`, which moves from step to step) and the step's title and
+ * description (`tours.<tour>.steps.<step>.*`) open next to it. Using the control itself moves the tour on (it completes a
  * one-step tour); Escape or a click elsewhere skips it. A `tag` (already
  * translated, like `$t('tours.tags.new')`) shows above the title as a chip of
  * `tagColor`, the way a label shows (the brand purple unless set). A
@@ -58,13 +58,19 @@ const bounds = useElementBounding(target);
 /** Room left around the control inside the dark backdrop, in pixels. */
 const SPOTLIGHT_PADDING = 6;
 
-/** The cut-out of the dark backdrop, over the control. */
-const spotlightStyle = computed(() => ({
-    top: `${bounds.top.value - SPOTLIGHT_PADDING}px`,
-    left: `${bounds.left.value - SPOTLIGHT_PADDING}px`,
-    width: `${bounds.width.value + SPOTLIGHT_PADDING * 2}px`,
-    height: `${bounds.height.value + SPOTLIGHT_PADDING * 2}px`,
-}));
+/** While this step is open, the tour's one backdrop (`TourBackdrop`) frames its control. */
+watchEffect(() => {
+    if (!isActive.value) {
+        return;
+    }
+
+    frameTourControl({
+        top: bounds.top.value - SPOTLIGHT_PADDING,
+        left: bounds.left.value - SPOTLIGHT_PADDING,
+        width: bounds.width.value + SPOTLIGHT_PADDING * 2,
+        height: bounds.height.value + SPOTLIGHT_PADDING * 2,
+    });
+});
 
 const copyKey = computed(() => `tours.${props.tour}.steps.${props.step}`);
 const titleKey = computed(() => `${copyKey.value}.title`);
@@ -215,14 +221,6 @@ const closeTour = (open: boolean): void => {
                     <slot />
                 </div>
             </PopoverAnchor>
-            <Teleport v-if="isActive" to="body">
-                <div
-                    class="motion-dialog-overlay pointer-events-none fixed z-50 rounded-xl shadow-[0_0_0_9999px_rgb(0_0_0/0.5)] dark:shadow-[0_0_0_9999px_rgb(0_0_0/0.6)]"
-                    :style="spotlightStyle"
-                    data-state="open"
-                    :data-testid="`${testId}-backdrop`"
-                />
-            </Teleport>
             <PopoverContent
                 :align="align"
                 :side-offset="12"

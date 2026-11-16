@@ -67,7 +67,7 @@ test('the filters tour walks the period, channels and labels with Next and Back,
 
     $page->click('@tour-insights-filters-labels-next');
     waitForGone($page, '@tour-insights-filters-labels-content');
-    waitForGone($page, '@tour-insights-filters-labels-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'completed', 'step' => 3]]);
     waitForDatabase($page, fn (): bool => insightsTourTracked($this->user, TourEvent::Completed, 3));
@@ -75,6 +75,21 @@ test('the filters tour walks the period, channels and labels with Next and Back,
     $page->navigate(route('app.insights'));
     waitFor($page, '@analytics-filters');
     $page->assertMissing('@tour-insights-filters-range-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('moving to the next step slides the one backdrop to the next control instead of replacing it', function () {
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitForOpen($page, '@tour-insights-filters-range-content');
+    waitFor($page, '@tour-backdrop');
+    $page->script(<<<'JS'
+        window.__tourBackdrop = document.querySelector('[data-testid="tour-backdrop"]')
+    JS);
+
+    $page->click('@tour-insights-filters-range-next');
+    waitForOpen($page, '@tour-insights-filters-channels-content');
+    waitForState($page, '@tour-backdrop', 'element === window.__tourBackdrop && element.getBoundingClientRect().left > 640');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -95,7 +110,7 @@ test('the arrow keys move a longer tour on and back, and the right arrow on the 
     $page->keys('@tour-insights-filters-channels-content', 'ArrowRight');
     waitForOpen($page, '@tour-insights-filters-labels-content');
     $page->keys('@tour-insights-filters-labels-content', 'ArrowRight');
-    waitForGone($page, '@tour-insights-filters-labels-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'completed', 'step' => 3]]);
 
@@ -109,7 +124,7 @@ test('Skip tour on a middle step records the step reached', function () {
     $page->click('@tour-insights-filters-range-next');
     waitForOpen($page, '@tour-insights-filters-channels-content');
     $page->click('@tour-insights-filters-channels-skip');
-    waitForGone($page, '@tour-insights-filters-channels-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['insights.filters' => ['status' => 'skipped', 'step' => 2]]);
     waitForDatabase($page, fn (): bool => insightsTourTracked($this->user, TourEvent::Skipped, 2));

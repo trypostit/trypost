@@ -83,7 +83,7 @@ test('the card shows once a tour open here is closed in another tab', function (
         })()
     JS);
 
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
     waitFor($page, '@mcp-prompt');
 
     $page->assertNoJavaScriptErrors();

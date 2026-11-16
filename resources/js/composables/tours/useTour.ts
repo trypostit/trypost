@@ -24,12 +24,27 @@ const onPage = reactive(new Map<TourName, string[]>());
 /** The tour on screen and its step: one tour at a time, the first one on the page. */
 const active = shallowRef<{ tour: TourName; step: string } | null>(null);
 
+/** Where the open step's control is on screen, in pixels. */
+export interface TourSpotlight {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+}
+
+/**
+ * The control the open step frames: one for the whole tour, so the dark
+ * backdrop (`TourBackdrop`) moves from one step's control to the next.
+ */
+const spotlight = shallowRef<TourSpotlight | null>(null);
+
 /** The start of every step on the page, in mount order: tried again whenever no tour is open. */
 const starters = new Set<() => void>();
 
 /** Closes the open tour and opens the next one waiting on the page, if any. */
 const closeActive = (): void => {
     active.value = null;
+    spotlight.value = null;
 
     nextTick(() => {
         starters.forEach((start) => start());
@@ -54,6 +69,21 @@ const isOpenStep = (tour: TourName, step: string): boolean => {
 /** Whether a tour is open on the page, so what would sit over it (the MCP card) waits. */
 export const useTourOnScreen = (): ComputedRef<boolean> =>
     computed(() => filled(active.value));
+
+/** The open step frames its control. */
+export const frameTourControl = (frame: TourSpotlight): void => {
+    spotlight.value = frame;
+};
+
+/** The control the open tour frames, or none while no tour is open. */
+export const useTourSpotlight = (): ComputedRef<TourSpotlight | null> =>
+    computed(() => {
+        if (!filled(active.value)) {
+            return null;
+        }
+
+        return spotlight.value;
+    });
 
 interface TourProgressState {
     wentThrough: ComputedRef<boolean>;

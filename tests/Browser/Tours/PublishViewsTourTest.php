@@ -44,7 +44,7 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
 
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
-    waitFor($page, '@tour-publish-views-views-backdrop');
+    waitFor($page, '@tour-backdrop');
 
     $layers = $page->script(<<<'JS'
         (() => {
@@ -53,7 +53,7 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
 
             return {
                 card: zIndex(content.closest('[data-reka-popper-content-wrapper]')),
-                backdrop: zIndex(document.querySelector('[data-testid="tour-publish-views-views-backdrop"]')),
+                backdrop: zIndex(document.querySelector('[data-testid="tour-backdrop"]')),
             };
         })()
     JS);
@@ -65,7 +65,7 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
 
     $page->click('@tour-publish-views-views-next');
     waitForGone($page, '@tour-publish-views-views-content');
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'completed', 'step' => 1]]);
     waitForDatabase($page, fn (): bool => tourTracked($this->user, TourEvent::Completed, 1));
@@ -86,7 +86,7 @@ test('closing the tour with Escape skips it for good', function () {
     waitForOpen($page, '@tour-publish-views-views-content');
 
     $page->keys('@tour-publish-views-views-content', 'Escape');
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
     waitForDatabase($page, fn (): bool => tourTracked($this->user, TourEvent::Skipped, 1));
@@ -104,7 +104,7 @@ test('using the control the tour points at works and completes the tour', functi
 
     $page->click('@schedule-view-calendar');
     waitForPath($page, route('app.calendar', ['view' => 'week'], absolute: false));
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'completed', 'step' => 1]]);
 
@@ -118,7 +118,7 @@ test('a click elsewhere on the page skips the tour', function () {
     $page->script(<<<'JS'
         document.querySelector('[data-testid="app-header"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     JS);
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
 
@@ -155,7 +155,7 @@ test('closing the tour in another tab closes it here at once', function () {
     JS);
 
     waitForGone($page, '@tour-publish-views-views-content');
-    waitForGone($page, '@tour-publish-views-views-backdrop');
+    waitForGone($page, '@tour-backdrop');
 
     $page->assertNoJavaScriptErrors();
 });
