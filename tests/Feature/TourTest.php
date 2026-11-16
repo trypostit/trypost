@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\PostHog\TourEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -51,4 +53,23 @@ test('an unknown tour or outcome, or a step past the last, is refused and tracks
     'unknown outcome' => [['outcome' => 'closed'], 'outcome'],
     'step past the last' => [['step' => 3, 'steps' => 2], 'step'],
     'no step' => [['step' => 0], 'step'],
+]);
+
+test('the queued job hands the end of a tour to PostHog for the user and their account', function (string $outcome, string $event, int $step) {
+    enablePostHog();
+
+    $this->mock(PostHogService::class)
+        ->shouldReceive('capture')
+        ->once()
+        ->withArgs(fn (string $distinctId, string $sent, array $properties, ?Account $account): bool => $distinctId === (string) $this->user->id
+            && $sent === $event
+            && $properties === ['tour' => 'insights.filters', 'step' => $step, 'steps' => 3, 'workspace_id' => $this->workspace->id]
+            && $account?->is($this->user->account) === true);
+
+    $this->actingAs($this->user)
+        ->post(route('app.tours.store'), ['tour' => 'insights.filters', 'outcome' => $outcome, 'step' => $step, 'steps' => 3])
+        ->assertNoContent();
+})->with([
+    'completed' => ['completed', 'tour.completed', 3],
+    'skipped' => ['skipped', 'tour.skipped', 2],
 ]);
