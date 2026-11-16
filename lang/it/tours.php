@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Scegli come vedere i tuoi post',
-                    'description' => 'Passa da elenco a calendario o bacheca per pianificare i tuoi post a modo tuo.',
+                    'title' => 'Cambia vista',
+                    'description' => 'Pianifica i tuoi post nel formato che funziona meglio per te.',
                 ],
             ],
         ],

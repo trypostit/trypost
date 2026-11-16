@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => '选择查看帖子的方式',
-                    'description' => '在列表、日历和看板之间切换，用你习惯的方式规划帖子。',
+                    'title' => '切换视图',
+                    'description' => '用最适合你的方式规划帖子。',
                 ],
             ],
         ],

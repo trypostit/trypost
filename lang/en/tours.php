@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Pick how you see your posts',
-                    'description' => 'Switch between list, calendar and board to plan your posts your way.',
+                    'title' => 'Switch views',
+                    'description' => 'Plan your posts in the layout that works best for you.',
                 ],
             ],
         ],

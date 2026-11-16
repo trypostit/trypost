@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Gönderilerini nasıl göreceğini seç',
-                    'description' => 'Gönderilerini kendi tarzında planlamak için liste, takvim ve pano arasında geçiş yap.',
+                    'title' => 'Görünümü değiştir',
+                    'description' => 'Gönderilerini sana en uygun düzende planla.',
                 ],
             ],
         ],

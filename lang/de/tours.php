@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Wähle, wie du deine Beiträge siehst',
-                    'description' => 'Wechsle zwischen Liste, Kalender und Board und plane deine Beiträge so, wie es dir passt.',
+                    'title' => 'Ansicht wechseln',
+                    'description' => 'Plane deine Beiträge in dem Format, das für dich am besten passt.',
                 ],
             ],
         ],

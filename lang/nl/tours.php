@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Kies hoe je je posts ziet',
-                    'description' => 'Wissel tussen lijst, kalender en bord om je posts op jouw manier te plannen.',
+                    'title' => 'Wissel van weergave',
+                    'description' => 'Plan je posts in de weergave die voor jou het best werkt.',
                 ],
             ],
         ],

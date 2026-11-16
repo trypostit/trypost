@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Wybierz, jak widzieć posty',
-                    'description' => 'Przełączaj się między listą, kalendarzem i tablicą, by planować posty po swojemu.',
+                    'title' => 'Zmień widok',
+                    'description' => 'Planuj posty w układzie, który najlepiej ci odpowiada.',
                 ],
             ],
         ],

@@ -59,7 +59,7 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
     JS);
     expect($layers['card'])->toBeGreaterThan($layers['backdrop']);
 
-    $page->assertSeeIn('@tour-publish-views-views-content', 'Pick how you see your posts');
+    $page->assertSeeIn('@tour-publish-views-views-content', 'Switch views');
     $page->assertMissing('@tour-publish-views-views-tag');
     $page->assertMissing('@tour-publish-views-views-progress');
 

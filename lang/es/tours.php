@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Elige cómo ver tus publicaciones',
-                    'description' => 'Cambia entre lista, calendario y tablero para planificar tus publicaciones a tu manera.',
+                    'title' => 'Cambia la vista',
+                    'description' => 'Planifica tus publicaciones en el formato que mejor te funcione.',
                 ],
             ],
         ],

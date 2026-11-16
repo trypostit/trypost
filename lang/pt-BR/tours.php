@@ -18,8 +18,8 @@ return [
         'views' => [
             'steps' => [
                 'views' => [
-                    'title' => 'Escolha como ver seus posts',
-                    'description' => 'Alterne entre lista, calendário e quadro para planejar seus posts do seu jeito.',
+                    'title' => 'Mude a visualização',
+                    'description' => 'Planeje seus posts no formato que funciona melhor para você.',
                 ],
             ],
         ],
