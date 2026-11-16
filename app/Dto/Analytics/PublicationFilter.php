@@ -10,9 +10,11 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\ValidatedInput;
 
 /**
- * Narrows a channel's publications by the labels of their TryPost post and by post type.
+ * Narrows publications by the labels of their TryPost post and, for one channel, by post type.
+ * Without a platform (the workspace Insights, across every network) it narrows by label only.
  *
  * Expects the publication query aliased as `publication`, left-joined to its post as `destination`.
  * A publication with a post platform takes that post platform's content type; one without (published
@@ -23,11 +25,11 @@ use Illuminate\Database\Query\Builder;
 final readonly class PublicationFilter
 {
     /**
-     * @param  list<string>  $labelIds  Workspace label ids already validated for tenancy.
-     * @param  list<ContentType>  $contentTypes  Content types of $platform.
+     * @param  list<string>  $labelIds  Label UUIDs; one deleted or of another workspace matches no post, since only this workspace's posts carry its labels.
+     * @param  list<ContentType>  $contentTypes  Content types of $platform; none without one.
      */
     public function __construct(
-        public Platform $platform,
+        public ?Platform $platform,
         public array $labelIds = [],
         public bool $untagged = false,
         public array $contentTypes = [],
@@ -47,6 +49,14 @@ final readonly class PublicationFilter
                 (array) data_get($validated, 'types', []),
             )),
         );
+    }
+
+    /**
+     * Narrows the publications of every network by label, from the validated `labels` and `untagged`.
+     */
+    public static function labelsFrom(ValidatedInput $validated): self
+    {
+        return new self(null, $validated->array('labels'), $validated->boolean('untagged'));
     }
 
     /**
@@ -93,6 +103,10 @@ final readonly class PublicationFilter
      */
     private function publicationTypes(): array
     {
+        if (blank($this->platform)) {
+            return [];
+        }
+
         return array_values(array_map(
             fn (PublicationContentType $type): string => $type->value,
             array_filter(

@@ -5,8 +5,10 @@ import { computed, inject, ref, watch } from 'vue';
 import LabelBadge from '@/components/labels/LabelBadge.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import {
+    POST_CARD_LABELS_RELOAD,
     postCardLabelsKey,
     syncPostCardLabels,
+    usePostCardReload,
 } from '@/composables/usePostCardActions';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import type { PostCardLabel } from '@/types/publish';
@@ -24,6 +26,8 @@ const workspaceLabels = inject(
     postCardLabelsKey,
     computed(() => []),
 );
+
+const reload = usePostCardReload(POST_CARD_LABELS_RELOAD);
 
 const toIds = (labels: PostCardLabel[]): string[] =>
     labels.map((label) => label.id);
@@ -59,9 +63,14 @@ const update = (ids: string[]): void => {
     const previous = selectedIds.value;
 
     selectedIds.value = ids;
-    syncPostCardLabels(props.postId, ids, () => {
-        selectedIds.value = previous;
-    });
+    syncPostCardLabels(
+        props.postId,
+        ids,
+        () => {
+            selectedIds.value = previous;
+        },
+        reload(),
+    );
 };
 </script>
 

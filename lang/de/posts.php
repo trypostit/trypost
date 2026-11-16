@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Liste',
+    'board' => [
+        'view' => 'Board',
+        'group_by' => 'Gruppieren nach',
+        'group_by_value' => 'Gruppieren nach: :group',
+        'groups' => [
+            'status' => 'Status',
+            'tag' => 'Label',
+            'channel' => 'Kanal',
+        ],
+        'columns' => [
+            'draft' => 'Entwurf',
+            'approvals' => 'Freigaben',
+            'scheduled' => 'Geplant',
+            'published' => 'Veröffentlicht',
+            'failed' => 'Fehlgeschlagen',
+            'untagged' => 'Ohne Label',
+            'no_channel' => 'Kein Kanal',
+        ],
+        'empty_column' => 'Hier ist nichts',
+        'no_columns' => [
+            'title' => 'Nichts passt zu diesen Filtern',
+            'description' => 'Entferne den Label- oder Kanalfilter, um alle Spalten zu sehen.',
+        ],
+        'column_aria' => '{1} :name, :count Beitrag|[0,*] :name, :count Beiträge',
+    ],
     'view_switcher' => 'Planungsansicht',
     'all_posts' => 'Alle Beiträge',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Ausstehend',
         'draft' => 'Entwurf',
-        'pending_approval' => 'Wartet auf Freigabe',
+        'pending_approval' => 'Ausstehend',
         'scheduled' => 'Geplant',
         'publishing' => 'Wird veröffentlicht',
         'retrying' => 'Erneuter Versuch',
         'published' => 'Veröffentlicht',
         'failed' => 'Fehlgeschlagen',
+        'pending_review' => 'Google-Prüfung läuft',
+        'deleted_on_network' => 'Gelöscht',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Kanäle (:count)',
     ],
     'approvals' => [
-        'badge' => 'Freigabe',
         'time_passed' => 'Zeitpunkt verstrichen',
         'approve' => 'Freigeben',
         'schedule' => 'Planen',
         'reject' => 'Ablehnen',
         'revert' => 'Freigabeanfrage zurückziehen',
         'requested' => 'Freigabe angefragt',
+        'toasts' => [
+            'scheduled' => 'Beitrag freigegeben und geplant',
+            'queued' => 'Beitrag freigegeben und zur Warteschlange hinzugefügt',
+            'publishing' => 'Beitrag freigegeben, wird jetzt veröffentlicht',
+            'rejected' => 'Beitrag abgelehnt und zu den Entwürfen verschoben',
+        ],
         'errors' => [
             'not_pending' => 'Dieser Beitrag wartet nicht mehr auf Freigabe.',
             'time_passed' => 'Der gewünschte Zeitpunkt ist vorbei. Wähle einen neuen.',

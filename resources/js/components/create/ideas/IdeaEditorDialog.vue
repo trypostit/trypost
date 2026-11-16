@@ -13,6 +13,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue';
 
 import WritingAssistantPanel from '@/components/ai/WritingAssistantPanel.vue';
+import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
@@ -40,6 +41,7 @@ import {
     useMediaImport,
 } from '@/composables/useMediaImport';
 import { mediaUploadLimits, useMediaUpload } from '@/composables/useMediaUpload';
+import { filled } from '@/lib/helpers';
 import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute } from '@/lib/mediaType';
@@ -205,6 +207,8 @@ const selectedLabels = computed(() =>
         form.label_ids.includes(label.id),
     ),
 );
+
+const hasSelectedLabels = computed(() => filled(selectedLabels.value));
 
 const addLabel = (label: IdeaLabel): void => {
     if (!availableLabels.value.some(({ id }) => id === label.id)) {
@@ -500,37 +504,14 @@ const iconButtonClass =
                                 data-testid="idea-editor-labels"
                             >
                                 <IconTag class="size-4 shrink-0" />
-                                <span v-if="!selectedLabels.length">{{
+                                <span v-if="!hasSelectedLabels">{{
                                     $t('create.ideas.editor.labels')
                                 }}</span>
-                                <span
+                                <LabelChips
                                     v-else
-                                    class="flex min-w-0 items-center gap-1.5 overflow-hidden"
-                                >
-                                    <span
-                                        v-for="label in selectedLabels.slice(
-                                            0,
-                                            2,
-                                        )"
-                                        :key="label.id"
-                                        class="flex min-w-0 items-center gap-1"
-                                    >
-                                        <span
-                                            class="size-2 shrink-0 rounded-full"
-                                            :style="{
-                                                backgroundColor: label.color,
-                                            }"
-                                        />
-                                        <span class="truncate">{{
-                                            label.name
-                                        }}</span>
-                                    </span>
-                                    <span
-                                        v-if="selectedLabels.length > 2"
-                                        class="shrink-0 text-muted-foreground"
-                                        >+{{ selectedLabels.length - 2 }}</span
-                                    >
-                                </span>
+                                    :labels="selectedLabels"
+                                    test-id="idea-editor-labels-chip"
+                                />
                                 <IconChevronDown
                                     class="size-4 shrink-0 text-muted-foreground"
                                 />

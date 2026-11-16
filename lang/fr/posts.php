@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Liste',
+    'board' => [
+        'view' => 'Tableau',
+        'group_by' => 'Grouper par',
+        'group_by_value' => 'Grouper par : :group',
+        'groups' => [
+            'status' => 'Statut',
+            'tag' => 'Étiquette',
+            'channel' => 'Canal',
+        ],
+        'columns' => [
+            'draft' => 'Brouillon',
+            'approvals' => 'Approbations',
+            'scheduled' => 'Programmée',
+            'published' => 'Publiée',
+            'failed' => 'Échec',
+            'untagged' => 'Sans étiquette',
+            'no_channel' => 'Aucun canal',
+        ],
+        'empty_column' => 'Rien ici',
+        'no_columns' => [
+            'title' => 'Rien ne correspond à ces filtres',
+            'description' => 'Retirez le filtre d\'étiquette ou de canal pour voir toutes les colonnes.',
+        ],
+        'column_aria' => '{1} :name, :count publication|[0,*] :name, :count publications',
+    ],
     'view_switcher' => 'Vue du calendrier',
     'all_posts' => 'Toutes les publications',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'En attente',
         'draft' => 'Brouillon',
-        'pending_approval' => 'En attente d\'approbation',
+        'pending_approval' => 'En attente',
         'scheduled' => 'Programmée',
         'publishing' => 'Publication en cours',
         'retrying' => 'Nouvelle tentative',
         'published' => 'Publiée',
         'failed' => 'Échec',
+        'pending_review' => 'En cours d\'examen par Google',
+        'deleted_on_network' => 'Supprimée',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Canaux (:count)',
     ],
     'approvals' => [
-        'badge' => 'Approbation',
         'time_passed' => 'Heure dépassée',
         'approve' => 'Approuver',
         'schedule' => 'Programmer',
         'reject' => 'Refuser',
         'revert' => 'Annuler la demande d\'approbation',
         'requested' => 'Approbation demandée',
+        'toasts' => [
+            'scheduled' => 'Publication approuvée et programmée',
+            'queued' => 'Publication approuvée et ajoutée à la file',
+            'publishing' => 'Publication approuvée, en cours de publication',
+            'rejected' => 'Publication refusée et remise en brouillon',
+        ],
         'errors' => [
             'not_pending' => 'Cette publication n\'attend plus d\'approbation.',
             'time_passed' => 'L\'heure demandée est passée. Choisissez une nouvelle heure.',

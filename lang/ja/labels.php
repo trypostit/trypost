@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'ラベルを編集',
         'delete' => 'ラベルを削除',
         'more' => 'その他の操作',
+        'settings' => '設定',
         'view_posts' => '投稿を表示',
+        'view_insights' => 'Insightsを表示',
     ],
 
     'create' => [

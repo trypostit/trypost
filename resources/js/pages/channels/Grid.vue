@@ -25,6 +25,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { isVideo } from '@/lib/mediaType';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import {
+    board as channelBoard,
     calendar as channelCalendar,
     grid,
     publish,
@@ -84,6 +85,7 @@ const openLightbox = (tile: GridTile): void => {
                                 })
                             "
                             :grid-href="grid.url(channel.id)"
+                            :board-href="channelBoard.url(channel.id)"
                         />
                         <NewPostButton :social-account-ids="[channel.id]" />
                     </div>

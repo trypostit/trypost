@@ -19,7 +19,7 @@ defineProps<{
             v-model="query"
             :aria-label="placeholder"
             :placeholder="placeholder"
-            class="h-10 ps-9"
+            class="h-8 ps-9"
             data-testid="header-search-input"
         />
     </div>

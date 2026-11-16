@@ -326,7 +326,7 @@ test('the channels settings and connect actions show a tooltip above them', func
     $page->hover('@sidebar-channels-label')->hover("@sidebar-channels-{$action}");
     waitFor($page, "@sidebar-channels-{$action}-tooltip");
 
-    $page->assertSeeIn("@sidebar-channels-{$action}-tooltip", $action === 'settings' ? __('channels.settings') : __('channels.connect'));
+    $page->assertSeeIn("@sidebar-channels-{$action}-tooltip", $action === 'settings' ? __('channels.manage') : __('channels.connect'));
 
     expect($page->script(<<<JS
         (() => {
@@ -413,5 +413,31 @@ test('the collapsed sidebar shows every channel network badge without clipping i
         expect($clipping)->toBe(['width' => 18, 'clipped' => []]);
     }
 
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a long channel name stops before its post count and ends in an ellipsis', function () {
+    $user = sidebarChannelsUser('admin');
+    $channel = SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'display_name' => 'Acme Shop on Google Business Profile Downtown',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, "@sidebar-channel-count-{$channel->id}");
+
+    $layout = $page->script(<<<JS
+        (() => {
+            const name = document.querySelector('[data-testid="sidebar-channel-name-{$channel->id}"]');
+            const count = document.querySelector('[data-testid="sidebar-channel-count-{$channel->id}"]').getBoundingClientRect();
+            return {
+                clearsCount: name.getBoundingClientRect().right <= count.left,
+                ellipsis: getComputedStyle(name).textOverflow === 'ellipsis' && name.scrollWidth > name.clientWidth,
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe(['clearsCount' => true, 'ellipsis' => true]);
     $page->assertNoJavaScriptErrors();
 });

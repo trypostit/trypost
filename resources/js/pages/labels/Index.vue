@@ -3,10 +3,10 @@ import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import {
     IconDotsVertical,
     IconLayoutGrid,
-    IconPencil,
     IconPlus,
-    IconTag,
+    IconSettings,
     IconTrash,
+    IconTrendingUp,
 } from '@tabler/icons-vue';
 import { ref, watch } from 'vue';
 
@@ -26,8 +26,14 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TableLoadMore } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { insights as insightsRoute } from '@/routes/app';
 import {
     destroy as labelsDestroy,
     index as labelsIndex,
@@ -157,80 +163,109 @@ const labelQuery = (label: Label) => ({ query: { labels: [label.id] } });
                         <SettingsListRow
                             v-for="label in labels.data"
                             :key="label.id"
-                            class="cursor-pointer"
                             :data-testid="`label-row-${label.id}`"
-                            @click="openEditDialog(label)"
                         >
                             <template #media>
                                 <span
-                                    class="relative inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-                                    :style="{ color: label.color }"
+                                    class="size-4 shrink-0 rounded-full"
+                                    :style="{ backgroundColor: label.color }"
+                                    aria-hidden="true"
                                     :data-testid="`label-swatch-${label.id}`"
-                                >
-                                    <span
-                                        class="absolute inset-0 bg-current opacity-15"
-                                    />
-                                    <IconTag class="relative size-5" />
-                                </span>
+                                />
                             </template>
-                            <p
-                                class="truncate text-sm leading-tight font-emphasis text-foreground"
-                            >
-                                {{ label.name }}
-                            </p>
-                            <p
-                                class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
-                            >
-                                <span :data-testid="`label-posts-count-${label.id}`">{{
-                                    $tChoice('labels.meta.posts', label.posts_count, {
-                                        count: String(label.posts_count),
-                                    })
-                                }}</span>
-                            </p>
+                            <div class="flex min-w-0 items-center gap-2">
+                                <p
+                                    class="min-w-0 truncate text-sm leading-tight font-emphasis text-foreground"
+                                >
+                                    {{ label.name }}
+                                </p>
+                                <span
+                                    class="inline-flex h-5 shrink-0 items-center rounded-full bg-secondary px-2 text-xs font-medium text-muted-foreground tabular-nums"
+                                    :data-testid="`label-posts-count-${label.id}`"
+                                    >{{
+                                        $tChoice('labels.meta.posts', label.posts_count, {
+                                            count: String(label.posts_count),
+                                        })
+                                    }}</span
+                                >
+                            </div>
                             <template #actions>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
-                                            :aria-label="$t('labels.actions.more')"
-                                            :data-testid="`label-menu-${label.id}`"
-                                            @click.stop
-                                        >
-                                            <IconDotsVertical class="size-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" @click.stop>
-                                        <DropdownMenuItem
-                                            :data-testid="`edit-label-${label.id}`"
+                                            class="shrink-0 text-muted-foreground"
+                                            :aria-label="$t('labels.actions.settings')"
+                                            :data-testid="`label-settings-${label.id}`"
                                             @click="openEditDialog(label)"
                                         >
-                                            <IconPencil class="size-4" />
-                                            {{ $t('labels.actions.edit') }}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem as-child>
-                                            <a
-                                                :href="postsIndex.url(labelQuery(label))"
-                                                target="_blank"
-                                                rel="noopener"
-                                                :data-testid="`label-view-posts-${label.id}`"
-                                            >
-                                                <IconLayoutGrid class="size-4" />
-                                                {{ $t('labels.actions.view_posts') }}
-                                            </a>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            variant="destructive"
-                                            :data-testid="`delete-label-${label.id}`"
-                                            @click="handleDelete(label)"
-                                        >
-                                            <IconTrash class="size-4" />
-                                            {{ $t('labels.actions.delete') }}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                            <IconSettings class="size-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                        :data-testid="`label-settings-tooltip-${label.id}`"
+                                    >
+                                        {{ $t('labels.actions.settings') }}
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <span class="inline-flex">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger as-child>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
+                                                        :aria-label="$t('labels.actions.more')"
+                                                        :data-testid="`label-menu-${label.id}`"
+                                                    >
+                                                        <IconDotsVertical class="size-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem as-child>
+                                                        <a
+                                                            :href="postsIndex.url(labelQuery(label))"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            :data-testid="`label-view-posts-${label.id}`"
+                                                        >
+                                                            <IconLayoutGrid class="size-4" />
+                                                            {{ $t('labels.actions.view_posts') }}
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem as-child>
+                                                        <a
+                                                            :href="insightsRoute.url(labelQuery(label))"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                            :data-testid="`label-view-insights-${label.id}`"
+                                                        >
+                                                            <IconTrendingUp class="size-4" />
+                                                            {{ $t('labels.actions.view_insights') }}
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        :data-testid="`delete-label-${label.id}`"
+                                                        @click="handleDelete(label)"
+                                                    >
+                                                        <IconTrash class="size-4" />
+                                                        {{ $t('labels.actions.delete') }}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                        :data-testid="`label-menu-tooltip-${label.id}`"
+                                    >
+                                        {{ $t('labels.actions.more') }}
+                                    </TooltipContent>
+                                </Tooltip>
                             </template>
                         </SettingsListRow>
                     </ul>

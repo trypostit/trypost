@@ -22,10 +22,6 @@ class PostScheduleController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('update', $post);
 
         $scheduleAction = $request->enum('action', ScheduleAction::class);

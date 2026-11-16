@@ -181,7 +181,12 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
     $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
     waitFor($page, '@app-content-shell');
-    expect($page->script('document.querySelector(\'[data-testid="mcp-prompt"]\') !== null'))->toBe(! $aiConnected);
+    if ($aiConnected) {
+        letPageRun($page, 600);
+        $page->assertMissing('@mcp-prompt');
+    } else {
+        waitFor($page, '@mcp-prompt');
+    }
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");
@@ -1160,5 +1165,31 @@ test('manage posting times in the schedule menu of an edited post asks first ins
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('closing the copy of a post duplicated from the board goes back to the board, and one back reaches the page before', function () {
+    $post = seedUnsavedChangesReel();
+    $post->update(['status' => PostStatus::Draft]);
+    subscribeAccount($post->user->account);
+
+    $page = visit(route('app.settings.preferences'))->navigate(route('app.posts.board'));
+    waitFor($page, "@board-card-menu-{$post->id}");
+    $page->click("@board-card-menu-{$post->id}");
+    waitForOpen($page, "@post-card-menu-content-board-{$post->id}");
+    $page->click("@post-duplicate-board-{$post->id}");
+    waitFor($page, '@post-composer-dialog');
+
+    $page->click('@composer-close');
+    waitForPath($page, (string) parse_url(route('app.posts.board'), PHP_URL_PATH));
+
+    $page->assertPathIs((string) parse_url(route('app.posts.board'), PHP_URL_PATH))
+        ->assertMissing('@post-composer-dialog')
+        ->assertMissing('@unsaved-changes-dialog');
+
+    $page->back();
+    waitForPath($page, (string) parse_url(route('app.settings.preferences'), PHP_URL_PATH));
+
+    $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
 });

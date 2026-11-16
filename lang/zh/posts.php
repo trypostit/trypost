@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => '列表',
+    'board' => [
+        'view' => '看板',
+        'group_by' => '分组依据',
+        'group_by_value' => '分组依据：:group',
+        'groups' => [
+            'status' => '状态',
+            'tag' => '标签',
+            'channel' => '频道',
+        ],
+        'columns' => [
+            'draft' => '草稿',
+            'approvals' => '审批',
+            'scheduled' => '已排期',
+            'published' => '已发布',
+            'failed' => '已失败',
+            'untagged' => '无标签',
+            'no_channel' => '无频道',
+        ],
+        'empty_column' => '这里空空如也',
+        'no_columns' => [
+            'title' => '没有符合这些筛选条件的内容',
+            'description' => '清除标签或频道筛选即可查看所有列。',
+        ],
+        'column_aria' => '{1} :name，:count 篇帖子|[0,*] :name，:count 篇帖子',
+    ],
     'view_switcher' => '日程视图',
     'all_posts' => '所有帖子',
     'composer' => [
@@ -622,6 +647,8 @@ return [
         'retrying' => '重试中',
         'published' => '已发布',
         'failed' => '已失败',
+        'pending_review' => 'Google 审核中',
+        'deleted_on_network' => '已删除',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => '频道 (:count)',
     ],
     'approvals' => [
-        'badge' => '审批',
         'time_passed' => '时间已过',
         'approve' => '批准',
         'schedule' => '排期',
         'reject' => '拒绝',
         'revert' => '撤回审批请求',
         'requested' => '已提交审批请求',
+        'toasts' => [
+            'scheduled' => '帖子已批准并已排期',
+            'queued' => '帖子已批准并已加入队列',
+            'publishing' => '帖子已批准，正在发布',
+            'rejected' => '帖子已拒绝并移回草稿',
+        ],
         'errors' => [
             'not_pending' => '该帖子已不再等待审批。',
             'time_passed' => '请求的时间已过，请选择新的时间。',

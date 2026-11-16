@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use DateTimeImmutable;
+use Carbon\CarbonInterface;
+use Carbon\CarbonTimeZone;
 use DateTimeZone;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use IntlTimeZone;
 
 class Timezone
@@ -15,14 +17,23 @@ class Timezone
 
     public static function normalize(?string $value): string
     {
+        return self::known($value) ?? self::DEFAULT;
+    }
+
+    /**
+     * The canonical identifier of a zone PHP knows (its IANA alias resolved),
+     * or null for a blank or unknown one.
+     */
+    public static function known(?string $value): ?string
+    {
         if (blank($value)) {
-            return self::DEFAULT;
+            return null;
         }
 
         $canonical = once(fn (): Collection => collect(DateTimeZone::listIdentifiers())->flip());
 
         return collect([$value, IntlTimeZone::getIanaID($value)])
-            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone), self::DEFAULT);
+            ->first(fn (mixed $zone): bool => is_string($zone) && $canonical->has($zone));
     }
 
     /**
@@ -32,10 +43,19 @@ class Timezone
      */
     public static function usable(string $value): string
     {
-        $known = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
-        $normalized = self::normalize($value);
+        $canonical = self::known($value);
 
-        return $normalized === self::DEFAULT && $known->has($value) ? $value : $normalized;
+        if (filled($canonical)) {
+            return $canonical;
+        }
+
+        $understood = once(fn (): Collection => collect(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))->flip());
+
+        if ($understood->has($value)) {
+            return $value;
+        }
+
+        return self::DEFAULT;
     }
 
     /**
@@ -43,23 +63,45 @@ class Timezone
      */
     public static function options(): array
     {
-        $now = new DateTimeImmutable('now');
+        $now = now();
 
-        return array_map(function (string $identifier) use ($now): array {
-            $seconds = (new DateTimeZone($identifier))->getOffset($now);
-            $sign = $seconds < 0 ? '-' : '+';
-            $hours = intdiv(abs($seconds), 3600);
-            $minutes = intdiv(abs($seconds) % 3600, 60);
-            $offset = $seconds === 0
-                ? 'GMT'
-                : ($minutes === 0 ? "GMT{$sign}{$hours}" : sprintf('GMT%s%d:%02d', $sign, $hours, $minutes));
-            $segments = explode('/', $identifier);
+        return collect(DateTimeZone::listIdentifiers())
+            ->map(fn (string $identifier): array => self::option($identifier, $now))
+            ->all();
+    }
 
-            return [
-                'value' => $identifier,
-                'label' => str_replace('_', ' ', (string) end($segments)),
-                'offset' => $offset,
-            ];
-        }, DateTimeZone::listIdentifiers());
+    /**
+     * A canonical time zone as the pickers show it: its city ("Sao Paulo") and
+     * its offset at that instant ("GMT-3").
+     *
+     * @return array{value: string, label: string, offset: string}
+     */
+    public static function option(string $identifier, ?CarbonInterface $at = null): array
+    {
+        return [
+            'value' => $identifier,
+            'label' => Str::of($identifier)->afterLast('/')->replace('_', ' ')->toString(),
+            'offset' => self::gmtOffset(intdiv(CarbonTimeZone::create($identifier)->getOffset($at ?? now()), 60)),
+        ];
+    }
+
+    /**
+     * An offset in minutes as the pickers write it: "GMT", "GMT-3", "GMT+5:30".
+     */
+    private static function gmtOffset(int $minutes): string
+    {
+        if ($minutes === 0) {
+            return 'GMT';
+        }
+
+        $sign = $minutes < 0 ? '-' : '+';
+        $hours = intdiv(abs($minutes), 60);
+        $rest = abs($minutes) % 60;
+
+        if ($rest === 0) {
+            return "GMT{$sign}{$hours}";
+        }
+
+        return sprintf('GMT%s%d:%02d', $sign, $hours, $rest);
     }
 }

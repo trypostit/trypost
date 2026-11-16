@@ -118,6 +118,7 @@ const onClick = (): void => {
                 v-for="label in cardLabels"
                 :key="label.id"
                 :label="label"
+                :data-testid="`idea-card-label-${card.id}-${label.id}`"
             />
         </div>
 

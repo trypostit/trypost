@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'Виберіть робочий простір',
     'create_workspace' => 'Новий простір',
     'new' => 'Створити',
+    'unfinished_post' => 'У вас є незавершений допис',
     'create' => 'Створення',
     'new_menu' => [
         'post' => 'Допис',

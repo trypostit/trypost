@@ -10,6 +10,7 @@ import {
   useForwardPropsEmits,
 } from "reka-ui"
 import { buttonVariants } from "@/components/ui/button"
+import { trackDialogForTours } from "@/composables/tours/useTourWaitsForDialogs"
 import { cn } from "@/lib/utils"
 import DialogOverlay from "./DialogOverlay.vue"
 
@@ -26,6 +27,8 @@ const emits = defineEmits<DialogContentEmits>()
 const delegatedProps = reactiveOmit(props, "class", "fullscreenOnMobile")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+trackDialogForTours()
 </script>
 
 <template>

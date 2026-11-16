@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'قائمة',
+    'board' => [
+        'view' => 'لوحة',
+        'group_by' => 'تجميع حسب',
+        'group_by_value' => 'تجميع حسب: :group',
+        'groups' => [
+            'status' => 'الحالة',
+            'tag' => 'التسمية',
+            'channel' => 'القناة',
+        ],
+        'columns' => [
+            'draft' => 'مسودة',
+            'approvals' => 'الموافقات',
+            'scheduled' => 'مجدول',
+            'published' => 'منشور',
+            'failed' => 'فشل',
+            'untagged' => 'بدون تسمية',
+            'no_channel' => 'بلا قناة',
+        ],
+        'empty_column' => 'لا شيء هنا',
+        'no_columns' => [
+            'title' => 'لا شيء يطابق هذه الفلاتر',
+            'description' => 'امسح فلتر التسمية أو القناة لعرض كل الأعمدة.',
+        ],
+        'column_aria' => '{1} :name، المنشورات: :count|[0,*] :name، المنشورات: :count',
+    ],
     'view_switcher' => 'عرض الجدول',
     'all_posts' => 'جميع المنشورات',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'قيد الانتظار',
         'draft' => 'مسودة',
-        'pending_approval' => 'بانتظار الموافقة',
+        'pending_approval' => 'قيد الانتظار',
         'scheduled' => 'مجدول',
         'publishing' => 'قيد النشر',
         'retrying' => 'إعادة المحاولة',
         'published' => 'منشور',
         'failed' => 'فشل',
+        'pending_review' => 'قيد مراجعة Google',
+        'deleted_on_network' => 'محذوف',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'القنوات (:count)',
     ],
     'approvals' => [
-        'badge' => 'موافقة',
         'time_passed' => 'انقضى الوقت',
         'approve' => 'وافق',
         'schedule' => 'جدولة',
         'reject' => 'رفض',
         'revert' => 'إلغاء طلب الموافقة',
         'requested' => 'تم طلب الموافقة',
+        'toasts' => [
+            'scheduled' => 'تمت الموافقة على المنشور وجدولته',
+            'queued' => 'تمت الموافقة على المنشور وإضافته إلى قائمة الانتظار',
+            'publishing' => 'تمت الموافقة على المنشور وجارٍ نشره الآن',
+            'rejected' => 'تم رفض المنشور ونقله إلى المسودات',
+        ],
         'errors' => [
             'not_pending' => 'لم يعد هذا المنشور بانتظار الموافقة.',
             'time_passed' => 'انقضى الوقت المطلوب. اختر وقتًا جديدًا.',

@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Editar etiqueta',
         'delete' => 'Excluir etiqueta',
         'more' => 'Mais ações',
+        'settings' => 'Configurações',
         'view_posts' => 'Ver posts',
+        'view_insights' => 'Ver insights',
     ],
 
     'create' => [

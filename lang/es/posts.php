@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Lista',
+    'board' => [
+        'view' => 'Tablero',
+        'group_by' => 'Agrupar por',
+        'group_by_value' => 'Agrupar por: :group',
+        'groups' => [
+            'status' => 'Estado',
+            'tag' => 'Etiqueta',
+            'channel' => 'Canal',
+        ],
+        'columns' => [
+            'draft' => 'Borrador',
+            'approvals' => 'Aprobaciones',
+            'scheduled' => 'Programado',
+            'published' => 'Publicado',
+            'failed' => 'Fallido',
+            'untagged' => 'Sin etiqueta',
+            'no_channel' => 'Sin canal',
+        ],
+        'empty_column' => 'Nada por aquí',
+        'no_columns' => [
+            'title' => 'Nada coincide con estos filtros',
+            'description' => 'Quita el filtro de etiqueta o de canal para ver todas las columnas.',
+        ],
+        'column_aria' => '{1} :name, :count publicación|[0,*] :name, :count publicaciones',
+    ],
     'view_switcher' => 'Vista de programación',
     'all_posts' => 'Todos los posts',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'Pendiente',
         'draft' => 'Borrador',
-        'pending_approval' => 'Pendiente de aprobación',
+        'pending_approval' => 'Pendiente',
         'scheduled' => 'Programado',
         'publishing' => 'Publicando',
         'retrying' => 'Reintentando',
         'published' => 'Publicado',
         'failed' => 'Fallido',
+        'pending_review' => 'En revisión por Google',
+        'deleted_on_network' => 'Eliminado',
     ],
 
     'descriptions' => [
@@ -1103,13 +1130,18 @@ return [
         'channels' => 'Canales (:count)',
     ],
     'approvals' => [
-        'badge' => 'Aprobación',
         'time_passed' => 'La hora ya pasó',
         'approve' => 'Aprobar',
         'schedule' => 'Programar',
         'reject' => 'Rechazar',
         'revert' => 'Retirar solicitud de aprobación',
         'requested' => 'Aprobación solicitada',
+        'toasts' => [
+            'scheduled' => 'Publicación aprobada y programada',
+            'queued' => 'Publicación aprobada y añadida a la cola',
+            'publishing' => 'Publicación aprobada, publicándose ahora',
+            'rejected' => 'Publicación rechazada y movida a borradores',
+        ],
         'errors' => [
             'not_pending' => 'Esta publicación ya no está pendiente de aprobación.',
             'time_passed' => 'La hora solicitada ya pasó. Elige una nueva hora.',

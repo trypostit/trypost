@@ -6,6 +6,10 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 function labelMenuOwner(): array
 {
@@ -176,15 +180,80 @@ test('a label row shows its color, how many posts use it and its actions in one 
 
     $page->assertSeeIn("@label-posts-count-{$label->id}", trans_choice('labels.meta.posts', 1, ['count' => 1]));
 
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"label-swatch-{$label->id}\"]')).color"))
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"label-swatch-{$label->id}\"]')).backgroundColor"))
         ->toBe('rgb(22, 163, 74)');
 
     $page->click("@label-menu-{$label->id}");
-    waitFor($page, "@edit-label-{$label->id}");
+    waitFor($page, "@delete-label-{$label->id}");
 
-    $page->assertVisible("@delete-label-{$label->id}")
-        ->click("@edit-label-{$label->id}");
-    waitFor($page, '@edit-label-dialog');
+    $page->assertVisible("@label-view-posts-{$label->id}")
+        ->assertVisible("@label-view-insights-{$label->id}")
+        ->assertMissing("@edit-label-{$label->id}")
+        ->assertNoJavaScriptErrors();
+});
 
-    $page->assertVisible('@edit-label-dialog')->assertNoJavaScriptErrors();
+test('only the cog on a label row opens its edit dialog, not the rest of the row, and the cog and menu say Settings and More actions', function () {
+    [$user, $label] = labelMenuOwner();
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'));
+    waitFor($page, "@label-settings-{$label->id}");
+
+    $page->click("@label-posts-count-{$label->id}");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+    $page->assertMissing('@edit-label-dialog');
+
+    $page->hover("@label-settings-{$label->id}");
+    waitForText($page, "@label-settings-tooltip-{$label->id}", __('labels.actions.settings'));
+    $page->hover('@header-title')->hover("@label-menu-{$label->id}");
+    waitForText($page, "@label-menu-tooltip-{$label->id}", __('labels.actions.more'));
+
+    $page->click("@label-settings-{$label->id}");
+    waitForOpen($page, '@edit-label-dialog');
+
+    $page->assertVisible('@edit-label-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('label row menu opens insights filtered by the label in a new tab, with the label picked in the filter', function () {
+    [$user, $label] = labelMenuOwner();
+    subscribeAccount($user->account);
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'));
+    waitFor($page, "@label-menu-{$label->id}");
+    $page->click("@label-menu-{$label->id}");
+    waitFor($page, "@label-view-insights-{$label->id}");
+
+    $link = $page->script(<<<JS
+        (() => {
+            const link = document.querySelector('[data-testid="label-view-insights-{$label->id}"]');
+            return { href: decodeURIComponent(link.href), target: link.target, rel: link.rel };
+        })()
+    JS);
+
+    expect($link['target'])->toBe('_blank')
+        ->and($link['rel'])->toContain('noopener')
+        ->and($link['href'])->toStartWith(route('app.insights'))
+        ->and($link['href'])->toContain("labels[]={$label->id}");
+
+    assertLabelFilterSelected(visit(route('app.insights', ['labels' => [$label->id]])), 'analytics-label', $label->id);
+});
+
+test('a label without posts says so and a label with thousands of posts shows its exact count', function () {
+    [$user, $label] = labelMenuOwner();
+    $empty = WorkspaceLabel::factory()->create(['workspace_id' => $label->workspace_id, 'name' => 'Empty']);
+    $post = Post::factory()->create(['workspace_id' => $label->workspace_id, 'user_id' => $user->id]);
+    $row = Arr::except((array) DB::table('posts')->where('id', $post->id)->first(), ['id']);
+    $ids = collect(range(1, 1200))->map(fn (): string => (string) Str::uuid());
+    $ids->chunk(200)->each(fn (Collection $chunk) => DB::table('posts')->insert($chunk->map(fn (string $id): array => [...$row, 'id' => $id])->all()));
+    $ids->chunk(200)->each(fn (Collection $chunk) => DB::table('post_workspace_label')->insert($chunk->map(fn (string $id): array => ['post_id' => $id, 'workspace_label_id' => $label->id])->values()->all()));
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'));
+    waitFor($page, "@label-posts-count-{$label->id}");
+
+    $page->assertSeeIn("@label-posts-count-{$label->id}", trans_choice('labels.meta.posts', 1200, ['count' => 1200]))
+        ->assertSeeIn("@label-posts-count-{$empty->id}", trans_choice('labels.meta.posts', 0, ['count' => 0]))
+        ->assertNoJavaScriptErrors();
 });

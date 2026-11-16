@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
+import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
 import {
     Popover,
     PopoverContent,
@@ -32,7 +32,10 @@ const network = computed(() =>
                 "
                 :data-testid="`post-deleted-on-network-${testKey}`"
             >
-                <PostDeletedOnNetworkBadge class="cursor-pointer" />
+                <PostStatusBadge
+                    status="deleted_on_network"
+                    class="cursor-pointer"
+                />
             </button>
         </PopoverTrigger>
         <PopoverContent

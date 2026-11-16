@@ -20,13 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceInviteController extends Controller
 {
-    public function index(Request $request): InertiaResponse|RedirectResponse
+    public function index(Request $request): InertiaResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('manageTeam', $workspace);
 
@@ -56,10 +52,6 @@ class WorkspaceInviteController extends Controller
     public function store(StoreWorkspaceInviteRequest $request): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('inviteMember', $workspace);
 
@@ -94,10 +86,6 @@ class WorkspaceInviteController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('manageTeam', $workspace);
 
         if ($invite->account_id !== $workspace->account_id) {
@@ -115,10 +103,6 @@ class WorkspaceInviteController extends Controller
     public function removeMember(Request $request, string $userId): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('manageTeam', $workspace);
 
@@ -141,10 +125,6 @@ class WorkspaceInviteController extends Controller
     public function updateMember(UpdateWorkspaceMemberRequest $request, string $userId): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         if ($userId === $request->user()->id) {
             return back()->withErrors(['is_admin' => __('settings.members.errors.cannot_change_own_access')]);

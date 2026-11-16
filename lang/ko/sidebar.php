@@ -7,6 +7,7 @@ return [
     'select_workspace' => '워크스페이스 선택',
     'create_workspace' => '워크스페이스 만들기',
     'new' => '새로 만들기',
+    'unfinished_post' => '완료하지 않은 게시물이 있습니다',
     'create' => '만들기',
     'new_menu' => [
         'post' => '게시물',

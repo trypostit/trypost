@@ -14,25 +14,8 @@ import NousresearchHermes from '@thesvg/vue/nousresearch-hermes';
 import OpenWebui from '@thesvg/vue/open-webui';
 import OpenaiChatgpt from '@thesvg/vue/openai-chatgpt';
 import Opencode from '@thesvg/vue/opencode';
-import type { Component } from 'vue';
 
-
-export type McpClientId = 'claude' | 'chatgpt' | 'other';
-
-export interface McpClient {
-    id: McpClientId;
-    /** A brand name, or a lang key to resolve with `$t` when `labelKey` is set. */
-    label: string;
-    labelKey?: boolean;
-    /** The mark on neutral surfaces, in its brand color or the text color. */
-    logo: Component;
-    /** Where the user adds a connector in that client; none for a generic app. */
-    settingsUrl?: string;
-    /** Listed in the client's app store: the user connects from its page, nothing to paste. */
-    listed?: boolean;
-    /** A button filled in the brand's color, with the mark in the button's text color. */
-    brandButtonClass?: string;
-}
+import type { McpAppLogo, McpClient } from '@/types/mcp';
 
 /** TryPost's page in the ChatGPT app store. */
 const CHATGPT_APP_URL =
@@ -42,20 +25,23 @@ const CHATGPT_APP_URL =
 const CLAUDE_ADD_CONNECTOR_URL =
     'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours';
 
+/** Claude: the app whose connect steps open first, before the user picks one. */
+export const claudeMcpClient: McpClient = {
+    id: 'claude',
+    label: 'Claude',
+    logo: Claude,
+    settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
+    brandButtonClass:
+        'bg-[#d97757] text-white hover:bg-[#c4643f] dark:bg-[#d97757] dark:text-white dark:hover:bg-[#c4643f]',
+};
+
 /**
  * First-class MCP clients surfaced on workspace MCP settings and the in-app
- * card that invites the user to connect an AI (`McpPromptCard`).
+ * card that invites the user to connect an AI (`McpPromptTour`).
  * `settingsUrl` is where the user adds a connector in that client.
  */
 export const mcpClients: McpClient[] = [
-    {
-        id: 'claude',
-        label: 'Claude',
-        logo: Claude,
-        settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
-        brandButtonClass:
-            'bg-[#d97757] text-white hover:bg-[#c4643f] dark:bg-[#d97757] dark:text-white dark:hover:bg-[#c4643f]',
-    },
+    claudeMcpClient,
     {
         id: 'chatgpt',
         label: 'ChatGPT',
@@ -74,14 +60,6 @@ export const otherMcpClient: McpClient = {
     labelKey: true,
     logo: McpModelContextProtocol,
 };
-
-/** A connected app's logo, found by a word of the name the app registered with. */
-export interface McpAppLogo {
-    id: string;
-    name: string;
-    logo: Component;
-    logoClass?: string;
-}
 
 /**
  * The logos of the MCP apps people connect, most specific name first

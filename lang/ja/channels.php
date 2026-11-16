@@ -7,6 +7,8 @@ return [
     'description' => 'このワークスペースのチャンネルを管理します。',
     'connect' => 'チャンネルを接続',
     'settings' => 'チャンネル設定',
+    'manage' => 'チャンネルを管理',
+    'set_goal' => '投稿目標を設定',
     'publish' => '投稿する',
     'insights' => 'Insights',
     'new_post' => 'このチャンネルで新規投稿',
@@ -168,6 +170,25 @@ return [
         'description' => 'TryPost 内のこのチャンネルの投稿は、下書き、予約投稿、公開履歴を含めてすべて削除されます。ネットワーク上にすでにある投稿はそのまま残ります。',
         'keyword' => '接続解除',
         'cancel' => 'キャンセル',
+    ],
+
+    'list' => [
+        'search' => '名前、@ユーザー名、ネットワークで検索',
+        'networks' => 'ネットワーク',
+        'networks_search' => 'ネットワークを検索',
+        'no_networks' => 'ネットワークが見つかりません',
+        'columns' => [
+            'channel' => 'チャンネル',
+            'timezone' => 'タイムゾーン',
+            'posting_times' => '投稿時間',
+            'this_week' => '今週',
+        ],
+        'posting_times_per_week' => '週:count回',
+        'no_posting_times' => '投稿時間なし',
+        'no_results' => '検索に一致するチャンネルはありません。',
+        'connection_lost' => 'このチャンネルの接続が切れました',
+        'settings' => '設定',
+        'more_actions' => 'その他の操作',
     ],
 
     'settings_page' => [

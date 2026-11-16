@@ -54,6 +54,7 @@ use App\Http\Controllers\App\Settings\PasswordController;
 use App\Http\Controllers\App\Settings\PreferencesController;
 use App\Http\Controllers\App\Settings\ProfileController;
 use App\Http\Controllers\App\Settings\SessionController;
+use App\Http\Controllers\App\TourController;
 use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
@@ -223,6 +224,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('channels/{account}/calendar/{view?}', [ChannelController::class, 'calendar'])
         ->where('view', 'days|week|month')
         ->name('app.channels.calendar');
+    Route::get('channels/{account}/board', [ChannelController::class, 'board'])->name('app.channels.board');
     Route::get('channels/{account}/insights', [ChannelController::class, 'insights'])->name('app.channels.insights');
     Route::get('channels/{account}/insights/download/{format}', [ChannelController::class, 'downloadInsights'])
         ->whereIn('format', ExportFormat::values())
@@ -245,6 +247,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('schedule/calendar/{view?}', [PostController::class, 'calendar'])
         ->where('view', 'days|week|month')
         ->name('app.calendar');
+    Route::get('schedule/board', [PostController::class, 'board'])->name('app.posts.board');
 
     Route::get('posts/composer/live', ComposerLiveDataController::class)->name('app.posts.composer.live');
     Route::get('posts/composer/accounts/{account}', [ComposerAccountDataController::class, 'show'])->name('app.posts.composer.account');
@@ -397,6 +400,10 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('settings/workspace/mcp/prompt', [McpPromptController::class, 'store'])
         ->middleware('throttle:30,1')
         ->name('app.mcp.prompt.store');
+
+    Route::post('tours', [TourController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('app.tours.store');
 
     Route::get('repurposes', [RepurposeController::class, 'index'])->name('app.repurposes.index');
     Route::post('repurposes', [RepurposeController::class, 'store'])->name('app.repurposes.store');

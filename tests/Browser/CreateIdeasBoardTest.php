@@ -863,3 +863,18 @@ test('on a phone the label filter opens as a sheet', function () {
     $page->assertVisible('@ideas-filter-labels-sheet')
         ->assertNoJavaScriptErrors();
 });
+
+test('an idea card shows its labels as chips in their own color', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Launch', 'color' => '#7c3aed']);
+    $idea = createIdeasBoardIdea($workspace, $user, $stages['todo'], 1, 'Spring sale');
+    $idea->labels()->attach($label);
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'));
+    waitFor($page, "@idea-card-label-{$idea->id}-{$label->id}");
+
+    $page->assertSeeIn("@idea-card-label-{$idea->id}-{$label->id}", 'Launch')
+        ->assertScript("getComputedStyle(document.querySelector('[data-testid=\"idea-card-label-{$idea->id}-{$label->id}\"]')).backgroundColor", 'rgb(124, 58, 237)')
+        ->assertNoJavaScriptErrors();
+});

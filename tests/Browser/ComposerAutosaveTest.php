@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * @return array{0: User, 1: Workspace, 2: SocialAccount}
@@ -483,3 +484,78 @@ test('resuming an unfinished post keeps its thread replies', function () {
         ->assertValue("@composer-caption-{$bluesky->id}", 'Thread root')
         ->assertNoJavaScriptErrors();
 });
+
+test('the sidebar new button marks an unfinished post as soon as the composer closes and drops the mark once it is discarded', function () {
+    [$user, , $account] = composerAutosaveWorkspace();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@sidebar-new');
+    $page->assertMissing('@sidebar-new-unfinished');
+
+    openComposerForAutosave($page);
+    writeUnfinishedPost($page, $account, 'Half written idea');
+    closeComposerForAutosave($page);
+    waitFor($page, '@sidebar-new-unfinished');
+
+    $page->hover('@sidebar-new');
+    waitForText($page, '@sidebar-new-unfinished-tooltip', __('sidebar.unfinished_post'));
+    $page->click('@sidebar-new');
+    waitForOpen($page, '@sidebar-new-menu');
+    $page->assertVisible('@sidebar-new-post-unfinished')
+        ->assertSeeIn('@sidebar-new-post-unfinished', __('sidebar.unfinished_post'));
+    $page->keys('@sidebar-new-post', 'Escape');
+    waitForGone($page, '@sidebar-new-menu');
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-discard');
+    waitForGone($page, '@composer-resume-dialog');
+    closeComposerForAutosave($page);
+
+    waitForGone($page, '@sidebar-new-unfinished');
+    $page->hover('@sidebar-new');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+    $page->assertMissing('@sidebar-new-unfinished-tooltip');
+
+    $page->click('@sidebar-new');
+    waitForOpen($page, '@sidebar-new-menu');
+    $page->assertMissing('@sidebar-new-post-unfinished')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the sidebar new button marks only a draft the composer offers back, not one left with labels, a disconnected channel or expired uploads', function (Closure $draft, bool $marked) {
+    [$user, $workspace, $account] = composerAutosaveWorkspace();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@sidebar-new');
+    seedComposerAutosave($page, $user, $workspace->id, $draft($account));
+
+    $page->navigate(route('app.posts.index'));
+    waitFor($page, '@sidebar-new');
+
+    if ($marked) {
+        waitFor($page, '@sidebar-new-unfinished');
+    } else {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+        $page->assertMissing('@sidebar-new-unfinished');
+    }
+
+    openComposerForAutosave($page);
+
+    if ($marked) {
+        waitFor($page, '@composer-resume-dialog');
+    } else {
+        $page->assertMissing('@composer-resume-dialog');
+    }
+
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'its text' => [fn (SocialAccount $account): array => ['content' => 'Half written'], true],
+    'its channel' => [fn (SocialAccount $account): array => ['accountIds' => [$account->id]], true],
+    'a fresh upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'fresh', 'upload_token' => 'fresh-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/fresh.png', 'type' => 'image', 'mime_type' => 'image/png']]], true],
+    'only labels' => [fn (SocialAccount $account): array => ['labelIds' => ['label']], false],
+    'a disconnected channel' => [fn (SocialAccount $account): array => ['accountIds' => [(string) Str::uuid()]], false],
+    'an expired upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'expired', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/expired.png', 'type' => 'image', 'mime_type' => 'image/png']]], false],
+]);

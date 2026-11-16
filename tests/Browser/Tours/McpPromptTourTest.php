@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Str;
 
 function mcpPromptUser(array $attributes = []): User
 {
@@ -26,7 +27,7 @@ function mcpPromptUser(array $attributes = []): User
  */
 function mcpPromptAvatars(mixed $page): array
 {
-    return $page->script("[...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => avatar.dataset.testid.replace('mcp-prompt-avatar-', ''))");
+    return elementsMap($page, '@mcp-prompt-avatars [data-testid]', "element.dataset.testid.replace('mcp-prompt-avatar-', '')");
 }
 
 test('a new user is invited to connect an AI, and closing it hides it for good in that browser', function () {
@@ -35,10 +36,13 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@mcp-prompt');
 
-    expect(mcpPromptAvatars($page))->toBe(['chatgpt', 'claude', 'grok', 'gemini', 'cursor', 'n8n'])
-        ->and($page->script("(() => { const layers = [...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => Number(getComputedStyle(avatar).zIndex)); return layers.every((layer, index) => index === 0 || layer < layers[index - 1]); })()"))->toBeTrue();
+    $layers = elementsMap($page, '@mcp-prompt-avatars [data-testid]', 'Number(getComputedStyle(element).zIndex)');
 
-    $page->assertSeeIn('@mcp-prompt', __('mcp.prompt.title'))
+    expect(mcpPromptAvatars($page))->toBe(['chatgpt', 'claude', 'grok', 'gemini', 'cursor', 'n8n'])
+        ->and($layers)->toBe(collect($layers)->sortDesc()->values()->all())
+        ->and(array_unique($layers))->toHaveCount(count($layers));
+
+    $page->assertSeeIn('@mcp-prompt', __('tours.mcp.prompt.steps.card.title'))
         ->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
 
@@ -50,21 +54,77 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
         ->assertNoJavaScriptErrors();
 });
 
+test('the card waits while a tour is open and shows once the tour closes', function () {
+    config(['trypost.tours.enabled' => true]);
+    $this->actingAs(mcpPromptUser());
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+    $page->assertMissing('@mcp-prompt');
+
+    $page->click('@tour-publish-views-views-next');
+    waitForGone($page, '@tour-publish-views-views-content');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the card shows once a tour open here is closed in another tab', function () {
+    config(['trypost.tours.enabled' => true]);
+    $user = mcpPromptUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+    $page->assertMissing('@mcp-prompt');
+
+    setBrowserStorageItem($page, $user, 'tours', ['publish.views' => ['status' => 'completed', 'step' => 1]]);
+    announceBrowserStorageFromAnotherTab($page, $user);
+
+    waitForGone($page, '@tour-backdrop');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('answering where they found us opens the waiting tour first, and the card still waits for it', function () {
+    config(['trypost.tours.enabled' => true]);
+    $this->actingAs(mcpPromptUser(['referral_source' => null, 'created_at' => now()->subDays(2)]));
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitFor($page, '@referral-source-survey');
+    $page->assertMissing('@mcp-prompt')
+        ->assertMissing('@tour-publish-views-views-content');
+
+    $page->click('@referral-source-option-google');
+    $page->click('@referral-source-submit');
+    waitForOpen($page, '@tour-publish-views-views-content');
+    letPageRun($page, 1000);
+
+    $page->assertMissing('@mcp-prompt');
+
+    $page->click('@tour-publish-views-views-next');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('closing the card keeps it in the user\'s one browser storage key, leaving the workspaces block as it was', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);
-    $key = "trypost:{$user->id}";
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@mcp-prompt');
-    $page->script(sprintf("localStorage.setItem('%s', JSON.stringify({ version: 1, user: {}, workspaces: { kept: { note: true } } }))", $key));
+    setBrowserStorageItem($page, $user, 'note', true, 'kept');
     $page->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
 
-    expect($page->script("Object.keys(localStorage).filter((key) => key.startsWith('trypost:') || key.startsWith('mcp.'))"))->toBe([$key])
-        ->and($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
+    $appKeys = collect(localStorageKeys($page))->filter(fn (string $key): bool => Str::startsWith($key, ['trypost:', 'mcp.']))->values()->all();
+
+    expect($appKeys)->toBe(["trypost:{$user->id}"])
+        ->and(browserStorage($page, $user))->toBe([
             'version' => 1,
-            'user' => ['mcp.promptDismissed' => true],
+            'user' => ['tours' => ['mcp.prompt' => ['status' => 'skipped', 'step' => 1]]],
             'workspaces' => ['kept' => ['note' => true]],
         ]);
     $page->assertNoJavaScriptErrors();
@@ -73,17 +133,11 @@ test('closing the card keeps it in the user\'s one browser storage key, leaving 
 test('closing the card in another tab hides it here at once', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);
-    $key = "trypost:{$user->id}";
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@mcp-prompt');
-    $page->script(sprintf(<<<'JS'
-        (() => {
-            const value = JSON.stringify({ version: 1, user: { 'mcp.promptDismissed': true }, workspaces: {} });
-            localStorage.setItem('%1$s', value);
-            window.dispatchEvent(new StorageEvent('storage', { key: '%1$s', newValue: value }));
-        })()
-    JS, $key));
+    setBrowserStorageItem($page, $user, 'tours', ['mcp.prompt' => ['status' => 'skipped', 'step' => 1]]);
+    announceBrowserStorageFromAnotherTab($page, $user);
     waitForGone($page, '@mcp-prompt');
 
     $page->assertMissing('@mcp-prompt')
@@ -93,11 +147,10 @@ test('closing the card in another tab hides it here at once', function () {
 test('an unreadable, older or malformed browser storage value reads as empty and is replaced on the next save', function (string $stored, array $workspaces = []) {
     $user = mcpPromptUser();
     $this->actingAs($user);
-    $key = "trypost:{$user->id}";
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@app-header');
-    $page->script(sprintf("localStorage.setItem('%s', %s)", $key, json_encode($stored)));
+    setRawBrowserStorage($page, $user, $stored);
     $page->navigate(route('app.posts.index'));
     waitForPath($page, route('app.posts.index', absolute: false));
     waitFor($page, '@mcp-prompt');
@@ -105,17 +158,17 @@ test('an unreadable, older or malformed browser storage value reads as empty and
     $page->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
 
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}'))"))->toBe([
+    expect(browserStorage($page, $user))->toBe([
         'version' => 1,
-        'user' => ['mcp.promptDismissed' => true],
+        'user' => ['tours' => ['mcp.prompt' => ['status' => 'skipped', 'step' => 1]]],
         'workspaces' => $workspaces,
     ]);
     $page->assertNoJavaScriptErrors();
 })->with([
     'not JSON' => ['not json'],
-    'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
+    'an older version' => ['{"version":0,"user":{"tours":{"mcp.prompt":{"status":"skipped","step":1}}},"workspaces":{}}'],
     'no user or workspaces block' => ['{"version":1}'],
-    'an item of the wrong shape' => ['{"version":1,"user":{"mcp.promptDismissed":"yes"},"workspaces":{}}'],
+    'an item of the wrong shape' => ['{"version":1,"user":{"tours":"yes"},"workspaces":{}}'],
     'a list instead of the value' => ['[1]'],
     'a user block that is not an object' => ['{"version":1,"user":"dismissed","workspaces":{}}'],
     'a workspace block that is not an object' => ['{"version":1,"user":{},"workspaces":{"workspace-a":"draft"}}', ['workspace-a' => []]],
@@ -126,18 +179,10 @@ test('a browser that refuses storage still shows the card and closes it, on the 
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitFor($page, '@app-header');
-    $page->script(<<<'JS'
-        (() => {
-            const refuse = () => { throw new DOMException('denied', 'SecurityError'); };
-            Storage.prototype.getItem = refuse;
-            Storage.prototype.setItem = refuse;
-        })()
-    JS);
+    refuseBrowserStorage($page);
     $page->click('@sidebar-logo');
     waitForPath($page, route('app.posts.index', absolute: false));
     waitFor($page, '@mcp-prompt');
-
-    expect($page->script("(() => { try { localStorage.getItem('x'); return 'allowed'; } catch { return 'refused'; } })()"))->toBe('refused');
 
     $page->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
@@ -194,7 +239,7 @@ test('the steps stay open while nothing connected, even when the account loses a
     waitFor($page, '@mcp-dialog');
 
     $user->account->subscriptions()->delete();
-    $page->script('new Promise((resolve) => setTimeout(resolve, 4500))');
+    letPageRun($page, 4500);
 
     $page->assertVisible('@mcp-dialog')
         ->assertNoJavaScriptErrors();

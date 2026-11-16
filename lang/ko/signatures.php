@@ -18,10 +18,10 @@ return [
         'created_at' => '생성일',
     ],
 
-    'row_actions' => '서명 작업',
     'actions' => [
         'edit' => '서명 편집',
-        'delete' => '서명 삭제',
+        'delete' => '삭제',
+        'settings' => '설정',
     ],
 
     'create' => [

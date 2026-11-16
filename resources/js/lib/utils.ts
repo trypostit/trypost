@@ -49,9 +49,14 @@ const withDash =
         return format(value, ...args);
     };
 
+/**
+ * A count in thousands or millions, written the same in every language:
+ * "1.5K", "10K", "1.2M" (a short count, never an amount in the reader's
+ * number format like "1,5 mil").
+ */
 export const formatNumberCompact = withDash(
     (value: number, digits: number = 1): string =>
-        new Intl.NumberFormat(activeLocale.value, {
+        new Intl.NumberFormat('en-US', {
             notation: 'compact',
             compactDisplay: 'short',
             maximumFractionDigits: digits,
@@ -101,10 +106,10 @@ export const formatFullNumber = withDash(
     (value: number): string => value.toLocaleString(activeLocale.value),
 );
 
-/** A change in a count, signed and compact: "+1.2K", "-3", "0". */
+/** A change in a count, signed and compact, the same in every language: "+1.2K", "-3", "0". */
 export const formatCountChange = withDash(
     (value: number): string =>
-        new Intl.NumberFormat(activeLocale.value, {
+        new Intl.NumberFormat('en-US', {
             notation: 'compact',
             compactDisplay: 'short',
             maximumFractionDigits: 1,

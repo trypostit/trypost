@@ -172,6 +172,8 @@ export interface AnalyticsFilters {
 
 export interface WorkspaceAnalyticsFilters extends AnalyticsFilters {
     channels: string[];
+    labels: string[];
+    untagged: boolean;
 }
 
 export interface AnalyticsChannelOption {

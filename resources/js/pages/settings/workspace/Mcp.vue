@@ -24,8 +24,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { DOCS_URL } from '@/lib/docs';
-import { mcpAppLogos, mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
+import {
+    claudeMcpClient,
+    mcpAppLogos,
+    mcpClients,
+    otherMcpClient,
+} from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
+import type { McpClient } from '@/types/mcp';
 import { fireCelebration } from '@/utils/confetti';
 
 interface ConnectedClient {
@@ -66,7 +72,7 @@ const confirmDisconnect = (client: ConnectedClient, keyword: string): void => {
 
 const connectableClients: McpClient[] = [...mcpClients, otherMcpClient];
 
-const activeClient = ref<McpClient>(mcpClients[0]);
+const activeClient = ref<McpClient>(claudeMcpClient);
 const dialogOpen = ref(false);
 
 const connectWith = (client: McpClient): void => {

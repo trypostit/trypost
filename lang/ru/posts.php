@@ -4,6 +4,31 @@ declare(strict_types=1);
 
 return [
     'list_view' => 'Список',
+    'board' => [
+        'view' => 'Доска',
+        'group_by' => 'Группировать по',
+        'group_by_value' => 'Группировать по: :group',
+        'groups' => [
+            'status' => 'Статус',
+            'tag' => 'Метка',
+            'channel' => 'Канал',
+        ],
+        'columns' => [
+            'draft' => 'Черновик',
+            'approvals' => 'Одобрение',
+            'scheduled' => 'Запланирован',
+            'published' => 'Опубликован',
+            'failed' => 'Ошибка',
+            'untagged' => 'Без метки',
+            'no_channel' => 'Нет канала',
+        ],
+        'empty_column' => 'Здесь пусто',
+        'no_columns' => [
+            'title' => 'Ничего не соответствует этим фильтрам',
+            'description' => 'Сбросьте фильтр по меткам или каналам, чтобы увидеть все колонки.',
+        ],
+        'column_aria' => '{1} :name, постов: :count|[0,*] :name, постов: :count',
+    ],
     'view_switcher' => 'Вид расписания',
     'all_posts' => 'Все посты',
     'composer' => [
@@ -616,12 +641,14 @@ return [
     'status' => [
         'pending' => 'В ожидании',
         'draft' => 'Черновик',
-        'pending_approval' => 'Ожидает одобрения',
+        'pending_approval' => 'Ожидает',
         'scheduled' => 'Запланирован',
         'publishing' => 'Публикуется',
         'retrying' => 'Повторная попытка',
         'published' => 'Опубликован',
         'failed' => 'Ошибка',
+        'pending_review' => 'На проверке в Google',
+        'deleted_on_network' => 'Удалён',
     ],
 
     'descriptions' => [
@@ -1102,13 +1129,18 @@ return [
         'channels' => 'Каналы (:count)',
     ],
     'approvals' => [
-        'badge' => 'Одобрение',
         'time_passed' => 'Время прошло',
         'approve' => 'Одобрить',
         'schedule' => 'Запланировать',
         'reject' => 'Отклонить',
         'revert' => 'Отозвать запрос на одобрение',
         'requested' => 'Запрос на одобрение отправлен',
+        'toasts' => [
+            'scheduled' => 'Пост одобрен и запланирован',
+            'queued' => 'Пост одобрен и добавлен в очередь',
+            'publishing' => 'Пост одобрен и публикуется',
+            'rejected' => 'Пост отклонён и перемещён в черновики',
+        ],
         'errors' => [
             'not_pending' => 'Эта публикация больше не ожидает одобрения.',
             'time_passed' => 'Запрошенное время прошло. Выберите новое время.',

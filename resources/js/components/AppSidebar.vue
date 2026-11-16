@@ -35,8 +35,15 @@ import {
     SidebarHeader,
     useSidebar,
 } from '@/components/ui/sidebar';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useHasUnfinishedPost } from '@/composables/useComposerAutosave';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { usePublishView } from '@/composables/usePublishView';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { insights } from '@/routes/app';
 import { index as ideasIndex, create as createIdea } from '@/routes/app/create/ideas';
@@ -55,6 +62,8 @@ const {
     canManageAccounts,
     canManageTeam,
 } = useWorkspaceAbilities();
+const { publishUrl } = usePublishView();
+const hasUnfinishedPost = useHasUnfinishedPost();
 const { open: openConnectDialog } = useConnectChannelDialog();
 
 const inviteMemberDialogOpen = ref(false);
@@ -85,7 +94,8 @@ const mainNavItems = computed<NavItem[]>(() => [
         : []),
     {
         title: trans('sidebar.groups.posts'),
-        href: postsIndex.url(),
+        href: publishUrl.value,
+        activePattern: postsIndex.url(),
         icon: IconCalendarEvent,
         count: scheduledPostsCount.value,
         countTestId: 'sidebar-publish-count',
@@ -131,105 +141,131 @@ const mainNavItems = computed<NavItem[]>(() => [
                 v-if="currentWorkspace && canCreatePost"
                 class="px-4 pt-4 pb-3 group-data-[collapsible=icon]:px-2.5"
             >
-                <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                        <Button
-                            class="h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
-                            :aria-label="$t('sidebar.new')"
-                            data-testid="sidebar-new"
-                        >
-                            <IconPlus
-                                class="hidden size-4 group-data-[collapsible=icon]:block"
-                            />
-                            <span class="group-data-[collapsible=icon]:hidden">{{
-                                $t('sidebar.new')
-                            }}</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        class="w-72 p-1.5"
-                        align="start"
-                        :side="
-                            isMobile || sidebarState === 'expanded'
-                                ? 'bottom'
-                                : 'right'
-                        "
-                        :side-offset="4"
-                        data-testid="sidebar-new-menu"
+                <Tooltip :disabled="!hasUnfinishedPost">
+                    <TooltipTrigger as-child>
+                        <span class="flex w-full">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger as-child>
+                                    <Button
+                                        class="relative h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+                                        :aria-label="$t('sidebar.new')"
+                                        data-testid="sidebar-new"
+                                    >
+                                        <IconPlus
+                                            class="hidden size-4 group-data-[collapsible=icon]:block"
+                                        />
+                                        <span class="group-data-[collapsible=icon]:hidden">{{
+                                            $t('sidebar.new')
+                                        }}</span>
+                                        <span
+                                            v-if="hasUnfinishedPost"
+                                            class="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-warning ring-2 ring-sidebar"
+                                            data-testid="sidebar-new-unfinished"
+                                        />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    class="w-72 p-1.5"
+                                    align="start"
+                                    :side="
+                                        isMobile || sidebarState === 'expanded'
+                                            ? 'bottom'
+                                            : 'right'
+                                    "
+                                    :side-offset="4"
+                                    data-testid="sidebar-new-menu"
+                                >
+                                    <DropdownMenuItem
+                                        class="gap-3 p-2"
+                                        data-testid="sidebar-new-post"
+                                        @select="openPostComposer()"
+                                    >
+                                        <span
+                                            class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-text-hover dark:bg-primary-strong dark:text-primary-strong-foreground"
+                                            data-testid="sidebar-new-post-icon"
+                                        >
+                                            <IconFileText
+                                                class="size-5 text-primary-text-hover dark:text-primary-strong-foreground"
+                                            />
+                                        </span>
+                                        <span class="grid gap-0.5">
+                                            <span class="text-sm font-semibold">{{
+                                                $t('sidebar.new_menu.post')
+                                            }}</span>
+                                            <span
+                                                class="text-xs font-normal text-muted-foreground"
+                                                >{{
+                                                    $t('sidebar.new_menu.post_description')
+                                                }}</span
+                                            >
+                                        </span>
+                                        <span
+                                            v-if="hasUnfinishedPost"
+                                            class="ms-auto size-2 shrink-0 rounded-full bg-warning"
+                                            data-testid="sidebar-new-post-unfinished"
+                                        >
+                                            <span class="sr-only">{{
+                                                $t('sidebar.unfinished_post')
+                                            }}</span>
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        class="gap-3 p-2"
+                                        data-testid="sidebar-new-idea"
+                                        @select="router.visit(createIdea.url())"
+                                    >
+                                        <span
+                                            class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary-strong dark:text-primary-text"
+                                            data-testid="sidebar-new-idea-icon"
+                                        >
+                                            <IconBulb
+                                                class="size-5 text-primary-strong dark:text-primary-text"
+                                            />
+                                        </span>
+                                        <span class="grid gap-0.5">
+                                            <span class="text-sm font-semibold">{{
+                                                $t('sidebar.new_menu.idea')
+                                            }}</span>
+                                            <span
+                                                class="text-xs font-normal text-muted-foreground"
+                                                >{{
+                                                    $t('sidebar.new_menu.idea_description')
+                                                }}</span
+                                            >
+                                        </span>
+                                    </DropdownMenuItem>
+                                    <template v-if="canManageAccounts || canManageTeam">
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            v-if="canManageAccounts"
+                                            data-testid="sidebar-new-channel"
+                                            @select="openConnectDialog()"
+                                        >
+                                            <IconLayoutGrid
+                                                class="size-4 text-muted-foreground"
+                                            />
+                                            {{ $t('sidebar.new_menu.channel') }}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            v-if="canManageTeam"
+                                            data-testid="sidebar-new-member"
+                                            @select="openInviteMemberDialog"
+                                        >
+                                            <IconUsers class="size-4 text-muted-foreground" />
+                                            {{ $t('sidebar.new_menu.member') }}
+                                        </DropdownMenuItem>
+                                    </template>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent
+                        side="top"
+                        data-testid="sidebar-new-unfinished-tooltip"
                     >
-                        <DropdownMenuItem
-                            class="gap-3 p-2"
-                            data-testid="sidebar-new-post"
-                            @select="openPostComposer()"
-                        >
-                            <span
-                                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-text-hover dark:bg-primary-strong dark:text-primary-strong-foreground"
-                                data-testid="sidebar-new-post-icon"
-                            >
-                                <IconFileText
-                                    class="size-5 text-primary-text-hover dark:text-primary-strong-foreground"
-                                />
-                            </span>
-                            <span class="grid gap-0.5">
-                                <span class="text-sm font-semibold">{{
-                                    $t('sidebar.new_menu.post')
-                                }}</span>
-                                <span
-                                    class="text-xs font-normal text-muted-foreground"
-                                    >{{
-                                        $t('sidebar.new_menu.post_description')
-                                    }}</span
-                                >
-                            </span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            class="gap-3 p-2"
-                            data-testid="sidebar-new-idea"
-                            @select="router.visit(createIdea.url())"
-                        >
-                            <span
-                                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary-strong dark:text-primary-text"
-                                data-testid="sidebar-new-idea-icon"
-                            >
-                                <IconBulb
-                                    class="size-5 text-primary-strong dark:text-primary-text"
-                                />
-                            </span>
-                            <span class="grid gap-0.5">
-                                <span class="text-sm font-semibold">{{
-                                    $t('sidebar.new_menu.idea')
-                                }}</span>
-                                <span
-                                    class="text-xs font-normal text-muted-foreground"
-                                    >{{
-                                        $t('sidebar.new_menu.idea_description')
-                                    }}</span
-                                >
-                            </span>
-                        </DropdownMenuItem>
-                        <template v-if="canManageAccounts || canManageTeam">
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                v-if="canManageAccounts"
-                                data-testid="sidebar-new-channel"
-                                @select="openConnectDialog()"
-                            >
-                                <IconLayoutGrid
-                                    class="size-4 text-muted-foreground"
-                                />
-                                {{ $t('sidebar.new_menu.channel') }}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                v-if="canManageTeam"
-                                data-testid="sidebar-new-member"
-                                @select="openInviteMemberDialog"
-                            >
-                                <IconUsers class="size-4 text-muted-foreground" />
-                                {{ $t('sidebar.new_menu.member') }}
-                            </DropdownMenuItem>
-                        </template>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                        {{ $t('sidebar.unfinished_post') }}
+                    </TooltipContent>
+                </Tooltip>
             </div>
 
             <NavMain v-if="currentWorkspace" :items="mainNavItems" />

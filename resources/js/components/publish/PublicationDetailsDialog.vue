@@ -4,10 +4,9 @@ import { computed, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
-import PostDeletedOnNetworkBadge from '@/components/publish/PostDeletedOnNetworkBadge.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
-import { Badge } from '@/components/ui/badge';
+import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,14 +17,12 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
 import {
     PublicationAvailability,
     type PublicationAnalyticsDetail,
 } from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
-import { PostStatus } from '@/types/post';
 
 /**
  * The details of a network publication that has no TryPost post: what the
@@ -40,7 +37,6 @@ const open = defineModel<boolean>('open', { required: true });
 
 const publication = computed(() => props.detail.publication);
 
-const status = getPostStatusConfig(PostStatus.Published);
 
 const isDeletedOnNetwork = computed(
     () => publication.value.availability === PublicationAvailability.Deleted,
@@ -87,18 +83,12 @@ const openMediaPreview = (): void => {
                         class="flex flex-wrap items-center gap-2"
                         as="div"
                     >
-                        <PostDeletedOnNetworkBadge
+                        <PostStatusBadge
                             v-if="isDeletedOnNetwork"
+                            status="deleted_on_network"
                             :data-testid="`publication-details-deleted-on-network-${publication.id}`"
                         />
-                        <Badge
-                            v-else
-                            :variant="status.variant"
-                            class="h-6 gap-1 px-2 [&>svg]:size-4"
-                        >
-                            <component :is="status.icon" />
-                            {{ $t(`posts.status.${PostStatus.Published}`) }}
-                        </Badge>
+                        <PostStatusBadge v-else status="published" />
                         <span
                             v-if="publication.provider_published_at"
                             class="text-sm text-muted-foreground"

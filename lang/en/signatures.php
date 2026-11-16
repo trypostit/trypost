@@ -18,10 +18,10 @@ return [
         'created_at' => 'Created',
     ],
 
-    'row_actions' => 'Signature actions',
     'actions' => [
         'edit' => 'Edit signature',
-        'delete' => 'Delete signature',
+        'delete' => 'Delete',
+        'settings' => 'Settings',
     ],
 
     'create' => [

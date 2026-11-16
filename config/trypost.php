@@ -42,6 +42,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | In-app tours
+    |--------------------------------------------------------------------------
+    |
+    | The tours that walk a user through a page the first time they see it
+    | (`TourStep`). On by default; browser tests turn them off so a tour
+    | never covers the page they drive.
+    |
+    */
+
+    'tours' => [
+        'enabled' => (bool) env('TOURS_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Legal pages
     |--------------------------------------------------------------------------
     |
