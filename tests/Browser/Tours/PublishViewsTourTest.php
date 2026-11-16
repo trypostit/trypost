@@ -101,14 +101,16 @@ test('using the control the tour points at works and completes the tour', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('a click elsewhere on the page skips the tour', function () {
+test('a click elsewhere on the page leaves the tour open', function () {
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
 
     pointerDownOn($page, '@app-header');
-    waitForGone($page, '@tour-backdrop');
+    letPageRun($page, 500);
 
-    expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
+    $page->assertVisible('@tour-publish-views-views-content')
+        ->assertVisible('@tour-backdrop');
+    expect(browserStorageItem($page, $this->user, 'tours'))->toBeNull();
 
     $page->assertNoJavaScriptErrors();
 });

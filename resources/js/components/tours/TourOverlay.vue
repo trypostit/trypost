@@ -17,7 +17,8 @@ import { labelTextColor } from '@/lib/labelColor';
  * app layout. The backdrop is cut out around the step's control, and the card
  * is anchored to that cut-out and follows it every frame, so moving to the
  * next step slides both to the next control together. Using the control
- * itself moves the tour on; Escape or a click elsewhere skips it. In a longer
+ * itself moves the tour on; a click elsewhere on the page does nothing, and
+ * Escape skips it. In a longer
  * tour the arrow keys do what Next and Back do.
  */
 const openStep = useOpenTourStep();
@@ -161,12 +162,14 @@ const skip = (): void => {
 type PointerDownOutside = CustomEvent<{ originalEvent: PointerEvent }>;
 
 /**
- * A press on the control the step points at keeps the tour open until the
- * click lands on the control, then moves the tour on, instead of skipping it:
- * closing it at once would take the control's pointer events away before the
- * click.
+ * A press outside the card never closes the tour: only its buttons and
+ * Escape do. A press on the control the step points at moves the tour on
+ * once the click lands on the control; moving on at once would take the
+ * control's pointer events away before the click.
  */
 const followControl = (event: PointerDownOutside): void => {
+    event.preventDefault();
+
     const clicked = event.detail.originalEvent.target;
 
     if (!(clicked instanceof Node)) {
@@ -181,8 +184,12 @@ const followControl = (event: PointerDownOutside): void => {
         return;
     }
 
-    event.preventDefault();
     openStep.value.control.addEventListener('click', next, { once: true });
+};
+
+/** Focus leaving the card does not close the tour either. */
+const keepTourOpen = (event: Event): void => {
+    event.preventDefault();
 };
 
 /** The arrow key that reads forward: right, or left in a right-to-left language. */
@@ -260,6 +267,7 @@ const closeTour = (open: boolean): void => {
                 :aria-describedby="descriptionId"
                 :data-testid="`${testId}-content`"
                 @pointer-down-outside="followControl"
+                @focus-outside="keepTourOpen"
                 @keydown="followArrowKey"
             >
                 <div
