@@ -1,10 +1,11 @@
 /**
- * Every tour and its steps, in the order they show. A `TourStep` tour takes
- * each step's copy from `tours.<tour>.steps.<step>.title` and `.description`
- * in `lang/<locale>/tours.php` and is tracked through `app.tours.store`, whose
- * `App\Enums\Tour\Tour` names it. `mcp.prompt` is the card inviting the user
- * to connect an AI (`McpPromptTour`), which keeps its own copy and tracking and
- * only records its "Not now" here.
+ * Every tour and its steps, in the order they show, mirrored by
+ * `App\Enums\Tour\Tour`. Each step's copy is
+ * `tours.<tour>.steps.<step>.title` and `.description` in
+ * `lang/<locale>/tours.php` (`ToursTest` keeps the three in step). A
+ * `TourStep` tour is tracked through `app.tours.store`; `mcp.prompt`, the card
+ * inviting the user to connect an AI (`McpPromptTour`), keeps its own
+ * tracking and only records its "Not now" with the tours.
  */
 export const TOURS = {
     'publish.views': ['views'],

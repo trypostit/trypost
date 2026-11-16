@@ -1,14 +1,14 @@
 /**
- * Runs the step navigation of `resources/js/lib/tours.ts` over the cases in
- * a JSON argument and prints the answers as JSON, so `TourStepsTest.php` can
- * check them. Node strips the types, so the source is loaded as-is.
+ * Prints `TOURS` of `resources/js/lib/tours.ts` and its step navigation over
+ * the cases in a JSON argument, as JSON, so `ToursTest.php` can check them.
+ * Node strips the types, so the source is loaded as-is.
  */
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const [sourceFile, casesJson] = process.argv.slice(2);
 
-const { shownSteps, stepAfter, stepBefore } = await import(
+const { TOURS, shownSteps, stepAfter, stepBefore } = await import(
     pathToFileURL(path.resolve(sourceFile)).href
 );
 
@@ -19,8 +19,9 @@ const cases = JSON.parse(casesJson) as {
 }[];
 
 console.log(
-    JSON.stringify(
-        cases.map(({ steps, onPage, current }) => {
+    JSON.stringify({
+        tours: TOURS,
+        cases: cases.map(({ steps, onPage, current }) => {
             const shown = shownSteps(steps, onPage);
 
             return {
@@ -29,5 +30,5 @@ console.log(
                 before: stepBefore(shown, current),
             };
         }),
-    ),
+    }),
 );

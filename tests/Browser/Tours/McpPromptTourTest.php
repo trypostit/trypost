@@ -50,6 +50,21 @@ test('a new user is invited to connect an AI, and closing it hides it for good i
         ->assertNoJavaScriptErrors();
 });
 
+test('the card waits while a tour is open and shows once the tour closes', function () {
+    config(['trypost.tours.enabled' => true]);
+    $this->actingAs(mcpPromptUser());
+
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+    $page->assertMissing('@mcp-prompt');
+
+    $page->click('@tour-publish-views-views-next');
+    waitForGone($page, '@tour-publish-views-views-content');
+    waitFor($page, '@mcp-prompt');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('closing the card keeps it in the user\'s one browser storage key, leaving the workspaces block as it was', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);

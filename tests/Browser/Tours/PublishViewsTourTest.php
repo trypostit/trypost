@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\TourEvent;
 use App\Enums\User\Locale;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     config(['trypost.tours.enabled' => true]);
@@ -20,7 +23,23 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
+/**
+ * Whether the end of the views tour reached PostHog's queue with this outcome
+ * and step.
+ */
+function tourTracked(User $user, TourEvent $event, int $step): bool
+{
+    return Queue::pushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === $event
+        && $job->distinctId === (string) $user->id
+        && $job->properties['tour'] === 'publish.views'
+        && $job->properties['step'] === $step
+        && $job->properties['steps'] === 1)->isNotEmpty();
+}
+
 test('the views tour opens over a dark page once: "Got it" completes it on every page that has the view switch', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
     waitFor($page, '@tour-publish-views-views-backdrop');
@@ -47,6 +66,7 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
     waitForGone($page, '@tour-publish-views-views-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'completed', 'step' => 1]]);
+    waitForDatabase($page, fn (): bool => tourTracked($this->user, TourEvent::Completed, 1));
 
     $page->click('@schedule-view-calendar');
     waitForPath($page, route('app.calendar', ['view' => 'week'], absolute: false));
@@ -57,6 +77,9 @@ test('the views tour opens over a dark page once: "Got it" completes it on every
 });
 
 test('closing the tour with Escape skips it for good', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForOpen($page, '@tour-publish-views-views-content');
 
@@ -64,10 +87,30 @@ test('closing the tour with Escape skips it for good', function () {
     waitForGone($page, '@tour-publish-views-views-backdrop');
 
     expect(browserStorageItem($page, $this->user, 'tours'))->toBe(['publish.views' => ['status' => 'skipped', 'step' => 1]]);
+    waitForDatabase($page, fn (): bool => tourTracked($this->user, TourEvent::Skipped, 1));
 
     $page->navigate(route('app.posts.index'));
     waitFor($page, '@schedule-view-board');
     $page->assertMissing('@tour-publish-views-views-content');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('closing the tour in another tab closes it here at once', function () {
+    $page = visit(route('app.posts.index'))->resize(1280, 900);
+    waitForOpen($page, '@tour-publish-views-views-content');
+
+    $key = json_encode("trypost:{$this->user->id}");
+    $page->script(<<<JS
+        (() => {
+            const value = JSON.stringify({ version: 1, user: { tours: { 'publish.views': { status: 'completed', step: 1 } } }, workspaces: {} });
+            localStorage.setItem({$key}, value);
+            window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: value }));
+        })()
+    JS);
+
+    waitForGone($page, '@tour-publish-views-views-content');
+    waitForGone($page, '@tour-publish-views-views-backdrop');
 
     $page->assertNoJavaScriptErrors();
 });

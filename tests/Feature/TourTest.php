@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\PostHog\TourEvent;
-use App\Enums\Tour\Tour;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -54,17 +52,3 @@ test('an unknown tour or outcome, or a step past the last, is refused and tracks
     'step past the last' => [['step' => 3, 'steps' => 2], 'step'],
     'no step' => [['step' => 0], 'step'],
 ]);
-
-test('every step of every tour has its title and description', function () {
-    $tours = Lang::get('tours', [], 'en');
-
-    foreach (Tour::cases() as $tour) {
-        $steps = data_get($tours, "{$tour->value}.steps");
-
-        expect($steps)->toBeArray()->not->toBeEmpty();
-
-        foreach ($steps as $step) {
-            expect($step)->toHaveKeys(['title', 'description']);
-        }
-    }
-});

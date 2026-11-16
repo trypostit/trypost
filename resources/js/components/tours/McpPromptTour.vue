@@ -7,7 +7,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
-import { useTourProgress } from '@/composables/useTour';
+import { useTourOnScreen, useTourProgress } from '@/composables/useTour';
+import { filled } from '@/lib/helpers';
 import {
     mcpAppLogos,
     mcpClients,
@@ -40,22 +41,42 @@ const page = usePage<SharedData>();
 const isPhone = useBelowBreakpoint('sm');
 
 const { wentThrough: dismissed, record } = useTourProgress('mcp.prompt');
+const tourOnScreen = useTourOnScreen();
 const connected = ref(false);
 const prompt = computed(() => page.props.mcpPrompt ?? null);
 
 /**
  * Invites the user to connect an AI until they connect one or say not now.
- * Connecting is a desktop task, and the "How did you find us?" survey goes first.
+ * Connecting is a desktop task, and the "How did you find us?" survey and an
+ * open tour go first.
  */
-const visible = computed(
-    (): boolean =>
-        prompt.value !== null &&
-        !dismissed.value &&
-        !connected.value &&
-        !isPhone.value &&
-        (page.props.referralSources ?? []).length === 0 &&
-        page.component !== 'settings/workspace/Mcp',
-);
+const visible = computed((): boolean => {
+    if (!filled(prompt.value)) {
+        return false;
+    }
+
+    if (dismissed.value) {
+        return false;
+    }
+
+    if (connected.value) {
+        return false;
+    }
+
+    if (isPhone.value) {
+        return false;
+    }
+
+    if (filled(page.props.referralSources)) {
+        return false;
+    }
+
+    if (tourOnScreen.value) {
+        return false;
+    }
+
+    return page.component !== 'settings/workspace/Mcp';
+});
 
 const connectHttp = useHttp<{ answer: 'connect'; client: McpClientId }>({
     answer: 'connect',

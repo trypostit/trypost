@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="Tour extends TourName">
 import { useElementBounding } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
 
@@ -23,8 +23,8 @@ import type { TourName, TourStepName } from '@/types/tour';
  */
 const props = withDefaults(
     defineProps<{
-        tour: TourName;
-        step: TourStepName;
+        tour: Tour;
+        step: TourStepName<Tour>;
         tag?: string;
         tagColor?: string;
     }>(),

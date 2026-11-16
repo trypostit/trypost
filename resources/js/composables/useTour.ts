@@ -23,6 +23,10 @@ const onPage = reactive(new Map<TourName, string[]>());
 /** The tour on screen and its step: one tour at a time, the first one on the page. */
 const active = shallowRef<{ tour: TourName; step: string } | null>(null);
 
+/** Whether a tour is open on the page, so what would sit over it (the MCP card) waits. */
+export const useTourOnScreen = (): ComputedRef<boolean> =>
+    computed(() => filled(active.value));
+
 interface TourProgressState {
     wentThrough: ComputedRef<boolean>;
     record: (outcome: TourOutcome, step: number) => void;
@@ -64,12 +68,13 @@ interface TourStepState {
  * One step of a tour, on the control it points at. The tour opens on its
  * first step on the page, once per user in this browser: reaching the end or
  * closing it before is recorded (`useTourProgress`) and tracked.
- * Leaving the page midway closes it without a record, so it opens again.
+ * Leaving the page midway closes it without a record, so it opens again;
+ * closing it in another tab closes it here.
  * Tours are a desktop thing: on a phone none opens.
  */
-export const useTourStep = (
-    tour: TourName,
-    step: TourStepName,
+export const useTourStep = <Tour extends TourName>(
+    tour: Tour,
+    step: TourStepName<Tour>,
 ): TourStepState => {
     const page = usePage<SharedData>();
     const isPhone = useBelowBreakpoint('sm');
@@ -88,6 +93,10 @@ export const useTourStep = (
     const total = computed(() => shown.value.length);
 
     const isActive = computed((): boolean => {
+        if (wentThrough.value) {
+            return false;
+        }
+
         const current = active.value;
 
         if (!filled(current)) {
