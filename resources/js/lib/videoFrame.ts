@@ -1,4 +1,5 @@
 import { canvasToFile } from '@/lib/canvasFile';
+import { filled } from '@/lib/helpers';
 
 /** The video URL seeked to its chosen cover frame, so a `<video preload="metadata">` paints it as a poster. */
 export const videoFrameUrl = (item: {
@@ -6,6 +7,17 @@ export const videoFrameUrl = (item: {
     meta?: { cover_offset_ms?: number | null };
 }): string =>
     `${item.url}#t=${Math.max(0.1, (item.meta?.cover_offset_ms ?? 0) / 1000)}`;
+
+/** Whether the user picked a cover for the video: an image, or a frame of it. */
+export const hasPickedCover = (item: {
+    meta?: { cover?: unknown; cover_offset_ms?: number | null };
+}): boolean => {
+    if (filled(item.meta?.cover)) {
+        return true;
+    }
+
+    return filled(item.meta?.cover_offset_ms);
+};
 
 /** The longest side of a captured frame, like the media editor's output cap. */
 const CAPTURE_MAX_SIDE = 3840;

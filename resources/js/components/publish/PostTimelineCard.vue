@@ -23,6 +23,7 @@ import { type Component, computed, ref, watch } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
+import VideoStill from '@/components/media/VideoStill.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostNotesPanel from '@/components/posts/editor/PostNotesPanel.vue';
 import PostScheduleModeBadge from '@/components/posts/PostScheduleModeBadge.vue';
@@ -68,7 +69,6 @@ import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
 import {
@@ -661,12 +661,9 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                                 loading="lazy"
                             />
                             <template v-else>
-                                <video
-                                    :src="videoFrameUrl(thumbnail)"
+                                <VideoStill
+                                    :item="thumbnail"
                                     class="size-full object-cover"
-                                    muted
-                                    playsinline
-                                    preload="metadata"
                                     :data-testid="`post-thumbnail-video-${post.id}-${index}`"
                                 />
                                 <IconPlayerPlayFilled

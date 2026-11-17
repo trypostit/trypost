@@ -818,7 +818,7 @@ test('a reel video takes an uploaded image as its cover', function () {
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-source');
 
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-cover-source-frame\"]').getAttribute('aria-pressed')"))->toBe('true');
+    $page->assertAttribute('@media-editor-cover-source-frame', 'aria-pressed', 'true');
 
     $page->click('@media-editor-cover-source-image')
         ->assertSee('Your video shows this image as its cover.')
@@ -861,8 +861,8 @@ test('switching back to a video frame saves a screenshot of that frame as the co
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-image');
 
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-cover-source-image\"]').getAttribute('aria-pressed')"))->toBe('true')
-        ->and($page->script("document.querySelector('[data-testid=\"media-editor-apply\"]').disabled"))->toBeTrue();
+    $page->assertAttribute('@media-editor-cover-source-image', 'aria-pressed', 'true');
+    waitForState($page, '@media-editor-apply', 'element.disabled === true');
 
     $page->click('@media-editor-cover-source-frame');
     waitFor($page, '@media-editor-cover');
@@ -926,8 +926,43 @@ test('the thumbnail tab picks the frame by dragging along a strip under the vide
     JS);
     waitForState($page, '@media-editor-cover-selector', 'Math.abs(element.getBoundingClientRect().right - element.parentElement.getBoundingClientRect().right) < 2');
 
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-cover-value\"]').textContent.trim()"))->toBe('0:03.0');
+    waitForText($page, '@media-editor-cover-value', '0:03.0');
     $page->assertNoJavaScriptErrors();
+});
+
+test('the composer shows the picked cover on the media tile and on the preview until it plays', function (string $picked, string $tileElement, string $tileShows) {
+    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $cover = $picked === 'frame'
+        ? ['cover_offset_ms' => 2500]
+        : ['cover' => ['id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}"]];
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], ...$cover];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-media-item-0");
+    waitFor($page, '@video-preview-cover');
+
+    waitForState($page, "@composer-{$accountId}-media-item-0 {$tileElement}", $tileShows);
+
+    $page->click('@video-preview-play');
+    waitForGone($page, '@video-preview-cover');
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'a picked frame' => ['frame', 'video', "element.src.endsWith('#t=2.5')"],
+    'an uploaded image' => ['image', 'img', "element.src.startsWith('data:image/png')"],
+]);
+
+test('a video without a picked cover shows the video itself on the preview', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-media-item-0");
+    letPageRun($page, 500);
+
+    $page->assertMissing('@video-preview-cover')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a video on an X post shows no pencil', function () {
