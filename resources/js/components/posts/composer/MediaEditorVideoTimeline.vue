@@ -22,6 +22,7 @@ const props = defineProps<{
 const edit = defineModel<MediaEdit>('edit', { required: true });
 
 const frames = ref<HTMLCanvasElement[]>([]);
+const paintedFrames = ref<number[]>([]);
 const selectedVideo = ref<HTMLVideoElement | null>(null);
 let stripVideo: HTMLVideoElement | null = null;
 
@@ -89,7 +90,20 @@ const paintFrames = async (): Promise<void> => {
         canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
         canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
         canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        paintedFrames.value.push(index);
     }
+};
+
+/**
+ * A frame still loading pulses: on a large video (4K, a high bitrate) each
+ * one downloads a piece of the file, so the strip fills in over seconds.
+ */
+const frameClass = (index: number): string => {
+    if (paintedFrames.value.includes(index - 1)) {
+        return 'opacity-60';
+    }
+
+    return 'animate-pulse bg-muted-foreground/20';
 };
 
 onMounted(() => {
@@ -121,7 +135,8 @@ watch(seconds, showSelectedFrame);
                     v-for="index in FRAME_COUNT"
                     :key="index"
                     ref="frames"
-                    class="h-full min-w-0 flex-1 object-cover opacity-60"
+                    class="h-full min-w-0 flex-1 object-cover"
+                    :class="frameClass(index)"
                 />
             </div>
             <div
