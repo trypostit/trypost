@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Perhatian',
             'title' => 'Sampul tidak diterapkan',
-            'forbidden' => 'Channel YouTube-mu belum terverifikasi. Untuk memposting dengan sampulmu sendiri, verifikasi di youtube.com/verify. Sampul posting ini bisa kamu atur di YouTube Studio.',
+            'forbidden' => 'Channel YouTube-mu belum terverifikasi. Untuk memposting dengan sampulmu sendiri, verifikasi di :url',
             'daily_limit' => 'Channel-mu mencapai batas harian sampul kustom YouTube. Besok postinganmu kembali memakai sampulnya, dan sampul posting ini bisa kamu atur di YouTube Studio.',
             'invalid_image' => 'YouTube tidak dapat membaca gambar sampulmu. Kamu bisa mengatur yang lain di YouTube Studio.',
             'failed' => 'YouTube tidak menerapkan sampulmu. Kamu bisa mengaturnya di YouTube Studio.',

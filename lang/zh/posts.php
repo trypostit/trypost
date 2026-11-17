@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => '封面未应用',
-            'forbidden' => '你的 YouTube 频道尚未验证。要使用自己的封面发布，请在 youtube.com/verify 验证频道。这篇帖子的封面可以在 YouTube 工作室中设置。',
+            'forbidden' => '你的 YouTube 频道尚未验证。要使用自己的封面发布，请在 :url 验证频道。',
             'daily_limit' => '你的频道已达到 YouTube 每日自定义封面上限。明天起你的帖子会重新带上封面，这篇的封面可以在 YouTube 工作室中设置。',
             'invalid_image' => 'YouTube 无法读取你的封面图片。你可以在 YouTube 工作室中设置另一张。',
             'failed' => 'YouTube 未应用你的封面。你可以在 YouTube 工作室中设置。',

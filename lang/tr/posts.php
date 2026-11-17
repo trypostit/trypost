@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Uyarı',
             'title' => 'Kapak uygulanmadı',
-            'forbidden' => 'YouTube kanalınız henüz doğrulanmadı. Kendi kapağınızla yayınlamak için kanalınızı youtube.com/verify adresinden doğrulayın. Bu gönderinin kapağını YouTube Studio\'da ayarlayabilirsiniz.',
+            'forbidden' => 'YouTube kanalınız henüz doğrulanmadı. Kendi kapağınızla yayınlamak için kanalınızı :url adresinden doğrulayın.',
             'daily_limit' => 'Kanalınız YouTube\'un günlük özel kapak sınırına ulaştı. Yarın gönderileriniz yeniden kapaklarıyla yayınlanır; bu gönderinin kapağını YouTube Studio\'da ayarlayabilirsiniz.',
             'invalid_image' => 'YouTube kapak görselinizi okuyamadı. YouTube Studio\'da başka bir görsel ayarlayabilirsiniz.',
             'failed' => 'YouTube kapağınızı uygulamadı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',

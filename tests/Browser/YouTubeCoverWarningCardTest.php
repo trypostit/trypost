@@ -45,6 +45,8 @@ test('a Short whose cover YouTube refused shows it under its time, with the reas
     waitForOpen($page, "@post-cover-warning-popover-{$refused->id}");
 
     $page->assertSeeIn("@post-cover-warning-popover-{$refused->id}", __('posts.publish.youtube_thumbnail_warning.title'))
-        ->assertSeeIn("@post-cover-warning-reason-{$refused->id}", __('posts.publish.youtube_thumbnail_warning.forbidden'))
+        ->assertSeeIn("@post-cover-warning-reason-{$refused->id}", __('posts.publish.youtube_thumbnail_warning.forbidden', ['url' => 'youtube.com/verify']))
+        ->assertAttribute("@post-cover-warning-verify-{$refused->id}", 'href', 'https://www.youtube.com/verify')
+        ->assertAttribute("@post-cover-warning-verify-{$refused->id}", 'target', '_blank')
         ->assertNoJavaScriptErrors();
 });

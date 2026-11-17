@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => 'カバーが適用されませんでした',
-            'forbidden' => 'YouTubeチャンネルがまだ確認されていません。独自のカバーで投稿するには、youtube.com/verify でチャンネルを確認してください。この投稿のカバーはYouTube Studioで設定できます。',
+            'forbidden' => 'YouTubeチャンネルがまだ確認されていません。独自のカバーで投稿するには、:url でチャンネルを確認してください。',
             'daily_limit' => 'チャンネルがYouTubeのカスタムカバーの1日の上限に達しました。明日からは投稿にカバーが再び適用されます。この投稿のカバーはYouTube Studioで設定できます。',
             'invalid_image' => 'YouTubeがカバー画像を読み込めませんでした。YouTube Studioで別の画像を設定できます。',
             'failed' => 'YouTubeでカバー画像が適用されませんでした。YouTube Studioで設定できます。',

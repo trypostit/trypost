@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Escolha uma imagem para a capa do vídeo.',
         'cover_not_image' => 'A capa do vídeo precisa ser uma imagem JPEG, PNG ou WebP.',
         'media_item_shape' => 'Cada item de mídia precisa de exatamente um entre upload_token, url ou id.',
-        'media_url_unreachable' => 'Não foi possível buscar a mídia em :url.',
+        'media_url_unreachable' => 'Não foi possível buscar a mídia em :url',
         'media_type_unsupported' => 'Este tipo de arquivo não é compatível com o canal do post.',
         'media_not_accepted' => 'Este tipo de post não aceita mídia. Mude o tipo de post para adicionar mídia.',
         'media_file_unsupported' => 'Este tipo de arquivo não é compatível.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Atenção',
             'title' => 'Capa não aplicada',
-            'forbidden' => 'Seu canal do YouTube ainda não está verificado. Para publicar com a sua capa, verifique o canal em youtube.com/verify. A capa deste post você pode definir no YouTube Studio.',
+            'forbidden' => 'Seu canal do YouTube ainda não está verificado. Para publicar com a sua capa, verifique o canal em :url',
             'daily_limit' => 'Seu canal atingiu o limite diário de capas personalizadas do YouTube. Amanhã seus posts voltam a sair com a capa, e a deste você pode definir no YouTube Studio.',
             'invalid_image' => 'O YouTube não conseguiu ler sua imagem de capa. Você pode definir outra no YouTube Studio.',
             'failed' => 'O YouTube não aplicou sua capa. Você pode definir a capa no YouTube Studio.',

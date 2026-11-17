@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'اختر صورة لغلاف الفيديو.',
         'cover_not_image' => 'يجب أن يكون غلاف الفيديو صورة بصيغة JPEG أو PNG أو WebP.',
         'media_item_shape' => 'يحتاج كل عنصر وسائط إلى واحد فقط من upload_token أو url أو id.',
-        'media_url_unreachable' => 'تعذر جلب الوسائط من :url.',
+        'media_url_unreachable' => 'تعذر جلب الوسائط من :url',
         'media_type_unsupported' => 'نوع هذا الملف غير مدعوم من قناة المنشور.',
         'media_not_accepted' => 'لا يمكن أن يتضمن هذا النوع من المنشورات وسائط. غيّر نوع المنشور لإضافة وسائط.',
         'media_file_unsupported' => 'نوع هذا الملف غير مدعوم.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'تنبيه',
             'title' => 'لم يُطبَّق الغلاف',
-            'forbidden' => 'قناتك على YouTube غير موثّقة بعد. لتنشر بغلافك الخاص، وثّقها على youtube.com/verify. يمكنك تعيين غلاف هذا المنشور في YouTube Studio.',
+            'forbidden' => 'قناتك على YouTube غير موثّقة بعد. لتنشر بغلافك الخاص، وثّقها على :url',
             'daily_limit' => 'بلغت قناتك الحد اليومي للأغلفة المخصصة على YouTube. ستُنشر منشوراتك بأغلفتها مجددًا غدًا، ويمكنك تعيين غلاف هذا المنشور في YouTube Studio.',
             'invalid_image' => 'تعذّر على YouTube قراءة صورة الغلاف. يمكنك تعيين صورة أخرى في YouTube Studio.',
             'failed' => 'لم يطبّق YouTube صورة الغلاف. يمكنك تعيينها في YouTube Studio.',

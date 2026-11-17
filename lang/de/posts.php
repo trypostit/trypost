@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Hinweis',
             'title' => 'Vorschaubild nicht übernommen',
-            'forbidden' => 'Dein YouTube-Kanal ist noch nicht bestätigt. Um mit deinem eigenen Vorschaubild zu veröffentlichen, bestätige ihn unter youtube.com/verify. Das Vorschaubild dieses Beitrags kannst du in YouTube Studio festlegen.',
+            'forbidden' => 'Dein YouTube-Kanal ist noch nicht bestätigt. Um mit deinem eigenen Vorschaubild zu veröffentlichen, bestätige ihn unter :url',
             'daily_limit' => 'Dein Kanal hat das Tageslimit für eigene Vorschaubilder auf YouTube erreicht. Ab morgen bekommen deine Beiträge wieder ihr Vorschaubild, und dieses kannst du in YouTube Studio festlegen.',
             'invalid_image' => 'YouTube konnte dein Vorschaubild nicht lesen. Du kannst in YouTube Studio ein anderes festlegen.',
             'failed' => 'YouTube hat dein Vorschaubild nicht übernommen. Du kannst es in YouTube Studio festlegen.',

@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Scegli un\'immagine per la copertina del video.',
         'cover_not_image' => 'La copertina del video deve essere un\'immagine JPEG, PNG o WebP.',
         'media_item_shape' => 'Ogni elemento multimediale richiede esattamente uno tra upload_token, url o id.',
-        'media_url_unreachable' => 'Impossibile recuperare il contenuto multimediale da :url.',
+        'media_url_unreachable' => 'Impossibile recuperare il contenuto multimediale da :url',
         'media_type_unsupported' => 'Questo tipo di file non è supportato dal canale del post.',
         'media_not_accepted' => 'Questo tipo di post non può includere media. Cambia il tipo di post per aggiungerli.',
         'media_file_unsupported' => 'Questo tipo di file non è supportato.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Avviso',
             'title' => 'Copertina non applicata',
-            'forbidden' => 'Il tuo canale YouTube non è ancora verificato. Per pubblicare con la tua copertina, verificalo su youtube.com/verify. La copertina di questo post puoi impostarla in YouTube Studio.',
+            'forbidden' => 'Il tuo canale YouTube non è ancora verificato. Per pubblicare con la tua copertina, verificalo su :url',
             'daily_limit' => 'Il tuo canale ha raggiunto il limite giornaliero di copertine personalizzate di YouTube. Da domani i tuoi post tornano ad avere la copertina, e quella di questo puoi impostarla in YouTube Studio.',
             'invalid_image' => 'YouTube non è riuscito a leggere l\'immagine di copertina. Puoi impostarne un\'altra in YouTube Studio.',
             'failed' => 'YouTube non ha applicato la copertina. Puoi impostarla in YouTube Studio.',

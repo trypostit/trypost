@@ -2,6 +2,7 @@
 import { IconAlertTriangle } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import TransSlots from '@/components/TransSlots.vue';
 import { Badge } from '@/components/ui/badge';
 import {
     Popover,
@@ -9,6 +10,10 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import type { YouTubeThumbnailWarning } from '@/types/publish';
+
+/** Where YouTube verifies a channel, which unlocks custom thumbnails. */
+const YOUTUBE_VERIFY_URL = 'https://www.youtube.com/verify';
+const YOUTUBE_VERIFY_LABEL = 'youtube.com/verify';
 
 const props = defineProps<{
     warning: YouTubeThumbnailWarning;
@@ -49,7 +54,18 @@ const reasonKey = computed(
                 class="text-sm text-foreground"
                 :data-testid="`post-cover-warning-reason-${testKey}`"
             >
-                {{ $t(reasonKey) }}
+                <TransSlots :message="$t(reasonKey)">
+                    <template #url>
+                        <a
+                            :href="YOUTUBE_VERIFY_URL"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium underline underline-offset-2"
+                            :data-testid="`post-cover-warning-verify-${testKey}`"
+                            v-text="YOUTUBE_VERIFY_LABEL"
+                        />
+                    </template>
+                </TransSlots>
             </p>
         </PopoverContent>
     </Popover>

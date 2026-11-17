@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Elige una imagen para la portada del video.',
         'cover_not_image' => 'La portada del video debe ser una imagen JPEG, PNG o WebP.',
         'media_item_shape' => 'Cada elemento multimedia necesita exactamente uno de upload_token, url o id.',
-        'media_url_unreachable' => 'No se pudo obtener el archivo de :url.',
+        'media_url_unreachable' => 'No se pudo obtener el archivo de :url',
         'media_type_unsupported' => 'Este tipo de archivo no es compatible con el canal de la publicación.',
         'media_not_accepted' => 'Este tipo de publicación no admite archivos multimedia. Cambia el tipo de publicación para añadirlos.',
         'media_file_unsupported' => 'Este tipo de archivo no es compatible.',
@@ -1047,7 +1047,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Aviso',
             'title' => 'Portada no aplicada',
-            'forbidden' => 'Tu canal de YouTube aún no está verificado. Para publicar con tu propia portada, verifícalo en youtube.com/verify. La portada de esta publicación puedes ponerla en YouTube Studio.',
+            'forbidden' => 'Tu canal de YouTube aún no está verificado. Para publicar con tu propia portada, verifícalo en :url',
             'daily_limit' => 'Tu canal alcanzó el límite diario de portadas personalizadas de YouTube. Mañana tus publicaciones vuelven a salir con su portada, y la de esta puedes ponerla en YouTube Studio.',
             'invalid_image' => 'YouTube no pudo leer tu imagen de portada. Puedes poner otra en YouTube Studio.',
             'failed' => 'YouTube no aplicó tu portada. Puedes ponerla en YouTube Studio.',

@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Choose an image for the video cover.',
         'cover_not_image' => 'The video cover must be a JPEG, PNG or WebP image.',
         'media_item_shape' => 'Each media item needs exactly one of upload_token, url or id.',
-        'media_url_unreachable' => 'Could not fetch media from :url.',
+        'media_url_unreachable' => 'Could not fetch media from :url',
         'media_type_unsupported' => 'This file type is not supported by the post\'s channel.',
         'media_not_accepted' => 'This post type can\'t include media. Change the post type to add media.',
         'media_file_unsupported' => 'This file type is not supported.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Warning',
             'title' => 'Cover not applied',
-            'forbidden' => 'Your YouTube channel isn\'t verified yet. To publish with your own cover, verify it at youtube.com/verify. You can still set this post\'s cover in YouTube Studio.',
+            'forbidden' => 'Your YouTube channel isn\'t verified yet. To publish with your own cover, verify it at :url',
             'daily_limit' => 'Your channel reached YouTube\'s daily limit of custom covers. Your posts take their covers again tomorrow, and you can set this one in YouTube Studio.',
             'invalid_image' => 'YouTube couldn\'t read your cover image. You can set another one in YouTube Studio.',
             'failed' => 'YouTube didn\'t apply your cover image. You can set it in YouTube Studio.',

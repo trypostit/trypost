@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Choisissez une image pour la couverture de la vidéo.',
         'cover_not_image' => 'La couverture de la vidéo doit être une image JPEG, PNG ou WebP.',
         'media_item_shape' => 'Chaque média doit avoir exactement un seul de ces champs : upload_token, url ou id.',
-        'media_url_unreachable' => 'Impossible de récupérer le média depuis :url.',
+        'media_url_unreachable' => 'Impossible de récupérer le média depuis :url',
         'media_type_unsupported' => 'Ce type de fichier n\'est pas pris en charge par le canal de la publication.',
         'media_not_accepted' => 'Ce type de publication n\'accepte pas de médias. Changez le type de publication pour en ajouter.',
         'media_file_unsupported' => 'Ce type de fichier n\'est pas pris en charge.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Attention',
             'title' => 'Couverture non appliquée',
-            'forbidden' => 'Votre chaîne YouTube n\'est pas encore validée. Pour publier avec votre propre couverture, validez-la sur youtube.com/verify. Vous pouvez définir la couverture de cette publication dans YouTube Studio.',
+            'forbidden' => 'Votre chaîne YouTube n\'est pas encore validée. Pour publier avec votre propre couverture, validez-la sur :url',
             'daily_limit' => 'Votre chaîne a atteint la limite quotidienne de couvertures personnalisées de YouTube. Demain, vos publications retrouvent leur couverture, et celle-ci peut être définie dans YouTube Studio.',
             'invalid_image' => 'YouTube n\'a pas pu lire votre image de couverture. Vous pouvez en définir une autre dans YouTube Studio.',
             'failed' => 'YouTube n\'a pas appliqué votre couverture. Vous pouvez la définir dans YouTube Studio.',

@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Kies een afbeelding als omslag van de video.',
         'cover_not_image' => 'De omslag van de video moet een JPEG-, PNG- of WebP-afbeelding zijn.',
         'media_item_shape' => 'Elk media-item heeft precies één van upload_token, url of id nodig.',
-        'media_url_unreachable' => 'Media kon niet worden opgehaald van :url.',
+        'media_url_unreachable' => 'Media kon niet worden opgehaald van :url',
         'media_type_unsupported' => 'Dit bestandstype wordt niet ondersteund door het kanaal van de post.',
         'media_not_accepted' => 'Dit type post kan geen media bevatten. Wijzig het type post om media toe te voegen.',
         'media_file_unsupported' => 'Dit bestandstype wordt niet ondersteund.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Let op',
             'title' => 'Omslag niet toegepast',
-            'forbidden' => 'Je YouTube-kanaal is nog niet geverifieerd. Verifieer het via youtube.com/verify om met je eigen omslag te publiceren. De omslag van deze post kun je instellen in YouTube Studio.',
+            'forbidden' => 'Je YouTube-kanaal is nog niet geverifieerd. Verifieer het via :url om met je eigen omslag te publiceren.',
             'daily_limit' => 'Je kanaal heeft de daglimiet voor eigen omslagen op YouTube bereikt. Morgen krijgen je posts weer hun omslag, en die van deze kun je instellen in YouTube Studio.',
             'invalid_image' => 'YouTube kon je omslagafbeelding niet lezen. Je kunt een andere instellen in YouTube Studio.',
             'failed' => 'YouTube heeft je omslag niet toegepast. Je kunt hem instellen in YouTube Studio.',

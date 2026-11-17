@@ -928,7 +928,7 @@ return [
         'cover_invalid' => 'Wybierz obraz na okładkę wideo.',
         'cover_not_image' => 'Okładka wideo musi być obrazem JPEG, PNG lub WebP.',
         'media_item_shape' => 'Każdy element multimedialny wymaga dokładnie jednego z pól: upload_token, url lub id.',
-        'media_url_unreachable' => 'Nie udało się pobrać multimediów z :url.',
+        'media_url_unreachable' => 'Nie udało się pobrać multimediów z :url',
         'media_type_unsupported' => 'Ten typ pliku nie jest obsługiwany przez kanał posta.',
         'media_not_accepted' => 'Ten typ posta nie może zawierać multimediów. Zmień typ posta, aby je dodać.',
         'media_file_unsupported' => 'Ten typ pliku nie jest obsługiwany.',
@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => 'Uwaga',
             'title' => 'Nie zastosowano okładki',
-            'forbidden' => 'Twój kanał YouTube nie jest jeszcze zweryfikowany. Aby publikować z własną okładką, zweryfikuj go na youtube.com/verify. Okładkę tego posta możesz ustawić w YouTube Studio.',
+            'forbidden' => 'Twój kanał YouTube nie jest jeszcze zweryfikowany. Aby publikować z własną okładką, zweryfikuj go na :url',
             'daily_limit' => 'Kanał osiągnął dzienny limit własnych okładek w YouTube. Od jutra posty znów będą publikowane z okładką, a okładkę tego posta możesz ustawić w YouTube Studio.',
             'invalid_image' => 'YouTube nie mógł odczytać obrazu okładki. Inny można ustawić w YouTube Studio.',
             'failed' => 'YouTube nie zastosował okładki. Możesz ją ustawić w YouTube Studio.',

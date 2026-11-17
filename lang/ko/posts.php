@@ -1046,7 +1046,7 @@ return [
         'youtube_thumbnail_warning' => [
             'badge' => '주의',
             'title' => '커버가 적용되지 않음',
-            'forbidden' => 'YouTube 채널이 아직 인증되지 않았습니다. 직접 만든 커버로 게시하려면 youtube.com/verify에서 채널을 인증하세요. 이 게시물의 커버는 YouTube 스튜디오에서 설정할 수 있습니다.',
+            'forbidden' => 'YouTube 채널이 아직 인증되지 않았습니다. 직접 만든 커버로 게시하려면 :url에서 채널을 인증하세요.',
             'daily_limit' => '채널이 YouTube의 맞춤 커버 일일 한도에 도달했습니다. 내일부터 게시물에 다시 커버가 적용되며, 이 게시물의 커버는 YouTube 스튜디오에서 설정할 수 있습니다.',
             'invalid_image' => 'YouTube에서 커버 이미지를 읽지 못했습니다. YouTube 스튜디오에서 다른 이미지를 설정할 수 있습니다.',
             'failed' => 'YouTube에서 커버 이미지를 적용하지 않았습니다. YouTube 스튜디오에서 설정할 수 있습니다.',
