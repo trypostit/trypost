@@ -823,21 +823,26 @@ test('a reel video takes an uploaded image as its cover', function () {
     $page->click('@media-editor-cover-source-image')
         ->assertSee('Your video shows this image as its cover.')
         ->assertMissing('@media-editor-cover')
-        ->assertMissing('@media-editor-cover-image');
+        ->assertMissing('@media-editor-selection');
 
     pickMediaEditorCoverImage($page);
-    waitFor($page, '@media-editor-cover-image');
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->assertSee('Replace image')
+        ->assertPresent('@media-editor-handle-nw')
+        ->assertPresent('@media-editor-center')
+        ->assertMissing('@crop-aspect-9-16')
         ->click('@media-editor-apply');
     saveMediaEditorDraft($page);
 
     $cover = data_get($post->fresh()->media, '0.meta.cover');
     $owned = Media::query()->find(data_get($cover, 'id'));
+    [$width, $height] = getimagesizefromstring(Storage::get($owned->path));
 
     expect($owned->post_id)->toBe($post->id)
         ->and($owned->type)->toBe(MediaType::Image)
         ->and($owned->upload_token)->toBeNull()
+        ->and($height / $width)->toEqualWithDelta(16 / 9, 0.02)
         ->and(data_get($post->fresh()->media, '0.id'))->toBe('video-1');
     $page->assertNoJavaScriptErrors();
 });
@@ -859,7 +864,7 @@ test('switching back to a video frame saves a screenshot of that frame as the co
     $page = visit(route('app.posts.edit', $post));
     waitForState($page, "@composer-{$accountId}-edit-0", 'true');
     $page->click("@composer-{$accountId}-edit-0");
-    waitFor($page, '@media-editor-cover-image');
+    waitFor($page, '@media-editor-selection');
 
     $page->assertAttribute('@media-editor-cover-source-image', 'aria-pressed', 'true');
     waitForState($page, '@media-editor-apply', 'element.disabled === true');
@@ -877,6 +882,39 @@ test('switching back to a video frame saves a screenshot of that frame as the co
         ->and($owned->post_id)->toBe($post->id)
         ->and($owned->type)->toBe(MediaType::Image)
         ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('reframing a stored cover saves the new frame of it', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === true');
+
+    $page->drag('@media-editor-handle-nw', '@media-editor-stage');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $owned = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
+    [$width, $height] = getimagesizefromstring(Storage::get($owned->path));
+
+    expect($owned->post_id)->toBe($post->id)
+        ->and($height / $width)->toEqualWithDelta(16 / 9, 0.02);
     $page->assertNoJavaScriptErrors();
 });
 

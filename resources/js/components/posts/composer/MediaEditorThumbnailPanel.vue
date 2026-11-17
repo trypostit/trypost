@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
-import { type CoverSource, type MediaEdit } from '@/lib/mediaEditor';
+import { type CoverSource, type MediaEdit, newCoverImage } from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
 
 const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
@@ -66,11 +66,7 @@ const onImagePicked = (event: Event): void => {
         return;
     }
 
-    edit.value.coverImage = {
-        url: URL.createObjectURL(file),
-        item: null,
-        file,
-    };
+    edit.value.coverImage = newCoverImage(URL.createObjectURL(file), null, file);
 };
 </script>
 

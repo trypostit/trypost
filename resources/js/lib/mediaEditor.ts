@@ -74,14 +74,20 @@ export type MediaEdit = {
 
 /**
  * An image picked as a video's cover: the stored item, or a file picked in
- * the editor and uploaded when the edit is applied. `url` is what the panel
- * shows.
+ * the editor and uploaded when the edit is applied. `url` is what the stage
+ * shows, `crop` how the user framed it (the stage edits it like an image)
+ * and `natural` its size once the stage has loaded it.
  */
 export type CoverImage = {
     url: string;
     item: MediaItem | null;
     file: File | null;
+    crop: MediaEdit;
+    natural: { width: number; height: number } | null;
 };
+
+/** Instagram Reels and YouTube Shorts show a cover at 9:16 and crop anything else to its middle. */
+export const COVER_CROP_PRESET: CropPresetValue = '9:16';
 
 export const USER_TAGS_MAX = 20;
 
@@ -203,8 +209,28 @@ const storedCoverImage = (item: MediaItem): CoverImage | null => {
         return null;
     }
 
-    return { url: cover.url, item: cover, file: null };
+    return newCoverImage(cover.url, cover, null);
 };
+
+/** A cover image as the editor opens it: framed at 9:16 in its middle. */
+export const newCoverImage = (
+    url: string,
+    item: MediaItem | null,
+    file: File | null,
+): CoverImage => ({
+    url,
+    item,
+    file,
+    crop: blankMediaEdit(COVER_CROP_PRESET),
+    natural: null,
+});
+
+/**
+ * Whether the user reframed the cover. Its 9:16 ratio is where it starts, so
+ * only a moved or resized frame, a turn, a flip or an adjustment counts.
+ */
+export const hasCoverCropChanges = (crop: MediaEdit): boolean =>
+    hasPixelChanges({ ...crop, preset: 'original' });
 
 export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     ...blankMediaEdit(),
@@ -239,6 +265,10 @@ export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean =
     }
 
     if (filled(edit.coverImage.file)) {
+        return true;
+    }
+
+    if (hasCoverCropChanges(edit.coverImage.crop)) {
         return true;
     }
 

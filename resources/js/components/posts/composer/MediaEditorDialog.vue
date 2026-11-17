@@ -25,15 +25,18 @@ import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
 import { filled, transform } from '@/lib/helpers';
 import {
     createMediaEdit,
+    COVER_CROP_PRESET,
     type CoverImage,
     type CoverSource,
     cropPresetsFor,
     editorTabsFor,
     type EditorTab,
     hasMetaChanges,
+    hasCoverCropChanges,
     hasPixelChanges,
     initialCoverSource,
     needsFrameCapture,
+    newCoverImage,
     type CropPresetValue,
     type MediaEdit,
     presetValuesFor,
@@ -151,8 +154,8 @@ const activeVideoDuration = computed<number | null>(
         stageVideoDurations.value[activeIndex.value] ??
         null,
 );
-/** On the Thumbnail tab of a video: the picked cover image takes the stage. */
-const showsCoverImageOnStage = computed(() => {
+/** On the Thumbnail tab of a video with an image as its cover: the stage frames that image. */
+const cropsCover = computed(() => {
     if (!activeIsVideo.value) {
         return false;
     }
@@ -181,7 +184,14 @@ const showsTimeline = computed(() => {
     return coverSource.value === 'frame';
 });
 
-const coverImageUrl = computed(() => edit.value?.coverImage?.url);
+/** The stage shows the video itself, unless it is framing the video's cover image. */
+const showsStageVideo = computed(() => {
+    if (!activeIsVideo.value) {
+        return false;
+    }
+
+    return !cropsCover.value;
+});
 
 /** The row of items to switch between, when there is more than one to edit. */
 const showsItemPicker = computed(() => {
@@ -207,25 +217,99 @@ const edit = computed({
     },
 });
 const natural = computed(() => naturals.value[activeIndex.value] ?? null);
-const cropMode = computed(
-    () => tab.value === 'edit' && section.value === 'crop',
-);
+
+/**
+ * What the stage and the crop controls work on: the active item, or the
+ * active video's cover image while it is being framed. The cover goes
+ * through the same stage, crop panel and render as any image.
+ */
+const stageEdit = computed({
+    get: (): MediaEdit | undefined => {
+        if (cropsCover.value) {
+            return edit.value?.coverImage?.crop;
+        }
+
+        return edit.value;
+    },
+    set: (value: MediaEdit | undefined) => {
+        if (!filled(value)) {
+            return;
+        }
+
+        if (!cropsCover.value) {
+            edit.value = value;
+
+            return;
+        }
+
+        if (filled(edit.value?.coverImage)) {
+            edit.value.coverImage.crop = value;
+        }
+    },
+});
+const stageNatural = computed(() => {
+    if (cropsCover.value) {
+        return edit.value?.coverImage?.natural ?? null;
+    }
+
+    return natural.value;
+});
+const stageSrc = computed(() => {
+    if (cropsCover.value) {
+        return edit.value?.coverImage?.url;
+    }
+
+    return activeItem.value?.url;
+});
+const stageBasePreset = computed<CropPresetValue>(() => {
+    if (cropsCover.value) {
+        return COVER_CROP_PRESET;
+    }
+
+    return basePreset.value;
+});
+const stagePresets = computed(() => {
+    if (cropsCover.value) {
+        return [];
+    }
+
+    return presets.value;
+});
+/** A fixed ratio only moves, except a profile photo's square and a cover's 9:16, which also resize. */
+const resizesAnyRatio = computed(() => {
+    if (isPhoto.value) {
+        return true;
+    }
+
+    return cropsCover.value;
+});
+const cropMode = computed(() => {
+    if (cropsCover.value) {
+        return true;
+    }
+
+    if (tab.value !== 'edit') {
+        return false;
+    }
+
+    return section.value === 'crop';
+});
 const { isCentered, centerSelection, resetGeometry } = useImageCrop(
-    edit,
-    natural,
+    stageEdit,
+    stageNatural,
 );
 const centerDisabled = computed(
-    () => !edit.value?.selection || isCentered.value,
+    () => !stageEdit.value?.selection || isCentered.value,
 );
 const resetDisabled = computed(
     () =>
-        !edit.value ||
-        (edit.value.preset === basePreset.value &&
-            !edit.value.selection &&
-            edit.value.quarterTurns % 4 === 0 &&
-            !edit.value.flipX &&
-            !edit.value.flipY &&
-            edit.value.straighten === 0),
+        !stageEdit.value ||
+        (stageEdit.value.preset === stageBasePreset.value &&
+            !stageEdit.value.selection &&
+            stageEdit.value.quarterTurns % 4 === 0 &&
+            !stageEdit.value.flipX &&
+            !stageEdit.value.flipY &&
+            stageEdit.value.straighten === 0),
 );
 
 const isChanged = (index: number): boolean => {
@@ -243,7 +327,15 @@ const changedIndexes = computed(() =>
 );
 
 const onImageLoad = (size: ImageSize): void => {
-    naturals.value[activeIndex.value] = size;
+    if (!cropsCover.value) {
+        naturals.value[activeIndex.value] = size;
+
+        return;
+    }
+
+    if (filled(edit.value?.coverImage)) {
+        edit.value.coverImage.natural = size;
+    }
 };
 
 const onImageError = (): void => {
@@ -278,7 +370,7 @@ const onStagePress = (point: { x: number; y: number }): void => {
     pendingPoint.value = placed;
 };
 
-const resetCrop = (): void => resetGeometry(basePreset.value);
+const resetCrop = (): void => resetGeometry(stageBasePreset.value);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -305,19 +397,63 @@ const coverImageFor = async (
     media: MediaItem,
     itemEdit: MediaEdit,
 ): Promise<CoverImage | null> => {
-    if (!needsFrameCapture(media, itemEdit, rules.value)) {
-        return itemEdit.coverImage;
+    if (needsFrameCapture(media, itemEdit, rules.value)) {
+        return captureFrame(media, itemEdit.coverOffsetMs ?? 0);
     }
 
-    try {
-        const file = await captureVideoFrame(media.url, itemEdit.coverOffsetMs ?? 0);
+    const cover = itemEdit.coverImage;
 
-        return { url: URL.createObjectURL(file), item: null, file };
+    if (!filled(cover)) {
+        return null;
+    }
+
+    if (!filled(cover.file) && !hasCoverCropChanges(cover.crop)) {
+        return cover;
+    }
+
+    return renderCover(cover);
+};
+
+const captureFrame = async (
+    media: MediaItem,
+    milliseconds: number,
+): Promise<CoverImage> => {
+    try {
+        const file = await captureVideoFrame(media.url, milliseconds);
+
+        return newCoverImage(URL.createObjectURL(file), null, file);
     } catch (error) {
         captureFailed.value = true;
 
         throw error;
     }
+};
+
+/** The cover image as framed on the stage, rendered like any edited image. */
+const renderCover = async (cover: CoverImage): Promise<CoverImage> => {
+    const source = coverPixelItem(cover);
+    const image = await loadImage(pixelSource(source));
+    const rendered = await renderMediaEdit(image, source, cover.crop);
+
+    return newCoverImage(URL.createObjectURL(rendered.file), null, rendered.file);
+};
+
+/** The cover as a media item to read its pixels from: the picked file, or the stored image. */
+const coverPixelItem = (cover: CoverImage): MediaItem => {
+    if (filled(cover.file)) {
+        return {
+            id: cover.url,
+            url: cover.url,
+            original_filename: cover.file.name,
+            mime_type: cover.file.type,
+        };
+    }
+
+    if (filled(cover.item)) {
+        return cover.item;
+    }
+
+    return { id: cover.url, url: cover.url };
 };
 
 const failureKey = computed(() => {
@@ -456,15 +592,8 @@ watch(tagging, (isTagging) => {
                     <div
                         class="relative flex min-h-[45vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-muted select-none dark:bg-accent lg:min-h-0"
                     >
-                        <img
-                            v-if="showsCoverImageOnStage"
-                            :src="coverImageUrl"
-                            :alt="$t('posts.composer.media_editor.thumbnail_image_alt')"
-                            data-testid="media-editor-cover-image"
-                            class="absolute inset-6 size-[calc(100%-3rem)] object-contain"
-                        />
                         <video
-                            v-else-if="activeItem && activeIsVideo"
+                            v-if="activeItem && showsStageVideo"
                             ref="stageVideoEl"
                             :key="activeItem.url"
                             :src="activeItem.url"
@@ -482,12 +611,12 @@ watch(tagging, (isTagging) => {
                             {{ $t('common.photo_upload.crop_error') }}
                         </p>
                         <ImageCropStage
-                            v-else-if="activeItem && edit"
-                            v-model:edit="edit"
-                            :src="activeItem.url"
-                            :natural="natural"
+                            v-else-if="stageSrc && stageEdit"
+                            v-model:edit="stageEdit"
+                            :src="stageSrc"
+                            :natural="stageNatural"
                             :crop-mode="cropMode"
-                            :resize-any-ratio="isPhoto"
+                            :resize-any-ratio="resizesAnyRatio"
                             test-id-prefix="media-editor"
                             :box-class="
                                 tab === 'tags' &&
@@ -654,7 +783,7 @@ watch(tagging, (isTagging) => {
                         <MediaEditorCropPanel
                             v-if="section === 'crop'"
                             v-model:edit="edit"
-                            :presets="presets"
+                            :presets="stagePresets"
                             :center-disabled="centerDisabled"
                             :reset-disabled="resetDisabled"
                             @center="centerSelection"
@@ -666,13 +795,23 @@ watch(tagging, (isTagging) => {
                             :src="activeItem.url"
                         />
                     </template>
-                    <MediaEditorThumbnailPanel
-                        v-else-if="tab === 'thumbnail' && edit"
-                        :key="activeIndex"
-                        v-model:edit="edit"
-                        v-model:source="coverSource"
-                        :supports-custom-cover="supportsCustomCover"
-                    />
+                    <template v-else-if="tab === 'thumbnail' && edit">
+                        <MediaEditorThumbnailPanel
+                            :key="activeIndex"
+                            v-model:edit="edit"
+                            v-model:source="coverSource"
+                            :supports-custom-cover="supportsCustomCover"
+                        />
+                        <MediaEditorCropPanel
+                            v-if="cropsCover && stageEdit"
+                            v-model:edit="stageEdit"
+                            :presets="stagePresets"
+                            :center-disabled="centerDisabled"
+                            :reset-disabled="resetDisabled"
+                            @center="centerSelection"
+                            @reset="resetCrop"
+                        />
+                    </template>
                     <MediaEditorAltTextPanel
                         v-else-if="tab === 'alt' && edit"
                         v-model:edit="edit"
