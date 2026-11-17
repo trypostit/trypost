@@ -1045,12 +1045,12 @@ return [
         'add_post_in_slot' => 'Añadir post',
         'more_times' => 'Más horarios',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Portada',
-            'title' => 'YouTube no aplicó tu portada',
-            'forbidden' => 'Las miniaturas personalizadas requieren un canal verificado. Puedes poner la portada en YouTube Studio.',
-            'daily_limit' => 'Tu canal alcanzó el límite diario de miniaturas personalizadas. Puedes poner la portada en YouTube Studio.',
+            'badge' => 'Aviso',
+            'title' => 'Portada no aplicada',
+            'forbidden' => 'Tu canal de YouTube aún no está verificado. Para publicar con tu propia portada, verifícalo en youtube.com/verify. La portada de esta publicación puedes ponerla en YouTube Studio.',
+            'daily_limit' => 'Tu canal alcanzó el límite diario de portadas personalizadas de YouTube. Mañana tus publicaciones vuelven a salir con su portada, y la de esta puedes ponerla en YouTube Studio.',
             'invalid_image' => 'YouTube no pudo leer tu imagen de portada. Puedes poner otra en YouTube Studio.',
-            'failed' => 'Puedes poner la portada en YouTube Studio.',
+            'failed' => 'YouTube no aplicó tu portada. Puedes ponerla en YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Por qué falló',

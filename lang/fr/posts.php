@@ -1044,12 +1044,12 @@ return [
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Vignette',
-            'title' => 'YouTube n\'a pas appliqué votre couverture',
-            'forbidden' => 'Les miniatures personnalisées nécessitent une chaîne validée. Vous pouvez définir la couverture dans YouTube Studio.',
-            'daily_limit' => 'Votre chaîne a atteint la limite quotidienne de miniatures personnalisées. Vous pouvez définir la couverture dans YouTube Studio.',
+            'badge' => 'Attention',
+            'title' => 'Couverture non appliquée',
+            'forbidden' => 'Votre chaîne YouTube n\'est pas encore validée. Pour publier avec votre propre couverture, validez-la sur youtube.com/verify. Vous pouvez définir la couverture de cette publication dans YouTube Studio.',
+            'daily_limit' => 'Votre chaîne a atteint la limite quotidienne de couvertures personnalisées de YouTube. Demain, vos publications retrouvent leur couverture, et celle-ci peut être définie dans YouTube Studio.',
             'invalid_image' => 'YouTube n\'a pas pu lire votre image de couverture. Vous pouvez en définir une autre dans YouTube Studio.',
-            'failed' => 'Vous pouvez définir la couverture dans YouTube Studio.',
+            'failed' => 'YouTube n\'a pas appliqué votre couverture. Vous pouvez la définir dans YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Pourquoi l\'échec',

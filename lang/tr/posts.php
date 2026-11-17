@@ -1044,12 +1044,12 @@ return [
         'add_post_in_slot' => 'Gönderi ekle',
         'more_times' => 'Daha fazla saat',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Kapak',
-            'title' => 'YouTube kapağınızı uygulamadı',
-            'forbidden' => 'Özel küçük resimler için doğrulanmış bir kanal gerekir. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
-            'daily_limit' => 'Kanalınız bugünkü özel küçük resim sınırına ulaştı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
+            'badge' => 'Uyarı',
+            'title' => 'Kapak uygulanmadı',
+            'forbidden' => 'YouTube kanalınız henüz doğrulanmadı. Kendi kapağınızla yayınlamak için kanalınızı youtube.com/verify adresinden doğrulayın. Bu gönderinin kapağını YouTube Studio\'da ayarlayabilirsiniz.',
+            'daily_limit' => 'Kanalınız YouTube\'un günlük özel kapak sınırına ulaştı. Yarın gönderileriniz yeniden kapaklarıyla yayınlanır; bu gönderinin kapağını YouTube Studio\'da ayarlayabilirsiniz.',
             'invalid_image' => 'YouTube kapak görselinizi okuyamadı. YouTube Studio\'da başka bir görsel ayarlayabilirsiniz.',
-            'failed' => 'Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
+            'failed' => 'YouTube kapağınızı uygulamadı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
         ],
         'failure' => [
             'title' => 'Neden başarısız oldu',

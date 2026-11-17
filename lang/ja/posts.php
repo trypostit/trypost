@@ -1044,12 +1044,12 @@ return [
         'add_post_in_slot' => '投稿を追加',
         'more_times' => 'その他の時間',
         'youtube_thumbnail_warning' => [
-            'badge' => 'カバー',
-            'title' => 'YouTubeでカバー画像が適用されませんでした',
-            'forbidden' => 'カスタムサムネイルには確認済みのチャンネルが必要です。YouTube Studioで設定できます。',
-            'daily_limit' => 'チャンネルが今日のカスタムサムネイルの上限に達しました。YouTube Studioで設定できます。',
+            'badge' => '注意',
+            'title' => 'カバーが適用されませんでした',
+            'forbidden' => 'YouTubeチャンネルがまだ確認されていません。独自のカバーで投稿するには、youtube.com/verify でチャンネルを確認してください。この投稿のカバーはYouTube Studioで設定できます。',
+            'daily_limit' => 'チャンネルがYouTubeのカスタムカバーの1日の上限に達しました。明日からは投稿にカバーが再び適用されます。この投稿のカバーはYouTube Studioで設定できます。',
             'invalid_image' => 'YouTubeがカバー画像を読み込めませんでした。YouTube Studioで別の画像を設定できます。',
-            'failed' => 'YouTube Studioで設定できます。',
+            'failed' => 'YouTubeでカバー画像が適用されませんでした。YouTube Studioで設定できます。',
         ],
         'failure' => [
             'title' => '失敗した理由',

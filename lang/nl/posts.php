@@ -1044,12 +1044,12 @@ return [
         'add_post_in_slot' => 'Post toevoegen',
         'more_times' => 'Meer tijden',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Omslag',
-            'title' => 'YouTube heeft je omslag niet toegepast',
-            'forbidden' => 'Eigen miniaturen vereisen een geverifieerd kanaal. Je kunt de omslag instellen in YouTube Studio.',
-            'daily_limit' => 'Je kanaal heeft de daglimiet voor eigen miniaturen bereikt. Je kunt de omslag instellen in YouTube Studio.',
+            'badge' => 'Let op',
+            'title' => 'Omslag niet toegepast',
+            'forbidden' => 'Je YouTube-kanaal is nog niet geverifieerd. Verifieer het via youtube.com/verify om met je eigen omslag te publiceren. De omslag van deze post kun je instellen in YouTube Studio.',
+            'daily_limit' => 'Je kanaal heeft de daglimiet voor eigen omslagen op YouTube bereikt. Morgen krijgen je posts weer hun omslag, en die van deze kun je instellen in YouTube Studio.',
             'invalid_image' => 'YouTube kon je omslagafbeelding niet lezen. Je kunt een andere instellen in YouTube Studio.',
-            'failed' => 'Je kunt de omslag instellen in YouTube Studio.',
+            'failed' => 'YouTube heeft je omslag niet toegepast. Je kunt hem instellen in YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Waarom het mislukte',

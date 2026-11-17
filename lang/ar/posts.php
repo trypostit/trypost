@@ -1044,12 +1044,12 @@ return [
         'add_post_in_slot' => 'إضافة منشور',
         'more_times' => 'المزيد من الأوقات',
         'youtube_thumbnail_warning' => [
-            'badge' => 'الغلاف',
-            'title' => 'لم يطبّق YouTube صورة الغلاف',
-            'forbidden' => 'تتطلب الصور المصغرة المخصصة قناة موثّقة. يمكنك تعيين الغلاف في YouTube Studio.',
-            'daily_limit' => 'بلغت قناتك الحد اليومي للصور المصغرة المخصصة. يمكنك تعيين الغلاف في YouTube Studio.',
+            'badge' => 'تنبيه',
+            'title' => 'لم يُطبَّق الغلاف',
+            'forbidden' => 'قناتك على YouTube غير موثّقة بعد. لتنشر بغلافك الخاص، وثّقها على youtube.com/verify. يمكنك تعيين غلاف هذا المنشور في YouTube Studio.',
+            'daily_limit' => 'بلغت قناتك الحد اليومي للأغلفة المخصصة على YouTube. ستُنشر منشوراتك بأغلفتها مجددًا غدًا، ويمكنك تعيين غلاف هذا المنشور في YouTube Studio.',
             'invalid_image' => 'تعذّر على YouTube قراءة صورة الغلاف. يمكنك تعيين صورة أخرى في YouTube Studio.',
-            'failed' => 'يمكنك تعيين الغلاف في YouTube Studio.',
+            'failed' => 'لم يطبّق YouTube صورة الغلاف. يمكنك تعيينها في YouTube Studio.',
         ],
         'failure' => [
             'title' => 'سبب الفشل',

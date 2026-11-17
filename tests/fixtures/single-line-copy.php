@@ -214,7 +214,7 @@ return [
     'posts.publish.actions.queue_setup.not_now' => 11,
     'posts.publish.actions.share_link' => 29,
     'posts.publish.deleted_on_network.badge' => 10,
-    'posts.publish.youtube_thumbnail_warning.badge' => 8,
+    'posts.publish.youtube_thumbnail_warning.badge' => 9,
     'posts.publish.in_google_review' => 28,
     'posts.publish.no_time' => 13,
     'posts.publish.pending_slot.next' => 14,
