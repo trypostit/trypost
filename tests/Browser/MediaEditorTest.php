@@ -792,6 +792,33 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     $page->assertNoJavaScriptErrors();
 });
 
+test('a video takes alt text, written by hand, where its network accepts it', function (ContentType $contentType) {
+    [$post] = seedMediaEditorVideoPost($contentType);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-alt-0");
+    $page->assertMissing("@composer-{$accountId}-edit-0")
+        ->click("@composer-{$accountId}-alt-0");
+    waitFor($page, '@media-editor-alt-text');
+
+    $page->assertVisible('@media-editor-stage-video')
+        ->assertMissing('@media-editor-alt-generate');
+
+    $page->type('@media-editor-alt-text', 'A cyclist crossing a bridge at sunset');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    expect(data_get($post->fresh()->media, '0.meta.alt_text'))->toBe('A cyclist crossing a bridge at sunset')
+        ->and($post->fresh()->media[0]['id'])->toBe('video-1');
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'mastodon' => [ContentType::MastodonPost],
+    'bluesky' => [ContentType::BlueskyPost],
+    'threads' => [ContentType::ThreadsPost],
+    'discord' => [ContentType::DiscordMessage],
+]);
+
 function pickMediaEditorCoverImage(mixed $page): void
 {
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));

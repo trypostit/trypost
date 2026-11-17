@@ -560,5 +560,13 @@ test('a type without images lists no alt text and a type without video accepts n
     expect($type->toListingArray())->toMatchArray([
         'accepts_mov' => $type->acceptsMov(),
         'supports_alt_text' => $type->supportsAltText(),
+        'supports_video_alt_text' => $type->supportsVideoAltText(),
     ]);
+})->with(ContentType::cases());
+
+test('only bluesky, mastodon, threads and discord take alt text on a video', function (ContentType $type) {
+    $expected = in_array($type, [ContentType::BlueskyPost, ContentType::MastodonPost, ContentType::ThreadsPost, ContentType::DiscordMessage], true);
+
+    expect($type->supportsVideoAltText())->toBe($expected)
+        ->and($type->mediaRules()['supports_video_alt_text'])->toBe($expected);
 })->with(ContentType::cases());

@@ -152,7 +152,12 @@ export const editorTabsFor = (
     rules: MediaRules[],
 ): EditorTab[] => {
     if (isVideo(item)) {
-        return rules.some(hasThumbnail) ? ['thumbnail'] : [];
+        return [
+            ...(rules.some(hasThumbnail) ? (['thumbnail'] as const) : []),
+            ...(rules.some((rule) => rule.supportsVideoAltText)
+                ? (['alt'] as const)
+                : []),
+        ];
     }
 
     if (!isImage(item) || isGif(item)) {

@@ -720,7 +720,7 @@ test('bluesky publisher never publishes a partial image set', function (string $
 /**
  * Attach a single video to the post under test (mp4 by default).
  */
-function attachBlueskyVideo(Post $post, string $mimeType = 'video/mp4'): void
+function attachBlueskyVideo(Post $post, string $mimeType = 'video/mp4', array $meta = []): void
 {
     $post->update([
         'media' => [[
@@ -729,6 +729,7 @@ function attachBlueskyVideo(Post $post, string $mimeType = 'video/mp4'): void
             'url' => 'https://example.com/media/2026-01/test-video.mp4',
             'mime_type' => $mimeType,
             'original_filename' => 'test.mp4',
+            'meta' => $meta,
         ]],
     ]);
 }
@@ -787,6 +788,24 @@ function fakeBlueskyVideoPipeline(string $jobState = 'JOB_STATE_COMPLETED', bool
     });
 }
 
+test('bluesky publisher sends the video alt text, capped to the network limit, in the embed', function () {
+    $longAlt = str_repeat('a', 2100);
+    attachBlueskyVideo($this->post, meta: ['alt_text' => $longAlt]);
+
+    fakeBlueskyVideoPipeline();
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'record.embed.$type') === 'app.bsky.embed.video'
+            && data_get($request->data(), 'record.embed.alt') === str_repeat('a', Platform::Bluesky->altTextMaxLength());
+    });
+});
+
 test('bluesky publisher uploads a video and embeds it', function () {
     attachBlueskyVideo($this->post);
 
@@ -803,7 +822,8 @@ test('bluesky publisher uploads a video and embeds it', function () {
 
         return $embed
             && $embed['$type'] === 'app.bsky.embed.video'
-            && data_get($embed, 'video.ref.$link') === 'bafvideo123';
+            && data_get($embed, 'video.ref.$link') === 'bafvideo123'
+            && ! array_key_exists('alt', $embed);
     });
 
     // The video goes to the video service, never to the PDS uploadBlob endpoint.

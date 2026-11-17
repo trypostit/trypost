@@ -21,7 +21,7 @@ registerHooks({
             : nextResolve(specifier, context),
 });
 
-const { cropPresetsFor, presetValuesFor } = await import(
+const { cropPresetsFor, editorTabsFor, presetValuesFor } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/mediaEditor.ts')).href
 );
 const { toMediaRules } = await import(
@@ -46,6 +46,12 @@ const results = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, valuesFor(toMediaRules(rule))]),
 );
 
+const video = { id: 'video', type: 'video', url: 'https://example.com/clip.mp4', mime_type: 'video/mp4' };
+
+const videoTabs = Object.fromEntries(
+    Object.entries(rules).map(([contentType, rule]) => [contentType, editorTabsFor(video, [toMediaRules(rule)])]),
+);
+
 const noChannelResults = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, noChannelValuesFor(toMediaRules(rule))]),
 );
@@ -54,6 +60,7 @@ console.log(
     JSON.stringify({
         contentTypes: results,
         noChannelWithinBounds: noChannelResults,
+        videoTabs,
         noChannel: cropPresetsFor(presetValuesFor([], defaults)).map((preset: Preset) => preset.value),
     }),
 );

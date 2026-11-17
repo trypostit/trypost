@@ -815,7 +815,7 @@ test('threads publisher omits alt_text from single image container when no alt t
     });
 });
 
-test('threads publisher sends alt text on image carousel children but never on video children', function () {
+test('threads publisher sends alt text on image and video carousel children', function () {
     $imageAlt = str_repeat('x', 1500);
 
     $this->post->update([
@@ -834,7 +834,7 @@ test('threads publisher sends alt text on image carousel children but never on v
                 'url' => 'https://example.com/media/2026-01/test-video.mp4',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'test.mp4',
-                'meta' => ['alt_text' => 'video alt text must never be sent'],
+                'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
             ],
         ],
     ]);
@@ -871,7 +871,47 @@ test('threads publisher sends alt text on image carousel children but never on v
 
         return str_ends_with($request->url(), '/123456789/threads')
             && data_get($data, 'video_url') !== null
-            && ! array_key_exists('alt_text', $data);
+            && data_get($data, 'alt_text') === 'a cyclist crossing a bridge';
+    });
+});
+
+test('threads publisher sends alt text on a single video container', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+                'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response([
+            'id' => 'container-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/container-123*' => Http::response([
+            'status' => 'FINISHED',
+        ], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response([
+            'id' => 'post-video-alt-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/post-video-alt-123*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/VIDEOALT123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/123456789/threads')
+            && data_get($data, 'media_type') === 'VIDEO'
+            && data_get($data, 'alt_text') === 'a cyclist crossing a bridge';
     });
 });
 

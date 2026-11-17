@@ -116,8 +116,8 @@ class HostInlineMedia
     /**
      * The row as the composer shape the save validates, with the client's
      * editable meta (alt text, user tags, cover offset and source) on top of
-     * what is stored. The `alt` shorthand only applies to images, and never
-     * over an `alt_text` sent in `meta`.
+     * what is stored. The `alt` shorthand applies to images and videos (a PDF
+     * has no alt text), and never over an `alt_text` sent in `meta`.
      *
      * @param  array<string, mixed>  $reference
      * @return array<string, mixed>
@@ -340,7 +340,7 @@ class HostInlineMedia
     {
         $alt = data_get($reference, 'alt');
 
-        if ($row->type !== MediaType::Image) {
+        if ($row->type === MediaType::Document) {
             return $edits;
         }
 

@@ -23,6 +23,7 @@ const DEFAULT_RULES: MediaRules = {
     acceptsMov: true,
     cropPresets: [],
     supportsAltText: false,
+    supportsVideoAltText: false,
     supportsUserTags: false,
     supportsVideoCover: false,
     supportsCustomVideoCover: false,

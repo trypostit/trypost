@@ -206,6 +206,17 @@ enum Platform: string
     }
 
     /**
+     * Whether the platform's API also takes alt text on a video: Bluesky
+     * (`alt` on `app.bsky.embed.video`), Mastodon (`description` on the media
+     * upload), Threads (`alt_text` on a video container) and Discord
+     * (`description` on the attachment).
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return in_array($this, [self::Bluesky, self::Mastodon, self::Threads, self::Discord], true);
+    }
+
+    /**
      * Hard cap (in characters) the platform's API will accept. Going over this
      * means the post can't be published. Values are the documented API maxes:
      *

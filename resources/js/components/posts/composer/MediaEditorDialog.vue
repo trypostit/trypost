@@ -129,6 +129,8 @@ const activeItem = computed(() => editingItems.value[activeIndex.value]);
 const activeIsVideo = computed(() =>
     activeItem.value ? isVideo(activeItem.value) : false,
 );
+/** The AI writes alt text for images only. */
+const generatesAltText = computed(() => !activeIsVideo.value);
 const stageVideoEl = ref<HTMLVideoElement | null>(null);
 const stageVideoDurations = ref<Record<number, number>>({});
 
@@ -871,6 +873,7 @@ watch(tagging, (isTagging) => {
                         v-else-if="tab === 'alt' && edit"
                         v-model:edit="edit"
                         :media-id="activeItem.id"
+                        :generates="generatesAltText"
                     />
                     <MediaEditorTagsPanel
                         v-else-if="tab === 'tags' && edit"

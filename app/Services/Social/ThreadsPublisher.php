@@ -183,13 +183,21 @@ class ThreadsPublisher
     private function publishVideoPost(string $userId, string $accessToken, ?string $content, $media): array
     {
         // Step 1: Create container
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
+        $params = [
             'media_type' => 'VIDEO',
             'video_url' => $media->url,
             'text' => $content,
             ...$this->containerOptions,
             'access_token' => $accessToken,
-        ]);
+        ];
+
+        $alt = $media->altTextFor(Platform::Threads);
+
+        if ($alt !== null) {
+            $params['alt_text'] = $alt;
+        }
+
+        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
 
         if ($containerResponse->failed()) {
             Log::error('Threads video container creation failed', [
@@ -234,12 +242,12 @@ class ThreadsPublisher
             } else {
                 $params['media_type'] = 'IMAGE';
                 $params['image_url'] = $media->url;
+            }
 
-                $alt = $media->altTextFor(Platform::Threads);
+            $alt = $media->altTextFor(Platform::Threads);
 
-                if ($alt !== null) {
-                    $params['alt_text'] = $alt;
-                }
+            if ($alt !== null) {
+                $params['alt_text'] = $alt;
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
