@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Gönderi ekle',
         'more_times' => 'Daha fazla saat',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Kapak hatası',
+            'badge' => 'Kapak',
             'title' => 'YouTube kapağınızı uygulamadı',
             'forbidden' => 'Özel küçük resimler için doğrulanmış bir kanal gerekir. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
             'daily_limit' => 'Kanalınız bugünkü özel küçük resim sınırına ulaştı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',

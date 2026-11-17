@@ -1045,7 +1045,7 @@ return [
         'add_post_in_slot' => 'Añadir post',
         'more_times' => 'Más horarios',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Portada fallida',
+            'badge' => 'Portada',
             'title' => 'YouTube no aplicó tu portada',
             'forbidden' => 'Las miniaturas personalizadas requieren un canal verificado. Puedes poner la portada en YouTube Studio.',
             'daily_limit' => 'Tu canal alcanzó el límite diario de miniaturas personalizadas. Puedes poner la portada en YouTube Studio.',

@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Aggiungi post',
         'more_times' => 'Altri orari',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Copertina fallita',
+            'badge' => 'Cover',
             'title' => 'YouTube non ha applicato la copertina',
             'forbidden' => 'Le miniature personalizzate richiedono un canale verificato. Puoi impostare la copertina in YouTube Studio.',
             'daily_limit' => 'Il tuo canale ha raggiunto il limite giornaliero di miniature personalizzate. Puoi impostare la copertina in YouTube Studio.',

@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Tambahkan postingan',
         'more_times' => 'Waktu lainnya',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Sampul gagal',
+            'badge' => 'Sampul',
             'title' => 'YouTube tidak menerapkan sampulmu',
             'forbidden' => 'Thumbnail kustom memerlukan channel yang terverifikasi. Kamu bisa mengatur sampul di YouTube Studio.',
             'daily_limit' => 'Channel-mu mencapai batas harian thumbnail kustom. Kamu bisa mengatur sampul di YouTube Studio.',

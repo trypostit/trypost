@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Добавить пост',
         'more_times' => 'Другое время',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Ошибка обложки',
+            'badge' => 'Обложка',
             'title' => 'YouTube не применил обложку',
             'forbidden' => 'Для собственных значков нужен подтверждённый канал. Обложку можно задать в YouTube Studio.',
             'daily_limit' => 'Канал исчерпал дневной лимит собственных значков. Обложку можно задать в YouTube Studio.',

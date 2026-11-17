@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Adicionar post',
         'more_times' => 'Mais horários',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Falha na capa',
+            'badge' => 'Capa',
             'title' => 'O YouTube não aplicou sua capa',
             'forbidden' => 'Miniaturas personalizadas exigem um canal verificado. Você pode definir a capa no YouTube Studio.',
             'daily_limit' => 'Seu canal atingiu o limite de miniaturas personalizadas de hoje. Você pode definir a capa no YouTube Studio.',

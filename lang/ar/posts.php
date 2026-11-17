@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'إضافة منشور',
         'more_times' => 'المزيد من الأوقات',
         'youtube_thumbnail_warning' => [
-            'badge' => 'فشل الغلاف',
+            'badge' => 'الغلاف',
             'title' => 'لم يطبّق YouTube صورة الغلاف',
             'forbidden' => 'تتطلب الصور المصغرة المخصصة قناة موثّقة. يمكنك تعيين الغلاف في YouTube Studio.',
             'daily_limit' => 'بلغت قناتك الحد اليومي للصور المصغرة المخصصة. يمكنك تعيين الغلاف في YouTube Studio.',

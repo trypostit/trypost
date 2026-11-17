@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Post toevoegen',
         'more_times' => 'Meer tijden',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Omslag mislukt',
+            'badge' => 'Omslag',
             'title' => 'YouTube heeft je omslag niet toegepast',
             'forbidden' => 'Eigen miniaturen vereisen een geverifieerd kanaal. Je kunt de omslag instellen in YouTube Studio.',
             'daily_limit' => 'Je kanaal heeft de daglimiet voor eigen miniaturen bereikt. Je kunt de omslag instellen in YouTube Studio.',

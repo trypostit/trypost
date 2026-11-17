@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',
         'youtube_thumbnail_warning' => [
-            'badge' => '封面未应用',
+            'badge' => '封面',
             'title' => 'YouTube 未应用你的封面',
             'forbidden' => '自定义缩略图需要已验证的频道。你可以在 YouTube 工作室中设置封面。',
             'daily_limit' => '你的频道已达到今天的自定义缩略图上限。你可以在 YouTube 工作室中设置封面。',

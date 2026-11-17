@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Dodaj post',
         'more_times' => 'Więcej godzin',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Błąd okładki',
+            'badge' => 'Okładka',
             'title' => 'YouTube nie zastosował okładki',
             'forbidden' => 'Własne miniatury wymagają zweryfikowanego kanału. Okładkę można ustawić w YouTube Studio.',
             'daily_limit' => 'Kanał osiągnął dzienny limit własnych miniatur. Okładkę można ustawić w YouTube Studio.',

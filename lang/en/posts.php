@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Add a post',
         'more_times' => 'More times',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Cover failed',
+            'badge' => 'Cover',
             'title' => 'YouTube didn\'t apply your cover',
             'forbidden' => 'Custom thumbnails need a verified channel. You can set the cover in YouTube Studio.',
             'daily_limit' => 'Your channel reached today\'s limit of custom thumbnails. You can set the cover in YouTube Studio.',

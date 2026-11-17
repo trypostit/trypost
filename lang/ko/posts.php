@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => '게시물 추가',
         'more_times' => '더 많은 시간',
         'youtube_thumbnail_warning' => [
-            'badge' => '커버 미적용',
+            'badge' => '커버',
             'title' => 'YouTube에서 커버 이미지를 적용하지 않았습니다',
             'forbidden' => '맞춤 썸네일은 인증된 채널에서만 사용할 수 있습니다. YouTube 스튜디오에서 설정할 수 있습니다.',
             'daily_limit' => '채널이 오늘의 맞춤 썸네일 한도에 도달했습니다. YouTube 스튜디오에서 설정할 수 있습니다.',

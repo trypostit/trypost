@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Échec couverture',
+            'badge' => 'Vignette',
             'title' => 'YouTube n\'a pas appliqué votre couverture',
             'forbidden' => 'Les miniatures personnalisées nécessitent une chaîne validée. Vous pouvez définir la couverture dans YouTube Studio.',
             'daily_limit' => 'Votre chaîne a atteint la limite quotidienne de miniatures personnalisées. Vous pouvez définir la couverture dans YouTube Studio.',

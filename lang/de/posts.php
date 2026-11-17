@@ -1044,7 +1044,7 @@ return [
         'add_post_in_slot' => 'Post hinzufügen',
         'more_times' => 'Weitere Zeiten',
         'youtube_thumbnail_warning' => [
-            'badge' => 'Vorschaubild fehlt',
+            'badge' => 'Cover',
             'title' => 'YouTube hat dein Vorschaubild nicht übernommen',
             'forbidden' => 'Eigene Vorschaubilder brauchen einen bestätigten Kanal. Du kannst es in YouTube Studio festlegen.',
             'daily_limit' => 'Dein Kanal hat das Tageslimit für eigene Vorschaubilder erreicht. Du kannst es in YouTube Studio festlegen.',
