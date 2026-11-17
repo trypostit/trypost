@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums\Post;
+namespace App\Enums\Analytics;
 
 /**
  * Whether a published poll still takes votes, as stored with its result. X

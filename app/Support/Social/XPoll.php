@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
-use App\Enums\Post\PollVotingStatus;
+use App\Enums\Analytics\PollVotingStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
