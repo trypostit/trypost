@@ -1,3 +1,5 @@
+import { objectOmit } from '@vueuse/core';
+
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
 import type { CoverSource, MediaItem } from '@/types/media';
@@ -28,18 +30,6 @@ export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource =>
     return 'frame';
 };
 
-/** The meta keys of an uploaded cover image, which a frame-only network drops. */
-const COVER_META_KEYS = ['cover', 'cover_source'];
-
-/**
- * A video's meta without its cover image. Kept free of npm packages: the Node
- * harnesses under `tests/fixtures` import this file without `node_modules`.
- */
-const withoutCoverMeta = (meta: MediaItem['meta']): MediaItem['meta'] =>
-    Object.fromEntries(
-        Object.entries(meta ?? {}).filter(([key]) => !COVER_META_KEYS.includes(key)),
-    );
-
 /**
  * The media as a network shows it: a network that takes no cover image
  * (TikTok, a Pinterest pin, an Instagram feed video) never shows the one
@@ -58,7 +48,7 @@ export const withCoversFor = (
             return item;
         }
 
-        return { ...item, meta: withoutCoverMeta(item.meta) };
+        return { ...item, meta: objectOmit(item.meta, ['cover', 'cover_source']) };
     });
 };
 
