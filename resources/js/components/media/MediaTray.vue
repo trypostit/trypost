@@ -34,6 +34,7 @@ import { cancelDragOnEscape } from '@/lib/dragPlaceholder';
 import { editorTabsFor, rulesFor, type EditorTab } from '@/lib/mediaEditor';
 import { canvaDesignId, editInCanva } from '@/lib/mediaSources/canva';
 import { acceptAttribute, isImage, isVideo, mediaKey } from '@/lib/mediaType';
+import { withCoversFor } from '@/lib/videoFrame';
 import type { MediaUploadLimits, SharedData } from '@/types';
 import type { MediaItem } from '@/types/media';
 
@@ -70,6 +71,14 @@ const uploader =
 watch(uploader.busy, (busy) => emit('busy', busy), { immediate: true });
 
 const editorRules = computed(() => rulesFor(props.contentTypes));
+
+/** Whether a network of the post takes a cover image, so the tiles show the one uploaded. */
+const takesCoverImage = computed(() =>
+    editorRules.value.some((rule) => rule.supportsCustomVideoCover),
+);
+
+/** The items as the tiles draw them, without an uploaded cover no network of the post shows. */
+const tileItems = computed(() => withCoversFor(props.items, takesCoverImage.value));
 const itemTabs = computed<EditorTab[][]>(() =>
     props.items.map((item) => editorTabsFor(item, editorRules.value)),
 );
@@ -388,7 +397,7 @@ const vSortableTile: Directive<HTMLElement> = {
                 <MediaTile
                     :test-id-prefix="testIdPrefix"
                     :index="index"
-                    :item="items[index]!"
+                    :item="tileItems[index]!"
                     :tabs="itemTabs[index]"
                     :disabled="disabled"
                     :error="itemErrors?.[index]"

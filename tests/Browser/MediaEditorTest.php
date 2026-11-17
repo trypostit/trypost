@@ -1107,6 +1107,22 @@ test('a frame picked before youtube was added gets its screenshot when the edito
     $page->assertNoJavaScriptErrors();
 });
 
+test('a feed post\'s media tile shows the picked frame, not an image only a reel takes', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'image', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+
+    waitForState($page, "@composer-{$accountId}-media-item-0 video", "element.src.endsWith('#t=2.5')");
+    $page->assertMissing("@composer-{$accountId}-media-item-0 img")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a video without a picked cover shows the video itself on the preview', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
     $accountId = $post->social_account_id;
