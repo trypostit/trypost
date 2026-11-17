@@ -80,8 +80,8 @@ test('picking poll shows two choices and turns media off', function () {
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'));
-    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'))
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.poll.attachments'));
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
@@ -138,9 +138,9 @@ test('duplicate choices show the error under the choices', function () {
     $page->fill('@x-poll-choice-0', 'Yes')
         ->fill('@x-poll-choice-1', 'yes')
         ->click('@composer-submit');
-    waitForText($page, '@x-poll-options-error', __('posts.form.x.poll.options_distinct'));
+    waitForText($page, '@x-poll-options-error', __('posts.form.poll.options_distinct'));
 
-    $page->assertSeeIn('@x-poll-options-error', __('posts.form.x.poll.options_distinct'))
+    $page->assertSeeIn('@x-poll-options-error', __('posts.form.poll.options_distinct'))
         ->assertVisible('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
 });
@@ -202,7 +202,7 @@ test('poll is disabled while the card has media', function () {
     $page->hover("@composer-type-{$id}-x_poll-label");
     waitFor($page, "@composer-type-{$id}-x_poll-reason");
 
-    $page->assertSeeIn("@composer-type-{$id}-x_poll-reason", __('posts.form.x.poll.attachments'))
+    $page->assertSeeIn("@composer-type-{$id}-x_poll-reason", __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
@@ -659,7 +659,7 @@ test('a server error on the poll shows on the x card when x is not the first cha
         ->assertNoJavaScriptErrors();
     expect(Post::query()->where('workspace_id', $post->workspace_id)->count())->toBe(1);
 })->with([
-    'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.x.poll.options_distinct')],
+    'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.poll.options_distinct')],
 ]);
 
 test('the ai-generated switch survives a switch from poll to post', function () {
@@ -755,7 +755,7 @@ test('the length selects are labelled and a choice is added with the keyboard', 
     waitFor($page, '@x-poll-add-choice');
 
     expect($page->script("['days', 'hours', 'minutes'].map((part) => document.querySelector(`[data-testid=\"x-poll-\${part}\"]`).labels[0]?.textContent.trim())"))
-        ->toBe([__('posts.form.x.poll.days'), __('posts.form.x.poll.hours'), __('posts.form.x.poll.minutes')]);
+        ->toBe([__('posts.form.poll.days'), __('posts.form.poll.hours'), __('posts.form.poll.minutes')]);
 
     $page->keys('@x-poll-add-choice', 'Enter');
     waitFor($page, '@x-poll-choice-2');
@@ -828,7 +828,7 @@ test('a thread reply turns into a poll from its toolbar, turns its media off and
 
     $page->assertMissing("@composer-{$id}-poll")
         ->assertMissing('@x-poll')
-        ->assertAttribute("@composer-{$id}-media-source-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertAttribute("@composer-{$id}-media-source-disabled", 'aria-label', __('posts.form.poll.attachments'))
         ->assertSeeIn('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]', 'Tabs');
 
     $page->click('@composer-save-draft');
@@ -855,9 +855,9 @@ test('a thread reply poll shows in the preview before its question, and its choi
     waitForText($page, '@preview-thread-reply-0 @x-preview-poll', 'Tabs');
     $page->assertVisible('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]')
         ->click('@composer-save-draft');
-    waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'));
+    waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.poll.options_distinct'));
 
-    $page->assertSeeIn('@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'))
+    $page->assertSeeIn('@thread-reply-0-poll-options-error', __('posts.form.poll.options_distinct'))
         ->assertMissing('@thread-reply-error-0')
         ->assertAttributeMissing('@thread-reply-0', 'aria-invalid')
         ->assertVisible('@post-composer-dialog')
@@ -895,7 +895,7 @@ test('a thread reply with media cannot turn into a poll and says why', function 
     waitFor($page, "@composer-{$id}-poll-disabled");
 
     $page->assertMissing("@composer-{$id}-poll")
-        ->assertAttribute("@composer-{$id}-poll-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertAttribute("@composer-{$id}-poll-disabled", 'aria-label', __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
@@ -967,7 +967,7 @@ test('every toolbar button names itself in a tooltip and the ai-generated hint o
     waitFor($page, "@composer-{$id}-poll");
     $page->hover("@composer-{$id}-poll");
     waitFor($page, "@composer-{$id}-poll-tooltip");
-    $page->assertSeeIn("@composer-{$id}-poll-tooltip", __('posts.form.x.poll.add'))
+    $page->assertSeeIn("@composer-{$id}-poll-tooltip", __('posts.form.poll.add'))
         ->hover('@composer-header');
     waitForGone($page, "@composer-{$id}-poll-tooltip");
 

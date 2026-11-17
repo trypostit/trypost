@@ -72,15 +72,15 @@ test('tools that schedule or publish list the required meta', function (string $
     'publish-post' => [PublishPostTool::class],
 ]);
 
-test('list-content-types says an x poll is refused even as a draft and what it needs', function () {
+test('list-content-types says a poll is refused even as a draft and what it needs', function () {
     expect(mcpToolDescription(ListContentTypesTool::class))
-        ->toContain('The exception is an X poll')
+        ->toContain('The exception is a poll')
         ->toContain('drafts included')
-        ->toContain('x_poll) needs meta.poll');
+        ->toContain('x_poll, mastodon_poll, threads_poll) needs meta.poll');
 });
 
-test('the attach media tools say an x poll takes no media', function (string $tool) {
-    expect(mcpToolDescription($tool))->toContain('x_poll) takes no media');
+test('the attach media tools say a poll takes no media', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('x_poll, mastodon_poll or threads_poll) takes no media');
 })->with([
     'upload' => [AttachMediaFromUploadTool::class],
     'url' => [AttachMediaFromUrlTool::class],

@@ -10,7 +10,9 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Social\Mastodon\MastodonApi;
+use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
+use GuzzleHttp\Psr7\Query;
 use Illuminate\Http\Client\Response;
 
 class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsCollector
@@ -18,7 +20,44 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
+        [$status, $threadPolls] = $this->read($account, $publication);
 
+        return $this->observation($date, $this->withEngagements($this->present([
+            $this->count(MetricKey::Reactions, $status, 'favourites_count'),
+            $this->count(MetricKey::Comments, $status, 'replies_count'),
+            $this->count(MetricKey::Shares, $status, 'reblogs_count'),
+        ])), $this->providerMetadata($status, $threadPolls));
+    }
+
+    /**
+     * The status and its reply polls: a thread without a reply poll reads the
+     * status alone; otherwise one read brings the status and its reply polls,
+     * as on X. A server without that read (before Mastodon 4.3), or one that
+     * leaves the status out (deleted or private), gets the status read alone,
+     * which is where a deletion is confirmed.
+     *
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     */
+    private function read(SocialAccount $account, AnalyticsPublication $publication): array
+    {
+        $replyPolls = $this->replyPollIds($publication);
+
+        if (filled($replyPolls)) {
+            $thread = $this->readThread($account, $publication->remote_id, $replyPolls);
+
+            if (filled($thread)) {
+                return $thread;
+            }
+        }
+
+        return [$this->readStatus($account, $publication), []];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readStatus(SocialAccount $account, AnalyticsPublication $publication): array
+    {
         $response = $this->readUnlessDeleted(
             fn (): Response => $this->get(
                 $account,
@@ -29,13 +68,67 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
             $publication->platform,
         );
 
-        $status = (array) $response->json();
+        return (array) $response->json();
+    }
 
-        return $this->observation($date, $this->withEngagements($this->present([
-            $this->count(MetricKey::Reactions, $status, 'favourites_count'),
-            $this->count(MetricKey::Comments, $status, 'replies_count'),
-            $this->count(MetricKey::Shares, $status, 'reblogs_count'),
-        ])));
+    /**
+     * The status and its reply polls in one read (`GET /api/v1/statuses?id[]=`,
+     * Mastodon 4.3), each reply poll's result with its reply position. Null
+     * when the server has no such read or left the status out; a read that
+     * failed only for now is rethrown so the job retries.
+     *
+     * @param  array<int, string>  $replyPolls  status ids keyed by reply position
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}|null
+     */
+    private function readThread(SocialAccount $account, string $id, array $replyPolls): ?array
+    {
+        try {
+            $response = $this->get(
+                $account,
+                MastodonApi::url($account->mastodon_instance, 'statuses').'?'.Query::build(['id[]' => [$id, ...$replyPolls]]),
+                authenticated: $account->canReadMastodonStatuses(),
+            );
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowWhenTemporary($exception);
+
+            return null;
+        }
+
+        $statuses = $response->collect()->keyBy('id');
+        $status = $statuses->get($id);
+
+        if (! is_array($status)) {
+            return null;
+        }
+
+        $threadPolls = collect($replyPolls)
+            ->map(fn (string $replyId, int $reply): ?array => transform(
+                data_get($statuses->get($replyId), 'poll'),
+                fn (array $poll): array => ['reply' => $reply, ...MastodonPoll::result($poll)],
+            ))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [$status, $threadPolls];
+    }
+
+    /**
+     * The status's poll and its reply polls, as `provider_metadata` keeps them.
+     *
+     * @param  array<string, mixed>  $status
+     * @param  list<array<string, mixed>>  $threadPolls
+     * @return array<string, mixed>|null
+     */
+    private function providerMetadata(array $status, array $threadPolls): ?array
+    {
+        $metadata = MastodonPoll::metadataFrom($status);
+
+        if (filled($threadPolls)) {
+            $metadata['thread_polls'] = $threadPolls;
+        }
+
+        return $metadata ?: null;
     }
 
     /**

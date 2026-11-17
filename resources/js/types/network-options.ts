@@ -22,6 +22,11 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<Record<string, string>> = {
     linkedin: ContentType.LinkedInComment,
     'linkedin-page': ContentType.LinkedInComment,
 };
+/** The type a reply poll publishes as, on the networks whose replies can be polls (`ThreadReplies::replyPoll()`). */
+export const THREAD_REPLY_POLL_CONTENT_TYPES: Readonly<Record<string, string>> = {
+    mastodon: ContentType.MastodonPoll,
+    x: ContentType.XPoll,
+};
 export const THREAD_PLATFORMS: readonly string[] = Object.keys(
     THREAD_REPLY_CONTENT_TYPES,
 );

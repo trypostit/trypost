@@ -49,10 +49,10 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     tiktok: ['tiktok_video', 'tiktok_photo'],
     youtube: ['youtube_short'],
     x: ['x_post', 'x_poll'],
-    threads: ['threads_post', 'threads_ghost_post'],
+    threads: ['threads_post', 'threads_ghost_post', 'threads_poll'],
     pinterest: ['pinterest_pin', 'pinterest_video_pin', 'pinterest_carousel'],
     bluesky: ['bluesky_post'],
-    mastodon: ['mastodon_post'],
+    mastodon: ['mastodon_post', 'mastodon_poll'],
     telegram: ['telegram_post'],
     discord: ['discord_message'],
     google_business: ['google_business_post'],
@@ -62,8 +62,9 @@ const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
     instagram: ['instagram_reel', 'instagram_story'],
     'instagram-facebook': ['instagram_reel', 'instagram_story'],
     facebook: ['facebook_reel', 'facebook_story'],
-    threads: ['threads_ghost_post'],
+    threads: ['threads_ghost_post', 'threads_poll'],
     x: ['x_poll'],
+    mastodon: ['mastodon_poll'],
 };
 
 export interface ContentTypeOption {

@@ -9,9 +9,14 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import MastodonPreviewPoll from '@/components/posts/previews/MastodonPreviewPoll.vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
+import { blank, filled } from '@/lib/helpers';
+import { pollLimitsOf } from '@/lib/poll';
+import { ContentType } from '@/types/content-type';
+import type { Poll } from '@/types/poll';
 
 
 const props = defineProps<PreviewProps>();
@@ -19,6 +24,29 @@ const props = defineProps<PreviewProps>();
 const contentWarning = computed((): string =>
     String(props.meta?.spoiler_text ?? '').trim(),
 );
+
+/** The poll the status shows: only a Poll post has one, whatever its meta still holds. */
+const poll = computed((): Partial<Poll> | undefined => {
+    if (props.contentType !== ContentType.MastodonPoll) {
+        return undefined;
+    }
+
+    return props.meta?.poll;
+});
+
+const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
+
+/** A poll shows no link card. */
+const showsLinkCard = computed((): boolean => blank(poll.value));
+
+/** The poll shows once the account's poll limits are known, and stays behind a content warning like the rest of the status. */
+const showsPoll = computed((): boolean => {
+    if (!filled(poll.value) || !filled(pollLimits.value)) {
+        return false;
+    }
+
+    return contentWarning.value === '';
+});
 </script>
 
 <template>
@@ -35,7 +63,7 @@ const contentWarning = computed((): string =>
         link-tone="info"
         host-only
         tags="muted"
-        link-card
+        :link-card="showsLinkCard"
         :link-card-options="{ band: true, titleFirst: true }"
         :actions="[
             { icon: IconArrowBackUp },
@@ -59,6 +87,9 @@ const contentWarning = computed((): string =>
                     {{ $t('posts.composer.preview.tap_to_reveal') }}
                 </p>
             </div>
+        </template>
+        <template v-if="showsPoll" #default>
+            <MastodonPreviewPoll :poll="poll!" :limits="pollLimits!" />
         </template>
         <template #aside>
             <span

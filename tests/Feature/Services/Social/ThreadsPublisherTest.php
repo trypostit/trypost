@@ -1117,3 +1117,37 @@ test('a text post waits for its container before publishing and recreates it whe
         ->and($publicationAttempts)->toBe(2)
         ->and(array_slice($requestOrder, 0, 3))->toBe(['create', 'status', 'publish']);
 });
+
+test('a threads poll is a text container carrying its choices as option_a to option_d', function () {
+    $this->post->update([
+        'content' => 'Tabs or spaces?',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces', 'Both']], 'topic_tag' => 'laravel'],
+    ]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/123456789/threads')
+        && data_get($request->data(), 'media_type') === 'TEXT'
+        && data_get($request->data(), 'text') === 'Tabs or spaces?'
+        && data_get($request->data(), 'topic_tag') === 'laravel'
+        && data_get($request->data(), 'poll_attachment') === ['option_a' => 'Tabs', 'option_b' => 'Spaces', 'option_c' => 'Both']);
+});
+
+test('a threads poll that cannot go fails before calling threads', function (array $changes, string $message) {
+    $this->post->update([
+        'content' => 'Tabs or spaces?',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces']]],
+        ...$changes,
+    ]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(ThreadsPublishException::class, __($message, ['min' => 2]));
+    Http::assertNothingSent();
+})->with([
+    'media' => [['media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]], 'posts.errors.media_not_accepted'],
+    'one choice' => [['meta' => ['poll' => ['options' => ['Tabs']]]], 'posts.form.poll.options_required'],
+    'no question' => [['content' => ''], 'posts.form.poll.question_required'],
+]);

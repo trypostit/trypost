@@ -7,6 +7,7 @@ import InputError from '@/components/InputError.vue';
 import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -14,24 +15,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useMetaErrors } from '@/composables/useMetaErrors';
+import { filled } from '@/lib/helpers';
 import {
     editablePollOptions,
     fitPollChoice,
     pollChoiceLength,
+    pollDurationOf,
+    pollHasDuration,
     HOURS_PER_DAY,
     joinPollDuration,
     MINUTES_PER_HOUR,
     pollMaxDays,
     splitPollDuration,
-} from '@/lib/xPoll';
-import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
+} from '@/lib/poll';
+import type { Poll, PollDuration, PollLimits } from '@/types/poll';
 
 const props = withDefaults(
     defineProps<{
-        modelValue: Partial<XPoll>;
+        modelValue: Partial<Poll>;
         /** The account's poll limits, from its `publishConfig`. */
-        limits: XPollLimits;
+        limits: PollLimits;
         /** This card's position in the submitted `destinations`; see useMetaErrors. */
         platformIndex: number;
         /** Where the poll sits in the meta: '' for the post, `thread_replies.{n}.` for a reply. */
@@ -40,11 +45,11 @@ const props = withDefaults(
         testIdPrefix?: string;
         disabled?: boolean;
     }>(),
-    { fieldPrefix: '', testIdPrefix: 'x-poll', disabled: false },
+    { fieldPrefix: '', testIdPrefix: 'poll', disabled: false },
 );
 
 const emit = defineEmits<{
-    'update:modelValue': [value: XPoll];
+    'update:modelValue': [value: Poll];
     remove: [];
 }>();
 
@@ -63,25 +68,52 @@ const choiceId = (index: number): string => `${id}-choice-${index}`;
 const options = computed((): string[] =>
     editablePollOptions(props.modelValue.options, props.limits.minOptions),
 );
-const durationMinutes = computed(
-    (): number =>
-        props.modelValue.duration_minutes ?? props.limits.defaultDuration,
+/** Whether the author picks the length: not on Threads, which sets it. */
+const hasDuration = computed((): boolean => pollHasDuration(props.limits));
+const durationMinutes = computed((): number =>
+    pollDurationOf(props.modelValue, props.limits),
 );
 const duration = computed(
-    (): XPollDuration => splitPollDuration(durationMinutes.value),
+    (): PollDuration => splitPollDuration(durationMinutes.value),
 );
-const atLongestLength = computed(
-    (): boolean => durationMinutes.value >= props.limits.maxDuration,
+const atLongestLength = computed((): boolean => {
+    const longest = props.limits.maxDuration;
+
+    if (!filled(longest)) {
+        return false;
+    }
+
+    return durationMinutes.value >= longest;
+});
+/** A length select is off at the longest length, where only the days count. */
+const lengthPartDisabled = (part: keyof PollDuration): boolean => {
+    if (props.disabled) {
+        return true;
+    }
+
+    return atLongestLength.value && part !== 'days';
+};
+/** Mastodon lets the author pick multiple choice and hidden totals. */
+const hasSwitches = computed((): boolean => {
+    if (props.limits.multipleChoice) {
+        return true;
+    }
+
+    return props.limits.hideTotals;
+});
+const multiple = computed((): boolean => props.modelValue.multiple === true);
+const hideTotals = computed(
+    (): boolean => props.modelValue.hide_totals === true,
 );
 
 const lengthParts: {
-    part: keyof XPollDuration;
+    part: keyof PollDuration;
     labelKey: string;
     values: number[];
 }[] = [
     {
         part: 'days',
-        labelKey: 'posts.form.x.poll.days',
+        labelKey: 'posts.form.poll.days',
         values: Array.from(
             { length: pollMaxDays(props.limits) + 1 },
             (_, value) => value,
@@ -89,22 +121,45 @@ const lengthParts: {
     },
     {
         part: 'hours',
-        labelKey: 'posts.form.x.poll.hours',
+        labelKey: 'posts.form.poll.hours',
         values: Array.from({ length: HOURS_PER_DAY }, (_, value) => value),
     },
     {
         part: 'minutes',
-        labelKey: 'posts.form.x.poll.minutes',
+        labelKey: 'posts.form.poll.minutes',
         values: Array.from({ length: MINUTES_PER_HOUR }, (_, value) => value),
     },
 ];
 
-const update = (patch: Partial<XPoll>): void => {
-    emit('update:modelValue', {
-        options: options.value,
-        duration_minutes: durationMinutes.value,
-        ...patch,
-    });
+/** The poll as this network keeps it: a length and switches only where it has them. */
+const currentPoll = (): Poll => {
+    const poll: Poll = { options: options.value };
+
+    if (hasDuration.value) {
+        poll.duration_minutes = durationMinutes.value;
+    }
+
+    if (props.limits.multipleChoice) {
+        poll.multiple = multiple.value;
+    }
+
+    if (props.limits.hideTotals) {
+        poll.hide_totals = hideTotals.value;
+    }
+
+    return poll;
+};
+
+const update = (patch: Partial<Poll>): void => {
+    emit('update:modelValue', { ...currentPoll(), ...patch });
+};
+
+const setMultiple = (value: boolean): void => {
+    update({ multiple: value });
+};
+
+const setHideTotals = (value: boolean): void => {
+    update({ hide_totals: value });
 };
 
 /** A choice's length as the server measures it, without the spaces around it. */
@@ -114,10 +169,22 @@ const choiceNumber = (index: number): { number: string } => ({
     number: String(index + 1),
 });
 
-const choiceLabelKey = (index: number): string =>
-    index < props.limits.minOptions
-        ? 'posts.form.x.poll.choice'
-        : 'posts.form.x.poll.choice_optional';
+const choiceLabelKey = (index: number): string => {
+    if (index < props.limits.minOptions) {
+        return 'posts.form.poll.choice';
+    }
+
+    return 'posts.form.poll.choice_optional';
+};
+
+/** A choice's counter turns red once it runs over the network's limit. */
+const choiceCountClass = (option: string): string => {
+    if (pollChoiceLength(option) > props.limits.optionMaxLength) {
+        return 'text-destructive-text';
+    }
+
+    return 'text-muted-foreground';
+};
 
 const writeChoice = (index: number, choice: string): void => {
     update({
@@ -163,7 +230,7 @@ const removeChoice = (index: number): void => {
 };
 
 const setLengthPart = (
-    part: keyof XPollDuration,
+    part: keyof PollDuration,
     value: AcceptableValue,
 ): void => {
     update({
@@ -184,7 +251,7 @@ const removePoll = (): void => {
         <SettingsRow align-top>
             <template #label>
                 <span data-single-line>{{
-                    $t('posts.form.x.poll.choices')
+                    $t('posts.form.poll.choices')
                 }}</span>
             </template>
             <template v-for="(option, index) in options" :key="index">
@@ -208,11 +275,7 @@ const removePoll = (): void => {
                     />
                     <span
                         class="w-11 shrink-0 text-end text-xs tabular-nums"
-                        :class="
-                            pollChoiceLength(option) > limits.optionMaxLength
-                                ? 'text-destructive-text'
-                                : 'text-muted-foreground'
-                        "
+                        :class="choiceCountClass(option)"
                         :data-testid="`${testIdPrefix}-choice-${index}-count`"
                         >{{ pollChoiceLength(option) }} /
                         {{ limits.optionMaxLength }}</span
@@ -225,7 +288,7 @@ const removePoll = (): void => {
                         class="text-muted-foreground"
                         :aria-label="
                             $t(
-                                'posts.form.x.poll.remove_choice',
+                                'posts.form.poll.remove_choice',
                                 choiceNumber(index),
                             )
                         "
@@ -257,14 +320,14 @@ const removePoll = (): void => {
             >
                 <IconPlus class="size-4" />
                 <span data-single-line>{{
-                    $t('posts.form.x.poll.add_choice')
+                    $t('posts.form.poll.add_choice')
                 }}</span>
             </Button>
         </SettingsRow>
-        <SettingsRow>
+        <SettingsRow v-if="hasDuration">
             <template #label>
                 <span data-single-line>{{
-                    $t('posts.form.x.poll.length')
+                    $t('posts.form.poll.length')
                 }}</span>
             </template>
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -275,10 +338,7 @@ const removePoll = (): void => {
                 >
                     <Select
                         :model-value="String(duration[lengthPart.part])"
-                        :disabled="
-                            disabled ||
-                            (atLongestLength && lengthPart.part !== 'days')
-                        "
+                        :disabled="lengthPartDisabled(lengthPart.part)"
                         @update:model-value="
                             setLengthPart(lengthPart.part, $event)
                         "
@@ -315,6 +375,37 @@ const removePoll = (): void => {
                 :data-testid="`${testIdPrefix}-duration-error`"
             />
         </SettingsRow>
+        <SettingsRow v-if="hasSwitches">
+            <div class="flex flex-col gap-3">
+                <div
+                    v-if="limits.multipleChoice"
+                    class="flex items-center gap-2"
+                >
+                    <Switch
+                        :id="`${id}-multiple`"
+                        :model-value="multiple"
+                        :disabled="disabled"
+                        :data-testid="`${testIdPrefix}-multiple`"
+                        @update:model-value="setMultiple"
+                    />
+                    <Label :for="`${id}-multiple`" class="font-normal">{{
+                        $t('posts.form.poll.multiple')
+                    }}</Label>
+                </div>
+                <div v-if="limits.hideTotals" class="flex items-center gap-2">
+                    <Switch
+                        :id="`${id}-hide-totals`"
+                        :model-value="hideTotals"
+                        :disabled="disabled"
+                        :data-testid="`${testIdPrefix}-hide-totals`"
+                        @update:model-value="setHideTotals"
+                    />
+                    <Label :for="`${id}-hide-totals`" class="font-normal">{{
+                        $t('posts.form.poll.hide_totals')
+                    }}</Label>
+                </div>
+            </div>
+        </SettingsRow>
         <SettingsRow>
             <div>
                 <Button
@@ -328,7 +419,7 @@ const removePoll = (): void => {
                 >
                     <IconTrash class="size-4" />
                     <span data-single-line>{{
-                        $t('posts.form.x.poll.remove')
+                        $t('posts.form.poll.remove')
                     }}</span>
                 </Button>
             </div>

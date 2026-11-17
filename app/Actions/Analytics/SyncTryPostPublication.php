@@ -59,7 +59,7 @@ class SyncTryPostPublication
             ContentType::YouTubeShort => PublicationContentType::Short,
             ContentType::TikTokVideo, ContentType::PinterestVideoPin => PublicationContentType::Video,
             ContentType::TikTokPhoto, ContentType::PinterestCarousel => PublicationContentType::Carousel,
-            ContentType::XPoll => PublicationContentType::Poll,
+            ContentType::XPoll, ContentType::MastodonPoll, ContentType::ThreadsPoll => PublicationContentType::Poll,
             default => null,
         };
 

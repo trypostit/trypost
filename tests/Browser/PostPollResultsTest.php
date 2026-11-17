@@ -348,3 +348,73 @@ test('the polls of thread replies show under the post on the sent card and in th
         ->assertSeeIn('@post-details-poll-reply-1', '25%')
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * @return array{0: User, 1: SocialAccount}
+ */
+function networkPollResultsSetup(string $network): array
+{
+    $user = User::factory()->create(['timezone' => 'UTC']);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    connectAiTo($user);
+
+    return [$user, SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id])];
+}
+
+test('a mastodon or threads poll still in the queue shows its choices with no votes, like an x poll', function (string $network, ContentType $type, array $poll) {
+    [$user, $account] = networkPollResultsSetup($network);
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'user_id' => $user->id,
+        'status' => Status::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'meta' => ['poll' => $poll],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $account));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", 'Linux')
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Ends')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Mac', 'Linux']]],
+]);
+
+test('a sent mastodon or threads poll shows the votes its network returned, like an x poll', function (string $network, ContentType $type, Platform $platform) {
+    [$user, $account] = networkPollResultsSetup($network);
+    $post = Post::factory()->forAccount($account, $type)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subHour(),
+        'published_at' => now()->subHour(),
+        'meta' => ['poll' => ['options' => ['✅ Refund', '❌ No refund']]],
+    ]);
+    $publication = AnalyticsPublication::factory()->withPoll(refundPoll())->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'platform' => $platform,
+        'network' => $platform->network(),
+        'remote_id' => $post->platform_post_id,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", '1 vote')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", '2 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", '3 votes')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, Platform::Mastodon],
+    'threads' => ['threads', ContentType::ThreadsPoll, Platform::Threads],
+]);

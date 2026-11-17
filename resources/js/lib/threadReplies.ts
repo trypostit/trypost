@@ -5,20 +5,21 @@ import type { MediaItem } from '@/types/media';
 import {
     THREAD_MAX_REPLIES,
     THREAD_REPLY_CONTENT_TYPES,
+    THREAD_REPLY_POLL_CONTENT_TYPES,
 } from '@/types/network-options';
-import type { XPoll } from '@/types/x';
+import type { Poll } from '@/types/poll';
 
 /**
  * One post of a thread after the first. `key` only lives in the composer: it
  * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it. On X a reply may carry a poll instead of
- * media, its text being the question.
+ * above it, and the server drops it. On X and Mastodon a reply may carry a
+ * poll instead of media, its text being the question.
  */
 export type ThreadReply = {
     key: string;
     text: string;
     media: MediaItem[];
-    poll?: Partial<XPoll>;
+    poll?: Partial<Poll>;
 };
 
 export const newThreadReply = (): ThreadReply => ({
@@ -58,7 +59,7 @@ export const threadRepliesOf = (
 /** The reply as a poll, which carries no media, or as a plain post without one. */
 export const withReplyPoll = (
     { key, text, media }: ThreadReply,
-    poll: Partial<XPoll> | undefined,
+    poll: Partial<Poll> | undefined,
 ): ThreadReply => {
     if (blank(poll)) {
         return { key, text, media };
@@ -88,7 +89,7 @@ export const threadReplyContentType = (
     reply: ThreadReply,
 ): string | undefined => {
     if (filled(reply.poll)) {
-        return ContentType.XPoll;
+        return THREAD_REPLY_POLL_CONTENT_TYPES[platform];
     }
 
     return THREAD_REPLY_CONTENT_TYPES[platform];

@@ -15,7 +15,7 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
-use App\Support\Social\XPoll;
+use App\Support\Social\Poll;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -199,13 +199,11 @@ class PostCompositionValidator
                     }
                 }
 
-                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, data_get($destination, 'meta', []), $contentType);
-                if ($formatViolation !== null) {
-                    [$field, $message] = $formatViolation;
+                foreach (PostPlatformMetaRules::formatErrors($account->platform, data_get($destination, 'meta', []), $contentType) as $field => $message) {
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                $pollWithMedia = $contentType === ContentType::XPoll && filled(data_get($destination, 'media'));
+                $pollWithMedia = $contentType?->isPoll() === true && filled(data_get($destination, 'media'));
 
                 if ($pollWithMedia) {
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
@@ -227,7 +225,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                $questionViolation = $contentType === ContentType::XPoll ? XPoll::questionViolation(data_get($destination, 'content')) : null;
+                $questionViolation = transform(Poll::forContentType($contentType), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
                 if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
                 } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
@@ -236,7 +234,7 @@ class PostCompositionValidator
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)
                     ?? PostPlatformMetaRules::contentMetaViolation($account->platform, $destination['meta'] ?? [], (string) $destination['content']);
-                if ($metaViolation !== null && $metaViolation !== $formatViolation) {
+                if ($metaViolation !== null && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
                     [$field, $message] = $metaViolation;
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }

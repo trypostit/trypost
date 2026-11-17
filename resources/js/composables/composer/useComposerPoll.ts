@@ -4,13 +4,15 @@ import type {
     usePostComposition,
 } from '@/composables/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
+import { newPoll } from '@/lib/poll';
 import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
-import { newPoll } from '@/lib/xPoll';
 import {
-    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
+    POLL_CONTENT_TYPES,
+    POLL_POST_CONTENT_TYPES,
 } from '@/types/content-type';
-import type { XPoll, XPollLimits } from '@/types/x';
+import { THREAD_REPLY_POLL_CONTENT_TYPES } from '@/types/network-options';
+import type { Poll, PollLimits } from '@/types/poll';
 
 /** What the composer gives the card polls: each card's destination and the override that changes it. */
 type ComposerCards = Pick<
@@ -28,20 +30,21 @@ export interface ComposerThread {
 }
 
 /**
- * The X polls of each composer card: the post's (picking Poll starts one,
- * editing writes it into the card's meta, and any other type drops it, as the
- * server does) and each thread reply's (the toolbar's poll button).
+ * The polls of each composer card (X, Mastodon and Threads): the post's
+ * (picking Poll starts one, editing writes it into the card's meta, and any
+ * other type drops it, as the server does) and each thread reply's (the
+ * toolbar's poll button).
  */
 export const useComposerPoll = (
     composition: ComposerCards,
-    pollLimits: (account: ComposerAccount) => XPollLimits | null,
+    pollLimits: (account: ComposerAccount) => PollLimits | null,
     thread: ComposerThread,
 ) => {
     const destination = (group: NetworkGroup) =>
         composition.resolvedDestination(group.anchor);
 
     /** The card's poll limits, or null on a network without polls. */
-    const groupPollLimits = (group: NetworkGroup): XPollLimits | null =>
+    const groupPollLimits = (group: NetworkGroup): PollLimits | null =>
         pollLimits(group.anchor);
 
     /** An account's text limit for its post type: a poll's question keeps the poll's cap, even with long posts. */
@@ -50,9 +53,9 @@ export const useComposerPoll = (
         limit: number | undefined,
     ): number | undefined => {
         const questionCap = pollLimits(account)?.questionMaxLength;
-        const isPoll =
-            composition.resolvedDestination(account).content_type ===
-            ContentType.XPoll;
+        const isPoll = POLL_CONTENT_TYPES.has(
+            composition.resolvedDestination(account).content_type,
+        );
 
         if (isPoll && filled(limit) && filled(questionCap)) {
             return Math.min(limit, questionCap);
@@ -77,12 +80,12 @@ export const useComposerPoll = (
     const metaBeforeOtherType = new Map<string, Record<string, any>>();
 
     const isPollGroup = (group: NetworkGroup): boolean =>
-        destination(group).content_type === ContentType.XPoll;
+        POLL_CONTENT_TYPES.has(destination(group).content_type);
 
-    const groupPoll = (group: NetworkGroup): Partial<XPoll> =>
+    const groupPoll = (group: NetworkGroup): Partial<Poll> =>
         destination(group).meta?.poll ?? {};
 
-    const setGroupPoll = (group: NetworkGroup, poll: XPoll): void => {
+    const setGroupPoll = (group: NetworkGroup, poll: Poll): void => {
         composition.setGroupOverride(group.key, 'meta', {
             ...destination(group).meta,
             poll,
@@ -165,7 +168,7 @@ export const useComposerPoll = (
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
         const hasPoll = poll !== undefined;
-        const picksPoll = contentType === ContentType.XPoll;
+        const picksPoll = POLL_CONTENT_TYPES.has(contentType);
 
         if (picksPoll && !hasPoll) {
             return metaWithPoll(group, current);
@@ -196,9 +199,15 @@ export const useComposerPoll = (
         }
     };
 
-    /** The card's Remove poll: back to a plain post, and picking Poll again starts a new one. */
+    /** The card's Remove poll: back to the network's plain post, and picking Poll again starts a new one. */
     const removeGroupPoll = (group: NetworkGroup): void => {
-        setGroupContentType(group, ContentType.XPost);
+        const postType =
+            POLL_POST_CONTENT_TYPES[destination(group).content_type];
+
+        if (filled(postType)) {
+            setGroupContentType(group, postType);
+        }
+
         forgetGroupPoll(group);
     };
 
@@ -229,7 +238,7 @@ export const useComposerPoll = (
     const setReplyPoll = (
         group: NetworkGroup,
         replyKey: string,
-        poll: XPoll | undefined,
+        poll: Poll | undefined,
     ): void => {
         const replies = thread.replies(group).map((reply) => {
             if (reply.key !== replyKey) {
@@ -242,7 +251,7 @@ export const useComposerPoll = (
         thread.setReplies(group, replies);
     };
 
-    /** The poll button shows on an X reply that is not a poll yet. */
+    /** The poll button shows on a reply that is not a poll yet, on a network whose replies can be polls. */
     const replyPollAvailable = (group: NetworkGroup): boolean => {
         const reply = thread.activeReply(group);
 
@@ -259,7 +268,9 @@ export const useComposerPoll = (
             (filled(reply.media) || thread.uploading(group, reply));
 
         if (carriesMedia) {
-            return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
+            return MEDIALESS_CONTENT_TYPE_REASONS[
+                THREAD_REPLY_POLL_CONTENT_TYPES[group.platform]
+            ];
         }
 
         return null;

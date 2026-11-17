@@ -70,8 +70,8 @@ import MediaEditorDialog, {
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
+import PollField from '@/components/posts/editor/PollField.vue';
 import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue';
-import XPollField from '@/components/posts/editor/XPollField.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
@@ -173,6 +173,7 @@ import {
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
+import { pollLimitsOf } from '@/lib/poll';
 import {
     newThreadReply,
     repliesAreComments,
@@ -186,7 +187,6 @@ import {
     threadReplyContentType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { pollLimitsOf } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -198,8 +198,8 @@ import type {
 } from '@/types';
 import {
     CAPTIONLESS_CONTENT_TYPES,
-    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
+    POLL_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
@@ -506,18 +506,17 @@ const {
     },
 );
 /**
- * Step 1 shows no post type, so an X poll, which takes no media, would quietly
+ * Step 1 shows no post type, so a poll, which takes no media, would quietly
  * refuse the shared media there. Entering it (a second network added) puts
- * the poll card back on X's first type and forgets its poll, as going back to
- * step 1 does.
+ * the poll card back on its network's first type and forgets its poll, as
+ * going back to step 1 does.
  */
 watch(sharedStep, (shared) => {
     if (!shared) return;
 
     networkGroups.value
-        .filter(
-            (group) =>
-                groupDestination(group).content_type === ContentType.XPoll,
+        .filter((group) =>
+            POLL_CONTENT_TYPES.has(groupDestination(group).content_type),
         )
         .forEach((group) => {
             const [firstType] = getPickableContentTypeOptions(group.platform);
@@ -527,6 +526,9 @@ watch(sharedStep, (shared) => {
             forgetGroupPoll(group);
         });
 });
+/** The test ids of a card's poll: `x-poll`, `mastodon-poll`, `threads-poll`. */
+const pollTestIdPrefix = (group: NetworkGroup): string =>
+    `${group.platform}-poll`;
 /** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
     const contentType = transform(
@@ -2937,12 +2939,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                     "
                                     #attachment
                                 >
-                                    <XPollField
+                                    <PollField
                                         :model-value="groupPoll(group)"
                                         :limits="groupPollLimits(group)!"
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
+                                        :test-id-prefix="pollTestIdPrefix(group)"
                                         :disabled="cropUploading"
                                         @update:model-value="
                                             setGroupPoll(group, $event)
@@ -3005,7 +3008,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @paste="onReplyMediaPasted($event, group)"
                                     >
                                         <template #media="{ reply, index }">
-                                            <XPollField
+                                            <PollField
                                                 v-if="
                                                     filled(reply.poll) &&
                                                     threadActive === index &&

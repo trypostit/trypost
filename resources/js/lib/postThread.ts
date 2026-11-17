@@ -1,10 +1,10 @@
 import { blank } from '@/lib/helpers';
+import { postPollResults } from '@/lib/poll';
 import {
     isBlankThreadReply,
     type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
-import { postPollResults } from '@/lib/xPoll';
 import type {
     PublicationPoll,
     PublicationThreadPoll,

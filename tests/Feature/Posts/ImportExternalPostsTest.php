@@ -1149,6 +1149,70 @@ test('an imported x poll without a length gets the default one', function () {
         ->toEqual(['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => XPoll::DEFAULT_DURATION]]);
 });
 
+test('imports a mastodon poll with its length from publishing to its end', function () {
+    $account = SocialAccount::factory()->mastodon()->create();
+    $publishedAt = now()->subHours(3)->startOfMinute();
+    externalPublication($account, [
+        'remote_id' => 'mastodon-poll-1',
+        'excerpt' => 'Tabs or spaces?',
+        'content_type' => PublicationContentType::Poll,
+        'provider_published_at' => $publishedAt,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => 'Tabs', 'votes' => 2], ['label' => 'Spaces', 'votes' => 5]],
+            'voting_status' => 'open',
+            'end_datetime' => $publishedAt->addDays(2)->toIso8601ZuluString(),
+            'duration_minutes' => null,
+            'multiple' => true,
+        ]],
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    $poll = Post::query()->imported()->where('platform_post_id', 'mastodon-poll-1')->sole();
+
+    expect($poll->content_type)->toBe(ContentType::MastodonPoll)
+        ->and($poll->meta)->toEqual(['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 2880, 'multiple' => true]]);
+});
+
+test('a mastodon poll found before its choices were read is imported as a plain post', function () {
+    $account = SocialAccount::factory()->mastodon()->create();
+    externalPublication($account, [
+        'remote_id' => 'mastodon-poll-old',
+        'excerpt' => 'Tabs or spaces?',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['visibility' => 'public'],
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    $post = Post::query()->imported()->where('platform_post_id', 'mastodon-poll-old')->sole();
+
+    expect($post->content_type)->toBe(ContentType::MastodonPost)
+        ->and($post->meta)->toBe([]);
+});
+
+test('imports a threads poll with its choices', function () {
+    $account = SocialAccount::factory()->threads()->create();
+    externalPublication($account, [
+        'remote_id' => 'threads-poll-1',
+        'excerpt' => 'Tabs or spaces?',
+        'content_type' => PublicationContentType::Poll,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => 'Tabs', 'votes' => 2], ['label' => 'Spaces', 'votes' => 5]],
+            'voting_status' => 'closed',
+            'end_datetime' => now()->subDay()->toIso8601ZuluString(),
+            'duration_minutes' => null,
+        ]],
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    $poll = Post::query()->imported()->where('platform_post_id', 'threads-poll-1')->sole();
+
+    expect($poll->content_type)->toBe(ContentType::ThreadsPoll)
+        ->and($poll->meta)->toEqual(['poll' => ['options' => ['Tabs', 'Spaces']]]);
+});
+
 test('a poll published through trypost is linked, not imported again', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);
     $tryPost = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'x-poll-2']);

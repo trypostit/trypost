@@ -16,6 +16,7 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
+use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Client\Response;
@@ -23,6 +24,28 @@ use Illuminate\Http\Client\Response;
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
     abstract public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation;
+
+    /**
+     * The network ids of the thread replies TryPost published with a poll,
+     * keyed by reply position, so their votes come in the same read as the
+     * post's (X and Mastodon).
+     *
+     * @return array<int, string>
+     */
+    protected function replyPollIds(AnalyticsPublication $publication): array
+    {
+        if (blank($publication->post_id)) {
+            return [];
+        }
+
+        $post = $publication->post()->first(['id', 'meta', 'thread_reply_ids']);
+        $replyIds = (array) $post?->thread_reply_ids;
+
+        return collect(ThreadReplies::of($post?->meta))
+            ->filter(fn (array $reply, int $index): bool => ThreadReplies::hasPoll($reply) && is_string(data_get($replyIds, $index)))
+            ->map(fn (array $reply, int $index): string => (string) data_get($replyIds, $index))
+            ->all();
+    }
 
     protected function account(AnalyticsPublication $publication): SocialAccount
     {
@@ -99,7 +122,7 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
      * A confirming read that failed only for now is rethrown, so the job retries
      * instead of settling the post's read without a confirmation.
      */
-    private function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
+    protected function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
     {
         if (in_array($exception->category, ['rate_limited', 'transient'], true)) {
             throw $exception;

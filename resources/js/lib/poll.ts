@@ -6,10 +6,10 @@ import type {
     PublicationPoll,
     PublicationThreadPoll,
 } from '@/types/analytics';
-import { ContentType } from '@/types/content-type';
+import { POLL_CONTENT_TYPES } from '@/types/content-type';
 import type { PublishConfig } from '@/types/platform';
+import type { Poll, PollDuration, PollLimits } from '@/types/poll';
 import type { PostCard } from '@/types/publish';
-import type { XPoll, XPollDuration, XPollLimits } from '@/types/x';
 
 export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
@@ -18,13 +18,24 @@ const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
 /** The poll limits in an account's `publishConfig`, or null on a network without polls. */
 export const pollLimitsOf = (
     publishConfig: PublishConfig | null | undefined,
-): XPollLimits | null => publishConfig?.poll ?? null;
+): PollLimits | null => publishConfig?.poll ?? null;
+
+/** Whether the author picks how long the poll runs (not on Threads, which sets it). */
+export const pollHasDuration = (limits: PollLimits): boolean =>
+    filled(limits.maxDuration);
 
 /** The longest a poll runs, in whole days. */
-export const pollMaxDays = (limits: XPollLimits): number =>
-    Math.floor(limits.maxDuration / MINUTES_PER_DAY);
+export const pollMaxDays = (limits: PollLimits): number => {
+    const longest = limits.maxDuration;
 
-export const splitPollDuration = (minutes: number): XPollDuration => ({
+    if (!filled(longest)) {
+        return 0;
+    }
+
+    return Math.floor(longest / MINUTES_PER_DAY);
+};
+
+export const splitPollDuration = (minutes: number): PollDuration => ({
     days: Math.floor(minutes / MINUTES_PER_DAY),
     hours: Math.floor((minutes % MINUTES_PER_DAY) / MINUTES_PER_HOUR),
     minutes: minutes % MINUTES_PER_HOUR,
@@ -32,28 +43,60 @@ export const splitPollDuration = (minutes: number): XPollDuration => ({
 
 /** Minutes for the picked parts, within the poll's shortest and longest length; the longest takes no hours or minutes. */
 export const joinPollDuration = (
-    parts: XPollDuration,
-    limits: XPollLimits,
+    parts: PollDuration,
+    limits: PollLimits,
 ): number => {
-    if (parts.days >= pollMaxDays(limits)) return limits.maxDuration;
+    const { minDuration, maxDuration } = limits;
+
+    if (!filled(minDuration) || !filled(maxDuration)) {
+        return 0;
+    }
+
+    if (parts.days >= pollMaxDays(limits)) {
+        return maxDuration;
+    }
 
     const total =
         parts.days * MINUTES_PER_DAY +
         parts.hours * MINUTES_PER_HOUR +
         parts.minutes;
 
-    return clamp(total, limits.minDuration, limits.maxDuration);
+    return clamp(total, minDuration, maxDuration);
 };
 
-export const newPoll = (limits: XPollLimits): XPoll => ({
-    options: Array.from({ length: limits.minOptions }, () => ''),
-    duration_minutes: limits.defaultDuration,
-});
+/** A poll's length: the stored one, else the network's default (0 where the network sets it). */
+export const pollDurationOf = (
+    poll: Partial<Poll>,
+    limits: PollLimits,
+): number => {
+    if (filled(poll.duration_minutes)) {
+        return poll.duration_minutes;
+    }
+
+    if (filled(limits.defaultDuration)) {
+        return limits.defaultDuration;
+    }
+
+    return 0;
+};
+
+/** A new poll: empty choices, and the network's default length where the author picks one. */
+export const newPoll = (limits: PollLimits): Poll => {
+    const options = Array.from({ length: limits.minOptions }, () => '');
+
+    const length = limits.defaultDuration;
+
+    if (!filled(length)) {
+        return { options };
+    }
+
+    return { options, duration_minutes: length };
+};
 
 /**
  * A choice's length as X counts it, without the spaces around it: in UTF-16
  * units (a string's `length`), so an emoji like 🐧 counts two, as on the server
- * (`XPoll::choiceLength()`).
+ * (`Poll::choiceLength()`).
  */
 export const pollChoiceLength = (choice: string): number => choice.trim().length;
 
@@ -111,7 +154,7 @@ export const formatPollLength = (minutes: number): string => {
  * that, voting has not started and has no end.
  */
 const unreadPollResult = (
-    poll: Partial<XPoll>,
+    poll: Partial<Poll>,
     publishedAt: string | null,
 ): PublicationPoll => ({
     options: (poll.options ?? []).map((label) => ({ label, votes: 0 })),
@@ -124,9 +167,11 @@ const unreadPollResult = (
     duration_minutes: poll.duration_minutes ?? null,
 });
 
-/** A post's own poll: only an X poll has one, whatever its meta still holds. */
-const ownPollOf = (post: PostCard): Partial<XPoll> | undefined => {
-    if (post.content_type !== ContentType.XPoll) {
+/** A post's own poll: only a poll type has one, whatever its meta still holds. */
+const ownPollOf = (post: PostCard): Partial<Poll> | undefined => {
+    const contentType = post.content_type;
+
+    if (!filled(contentType) || !POLL_CONTENT_TYPES.has(contentType)) {
         return undefined;
     }
 

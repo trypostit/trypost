@@ -8,7 +8,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Support\PostPlatformMetaRules;
-use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Validator;
 
 test('custom meta messages cover pinterest, instagram collaborators, google business and x polls', function () {
@@ -20,16 +19,14 @@ test('custom meta messages cover pinterest, instagram collaborators, google busi
         'meta.collaborators.*.regex' => __('posts.form.instagram.collaborators.invalid'),
         'meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
         'meta.event.title.max' => __('posts.form.google_business.title_max'),
-        'meta.poll.array' => __('posts.form.x.poll.poll_object'),
-        'meta.poll.options.array' => __('posts.form.x.poll.options_list'),
-        'meta.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
-        'meta.poll.duration_minutes.integer' => XPoll::durationRangeMessage(),
-        'meta.poll.duration_minutes.between' => XPoll::durationRangeMessage(),
-        'meta.thread_replies.*.poll.array' => __('posts.form.x.poll.poll_object'),
-        'meta.thread_replies.*.poll.options.array' => __('posts.form.x.poll.options_list'),
-        'meta.thread_replies.*.poll.options.*.string' => __('posts.form.x.poll.choice_text'),
-        'meta.thread_replies.*.poll.duration_minutes.integer' => XPoll::durationRangeMessage(),
-        'meta.thread_replies.*.poll.duration_minutes.between' => XPoll::durationRangeMessage(),
+        'meta.poll.array' => __('posts.form.poll.poll_object'),
+        'meta.poll.options.array' => __('posts.form.poll.options_list'),
+        'meta.poll.options.*.string' => __('posts.form.poll.choice_text'),
+        'meta.poll.duration_minutes.integer' => __('posts.form.poll.duration_whole'),
+        'meta.thread_replies.*.poll.array' => __('posts.form.poll.poll_object'),
+        'meta.thread_replies.*.poll.options.array' => __('posts.form.poll.options_list'),
+        'meta.thread_replies.*.poll.options.*.string' => __('posts.form.poll.choice_text'),
+        'meta.thread_replies.*.poll.duration_minutes.integer' => __('posts.form.poll.duration_whole'),
     ]);
 });
 

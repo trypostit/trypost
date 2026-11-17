@@ -13,6 +13,7 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\ThreadsPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +34,7 @@ class ThreadsPublisher
     /**
      * Extra parameters for the post's own container (never carousel children).
      *
-     * @var array<string, string>
+     * @var array<string, mixed>
      */
     private array $containerOptions = [];
 
@@ -66,9 +67,11 @@ class ThreadsPublisher
             );
         }
 
-        $this->containerOptions = $post->content_type === ContentType::ThreadsGhostPost
-            ? ['is_ghost_post' => 'true']
-            : $this->postOptions($post);
+        if ($post->content_type === ContentType::ThreadsPoll) {
+            $this->ensurePublishablePoll($post, $content);
+        }
+
+        $this->containerOptions = $this->containerOptions($post);
 
         // Text only post
         if ($media->isEmpty()) {
@@ -384,6 +387,37 @@ class ThreadsPublisher
             userMessage: 'Threads took too long to process the media. Please try again.',
             category: ErrorCategory::ServerError,
         );
+    }
+
+    /**
+     * A poll goes on a text post only, with its question and choices.
+     */
+    private function ensurePublishablePoll(Post $post, ?string $content): void
+    {
+        $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
+
+        if (filled($violation)) {
+            throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+    }
+
+    /**
+     * What the container takes besides the text and media: a ghost post is
+     * marked as one, a poll carries its choices, and a post its topic.
+     *
+     * @return array<string, mixed>
+     */
+    private function containerOptions(Post $post): array
+    {
+        if ($post->content_type === ContentType::ThreadsGhostPost) {
+            return ['is_ghost_post' => 'true'];
+        }
+
+        if ($post->content_type === ContentType::ThreadsPoll) {
+            return [...$this->postOptions($post), 'poll_attachment' => ThreadsPoll::payload($post->meta)];
+        }
+
+        return $this->postOptions($post);
     }
 
     /**

@@ -23,8 +23,11 @@ abstract class AbstractApiPublicationCollector
         array $query = [],
         bool $authenticated = true,
     ): Response {
-        $response = $this->client($account, $authenticated)
-            ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
+        $response = $this->sendGet(
+            $this->client($account, $authenticated),
+            $url,
+            array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''),
+        );
 
         if ((filled(data_get($query, 'pageToken'))
                 || filled(data_get($query, 'pagination_token'))
@@ -34,6 +37,23 @@ abstract class AbstractApiPublicationCollector
         }
 
         return $this->successfulResponse($response);
+    }
+
+    /**
+     * A GET with its query. Without one the URL is sent as it is, so a query
+     * written into it (Mastodon's repeated `id[]=`, which an array query cannot
+     * express) is kept: Guzzle replaces the URL's query with any query given,
+     * an empty one included.
+     *
+     * @param  array<string, mixed>  $query
+     */
+    private function sendGet(PendingRequest $request, string $url, array $query): Response
+    {
+        if (blank($query)) {
+            return $request->get($url);
+        }
+
+        return $request->get($url, $query);
     }
 
     /** @param array<string, mixed> $payload */

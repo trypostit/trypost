@@ -1102,9 +1102,9 @@ test('an x poll with invalid choices is refused by the create tool', function (a
 
     $this->assertDatabaseMissing('posts', ['social_account_id' => $x->id]);
 })->with([
-    'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'posts.form.x.poll.options_max', ['max' => XPoll::MAX_OPTIONS]],
-    'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],
-    'repeated option' => [['options' => ['Yes', ' yes'], 'duration_minutes' => 60], 'posts.form.x.poll.options_distinct', []],
+    'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'posts.form.poll.options_max', ['max' => XPoll::MAX_OPTIONS]],
+    'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'posts.form.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]],
+    'repeated option' => [['options' => ['Yes', ' yes'], 'duration_minutes' => 60], 'posts.form.poll.options_distinct', []],
 ]);
 
 test('an incomplete x poll cannot be scheduled through the create tool', function (?array $poll, string $message) {
@@ -1120,7 +1120,7 @@ test('an incomplete x poll cannot be scheduled through the create tool', functio
     ])->assertHasErrors([__($message)]);
 })->with([
     'no options' => [null, fn (): string => XPoll::optionsRequiredMessage()],
-    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
+    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.poll.duration_required'],
 ]);
 
 test('publish post refuses a stored x poll without options or duration', function (array $poll, string $message) {
@@ -1139,7 +1139,7 @@ test('publish post refuses a stored x poll without options or duration', functio
     expect($post->fresh()->status)->toBe(PostStatus::Draft);
 })->with([
     'no options' => [[], fn (): string => XPoll::optionsRequiredMessage()],
-    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.x.poll.duration_required'],
+    'no duration' => [['options' => ['Yes', 'No']], 'posts.form.poll.duration_required'],
 ]);
 
 test('the attach media tools refuse media on an x poll', function () {

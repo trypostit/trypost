@@ -9,7 +9,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
-use App\Support\Social\XPoll;
+use App\Support\Social\Poll;
 use App\Support\ThreadReplies;
 use Illuminate\Support\Str;
 
@@ -48,6 +48,7 @@ enum ContentType: string
     // Threads
     case ThreadsPost = 'threads_post';
     case ThreadsGhostPost = 'threads_ghost_post';
+    case ThreadsPoll = 'threads_poll';
 
     // Pinterest
     case PinterestPin = 'pinterest_pin';
@@ -59,6 +60,7 @@ enum ContentType: string
 
     // Mastodon
     case MastodonPost = 'mastodon_post';
+    case MastodonPoll = 'mastodon_poll';
 
     // Telegram
     case TelegramPost = 'telegram_post';
@@ -84,6 +86,15 @@ enum ContentType: string
         return in_array($this, [self::FacebookStory, self::InstagramStory], true);
     }
 
+    /**
+     * A network's poll (`x_poll`, `mastodon_poll`, `threads_poll`): its
+     * question is the post text and it takes no media.
+     */
+    public function isPoll(): bool
+    {
+        return filled(Poll::forContentType($this));
+    }
+
     public function label(): string
     {
         return match ($this) {
@@ -102,11 +113,13 @@ enum ContentType: string
             self::XPoll => 'Poll',
             self::ThreadsPost => 'Thread',
             self::ThreadsGhostPost => 'Ghost post',
+            self::ThreadsPoll => 'Poll',
             self::PinterestPin => 'Pin',
             self::PinterestVideoPin => 'Video Pin',
             self::PinterestCarousel => 'Carousel',
             self::BlueskyPost => 'Post',
             self::MastodonPost => 'Post',
+            self::MastodonPoll => 'Poll',
             self::TelegramPost => 'Post',
             self::DiscordMessage => 'Message',
             self::GoogleBusinessPost => 'Post',
@@ -116,7 +129,7 @@ enum ContentType: string
     public function description(): string
     {
         $replacements = match ($this) {
-            self::XPoll => ['min' => XPoll::MIN_OPTIONS, 'max' => XPoll::MAX_OPTIONS],
+            self::XPoll, self::MastodonPoll, self::ThreadsPoll => ['min' => Poll::MIN_OPTIONS, 'max' => Poll::MAX_OPTIONS],
             default => [],
         };
 
@@ -133,10 +146,10 @@ enum ContentType: string
             self::TikTokVideo, self::TikTokPhoto => SocialPlatform::TikTok,
             self::YouTubeShort => SocialPlatform::YouTube,
             self::XPost, self::XPoll => SocialPlatform::X,
-            self::ThreadsPost, self::ThreadsGhostPost => SocialPlatform::Threads,
+            self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => SocialPlatform::Threads,
             self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel => SocialPlatform::Pinterest,
             self::BlueskyPost => SocialPlatform::Bluesky,
-            self::MastodonPost => SocialPlatform::Mastodon,
+            self::MastodonPost, self::MastodonPoll => SocialPlatform::Mastodon,
             self::TelegramPost => SocialPlatform::Telegram,
             self::DiscordMessage => SocialPlatform::Discord,
             self::GoogleBusinessPost => SocialPlatform::GoogleBusiness,
@@ -205,10 +218,13 @@ enum ContentType: string
             return $limit;
         }
 
-        return match ($type) {
-            self::XPoll => min($limit, XPoll::QUESTION_MAX_LENGTH),
-            default => $limit,
-        };
+        $poll = Poll::forContentType($type);
+
+        if (blank($poll) || blank($poll::QUESTION_MAX_LENGTH)) {
+            return $limit;
+        }
+
+        return min($limit, $poll::QUESTION_MAX_LENGTH);
     }
 
     public function maxMediaCount(): int
@@ -226,11 +242,12 @@ enum ContentType: string
             self::XPost => 4,
             self::XPoll => 0,
             self::ThreadsPost => 10,
-            self::ThreadsGhostPost => 0,
+            self::ThreadsGhostPost, self::ThreadsPoll => 0,
             self::PinterestPin, self::PinterestVideoPin => 1,
             self::PinterestCarousel => 5,
             self::BlueskyPost => 4,
             self::MastodonPost => 4,
+            self::MastodonPoll => 0,
             self::TelegramPost => 10,
             self::DiscordMessage => 10,
             self::GoogleBusinessPost => 1,
@@ -489,8 +506,8 @@ enum ContentType: string
             self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => ['1:1', '1.91:1'],
             self::PinterestPin, self::PinterestCarousel => ['2:3', '1:1'],
             self::PinterestVideoPin => ['2:3'],
-            self::ThreadsPost, self::ThreadsGhostPost => ['1:1', '4:5', '1.91:1'],
-            self::BlueskyPost, self::MastodonPost => ['1:1', '16:9'],
+            self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => ['1:1', '4:5', '1.91:1'],
+            self::BlueskyPost, self::MastodonPost, self::MastodonPoll => ['1:1', '16:9'],
             self::GoogleBusinessPost => ['4:3', '1:1'],
             self::TelegramPost, self::DiscordMessage, self::LinkedInComment => self::defaultCropPresets(),
         };
@@ -771,11 +788,12 @@ enum ContentType: string
             self::XPost => true,
             self::XPoll => false,
             self::ThreadsPost => true,
-            self::ThreadsGhostPost => false,
+            self::ThreadsGhostPost, self::ThreadsPoll => false,
             self::PinterestVideoPin => true,
             self::PinterestPin, self::PinterestCarousel => false,
             self::BlueskyPost => true,
             self::MastodonPost => true,
+            self::MastodonPoll => false,
             self::TelegramPost => true,
             self::DiscordMessage => true,
             self::GoogleBusinessPost => false,
@@ -791,7 +809,7 @@ enum ContentType: string
             self::TikTokPhoto => true,
             self::YouTubeShort => false,
             self::ThreadsGhostPost => false,
-            self::XPoll => false,
+            self::XPoll, self::MastodonPoll, self::ThreadsPoll => false,
             self::PinterestVideoPin => false,
             self::LinkedInComment => false,
             default => true,
@@ -846,9 +864,9 @@ enum ContentType: string
         return match ($this) {
             self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment => false,
             self::XPost, self::XPoll => false,
-            self::ThreadsPost, self::ThreadsGhostPost => false,
+            self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => false,
             self::BlueskyPost => false,
-            self::MastodonPost => false,
+            self::MastodonPost, self::MastodonPoll => false,
             self::TelegramPost => false,
             self::FacebookPost => false,
             self::DiscordMessage => false,
@@ -981,6 +999,12 @@ enum ContentType: string
      */
     public static function fromPublication(SocialPlatform $platform, PublicationContentType $type): self
     {
+        $poll = Poll::for($platform);
+
+        if ($type === PublicationContentType::Poll && filled($poll)) {
+            return $poll::contentType();
+        }
+
         return match ($platform) {
             SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => match ($type) {
                 PublicationContentType::Reel => self::InstagramReel,
@@ -1000,10 +1024,6 @@ enum ContentType: string
                 PublicationContentType::Video => self::PinterestVideoPin,
                 PublicationContentType::Carousel => self::PinterestCarousel,
                 default => self::PinterestPin,
-            },
-            SocialPlatform::X => match ($type) {
-                PublicationContentType::Poll => self::XPoll,
-                default => self::XPost,
             },
             default => self::defaultFor($platform),
         };

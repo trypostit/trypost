@@ -25,6 +25,7 @@ use App\Services\Analytics\Collectors\Metrics\XPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\YouTubePublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Services\Social\BlueskyLexicon;
+use App\Support\Social\ThreadsPoll;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
@@ -636,6 +637,65 @@ test('mastodon reads a public status without a token that lacks read scope', fun
     'publish-only token' => [['read:accounts', 'write:statuses', 'write:media'], false],
     'token with read:statuses' => [['read:accounts', 'read:statuses', 'write:statuses', 'write:media'], true],
 ]);
+
+test('mastodon keeps the poll result from the status it already reads', function (bool $expired, ?int $hiddenVotes, int $storedVotes, string $status) {
+    $endsAt = now()->addDay()->toIso8601ZuluString();
+    Http::fake(['https://mastodon.social/api/v1/statuses/*' => Http::response([
+        'id' => '117304063461175259',
+        'replies_count' => 1,
+        'reblogs_count' => 0,
+        'favourites_count' => 0,
+        'poll' => [
+            'expires_at' => $endsAt,
+            'expired' => $expired,
+            'multiple' => true,
+            'options' => [['title' => 'Tabs', 'votes_count' => 3], ['title' => 'Spaces', 'votes_count' => $hiddenVotes]],
+        ],
+    ])]);
+    $account = SocialAccount::factory()->mastodon()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Mastodon,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '117304063461175259',
+    ]);
+
+    $observation = app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toEqual(['poll' => [
+        'options' => [['label' => 'Tabs', 'votes' => 3], ['label' => 'Spaces', 'votes' => $storedVotes]],
+        'voting_status' => $status,
+        'end_datetime' => $endsAt,
+        'duration_minutes' => null,
+        'multiple' => true,
+    ]]);
+    Http::assertSentCount(1);
+})->with([
+    'open' => [false, 1, 1, 'open'],
+    'ended, a total still hidden reading as no votes' => [true, null, 0, 'closed'],
+]);
+
+test('mastodon stores no poll for a status without one', function () {
+    Http::fake(['https://mastodon.social/api/v1/statuses/*' => Http::response([
+        'id' => '117304063461175259',
+        'replies_count' => 1,
+        'reblogs_count' => 0,
+        'favourites_count' => 0,
+    ])]);
+    $account = SocialAccount::factory()->mastodon()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Mastodon,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '117304063461175259',
+    ]);
+
+    $observation = app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toBeNull();
+});
 
 test('facebook keeps public post counts when Page insights are not available', function () {
     $graph = config('trypost.platforms.facebook.graph_api');
@@ -1671,4 +1731,174 @@ test('the x collector leaves out a reply poll whose tweet is gone and still read
     expect($observation->providerMetadata)->toHaveKey('poll')->not->toHaveKey('thread_polls');
     $metrics = collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value]);
     expect($metrics->all())->toMatchArray(['impressions' => 200]);
+});
+
+/**
+ * A published Mastodon poll whose second reply is a poll too, with its publication.
+ */
+function mastodonThreadPollPublication(): AnalyticsPublication
+{
+    $account = SocialAccount::factory()->mastodon()->create();
+    $post = Post::factory()->forAccount($account, ContentType::MastodonPoll)->published()->create([
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 1440], 'thread_replies' => [
+            ['text' => 'Why?', 'media' => []],
+            ['text' => 'And next time?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+        ]],
+    ]);
+    $post->forceFill(['thread_reply_ids' => ['200', '201']])->save();
+
+    return AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::Mastodon,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '100',
+    ]);
+}
+
+/**
+ * @param  array<int, int>  $votes
+ * @return array<string, mixed>
+ */
+function mastodonPollStatus(string $id, array $labels, array $votes, string $endsAt): array
+{
+    return [
+        'id' => $id,
+        'replies_count' => 1,
+        'reblogs_count' => 2,
+        'favourites_count' => 3,
+        'poll' => [
+            'expires_at' => $endsAt,
+            'expired' => false,
+            'multiple' => false,
+            'options' => collect($labels)->map(fn (string $label, int $index): array => ['title' => $label, 'votes_count' => $votes[$index]])->all(),
+        ],
+    ];
+}
+
+test('the mastodon collector reads the polls of the thread replies in the same request as the status', function () {
+    $publication = mastodonThreadPollPublication();
+    $endsAt = now('UTC')->addDay()->toIso8601ZuluString();
+    Http::fake(['https://mastodon.social/api/v1/statuses?*' => Http::response([
+        mastodonPollStatus('201', ['Yes', 'No'], [5, 3], $endsAt),
+        mastodonPollStatus('100', ['Tabs', 'Spaces'], [1, 2], $endsAt),
+    ])]);
+
+    $observation = app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://mastodon.social/api/v1/statuses?id%5B%5D=100&id%5B%5D=201');
+    expect($observation->providerMetadata['poll']['options'])->toEqual([['label' => 'Tabs', 'votes' => 1], ['label' => 'Spaces', 'votes' => 2]])
+        ->and($observation->providerMetadata['thread_polls'])->toEqual([[
+            'reply' => 1,
+            'options' => [['label' => 'Yes', 'votes' => 5], ['label' => 'No', 'votes' => 3]],
+            'voting_status' => 'open',
+            'end_datetime' => $endsAt,
+            'duration_minutes' => null,
+            'multiple' => false,
+        ]]);
+    expect(collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value])->all())
+        ->toMatchArray(['reactions' => 3, 'comments' => 1, 'shares' => 2]);
+});
+
+test('the mastodon collector reads the status alone when the server has no multiple read or leaves the status out', function (int $status, array $body) {
+    $publication = mastodonThreadPollPublication();
+    $endsAt = now('UTC')->addDay()->toIso8601ZuluString();
+    Http::fake([
+        'https://mastodon.social/api/v1/statuses?*' => Http::response($body, $status),
+        'https://mastodon.social/api/v1/statuses/100' => Http::response(mastodonPollStatus('100', ['Tabs', 'Spaces'], [1, 2], $endsAt)),
+    ]);
+
+    $observation = app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(2);
+    expect($observation->providerMetadata)->toHaveKey('poll')->not->toHaveKey('thread_polls');
+})->with([
+    'a server before mastodon 4.3' => [404, ['error' => 'Record not found']],
+    'the status left out' => [200, []],
+]);
+
+test('the mastodon collector reads a thread without a reply poll as before, one status alone', function () {
+    $publication = mastodonThreadPollPublication();
+    $publication->post->forceFill(['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 1440], 'thread_replies' => [['text' => 'Why?', 'media' => []]]]])->save();
+    Http::fake(['https://mastodon.social/api/v1/statuses/100' => Http::response(mastodonPollStatus('100', ['Tabs', 'Spaces'], [1, 2], now('UTC')->addDay()->toIso8601ZuluString()))]);
+
+    app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://mastodon.social/api/v1/statuses/100');
+});
+
+test('the mastodon collector retries later when the multiple read is only rate limited', function () {
+    $publication = mastodonThreadPollPublication();
+    Http::fake(['https://mastodon.social/api/v1/statuses?*' => Http::response(['error' => 'Too many requests'], 429)]);
+
+    expect(fn () => app(MastodonPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
+        ->toThrow(AnalyticsCollectionException::class);
+    Http::assertSentCount(1);
+});
+
+function threadsPollPublication(PublicationContentType $type = PublicationContentType::Poll): AnalyticsPublication
+{
+    $account = SocialAccount::factory()->threads()->create();
+
+    return AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Threads,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => 'thread-1',
+        'content_type' => $type,
+    ]);
+}
+
+function fakeThreadsInsights(mixed $postRead): void
+{
+    $graph = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$graph}/thread-1/insights*" => Http::response(['data' => [['name' => 'views', 'total_value' => ['value' => 40]]]]),
+        "{$graph}/thread-1?*" => $postRead,
+    ]);
+}
+
+test('the threads collector reads a poll result on each metrics read, like x', function () {
+    $endsAt = now('UTC')->addHours(12)->startOfSecond();
+    fakeThreadsInsights(Http::response(['id' => 'thread-1', 'poll_attachment' => [
+        'option_a' => 'Tabs',
+        'option_b' => 'Spaces',
+        'option_a_votes_percentage' => 0.25,
+        'option_b_votes_percentage' => 0.75,
+        'total_votes' => 8,
+        'expiration_timestamp' => $endsAt->toIso8601String(),
+    ]]));
+
+    $observation = app(ThreadsPublicationMetricsCollector::class)->collect(threadsPollPublication(), CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toEqual(['poll' => [
+        'options' => [['label' => 'Tabs', 'votes' => 2], ['label' => 'Spaces', 'votes' => 6]],
+        'voting_status' => 'open',
+        'end_datetime' => $endsAt->toIso8601ZuluString(),
+        'duration_minutes' => null,
+    ]]);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/thread-1?') && $request['fields'] === ThreadsPoll::LOOKUP_FIELDS);
+});
+
+test('the threads collector makes no poll read for a post that is not a poll', function () {
+    fakeThreadsInsights(Http::response([], 500));
+
+    $observation = app(ThreadsPublicationMetricsCollector::class)->collect(threadsPollPublication(PublicationContentType::Text), CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toBeNull();
+    Http::assertSentCount(1);
+});
+
+test('the threads collector keeps the metrics when the poll read is refused', function () {
+    fakeThreadsInsights(Http::response(['error' => ['message' => 'Missing permission', 'type' => 'OAuthException', 'code' => 10]], 403));
+
+    $observation = app(ThreadsPublicationMetricsCollector::class)->collect(threadsPollPublication(), CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toBeNull()
+        ->and(collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value])->all())->toMatchArray(['views' => 40]);
 });

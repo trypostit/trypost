@@ -12,8 +12,12 @@ import {
 import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
+import ThreadsPreviewPoll from '@/components/posts/previews/ThreadsPreviewPoll.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
+import { filled } from '@/lib/helpers';
+import { pollLimitsOf } from '@/lib/poll';
 import { ContentType } from '@/types/content-type';
+import type { Poll } from '@/types/poll';
 
 
 const props = defineProps<PreviewProps>();
@@ -21,6 +25,35 @@ const props = defineProps<PreviewProps>();
 const isGhost = computed(
     (): boolean => props.contentType === ContentType.ThreadsGhostPost,
 );
+
+/** The poll the post shows: only a Poll post has one, whatever its meta still holds. */
+const poll = computed((): Partial<Poll> | undefined => {
+    if (props.contentType !== ContentType.ThreadsPoll) {
+        return undefined;
+    }
+
+    return props.meta?.poll;
+});
+
+const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
+
+/** The poll shows once the account's poll limits are known. */
+const showsPoll = computed((): boolean => {
+    if (!filled(poll.value)) {
+        return false;
+    }
+
+    return filled(pollLimits.value);
+});
+
+/** A ghost post and a poll show no link card. */
+const showsLinkCard = computed((): boolean => {
+    if (isGhost.value) {
+        return false;
+    }
+
+    return !poll.value;
+});
 </script>
 
 <template>
@@ -35,7 +68,7 @@ const isGhost = computed(
         tags="bare"
         media-layout="peek"
         mute-badge
-        :link-card="!isGhost"
+        :link-card="showsLinkCard"
         :content-testid="isGhost ? 'threads-ghost-bubble' : undefined"
         :text-class="
             isGhost
@@ -64,6 +97,11 @@ const isGhost = computed(
         <template v-if="isGhost" #aside>
             <IconDots class="ml-auto size-4 shrink-0 self-center" />
         </template>
+        <ThreadsPreviewPoll
+            v-if="showsPoll"
+            :poll="poll!"
+            :limits="pollLimits!"
+        />
         <div
             v-if="isGhost"
             class="flex items-center gap-6 pt-1 text-muted-foreground"

@@ -1,4 +1,4 @@
-import type { XPollLimits } from '@/types/x';
+import type { PollLimits } from '@/types/poll';
 
 export const Platform = {
     LinkedIn: 'linkedin',
@@ -30,5 +30,5 @@ export interface PublishConfig {
     categoryOptions?: { value: string; labelKey: string }[];
     defaultCategoryId?: string;
     /** X: the poll limits. */
-    poll?: XPollLimits;
+    poll?: PollLimits;
 }

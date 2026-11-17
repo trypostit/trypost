@@ -164,36 +164,13 @@ class XPublisher
      */
     private function pollPayload(?string $question, Collection $media, mixed $meta): array
     {
-        $violation = $this->pollViolation($question, $media, $meta);
+        $violation = XPoll::publishViolation($question, $media->isNotEmpty(), $meta);
 
         if (filled($violation)) {
             throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
         }
 
         return XPoll::payload($meta);
-    }
-
-    /**
-     * Why X would refuse the poll: no question, media on it, or choices and a
-     * length that break X's rules. Null when the poll can go.
-     *
-     * @param  Collection<int, MediaItem>  $media
-     */
-    private function pollViolation(?string $question, Collection $media, mixed $meta): ?string
-    {
-        $questionViolation = XPoll::questionViolation($question);
-
-        if (filled($questionViolation)) {
-            return $questionViolation;
-        }
-
-        if ($media->isNotEmpty()) {
-            return trans('posts.errors.media_not_accepted');
-        }
-
-        $pollViolation = XPoll::violation($meta) ?? XPoll::requiredViolation($meta);
-
-        return data_get($pollViolation, 1);
     }
 
     /**

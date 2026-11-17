@@ -178,11 +178,11 @@ test('scheduling an x poll without a question asks only for the question on the 
     ]);
 
     if ($surface === 'mcp') {
-        $response->assertHasErrors([__('posts.form.x.poll.question_required')])
+        $response->assertHasErrors([__('posts.form.poll.question_required')])
             ->assertDontSee(__('posts.edit.compliance.requires_content_or_media'));
     } else {
         $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['content' => __('posts.form.x.poll.question_required')])
+            ->assertJsonValidationErrors(['content' => __('posts.form.poll.question_required')])
             ->assertDontSee(__('posts.edit.compliance.requires_content_or_media'));
     }
     expect($post->fresh()->status)->toBe(Status::Draft);
@@ -212,8 +212,8 @@ test('repeated choices on a thread reply poll are refused on the web, api and mc
     ]]]);
 
     $surface === 'mcp'
-        ? $response->assertHasErrors([__('posts.form.x.poll.options_distinct')])
-        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies.0.poll.options' => __('posts.form.x.poll.options_distinct')]);
+        ? $response->assertHasErrors([__('posts.form.poll.options_distinct')])
+        : $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies.0.poll.options' => __('posts.form.poll.options_distinct')]);
     expect($post->fresh()->meta)->toBe([]);
 })->with(['web', 'api', 'mcp']);
 
@@ -231,9 +231,9 @@ test('scheduling a thread reply poll without its question or with one choice is 
         : $response->assertUnprocessable()->assertJsonValidationErrors([$field => __($message)]);
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp'])->with([
-    'no question' => [['text' => '', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.x.poll.question_required'],
-    'a question of empty markup' => [['text' => '<p></p>', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.x.poll.question_required'],
-    'no length' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes', 'No']]], 'meta.thread_replies.0.poll.duration_minutes', 'posts.form.x.poll.duration_required'],
+    'no question' => [['text' => '', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.poll.question_required'],
+    'a question of empty markup' => [['text' => '<p></p>', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'meta.thread_replies.0', 'posts.form.poll.question_required'],
+    'no length' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes', 'No']]], 'meta.thread_replies.0.poll.duration_minutes', 'posts.form.poll.duration_required'],
     'one choice' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Yes'], 'duration_minutes' => 60]], 'meta.thread_replies.0.poll.options', fn (): string => XPoll::optionsRequiredMessage()],
 ]);
 
@@ -319,7 +319,7 @@ test('publishing a stored x poll without a question is refused before it reaches
 
     TryPostServer::actingAs(test()->user)
         ->tool(PublishPostTool::class, ['post_id' => $post->id])
-        ->assertHasErrors([__('posts.form.x.poll.question_required')]);
+        ->assertHasErrors([__('posts.form.poll.question_required')]);
 
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
@@ -378,7 +378,7 @@ test('a choice is measured as x counts it, an emoji like a penguin counting two,
     $post = xPollParityPost();
     $tooLong = '🐧 '.Str::repeat('a', 23);
     $fits = '🐧 '.Str::repeat('a', 22);
-    $message = __('posts.form.x.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]);
+    $message = __('posts.form.poll.choice_max', ['max' => XPoll::OPTION_MAX_LENGTH]);
 
     $refused = xPollParityUpdate($surface, $post, ['meta' => ['poll' => ['options' => [$tooLong, 'No'], 'duration_minutes' => 60]]]);
 

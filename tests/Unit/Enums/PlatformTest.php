@@ -427,6 +427,36 @@ test('x publish config serves the poll limits', function () {
         'maxDuration' => 10080,
         'defaultDuration' => 1440,
         'questionMaxLength' => 280,
+        'multipleChoice' => false,
+        'hideTotals' => false,
+    ]]);
+});
+
+test('mastodon publish config serves the poll limits, with multiple choice and hidden totals', function () {
+    expect(Platform::Mastodon->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 50,
+        'minDuration' => 5,
+        'maxDuration' => 43200,
+        'defaultDuration' => 1440,
+        'questionMaxLength' => null,
+        'multipleChoice' => true,
+        'hideTotals' => true,
+    ]]);
+});
+
+test('threads publish config serves the poll limits, without a length to pick', function () {
+    expect(Platform::Threads->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 25,
+        'minDuration' => null,
+        'maxDuration' => null,
+        'defaultDuration' => null,
+        'questionMaxLength' => null,
+        'multipleChoice' => false,
+        'hideTotals' => false,
     ]]);
 });
 

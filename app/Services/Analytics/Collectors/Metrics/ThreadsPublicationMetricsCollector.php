@@ -6,8 +6,11 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\PublicationContentType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
+use App\Models\SocialAccount;
+use App\Support\Social\ThreadsPoll;
 use Carbon\CarbonImmutable;
 
 class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsCollector
@@ -39,6 +42,41 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
             $this->count(MetricKey::Comments, $values, 'replies'),
             $this->count(MetricKey::Shares, $values, 'reposts'),
             $this->count(MetricKey::Quotes, $values, 'quotes'),
-        ])));
+        ])), $this->pollMetadata($account, $publication));
+    }
+
+    /**
+     * A poll's result, read on each metrics read like X's: the insights edge
+     * carries no poll, so a poll is read once more for its `poll_attachment`.
+     * Only a poll makes that read; one the token cannot read keeps the
+     * metrics already measured, as every optional Meta read does.
+     *
+     * @return array{poll: array<string, mixed>}|null
+     */
+    private function pollMetadata(SocialAccount $account, AnalyticsPublication $publication): ?array
+    {
+        if ($publication->content_type !== PublicationContentType::Poll) {
+            return null;
+        }
+
+        try {
+            $response = $this->get($account, "{$account->platform->graphApiUrl()}/{$publication->remote_id}", ['fields' => ThreadsPoll::LOOKUP_FIELDS]);
+        } catch (AnalyticsCollectionException $exception) {
+            if (! in_array($exception->category, ['permission', 'malformed'], true)) {
+                throw $exception;
+            }
+
+            $this->recordRefusal($exception);
+
+            return null;
+        }
+
+        $poll = $response->json('poll_attachment');
+
+        if (! is_array($poll)) {
+            return null;
+        }
+
+        return ['poll' => ThreadsPoll::result($poll)];
     }
 }

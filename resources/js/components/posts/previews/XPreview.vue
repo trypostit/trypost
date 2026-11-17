@@ -12,14 +12,14 @@ import { computed } from 'vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import XPreviewPoll from '@/components/posts/previews/XPreviewPoll.vue';
-import { pollLimitsOf } from '@/lib/xPoll';
+import { pollLimitsOf } from '@/lib/poll';
 import { ContentType } from '@/types/content-type';
-import type { XPoll } from '@/types/x';
+import type { Poll } from '@/types/poll';
 
 const props = defineProps<PreviewProps>();
 
 /** The poll the post shows: only a Poll post has one, whatever its meta still holds. */
-const poll = computed((): Partial<XPoll> | undefined => {
+const poll = computed((): Partial<Poll> | undefined => {
     if (props.contentType !== ContentType.XPoll) {
         return undefined;
     }
