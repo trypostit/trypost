@@ -794,6 +794,7 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
 
 test('a video takes alt text, written by hand, where its network accepts it', function (ContentType $contentType) {
     [$post] = seedMediaEditorVideoPost($contentType);
+    $post->update(['media' => [[...$post->media[0], 'meta' => [...$post->media[0]['meta'], 'cover_offset_ms' => 1500]]]]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
     waitFor($page, "@composer-{$accountId}-alt-0");
@@ -810,6 +811,7 @@ test('a video takes alt text, written by hand, where its network accepts it', fu
     saveMediaEditorDraft($page);
 
     expect(data_get($post->fresh()->media, '0.meta.alt_text'))->toBe('A cyclist crossing a bridge at sunset')
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500)
         ->and($post->fresh()->media[0]['id'])->toBe('video-1');
     $page->assertNoJavaScriptErrors();
 })->with([

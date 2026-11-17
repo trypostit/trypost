@@ -550,7 +550,7 @@ test('an instagram account connected through facebook gets the same post types a
 
 test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
     if (! $type->supportsImage()) {
-        expect($type->supportsAltText())->toBeFalse();
+        expect($type->supportsImageAltText())->toBeFalse();
     }
 
     if (! $type->supportsVideo()) {
@@ -559,7 +559,7 @@ test('a type without images lists no alt text and a type without video accepts n
 
     expect($type->toListingArray())->toMatchArray([
         'accepts_mov' => $type->acceptsMov(),
-        'supports_alt_text' => $type->supportsAltText(),
+        'supports_alt_text' => $type->supportsImageAltText(),
         'supports_video_alt_text' => $type->supportsVideoAltText(),
     ]);
 })->with(ContentType::cases());

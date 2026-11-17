@@ -23,7 +23,7 @@ export type MediaRules = {
     videoAspectRatioMax?: number;
     autoFitsImage?: boolean;
     cropPresets: CropPresetValue[];
-    supportsAltText: boolean;
+    supportsImageAltText: boolean;
     supportsVideoAltText: boolean;
     supportsUserTags: boolean;
     supportsVideoCover: boolean;
@@ -116,7 +116,7 @@ export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => ({
     videoAspectRatioMax: rule.video_aspect_ratio_max ?? undefined,
     autoFitsImage: rule.auto_fits_image,
     cropPresets: rule.crop_presets,
-    supportsAltText: rule.supports_alt_text,
+    supportsImageAltText: rule.supports_alt_text,
     supportsVideoAltText: rule.supports_video_alt_text,
     supportsUserTags: rule.supports_user_tags,
     supportsVideoCover: rule.supports_video_cover,

@@ -146,33 +146,46 @@ const hasThumbnail = (rule: MediaRules): boolean => {
     return rule.supportsCustomVideoCover;
 };
 
+/** A tab and the rule that offers it. */
+type OptionalTab = {
+    tab: EditorTab;
+    offeredBy: (rule: MediaRules) => boolean;
+};
+
+const VIDEO_TABS: OptionalTab[] = [
+    { tab: 'thumbnail', offeredBy: hasThumbnail },
+    { tab: 'alt', offeredBy: (rule) => rule.supportsVideoAltText },
+];
+
+const IMAGE_TABS: OptionalTab[] = [
+    { tab: 'alt', offeredBy: (rule) => rule.supportsImageAltText },
+    { tab: 'tags', offeredBy: (rule) => rule.supportsUserTags },
+];
+
+/** The tabs a network of the post offers, in order. */
+const offeredTabs = (tabs: OptionalTab[], rules: MediaRules[]): EditorTab[] =>
+    tabs
+        .filter(({ offeredBy }) => rules.some(offeredBy))
+        .map(({ tab }) => tab);
+
 /** Tabs the editor offers for an item; an empty list means no pencil. */
 export const editorTabsFor = (
     item: MediaItem,
     rules: MediaRules[],
 ): EditorTab[] => {
     if (isVideo(item)) {
-        return [
-            ...(rules.some(hasThumbnail) ? (['thumbnail'] as const) : []),
-            ...(rules.some((rule) => rule.supportsVideoAltText)
-                ? (['alt'] as const)
-                : []),
-        ];
+        return offeredTabs(VIDEO_TABS, rules);
     }
 
-    if (!isImage(item) || isGif(item)) {
+    if (!isImage(item)) {
         return [];
     }
 
-    return [
-        'edit',
-        ...(rules.some((rule) => rule.supportsAltText)
-            ? (['alt'] as const)
-            : []),
-        ...(rules.some((rule) => rule.supportsUserTags)
-            ? (['tags'] as const)
-            : []),
-    ];
+    if (isGif(item)) {
+        return [];
+    }
+
+    return ['edit', ...offeredTabs(IMAGE_TABS, rules)];
 };
 
 /** An untouched edit: no crop, turn, flip, filter or metadata. */

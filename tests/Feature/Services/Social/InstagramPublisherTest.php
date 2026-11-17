@@ -142,6 +142,31 @@ test('instagram publisher can publish reel', function () {
     });
 });
 
+test('instagram publisher sends no alt text on a reel, which takes none', function () {
+    $this->post->update(['content_type' => ContentType::InstagramReel]);
+    $this->post->update(['media' => [[
+        'id' => 'test-media-video',
+        'path' => 'media/2026-01/test-video.mp4',
+        'url' => 'https://example.com/media/2026-01/test-video.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'test.mp4',
+        'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
+    ]]]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-123'], 200),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'reel-123456789'], 200),
+        'https://graph.instagram.com/v25.0/reel-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC123/'], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/ig_123456789/media')
+        && data_get($request->data(), 'media_type') === 'REELS'
+        && ! array_key_exists('alt_text', $request->data()));
+});
+
 test('instagram publisher fits an image story to 9:16 and posts the hosted copy', function () {
     Storage::fake();
     $this->post->update(['content_type' => ContentType::InstagramStory]);
