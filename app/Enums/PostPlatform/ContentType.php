@@ -509,9 +509,17 @@ enum ContentType: string
     /**
      * Whether the editor offers the Alt Text tab for images of this type.
      */
-    public function supportsAltText(): bool
+    public function supportsImageAltText(): bool
     {
-        return $this->supportsImage() && $this->platform()->supportsAltText();
+        return $this->supportsImage() && $this->platform()->supportsImageAltText();
+    }
+
+    /**
+     * Whether the editor offers the Alt Text tab for videos of this type.
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return $this->supportsVideo() && $this->platform()->supportsVideoAltText();
     }
 
     /**
@@ -573,6 +581,7 @@ enum ContentType: string
      *     auto_fits_image: bool,
      *     crop_presets: list<string>,
      *     supports_alt_text: bool,
+     *     supports_video_alt_text: bool,
      *     supports_user_tags: bool,
      *     supports_video_cover: bool,
      *     supports_custom_video_cover: bool,
@@ -610,7 +619,8 @@ enum ContentType: string
             'video_aspect_ratio_max' => $videoBounds['max'] ?? null,
             'auto_fits_image' => $this->autoFitsImage(),
             'crop_presets' => $this->cropPresets(),
-            'supports_alt_text' => $this->supportsAltText(),
+            'supports_alt_text' => $this->supportsImageAltText(),
+            'supports_video_alt_text' => $this->supportsVideoAltText(),
             'supports_user_tags' => $this->supportsUserTags(),
             'supports_video_cover' => $this->supportsVideoCover(),
             'supports_custom_video_cover' => $this->supportsCustomVideoCover(),
@@ -653,6 +663,7 @@ enum ContentType: string
      *     image_max_width: int|null,
      *     image_max_height: int|null,
      *     supports_alt_text: bool,
+     *     supports_video_alt_text: bool,
      *     supports_user_tags: bool,
      *     supports_video_cover: bool,
      *     supports_custom_video_cover: bool,
@@ -694,6 +705,7 @@ enum ContentType: string
                 'image_max_width',
                 'image_max_height',
                 'supports_alt_text',
+                'supports_video_alt_text',
                 'supports_user_tags',
                 'supports_video_cover',
                 'supports_custom_video_cover',

@@ -74,7 +74,7 @@ class AttachMediaFromUrlTool extends Tool
             'urls' => $schema->array()
                 ->items($schema->object(fn ($u) => [
                     'url' => $u->string()->required()->description('Public HTTP/HTTPS URL of an image, video, or PDF.'),
-                    'alt' => $u->string()->description('Optional accessibility alt text for the image (ignored for video/PDF, which have no alt text).'),
+                    'alt' => $u->string()->description('Optional accessibility alt text for an image or a video (ignored for PDF; sent for a video only where supports_video_alt_text).'),
                     'meta' => $u->object()->description('Optional per-item settings: user_tags (Instagram feed images only: up to 20 of {username, x, y}, x and y between 0 and 1 from the top-left corner), cover_offset_ms (video cover frame in milliseconds, for content types with supports_video_cover).'),
                 ]))
                 ->required()

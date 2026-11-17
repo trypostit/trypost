@@ -64,6 +64,7 @@ test('list content types returns all platforms with constraints', function () {
                                 'image_max_width',
                                 'image_max_height',
                                 'supports_alt_text',
+                                'supports_video_alt_text',
                                 'supports_user_tags',
                                 'supports_video_cover',
                                 'supports_custom_video_cover',

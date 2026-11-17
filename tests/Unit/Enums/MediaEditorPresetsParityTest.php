@@ -95,3 +95,12 @@ test('the no-channel presets sit inside every content type bounds or are filtere
             ->toBe(['freeform', 'original', ...$inside], $type->value);
     }
 });
+
+test('the typescript media editor offers alt text on a video exactly where the backend takes it', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    foreach (ContentType::cases() as $type) {
+        expect(in_array('alt', data_get($output, "videoTabs.{$type->value}"), true))
+            ->toBe($type->supportsVideoAltText(), $type->value);
+    }
+});

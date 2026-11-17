@@ -364,6 +364,22 @@ test('facebook publisher can publish reel', function () {
         && $request['description'] === 'Check out this Facebook post!');
 });
 
+test('facebook publisher sends no alt text with a video or a reel, which take none', function (ContentType $contentType, string $edge) {
+    $this->post->update(['content_type' => $contentType]);
+    $this->post->update(['media' => [[...facebookVideoMedia()[0], 'meta' => ['alt_text' => 'a cyclist crossing a bridge']]]]);
+
+    Http::fake(facebookVideoUploadFakes($edge));
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), "/page_123/{$edge}"));
+    Http::assertNotSent(fn ($request) => array_key_exists('alt_text_custom', $request->data())
+        || array_key_exists('alt_text', $request->data()));
+})->with([
+    'video' => [ContentType::FacebookPost, 'videos'],
+    'reel' => [ContentType::FacebookReel, 'video_reels'],
+]);
+
 test('facebook publisher can publish video story', function () {
     $this->post->update(['content_type' => ContentType::FacebookStory]);
     $this->post->update(['media' => facebookVideoMedia()]);

@@ -136,7 +136,7 @@ class MediaItem
     }
 
     /**
-     * User-provided accessibility description for this image, when set.
+     * User-provided accessibility description for this image or video, when set.
      */
     public function altText(): ?string
     {

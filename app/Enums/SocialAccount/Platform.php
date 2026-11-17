@@ -200,9 +200,20 @@ enum Platform: string
      * Whether the platform's API accepts image alt text (accessibility
      * description) on published media.
      */
-    public function supportsAltText(): bool
+    public function supportsImageAltText(): bool
     {
         return $this->altTextMaxLength() !== null;
+    }
+
+    /**
+     * Whether the platform's API also takes alt text on a video: Bluesky
+     * (`alt` on `app.bsky.embed.video`), Mastodon (`description` on the media
+     * upload), Threads (`alt_text` on a video container) and Discord
+     * (`description` on the attachment).
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return in_array($this, [self::Bluesky, self::Mastodon, self::Threads, self::Discord], true);
     }
 
     /**

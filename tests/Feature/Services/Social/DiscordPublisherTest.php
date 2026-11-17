@@ -238,7 +238,7 @@ test('omits the attachment description when the image has no alt text', function
     });
 });
 
-test('does not set a description on a non-image attachment even if it carries alt text', function () {
+test('sets the attachment description from a video alt text', function () {
     $this->post->update([
         'media' => [[
             'id' => 'm1',
@@ -246,7 +246,7 @@ test('does not set a description on a non-image attachment even if it carries al
             'url' => 'https://example.com/media/2026-01/clip.mp4',
             'mime_type' => 'video/mp4',
             'original_filename' => 'clip.mp4',
-            'meta' => ['alt_text' => 'alt text must not be sent for a video'],
+            'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
         ]],
     ]);
 
@@ -267,7 +267,7 @@ test('does not set a description on a non-image attachment even if it carries al
         $payloadPart = collect($request->data())->firstWhere('name', 'payload_json');
         $payload = json_decode(data_get($payloadPart, 'contents'), true);
 
-        return ! array_key_exists('description', data_get($payload, 'attachments.0'));
+        return data_get($payload, 'attachments.0.description') === 'a cyclist crossing a bridge';
     });
 });
 

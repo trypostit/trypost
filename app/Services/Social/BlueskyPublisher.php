@@ -167,46 +167,64 @@ class BlueskyPublisher
      */
     private function mediaEmbed(SocialAccount $account, string $service, Collection $medias): ?array
     {
-        $images = [];
+        $images = $medias->take(4)->filter(fn (MediaItem $media): bool => $media->isImage());
 
-        foreach ($medias->take(4) as $media) {
-            if ($media->isImage()) {
-                $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
-                if (! $blob) {
-                    throw new BlueskyPublishException(
-                        userMessage: 'Media upload to Bluesky failed. Please try again.',
-                        category: ErrorCategory::ServerError,
-                    );
-                }
-
-                $images[] = [
-                    'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
-                    'image' => $blob,
-                ];
-            }
-        }
-
-        if ($images !== []) {
-            return [
-                '$type' => BlueskyLexicon::EMBED_IMAGES,
-                'images' => $images,
-            ];
+        if ($images->isNotEmpty()) {
+            return $this->imagesEmbed($account, $service, $images);
         }
 
         $video = $medias->first(fn (MediaItem $media): bool => $media->isVideo());
-        $videoBlob = $video ? $this->uploadVideo($account, $service, $video->url, $video->mime_type) : null;
 
-        if ($video && ! $videoBlob) {
-            throw new BlueskyPublishException(
-                userMessage: 'Media upload to Bluesky failed. Please try again.',
-                category: ErrorCategory::ServerError,
-            );
+        if (blank($video)) {
+            return null;
         }
 
-        return $videoBlob ? [
+        return $this->videoEmbed($account, $service, $video);
+    }
+
+    /**
+     * @param  Collection<int, MediaItem>  $images
+     * @return array<string, mixed>
+     */
+    private function imagesEmbed(SocialAccount $account, string $service, Collection $images): array
+    {
+        return [
+            '$type' => BlueskyLexicon::EMBED_IMAGES,
+            'images' => $images->map(fn (MediaItem $image): array => [
+                'alt' => $image->altTextFor(Platform::Bluesky) ?? '',
+                'image' => $this->uploadBlob($account, $service, $image->url, $image->mime_type) ?? throw $this->mediaUploadFailed(),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * The video embed, with its alt text when it has one (an image's `alt` is
+     * required, a video's optional).
+     *
+     * @return array<string, mixed>
+     */
+    private function videoEmbed(SocialAccount $account, string $service, MediaItem $video): array
+    {
+        $embed = [
             '$type' => BlueskyLexicon::EMBED_VIDEO,
-            'video' => $videoBlob,
-        ] : null;
+            'video' => $this->uploadVideo($account, $service, $video->url, $video->mime_type) ?? throw $this->mediaUploadFailed(),
+        ];
+
+        $alt = $video->altTextFor(Platform::Bluesky);
+
+        if (blank($alt)) {
+            return $embed;
+        }
+
+        return [...$embed, 'alt' => $alt];
+    }
+
+    private function mediaUploadFailed(): BlueskyPublishException
+    {
+        return new BlueskyPublishException(
+            userMessage: 'Media upload to Bluesky failed. Please try again.',
+            category: ErrorCategory::ServerError,
+        );
     }
 
     /**

@@ -24,11 +24,11 @@ test('altTextMaxLength is null for platforms without alt-text support', function
         ->and(Platform::YouTube->altTextMaxLength())->toBeNull();
 });
 
-test('supportsAltText mirrors altTextMaxLength', function () {
-    expect(Platform::Bluesky->supportsAltText())->toBeTrue()
-        ->and(Platform::LinkedInPage->supportsAltText())->toBeTrue()
-        ->and(Platform::InstagramFacebook->supportsAltText())->toBeTrue()
-        ->and(Platform::TikTok->supportsAltText())->toBeFalse();
+test('supportsImageAltText mirrors altTextMaxLength', function () {
+    expect(Platform::Bluesky->supportsImageAltText())->toBeTrue()
+        ->and(Platform::LinkedInPage->supportsImageAltText())->toBeTrue()
+        ->and(Platform::InstagramFacebook->supportsImageAltText())->toBeTrue()
+        ->and(Platform::TikTok->supportsImageAltText())->toBeFalse();
 });
 
 test('altTextMaxLength is defined for every platform so a new case cannot slip through', function () {
@@ -38,3 +38,13 @@ test('altTextMaxLength is defined for every platform so a new case cannot slip t
         expect($max === null || (is_int($max) && $max > 0))->toBeTrue();
     }
 });
+
+test('only bluesky, mastodon, threads and discord take alt text on a video, each also taking it on an image', function (Platform $platform) {
+    $expected = in_array($platform, [Platform::Bluesky, Platform::Mastodon, Platform::Threads, Platform::Discord], true);
+
+    expect($platform->supportsVideoAltText())->toBe($expected);
+
+    if ($expected) {
+        expect($platform->supportsImageAltText())->toBeTrue();
+    }
+})->with(Platform::cases());

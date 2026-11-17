@@ -379,7 +379,7 @@ test('google business has correct label and color', function () {
 test('google business has correct media rules', function () {
     expect(Platform::GoogleBusiness->allowedMediaTypes())->toBe([MediaType::Image]);
     expect(Platform::GoogleBusiness->maxImages())->toBe(1);
-    expect(Platform::GoogleBusiness->supportsAltText())->toBeFalse();
+    expect(Platform::GoogleBusiness->supportsImageAltText())->toBeFalse();
     expect(Platform::GoogleBusiness->maxContentLength())->toBe(1500);
 });
 

@@ -208,6 +208,15 @@ Vue components must have a single root element.
 A function that decides between several outcomes is a list of early returns, one case per `if`, read from top to bottom (owner decision November 2026). Never a ternary inside a ternary, a ternary inside an `if`, or a ternary whose condition joins several checks with `||` / `&&`.
 
 - One ternary with a single plain condition is fine (`filled($channel) ? 'channel' : 'all'`). Anything more becomes `if` blocks with braces.
+- A ternary that picks between two arrays, or that does not fit on one line, is an `if` too, even with a single plain condition (owner decision November 2026). Put the choice in a small method with an early return, so each case reads on its own (`ThreadsPublisher::mediaSource()` is the reference):
+
+    ```php
+    if ($media->isVideo()) {
+        return ['media_type' => 'VIDEO', 'video_url' => $media->url];
+    }
+
+    return ['media_type' => 'IMAGE', 'image_url' => $media->url];
+    ```
 - Name a check used twice (`const imported = post.origin === PostOrigin.Network`) instead of repeating it in each branch.
 - When the outcome follows from what the user clicked, let each action say it (`publishNow()` toasts "publishing") instead of guessing it back from the payload.
 - A `match` lists every case it accepts and has no `default` that hides an unknown value; an unknown value should fail, not read as another case.
