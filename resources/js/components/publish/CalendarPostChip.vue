@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed, type Component } from 'vue';
 
+import VideoStill from '@/components/media/VideoStill.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
@@ -29,7 +30,6 @@ import { isImage } from '@/lib/mediaType';
 import { postChannelLabel, postThumbnail } from '@/lib/postCard';
 import { isDeletedOnNetwork } from '@/lib/postNetwork';
 import { htmlToPlainText } from '@/lib/utils';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost } from '@/types/publish';
 
@@ -205,12 +205,9 @@ const chipClass = computed(() => [
                     class="size-full object-cover"
                 />
                 <template v-else>
-                    <video
-                        :src="videoFrameUrl(thumbnail)"
+                    <VideoStill
+                        :item="thumbnail"
                         class="size-full object-cover"
-                        muted
-                        playsinline
-                        preload="metadata"
                     />
                     <IconPlayerPlayFilled
                         aria-hidden="true"

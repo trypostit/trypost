@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Ai\Agents\MediaAltTextGenerator;
+use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\Post;
@@ -763,7 +764,7 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     $page->click('@media-editor-thumbnail-tab')
         ->assertSee('Choose a thumbnail')
         ->assertVisible('@media-editor-stage-video')
-        ->assertAttribute('@media-editor-thumb-0', 'aria-label', 'Video 1');
+        ->assertMissing('@media-editor-thumbnails');
     waitForState($page, '@media-editor-cover', "element.max === '3'");
 
     expect($page->script("document.querySelector('[data-testid=\"media-editor-cover\"]').max"))->toBe('3');
@@ -786,8 +787,351 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     saveMediaEditorDraft($page);
 
     expect($post->fresh()->media[0]['meta']['cover_offset_ms'])->toBe(2500)
-        ->and($post->fresh()->media[0]['id'])->toBe('video-1');
+        ->and($post->fresh()->media[0]['id'])->toBe('video-1')
+        ->and(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull();
     $page->assertNoJavaScriptErrors();
+});
+
+function pickMediaEditorCoverImage(mixed $page): void
+{
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $page->script(<<<JS
+        (() => {
+            const input = document.querySelector('[data-testid="media-editor-cover-image-input"]');
+            const bytes = Uint8Array.from(atob('{$png}'), (character) => character.charCodeAt(0));
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([bytes], 'cover.png', { type: 'image/png' }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })();
+    JS);
+}
+
+test('a reel video takes an uploaded image as its cover', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    $page->assertAttribute('@media-editor-cover-source-frame', 'aria-pressed', 'true');
+
+    $page->click('@media-editor-cover-source-image')
+        ->assertSee('Your video shows this image as its cover.')
+        ->assertMissing('@media-editor-cover')
+        ->assertMissing('@media-editor-selection');
+
+    pickMediaEditorCoverImage($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->assertSee('Replace image')
+        ->assertPresent('@media-editor-handle-nw')
+        ->assertPresent('@media-editor-center')
+        ->assertMissing('@crop-aspect-9-16')
+        ->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $cover = data_get($post->fresh()->media, '0.meta.cover');
+    $owned = Media::query()->find(data_get($cover, 'id'));
+    [$width, $height] = getimagesizefromstring(Storage::get($owned->path));
+
+    expect($owned->post_id)->toBe($post->id)
+        ->and($owned->type)->toBe(MediaType::Image)
+        ->and($owned->upload_token)->toBeNull()
+        ->and($height / $width)->toEqualWithDelta(16 / 9, 0.02)
+        ->and(data_get($post->fresh()->media, '0.id'))->toBe('video-1');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('switching a reel back to a video frame saves the frame time and drops the image', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-selection');
+
+    $page->click('@media-editor-cover-source-frame');
+    waitFor($page, '@media-editor-cover');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    expect(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('switching a youtube short back to a video frame saves a screenshot of that frame as the cover', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-selection');
+
+    $page->assertAttribute('@media-editor-cover-source-image', 'aria-pressed', 'true');
+    waitForState($page, '@media-editor-apply', 'element.disabled === true');
+
+    $page->click('@media-editor-cover-source-frame');
+    waitFor($page, '@media-editor-cover');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $cover = data_get($post->fresh()->media, '0.meta.cover');
+    $owned = Media::query()->find(data_get($cover, 'id'));
+
+    expect(data_get($cover, 'id'))->not->toBe('cover-1')
+        ->and($owned->post_id)->toBe($post->id)
+        ->and($owned->type)->toBe(MediaType::Image)
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('picking an image as the cover keeps the frame picked for the networks that only take one', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $media = $post->media;
+    $media[0]['meta']['cover_offset_ms'] = 2500;
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    $page->click('@media-editor-cover-source-image');
+    pickMediaEditorCoverImage($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $meta = data_get($post->fresh()->media, '0.meta');
+
+    expect(data_get($meta, 'cover_source'))->toBe('image')
+        ->and(data_get($meta, 'cover_offset_ms'))->toBe(2500)
+        ->and(data_get($meta, 'cover.id'))->not->toBeNull();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('picking image over a frame cover waits for an image instead of reusing the frame screenshot', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'frame', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+
+    $page->click('@media-editor-cover-source-image');
+    waitFor($page, '@media-editor-stage-video');
+
+    $page->assertMissing('@media-editor-selection')
+        ->assertSee('Upload image')
+        ->assertNoJavaScriptErrors();
+});
+
+test('reframing a stored cover saves the new frame of it', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === true');
+
+    $page->drag('@media-editor-handle-nw', '@media-editor-stage');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $owned = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
+    [$width, $height] = getimagesizefromstring(Storage::get($owned->path));
+
+    expect($owned->post_id)->toBe($post->id)
+        ->and($height / $width)->toEqualWithDelta(16 / 9, 0.02);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a youtube short offers a frame or an image as its cover', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    expect(mediaEditorSegmentIds($page))->toBe(['media-editor-thumbnail-tab']);
+    $page->assertVisible('@media-editor-cover')
+        ->assertVisible('@media-editor-cover-source-image')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a feed video offers only the cover frame', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover');
+
+    $page->assertMissing('@media-editor-cover-source')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the thumbnail tab picks the frame by dragging along a strip under the video', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+    waitForState($page, '@media-editor-cover-timeline canvas:last-of-type', 'element.width > 0');
+
+    $page->assertMissing('@media-editor-play');
+
+    $page->script(<<<'JS'
+        (() => {
+            const slider = document.querySelector('[data-testid="media-editor-cover"]');
+            slider.value = '3';
+            slider.dispatchEvent(new Event('input', { bubbles: true }));
+        })();
+    JS);
+    waitForState($page, '@media-editor-cover-selector', 'Math.abs(element.getBoundingClientRect().right - element.parentElement.getBoundingClientRect().right) < 2');
+
+    waitForText($page, '@media-editor-cover-value', '0:03.0');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the composer shows the picked cover on the media tile and on the preview until it plays', function (string $picked, string $tileElement, string $tileShows) {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $image = ['id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}"];
+    $cover = match ($picked) {
+        'frame' => ['cover_offset_ms' => 2500],
+        'captured frame' => ['cover_offset_ms' => 2500, 'cover' => $image, 'cover_source' => 'frame'],
+        'image' => ['cover' => $image],
+    };
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], ...$cover];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-media-item-0");
+    waitFor($page, '@video-preview-cover');
+
+    waitForState($page, "@composer-{$accountId}-media-item-0 {$tileElement}", $tileShows);
+
+    $page->click('@video-preview-play');
+    waitForGone($page, '@video-preview-cover');
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'a picked frame' => ['frame', 'video', "element.src.endsWith('#t=2.5')"],
+    'a frame with its screenshot' => ['captured frame', 'video', "element.src.endsWith('#t=2.5')"],
+    'an uploaded image' => ['image', 'img', "element.src.startsWith('data:image/png')"],
+]);
+
+test('a tiktok preview shows the picked frame, not an image uploaded for another network', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'image', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, '@video-preview-cover', "element.tagName === 'VIDEO' && element.src.endsWith('#t=2.5')");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a frame picked before youtube was added gets its screenshot when the editor applies', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
+    $media = $post->media;
+    $media[0]['meta']['cover_offset_ms'] = 1500;
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $owned = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
+
+    expect($owned->post_id)->toBe($post->id)
+        ->and(data_get($post->fresh()->media, '0.meta.cover_source'))->toBe('frame')
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a feed post\'s media tile shows the picked frame, not an image only a reel takes', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'image', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+
+    waitForState($page, "@composer-{$accountId}-media-item-0 video", "element.src.endsWith('#t=2.5')");
+    $page->assertMissing("@composer-{$accountId}-media-item-0 img")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a video without a picked cover shows the video itself on the preview', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-media-item-0");
+    letPageRun($page, 500);
+
+    $page->assertMissing('@video-preview-cover')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a video on an X post shows no pencil', function () {

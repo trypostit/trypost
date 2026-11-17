@@ -114,7 +114,7 @@ const frameClass = computed((): string =>
             >
                 <VideoPreview
                     v-if="isVideo(tile.item)"
-                    :src="tile.item.url"
+                    :media="tile.item"
                     video-class="size-full object-cover bg-black"
                 />
                 <img
@@ -140,7 +140,7 @@ const frameClass = computed((): string =>
             >
                 <VideoPreview
                     v-if="isVideo(item)"
-                    :src="item.url"
+                    :media="item"
                     video-class="size-full object-cover bg-black"
                 />
                 <img
@@ -168,7 +168,7 @@ const frameClass = computed((): string =>
             >
                 <VideoPreview
                     v-if="isVideo(item)"
-                    :src="item.url"
+                    :media="item"
                     video-class="size-full object-cover bg-black"
                 />
                 <img

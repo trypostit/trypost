@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\Instagram\ContainerStatus;
 use App\Enums\Instagram\TrialGraduation;
+use App\Enums\Media\CoverSource;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -14,8 +15,8 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\Post;
-use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
@@ -26,8 +27,8 @@ use Illuminate\Support\Facades\Log;
 
 class InstagramPublisher
 {
-    use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use HostsProcessedImages;
 
     private string $baseUrl;
 
@@ -37,6 +38,10 @@ class InstagramPublisher
 
     /** Two hours of delayed retries for processing and transient Graph failures. */
     private const int STATUS_MAX_RETRIES = 120;
+
+    private const string COVER_MIME_TYPE = 'image/jpeg';
+
+    private const int COVER_MAX_BYTES = 8 * 1024 * 1024;
 
     private const string WORKFLOW_CAROUSEL_CHILDREN = 'carousel_children';
 
@@ -131,7 +136,7 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
-            ...$this->thumbOffsetParam($media),
+            ...$this->reelCoverParam($media),
             ...$this->sharedOptions(),
             ...$this->collaboratorsParam(),
             ...$this->reelOptions(),
@@ -326,6 +331,64 @@ class InstagramPublisher
         return $this->jsonListParam('collaborators', PostPlatformMetaRules::instagramCollaborators(
             (array) data_get($this->post->meta, 'collaborators', []),
         ));
+    }
+
+    /**
+     * A Reel's cover: the image the user uploaded when they picked the Reel
+     * type (Instagram takes `cover_url` on Reels only and prefers it over
+     * `thumb_offset`), else the picked frame as its time, which Instagram
+     * shows exactly (the frame's screenshot is for YouTube). An image that
+     * cannot be made a JPEG falls back to the frame rather than failing.
+     *
+     * @return array{cover_url?: string, thumb_offset?: int}
+     */
+    private function reelCoverParam(MediaItem $media): array
+    {
+        $cover = $media->cover();
+
+        if (blank($cover)) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        if ($media->coverSource() === CoverSource::Frame) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        if (! $this->post->content_type?->supportsCustomVideoCover()) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        try {
+            return ['cover_url' => $this->coverUrl($cover)];
+        } catch (InstagramPublishException $exception) {
+            Log::warning('Instagram Reel cover could not be prepared; publishing with the picked frame', [
+                'post_id' => $this->post->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->thumbOffsetParam($media);
+        }
+    }
+
+    /**
+     * Instagram fetches a Reel cover only as a JPEG of up to 8 MB, so any
+     * other image is re-encoded first.
+     */
+    private function coverUrl(MediaItem $cover): string
+    {
+        if ($cover->mime_type !== self::COVER_MIME_TYPE) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
+        }
+
+        if (blank($cover->size)) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
+        }
+
+        if ($cover->size > self::COVER_MAX_BYTES) {
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
+        }
+
+        return $cover->url;
     }
 
     /**

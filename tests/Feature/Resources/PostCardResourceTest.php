@@ -29,6 +29,7 @@ function postCardAsBefore(Post $post): array
             'category' => data_get($post->error_context, 'category'),
             'failed_at' => data_get($post->error_context, 'failed_at'),
         ],
+        'youtube_thumbnail_warning' => null,
     ];
 
     $card['user'] = $post->user === null ? null : [
@@ -72,5 +73,17 @@ test('a card without its relations loaded leaves them out', function () {
     $card = PostCardResource::make($post->fresh())->resolve();
 
     expect($card)->not->toHaveKeys(['social_account', 'user', 'labels'])
-        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null]);
+        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null]);
+});
+
+test('a rejected post keeps its failure when its context has no category', function () {
+    $post = Post::factory()->forAccount($this->channel)->failed()->create([
+        'user_id' => $this->user->id,
+        'error_context' => ['provider_state' => 'REJECTED', 'youtube_thumbnail_warning' => 'forbidden'],
+    ]);
+
+    $card = PostCardResource::make($post->fresh())->resolve();
+
+    expect($card['failure'])->toBe(['category' => null, 'failed_at' => null])
+        ->and($card['youtube_thumbnail_warning'])->toBe('forbidden');
 });

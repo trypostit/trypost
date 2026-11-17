@@ -98,6 +98,30 @@ test('one composition to three channels gives every post its own rows and files'
     });
 });
 
+test('reordering a post keeps the submitted order in its media and in its rows', function () {
+    $post = CreatePosts::execute($this->workspace, $this->user, syncOwnedMediaComposition($this->channels->take(1), [
+        syncOwnedMediaStored(Media::factory()->temporaryUpload($this->workspace)),
+        syncOwnedMediaStored(Media::factory()->temporaryUpload($this->workspace)),
+        syncOwnedMediaStored(Media::factory()->temporaryUpload($this->workspace)),
+    ]))->sole();
+    [$first, $second, $third] = $post->ownedMedia->all();
+    $added = syncOwnedMediaStored(Media::factory()->temporaryUpload($this->workspace));
+
+    UpdatePost::execute($this->workspace, $post->fresh(), ['media' => [
+        MediaItem::fromMedia($third)->toArray(),
+        MediaItem::fromMedia($added)->toArray(),
+        MediaItem::fromMedia($first)->toArray(),
+        MediaItem::fromMedia($second)->toArray(),
+    ]]);
+
+    $expected = [$third->id, $added->id, $first->id, $second->id];
+    $post->refresh();
+
+    expect(collect($post->media)->pluck('id')->all())->toBe($expected)
+        ->and($post->ownedMedia->pluck('id')->all())->toBe($expected)
+        ->and($post->ownedMedia->pluck('order')->all())->toBe([0, 1, 2, 3]);
+});
+
 test('syncing a post with the items it already owns changes nothing', function () {
     $post = CreatePosts::execute($this->workspace, $this->user, syncOwnedMediaComposition(
         $this->channels->take(1),

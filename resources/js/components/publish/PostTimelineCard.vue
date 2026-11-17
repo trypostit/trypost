@@ -22,6 +22,7 @@ import { type Component, computed, ref, watch } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
+import VideoStill from '@/components/media/VideoStill.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostNotesPanel from '@/components/posts/editor/PostNotesPanel.vue';
 import PostScheduleModeBadge from '@/components/posts/PostScheduleModeBadge.vue';
@@ -30,6 +31,7 @@ import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
+import PostCoverWarningPopover from '@/components/publish/PostCoverWarningPopover.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
@@ -67,7 +69,6 @@ import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
 import {
@@ -290,6 +291,11 @@ const contentTypeKey = computed(() =>
 
 const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
 
+/** Why YouTube did not apply this post's cover image, if it did not. */
+const youTubeThumbnailWarning = computed(
+    () => props.post.youtube_thumbnail_warning,
+);
+
 const permalink = computed(() => postPermalink(props.post));
 
 const metricsDetail = computed(() => {
@@ -452,6 +458,11 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
             <PostDeletedOnNetworkPopover
                 v-if="deletedOnNetwork"
                 :post="post"
+                :test-key="post.id"
+            />
+            <PostCoverWarningPopover
+                v-if="youTubeThumbnailWarning"
+                :warning="youTubeThumbnailWarning"
                 :test-key="post.id"
             />
             <PostFailurePopover
@@ -638,12 +649,9 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                                 loading="lazy"
                             />
                             <template v-else>
-                                <video
-                                    :src="videoFrameUrl(thumbnail)"
+                                <VideoStill
+                                    :item="thumbnail"
                                     class="size-full object-cover"
-                                    muted
-                                    playsinline
-                                    preload="metadata"
                                     :data-testid="`post-thumbnail-video-${post.id}-${index}`"
                                 />
                                 <IconPlayerPlayFilled

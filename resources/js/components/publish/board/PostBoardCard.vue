@@ -4,6 +4,7 @@ import { useElementVisibility } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import VideoStill from '@/components/media/VideoStill.vue';
 import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
@@ -25,7 +26,6 @@ import {
     postThumbnail,
 } from '@/lib/postCard';
 import { htmlToPlainText } from '@/lib/utils';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import { PostStatus } from '@/types/post';
 import type { PostCard } from '@/types/publish';
 
@@ -250,13 +250,10 @@ const hasMenu = computed((): boolean => {
                 class="size-full object-cover"
             />
             <template v-else>
-                <video
+                <VideoStill
                     v-if="videoLoaded"
-                    :src="videoFrameUrl(thumbnail)"
+                    :item="thumbnail"
                     class="size-full object-cover"
-                    muted
-                    playsinline
-                    preload="metadata"
                 />
                 <IconPlayerPlayFilled
                     aria-hidden="true"

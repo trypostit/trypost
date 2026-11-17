@@ -215,3 +215,21 @@ test('the grid links to the channel board', function () {
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a reel with an uploaded cover shows that cover on the grid, and one with a picked frame shows the frame', function () {
+    $video = ['path' => 'media/reel.mp4', 'url' => 'https://cdn.test/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4'];
+    $covered = channelGridBrowserPost($this->instagram, now()->subDays(10)->setTime(10, 0), ContentType::InstagramReel, [
+        [...$video, 'id' => (string) str()->uuid(), 'meta' => ['cover_source' => 'image', 'cover' => channelGridImage()]],
+    ]);
+    $framed = channelGridBrowserPost($this->instagram, now()->subDays(12)->setTime(10, 0), ContentType::InstagramReel, [
+        [...$video, 'id' => (string) str()->uuid(), 'meta' => ['cover_offset_ms' => 2500]],
+    ]);
+
+    $this->actingAs($this->user);
+    $page = visit(route('app.channels.grid', $this->instagram));
+
+    waitForState($page, "@grid-tile-video-{$covered->id}", "element.tagName === 'IMG' && element.src.startsWith('data:image/png')");
+    waitForState($page, "@grid-tile-video-{$framed->id}", "element.tagName === 'VIDEO' && element.src.endsWith('#t=2.5')");
+
+    $page->assertNoJavaScriptErrors();
+});

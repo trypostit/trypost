@@ -61,6 +61,9 @@ export interface UnavailablePostMetrics {
 
 export type PostCardMetrics = PublicationAnalyticsDetail | UnavailablePostMetrics;
 
+/** Why YouTube did not set the cover image of a live video as its thumbnail (`App\Enums\YouTube\ThumbnailWarning`). */
+export type YouTubeThumbnailWarning = 'forbidden' | 'daily_limit' | 'invalid_image' | 'failed';
+
 export interface PostCardFailure {
     category?: string | null;
     failed_at?: string | null;
@@ -79,6 +82,7 @@ export interface PostCard {
     platform_url?: string | null;
     error_message?: string | null;
     failure?: PostCardFailure | null;
+    youtube_thumbnail_warning?: YouTubeThumbnailWarning | null;
     retry_at?: string | null;
     origin: PostOriginValue;
     created_at: string;

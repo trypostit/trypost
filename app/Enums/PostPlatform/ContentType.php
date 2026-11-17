@@ -531,6 +531,16 @@ enum ContentType: string
     }
 
     /**
+     * Whether a video of this type may take an image as its cover
+     * (`media.*.meta.cover`): Instagram takes `cover_url` on Reels only, and
+     * YouTube sets a Short's thumbnail once the video is processed.
+     */
+    public function supportsCustomVideoCover(): bool
+    {
+        return in_array($this, [self::InstagramReel, self::YouTubeShort], true);
+    }
+
+    /**
      * Whether the editor should auto-fit still images into the story frame.
      */
     public function autoFitsImage(): bool
@@ -565,6 +575,7 @@ enum ContentType: string
      *     supports_alt_text: bool,
      *     supports_user_tags: bool,
      *     supports_video_cover: bool,
+     *     supports_custom_video_cover: bool,
      *     platform_label: string,
      *     image_min_width: int|null,
      *     image_min_height: int|null,
@@ -602,6 +613,7 @@ enum ContentType: string
             'supports_alt_text' => $this->supportsAltText(),
             'supports_user_tags' => $this->supportsUserTags(),
             'supports_video_cover' => $this->supportsVideoCover(),
+            'supports_custom_video_cover' => $this->supportsCustomVideoCover(),
             'platform_label' => $this->platform()->label(),
             'image_min_width' => $dimensions['min_width'] ?? null,
             'image_min_height' => $dimensions['min_height'] ?? null,
@@ -643,6 +655,7 @@ enum ContentType: string
      *     supports_alt_text: bool,
      *     supports_user_tags: bool,
      *     supports_video_cover: bool,
+     *     supports_custom_video_cover: bool,
      *     captionless: bool,
      *     document_must_be_alone: bool,
      *     supports_thread_replies: bool,
@@ -683,6 +696,7 @@ enum ContentType: string
                 'supports_alt_text',
                 'supports_user_tags',
                 'supports_video_cover',
+                'supports_custom_video_cover',
             ])),
             'captionless' => $this->isCaptionless(),
             'document_must_be_alone' => $this->supportsDocument(),

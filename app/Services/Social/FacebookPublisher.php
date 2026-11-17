@@ -12,8 +12,8 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\Post;
-use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
 use Closure;
@@ -26,8 +26,8 @@ use Illuminate\Support\Sleep;
 
 class FacebookPublisher
 {
-    use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use HostsProcessedImages;
 
     private const int VIDEO_UPLOAD_POLL_SECONDS = 5;
 

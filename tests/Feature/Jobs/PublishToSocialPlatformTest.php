@@ -24,6 +24,7 @@ use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
+use App\Jobs\SetYouTubeCover;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -39,6 +40,7 @@ use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokPublisher;
+use App\Services\Social\YouTubePublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -2441,6 +2443,47 @@ test('a thread that stops on any error says how much of it is live', function ()
             'error' => 'An unexpected error occurred while publishing. Please try again.',
         ]));
 });
+
+test('a youtube video published with a cover image sets it once youtube processes the video', function (bool $hasCover) {
+    Event::fake();
+    Mail::fake();
+    Queue::fake([SetYouTubeCover::class]);
+    $this->freezeTime();
+
+    $account = SocialAccount::factory()->youtube()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $cover = ['id' => 'cover', 'path' => 'media/cover.jpg', 'url' => 'https://example.com/media/cover.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+    $this->post->update([
+        'media' => [[
+            'id' => 'video',
+            'path' => 'media/video.mp4',
+            'url' => 'https://example.com/media/video.mp4',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'meta' => $hasCover ? ['cover' => $cover] : [],
+        ]],
+    ]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::YouTubeShort,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(YouTubePublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'short-id', 'url' => 'https://www.youtube.com/shorts/short-id']);
+    $this->app->instance(YouTubePublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    $hasCover
+        ? Queue::assertPushedOn(Platform::YouTube->queue(), SetYouTubeCover::class, fn (SetYouTubeCover $job): bool => $job->post->is($post)
+            && $job->delay->equalTo(now()->addSeconds(SetYouTubeCover::CHECK_EVERY_SECONDS)))
+        : Queue::assertNotPushed(SetYouTubeCover::class);
+})->with([
+    'with a cover image' => [true],
+    'without one' => [false],
+]);
 
 test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {
     Event::fake();

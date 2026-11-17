@@ -47,10 +47,11 @@ class PostCardResource extends JsonResource
                 'name' => $user->name,
                 'photo_url' => $user->photo_url,
             ]),
-            'failure' => transform($post->error_context, fn (array $context): array => [
+            'failure' => transform(Arr::except($post->error_context ?? [], 'youtube_thumbnail_warning'), fn (array $context): array => [
                 'category' => data_get($context, 'category'),
                 'failed_at' => data_get($context, 'failed_at'),
             ]),
+            'youtube_thumbnail_warning' => $post->youTubeThumbnailWarning()?->value,
         ];
     }
 

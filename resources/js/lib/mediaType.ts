@@ -74,6 +74,10 @@ const ownsMime = (type: MediaType, mime: string): boolean =>
 export const acceptAttribute = (heic: boolean = false): string =>
     [...Object.values(ALLOWED_MIME_TYPES).flat(), ...(heic ? [...HEIC_MIME_TYPES, ...HEIC_EXTENSIONS.map((extension) => `.${extension}`)] : [])].join(',');
 
+/** The `accept` attribute value for a file input that takes a still image (any allowed image but a GIF), like a video cover. */
+export const stillImageAcceptAttribute = (): string =>
+    ALLOWED_MIME_TYPES[MediaType.Image].filter((mime) => mime !== GIF_MIME).join(',');
+
 /** Whether a browser `File` (or name + MIME) is HEIC/HEIF, by MIME or extension. */
 export const isHeic = (file: { name?: string | null; type?: string | null } | null | undefined): boolean =>
     HEIC_MIME_TYPES.includes(normalizeMime(file?.type)) || hasExtension(pathOf(file?.name), HEIC_EXTENSIONS);
