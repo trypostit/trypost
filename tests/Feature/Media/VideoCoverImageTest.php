@@ -232,6 +232,23 @@ test('the cover source is stored with the cover and must be a frame or an image'
     expect(data_get($this->post->fresh()->media, '0.meta.cover_source'))->toBe('image');
 });
 
+test('a video saved without its media row drops its image source once the cover goes', function () {
+    $item = [
+        'id' => 'legacy-video',
+        'path' => 'medias/legacy.mp4',
+        'url' => 'https://cdn.example.com/medias/legacy.mp4',
+        'type' => 'video',
+        'mime_type' => 'video/mp4',
+        'meta' => ['duration' => 10, 'cover_source' => 'image', 'cover_offset_ms' => 0],
+    ];
+    $this->post->update(['media' => [$item]]);
+
+    updateVideoCoverImageOnWeb($this, [[...$item, 'meta' => ['duration' => 10, 'cover_offset_ms' => 2000]]])->assertRedirect();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover_source'))->toBeNull()
+        ->and(data_get($this->post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(2000);
+});
+
 test('a thread reply video drops a cover image sent with it', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
     $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();

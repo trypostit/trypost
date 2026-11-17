@@ -121,12 +121,12 @@ class SyncOwnedMedia
                 $owned = self::withEdits(Arr::except($own($item, $key, $position), 'meta.cover'), $item);
                 $cover = data_get($item, 'meta.cover');
 
-                if (! $keepsCovers) {
-                    Arr::forget($owned, 'meta.cover_source');
-                }
-
                 if ($keepsCovers && is_array($cover)) {
                     $owned['meta'] = [...(array) data_get($owned, 'meta', []), 'cover' => self::coverItem($own($cover, "{$key}.meta.cover", $position), "{$key}.meta.cover")];
+                }
+
+                if (blank(data_get($owned, 'meta.cover'))) {
+                    Arr::forget($owned, 'meta.cover_source');
                 }
 
                 $position++;
