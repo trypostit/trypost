@@ -169,10 +169,7 @@ class ThreadsPublisher
      */
     private function mediaParams(MediaItem $media): array
     {
-        $params = $media->isVideo()
-            ? ['media_type' => 'VIDEO', 'video_url' => $media->url]
-            : ['media_type' => 'IMAGE', 'image_url' => $media->url];
-
+        $params = $this->mediaSource($media);
         $alt = $media->altTextFor(Platform::Threads);
 
         if (blank($alt)) {
@@ -180,6 +177,18 @@ class ThreadsPublisher
         }
 
         return [...$params, 'alt_text' => $alt];
+    }
+
+    /**
+     * @return array{media_type: string, video_url?: string, image_url?: string}
+     */
+    private function mediaSource(MediaItem $media): array
+    {
+        if ($media->isVideo()) {
+            return ['media_type' => 'VIDEO', 'video_url' => $media->url];
+        }
+
+        return ['media_type' => 'IMAGE', 'image_url' => $media->url];
     }
 
     private function publishCarousel(string $userId, string $accessToken, ?string $content, $mediaCollection): array
