@@ -7,9 +7,7 @@ namespace App\Support\Social;
 use App\Enums\Analytics\PollVotingStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 
 /**
  * The poll a Threads text post may carry (`meta.poll`, content type
@@ -24,7 +22,7 @@ final class ThreadsPoll extends Poll
     public const int OPTION_MAX_LENGTH = 25;
 
     /** The keys Threads names the choices by, in order. */
-    public const array OPTION_KEYS = ['option_a', 'option_b', 'option_c', 'option_d'];
+    private const array OPTION_KEYS = ['option_a', 'option_b', 'option_c', 'option_d'];
 
     /**
      * The `poll_attachment` fields a post read asks Threads for.
@@ -46,7 +44,7 @@ final class ThreadsPoll extends Poll
      *
      * @return array<string, string>
      */
-    public static function payload(mixed $meta): array
+    public static function payload(?array $meta): array
     {
         return collect(self::options($meta))
             ->take(count(self::OPTION_KEYS))
@@ -56,8 +54,9 @@ final class ThreadsPoll extends Poll
 
     /**
      * A post's `poll_attachment` reduced to what is stored. Threads gives each
-     * choice a share of `total_votes`, so the votes are worked out from it; a
-     * poll is closed once its `expiration_timestamp` has passed.
+     * choice its share of `total_votes` as a decimal (`0.10` for 10%), so the
+     * votes are worked out from it; a poll is closed once its
+     * `expiration_timestamp` has passed.
      *
      * @param  array<string, mixed>  $poll
      * @return array{options: list<array{label: string, votes: int}>, voting_status: ?string, end_datetime: ?string, duration_minutes: null}
@@ -66,14 +65,13 @@ final class ThreadsPoll extends Poll
     {
         $total = (int) data_get($poll, 'total_votes', 0);
         $choices = collect(self::OPTION_KEYS)->filter(fn (string $key): bool => filled(data_get($poll, $key)));
-        $shares = $choices->mapWithKeys(fn (string $key): array => [$key => (float) data_get($poll, "{$key}_votes_percentage", 0)]);
         $endsAt = transform(data_get($poll, 'expiration_timestamp'), fn (mixed $at): CarbonImmutable => CarbonImmutable::parse((string) $at)->utc());
 
         return [
             'options' => $choices
                 ->map(fn (string $key): array => [
                     'label' => (string) data_get($poll, $key),
-                    'votes' => (int) round(self::fraction($shares->get($key), $shares->sum()) * $total),
+                    'votes' => (int) round((float) data_get($poll, "{$key}_votes_percentage", 0) * $total),
                 ])
                 ->values()
                 ->all(),
@@ -81,30 +79,6 @@ final class ThreadsPoll extends Poll
             'end_datetime' => $endsAt?->toIso8601ZuluString(),
             'duration_minutes' => null,
         ];
-    }
-
-    /**
-     * @return array{options: list<string>}
-     */
-    public static function fromPublication(AnalyticsPublication $publication): array
-    {
-        return [
-            'options' => Collection::wrap(data_get($publication->provider_metadata, 'poll.options'))->pluck('label')->all(),
-        ];
-    }
-
-    /**
-     * A choice's share as a fraction of the votes. Threads documents it as a
-     * decimal (`0.10`); a list of shares adding up to more than one is read
-     * as percentages.
-     */
-    private static function fraction(float $share, float $sum): float
-    {
-        if ($sum > 1.5) {
-            return $share / 100;
-        }
-
-        return $share;
     }
 
     private static function votingStatus(CarbonImmutable $endsAt): PollVotingStatus

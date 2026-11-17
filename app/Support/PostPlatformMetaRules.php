@@ -401,13 +401,13 @@ class PostPlatformMetaRules
      */
     public static function formatViolation(?Platform $platform, mixed $meta, ContentType|string|null $contentType = null): ?array
     {
-        $errors = self::formatErrors($platform, $meta, $contentType);
+        $errors = collect(self::formatErrors($platform, $meta, ContentType::resolve($contentType)));
 
-        if (blank($errors)) {
+        if ($errors->isEmpty()) {
             return null;
         }
 
-        return [array_key_first($errors), Arr::first($errors)];
+        return [$errors->keys()->first(), $errors->first()];
     }
 
     /**
@@ -417,32 +417,16 @@ class PostPlatformMetaRules
      *
      * @return array<string, string>
      */
-    public static function formatErrors(?Platform $platform, mixed $meta, ContentType|string|null $contentType = null): array
+    public static function formatErrors(?Platform $platform, ?array $meta, ?ContentType $contentType = null): array
     {
         if ($platform === Platform::YouTube) {
             return transform(YouTubeMetadata::violation($meta), fn (array $violation): array => [$violation[0] => $violation[1]], []);
         }
 
         return [
-            ...self::pollFormatErrors($meta, $contentType),
+            ...transform(Poll::forContentType($contentType), fn (string $poll): array => $poll::formatErrors($meta), []),
             ...ThreadReplies::pollFormatErrors($platform, $meta),
         ];
-    }
-
-    /**
-     * The post's own poll errors, on a poll type only.
-     *
-     * @return array<string, string>
-     */
-    private static function pollFormatErrors(mixed $meta, ContentType|string|null $contentType): array
-    {
-        $poll = Poll::forContentType($contentType);
-
-        if (blank($poll)) {
-            return [];
-        }
-
-        return $poll::formatErrors($meta);
     }
 
     /**

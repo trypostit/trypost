@@ -13,6 +13,7 @@ use App\Support\Analytics\MetaAnalyticsResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 
 abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -95,6 +96,34 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
     protected function successfulResponse(Response $response): Response
     {
         return MetaAnalyticsResponse::successful($response, 'publication metrics collection');
+    }
+
+    /**
+     * A read the token may be refused (a field its permissions do not cover):
+     * a refusal is recorded and reads as nothing, so the metrics already
+     * measured are kept; any other failure is rethrown.
+     *
+     * @param  array<string, string>  $query
+     * @return array<string, mixed>
+     */
+    protected function optional(SocialAccount $account, string $url, array $query): array
+    {
+        try {
+            return (array) $this->get($account, $url, $query)->json();
+        } catch (AnalyticsCollectionException $exception) {
+            if (! in_array($exception->category, ['permission', 'malformed'], true)) {
+                throw $exception;
+            }
+
+            $this->recordRefusal($exception);
+            Log::info("analytics.{$account->platform->value}_read_refused", [
+                'path' => Uri::of($url)->path(),
+                'category' => $exception->category,
+                'reason' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 
     /**

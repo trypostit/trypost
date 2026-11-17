@@ -11,6 +11,7 @@ use App\Support\Analytics\InvalidPublicationCursor;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -23,11 +24,7 @@ abstract class AbstractApiPublicationCollector
         array $query = [],
         bool $authenticated = true,
     ): Response {
-        $response = $this->sendGet(
-            $this->client($account, $authenticated),
-            $url,
-            array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''),
-        );
+        $response = $this->client($account, $authenticated)->get($url, self::queryParameters($query));
 
         if ((filled(data_get($query, 'pageToken'))
                 || filled(data_get($query, 'pagination_token'))
@@ -40,20 +37,21 @@ abstract class AbstractApiPublicationCollector
     }
 
     /**
-     * A GET with its query. Without one the URL is sent as it is, so a query
-     * written into it (Mastodon's repeated `id[]=`, which an array query cannot
-     * express) is kept: Guzzle replaces the URL's query with any query given,
-     * an empty one included.
+     * The query's filled parameters, or null without any: an empty query would
+     * replace the query a URL already carries (`MastodonApi::url()`).
      *
      * @param  array<string, mixed>  $query
+     * @return array<string, mixed>|null
      */
-    private function sendGet(PendingRequest $request, string $url, array $query): Response
+    protected static function queryParameters(array $query): ?array
     {
-        if (blank($query)) {
-            return $request->get($url);
+        $parameters = Arr::where($query, fn (mixed $value): bool => filled($value));
+
+        if (blank($parameters)) {
+            return null;
         }
 
-        return $request->get($url, $query);
+        return $parameters;
     }
 
     /** @param array<string, mixed> $payload */

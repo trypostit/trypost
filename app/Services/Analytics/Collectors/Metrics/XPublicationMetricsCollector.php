@@ -44,10 +44,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $this->count(MetricKey::Quotes, $public, 'quote_count'),
             $this->count(MetricKey::Bookmarks, $public, 'bookmark_count'),
             $this->count(MetricKey::LinkClicks, $private, 'url_link_clicks'),
-        ])), Arr::whereNotNull([
-            'poll' => transform($poll, XPoll::result(...)),
-            'thread_polls' => filled($threadPolls) ? $threadPolls : null,
-        ]) ?: null);
+        ])), $this->pollMetadata(XPoll::metadataFrom($poll), $threadPolls));
     }
 
     /**
@@ -98,14 +95,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $tweets = $response->collect('data')->keyBy('id');
         $polls = $response->collect('includes.polls')->keyBy('id');
         $pollOf = fn (mixed $tweet): mixed => $polls->get((string) data_get($tweet, 'attachments.poll_ids.0'));
-        $threadPolls = collect($replyPolls)
-            ->map(fn (string $replyId, int $reply): ?array => transform(
-                $pollOf($tweets->get($replyId)),
-                fn (array $poll): array => ['reply' => $reply, ...XPoll::result($poll)],
-            ))
-            ->filter()
-            ->values()
-            ->all();
+        $threadPolls = $this->threadPolls($replyPolls, fn (string $replyId): mixed => $pollOf($tweets->get($replyId)), XPoll::class);
 
         $tweet = $this->postTweet($response, $id, $tweets->get($id));
 

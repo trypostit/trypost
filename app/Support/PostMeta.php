@@ -35,7 +35,7 @@ class PostMeta
             ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
         ];
 
-        $meta = self::withPoll($meta, $contentType);
+        $meta = self::withPoll($meta, ContentType::resolve($contentType));
         $meta = ThreadReplies::forNetwork($account->platform, $meta);
 
         return match ($account->platform) {
@@ -51,7 +51,7 @@ class PostMeta
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    private static function withPoll(array $meta, ContentType|string|null $contentType): array
+    private static function withPoll(array $meta, ?ContentType $contentType): array
     {
         $poll = Poll::forContentType($contentType);
 
@@ -60,7 +60,7 @@ class PostMeta
         }
 
         if (is_array(data_get($meta, 'poll'))) {
-            $meta['poll'] = $poll::forNetwork($meta['poll']);
+            $meta['poll'] = $poll::forNetwork(data_get($meta, 'poll'));
         }
 
         return $meta;

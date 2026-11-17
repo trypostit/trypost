@@ -168,15 +168,41 @@ const unreadPollResult = (
 });
 
 /** A post's own poll: only a poll type has one, whatever its meta still holds. */
-const ownPollOf = (post: PostCard): Partial<Poll> | undefined => {
-    const contentType = post.content_type;
-
+export const pollOf = (
+    contentType: string | null | undefined,
+    meta: Record<string, any> | null | undefined,
+): Partial<Poll> | undefined => {
     if (!filled(contentType) || !POLL_CONTENT_TYPES.has(contentType)) {
         return undefined;
     }
 
-    return post.meta?.poll;
+    return meta?.poll;
 };
+
+/** What a network's preview draws for a poll: the post's poll and the account's poll limits. */
+export interface PreviewPoll {
+    poll: Partial<Poll>;
+    limits: PollLimits;
+}
+
+/** The poll a preview draws, or null for a post that is no poll or an account without poll limits. */
+export const previewPollOf = (
+    contentType: string | undefined,
+    meta: Record<string, any> | undefined,
+    publishConfig: PublishConfig | null | undefined,
+): PreviewPoll | null => {
+    const poll = pollOf(contentType, meta);
+    const limits = pollLimitsOf(publishConfig);
+
+    if (!filled(poll) || !filled(limits)) {
+        return null;
+    }
+
+    return { poll, limits };
+};
+
+const ownPollOf = (post: PostCard): Partial<Poll> | undefined =>
+    pollOf(post.content_type, post.meta);
 
 /** A post's own polls (the post's and its replies') with no votes yet. */
 const unreadPollsOf = (

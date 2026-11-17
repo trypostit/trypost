@@ -73,7 +73,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
                     'replies_count' => (int) data_get($row, 'replies_count', 0),
                     'history_visibility' => $hasPrivateHistoryScope ? 'authorized' : 'public_only',
                     'reconnect_required' => ! $hasPrivateHistoryScope,
-                    ...MastodonPoll::metadataFrom($row),
+                    ...MastodonPoll::metadataFrom(data_get($row, 'poll')),
                 ],
             );
         }

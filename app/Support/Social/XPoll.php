@@ -7,7 +7,6 @@ namespace App\Support\Social;
 use App\Enums\Analytics\PollVotingStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Models\AnalyticsPublication;
 use Illuminate\Support\Collection;
 
 /**
@@ -67,28 +66,13 @@ final class XPoll extends Poll
     }
 
     /**
-     * @return array{options: list<string>, duration_minutes: int}
-     */
-    public static function fromPublication(AnalyticsPublication $publication): array
-    {
-        $poll = data_get($publication->provider_metadata, 'poll');
-
-        return [
-            'options' => Collection::wrap(data_get($poll, 'options'))->pluck('label')->all(),
-            'duration_minutes' => self::minutes(data_get($poll, 'duration_minutes'), self::DEFAULT_DURATION),
-        ];
-    }
-
-    /**
-     * The `poll` field of the create-post request.
+     * The `poll` field of the create-post request: the poll as it is
+     * previewed, its choices and its length.
      *
      * @return array{options: list<string>, duration_minutes: int}
      */
-    public static function payload(mixed $meta): array
+    public static function payload(?array $meta): array
     {
-        return [
-            'options' => self::options($meta),
-            'duration_minutes' => (int) self::minutes(data_get($meta, 'poll.duration_minutes'), self::DEFAULT_DURATION),
-        ];
+        return self::preview($meta);
     }
 }

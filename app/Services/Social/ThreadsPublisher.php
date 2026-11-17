@@ -67,11 +67,7 @@ class ThreadsPublisher
             );
         }
 
-        if ($post->content_type === ContentType::ThreadsPoll) {
-            $this->ensurePublishablePoll($post, $content);
-        }
-
-        $this->containerOptions = $this->containerOptions($post);
+        $this->containerOptions = $this->containerOptions($post, $content);
 
         // Text only post
         if ($media->isEmpty()) {
@@ -390,34 +386,38 @@ class ThreadsPublisher
     }
 
     /**
-     * A poll goes on a text post only, with its question and choices.
-     */
-    private function ensurePublishablePoll(Post $post, ?string $content): void
-    {
-        $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
-
-        if (filled($violation)) {
-            throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
-        }
-    }
-
-    /**
      * What the container takes besides the text and media: a ghost post is
      * marked as one, a poll carries its choices, and a post its topic.
      *
      * @return array<string, mixed>
      */
-    private function containerOptions(Post $post): array
+    private function containerOptions(Post $post, ?string $content): array
     {
         if ($post->content_type === ContentType::ThreadsGhostPost) {
             return ['is_ghost_post' => 'true'];
         }
 
         if ($post->content_type === ContentType::ThreadsPoll) {
-            return [...$this->postOptions($post), 'poll_attachment' => ThreadsPoll::payload($post->meta)];
+            return [...$this->postOptions($post), 'poll_attachment' => $this->pollAttachment($post, $content)];
         }
 
         return $this->postOptions($post);
+    }
+
+    /**
+     * A poll goes on a text post only, with its question and choices.
+     *
+     * @return array<string, string>
+     */
+    private function pollAttachment(Post $post, ?string $content): array
+    {
+        $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
+
+        if (filled($violation)) {
+            throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+
+        return ThreadsPoll::payload($post->meta);
     }
 
     /**

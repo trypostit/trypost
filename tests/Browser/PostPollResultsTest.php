@@ -14,10 +14,11 @@ use App\Models\Workspace;
 use Database\Factories\AnalyticsPublicationFactory;
 
 /**
- * @param  array<string, mixed>|null  $poll
- * @return array{0: User, 1: SocialAccount, 2: Post}
+ * A subscribed admin in a workspace of their own, and a channel of `$network` there.
+ *
+ * @return array{0: User, 1: SocialAccount}
  */
-function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme = 'light'): array
+function pollResultsAccount(string $network, string $theme = 'light'): array
 {
     $user = User::factory()->create(['timezone' => 'UTC', 'theme' => $theme]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -26,19 +27,28 @@ function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme 
     subscribeAccount($user->account);
     connectAiTo($user);
 
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+    return [$user, SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id])];
+}
+
+/**
+ * @param  array<string, mixed>|null  $poll
+ * @return array{0: User, 1: SocialAccount, 2: Post}
+ */
+function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme = 'light', ContentType $type = ContentType::XPoll): array
+{
+    [$user, $account] = pollResultsAccount($type->platform()->value, $theme);
+    $post = Post::factory()->forAccount($account, $type)->published()->create([
         'user_id' => $user->id,
         'scheduled_at' => now()->subHour(),
         'published_at' => now()->subHour(),
     ]);
     $publication = AnalyticsPublication::factory()->when(filled($poll), fn (AnalyticsPublicationFactory $factory): AnalyticsPublicationFactory => $factory->withPoll($poll))->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
         'post_id' => $post->id,
-        'platform' => Platform::X,
-        'network' => Platform::X->network(),
+        'platform' => $account->platform,
+        'network' => $account->platform->network(),
         'remote_id' => $post->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
@@ -121,13 +131,7 @@ test('where voting stands is read from the instant, whatever zone the browser is
 ]);
 
 test('a poll whose publication x has not read yet shows its choices with no votes and when it ends', function () {
-    $user = User::factory()->create(['timezone' => 'UTC']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    connectAiTo($user);
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    [$user, $account] = pollResultsAccount('x');
     $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
         'user_id' => $user->id,
         'scheduled_at' => now()->subMinutes(5),
@@ -138,7 +142,7 @@ test('a poll whose publication x has not read yet shows its choices with no vote
         ],
     ]);
     $publication = AnalyticsPublication::factory()->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
         'post_id' => $post->id,
@@ -166,13 +170,7 @@ test('a poll whose publication x has not read yet shows its choices with no vote
 });
 
 test('a poll still in the queue shows its choices with no votes and no end yet', function () {
-    $user = User::factory()->create(['timezone' => 'UTC']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    connectAiTo($user);
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    [$user, $account] = pollResultsAccount('x');
     $post = Post::factory()->forAccount($account, ContentType::XPoll)->create([
         'user_id' => $user->id,
         'status' => Status::Scheduled,
@@ -349,23 +347,8 @@ test('the polls of thread replies show under the post on the sent card and in th
         ->assertNoJavaScriptErrors();
 });
 
-/**
- * @return array{0: User, 1: SocialAccount}
- */
-function networkPollResultsSetup(string $network): array
-{
-    $user = User::factory()->create(['timezone' => 'UTC']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    connectAiTo($user);
-
-    return [$user, SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id])];
-}
-
 test('a mastodon or threads poll still in the queue shows its choices with no votes, like an x poll', function (string $network, ContentType $type, array $poll) {
-    [$user, $account] = networkPollResultsSetup($network);
+    [$user, $account] = pollResultsAccount($network);
     $post = Post::factory()->forAccount($account, $type)->create([
         'user_id' => $user->id,
         'status' => Status::Scheduled,
@@ -387,24 +370,8 @@ test('a mastodon or threads poll still in the queue shows its choices with no vo
     'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Mac', 'Linux']]],
 ]);
 
-test('a sent mastodon or threads poll shows the votes its network returned, like an x poll', function (string $network, ContentType $type, Platform $platform) {
-    [$user, $account] = networkPollResultsSetup($network);
-    $post = Post::factory()->forAccount($account, $type)->published()->create([
-        'user_id' => $user->id,
-        'scheduled_at' => now()->subHour(),
-        'published_at' => now()->subHour(),
-        'meta' => ['poll' => ['options' => ['✅ Refund', '❌ No refund']]],
-    ]);
-    $publication = AnalyticsPublication::factory()->withPoll(refundPoll())->create([
-        'workspace_id' => $account->workspace_id,
-        'social_account_id' => $account->id,
-        'social_account_key' => $account->id,
-        'post_id' => $post->id,
-        'platform' => $platform,
-        'network' => $platform->network(),
-        'remote_id' => $post->platform_post_id,
-    ]);
-    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
+test('a sent mastodon or threads poll shows the votes its network returned, like an x poll', function (ContentType $type) {
+    [$user, $account, $post] = pollResultsSetup(refundPoll(), type: $type);
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
@@ -415,6 +382,6 @@ test('a sent mastodon or threads poll shows the votes its network returned, like
         ->assertSeeIn("@post-poll-{$post->id}-summary", '3 votes')
         ->assertNoJavaScriptErrors();
 })->with([
-    'mastodon' => ['mastodon', ContentType::MastodonPoll, Platform::Mastodon],
-    'threads' => ['threads', ContentType::ThreadsPoll, Platform::Threads],
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
 ]);

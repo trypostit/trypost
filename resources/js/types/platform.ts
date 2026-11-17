@@ -29,6 +29,6 @@ export interface PublishConfig {
     /** YouTube: the category list and the default category. */
     categoryOptions?: { value: string; labelKey: string }[];
     defaultCategoryId?: string;
-    /** X: the poll limits. */
+    /** X, Mastodon and Threads: the poll limits. */
     poll?: PollLimits;
 }

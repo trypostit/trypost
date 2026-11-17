@@ -145,7 +145,7 @@ class ThreadReplies
                     return Arr::except($reply, 'poll');
                 }
 
-                return [...$reply, 'poll' => $poll::forNetwork($reply['poll'])];
+                return [...$reply, 'poll' => $poll::forNetwork(data_get($reply, 'poll'))];
             })
             ->all();
 
@@ -158,7 +158,7 @@ class ThreadReplies
      *
      * @return array<string, string>
      */
-    public static function pollFormatErrors(?Platform $platform, mixed $meta): array
+    public static function pollFormatErrors(?Platform $platform, ?array $meta): array
     {
         $poll = self::replyPoll($platform);
 
@@ -178,7 +178,7 @@ class ThreadReplies
      *
      * @return array<string, string>
      */
-    public static function pollMediaErrors(?Platform $platform, mixed $meta): array
+    public static function pollMediaErrors(?Platform $platform, ?array $meta): array
     {
         if (blank(self::replyPoll($platform))) {
             return [];

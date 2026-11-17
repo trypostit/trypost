@@ -18,7 +18,8 @@ use Illuminate\Support\Number;
  * `mastodon_poll`), or any reply of its thread: two to four choices of up to
  * 50 characters, open from 5 minutes to 30 days, with a single or multiple
  * choice and totals shown or hidden until it ends. These are the limits of
- * mastodon.social; an instance may set others, which are not read.
+ * mastodon.social; an instance may set others, which are not read. Its
+ * `mixed` helpers read values of Mastodon's JSON as returned.
  *
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
@@ -51,15 +52,15 @@ final class MastodonPoll extends Poll
      *
      * @return array{options: list<string>, expires_in: int, multiple: bool, hide_totals: bool}
      */
-    public static function payload(mixed $meta): array
+    public static function payload(?array $meta): array
     {
-        $minutes = self::minutes(data_get($meta, 'poll.duration_minutes'), self::DEFAULT_DURATION);
+        $poll = self::preview($meta);
 
         return [
-            'options' => self::options($meta),
-            'expires_in' => $minutes * CarbonInterface::SECONDS_PER_MINUTE,
-            'multiple' => data_get($meta, 'poll.multiple') === true,
-            'hide_totals' => data_get($meta, 'poll.hide_totals') === true,
+            'options' => data_get($poll, 'options'),
+            'expires_in' => data_get($poll, 'duration_minutes') * CarbonInterface::SECONDS_PER_MINUTE,
+            'multiple' => data_get($poll, 'multiple'),
+            'hide_totals' => data_get($poll, 'hide_totals'),
         ];
     }
 
@@ -90,24 +91,6 @@ final class MastodonPoll extends Poll
     }
 
     /**
-     * A status's poll result as `provider_metadata` keeps it, from the status
-     * the collectors already read; nothing for a status without a poll.
-     *
-     * @param  array<string, mixed>  $status
-     * @return array{poll?: array<string, mixed>}
-     */
-    public static function metadataFrom(array $status): array
-    {
-        $poll = data_get($status, 'poll');
-
-        if (! is_array($poll)) {
-            return [];
-        }
-
-        return ['poll' => self::result($poll)];
-    }
-
-    /**
      * Its length is the time from publishing to its end, within Mastodon's range.
      *
      * @return array{options: list<string>, duration_minutes: int, multiple: bool}
@@ -117,7 +100,7 @@ final class MastodonPoll extends Poll
         $poll = data_get($publication->provider_metadata, 'poll');
 
         return [
-            'options' => Collection::wrap(data_get($poll, 'options'))->pluck('label')->all(),
+            ...parent::fromPublication($publication),
             'duration_minutes' => self::durationFrom($publication->provider_published_at, data_get($poll, 'end_datetime')),
             'multiple' => data_get($poll, 'multiple') === true,
         ];

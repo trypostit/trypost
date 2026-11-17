@@ -4,56 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
-use App\Models\Post;
-use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Support\Social\MastodonPoll;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-/**
- * @param  array<string, mixed>  $attributes
- */
-function seedNetworkPollPost(string $network, ContentType $contentType, array $attributes = []): Post
-{
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('member'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    connectAiTo($user);
-
-    $account = SocialAccount::factory()->{$network}()->create([
-        'workspace_id' => $workspace->id,
-        'username' => 'trypostit',
-        'token_expires_at' => now()->addDays(20),
-    ]);
-
-    $post = Post::factory()->forAccount($account, $contentType)->create([
-        'user_id' => $user->id,
-        'content' => 'Tabs or spaces?',
-        ...$attributes,
-    ]);
-
-    test()->actingAs($user);
-
-    return $post;
-}
-
-function openNetworkPollComposer(Post $post, string $pollType): mixed
-{
-    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, "@composer-type-{$post->social_account_id}-{$pollType}");
-
-    return $page;
-}
-
 test('a mastodon poll schedules with its length, multiple choice and hidden votes', function () {
-    $post = seedNetworkPollPost('mastodon', ContentType::MastodonPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $post = seedPollComposerPost(ContentType::MastodonPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
     $id = $post->social_account_id;
-    $page = openNetworkPollComposer($post, 'mastodon_poll');
+    $page = openPollComposer($post);
 
     $page->click("@composer-type-{$id}-mastodon_poll");
     waitFor($page, '@mastodon-poll-choice-0');
@@ -84,9 +41,9 @@ test('a mastodon poll schedules with its length, multiple choice and hidden vote
 });
 
 test('removing a mastodon poll returns to a mastodon post', function () {
-    $post = seedNetworkPollPost('mastodon', ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
+    $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
     $id = $post->social_account_id;
-    $page = openNetworkPollComposer($post, 'mastodon_poll');
+    $page = openPollComposer($post);
     waitFor($page, '@mastodon-poll-choice-0');
 
     $page->click('@mastodon-poll-remove');
@@ -101,9 +58,9 @@ test('removing a mastodon poll returns to a mastodon post', function () {
 });
 
 test('a mastodon thread reply turns into a poll and saves it on the reply', function () {
-    $post = seedNetworkPollPost('mastodon', ContentType::MastodonPost);
+    $post = seedPollComposerPost(ContentType::MastodonPost);
     $id = $post->social_account_id;
-    $page = openNetworkPollComposer($post, 'mastodon_poll');
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-start');
     $page->click('@thread-start');
@@ -126,9 +83,9 @@ test('a mastodon thread reply turns into a poll and saves it on the reply', func
 });
 
 test('a threads poll has choices only, no length, and schedules', function () {
-    $post = seedNetworkPollPost('threads', ContentType::ThreadsPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $post = seedPollComposerPost(ContentType::ThreadsPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
     $id = $post->social_account_id;
-    $page = openNetworkPollComposer($post, 'threads_poll');
+    $page = openPollComposer($post);
 
     $page->click("@composer-type-{$id}-threads_poll");
     waitFor($page, '@threads-poll-choice-0');
@@ -151,12 +108,12 @@ test('a threads poll has choices only, no length, and schedules', function () {
 });
 
 test('a mastodon poll stays behind the content warning in the preview', function () {
-    $post = seedNetworkPollPost('mastodon', ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
-    $page = openNetworkPollComposer($post, 'mastodon_poll');
+    $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
+    $page = openPollComposer($post);
     waitForText($page, '@mastodon-preview-poll', 'Spaces');
 
     $post->update(['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60], 'spoiler_text' => 'Code style']]);
-    $page = openNetworkPollComposer($post, 'mastodon_poll');
+    $page = openPollComposer($post);
     waitFor($page, '@mastodon-preview-content-warning');
 
     $page->assertMissing('@mastodon-preview-poll')

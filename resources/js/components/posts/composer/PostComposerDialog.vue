@@ -485,7 +485,6 @@ const {
     setGroupPoll,
     setGroupContentType,
     removeGroupPoll,
-    forgetGroupPoll,
     forgetPolls,
     replyPollLimit,
     replyTextLimit,
@@ -518,13 +517,7 @@ watch(sharedStep, (shared) => {
         .filter((group) =>
             POLL_CONTENT_TYPES.has(groupDestination(group).content_type),
         )
-        .forEach((group) => {
-            const [firstType] = getPickableContentTypeOptions(group.platform);
-            if (!firstType) return;
-
-            setGroupContentType(group, firstType.value);
-            forgetGroupPoll(group);
-        });
+        .forEach(removeGroupPoll);
 });
 /** The test ids of a card's poll: `x-poll`, `mastodon-poll`, `threads-poll`. */
 const pollTestIdPrefix = (group: NetworkGroup): string =>

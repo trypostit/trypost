@@ -599,10 +599,7 @@ enum Platform: string
                 'categoryOptions' => Category::options(),
                 'defaultCategoryId' => Category::DEFAULT->value,
             ],
-            self::X, self::Mastodon, self::Threads => [
-                'poll' => Poll::for($this)::limits(),
-            ],
-            default => [],
+            default => transform(Poll::for($this), fn (string $poll): array => ['poll' => $poll::limits()], []),
         };
     }
 

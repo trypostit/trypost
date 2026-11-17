@@ -293,7 +293,6 @@ export const useComposerPoll = (
         setGroupPoll,
         setGroupContentType,
         removeGroupPoll,
-        forgetGroupPoll,
         forgetPolls,
         replyPollLimit,
         replyTextLimit,

@@ -162,8 +162,6 @@ const setHideTotals = (value: boolean): void => {
     update({ hide_totals: value });
 };
 
-/** A choice's length as the server measures it, without the spaces around it. */
-
 /** The `:number` a choice's labels show, counted from one. */
 const choiceNumber = (index: number): { number: string } => ({
     number: String(index + 1),

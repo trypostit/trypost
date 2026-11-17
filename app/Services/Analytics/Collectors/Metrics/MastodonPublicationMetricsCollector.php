@@ -12,7 +12,6 @@ use App\Models\SocialAccount;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
-use GuzzleHttp\Psr7\Query;
 use Illuminate\Http\Client\Response;
 
 class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsCollector
@@ -26,7 +25,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
             $this->count(MetricKey::Reactions, $status, 'favourites_count'),
             $this->count(MetricKey::Comments, $status, 'replies_count'),
             $this->count(MetricKey::Shares, $status, 'reblogs_count'),
-        ])), $this->providerMetadata($status, $threadPolls));
+        ])), $this->pollMetadata(MastodonPoll::metadataFrom(data_get($status, 'poll')), $threadPolls));
     }
 
     /**
@@ -85,7 +84,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
         try {
             $response = $this->get(
                 $account,
-                MastodonApi::url($account->mastodon_instance, 'statuses').'?'.Query::build(['id[]' => [$id, ...$replyPolls]]),
+                MastodonApi::url($account->mastodon_instance, 'statuses', ['id[]' => [$id, ...$replyPolls]]),
                 authenticated: $account->canReadMastodonStatuses(),
             );
         } catch (AnalyticsCollectionException $exception) {
@@ -101,34 +100,7 @@ class MastodonPublicationMetricsCollector extends AbstractPublicationMetricsColl
             return null;
         }
 
-        $threadPolls = collect($replyPolls)
-            ->map(fn (string $replyId, int $reply): ?array => transform(
-                data_get($statuses->get($replyId), 'poll'),
-                fn (array $poll): array => ['reply' => $reply, ...MastodonPoll::result($poll)],
-            ))
-            ->filter()
-            ->values()
-            ->all();
-
-        return [$status, $threadPolls];
-    }
-
-    /**
-     * The status's poll and its reply polls, as `provider_metadata` keeps them.
-     *
-     * @param  array<string, mixed>  $status
-     * @param  list<array<string, mixed>>  $threadPolls
-     * @return array<string, mixed>|null
-     */
-    private function providerMetadata(array $status, array $threadPolls): ?array
-    {
-        $metadata = MastodonPoll::metadataFrom($status);
-
-        if (filled($threadPolls)) {
-            $metadata['thread_polls'] = $threadPolls;
-        }
-
-        return $metadata ?: null;
+        return [$status, $this->threadPolls($replyPolls, fn (string $replyId): mixed => data_get($statuses->get($replyId), 'poll'), MastodonPoll::class)];
     }
 
     /**

@@ -41,12 +41,13 @@ class MastodonPublisher
         $account = $post->socialAccount;
         $instance = $account->mastodon_instance;
 
-        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all(), $this->rootPoll($post));
+        $isPoll = $post->content_type === ContentType::MastodonPoll;
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all(), $this->rootPoll($post, $isPoll));
 
         return $this->publishThread(
             $post,
             $rootHash,
-            fn (): array => $this->publishRoot($post, $account, $instance, $content, "{$post->id}:{$rootHash}"),
+            fn (): array => $this->publishRoot($post, $account, $instance, $content, $isPoll, "{$post->id}:{$rootHash}"),
             fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createStatus(
                 $account,
                 $instance,
@@ -62,9 +63,8 @@ class MastodonPublisher
     /**
      * @return array{id: string, url: ?string}
      */
-    private function publishRoot(Post $post, SocialAccount $account, string $instance, ?string $content, string $idempotencyKey): array
+    private function publishRoot(Post $post, SocialAccount $account, string $instance, ?string $content, bool $isPoll, string $idempotencyKey): array
     {
-        $isPoll = $post->content_type === ContentType::MastodonPoll;
         $payload = [
             'status' => $content ?? '',
             'visibility' => 'public',
@@ -82,9 +82,9 @@ class MastodonPublisher
      *
      * @return array<string, mixed>|null
      */
-    private function rootPoll(Post $post): ?array
+    private function rootPoll(Post $post, bool $isPoll): ?array
     {
-        if ($post->content_type !== ContentType::MastodonPoll) {
+        if (! $isPoll) {
             return null;
         }
 
@@ -100,7 +100,7 @@ class MastodonPublisher
      * @param  Collection<int, MediaItem>  $media
      * @return array<string, mixed>
      */
-    private function attachments(SocialAccount $account, string $instance, ?string $text, Collection $media, bool $isPoll, mixed $meta): array
+    private function attachments(SocialAccount $account, string $instance, ?string $text, Collection $media, bool $isPoll, ?array $meta): array
     {
         if (! $isPoll) {
             return $this->mediaPayload($account, $instance, $media);

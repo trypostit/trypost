@@ -22,6 +22,10 @@ use Illuminate\Support\Str;
  * `MastodonPoll`, `ThreadsPoll`), which `for()` and `forContentType()` pick;
  * the post text is always the question. Blank choices are dropped when the
  * meta is normalized, so the rules below read the cleaned list.
+ *
+ * A `mixed` parameter here is a value as it came in, whose shape its source
+ * does not guarantee: a choice or a switch as sent, before validation, or a
+ * poll as the network's JSON returned it. Everything else takes one type.
  */
 abstract class Poll
 {
@@ -59,14 +63,50 @@ abstract class Poll
      *
      * @return array<string, mixed>
      */
-    abstract public static function payload(mixed $meta): array;
+    abstract public static function payload(?array $meta): array;
 
     /**
-     * The poll meta of a poll found on the network, read from what discovery stored.
+     * One poll as the network returns it, reduced to what is stored as its
+     * result (`provider_metadata.poll`).
+     *
+     * @param  array<string, mixed>  $poll
+     * @return array<string, mixed>
+     */
+    abstract public static function result(array $poll): array;
+
+    /**
+     * The poll meta of a poll found on the network, read from its stored
+     * result: its choices, and its length (else the default) where the
+     * author picks one.
      *
      * @return array<string, mixed>
      */
-    abstract public static function fromPublication(AnalyticsPublication $publication): array;
+    public static function fromPublication(AnalyticsPublication $publication): array
+    {
+        $poll = data_get($publication->provider_metadata, 'poll');
+        $meta = ['options' => Collection::wrap(data_get($poll, 'options'))->pluck('label')->all()];
+
+        if (static::hasDuration()) {
+            $meta['duration_minutes'] = self::minutes(data_get($poll, 'duration_minutes'), static::DEFAULT_DURATION);
+        }
+
+        return $meta;
+    }
+
+    /**
+     * A poll the network returned, as `provider_metadata` keeps it; nothing
+     * when the post carries no poll.
+     *
+     * @return array{poll?: array<string, mixed>}
+     */
+    public static function metadataFrom(mixed $poll): array
+    {
+        if (! is_array($poll)) {
+            return [];
+        }
+
+        return ['poll' => static::result($poll)];
+    }
 
     /**
      * The poll rules of a network, or null when it has no polls.
@@ -90,9 +130,8 @@ abstract class Poll
      *
      * @return class-string<self>|null
      */
-    public static function forContentType(mixed $contentType): ?string
+    public static function forContentType(?ContentType $type): ?string
     {
-        $type = ContentType::resolve($contentType);
         $poll = self::for($type?->platform());
 
         if (blank($poll) || $poll::contentType() !== $type) {
@@ -123,7 +162,7 @@ abstract class Poll
     }
 
     /** Whether the author picks how long voting stays open. */
-    public static function hasDuration(): bool
+    protected static function hasDuration(): bool
     {
         return filled(static::MAX_DURATION);
     }
@@ -133,7 +172,7 @@ abstract class Poll
      *
      * @return list<string>
      */
-    public static function options(mixed $meta): array
+    protected static function options(?array $meta): array
     {
         return self::choices(data_get($meta, 'poll.options'));
     }
@@ -143,7 +182,7 @@ abstract class Poll
      *
      * @return list<string>
      */
-    public static function choices(mixed $options): array
+    protected static function choices(mixed $options): array
     {
         return Collection::wrap($options)
             ->filter(fn (mixed $option): bool => is_string($option))
@@ -182,7 +221,7 @@ abstract class Poll
      */
     public static function forNetwork(array $poll): array
     {
-        $normalized = [...self::normalize($poll), 'options' => self::options(['poll' => $poll])];
+        $normalized = [...self::normalize($poll), 'options' => self::choices(data_get($poll, 'options'))];
 
         if (! static::hasDuration()) {
             unset($normalized['duration_minutes']);
@@ -206,7 +245,7 @@ abstract class Poll
      *
      * @return array{options: list<string>, duration_minutes?: int, multiple?: bool, hide_totals?: bool}
      */
-    public static function preview(mixed $meta): array
+    public static function preview(?array $meta): array
     {
         $preview = ['options' => self::options($meta)];
 
@@ -231,25 +270,19 @@ abstract class Poll
      * refused a 25-character choice holding one); counting the same on every
      * network keeps each choice within the strictest reading.
      */
-    public static function choiceLength(string $choice): int
+    protected static function choiceLength(string $choice): int
     {
         return intdiv(strlen(mb_convert_encoding(Str::trim($choice), 'UTF-16LE', 'UTF-8')), 2);
     }
 
     /**
      * Repeated choices, refused at every save.
-     *
-     * @return array{0: string, 1: string}|null [field, message]
      */
-    protected static function duplicatesViolation(mixed $meta): ?array
+    protected static function duplicatesViolation(?array $meta): ?string
     {
         $duplicates = collect(self::options($meta))->map(fn (string $option): string => Str::lower($option))->duplicatesStrict();
 
-        if ($duplicates->isNotEmpty()) {
-            return ['poll.options', trans('posts.form.poll.options_distinct')];
-        }
-
-        return null;
+        return when($duplicates->isNotEmpty(), fn (): string => trans('posts.form.poll.options_distinct'));
     }
 
     /**
@@ -278,7 +311,7 @@ abstract class Poll
      * A length outside the network's range, refused at every save. A network
      * that sets the length itself ignores it (`forNetwork()` drops it).
      */
-    protected static function durationViolation(mixed $meta): ?string
+    protected static function durationViolation(?array $meta): ?string
     {
         $minutes = data_get($meta, 'poll.duration_minutes');
 
@@ -299,13 +332,13 @@ abstract class Poll
      *
      * @return array<string, string>
      */
-    public static function formatErrors(mixed $meta, string $prefix = ''): array
+    public static function formatErrors(?array $meta, string $prefix = ''): array
     {
         $errors = [];
         $duplicates = self::duplicatesViolation($meta);
 
         if (filled($duplicates)) {
-            $errors["{$prefix}{$duplicates[0]}"] = $duplicates[1];
+            $errors["{$prefix}poll.options"] = $duplicates;
         }
 
         foreach (Collection::wrap(data_get($meta, 'poll.options')) as $index => $choice) {
@@ -348,7 +381,7 @@ abstract class Poll
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    public static function requiredViolation(mixed $meta): ?array
+    protected static function requiredViolation(?array $meta): ?array
     {
         if (count(self::options($meta)) < self::MIN_OPTIONS) {
             return ['poll.options', self::optionsRequiredMessage()];
@@ -367,12 +400,12 @@ abstract class Poll
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    public static function firstViolation(mixed $meta): ?array
+    public static function firstViolation(?array $meta): ?array
     {
-        $errors = static::formatErrors($meta);
+        $errors = collect(static::formatErrors($meta));
 
-        if (filled($errors)) {
-            return [array_key_first($errors), Arr::first($errors)];
+        if ($errors->isNotEmpty()) {
+            return [$errors->keys()->first(), $errors->first()];
         }
 
         return static::requiredViolation($meta);
@@ -395,7 +428,7 @@ abstract class Poll
      * it, or choices and a length that break its rules. Null when it can go.
      * `$meta` holds the poll under `poll`: the post's meta, or a reply itself.
      */
-    public static function publishViolation(?string $question, bool $hasMedia, mixed $meta): ?string
+    public static function publishViolation(?string $question, bool $hasMedia, ?array $meta): ?string
     {
         $questionViolation = static::questionViolation($question);
 

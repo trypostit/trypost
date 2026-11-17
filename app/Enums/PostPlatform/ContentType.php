@@ -128,12 +128,11 @@ enum ContentType: string
 
     public function description(): string
     {
-        $replacements = match ($this) {
-            self::XPoll, self::MastodonPoll, self::ThreadsPoll => ['min' => Poll::MIN_OPTIONS, 'max' => Poll::MAX_OPTIONS],
-            default => [],
-        };
+        if ($this->isPoll()) {
+            return (string) trans("posts.content_types.{$this->value}.description", ['min' => Poll::MIN_OPTIONS, 'max' => Poll::MAX_OPTIONS]);
+        }
 
-        return (string) trans("posts.content_types.{$this->value}.description", $replacements);
+        return (string) trans("posts.content_types.{$this->value}.description");
     }
 
     public function platform(): SocialPlatform

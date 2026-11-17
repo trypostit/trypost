@@ -10,7 +10,6 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use App\Support\Social\ThreadsPoll;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Arr;
 
 class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
 {
@@ -59,10 +58,10 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
                 permalink: data_get($row, 'permalink'),
                 excerpt: data_get($row, 'text'),
                 previewMetadata: $this->preview(data_get($row, 'thumbnail_url') ?: data_get($row, 'media_url')),
-                providerMetadata: Arr::whereNotNull([
+                providerMetadata: [
                     'is_quote_post' => (bool) data_get($row, 'is_quote_post', false),
-                    'poll' => transform(data_get($row, 'poll_attachment'), fn (array $poll): array => ThreadsPoll::result($poll)),
-                ]),
+                    ...ThreadsPoll::metadataFrom(data_get($row, 'poll_attachment')),
+                ],
             );
         }
 

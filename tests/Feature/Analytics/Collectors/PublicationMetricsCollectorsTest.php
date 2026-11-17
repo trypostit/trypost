@@ -1902,3 +1902,14 @@ test('the threads collector keeps the metrics when the poll read is refused', fu
     expect($observation->providerMetadata)->toBeNull()
         ->and(collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value])->all())->toMatchArray(['views' => 40]);
 });
+
+test('the threads collector stops reading a poll once its stored result is closed', function () {
+    $publication = threadsPollPublication();
+    $publication->update(['provider_metadata' => ['poll' => ['options' => [], 'voting_status' => 'closed']]]);
+    fakeThreadsInsights(Http::response([], 500));
+
+    $observation = app(ThreadsPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC'));
+
+    expect($observation->providerMetadata)->toBeNull();
+    Http::assertSentCount(1);
+});

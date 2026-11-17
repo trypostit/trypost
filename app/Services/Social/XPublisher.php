@@ -145,7 +145,7 @@ class XPublisher
      * @param  Collection<int, MediaItem>  $media
      * @return array<string, mixed>
      */
-    private function attachments(?string $text, Collection $media, bool $isPoll, mixed $meta): array
+    private function attachments(?string $text, Collection $media, bool $isPoll, ?array $meta): array
     {
         if ($isPoll) {
             return ['poll' => $this->pollPayload($text, $media, $meta)];
@@ -162,7 +162,7 @@ class XPublisher
      * @param  Collection<int, MediaItem>  $media
      * @return array{options: list<string>, duration_minutes: int}
      */
-    private function pollPayload(?string $question, Collection $media, mixed $meta): array
+    private function pollPayload(?string $question, Collection $media, ?array $meta): array
     {
         $violation = XPoll::publishViolation($question, $media->isNotEmpty(), $meta);
 

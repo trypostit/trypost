@@ -581,12 +581,12 @@ test('threads discovery reads the poll in the same request and works out its vot
     Http::assertSent(fn (Request $request): bool => str_contains((string) $request['fields'], ThreadsPoll::LOOKUP_FIELDS));
 });
 
-test('a threads poll whose end has passed is closed, with percentages read as percentages', function () {
+test('a threads poll whose end has passed is closed', function () {
     $result = ThreadsPoll::result([
         'option_a' => 'Tabs',
         'option_b' => 'Spaces',
-        'option_a_votes_percentage' => 40,
-        'option_b_votes_percentage' => 60,
+        'option_a_votes_percentage' => 0.4,
+        'option_b_votes_percentage' => 0.6,
         'total_votes' => 10,
         'expiration_timestamp' => now()->subMinute()->toIso8601String(),
     ]);
