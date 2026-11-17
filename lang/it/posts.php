@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Aggiungi post',
         'more_times' => 'Altri orari',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube non ha applicato la copertina: le miniature personalizzate richiedono un canale verificato. Puoi impostarla in YouTube Studio.',
-            'daily_limit' => 'YouTube non ha applicato la copertina: il tuo canale ha raggiunto il limite giornaliero di miniature personalizzate. Puoi impostarla in YouTube Studio.',
+            'badge' => 'Copertina fallita',
+            'title' => 'YouTube non ha applicato la copertina',
+            'forbidden' => 'Le miniature personalizzate richiedono un canale verificato. Puoi impostare la copertina in YouTube Studio.',
+            'daily_limit' => 'Il tuo canale ha raggiunto il limite giornaliero di miniature personalizzate. Puoi impostare la copertina in YouTube Studio.',
             'invalid_image' => 'YouTube non è riuscito a leggere l\'immagine di copertina. Puoi impostarne un\'altra in YouTube Studio.',
-            'failed' => 'YouTube non ha applicato la copertina. Puoi impostarla in YouTube Studio.',
+            'failed' => 'Puoi impostare la copertina in YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Perché non è riuscito',

@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube n\'a pas appliqué votre couverture : les miniatures personnalisées nécessitent une chaîne validée. Vous pouvez la définir dans YouTube Studio.',
-            'daily_limit' => 'YouTube n\'a pas appliqué votre couverture : votre chaîne a atteint la limite quotidienne de miniatures personnalisées. Vous pouvez la définir dans YouTube Studio.',
+            'badge' => 'Échec couverture',
+            'title' => 'YouTube n\'a pas appliqué votre couverture',
+            'forbidden' => 'Les miniatures personnalisées nécessitent une chaîne validée. Vous pouvez définir la couverture dans YouTube Studio.',
+            'daily_limit' => 'Votre chaîne a atteint la limite quotidienne de miniatures personnalisées. Vous pouvez définir la couverture dans YouTube Studio.',
             'invalid_image' => 'YouTube n\'a pas pu lire votre image de couverture. Vous pouvez en définir une autre dans YouTube Studio.',
-            'failed' => 'YouTube n\'a pas appliqué votre couverture. Vous pouvez la définir dans YouTube Studio.',
+            'failed' => 'Vous pouvez définir la couverture dans YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Pourquoi l\'échec',

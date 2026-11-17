@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube 未应用你的封面：自定义缩略图需要已验证的频道。你可以在 YouTube 工作室中设置。',
-            'daily_limit' => 'YouTube 未应用你的封面：你的频道已达到今天的自定义缩略图上限。你可以在 YouTube 工作室中设置。',
+            'badge' => '封面未应用',
+            'title' => 'YouTube 未应用你的封面',
+            'forbidden' => '自定义缩略图需要已验证的频道。你可以在 YouTube 工作室中设置封面。',
+            'daily_limit' => '你的频道已达到今天的自定义缩略图上限。你可以在 YouTube 工作室中设置封面。',
             'invalid_image' => 'YouTube 无法读取你的封面图片。你可以在 YouTube 工作室中设置另一张。',
-            'failed' => 'YouTube 未应用你的封面。你可以在 YouTube 工作室中设置。',
+            'failed' => '你可以在 YouTube 工作室中设置封面。',
         ],
         'failure' => [
             'title' => '失败原因',

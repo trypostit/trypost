@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Добавить пост',
         'more_times' => 'Другое время',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube не применил обложку: для собственных значков нужен подтверждённый канал. Её можно задать в YouTube Studio.',
-            'daily_limit' => 'YouTube не применил обложку: канал исчерпал дневной лимит собственных значков. Её можно задать в YouTube Studio.',
+            'badge' => 'Ошибка обложки',
+            'title' => 'YouTube не применил обложку',
+            'forbidden' => 'Для собственных значков нужен подтверждённый канал. Обложку можно задать в YouTube Studio.',
+            'daily_limit' => 'Канал исчерпал дневной лимит собственных значков. Обложку можно задать в YouTube Studio.',
             'invalid_image' => 'YouTube не смог прочитать изображение обложки. Другое можно задать в YouTube Studio.',
-            'failed' => 'YouTube не применил обложку. Её можно задать в YouTube Studio.',
+            'failed' => 'Обложку можно задать в YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Почему не удалось',

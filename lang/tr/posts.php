@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Gönderi ekle',
         'more_times' => 'Daha fazla saat',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube kapağınızı uygulamadı: özel küçük resimler için doğrulanmış bir kanal gerekir. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
-            'daily_limit' => 'YouTube kapağınızı uygulamadı: kanalınız bugünkü özel küçük resim sınırına ulaştı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
+            'badge' => 'Kapak hatası',
+            'title' => 'YouTube kapağınızı uygulamadı',
+            'forbidden' => 'Özel küçük resimler için doğrulanmış bir kanal gerekir. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
+            'daily_limit' => 'Kanalınız bugünkü özel küçük resim sınırına ulaştı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
             'invalid_image' => 'YouTube kapak görselinizi okuyamadı. YouTube Studio\'da başka bir görsel ayarlayabilirsiniz.',
-            'failed' => 'YouTube kapağınızı uygulamadı. Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
+            'failed' => 'Kapağı YouTube Studio\'da ayarlayabilirsiniz.',
         ],
         'failure' => [
             'title' => 'Neden başarısız oldu',

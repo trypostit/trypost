@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Adicionar post',
         'more_times' => 'Mais horários',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'O YouTube não aplicou sua capa: miniaturas personalizadas exigem um canal verificado. Você pode definir a capa no YouTube Studio.',
-            'daily_limit' => 'O YouTube não aplicou sua capa: seu canal atingiu o limite de miniaturas personalizadas de hoje. Você pode definir a capa no YouTube Studio.',
+            'badge' => 'Falha na capa',
+            'title' => 'O YouTube não aplicou sua capa',
+            'forbidden' => 'Miniaturas personalizadas exigem um canal verificado. Você pode definir a capa no YouTube Studio.',
+            'daily_limit' => 'Seu canal atingiu o limite de miniaturas personalizadas de hoje. Você pode definir a capa no YouTube Studio.',
             'invalid_image' => 'O YouTube não conseguiu ler sua imagem de capa. Você pode definir outra no YouTube Studio.',
-            'failed' => 'O YouTube não aplicou sua capa. Você pode definir a capa no YouTube Studio.',
+            'failed' => 'Você pode definir a capa no YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Por que falhou',

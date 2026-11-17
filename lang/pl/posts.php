@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Dodaj post',
         'more_times' => 'Więcej godzin',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube nie zastosował okładki: własne miniatury wymagają zweryfikowanego kanału. Możesz ją ustawić w YouTube Studio.',
-            'daily_limit' => 'YouTube nie zastosował okładki: kanał osiągnął dzienny limit własnych miniatur. Możesz ją ustawić w YouTube Studio.',
-            'invalid_image' => 'YouTube nie mógł odczytać obrazu okładki. Możesz ustawić inny w YouTube Studio.',
-            'failed' => 'YouTube nie zastosował okładki. Możesz ją ustawić w YouTube Studio.',
+            'badge' => 'Błąd okładki',
+            'title' => 'YouTube nie zastosował okładki',
+            'forbidden' => 'Własne miniatury wymagają zweryfikowanego kanału. Okładkę można ustawić w YouTube Studio.',
+            'daily_limit' => 'Kanał osiągnął dzienny limit własnych miniatur. Okładkę można ustawić w YouTube Studio.',
+            'invalid_image' => 'YouTube nie mógł odczytać obrazu okładki. Inny można ustawić w YouTube Studio.',
+            'failed' => 'Okładkę można ustawić w YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Dlaczego się nie udało',

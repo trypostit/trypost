@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Add a post',
         'more_times' => 'More times',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube didn\'t apply your cover image: custom thumbnails need a verified channel. You can set it in YouTube Studio.',
-            'daily_limit' => 'YouTube didn\'t apply your cover image: your channel reached today\'s limit of custom thumbnails. You can set it in YouTube Studio.',
+            'badge' => 'Cover failed',
+            'title' => 'YouTube didn\'t apply your cover',
+            'forbidden' => 'Custom thumbnails need a verified channel. You can set the cover in YouTube Studio.',
+            'daily_limit' => 'Your channel reached today\'s limit of custom thumbnails. You can set the cover in YouTube Studio.',
             'invalid_image' => 'YouTube couldn\'t read your cover image. You can set another one in YouTube Studio.',
-            'failed' => 'YouTube didn\'t apply your cover image. You can set it in YouTube Studio.',
+            'failed' => 'You can set the cover in YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Why it failed',

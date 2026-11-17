@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Додати допис',
         'more_times' => 'Інший час',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube не застосував обкладинку: для власних значків потрібен підтверджений канал. Її можна задати в YouTube Studio.',
-            'daily_limit' => 'YouTube не застосував обкладинку: канал вичерпав денний ліміт власних значків. Її можна задати в YouTube Studio.',
+            'badge' => 'Помилка обкладинки',
+            'title' => 'YouTube не застосував обкладинку',
+            'forbidden' => 'Для власних значків потрібен підтверджений канал. Обкладинку можна задати в YouTube Studio.',
+            'daily_limit' => 'Канал вичерпав денний ліміт власних значків. Обкладинку можна задати в YouTube Studio.',
             'invalid_image' => 'YouTube не зміг прочитати зображення обкладинки. Інше можна задати в YouTube Studio.',
-            'failed' => 'YouTube не застосував обкладинку. Її можна задати в YouTube Studio.',
+            'failed' => 'Обкладинку можна задати в YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Чому не вдалося',

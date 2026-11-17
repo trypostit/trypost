@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
 import {
-    IconAlertTriangle,
     IconArrowsMaximize,
     IconCircleDashedPlus,
     IconCirclePlay,
@@ -32,6 +31,7 @@ import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
+import PostCoverWarningPopover from '@/components/publish/PostCoverWarningPopover.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
@@ -291,16 +291,10 @@ const contentTypeKey = computed(() =>
 
 const deletedOnNetwork = computed(() => isDeletedOnNetwork(props.post));
 
-/** The lang key of why the network did not apply this post's cover image, if it did not. */
-const youTubeThumbnailWarningKey = computed<string | null>(() => {
-    const warning = props.post.youtube_thumbnail_warning;
-
-    if (!filled(warning)) {
-        return null;
-    }
-
-    return `posts.publish.youtube_thumbnail_warning.${warning}`;
-});
+/** Why YouTube did not apply this post's cover image, if it did not. */
+const youTubeThumbnailWarning = computed(
+    () => props.post.youtube_thumbnail_warning,
+);
 
 const permalink = computed(() => postPermalink(props.post));
 
@@ -466,6 +460,11 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                 :post="post"
                 :test-key="post.id"
             />
+            <PostCoverWarningPopover
+                v-if="youTubeThumbnailWarning"
+                :warning="youTubeThumbnailWarning"
+                :test-key="post.id"
+            />
             <PostFailurePopover
                 v-if="showStatus && hasFailure"
                 :post="post"
@@ -497,17 +496,6 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                         :remaining="recurrence.times"
                         :origin-at="post.recurrence_origin_at"
                     />
-                </p>
-                <p
-                    v-if="youTubeThumbnailWarningKey"
-                    class="flex items-start gap-2 border-b border-border-strong bg-secondary px-4 py-2.5 text-sm text-foreground"
-                    :data-testid="`post-youtube-thumbnail-warning-${post.id}`"
-                >
-                    <IconAlertTriangle
-                        class="mt-0.5 size-4 shrink-0 text-warning"
-                        aria-hidden="true"
-                    />
-                    {{ $t(youTubeThumbnailWarningKey) }}
                 </p>
                 <div
                     v-if="isPublishing"

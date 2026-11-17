@@ -1044,10 +1044,12 @@ return [
         'add_post_in_slot' => 'Tambahkan postingan',
         'more_times' => 'Waktu lainnya',
         'youtube_thumbnail_warning' => [
-            'forbidden' => 'YouTube tidak menerapkan sampulmu: thumbnail kustom memerlukan channel terverifikasi. Kamu bisa mengaturnya di YouTube Studio.',
-            'daily_limit' => 'YouTube tidak menerapkan sampulmu: channel-mu mencapai batas harian thumbnail kustom. Kamu bisa mengaturnya di YouTube Studio.',
+            'badge' => 'Sampul gagal',
+            'title' => 'YouTube tidak menerapkan sampulmu',
+            'forbidden' => 'Thumbnail kustom memerlukan channel yang terverifikasi. Kamu bisa mengatur sampul di YouTube Studio.',
+            'daily_limit' => 'Channel-mu mencapai batas harian thumbnail kustom. Kamu bisa mengatur sampul di YouTube Studio.',
             'invalid_image' => 'YouTube tidak dapat membaca gambar sampulmu. Kamu bisa mengatur yang lain di YouTube Studio.',
-            'failed' => 'YouTube tidak menerapkan sampulmu. Kamu bisa mengaturnya di YouTube Studio.',
+            'failed' => 'Kamu bisa mengatur sampul di YouTube Studio.',
         ],
         'failure' => [
             'title' => 'Kenapa gagal',
