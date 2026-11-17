@@ -2,7 +2,7 @@ import { objectOmit } from '@vueuse/core';
 
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
-import type { CoverSource, MediaItem } from '@/types/media';
+import type { MediaItem } from '@/types/media';
 
 /** The video URL seeked to its chosen cover frame, so a `<video preload="metadata">` paints it as a poster. */
 export const videoFrameUrl = (item: {
@@ -11,24 +11,6 @@ export const videoFrameUrl = (item: {
 }): string =>
     `${item.url}#t=${Math.max(0.1, (item.meta?.cover_offset_ms ?? 0) / 1000)}`;
 
-
-/**
- * Where the item's cover comes from. A cover sent without its source (the
- * API or MCP) is an uploaded image.
- */
-export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource => {
-    const source = item.meta?.cover_source;
-
-    if (filled(source)) {
-        return source;
-    }
-
-    if (filled(item.meta?.cover)) {
-        return 'image';
-    }
-
-    return 'frame';
-};
 
 /**
  * The media as a network shows it: a network that takes no cover image

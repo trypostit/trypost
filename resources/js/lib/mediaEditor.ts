@@ -12,7 +12,6 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
-import { storedCoverSource } from '@/lib/videoFrame';
 import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =
@@ -220,6 +219,24 @@ export const newCoverImage = (
  */
 export const hasCoverCropChanges = (crop: MediaEdit): boolean =>
     hasPixelChanges({ ...crop, preset: 'original' });
+
+/**
+ * Where the item's cover comes from. A cover sent without its source (the
+ * API or MCP) is an uploaded image.
+ */
+export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource => {
+    const source = item.meta?.cover_source;
+
+    if (filled(source)) {
+        return source;
+    }
+
+    if (filled(item.meta?.cover)) {
+        return 'image';
+    }
+
+    return 'frame';
+};
 
 export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     ...blankMediaEdit(),

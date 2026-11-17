@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { storedCoverSource, videoFrameUrl } from '@/lib/videoFrame';
+import { storedCoverSource } from '@/lib/mediaEditor';
+import { videoFrameUrl } from '@/lib/videoFrame';
 import type { MediaItem } from '@/types/media';
 
 /**
