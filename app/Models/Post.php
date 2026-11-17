@@ -7,7 +7,6 @@ namespace App\Models;
 use App\Actions\Media\SyncOwnedMedia;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type;
-use App\Enums\Post\CoverWarning;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
@@ -18,6 +17,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Enums\YouTube\ThumbnailWarning;
 use App\Observers\PostObserver;
 use App\Support\Media\MediaCopyBatch;
 use Carbon\CarbonInterface;
@@ -494,20 +494,20 @@ class Post extends Model
     }
 
     /**
-     * Why the network did not apply the cover image of this live post, if it did not.
+     * Why YouTube did not set the cover image of this live video as its thumbnail, if it did not.
      */
-    public function coverWarning(): ?CoverWarning
+    public function youTubeThumbnailWarning(): ?ThumbnailWarning
     {
-        return CoverWarning::tryFrom((string) data_get($this->error_context, 'cover_warning'));
+        return ThumbnailWarning::tryFrom((string) data_get($this->error_context, 'youtube_thumbnail_warning'));
     }
 
     /**
      * The post stays published: the warning sits next to the publication
      * result, which publishing again clears.
      */
-    public function recordCoverWarning(CoverWarning $warning): void
+    public function recordYouTubeThumbnailWarning(ThumbnailWarning $warning): void
     {
-        $this->writePublication(['error_context' => [...($this->error_context ?? []), 'cover_warning' => $warning->value]]);
+        $this->writePublication(['error_context' => [...($this->error_context ?? []), 'youtube_thumbnail_warning' => $warning->value]]);
     }
 
     /**

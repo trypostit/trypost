@@ -274,7 +274,7 @@ return [
             'tags_invalid' => '유효한 Instagram 사용자 이름을 입력하세요.',
             'thumbnail_tab' => '썸네일',
             'thumbnail_heading' => '썸네일 선택',
-            'thumbnail_hint' => '슬라이더를 끌어 동영상 커버로 표시할 프레임을 선택하세요.',
+            'thumbnail_hint' => '동영상 프레임을 따라 드래그해 커버로 표시할 프레임을 선택하세요.',
             'thumbnail_value' => ':seconds초',
             'thumbnail_source_frame' => '동영상 프레임',
             'thumbnail_source_image' => '이미지',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => '이 프레임을 캡처하지 못했습니다. 대신 커버 이미지를 업로드하세요.',
             'thumbnail_image_upload' => '이미지 업로드',
             'thumbnail_image_replace' => '이미지 변경',
-            'thumbnail_image_alt' => '커버 이미지',
             'video_thumbnail' => '동영상 :number',
             'thumbnail' => '이미지 :number',
             'cancel' => '취소',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => '신규',
         'add_post_in_slot' => '게시물 추가',
         'more_times' => '더 많은 시간',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube에서 커버 이미지를 적용하지 않았습니다. 맞춤 썸네일은 인증된 채널이 필요합니다. YouTube 스튜디오에서 설정할 수 있습니다.',
             'daily_limit' => 'YouTube에서 커버 이미지를 적용하지 않았습니다. 채널이 오늘의 맞춤 썸네일 한도에 도달했습니다. YouTube 스튜디오에서 설정할 수 있습니다.',
             'invalid_image' => 'YouTube에서 커버 이미지를 읽지 못했습니다. YouTube 스튜디오에서 다른 이미지를 설정할 수 있습니다.',

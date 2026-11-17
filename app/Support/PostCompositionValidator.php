@@ -16,6 +16,7 @@ use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
 use App\Support\Social\XPoll;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -118,7 +119,7 @@ class PostCompositionValidator
                 }
 
                 $canonical = MediaItem::fromMedia($asset)->toArray();
-                $edits = array_intersect_key((array) data_get($media, 'meta', []), array_flip(SyncOwnedMedia::OWNER_META));
+                $edits = Arr::only((array) data_get($media, 'meta', []), SyncOwnedMedia::OWNER_META);
                 if ($edits !== []) {
                     $canonical['meta'] = [...($asset->meta ?? []), ...$edits];
                 }
@@ -304,7 +305,7 @@ class PostCompositionValidator
     private static function comparableMedia(array $media): array
     {
         if (is_array(data_get($media, 'meta'))) {
-            $media['meta'] = array_diff_key($media['meta'], array_flip(SyncOwnedMedia::OWNER_META));
+            $media['meta'] = Arr::except($media['meta'], SyncOwnedMedia::OWNER_META);
         }
 
         $media = array_filter($media, fn (mixed $value): bool => $value !== null && $value !== []);

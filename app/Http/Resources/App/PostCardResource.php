@@ -51,7 +51,7 @@ class PostCardResource extends JsonResource
                 'category' => $category,
                 'failed_at' => data_get($post->error_context, 'failed_at'),
             ]),
-            'cover_warning' => $post->coverWarning()?->value,
+            'youtube_thumbnail_warning' => $post->youTubeThumbnailWarning()?->value,
         ];
     }
 

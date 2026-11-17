@@ -12,6 +12,7 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
+import { type CoverSource, storedCoverSource } from '@/lib/videoFrame';
 import type { MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =
@@ -70,7 +71,10 @@ export type MediaEdit = {
     userTags: MediaUserTag[];
     coverOffsetMs: number | null;
     coverImage: CoverImage | null;
+    coverSource: CoverSource;
 };
+
+export type { CoverSource } from '@/lib/videoFrame';
 
 /**
  * An image picked as a video's cover: the stored item, or a file picked in
@@ -200,6 +204,7 @@ export const blankMediaEdit = (
     userTags: [],
     coverOffsetMs: null,
     coverImage: null,
+    coverSource: 'frame',
 });
 
 const storedCoverImage = (item: MediaItem): CoverImage | null => {
@@ -238,23 +243,9 @@ export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     userTags: [...(item.meta?.user_tags ?? [])],
     coverOffsetMs: item.meta?.cover_offset_ms ?? null,
     coverImage: storedCoverImage(item),
+    coverSource: storedCoverSource(item),
 });
 
-/** Where a video's cover comes from: a frame of the video, or an image. */
-export type CoverSource = 'frame' | 'image';
-
-/** A cover image without a picked frame is one the user uploaded; a captured frame keeps its time. */
-export const initialCoverSource = (edit: MediaEdit): CoverSource => {
-    if (!filled(edit.coverImage)) {
-        return 'frame';
-    }
-
-    if (filled(edit.coverOffsetMs)) {
-        return 'frame';
-    }
-
-    return 'image';
-};
 
 /** Whether the edit picks another cover image than the item has. */
 export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
@@ -286,6 +277,10 @@ export const needsFrameCapture = (
     rules: MediaRules[],
 ): boolean => {
     if (!isVideo(item)) {
+        return false;
+    }
+
+    if (edit.coverSource !== 'frame') {
         return false;
     }
 
@@ -324,6 +319,10 @@ export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
     }
 
     if ((edit.coverOffsetMs ?? 0) !== (item.meta?.cover_offset_ms ?? 0)) {
+        return true;
+    }
+
+    if (edit.coverSource !== storedCoverSource(item)) {
         return true;
     }
 

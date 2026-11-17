@@ -274,7 +274,7 @@ return [
             'tags_invalid' => '有効なInstagramのユーザーネームを入力してください。',
             'thumbnail_tab' => 'サムネイル',
             'thumbnail_heading' => 'サムネイルを選択',
-            'thumbnail_hint' => 'スライダーをドラッグして、動画のカバーとして表示するフレームを選んでください。',
+            'thumbnail_hint' => '動画のフレームに沿ってドラッグして、カバーにするフレームを選んでください。',
             'thumbnail_value' => ':seconds 秒',
             'thumbnail_source_frame' => '動画のフレーム',
             'thumbnail_source_image' => '画像',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'このフレームを取得できませんでした。代わりにカバー画像をアップロードしてください。',
             'thumbnail_image_upload' => '画像をアップロード',
             'thumbnail_image_replace' => '画像を変更',
-            'thumbnail_image_alt' => 'カバー画像',
             'video_thumbnail' => '動画 :number',
             'thumbnail' => '画像 :number',
             'cancel' => 'キャンセル',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => '新規',
         'add_post_in_slot' => '投稿を追加',
         'more_times' => 'その他の時間',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTubeでカバー画像が適用されませんでした。カスタムサムネイルには確認済みのチャンネルが必要です。YouTube Studioで設定できます。',
             'daily_limit' => 'YouTubeでカバー画像が適用されませんでした。チャンネルが今日のカスタムサムネイルの上限に達しました。YouTube Studioで設定できます。',
             'invalid_image' => 'YouTubeがカバー画像を読み込めませんでした。YouTube Studioで別の画像を設定できます。',

@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'أدخل اسم مستخدم صالحًا على Instagram.',
             'thumbnail_tab' => 'الغلاف',
             'thumbnail_heading' => 'اختر صورة مصغرة',
-            'thumbnail_hint' => 'اسحب شريط التمرير لاختيار الإطار الذي يظهر كغلاف للفيديو.',
+            'thumbnail_hint' => 'اسحب على إطارات الفيديو لاختيار الإطار الذي يظهر كغلاف.',
             'thumbnail_value' => ':seconds ثانية',
             'thumbnail_source_frame' => 'إطار من الفيديو',
             'thumbnail_source_image' => 'صورة',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'تعذّر التقاط هذا الإطار. ارفع صورة لتكون الغلاف بدلًا من ذلك.',
             'thumbnail_image_upload' => 'رفع صورة',
             'thumbnail_image_replace' => 'استبدال الصورة',
-            'thumbnail_image_alt' => 'صورة الغلاف',
             'video_thumbnail' => 'فيديو :number',
             'thumbnail' => 'الصورة :number',
             'cancel' => 'إلغاء',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'جديد',
         'add_post_in_slot' => 'إضافة منشور',
         'more_times' => 'المزيد من الأوقات',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'لم يطبّق YouTube صورة الغلاف: الصور المصغرة المخصصة تتطلب قناة موثّقة. يمكنك تعيينها في YouTube Studio.',
             'daily_limit' => 'لم يطبّق YouTube صورة الغلاف: بلغت قناتك الحد اليومي للصور المصغرة المخصصة. يمكنك تعيينها في YouTube Studio.',
             'invalid_image' => 'تعذّر على YouTube قراءة صورة الغلاف. يمكنك تعيين صورة أخرى في YouTube Studio.',

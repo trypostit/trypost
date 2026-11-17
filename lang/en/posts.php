@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Enter a valid Instagram username.',
             'thumbnail_tab' => 'Thumbnail',
             'thumbnail_heading' => 'Choose a thumbnail',
-            'thumbnail_hint' => 'Drag the slider to pick the frame shown as the video\'s cover.',
+            'thumbnail_hint' => 'Drag along the video\'s frames to pick the one shown as its cover.',
             'thumbnail_value' => ':seconds seconds',
             'thumbnail_source_frame' => 'Video frame',
             'thumbnail_source_image' => 'Image',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Couldn\'t capture this frame. Upload an image as the cover instead.',
             'thumbnail_image_upload' => 'Upload image',
             'thumbnail_image_replace' => 'Replace image',
-            'thumbnail_image_alt' => 'Cover image',
             'video_thumbnail' => 'Video :number',
             'thumbnail' => 'Image :number',
             'cancel' => 'Cancel',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'New',
         'add_post_in_slot' => 'Add a post',
         'more_times' => 'More times',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube didn\'t apply your cover image: custom thumbnails need a verified channel. You can set it in YouTube Studio.',
             'daily_limit' => 'YouTube didn\'t apply your cover image: your channel reached today\'s limit of custom thumbnails. You can set it in YouTube Studio.',
             'invalid_image' => 'YouTube couldn\'t read your cover image. You can set another one in YouTube Studio.',

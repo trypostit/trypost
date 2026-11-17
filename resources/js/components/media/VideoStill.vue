@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { videoFrameUrl } from '@/lib/videoFrame';
+import { storedCoverSource, videoFrameUrl } from '@/lib/videoFrame';
 import type { MediaItem } from '@/types/media';
 
 /**
- * A video shown still, as its cover: the image picked as its cover
- * (`meta.cover`), else the video painted at its picked frame, else at its
- * start. Classes and test ids fall through to the element drawn.
+ * A video shown still, as its cover: the image uploaded as its cover, else
+ * the video painted at its picked frame, else at its start. A frame's
+ * screenshot (kept for the networks that take an image) is that same frame,
+ * so the video shows it. Classes and test ids fall through.
  */
 const props = defineProps<{
     item: Pick<MediaItem, 'url' | 'meta'>;
 }>();
 
-const coverImageUrl = computed(() => props.item.meta?.cover?.url);
+const coverImageUrl = computed(() => {
+    if (storedCoverSource(props.item) !== 'image') {
+        return null;
+    }
+
+    return props.item.meta?.cover?.url ?? null;
+});
 const frameUrl = computed(() => videoFrameUrl(props.item));
 </script>
 

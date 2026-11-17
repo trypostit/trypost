@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Εισαγάγετε έγκυρο όνομα χρήστη Instagram.',
             'thumbnail_tab' => 'Εξώφυλλο',
             'thumbnail_heading' => 'Επιλέξτε μικρογραφία',
-            'thumbnail_hint' => 'Σύρετε το ρυθμιστικό για να επιλέξετε το καρέ που θα εμφανίζεται ως εξώφυλλο του βίντεο.',
+            'thumbnail_hint' => 'Σύρετε κατά μήκος των καρέ του βίντεο για να επιλέξετε αυτό που θα εμφανίζεται ως εξώφυλλο.',
             'thumbnail_value' => ':seconds δευτερόλεπτα',
             'thumbnail_source_frame' => 'Καρέ βίντεο',
             'thumbnail_source_image' => 'Εικόνα',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Δεν ήταν δυνατή η λήψη αυτού του καρέ. Μεταφορτώστε μια εικόνα ως εξώφυλλο.',
             'thumbnail_image_upload' => 'Μεταφόρτωση',
             'thumbnail_image_replace' => 'Αντικατάσταση',
-            'thumbnail_image_alt' => 'Εικόνα εξωφύλλου',
             'video_thumbnail' => 'Βίντεο :number',
             'thumbnail' => 'Εικόνα :number',
             'cancel' => 'Ακύρωση',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Νέο',
         'add_post_in_slot' => 'Προσθήκη ανάρτησης',
         'more_times' => 'Περισσότερες ώρες',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'Το YouTube δεν εφάρμοσε το εξώφυλλο: οι προσαρμοσμένες μικρογραφίες απαιτούν επαληθευμένο κανάλι. Μπορείτε να το ορίσετε στο YouTube Studio.',
             'daily_limit' => 'Το YouTube δεν εφάρμοσε το εξώφυλλο: το κανάλι σας έφτασε το ημερήσιο όριο προσαρμοσμένων μικρογραφιών. Μπορείτε να το ορίσετε στο YouTube Studio.',
             'invalid_image' => 'Το YouTube δεν μπόρεσε να διαβάσει την εικόνα εξωφύλλου. Μπορείτε να ορίσετε άλλη στο YouTube Studio.',

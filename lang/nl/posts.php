@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Voer een geldige Instagram-gebruikersnaam in.',
             'thumbnail_tab' => 'Miniatuur',
             'thumbnail_heading' => 'Kies een miniatuur',
-            'thumbnail_hint' => 'Sleep de schuifregelaar om het beeld te kiezen dat als omslag van de video wordt getoond.',
+            'thumbnail_hint' => 'Sleep langs de beelden van de video om het beeld te kiezen dat als omslag wordt getoond.',
             'thumbnail_value' => ':seconds seconden',
             'thumbnail_source_frame' => 'Videoframe',
             'thumbnail_source_image' => 'Afbeelding',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Dit videoframe kon niet worden vastgelegd. Upload in plaats daarvan een afbeelding als omslag.',
             'thumbnail_image_upload' => 'Afbeelding uploaden',
             'thumbnail_image_replace' => 'Vervangen',
-            'thumbnail_image_alt' => 'Omslagafbeelding',
             'video_thumbnail' => 'Video :number',
             'thumbnail' => 'Afbeelding :number',
             'cancel' => 'Annuleren',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Nieuw',
         'add_post_in_slot' => 'Post toevoegen',
         'more_times' => 'Meer tijden',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube heeft je omslag niet toegepast: eigen miniaturen vereisen een geverifieerd kanaal. Je kunt hem instellen in YouTube Studio.',
             'daily_limit' => 'YouTube heeft je omslag niet toegepast: je kanaal heeft de daglimiet voor eigen miniaturen bereikt. Je kunt hem instellen in YouTube Studio.',
             'invalid_image' => 'YouTube kon je omslagafbeelding niet lezen. Je kunt een andere instellen in YouTube Studio.',

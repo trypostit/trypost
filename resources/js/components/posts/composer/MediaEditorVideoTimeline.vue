@@ -7,6 +7,12 @@ import { formatCoverOffset, type MediaEdit } from '@/lib/mediaEditor';
 /** How many frames the strip shows across the video. */
 const FRAME_COUNT = 8;
 
+/**
+ * The height each frame is drawn at, in canvas pixels: twice the strip's
+ * 80px, sharp on a retina screen, never the video's full size.
+ */
+const FRAME_HEIGHT = 160;
+
 const props = defineProps<{
     src: string;
     duration: number | null;
@@ -76,9 +82,10 @@ const paintFrames = async (): Promise<void> => {
             return;
         }
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d')?.drawImage(video, 0, 0);
+        const scale = Math.min(1, FRAME_HEIGHT / video.videoHeight);
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 };
 

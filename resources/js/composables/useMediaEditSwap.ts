@@ -17,6 +17,7 @@ const editedMeta = (
     delete next.user_tags;
     delete next.cover_offset_ms;
     delete next.cover;
+    delete next.cover_source;
 
     if (filled(change.width) && filled(change.height)) {
         next.width = change.width;
@@ -37,6 +38,7 @@ const editedMeta = (
 
     if (filled(cover)) {
         next.cover = cover;
+        next.cover_source = change.coverSource;
     }
 
     return next;
@@ -52,7 +54,13 @@ const coverItem = async (cover: CoverImage | null): Promise<MediaItem | null> =>
         return cover.item;
     }
 
-    return uploadChunked({ file: cover.file, url: mediaStoreChunked.url() });
+    const uploaded = await uploadChunked({
+        file: cover.file,
+        url: mediaStoreChunked.url(),
+    });
+    URL.revokeObjectURL(cover.url);
+
+    return uploaded;
 };
 
 const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {

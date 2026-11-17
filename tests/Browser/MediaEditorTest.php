@@ -885,6 +885,32 @@ test('switching back to a video frame saves a screenshot of that frame as the co
     $page->assertNoJavaScriptErrors();
 });
 
+test('picking an image as the cover keeps the frame picked for the networks that only take one', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $media = $post->media;
+    $media[0]['meta']['cover_offset_ms'] = 2500;
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    $page->click('@media-editor-cover-source-image');
+    pickMediaEditorCoverImage($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $meta = data_get($post->fresh()->media, '0.meta');
+
+    expect(data_get($meta, 'cover_source'))->toBe('image')
+        ->and(data_get($meta, 'cover_offset_ms'))->toBe(2500)
+        ->and(data_get($meta, 'cover.id'))->not->toBeNull();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('reframing a stored cover saves the new frame of it', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));

@@ -274,7 +274,7 @@ return [
             'tags_invalid' => '请输入有效的 Instagram 用户名。',
             'thumbnail_tab' => '缩略图',
             'thumbnail_heading' => '选择缩略图',
-            'thumbnail_hint' => '拖动滑块，选择用作视频封面的画面。',
+            'thumbnail_hint' => '沿视频画面拖动，选择用作封面的画面。',
             'thumbnail_value' => ':seconds 秒',
             'thumbnail_source_frame' => '视频帧',
             'thumbnail_source_image' => '图片',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => '无法截取这一帧。请改为上传一张图片作为封面。',
             'thumbnail_image_upload' => '上传图片',
             'thumbnail_image_replace' => '更换图片',
-            'thumbnail_image_alt' => '封面图片',
             'video_thumbnail' => '视频 :number',
             'thumbnail' => '图片 :number',
             'cancel' => '取消',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => '新建',
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube 未应用你的封面：自定义缩略图需要已验证的频道。你可以在 YouTube 工作室中设置。',
             'daily_limit' => 'YouTube 未应用你的封面：你的频道已达到今天的自定义缩略图上限。你可以在 YouTube 工作室中设置。',
             'invalid_image' => 'YouTube 无法读取你的封面图片。你可以在 YouTube 工作室中设置另一张。',

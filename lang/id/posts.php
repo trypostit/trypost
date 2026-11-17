@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Masukkan username Instagram yang valid.',
             'thumbnail_tab' => 'Thumbnail',
             'thumbnail_heading' => 'Pilih thumbnail',
-            'thumbnail_hint' => 'Geser slider untuk memilih frame yang menjadi sampul video.',
+            'thumbnail_hint' => 'Geser di sepanjang frame video untuk memilih yang menjadi sampul.',
             'thumbnail_value' => ':seconds detik',
             'thumbnail_source_frame' => 'Frame video',
             'thumbnail_source_image' => 'Gambar',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Tidak dapat mengambil frame ini. Unggah gambar sebagai sampul.',
             'thumbnail_image_upload' => 'Unggah gambar',
             'thumbnail_image_replace' => 'Ganti gambar',
-            'thumbnail_image_alt' => 'Gambar sampul',
             'video_thumbnail' => 'Video :number',
             'thumbnail' => 'Gambar :number',
             'cancel' => 'Batal',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Baru',
         'add_post_in_slot' => 'Tambahkan postingan',
         'more_times' => 'Waktu lainnya',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube tidak menerapkan sampulmu: thumbnail kustom memerlukan channel terverifikasi. Kamu bisa mengaturnya di YouTube Studio.',
             'daily_limit' => 'YouTube tidak menerapkan sampulmu: channel-mu mencapai batas harian thumbnail kustom. Kamu bisa mengaturnya di YouTube Studio.',
             'invalid_image' => 'YouTube tidak dapat membaca gambar sampulmu. Kamu bisa mengatur yang lain di YouTube Studio.',

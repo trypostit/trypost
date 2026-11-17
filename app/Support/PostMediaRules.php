@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\Media\CoverSource;
 use App\Enums\Media\Source;
 use Closure;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -101,7 +103,19 @@ class PostMediaRules
             self::validateUserTags(data_get($value, 'user_tags'), $fail);
             self::validateCoverOffset(data_get($value, 'cover_offset_ms'), data_get($value, 'duration'), $fail);
             self::validateCover(data_get($value, 'cover'), $fail);
+            self::validateCoverSource(data_get($value, 'cover_source'), $fail);
         }];
+    }
+
+    private static function validateCoverSource(mixed $source, Closure $fail): void
+    {
+        if (blank($source)) {
+            return;
+        }
+
+        if (blank(CoverSource::tryFrom((string) $source))) {
+            $fail('validation.in')->translate(['attribute' => 'cover_source']);
+        }
     }
 
     /**
@@ -111,7 +125,7 @@ class PostMediaRules
      */
     private static function validateCover(mixed $cover, Closure $fail): void
     {
-        if ($cover === null) {
+        if (blank($cover)) {
             return;
         }
 
@@ -135,7 +149,7 @@ class PostMediaRules
             return;
         }
 
-        if ($references->contains(fn (string $reference): bool => mb_strlen($reference) > self::COVER_REFERENCE_MAX_LENGTH)) {
+        if ($references->contains(fn (string $reference): bool => Str::length($reference) > self::COVER_REFERENCE_MAX_LENGTH)) {
             $fail('posts.errors.cover_invalid')->translate();
         }
     }

@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Introduce un usuario de Instagram válido.',
             'thumbnail_tab' => 'Miniatura',
             'thumbnail_heading' => 'Elige una miniatura',
-            'thumbnail_hint' => 'Arrastra el control para elegir el fotograma que se mostrará como portada del vídeo.',
+            'thumbnail_hint' => 'Arrastra por los fotogramas del video para elegir el que se muestra como portada.',
             'thumbnail_value' => ':seconds segundos',
             'thumbnail_source_frame' => 'Fotograma',
             'thumbnail_source_image' => 'Imagen',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'No se pudo capturar este fotograma. Sube una imagen como portada.',
             'thumbnail_image_upload' => 'Subir imagen',
             'thumbnail_image_replace' => 'Cambiar imagen',
-            'thumbnail_image_alt' => 'Imagen de portada',
             'video_thumbnail' => 'Vídeo :number',
             'thumbnail' => 'Imagen :number',
             'cancel' => 'Cancelar',
@@ -1045,7 +1044,7 @@ return [
         'new_in_slot' => 'Nuevo',
         'add_post_in_slot' => 'Añadir post',
         'more_times' => 'Más horarios',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube no aplicó tu portada: las miniaturas personalizadas requieren un canal verificado. Puedes ponerla en YouTube Studio.',
             'daily_limit' => 'YouTube no aplicó tu portada: tu canal alcanzó el límite diario de miniaturas personalizadas. Puedes ponerla en YouTube Studio.',
             'invalid_image' => 'YouTube no pudo leer tu imagen de portada. Puedes poner otra en YouTube Studio.',

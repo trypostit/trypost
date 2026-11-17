@@ -29,7 +29,7 @@ function postCardAsBefore(Post $post): array
             'category' => data_get($post->error_context, 'category'),
             'failed_at' => data_get($post->error_context, 'failed_at'),
         ],
-        'cover_warning' => null,
+        'youtube_thumbnail_warning' => null,
     ];
 
     $card['user'] = $post->user === null ? null : [
@@ -73,5 +73,5 @@ test('a card without its relations loaded leaves them out', function () {
     $card = PostCardResource::make($post->fresh())->resolve();
 
     expect($card)->not->toHaveKeys(['social_account', 'user', 'labels'])
-        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'cover_warning' => null]);
+        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null]);
 });

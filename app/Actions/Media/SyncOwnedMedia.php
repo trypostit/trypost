@@ -28,7 +28,7 @@ class SyncOwnedMedia
     /**
      * Per-owner edits an item may carry over the row's measured `meta`.
      */
-    public const array EDITABLE_META = ['alt_text', 'user_tags', 'cover_offset_ms'];
+    public const array EDITABLE_META = ['alt_text', 'user_tags', 'cover_offset_ms', 'cover_source'];
 
     /**
      * Everything an item carries for its owner over the row's `meta`: the
@@ -74,7 +74,7 @@ class SyncOwnedMedia
         $workspace = $owner->workspace;
         $items = self::withoutRepeats(array_values($items));
         $replies = $locked instanceof Post ? ThreadReplies::of($locked->meta) : [];
-        $submitted = [...$items, ...self::covers($items), ...self::replyMedia($replies)];
+        $submitted = [...$items, ...MediaItem::covers($items), ...self::replyMedia($replies)];
         $ids = self::column($submitted, 'id');
         $uploadTokens = self::column($submitted, 'upload_token');
         self::lockRows($workspace->id, $ownerColumn, $owner->getKey(), $ids, $uploadTokens);
@@ -82,7 +82,7 @@ class SyncOwnedMedia
         $rows = ResolveWorkspaceMedia::execute($workspace, $ids, lockForUpdate: true);
         $tokens = ResolveWorkspaceMedia::byUploadTokens($workspace, $uploadTokens, lockForUpdate: true);
         $stored = [...$legacyItems, ...($locked->media ?? [])];
-        $passThrough = collect([...$stored, ...self::covers($stored)])
+        $passThrough = collect([...$stored, ...MediaItem::covers($stored)])
             ->filter(fn (mixed $item): bool => is_array($item))
             ->keyBy(fn (array $item): string => (string) data_get($item, 'id'));
 
@@ -93,13 +93,13 @@ class SyncOwnedMedia
                 ? ($tokens->get($token) ?? self::spentTokenSource($rows->get(data_get($item, 'id')), $ownerColumn, $owner, $batch))
                 : $rows->get(data_get($item, 'id'));
 
-            if ($source === null && ! filled($token) && $passThrough->has((string) data_get($item, 'id'))) {
+            if (blank($source) && blank($token) && $passThrough->has((string) data_get($item, 'id'))) {
                 $position++;
 
                 return $passThrough->get((string) data_get($item, 'id'));
             }
 
-            if ($source === null) {
+            if (blank($source)) {
                 throw ValidationException::withMessages([$key => filled($token)
                     ? __('posts.errors.media_expired')
                     : __('validation.exists', ['attribute' => 'media'])]);
@@ -115,13 +115,14 @@ class SyncOwnedMedia
             return self::item($owned);
         };
 
-        $sync = function (array $items, string $errorKey) use ($own): array {
+        $keepsCovers = self::keepsCovers($locked);
+        $sync = function (array $items, string $errorKey) use ($own, $keepsCovers): array {
             $final = [];
 
             foreach ($items as $index => $item) {
                 $key = "{$errorKey}.{$index}";
                 $owned = self::withEdits(Arr::except($own($item, $key), 'meta.cover'), $item);
-                $cover = data_get($item, 'meta.cover');
+                $cover = $keepsCovers ? data_get($item, 'meta.cover') : null;
 
                 if (is_array($cover)) {
                     $owned['meta'] = [...(array) data_get($owned, 'meta', []), 'cover' => self::coverItem($own($cover, "{$key}.meta.cover"), "{$key}.meta.cover")];
@@ -137,10 +138,10 @@ class SyncOwnedMedia
         $replies = collect($replies)
             ->map(fn (array $reply, int $index): array => [
                 ...$reply,
-                'media' => $sync(self::withoutRepeats($reply['media']), "{$metaErrorKey}.thread_replies.{$index}.media"),
+                'media' => $sync(self::withoutRepeats(self::withoutCovers($reply['media'])), "{$metaErrorKey}.thread_replies.{$index}.media"),
             ])
             ->all();
-        $kept = self::column([...$final, ...self::covers($final), ...self::replyMedia($replies)], 'id');
+        $kept = self::column([...$final, ...MediaItem::covers($final), ...self::replyMedia($replies)], 'id');
 
         DeleteOwnedMedia::forRows($owner->ownedMedia()->whereNotIn('id', $kept)->pluck('id')->all());
         $owner->update($replies === [] ? ['media' => $final] : [
@@ -166,26 +167,14 @@ class SyncOwnedMedia
             throw ValidationException::withMessages([$key => __('posts.errors.cover_not_image')]);
         }
 
-        $cover = Arr::except($owned, [...self::ITEM_FIELDS, 'upload_token']);
-        $meta = Arr::except((array) data_get($cover, 'meta', []), self::OWNER_META);
-        unset($cover['meta']);
+        $cover = Arr::except($owned, [...self::ITEM_FIELDS, 'upload_token', 'meta']);
+        $meta = Arr::except((array) data_get($owned, 'meta', []), self::OWNER_META);
 
-        return $meta === [] ? $cover : [...$cover, 'meta' => $meta];
-    }
+        if (blank($meta)) {
+            return $cover;
+        }
 
-    /**
-     * The covers (`meta.cover`) of a list of media items.
-     *
-     * @param  array<int, mixed>  $items
-     * @return list<array<string, mixed>>
-     */
-    private static function covers(array $items): array
-    {
-        return collect($items)
-            ->map(fn (mixed $item): mixed => data_get($item, 'meta.cover'))
-            ->filter(fn (mixed $cover): bool => is_array($cover))
-            ->values()
-            ->all();
+        return [...$cover, 'meta' => $meta];
     }
 
     /**
@@ -274,6 +263,35 @@ class SyncOwnedMedia
             'order' => $position,
             'meta' => [...($source->meta ?? []), 'copied_from' => $source->id],
         ]);
+    }
+
+    /**
+     * Only a post whose network takes a cover image keeps one: an idea keeps
+     * it for the post it becomes, and a post on a network that only takes a
+     * frame (TikTok, a Pinterest pin, an Instagram feed video) drops it, as
+     * `PostMeta::forChannel()` drops a poll on any other type.
+     */
+    private static function keepsCovers(Post|Idea $owner): bool
+    {
+        if ($owner instanceof Idea) {
+            return true;
+        }
+
+        return (bool) $owner->content_type?->supportsCustomVideoCover();
+    }
+
+    /**
+     * A thread reply's video takes no cover image: only a post's own video
+     * publishes with one.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private static function withoutCovers(array $items): array
+    {
+        return collect($items)
+            ->map(fn (array $item): array => Arr::except($item, 'meta.cover'))
+            ->all();
     }
 
     /**

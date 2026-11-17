@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Post\CoverWarning;
+use App\Enums\YouTube\ProcessingStatus;
+use App\Enums\YouTube\ThumbnailWarning;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\ConnectionVerifier;
@@ -61,18 +62,18 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
 
         $account = $this->post->socialAccount()->connected()->first();
 
-        if ($account === null) {
+        if (blank($account)) {
             return;
         }
 
-        if ($account->needsProactiveTokenRefresh()) {
-            app(ConnectionVerifier::class)->refreshToken($account);
-        }
-
         try {
+            if ($account->needsProactiveTokenRefresh()) {
+                app(ConnectionVerifier::class)->refreshToken($account);
+            }
+
             $this->apply($publisher);
         } catch (TokenExpiredException) {
-            $this->post->recordCoverWarning(CoverWarning::Failed);
+            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
         } catch (GoogleServiceException $exception) {
             $this->settle($exception);
         }
@@ -83,24 +84,33 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         $this->post->refresh();
 
         if ($this->post->awaitsYouTubeCover()) {
-            $this->post->recordCoverWarning(CoverWarning::Failed);
+            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
         }
     }
 
     /**
+     * A video YouTube no longer lists was removed: there is nothing to warn
+     * about. One it could not process never takes a thumbnail.
+     *
      * @throws GoogleServiceException
      */
     private function apply(YouTubePublisher $publisher): void
     {
         $status = $publisher->processingStatus($this->post);
 
-        if ($status === 'processing') {
+        if ($status === ProcessingStatus::Processing) {
             $this->release(self::CHECK_EVERY_SECONDS);
 
             return;
         }
 
-        if ($status !== 'succeeded') {
+        if (blank($status)) {
+            return;
+        }
+
+        if ($status !== ProcessingStatus::Succeeded) {
+            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+
             return;
         }
 
@@ -122,23 +132,23 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->post->recordCoverWarning(self::warningFor($status));
+        $this->post->recordYouTubeThumbnailWarning(self::warningFor($status));
     }
 
-    private static function warningFor(int $status): CoverWarning
+    private static function warningFor(int $status): ThumbnailWarning
     {
         if ($status === Response::HTTP_FORBIDDEN) {
-            return CoverWarning::Forbidden;
+            return ThumbnailWarning::Forbidden;
         }
 
         if ($status === Response::HTTP_TOO_MANY_REQUESTS) {
-            return CoverWarning::DailyLimit;
+            return ThumbnailWarning::DailyLimit;
         }
 
         if ($status === Response::HTTP_BAD_REQUEST) {
-            return CoverWarning::InvalidImage;
+            return ThumbnailWarning::InvalidImage;
         }
 
-        return CoverWarning::Failed;
+        return ThumbnailWarning::Failed;
     }
 }

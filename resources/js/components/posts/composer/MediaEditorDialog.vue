@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
 import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
-import { filled, transform } from '@/lib/helpers';
+import { filled } from '@/lib/helpers';
 import {
     createMediaEdit,
     COVER_CROP_PRESET,
@@ -34,7 +34,6 @@ import {
     hasMetaChanges,
     hasCoverCropChanges,
     hasPixelChanges,
-    initialCoverSource,
     needsFrameCapture,
     newCoverImage,
     type CropPresetValue,
@@ -59,6 +58,7 @@ export type MediaEditChange = {
     userTags: MediaUserTag[];
     coverOffsetMs: number | null;
     coverImage: CoverImage | null;
+    coverSource: CoverSource;
 };
 
 const props = withDefaults(
@@ -133,7 +133,6 @@ const activeIsVideo = computed(() =>
 );
 const stageVideoEl = ref<HTMLVideoElement | null>(null);
 const stageVideoDurations = ref<Record<number, number>>({});
-const coverSource = ref<CoverSource>('frame');
 
 const seekStageVideo = (): void => {
     if (stageVideoEl.value && stageVideoEl.value.readyState > 0) {
@@ -164,7 +163,7 @@ const cropsCover = computed(() => {
         return false;
     }
 
-    if (coverSource.value !== 'image') {
+    if (edit.value?.coverSource !== 'image') {
         return false;
     }
 
@@ -181,7 +180,16 @@ const showsTimeline = computed(() => {
         return false;
     }
 
-    return coverSource.value === 'frame';
+    return edit.value?.coverSource === 'frame';
+});
+
+/** The video the frame strip runs along, while the Thumbnail tab picks a frame. */
+const timelineVideo = computed(() => {
+    if (!filled(edit.value)) {
+        return null;
+    }
+
+    return activeItem.value ?? null;
 });
 
 /** The stage shows the video itself, unless it is framing the video's cover image. */
@@ -245,6 +253,19 @@ const stageEdit = computed({
         if (filled(edit.value?.coverImage)) {
             edit.value.coverImage.crop = value;
         }
+    },
+});
+/** The cover's crop, while the stage frames the cover image. */
+const coverCropEdit = computed({
+    get: (): MediaEdit | undefined => {
+        if (!cropsCover.value) {
+            return undefined;
+        }
+
+        return stageEdit.value;
+    },
+    set: (value: MediaEdit | undefined) => {
+        stageEdit.value = value;
     },
 });
 const stageNatural = computed(() => {
@@ -348,7 +369,6 @@ const selectItem = (index: number): void => {
     tagging.value = false;
     movingIndex.value = null;
     tab.value = tabFor(tab.value);
-    coverSource.value = initialCoverSource(edit.value);
 };
 
 const onStagePress = (point: { x: number; y: number }): void => {
@@ -435,6 +455,10 @@ const renderCover = async (cover: CoverImage): Promise<CoverImage> => {
     const image = await loadImage(pixelSource(source));
     const rendered = await renderMediaEdit(image, source, cover.crop);
 
+    if (filled(cover.file)) {
+        URL.revokeObjectURL(cover.url);
+    }
+
     return newCoverImage(URL.createObjectURL(rendered.file), null, rendered.file);
 };
 
@@ -498,6 +522,7 @@ const apply = async (): Promise<void> => {
                         userTags: itemEdit.userTags,
                         coverOffsetMs: itemEdit.coverOffsetMs,
                         coverImage: await coverImageFor(media, itemEdit),
+                        coverSource: itemEdit.coverSource,
                     };
                 },
             ),
@@ -535,11 +560,6 @@ watch(
         movingIndex.value = null;
         failed.value = false;
         captureFailed.value = false;
-            coverSource.value = transform(
-            edits.value[activeIndex.value],
-            initialCoverSource,
-            'frame',
-        );
     },
 );
 
@@ -592,91 +612,97 @@ watch(tagging, (isTagging) => {
                     <div
                         class="relative flex min-h-[45vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-muted select-none dark:bg-accent lg:min-h-0"
                     >
-                        <video
-                            v-if="activeItem && showsStageVideo"
-                            ref="stageVideoEl"
-                            :key="activeItem.url"
-                            :src="activeItem.url"
-                            muted
-                            playsinline
-                            preload="metadata"
-                            data-testid="media-editor-stage-video"
-                            class="absolute inset-6 size-[calc(100%-3rem)] object-contain"
-                            @loadedmetadata="onStageVideoMetadata"
-                        />
+                        <template v-if="showsStageVideo">
+                            <video
+                                v-if="activeItem"
+                                ref="stageVideoEl"
+                                :key="activeItem.url"
+                                :src="activeItem.url"
+                                muted
+                                playsinline
+                                preload="metadata"
+                                data-testid="media-editor-stage-video"
+                                class="absolute inset-6 size-[calc(100%-3rem)] object-contain"
+                                @loadedmetadata="onStageVideoMetadata"
+                            />
+                        </template>
                         <p
                             v-else-if="imageErrors[activeIndex]"
                             class="p-4 text-center text-sm text-muted-foreground"
                         >
                             {{ $t('common.photo_upload.crop_error') }}
                         </p>
-                        <ImageCropStage
-                            v-else-if="stageSrc && stageEdit"
-                            v-model:edit="stageEdit"
-                            :src="stageSrc"
-                            :natural="stageNatural"
-                            :crop-mode="cropMode"
-                            :resize-any-ratio="resizesAnyRatio"
-                            test-id-prefix="media-editor"
-                            :box-class="
-                                tab === 'tags' &&
-                                (tagging || movingIndex !== null)
-                                    ? 'cursor-crosshair'
-                                    : ''
-                            "
-                            @load="onImageLoad"
-                            @error="onImageError"
-                            @press="onStagePress"
-                        >
-                            <template v-if="tab === 'tags'">
-                                <span
-                                    v-for="(tag, tagIndex) in edit.userTags"
-                                    :key="`${tag.username}-${tagIndex}`"
-                                    class="pointer-events-none absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-xs font-medium tabular-nums shadow ring-2 ring-white transition-transform"
-                                    :class="
-                                        movingIndex === tagIndex
-                                            ? 'scale-125 bg-primary-strong text-primary-strong-foreground ring-primary-strong/30'
-                                            : 'bg-foreground text-background'
-                                    "
-                                    :data-testid="`media-editor-tag-marker-${tagIndex}`"
-                                    :style="{
-                                        left: `${tag.x * 100}%`,
-                                        top: `${tag.y * 100}%`,
-                                    }"
-                                    >{{ tagIndex + 1 }}</span
-                                >
-                                <span
-                                    v-if="movingIndex !== null"
-                                    class="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-foreground/85 px-3 py-1 text-xs whitespace-nowrap text-background shadow"
-                                    data-testid="media-editor-tag-move-pill"
-                                >
-                                    <IconCrosshair class="size-3.5" />
-                                    {{
-                                        $t(
-                                            'posts.composer.media_editor.tags_move_pill',
-                                        )
-                                    }}
-                                </span>
-                                <span
-                                    v-if="pendingPoint"
-                                    data-testid="media-editor-tag-point"
-                                    class="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-foreground/40 shadow"
-                                    :style="{
-                                        left: `${pendingPoint.x * 100}%`,
-                                        top: `${pendingPoint.y * 100}%`,
-                                    }"
-                                />
-                            </template>
-                        </ImageCropStage>
+                        <template v-else-if="stageSrc">
+                            <ImageCropStage
+                                v-if="stageEdit"
+                                v-model:edit="stageEdit"
+                                :src="stageSrc"
+                                :natural="stageNatural"
+                                :crop-mode="cropMode"
+                                :resize-any-ratio="resizesAnyRatio"
+                                test-id-prefix="media-editor"
+                                :box-class="
+                                    tab === 'tags' &&
+                                    (tagging || movingIndex !== null)
+                                        ? 'cursor-crosshair'
+                                        : ''
+                                "
+                                @load="onImageLoad"
+                                @error="onImageError"
+                                @press="onStagePress"
+                            >
+                                <template v-if="tab === 'tags'">
+                                    <span
+                                        v-for="(tag, tagIndex) in edit.userTags"
+                                        :key="`${tag.username}-${tagIndex}`"
+                                        class="pointer-events-none absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-xs font-medium tabular-nums shadow ring-2 ring-white transition-transform"
+                                        :class="
+                                            movingIndex === tagIndex
+                                                ? 'scale-125 bg-primary-strong text-primary-strong-foreground ring-primary-strong/30'
+                                                : 'bg-foreground text-background'
+                                        "
+                                        :data-testid="`media-editor-tag-marker-${tagIndex}`"
+                                        :style="{
+                                            left: `${tag.x * 100}%`,
+                                            top: `${tag.y * 100}%`,
+                                        }"
+                                        >{{ tagIndex + 1 }}</span
+                                    >
+                                    <span
+                                        v-if="movingIndex !== null"
+                                        class="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-foreground/85 px-3 py-1 text-xs whitespace-nowrap text-background shadow"
+                                        data-testid="media-editor-tag-move-pill"
+                                    >
+                                        <IconCrosshair class="size-3.5" />
+                                        {{
+                                            $t(
+                                                'posts.composer.media_editor.tags_move_pill',
+                                            )
+                                        }}
+                                    </span>
+                                    <span
+                                        v-if="pendingPoint"
+                                        data-testid="media-editor-tag-point"
+                                        class="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-foreground/40 shadow"
+                                        :style="{
+                                            left: `${pendingPoint.x * 100}%`,
+                                            top: `${pendingPoint.y * 100}%`,
+                                        }"
+                                    />
+                                </template>
+                            </ImageCropStage>
+                        </template>
                     </div>
 
-                    <MediaEditorVideoTimeline
-                        v-if="showsTimeline && activeItem && edit"
-                        :key="activeItem.url"
-                        v-model:edit="edit"
-                        :src="activeItem.url"
-                        :duration="activeVideoDuration"
-                    />
+                    <template v-if="showsTimeline">
+                        <MediaEditorVideoTimeline
+                            v-if="timelineVideo"
+                            :key="timelineVideo.url"
+                            v-model:edit="edit"
+                            :src="timelineVideo.url"
+                            :duration="activeVideoDuration"
+                        />
+                    </template>
                     <div
                         v-if="showsItemPicker"
                         class="flex justify-center gap-3 overflow-x-auto px-1 pt-3 pb-1.5 [scrollbar-width:thin]"
@@ -799,12 +825,11 @@ watch(tagging, (isTagging) => {
                         <MediaEditorThumbnailPanel
                             :key="activeIndex"
                             v-model:edit="edit"
-                            v-model:source="coverSource"
                             :supports-custom-cover="supportsCustomCover"
                         />
                         <MediaEditorCropPanel
-                            v-if="cropsCover && stageEdit"
-                            v-model:edit="stageEdit"
+                            v-if="coverCropEdit"
+                            v-model:edit="coverCropEdit"
                             :presets="stagePresets"
                             :center-disabled="centerDisabled"
                             :reset-disabled="resetDisabled"

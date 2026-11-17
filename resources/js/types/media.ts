@@ -30,6 +30,7 @@ export interface MediaItem {
         user_tags?: MediaUserTag[];
         cover_offset_ms?: number;
         cover?: MediaItem;
+        cover_source?: 'frame' | 'image';
         source?: MediaSource;
         source_meta?: Record<string, SourceMetaValue>;
     };

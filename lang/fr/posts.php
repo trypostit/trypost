@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Saisissez un nom d\'utilisateur Instagram valide.',
             'thumbnail_tab' => 'Miniature',
             'thumbnail_heading' => 'Choisissez une miniature',
-            'thumbnail_hint' => 'Faites glisser le curseur pour choisir l\'image affichée comme couverture de la vidéo.',
+            'thumbnail_hint' => 'Faites glisser le long des images de la vidéo pour choisir celle affichée en couverture.',
             'thumbnail_value' => ':seconds secondes',
             'thumbnail_source_frame' => 'Image de la vidéo',
             'thumbnail_source_image' => 'Image',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Impossible de capturer cette image de la vidéo. Importez plutôt une image comme couverture.',
             'thumbnail_image_upload' => 'Importer une image',
             'thumbnail_image_replace' => 'Remplacer',
-            'thumbnail_image_alt' => 'Image de couverture',
             'video_thumbnail' => 'Vidéo :number',
             'thumbnail' => 'Image :number',
             'cancel' => 'Annuler',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Nouveau',
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube n\'a pas appliqué votre couverture : les miniatures personnalisées nécessitent une chaîne validée. Vous pouvez la définir dans YouTube Studio.',
             'daily_limit' => 'YouTube n\'a pas appliqué votre couverture : votre chaîne a atteint la limite quotidienne de miniatures personnalisées. Vous pouvez la définir dans YouTube Studio.',
             'invalid_image' => 'YouTube n\'a pas pu lire votre image de couverture. Vous pouvez en définir une autre dans YouTube Studio.',

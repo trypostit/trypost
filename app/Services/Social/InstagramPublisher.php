@@ -335,7 +335,8 @@ class InstagramPublisher
     /**
      * A Reel's cover: the uploaded image when the user picked the Reel type
      * (Instagram takes `cover_url` on Reels only and prefers it over
-     * `thumb_offset`), else the picked frame.
+     * `thumb_offset`), else the picked frame. An image that cannot be made a
+     * JPEG falls back to the frame rather than failing the Reel.
      *
      * @return array{cover_url?: string, thumb_offset?: int}
      */
@@ -343,7 +344,7 @@ class InstagramPublisher
     {
         $cover = $media->cover();
 
-        if ($cover === null) {
+        if (blank($cover)) {
             return $this->thumbOffsetParam($media);
         }
 
@@ -351,7 +352,16 @@ class InstagramPublisher
             return $this->thumbOffsetParam($media);
         }
 
-        return ['cover_url' => $this->coverUrl($cover)];
+        try {
+            return ['cover_url' => $this->coverUrl($cover)];
+        } catch (InstagramPublishException $exception) {
+            Log::warning('Instagram Reel cover could not be prepared; publishing with the picked frame', [
+                'post_id' => $this->post->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $this->thumbOffsetParam($media);
+        }
     }
 
     /**

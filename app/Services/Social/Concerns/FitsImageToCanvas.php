@@ -7,6 +7,8 @@ namespace App\Services\Social\Concerns;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
+use Closure;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,38 +19,23 @@ trait FitsImageToCanvas
     public const CROP_DIRECTORY = 'social-crops';
 
     /**
+     * MediaOptimizer hands back an image too large to decode untouched, so a
+     * result that is not a JPEG was not converted.
+     */
+    private const string JPEG_MIME_TYPE = 'image/jpeg';
+
+    /**
      * Fit the image inside a width×height canvas with a blurred-background
      * extension (no cropping), host it, and return a public URL. Used for
      * stories so an off-ratio image isn't clipped by the platform.
      */
     protected function fitImageToCanvas(string $imageUrl, int $width, int $height): string
     {
-        $tempInput = tempnam(sys_get_temp_dir(), 'fit_in_');
-
-        try {
-            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
-
-            if ($download->failed()) {
-                throw $this->cropFailureException('Failed to download image for story fitting');
-            }
-
-            try {
-                $fitted = app(MediaOptimizer::class)->fitToCanvas($tempInput, $width, $height);
-            } catch (Throwable) {
-                throw $this->cropFailureException('Failed to process image for story fitting');
-            }
-
-            try {
-                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-                Storage::put($path, file_get_contents($fitted));
-
-                return Storage::url($path);
-            } finally {
-                @unlink($fitted);
-            }
-        } finally {
-            @unlink($tempInput);
-        }
+        return $this->hostProcessedImage(
+            $imageUrl,
+            fn (string $path): string => app(MediaOptimizer::class)->fitToCanvas($path, $width, $height),
+            'story fitting',
+        );
     }
 
     /**
@@ -58,31 +45,63 @@ trait FitsImageToCanvas
      */
     protected function hostAsJpeg(string $imageUrl, Platform $platform): string
     {
-        $tempInput = tempnam(sys_get_temp_dir(), 'jpeg_in_');
+        return $this->hostProcessedImage(
+            $imageUrl,
+            fn (string $path): string => $this->jpegOrFail(app(MediaOptimizer::class)->optimizeImage($path, $platform)),
+            'JPEG conversion',
+        );
+    }
+
+    /**
+     * The converted file, or a failure when MediaOptimizer left it as it was.
+     */
+    private function jpegOrFail(string $path): string
+    {
+        if (File::mimeType($path) === self::JPEG_MIME_TYPE) {
+            return $path;
+        }
+
+        File::delete($path);
+
+        throw $this->cropFailureException('Failed to convert image to JPEG');
+    }
+
+    /**
+     * Downloads the image, runs `$process` on it (which returns the path of a
+     * JPEG it wrote), hosts the result and returns its public URL. Both
+     * temporary files are removed whatever happens.
+     *
+     *
+     * @param  Closure(string): string  $process
+     *
+     * @throws SocialPublishException when the image cannot be downloaded or processed
+     */
+    private function hostProcessedImage(string $imageUrl, Closure $process, string $purpose): string
+    {
+        $download = tempnam(sys_get_temp_dir(), 'image_in_');
 
         try {
-            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
-
-            if ($download->failed()) {
-                throw $this->cropFailureException('Failed to download image for JPEG conversion');
+            if (Http::sink($download)->timeout(120)->get($imageUrl)->failed()) {
+                throw $this->cropFailureException("Failed to download image for {$purpose}");
             }
 
             try {
-                $converted = app(MediaOptimizer::class)->optimizeImage($tempInput, $platform);
+                $processed = $process($download);
             } catch (Throwable) {
-                throw $this->cropFailureException('Failed to convert image to JPEG');
+                throw $this->cropFailureException("Failed to process image for {$purpose}");
             }
 
             try {
-                $path = self::CROP_DIRECTORY.'/'.Str::uuid()->toString().'.jpg';
-                Storage::put($path, file_get_contents($converted));
+                $directory = self::CROP_DIRECTORY;
+                $path = "{$directory}/".Str::uuid()->toString().'.jpg';
+                Storage::put($path, File::get($processed));
 
                 return Storage::url($path);
             } finally {
-                @unlink($converted);
+                File::delete($processed);
             }
         } finally {
-            @unlink($tempInput);
+            File::delete($download);
         }
     }
 

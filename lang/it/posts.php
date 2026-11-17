@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Inserisci un nome utente Instagram valido.',
             'thumbnail_tab' => 'Miniatura',
             'thumbnail_heading' => 'Scegli una miniatura',
-            'thumbnail_hint' => 'Trascina il cursore per scegliere il fotogramma mostrato come copertina del video.',
+            'thumbnail_hint' => 'Trascina lungo i fotogrammi del video per scegliere quello mostrato come copertina.',
             'thumbnail_value' => ':seconds secondi',
             'thumbnail_source_frame' => 'Fotogramma',
             'thumbnail_source_image' => 'Immagine',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Impossibile catturare questo fotogramma. Carica invece un\'immagine come copertina.',
             'thumbnail_image_upload' => 'Carica immagine',
             'thumbnail_image_replace' => 'Sostituisci',
-            'thumbnail_image_alt' => 'Immagine di copertina',
             'video_thumbnail' => 'Video :number',
             'thumbnail' => 'Immagine :number',
             'cancel' => 'Annulla',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Nuovo',
         'add_post_in_slot' => 'Aggiungi post',
         'more_times' => 'Altri orari',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube non ha applicato la copertina: le miniature personalizzate richiedono un canale verificato. Puoi impostarla in YouTube Studio.',
             'daily_limit' => 'YouTube non ha applicato la copertina: il tuo canale ha raggiunto il limite giornaliero di miniature personalizzate. Puoi impostarla in YouTube Studio.',
             'invalid_image' => 'YouTube non è riuscito a leggere l\'immagine di copertina. Puoi impostarne un\'altra in YouTube Studio.',

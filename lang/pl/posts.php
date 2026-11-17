@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Wpisz poprawną nazwę użytkownika Instagrama.',
             'thumbnail_tab' => 'Miniatura',
             'thumbnail_heading' => 'Wybierz miniaturę',
-            'thumbnail_hint' => 'Przeciągnij suwak, aby wybrać klatkę wyświetlaną jako okładka filmu.',
+            'thumbnail_hint' => 'Przeciągnij po klatkach filmu, aby wybrać tę, która będzie okładką.',
             'thumbnail_value' => ':seconds s',
             'thumbnail_source_frame' => 'Klatka wideo',
             'thumbnail_source_image' => 'Obraz',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Nie udało się przechwycić tej klatki. Prześlij obraz jako okładkę.',
             'thumbnail_image_upload' => 'Prześlij obraz',
             'thumbnail_image_replace' => 'Zmień obraz',
-            'thumbnail_image_alt' => 'Obraz okładki',
             'video_thumbnail' => 'Film :number',
             'thumbnail' => 'Zdjęcie :number',
             'cancel' => 'Anuluj',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Nowy',
         'add_post_in_slot' => 'Dodaj post',
         'more_times' => 'Więcej godzin',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube nie zastosował okładki: własne miniatury wymagają zweryfikowanego kanału. Możesz ją ustawić w YouTube Studio.',
             'daily_limit' => 'YouTube nie zastosował okładki: kanał osiągnął dzienny limit własnych miniatur. Możesz ją ustawić w YouTube Studio.',
             'invalid_image' => 'YouTube nie mógł odczytać obrazu okładki. Możesz ustawić inny w YouTube Studio.',

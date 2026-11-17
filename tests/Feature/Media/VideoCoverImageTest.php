@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Media\AuditMedia;
+use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
 use App\Dto\MediaItem;
@@ -189,4 +190,63 @@ test('the media item reads its cover image', function () {
     expect($cover?->url)->toBe('https://cdn.test/c.jpg')
         ->and($cover?->isStillImage())->toBeTrue()
         ->and(MediaItem::fromArray(['meta' => []])->cover())->toBeNull();
+});
+
+test('a post on a network that only takes a frame keeps the frame and drops the cover image', function () {
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($tiktok, ContentType::TikTokVideo)->create([
+        'user_id' => $this->user->id,
+        'status' => Status::Draft,
+        'scheduled_at' => null,
+    ]);
+    $video = Media::factory()->video()->ownedByPost($post)->stored()->create(['meta' => ['duration' => 10]]);
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    $this->withHeaders(videoCoverImageApiHeaders($this->workspace))->putJson(route('api.posts.update', $post), [
+        'status' => 'draft',
+        'media' => [['id' => $video->id, 'meta' => ['cover_offset_ms' => 1500, 'cover_source' => 'image', 'cover' => ['upload_token' => $upload->upload_token]]]],
+    ])->assertOk();
+
+    expect(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500)
+        ->and($upload->fresh()->post_id)->toBeNull();
+});
+
+test('the cover source is stored with the cover and must be a frame or an image', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    $this->withHeaders(videoCoverImageApiHeaders($this->workspace))->putJson(route('api.posts.update', $this->post), [
+        'status' => 'draft',
+        'media' => [['id' => $this->video->id, 'meta' => ['cover_source' => 'sticker', 'cover' => ['upload_token' => $upload->upload_token]]]],
+    ])->assertUnprocessable()->assertJsonValidationErrors(['media.0.meta']);
+
+    $this->withHeaders(videoCoverImageApiHeaders($this->workspace))->putJson(route('api.posts.update', $this->post), [
+        'status' => 'draft',
+        'media' => [['id' => $this->video->id, 'meta' => ['cover_source' => 'image', 'cover' => ['upload_token' => $upload->upload_token]]]],
+    ])->assertOk();
+
+    expect(data_get($this->post->fresh()->media, '0.meta.cover_source'))->toBe('image');
+});
+
+test('a thread reply video drops a cover image sent with it', function () {
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    $replyVideo = Media::factory()->video()->stored()->temporaryUpload($this->workspace)->create();
+
+    $post = CreatePosts::execute($this->workspace, $this->user, [
+        'status' => 'draft',
+        'content' => 'Root',
+        'destinations' => [[
+            'social_account_id' => $x->id,
+            'content_type' => ContentType::XPost->value,
+            'meta' => ['thread_replies' => [['text' => 'Two', 'media' => [[
+                ...MediaItem::fromMedia($replyVideo)->toArray(),
+                'meta' => ['cover' => MediaItem::fromMedia($upload)->toArray()],
+            ]]]]],
+        ]],
+    ])->sole();
+
+    expect(data_get($post->fresh()->meta, 'thread_replies.0.media.0.meta.cover'))->toBeNull()
+        ->and($upload->fresh()->post_id)->toBeNull()
+        ->and($replyVideo->fresh()->post_id)->toBe($post->id);
 });

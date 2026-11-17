@@ -215,6 +215,21 @@ class MediaItem
     }
 
     /**
+     * The covers (`meta.cover`) of a list of stored or submitted media items.
+     *
+     * @param  array<int, mixed>  $items
+     * @return list<array<string, mixed>>
+     */
+    public static function covers(array $items): array
+    {
+        return collect($items)
+            ->map(fn (mixed $item): mixed => data_get($item, 'meta.cover'))
+            ->filter(fn (mixed $cover): bool => is_array($cover))
+            ->values()
+            ->all();
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self

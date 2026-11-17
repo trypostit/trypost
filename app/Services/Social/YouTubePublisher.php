@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
+use App\Enums\YouTube\ProcessingStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
@@ -24,6 +25,7 @@ use Google\Service\YouTube\Video;
 use Google\Service\YouTube\VideoSnippet;
 use Google\Service\YouTube\VideoStatus;
 use Google_Http_MediaFileUpload;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -80,18 +82,17 @@ class YouTubePublisher
     }
 
     /**
-     * Where YouTube is with a video it already has
-     * (`processingDetails.processingStatus`: processing, succeeded, failed or
-     * terminated), or null when it no longer lists the video.
+     * Where YouTube is with a video it already has, or null when it no
+     * longer lists the video.
      *
      * @throws Exception
      */
-    public function processingStatus(Post $post): ?string
+    public function processingStatus(Post $post): ?ProcessingStatus
     {
         $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
         $video = data_get($youtube->videos->listVideos('processingDetails', ['id' => $post->platform_post_id])->getItems(), 0);
 
-        return $video?->getProcessingDetails()?->getProcessingStatus();
+        return ProcessingStatus::tryFrom((string) $video?->getProcessingDetails()?->getProcessingStatus());
     }
 
     /**
@@ -107,54 +108,55 @@ class YouTubePublisher
     {
         $cover = $post->mediaItems->first()?->cover();
 
-        if ($cover === null) {
+        if (blank($cover)) {
             return;
         }
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'yt_cover_');
+        $download = Http::timeout(120)->get($cover->url);
 
-        try {
-            $response = Http::sink($tempFile)->timeout(120)->get($cover->url);
-
-            if ($response->failed()) {
-                throw new YouTubePublishException(
-                    userMessage: 'Failed to download the cover image for YouTube',
-                    category: ErrorCategory::ServerError,
-                );
-            }
-
-            [$path, $mimeType] = $this->coverFile($cover, $tempFile);
-
-            try {
-                $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
-                $youtube->thumbnails->set($post->platform_post_id, [
-                    'data' => (string) file_get_contents($path),
-                    'mimeType' => $mimeType,
-                    'uploadType' => 'media',
-                ]);
-            } finally {
-                if ($path !== $tempFile) {
-                    @unlink($path);
-                }
-            }
-        } finally {
-            @unlink($tempFile);
+        if ($download->failed()) {
+            throw new YouTubePublishException(
+                userMessage: 'Failed to download the cover image for YouTube',
+                category: ErrorCategory::ServerError,
+            );
         }
+
+        [$bytes, $mimeType] = $this->coverImage($cover, $download->body());
+
+        $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
+        $youtube->thumbnails->set($post->platform_post_id, [
+            'data' => $bytes,
+            'mimeType' => $mimeType,
+            'uploadType' => 'media',
+        ]);
     }
 
     /**
-     * The downloaded cover as YouTube takes it: a JPEG or a PNG as is, any
-     * other image re-encoded as a JPEG.
+     * The cover as YouTube takes it: a JPEG or a PNG as is, any other image
+     * re-encoded as a JPEG.
      *
      * @return array{0: string, 1: string}
      */
-    private function coverFile(MediaItem $cover, string $path): array
+    private function coverImage(MediaItem $cover, string $bytes): array
     {
         if (in_array($cover->mime_type, self::COVER_MIME_TYPES, true)) {
-            return [$path, (string) $cover->mime_type];
+            return [$bytes, (string) $cover->mime_type];
         }
 
-        return [app(MediaOptimizer::class)->optimizeImage($path, Platform::YouTube), 'image/jpeg'];
+        $original = tempnam(sys_get_temp_dir(), 'yt_cover_');
+        File::put($original, $bytes);
+
+        try {
+            $converted = app(MediaOptimizer::class)->optimizeImage($original, Platform::YouTube);
+
+            try {
+                return [File::get($converted), 'image/jpeg'];
+            } finally {
+                File::delete($converted);
+            }
+        } finally {
+            File::delete($original);
+        }
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient

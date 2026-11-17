@@ -12,6 +12,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Workspace;
 use App\Services\Post\MediaAttacher;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -115,9 +116,9 @@ class HostInlineMedia
         }
 
         $media = collect($media)->sortKeys()->values()->all();
-        $references = [...$media, ...self::covers($media)];
+        $references = [...$media, ...MediaItem::covers($media)];
         $byToken = ResolveWorkspaceMedia::byUploadTokens($workspace, self::column($references, 'upload_token'));
-        $byId = ResolveWorkspaceMedia::execute($workspace, array_values(array_filter(self::column($references, 'id'), Str::isUuid(...))));
+        $byId = ResolveWorkspaceMedia::execute($workspace, collect(self::column($references, 'id'))->filter(fn (string $id): bool => Str::isUuid($id))->values()->all());
 
         try {
             return collect($media)->map(function (array $item, int $index) use ($workspace, $allowedTypes, $errorKey, $byToken, $byId, &$fetched): array {
@@ -174,7 +175,7 @@ class HostInlineMedia
 
         $url = (string) data_get($item, 'url');
 
-        if (! array_key_exists($url, $fetched)) {
+        if (! Arr::exists($fetched, $url)) {
             $imported = app(MediaAttacher::class)->importUpload($workspace, $allowedTypes, $url);
             $upload = $imported->media
                 ?? throw ValidationException::withMessages(["{$key}.url" => MediaAttacher::failureMessage($imported, $url)]);
@@ -183,21 +184,6 @@ class HostInlineMedia
         }
 
         return self::item(Media::query()->findOrFail($fetched[$url]), $item);
-    }
-
-    /**
-     * The cover references of a list of media items (`meta.cover`).
-     *
-     * @param  array<int, array<string, mixed>>  $media
-     * @return list<array<string, mixed>>
-     */
-    private static function covers(array $media): array
-    {
-        return collect($media)
-            ->map(fn (array $item): mixed => data_get($item, 'meta.cover'))
-            ->filter(fn (mixed $cover): bool => is_array($cover))
-            ->values()
-            ->all();
     }
 
     /**

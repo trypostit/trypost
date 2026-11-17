@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Введите корректное имя пользователя Instagram.',
             'thumbnail_tab' => 'Обложка',
             'thumbnail_heading' => 'Выберите обложку',
-            'thumbnail_hint' => 'Перетащите ползунок, чтобы выбрать кадр, который будет обложкой видео.',
+            'thumbnail_hint' => 'Перетащите по кадрам видео, чтобы выбрать кадр для обложки.',
             'thumbnail_value' => ':seconds с',
             'thumbnail_source_frame' => 'Кадр видео',
             'thumbnail_source_image' => 'Изображение',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Не удалось захватить этот кадр. Загрузите изображение для обложки.',
             'thumbnail_image_upload' => 'Загрузить',
             'thumbnail_image_replace' => 'Заменить',
-            'thumbnail_image_alt' => 'Изображение обложки',
             'video_thumbnail' => 'Видео :number',
             'thumbnail' => 'Изображение :number',
             'cancel' => 'Отмена',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Новый',
         'add_post_in_slot' => 'Добавить пост',
         'more_times' => 'Другое время',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube не применил обложку: для собственных значков нужен подтверждённый канал. Её можно задать в YouTube Studio.',
             'daily_limit' => 'YouTube не применил обложку: канал исчерпал дневной лимит собственных значков. Её можно задать в YouTube Studio.',
             'invalid_image' => 'YouTube не смог прочитать изображение обложки. Другое можно задать в YouTube Studio.',

@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Digite um usuário válido do Instagram.',
             'thumbnail_tab' => 'Miniatura',
             'thumbnail_heading' => 'Escolha uma miniatura',
-            'thumbnail_hint' => 'Arraste o controle para escolher o quadro exibido como capa do vídeo.',
+            'thumbnail_hint' => 'Arraste pelos quadros do vídeo para escolher o que aparece como capa.',
             'thumbnail_value' => ':seconds segundos',
             'thumbnail_source_frame' => 'Quadro do vídeo',
             'thumbnail_source_image' => 'Imagem',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Não foi possível capturar esse quadro. Envie uma imagem como capa.',
             'thumbnail_image_upload' => 'Enviar imagem',
             'thumbnail_image_replace' => 'Trocar imagem',
-            'thumbnail_image_alt' => 'Imagem de capa',
             'video_thumbnail' => 'Vídeo :number',
             'thumbnail' => 'Imagem :number',
             'cancel' => 'Cancelar',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Novo',
         'add_post_in_slot' => 'Adicionar post',
         'more_times' => 'Mais horários',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'O YouTube não aplicou sua capa: miniaturas personalizadas exigem um canal verificado. Você pode definir a capa no YouTube Studio.',
             'daily_limit' => 'O YouTube não aplicou sua capa: seu canal atingiu o limite de miniaturas personalizadas de hoje. Você pode definir a capa no YouTube Studio.',
             'invalid_image' => 'O YouTube não conseguiu ler sua imagem de capa. Você pode definir outra no YouTube Studio.',

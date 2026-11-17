@@ -14,7 +14,6 @@ const props = defineProps<{
 }>();
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
-const source = defineModel<CoverSource>('source', { required: true });
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -23,31 +22,41 @@ const showsImage = computed(() => {
         return false;
     }
 
-    return source.value === 'image';
+    return edit.value.coverSource === 'image';
 });
 const hasCoverImage = computed(() => filled(edit.value.coverImage));
 const accept = stillImageAcceptAttribute();
 
 const sourceClass = (option: CoverSource): string => {
-    if (source.value === option) {
+    if (edit.value.coverSource === option) {
         return 'bg-primary-selected font-medium text-primary-text';
     }
 
     return 'text-muted-foreground hover:text-foreground';
 };
 
+/**
+ * The frame time stays when an image is picked: a network that only takes a
+ * frame (TikTok, a Pinterest pin) keeps publishing it. Going back to a frame
+ * drops the image, so the picked frame (the start, when none was picked, as
+ * the strip shows) becomes the cover again.
+ */
 const selectSource = (option: CoverSource): void => {
-    source.value = option;
+    edit.value.coverSource = option;
 
     if (option === 'image') {
-        edit.value.coverOffsetMs = null;
-
         return;
     }
 
     edit.value.coverImage = null;
-    edit.value.coverOffsetMs = 0;
+
+    if (!filled(edit.value.coverOffsetMs)) {
+        edit.value.coverOffsetMs = 0;
+    }
 };
+
+const isSelected = (option: CoverSource): boolean =>
+    edit.value.coverSource === option;
 
 const pickImage = (): void => {
     fileInput.value?.click();
@@ -64,6 +73,10 @@ const onImagePicked = (event: Event): void => {
 
     if (fromMimeType(file.type) !== MediaType.Image) {
         return;
+    }
+
+    if (filled(edit.value.coverImage?.file)) {
+        URL.revokeObjectURL(edit.value.coverImage.url);
     }
 
     edit.value.coverImage = newCoverImage(URL.createObjectURL(file), null, file);
@@ -93,7 +106,7 @@ const onImagePicked = (event: Event): void => {
                 v-for="option in COVER_SOURCES"
                 :key="option"
                 type="button"
-                :aria-pressed="source === option"
+                :aria-pressed="isSelected(option)"
                 :data-testid="`media-editor-cover-source-${option}`"
                 class="rounded-md px-2 py-1.5 text-sm whitespace-nowrap transition-colors"
                 :class="sourceClass(option)"

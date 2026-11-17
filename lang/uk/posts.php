@@ -274,7 +274,7 @@ return [
             'tags_invalid' => 'Введіть коректне ім\'я користувача Instagram.',
             'thumbnail_tab' => 'Обкладинка',
             'thumbnail_heading' => 'Виберіть обкладинку',
-            'thumbnail_hint' => 'Перетягніть повзунок, щоб вибрати кадр, який буде обкладинкою відео.',
+            'thumbnail_hint' => 'Перетягніть по кадрах відео, щоб вибрати кадр для обкладинки.',
             'thumbnail_value' => ':seconds с',
             'thumbnail_source_frame' => 'Кадр відео',
             'thumbnail_source_image' => 'Зображення',
@@ -282,7 +282,6 @@ return [
             'thumbnail_capture_failed' => 'Не вдалося захопити цей кадр. Завантажте зображення для обкладинки.',
             'thumbnail_image_upload' => 'Завантажити',
             'thumbnail_image_replace' => 'Замінити',
-            'thumbnail_image_alt' => 'Зображення обкладинки',
             'video_thumbnail' => 'Відео :number',
             'thumbnail' => 'Зображення :number',
             'cancel' => 'Скасувати',
@@ -1044,7 +1043,7 @@ return [
         'new_in_slot' => 'Новий',
         'add_post_in_slot' => 'Додати допис',
         'more_times' => 'Інший час',
-        'cover_warning' => [
+        'youtube_thumbnail_warning' => [
             'forbidden' => 'YouTube не застосував обкладинку: для власних значків потрібен підтверджений канал. Її можна задати в YouTube Studio.',
             'daily_limit' => 'YouTube не застосував обкладинку: канал вичерпав денний ліміт власних значків. Її можна задати в YouTube Studio.',
             'invalid_image' => 'YouTube не зміг прочитати зображення обкладинки. Інше можна задати в YouTube Studio.',
