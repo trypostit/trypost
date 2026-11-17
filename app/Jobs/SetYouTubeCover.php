@@ -65,6 +65,8 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         $account = $this->post->socialAccount()->connected()->first();
 
         if (blank($account)) {
+            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+
             return;
         }
 
@@ -122,7 +124,9 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * A server error is tried again; any other refusal stays on the post.
+     * A server error is tried again, and a video removed meanwhile (404
+     * `videoNotFound`) leaves nothing to warn about, like a video YouTube no
+     * longer lists; any other refusal stays on the post.
      *
      * @see https://developers.google.com/youtube/v3/docs/thumbnails/set#errors
      */
@@ -133,6 +137,10 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
             $this->release(self::CHECK_EVERY_SECONDS);
 
+            return;
+        }
+
+        if ($status === Response::HTTP_NOT_FOUND) {
             return;
         }
 

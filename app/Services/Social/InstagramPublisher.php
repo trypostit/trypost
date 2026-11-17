@@ -15,8 +15,8 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\Post;
-use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
@@ -27,8 +27,8 @@ use Illuminate\Support\Facades\Log;
 
 class InstagramPublisher
 {
-    use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use HostsProcessedImages;
 
     private string $baseUrl;
 

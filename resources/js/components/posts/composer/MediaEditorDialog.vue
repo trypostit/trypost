@@ -295,6 +295,22 @@ const stageBasePreset = computed<CropPresetValue>(() => {
 
     return basePreset.value;
 });
+/** A crosshair while a tag is being placed or moved on the stage. */
+const stageBoxClass = computed(() => {
+    if (tab.value !== 'tags') {
+        return '';
+    }
+
+    if (tagging.value) {
+        return 'cursor-crosshair';
+    }
+
+    if (movingIndex.value !== null) {
+        return 'cursor-crosshair';
+    }
+
+    return '';
+});
 const stagePresets = computed(() => {
     if (cropsCover.value) {
         return [];
@@ -339,15 +355,32 @@ const resetDisabled = computed(
             stageEdit.value.straighten === 0),
 );
 
+/**
+ * An item to apply: edited, or a video whose picked frame a network that
+ * takes no frame time (YouTube, added after the frame was picked) still has
+ * to get as a screenshot.
+ */
 const isChanged = (index: number): boolean => {
     const item = editingItems.value[index];
     const itemEdit = edits.value[index];
 
-    return Boolean(
-        item &&
-            itemEdit &&
-            (hasPixelChanges(itemEdit) || hasMetaChanges(itemEdit, item)),
-    );
+    if (!filled(item)) {
+        return false;
+    }
+
+    if (!filled(itemEdit)) {
+        return false;
+    }
+
+    if (hasPixelChanges(itemEdit)) {
+        return true;
+    }
+
+    if (hasMetaChanges(itemEdit, item)) {
+        return true;
+    }
+
+    return needsFrameCapture(item, itemEdit, rules.value);
 };
 const changedIndexes = computed(() =>
     editingItems.value.map((_, index) => index).filter(isChanged),
@@ -643,12 +676,7 @@ watch(tagging, (isTagging) => {
                                 :crop-mode="cropMode"
                                 :resize-any-ratio="resizesAnyRatio"
                                 test-id-prefix="media-editor"
-                                :box-class="
-                                    tab === 'tags' &&
-                                    (tagging || movingIndex !== null)
-                                        ? 'cursor-crosshair'
-                                        : ''
-                                "
+                                :box-class="stageBoxClass"
                                 @load="onImageLoad"
                                 @error="onImageError"
                                 @press="onStagePress"

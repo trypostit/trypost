@@ -15,8 +15,8 @@ use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
 use Google\Client as GoogleClient;
@@ -32,8 +32,8 @@ use Illuminate\Support\Facades\Log;
 
 class YouTubePublisher
 {
-    use FitsImageToCanvas;
     use HasSocialHttpClient;
+    use HostsProcessedImages;
 
     private const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
@@ -117,16 +117,16 @@ class YouTubePublisher
             return;
         }
 
-        $download = Http::timeout(120)->get($cover->url);
+        $download = $this->downloadImage($cover->url) ?? throw new YouTubePublishException(
+            userMessage: 'Failed to download the cover image for YouTube',
+            category: ErrorCategory::ServerError,
+        );
 
-        if ($download->failed()) {
-            throw new YouTubePublishException(
-                userMessage: 'Failed to download the cover image for YouTube',
-                category: ErrorCategory::ServerError,
-            );
+        try {
+            [$bytes, $mimeType] = $this->coverImage($cover, $download);
+        } finally {
+            File::delete($download);
         }
-
-        [$bytes, $mimeType] = $this->coverImage($cover, $download->body());
 
         $youtube = new YouTube($this->createGoogleClient($post->socialAccount));
         $youtube->thumbnails->set($post->platform_post_id, [
@@ -137,30 +137,23 @@ class YouTubePublisher
     }
 
     /**
-     * The cover as YouTube takes it: a JPEG or a PNG as is, any other image
-     * re-encoded as a JPEG.
+     * The downloaded cover as YouTube takes it: a JPEG or a PNG as is, any
+     * other image re-encoded as a JPEG.
      *
      * @return array{0: string, 1: string}
      */
-    private function coverImage(MediaItem $cover, string $bytes): array
+    private function coverImage(MediaItem $cover, string $path): array
     {
         if (in_array($cover->mime_type, self::COVER_MIME_TYPES, true)) {
-            return [$bytes, (string) $cover->mime_type];
+            return [File::get($path), (string) $cover->mime_type];
         }
 
-        $original = tempnam(sys_get_temp_dir(), 'yt_cover_');
-        File::put($original, $bytes);
+        $converted = $this->jpegFrom($path, Platform::YouTube, self::COVER_MAX_BYTES);
 
         try {
-            $converted = $this->jpegFrom($original, Platform::YouTube, self::COVER_MAX_BYTES);
-
-            try {
-                return [File::get($converted), 'image/jpeg'];
-            } finally {
-                File::delete($converted);
-            }
+            return [File::get($converted), 'image/jpeg'];
         } finally {
-            File::delete($original);
+            File::delete($converted);
         }
     }
 

@@ -14,7 +14,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
-trait FitsImageToCanvas
+/**
+ * Prepares an image a network fetches or receives: fitted into a story's
+ * canvas, or re-encoded as the network's JPEG, then hosted or handed back.
+ */
+trait HostsProcessedImages
 {
     public const CROP_DIRECTORY = 'social-crops';
 
@@ -86,20 +90,16 @@ trait FitsImageToCanvas
      * JPEG it wrote), hosts the result and returns its public URL. Both
      * temporary files are removed whatever happens.
      *
-     *
      * @param  Closure(string): string  $process
      *
      * @throws SocialPublishException when the image cannot be downloaded or processed
      */
     private function hostProcessedImage(string $imageUrl, Closure $process, string $purpose): string
     {
-        $download = tempnam(sys_get_temp_dir(), 'image_in_');
+        $download = $this->downloadImage($imageUrl)
+            ?? throw $this->cropFailureException("Failed to download image for {$purpose}");
 
         try {
-            if (Http::sink($download)->timeout(120)->get($imageUrl)->failed()) {
-                throw $this->cropFailureException("Failed to download image for {$purpose}");
-            }
-
             try {
                 $processed = $process($download);
             } catch (Throwable) {
@@ -119,6 +119,23 @@ trait FitsImageToCanvas
         } finally {
             File::delete($download);
         }
+    }
+
+    /**
+     * Downloads the image to a temporary file and returns its path (the
+     * caller deletes it), or null when the download fails.
+     */
+    protected function downloadImage(string $imageUrl): ?string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'image_in_');
+
+        if (Http::sink($path)->timeout(120)->get($imageUrl)->failed()) {
+            File::delete($path);
+
+            return null;
+        }
+
+        return $path;
     }
 
     /**

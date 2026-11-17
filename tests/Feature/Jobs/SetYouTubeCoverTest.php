@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\YouTube\ThumbnailWarning;
 use App\Exceptions\TokenExpiredException;
 use App\Http\Resources\App\PostCardResource;
@@ -203,4 +204,26 @@ test('a cover that cannot be made a jpeg leaves the invalid image warning at onc
 
     expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::InvalidImage);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set'));
+});
+
+test('a video removed before its thumbnail was set leaves no warning', function () {
+    Http::fake([
+        YOUTUBE_VIDEOS_URL => Http::response(youTubeProcessing('succeeded')),
+        YOUTUBE_COVER_URL => Http::response('jpeg bytes', 200, ['Content-Type' => 'image/jpeg']),
+        YOUTUBE_THUMBNAILS_URL => Http::response(['error' => ['code' => 404, 'message' => 'not found', 'errors' => [['reason' => 'videoNotFound']]]], 404),
+    ]);
+
+    runSetYouTubeCover($this->post)->assertNotReleased();
+
+    expect($this->post->fresh()->youTubeThumbnailWarning())->toBeNull();
+});
+
+test('a channel no longer connected leaves the failed warning', function () {
+    $this->account->update(['status' => AccountStatus::TokenExpired]);
+    Http::fake();
+
+    runSetYouTubeCover($this->post);
+
+    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+    Http::assertNothingSent();
 });

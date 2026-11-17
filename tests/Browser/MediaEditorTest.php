@@ -1044,7 +1044,7 @@ test('the thumbnail tab picks the frame by dragging along a strip under the vide
 });
 
 test('the composer shows the picked cover on the media tile and on the preview until it plays', function (string $picked, string $tileElement, string $tileShows) {
-    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $image = ['id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}"];
     $cover = match ($picked) {
@@ -1070,6 +1070,42 @@ test('the composer shows the picked cover on the media tile and on the preview u
     'a frame with its screenshot' => ['captured frame', 'video', "element.src.endsWith('#t=2.5')"],
     'an uploaded image' => ['image', 'img', "element.src.startsWith('data:image/png')"],
 ]);
+
+test('a tiktok preview shows the picked frame, not an image uploaded for another network', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'image', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, '@video-preview-cover', "element.tagName === 'VIDEO' && element.src.endsWith('#t=2.5')");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a frame picked before youtube was added gets its screenshot when the editor applies', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
+    $media = $post->media;
+    $media[0]['meta']['cover_offset_ms'] = 1500;
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $owned = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
+
+    expect($owned->post_id)->toBe($post->id)
+        ->and(data_get($post->fresh()->media, '0.meta.cover_source'))->toBe('frame')
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500);
+    $page->assertNoJavaScriptErrors();
+});
 
 test('a video without a picked cover shows the video itself on the preview', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);

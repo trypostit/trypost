@@ -18,6 +18,7 @@ import XPreview from '@/components/posts/previews/XPreview.vue';
 import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
+import { mediaRuleFor } from '@/lib/contentTypeMediaRules';
 import { filled } from '@/lib/helpers';
 import {
     repliesAreComments,
@@ -25,6 +26,7 @@ import {
     threadRepliesOf,
     threadReplyContentType,
 } from '@/lib/threadReplies';
+import { withCoversFor } from '@/lib/videoFrame';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 import type { PublishConfig } from '@/types/platform';
@@ -54,6 +56,17 @@ const { contentFor } = useXLinkDefuser();
  * keeps the rewrite in one place on the client just as it is on the server.
  */
 const previewContent = computed((): string => contentFor(props.content, props.platform));
+
+/** Whether this post's network takes a cover image, so its preview shows the one uploaded. */
+const takesCoverImage = computed((): boolean => {
+    if (!filled(props.contentType)) {
+        return false;
+    }
+
+    return mediaRuleFor(props.contentType)?.supports_custom_video_cover ?? false;
+});
+
+const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
     THREAD_PLATFORMS.includes(props.platform) && !repliesAreComments(props.platform)
@@ -159,7 +172,7 @@ const previewComponent = computed(() => {
                 :is="previewComponent"
                 :social-account="resolvedSocialAccount"
                 :content="previewContent"
-                :media="media"
+                :media="previewMedia"
                 :content-type="contentType"
                 :meta="meta"
                 :posted-at="postedAt"

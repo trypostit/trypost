@@ -1,3 +1,5 @@
+import { objectOmit } from '@vueuse/core';
+
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
 import type { CoverSource, MediaItem } from '@/types/media';
@@ -26,6 +28,28 @@ export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource =>
     }
 
     return 'frame';
+};
+
+/**
+ * The media as a network shows it: a network that takes no cover image
+ * (TikTok, a Pinterest pin, an Instagram feed video) never shows the one
+ * uploaded for another, as the server drops it when the post is saved.
+ */
+export const withCoversFor = (
+    media: MediaItem[],
+    takesCoverImage: boolean,
+): MediaItem[] => {
+    if (takesCoverImage) {
+        return media;
+    }
+
+    return media.map((item) => {
+        if (!filled(item.meta?.cover)) {
+            return item;
+        }
+
+        return { ...item, meta: objectOmit(item.meta, ['cover', 'cover_source']) };
+    });
 };
 
 /** Whether the user picked a cover for the video: an image, or a frame of it. */

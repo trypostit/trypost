@@ -35,6 +35,8 @@ const seconds = computed({
     },
 });
 
+const pickedTime = computed(() => formatCoverOffset(edit.value.coverOffsetMs ?? 0));
+
 /** Where the picked frame sits on the strip, from 0 (start) to 1 (end). */
 const position = computed(() => {
     if (maxSeconds.value <= 0) {
@@ -157,7 +159,7 @@ watch(seconds, showSelectedFrame);
             class="text-center text-xs text-muted-foreground tabular-nums"
             data-testid="media-editor-cover-value"
         >
-            {{ formatCoverOffset(edit.coverOffsetMs ?? 0) }}
+            {{ pickedTime }}
         </p>
     </div>
 </template>
