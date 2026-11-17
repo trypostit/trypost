@@ -4,8 +4,9 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
-import { type CoverSource, type MediaEdit, newCoverImage } from '@/lib/mediaEditor';
+import { type MediaEdit, newCoverImage } from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
+import type { CoverSource } from '@/types/media';
 
 const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
 
@@ -37,14 +38,20 @@ const sourceClass = (option: CoverSource): string => {
 
 /**
  * The frame time stays when an image is picked: a network that only takes a
- * frame (TikTok, a Pinterest pin) keeps publishing it. Going back to a frame
+ * frame (TikTok, a Pinterest pin) keeps publishing it. The frame's screenshot
+ * goes, so the stage waits for an image of the user's own. Going back to a frame
  * drops the image, so the picked frame (the start, when none was picked, as
  * the strip shows) becomes the cover again.
  */
 const selectSource = (option: CoverSource): void => {
+    const wasFrame = edit.value.coverSource === 'frame';
     edit.value.coverSource = option;
 
     if (option === 'image') {
+        if (wasFrame) {
+            edit.value.coverImage = null;
+        }
+
         return;
     }
 

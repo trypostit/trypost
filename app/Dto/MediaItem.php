@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Enums\Media\CoverSource;
 use App\Enums\Media\Source;
 use App\Enums\Media\Type;
 use App\Enums\SocialAccount\Platform;
@@ -161,8 +162,28 @@ class MediaItem
     }
 
     /**
-     * The image the user uploaded as this video's cover, stored as a whole
-     * media item in `meta.cover`.
+     * Where this video's cover comes from. A cover stored without its source
+     * (sent by the API or MCP) is an uploaded image.
+     */
+    public function coverSource(): CoverSource
+    {
+        $source = CoverSource::tryFrom((string) data_get($this->meta, 'cover_source'));
+
+        if (filled($source)) {
+            return $source;
+        }
+
+        if (filled($this->cover())) {
+            return CoverSource::Image;
+        }
+
+        return CoverSource::Frame;
+    }
+
+    /**
+     * The image stored as this video's cover in `meta.cover`: one the user
+     * uploaded, or the screenshot of the picked frame (`coverSource()` says
+     * which).
      */
     public function cover(): ?self
     {

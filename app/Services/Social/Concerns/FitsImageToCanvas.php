@@ -43,27 +43,42 @@ trait FitsImageToCanvas
      * budget of MediaOptimizer), host it, and return a public URL. Used where
      * a network takes only JPEG, like an Instagram Reel cover.
      */
-    protected function hostAsJpeg(string $imageUrl, Platform $platform): string
+    protected function hostAsJpeg(string $imageUrl, Platform $platform, int $maxBytes): string
     {
         return $this->hostProcessedImage(
             $imageUrl,
-            fn (string $path): string => $this->jpegOrFail(app(MediaOptimizer::class)->optimizeImage($path, $platform)),
+            fn (string $path): string => $this->jpegFrom($path, $platform, $maxBytes),
             'JPEG conversion',
         );
     }
 
     /**
-     * The converted file, or a failure when MediaOptimizer left it as it was.
+     * Re-encodes the image file as the platform's JPEG and returns the path of
+     * the result (the caller deletes it). Fails when MediaOptimizer could not
+     * convert it (it hands back an image too large to decode untouched) or the
+     * result is still over `$maxBytes`.
      */
-    private function jpegOrFail(string $path): string
+    protected function jpegFrom(string $path, Platform $platform, int $maxBytes): string
     {
-        if (File::mimeType($path) === self::JPEG_MIME_TYPE) {
-            return $path;
+        try {
+            $converted = app(MediaOptimizer::class)->optimizeImage($path, $platform);
+        } catch (Throwable) {
+            throw $this->cropFailureException('Failed to convert image to JPEG');
         }
 
-        File::delete($path);
+        if (File::mimeType($converted) !== self::JPEG_MIME_TYPE) {
+            File::delete($converted);
 
-        throw $this->cropFailureException('Failed to convert image to JPEG');
+            throw $this->cropFailureException('Failed to convert image to JPEG');
+        }
+
+        if (File::size($converted) > $maxBytes) {
+            File::delete($converted);
+
+            throw $this->cropFailureException('Converted image is too large');
+        }
+
+        return $converted;
     }
 
     /**
@@ -93,7 +108,8 @@ trait FitsImageToCanvas
 
             try {
                 $directory = self::CROP_DIRECTORY;
-                $path = "{$directory}/".Str::uuid()->toString().'.jpg';
+                $name = Str::uuid()->toString();
+                $path = "{$directory}/{$name}.jpg";
                 Storage::put($path, File::get($processed));
 
                 return Storage::url($path);

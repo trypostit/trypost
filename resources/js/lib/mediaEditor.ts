@@ -12,8 +12,8 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
-import { type CoverSource, storedCoverSource } from '@/lib/videoFrame';
-import type { MediaItem, MediaUserTag } from '@/types/media';
+import { storedCoverSource } from '@/lib/videoFrame';
+import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =
     | 'freeform'
@@ -72,22 +72,6 @@ export type MediaEdit = {
     coverOffsetMs: number | null;
     coverImage: CoverImage | null;
     coverSource: CoverSource;
-};
-
-export type { CoverSource } from '@/lib/videoFrame';
-
-/**
- * An image picked as a video's cover: the stored item, or a file picked in
- * the editor and uploaded when the edit is applied. `url` is what the stage
- * shows, `crop` how the user framed it (the stage edits it like an image)
- * and `natural` its size once the stage has loaded it.
- */
-export type CoverImage = {
-    url: string;
-    item: MediaItem | null;
-    file: File | null;
-    crop: MediaEdit;
-    natural: { width: number; height: number } | null;
 };
 
 /** Instagram Reels and YouTube Shorts show a cover at 9:16 and crop anything else to its middle. */
@@ -247,6 +231,15 @@ export const createMediaEdit = (item: MediaItem): MediaEdit => ({
 });
 
 
+/** The source the edit saves: an image picked but never uploaded leaves the cover as it was saved, a frame. */
+export const savedCoverSource = (edit: MediaEdit): CoverSource => {
+    if (!filled(edit.coverImage)) {
+        return 'frame';
+    }
+
+    return edit.coverSource;
+};
+
 /** Whether the edit picks another cover image than the item has. */
 export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
     const stored = item.meta?.cover;
@@ -267,9 +260,22 @@ export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean =
 };
 
 /**
+ * A network that takes a cover image but no frame time (YouTube) needs the
+ * picked frame as an image. One that takes the frame time (Instagram, TikTok,
+ * Pinterest) shows that exact frame from the time alone.
+ */
+const takesFrameAsImage = (rule: MediaRules): boolean => {
+    if (!rule.supportsCustomVideoCover) {
+        return false;
+    }
+
+    return !rule.supportsVideoCover;
+};
+
+/**
  * Whether applying the edit takes a screenshot of the video as its cover: a
- * network that takes a cover image (Instagram Reels, YouTube) gets the picked
- * frame as that image, unless the stored cover is already that frame.
+ * network that takes no frame time (YouTube) gets the picked frame as an
+ * image, unless the stored cover is already that frame.
  */
 export const needsFrameCapture = (
     item: MediaItem,
@@ -284,7 +290,7 @@ export const needsFrameCapture = (
         return false;
     }
 
-    if (!rules.some((rule) => rule.supportsCustomVideoCover)) {
+    if (!rules.some(takesFrameAsImage)) {
         return false;
     }
 
@@ -322,7 +328,7 @@ export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
         return true;
     }
 
-    if (edit.coverSource !== storedCoverSource(item)) {
+    if (savedCoverSource(edit) !== storedCoverSource(item)) {
         return true;
     }
 

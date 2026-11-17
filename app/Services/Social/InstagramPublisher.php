@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\Instagram\ContainerStatus;
 use App\Enums\Instagram\TrialGraduation;
+use App\Enums\Media\CoverSource;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -333,10 +334,11 @@ class InstagramPublisher
     }
 
     /**
-     * A Reel's cover: the uploaded image when the user picked the Reel type
-     * (Instagram takes `cover_url` on Reels only and prefers it over
-     * `thumb_offset`), else the picked frame. An image that cannot be made a
-     * JPEG falls back to the frame rather than failing the Reel.
+     * A Reel's cover: the image the user uploaded when they picked the Reel
+     * type (Instagram takes `cover_url` on Reels only and prefers it over
+     * `thumb_offset`), else the picked frame as its time, which Instagram
+     * shows exactly (the frame's screenshot is for YouTube). An image that
+     * cannot be made a JPEG falls back to the frame rather than failing.
      *
      * @return array{cover_url?: string, thumb_offset?: int}
      */
@@ -345,6 +347,10 @@ class InstagramPublisher
         $cover = $media->cover();
 
         if (blank($cover)) {
+            return $this->thumbOffsetParam($media);
+        }
+
+        if ($media->coverSource() === CoverSource::Frame) {
             return $this->thumbOffsetParam($media);
         }
 
@@ -371,15 +377,15 @@ class InstagramPublisher
     private function coverUrl(MediaItem $cover): string
     {
         if ($cover->mime_type !== self::COVER_MIME_TYPE) {
-            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
         }
 
         if (blank($cover->size)) {
-            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
         }
 
         if ($cover->size > self::COVER_MAX_BYTES) {
-            return $this->hostAsJpeg($cover->url, Platform::Instagram);
+            return $this->hostAsJpeg($cover->url, Platform::Instagram, self::COVER_MAX_BYTES);
         }
 
         return $cover->url;

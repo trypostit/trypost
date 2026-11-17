@@ -281,7 +281,7 @@ return [
             'thumbnail_image_hint' => 'Votre vidéo affiche cette image comme couverture. Utilisez une image 9:16 pour que rien ne soit coupé.',
             'thumbnail_capture_failed' => 'Impossible de capturer cette image de la vidéo. Importez plutôt une image comme couverture.',
             'thumbnail_image_upload' => 'Importer une image',
-            'thumbnail_image_replace' => 'Remplacer',
+            'thumbnail_image_replace' => 'Changer l\'image',
             'video_thumbnail' => 'Vidéo :number',
             'thumbnail' => 'Image :number',
             'cancel' => 'Annuler',

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { clamp, filled } from '@/lib/helpers';
 import { formatCoverOffset, type MediaEdit } from '@/lib/mediaEditor';
+import { releaseVideo } from '@/lib/videoFrame';
 
 /** How many frames the strip shows across the video. */
 const FRAME_COUNT = 8;
@@ -93,14 +94,17 @@ onMounted(() => {
     const video = document.createElement('video');
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'metadata';
     video.addEventListener('loadedmetadata', paintFrames, { once: true });
     video.src = props.src;
     stripVideo = video;
 });
 
 onBeforeUnmount(() => {
-    stripVideo?.removeAttribute('src');
+    if (filled(stripVideo)) {
+        releaseVideo(stripVideo);
+    }
+
     stripVideo = null;
 });
 

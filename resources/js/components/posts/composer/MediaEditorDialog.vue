@@ -26,8 +26,6 @@ import { filled } from '@/lib/helpers';
 import {
     createMediaEdit,
     COVER_CROP_PRESET,
-    type CoverImage,
-    type CoverSource,
     cropPresetsFor,
     editorTabsFor,
     type EditorTab,
@@ -46,7 +44,7 @@ import {
 } from '@/lib/mediaEditor';
 import { isVideo } from '@/lib/mediaType';
 import { captureVideoFrame } from '@/lib/videoFrame';
-import type { MediaItem, MediaUserTag } from '@/types/media';
+import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
 
 export type MediaEditChange = {
     index: number;
@@ -163,6 +161,10 @@ const cropsCover = computed(() => {
         return false;
     }
 
+    if (!supportsCustomCover.value) {
+        return false;
+    }
+
     if (edit.value?.coverSource !== 'image') {
         return false;
     }
@@ -178,6 +180,10 @@ const showsTimeline = computed(() => {
 
     if (tab.value !== 'thumbnail') {
         return false;
+    }
+
+    if (!supportsCustomCover.value) {
+        return true;
     }
 
     return edit.value?.coverSource === 'frame';
@@ -454,10 +460,6 @@ const renderCover = async (cover: CoverImage): Promise<CoverImage> => {
     const source = coverPixelItem(cover);
     const image = await loadImage(pixelSource(source));
     const rendered = await renderMediaEdit(image, source, cover.crop);
-
-    if (filled(cover.file)) {
-        URL.revokeObjectURL(cover.url);
-    }
 
     return newCoverImage(URL.createObjectURL(rendered.file), null, rendered.file);
 };

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Media\AuditMedia;
+use App\Actions\Media\SyncOwnedMedia;
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\DuplicatePost;
@@ -11,11 +12,13 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\UpdatePostTool;
+use App\Models\Idea;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Media\MediaCopyBatch;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -208,6 +211,7 @@ test('a post on a network that only takes a frame keeps the frame and drops the 
     ])->assertOk();
 
     expect(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(data_get($post->fresh()->media, '0.meta.cover_source'))->toBeNull()
         ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(1500)
         ->and($upload->fresh()->post_id)->toBeNull();
 });
@@ -249,4 +253,46 @@ test('a thread reply video drops a cover image sent with it', function () {
     expect(data_get($post->fresh()->meta, 'thread_replies.0.media.0.meta.cover'))->toBeNull()
         ->and($upload->fresh()->post_id)->toBeNull()
         ->and($replyVideo->fresh()->post_id)->toBe($post->id);
+});
+
+test('an idea keeps the cover image for the post it becomes', function () {
+    $idea = Idea::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $video = Media::factory()->video()->stored()->temporaryUpload($this->workspace)->create();
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    MediaCopyBatch::run(fn (MediaCopyBatch $batch) => SyncOwnedMedia::execute($idea, [videoCoverImageItem($video, MediaItem::fromMedia($upload)->toArray())], $batch));
+
+    expect(data_get($idea->fresh()->media, '0.meta.cover.id'))->toBe($upload->id)
+        ->and($upload->fresh()->idea_id)->toBe($idea->id);
+});
+
+test('turning a reel into a feed post drops its cover image and deletes the row', function () {
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    updateVideoCoverImageOnWeb($this, [videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray())]);
+    $stored = $this->post->fresh()->media;
+
+    $this->actingAs($this->user)->put(route('app.posts.update', $this->post), [
+        'status' => 'draft',
+        'content' => 'hi',
+        'content_type' => ContentType::InstagramFeed->value,
+        'media' => $stored,
+    ])->assertSessionHasNoErrors();
+
+    expect($this->post->fresh()->content_type)->toBe(ContentType::InstagramFeed)
+        ->and(data_get($this->post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(Media::query()->whereKey($upload->id)->exists())->toBeFalse();
+});
+
+test('a cover takes its video\'s place in the order instead of one of its own', function () {
+    $second = Media::factory()->video()->ownedByPost($this->post)->stored()->create(['meta' => ['duration' => 10]]);
+    $upload = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+
+    updateVideoCoverImageOnWeb($this, [
+        videoCoverImageItem($this->video, MediaItem::fromMedia($upload)->toArray()),
+        MediaItem::fromMedia($second)->toArray(),
+    ])->assertSessionHasNoErrors();
+
+    expect($this->video->fresh()->order)->toBe(0)
+        ->and($upload->fresh()->order)->toBe(0)
+        ->and($second->fresh()->order)->toBe(1);
 });

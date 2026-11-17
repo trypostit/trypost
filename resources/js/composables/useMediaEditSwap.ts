@@ -2,9 +2,8 @@ import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
 import { filled } from '@/lib/helpers';
-import type { CoverImage } from '@/lib/mediaEditor';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
-import type { MediaItem } from '@/types/media';
+import type { CoverImage, MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
 
 const editedMeta = (

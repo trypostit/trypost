@@ -15,6 +15,8 @@ use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 const YOUTUBE_VIDEOS_URL = 'https://youtube.googleapis.com/youtube/v3/videos*';
 const YOUTUBE_THUMBNAILS_URL = 'https://youtube.googleapis.com/upload/youtube/v3/thumbnails/set*';
@@ -166,4 +168,39 @@ test('a revoked token leaves the failed warning at once instead of retrying', fu
     runSetYouTubeCover($this->post)->assertNotReleased();
 
     expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+});
+
+test('a cover that is not a jpeg or a png reaches youtube as a jpeg', function () {
+    $this->post->update(['media' => [[...$this->post->media[0], 'meta' => ['cover' => [
+        ...data_get($this->post->media, '0.meta.cover'),
+        'mime_type' => 'image/webp',
+    ]]]]]);
+    $webp = (string) (new ImageManager(Driver::class))->createImage(320, 568)->fill('336699')->encodeUsingMediaType('image/webp');
+    Http::fake([
+        YOUTUBE_VIDEOS_URL => Http::response(youTubeProcessing('succeeded')),
+        YOUTUBE_COVER_URL => Http::response($webp, 200, ['Content-Type' => 'image/webp']),
+        YOUTUBE_THUMBNAILS_URL => Http::response(['kind' => 'youtube#thumbnailSetResponse', 'items' => []]),
+    ]);
+
+    runSetYouTubeCover($this->post);
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set')
+        && $request->header('Content-Type')[0] === 'image/jpeg'
+        && str_starts_with($request->body(), "\xFF\xD8"));
+});
+
+test('a cover that cannot be made a jpeg leaves the invalid image warning at once', function () {
+    $this->post->update(['media' => [[...$this->post->media[0], 'meta' => ['cover' => [
+        ...data_get($this->post->media, '0.meta.cover'),
+        'mime_type' => 'image/webp',
+    ]]]]]);
+    Http::fake([
+        YOUTUBE_VIDEOS_URL => Http::response(youTubeProcessing('succeeded')),
+        YOUTUBE_COVER_URL => Http::response('not an image', 200, ['Content-Type' => 'image/webp']),
+    ]);
+
+    runSetYouTubeCover($this->post)->assertNotReleased();
+
+    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::InvalidImage);
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set'));
 });

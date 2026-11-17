@@ -11,10 +11,11 @@ use App\Enums\YouTube\PrivacyStatus;
 use App\Enums\YouTube\ProcessingStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Services\Media\MediaOptimizer;
+use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
@@ -31,12 +32,16 @@ use Illuminate\Support\Facades\Log;
 
 class YouTubePublisher
 {
+    use FitsImageToCanvas;
     use HasSocialHttpClient;
 
     private const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
     /** @var list<string> */
     private const array COVER_MIME_TYPES = ['image/jpeg', 'image/png'];
+
+    /** thumbnails.set takes an image of up to 50 MB. */
+    private const int COVER_MAX_BYTES = 50 * 1024 * 1024;
 
     public function publish(Post $post): array
     {
@@ -147,7 +152,7 @@ class YouTubePublisher
         File::put($original, $bytes);
 
         try {
-            $converted = app(MediaOptimizer::class)->optimizeImage($original, Platform::YouTube);
+            $converted = $this->jpegFrom($original, Platform::YouTube, self::COVER_MAX_BYTES);
 
             try {
                 return [File::get($converted), 'image/jpeg'];
@@ -157,6 +162,14 @@ class YouTubePublisher
         } finally {
             File::delete($original);
         }
+    }
+
+    protected function cropFailureException(string $message): SocialPublishException
+    {
+        return new YouTubePublishException(
+            userMessage: $message,
+            category: ErrorCategory::MediaFormat,
+        );
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient

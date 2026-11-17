@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Enums\YouTube\ProcessingStatus;
 use App\Enums\YouTube\ThumbnailWarning;
+use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\ConnectionVerifier;
@@ -76,6 +78,8 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
             $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
         } catch (GoogleServiceException $exception) {
             $this->settle($exception);
+        } catch (YouTubePublishException $exception) {
+            $this->settleCoverFile($exception);
         }
     }
 
@@ -133,6 +137,21 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         }
 
         $this->post->recordYouTubeThumbnailWarning(self::warningFor($status));
+    }
+
+    /**
+     * A cover that cannot be made a JPEG never will be; a download that
+     * failed is tried again.
+     *
+     * @throws YouTubePublishException
+     */
+    private function settleCoverFile(YouTubePublishException $exception): void
+    {
+        if ($exception->category !== ErrorCategory::MediaFormat) {
+            throw $exception;
+        }
+
+        $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::InvalidImage);
     }
 
     private static function warningFor(int $status): ThumbnailWarning

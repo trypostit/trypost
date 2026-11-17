@@ -2465,6 +2465,20 @@ test('instagram reel publishes with the picked frame when the cover cannot be ma
         && data_get($request->data(), 'thumb_offset') === 1500);
 });
 
+test('instagram reel sends a frame cover as its time, not as its screenshot', function () {
+    $this->post->update(['content_type' => ContentType::InstagramReel, 'media' => [instagramVideoWithCover([])]]);
+    $media = $this->post->media;
+    $media[0]['meta']['cover_source'] = 'frame';
+    $this->post->update(['media' => $media]);
+    $containerUrl = fakeInstagramReelPublish();
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === $containerUrl
+        && data_get($request->data(), 'cover_url') === null
+        && data_get($request->data(), 'thumb_offset') === 1500);
+});
+
 test('a feed video keeps its cover frame, since only a reel takes a cover image', function () {
     $this->post->update(['content_type' => ContentType::InstagramFeed, 'media' => [instagramVideoWithCover([])]]);
     $containerUrl = fakeInstagramReelPublish();

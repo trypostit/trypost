@@ -87,15 +87,13 @@ class SyncOwnedMedia
             ->keyBy(fn (array $item): string => (string) data_get($item, 'id'));
 
         $position = 0;
-        $own = function (array $item, string $key) use ($owner, $ownerColumn, $batch, $rows, $tokens, $passThrough, &$position): array {
+        $own = function (array $item, string $key, int $position) use ($owner, $ownerColumn, $batch, $rows, $tokens, $passThrough): array {
             $token = data_get($item, 'upload_token');
             $source = filled($token)
                 ? ($tokens->get($token) ?? self::spentTokenSource($rows->get(data_get($item, 'id')), $ownerColumn, $owner, $batch))
                 : $rows->get(data_get($item, 'id'));
 
             if (blank($source) && blank($token) && $passThrough->has((string) data_get($item, 'id'))) {
-                $position++;
-
                 return $passThrough->get((string) data_get($item, 'id'));
             }
 
@@ -110,24 +108,28 @@ class SyncOwnedMedia
                 $batch->canMove($source) => self::adopt($source, $ownerColumn, $owner, $batch, $position),
                 default => self::copy($source, $ownerColumn, $owner, $batch, $position, $key),
             };
-            $position++;
 
             return self::item($owned);
         };
 
         $keepsCovers = self::keepsCovers($locked);
-        $sync = function (array $items, string $errorKey) use ($own, $keepsCovers): array {
+        $sync = function (array $items, string $errorKey) use ($own, $keepsCovers, &$position): array {
             $final = [];
 
             foreach ($items as $index => $item) {
                 $key = "{$errorKey}.{$index}";
-                $owned = self::withEdits(Arr::except($own($item, $key), 'meta.cover'), $item);
-                $cover = $keepsCovers ? data_get($item, 'meta.cover') : null;
+                $owned = self::withEdits(Arr::except($own($item, $key, $position), 'meta.cover'), $item);
+                $cover = data_get($item, 'meta.cover');
 
-                if (is_array($cover)) {
-                    $owned['meta'] = [...(array) data_get($owned, 'meta', []), 'cover' => self::coverItem($own($cover, "{$key}.meta.cover"), "{$key}.meta.cover")];
+                if (! $keepsCovers) {
+                    Arr::forget($owned, 'meta.cover_source');
                 }
 
+                if ($keepsCovers && is_array($cover)) {
+                    $owned['meta'] = [...(array) data_get($owned, 'meta', []), 'cover' => self::coverItem($own($cover, "{$key}.meta.cover", $position), "{$key}.meta.cover")];
+                }
+
+                $position++;
                 $final[] = $owned;
             }
 

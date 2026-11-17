@@ -786,12 +786,9 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     $page->click('@media-editor-apply');
     saveMediaEditorDraft($page);
 
-    $cover = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
-
     expect($post->fresh()->media[0]['meta']['cover_offset_ms'])->toBe(2500)
         ->and($post->fresh()->media[0]['id'])->toBe('video-1')
-        ->and($cover->post_id)->toBe($post->id)
-        ->and($cover->type)->toBe(MediaType::Image);
+        ->and(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 
@@ -847,8 +844,38 @@ test('a reel video takes an uploaded image as its cover', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('switching back to a video frame saves a screenshot of that frame as the cover', function () {
+test('switching a reel back to a video frame saves the frame time and drops the image', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-selection');
+
+    $page->click('@media-editor-cover-source-frame');
+    waitFor($page, '@media-editor-cover');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    expect(data_get($post->fresh()->media, '0.meta.cover'))->toBeNull()
+        ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('switching a youtube short back to a video frame saves a screenshot of that frame as the cover', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $media = $post->media;
     $media[0]['meta']['cover'] = [
@@ -909,6 +936,28 @@ test('picking an image as the cover keeps the frame picked for the networks that
         ->and(data_get($meta, 'cover_offset_ms'))->toBe(2500)
         ->and(data_get($meta, 'cover.id'))->not->toBeNull();
     $page->assertNoJavaScriptErrors();
+});
+
+test('picking image over a frame cover waits for an image instead of reusing the frame screenshot', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'frame', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+
+    $page->click('@media-editor-cover-source-image');
+    waitFor($page, '@media-editor-stage-video');
+
+    $page->assertMissing('@media-editor-selection')
+        ->assertSee('Upload image')
+        ->assertNoJavaScriptErrors();
 });
 
 test('reframing a stored cover saves the new frame of it', function () {
@@ -997,9 +1046,12 @@ test('the thumbnail tab picks the frame by dragging along a strip under the vide
 test('the composer shows the picked cover on the media tile and on the preview until it plays', function (string $picked, string $tileElement, string $tileShows) {
     [$post] = seedMediaEditorVideoPost(ContentType::TikTokVideo);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
-    $cover = $picked === 'frame'
-        ? ['cover_offset_ms' => 2500]
-        : ['cover' => ['id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}"]];
+    $image = ['id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}"];
+    $cover = match ($picked) {
+        'frame' => ['cover_offset_ms' => 2500],
+        'captured frame' => ['cover_offset_ms' => 2500, 'cover' => $image, 'cover_source' => 'frame'],
+        'image' => ['cover' => $image],
+    };
     $media = $post->media;
     $media[0]['meta'] = [...$media[0]['meta'], ...$cover];
     $post->update(['media' => $media]);
@@ -1015,6 +1067,7 @@ test('the composer shows the picked cover on the media tile and on the preview u
     $page->assertNoJavaScriptErrors();
 })->with([
     'a picked frame' => ['frame', 'video', "element.src.endsWith('#t=2.5')"],
+    'a frame with its screenshot' => ['captured frame', 'video', "element.src.endsWith('#t=2.5')"],
     'an uploaded image' => ['image', 'img', "element.src.startsWith('data:image/png')"],
 ]);
 
