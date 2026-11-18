@@ -15,6 +15,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import WritingAssistantPanel from '@/components/ai/WritingAssistantPanel.vue';
 import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
+import GiphyDialog from '@/components/media/GiphyDialog.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
 import MediaEditorDialog, {
@@ -112,6 +113,12 @@ const unsplashOpen = ref(false);
 
 const openUnsplash = (): void => {
     unsplashOpen.value = true;
+};
+
+const giphyOpen = ref(false);
+
+const openGiphy = (): void => {
+    giphyOpen.value = true;
 };
 
 const mediaImport = useMediaImport();
@@ -606,6 +613,7 @@ const iconButtonClass =
                     <MediaSourceMenu
                         test-id-prefix="idea-editor"
                         @import-started="onImportStarted"
+                        @open-giphy="openGiphy"
                         @open-unsplash="openUnsplash"
                         @upload="pickFiles"
                     />
@@ -690,4 +698,5 @@ const iconButtonClass =
         @apply="onMediaEdited"
     />
     <UnsplashDialog v-model:open="unsplashOpen" @picked="appendMedia" />
+    <GiphyDialog v-model:open="giphyOpen" @picked="appendMedia" />
 </template>

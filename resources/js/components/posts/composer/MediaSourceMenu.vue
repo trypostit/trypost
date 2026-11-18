@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import { IconPhotoPlus, IconUpload } from '@tabler/icons-vue';
 import Canva from '@thesvg/vue/canva';
+import Giphy from '@thesvg/vue/giphy';
 import GoogleDrive from '@thesvg/vue/google-drive-2026';
 import GooglePhotos from '@thesvg/vue/google-photos';
 import Unsplash from '@thesvg/vue/unsplash';
@@ -55,12 +56,14 @@ withDefaults(
 
 const emit = defineEmits<{
     (event: 'import-started', payload: { importId: string; label: string }): void;
+    (event: 'open-giphy'): void;
     (event: 'open-unsplash'): void;
     (event: 'upload'): void;
 }>();
 
 const ICONS: Record<SourceKey, Component> = {
     canva: Canva,
+    giphy: Giphy,
     google_drive: GoogleDrive,
     google_photos: GooglePhotos,
     unsplash: Unsplash,
@@ -170,6 +173,7 @@ const handlers: Partial<
             session_id: picked.sessionId,
         });
     },
+    giphy: () => emit('open-giphy'),
     unsplash: () => emit('open-unsplash'),
 };
 

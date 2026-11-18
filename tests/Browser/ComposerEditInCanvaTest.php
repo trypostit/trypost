@@ -88,6 +88,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     Storage::fake();
     config()->set([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => null,
         'services.google_media.api_key' => null,
         'services.google_media.app_id' => null,

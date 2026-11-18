@@ -53,6 +53,14 @@ return [
         'upload_cancel' => 'Cancelar envio',
         'upload_remove' => 'Remover',
         'dropzone_select' => 'selecione um arquivo',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Pesquise GIFs',
+            'empty' => 'Nenhum GIF encontrado. Tente outra pesquisa.',
+            'load_more' => 'Carregar mais',
+            'error' => 'O GIPHY não está disponível agora. Tente novamente em alguns minutos.',
+            'powered_by' => 'Fornecido pelo GIPHY',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Pesquise fotos gratuitas em alta resolução',

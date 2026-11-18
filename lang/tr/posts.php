@@ -53,6 +53,14 @@ return [
         'upload_cancel' => 'Yüklemeyi iptal et',
         'upload_remove' => 'Kaldır',
         'dropzone_select' => 'bir dosya seçin',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'GIF ara',
+            'empty' => 'GIF bulunamadı. Başka bir arama deneyin.',
+            'load_more' => 'Daha fazla yükle',
+            'error' => 'GIPHY şu anda kullanılamıyor. Birkaç dakika sonra tekrar deneyin.',
+            'powered_by' => 'GIPHY tarafından sağlanır',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Ücretsiz yüksek çözünürlüklü fotoğraf ara',

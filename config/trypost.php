@@ -201,6 +201,14 @@ return [
     */
 
     'media_sources' => [
+        'giphy' => [
+            'enabled' => (bool) env('GIPHY_ENABLED', true),
+            'api' => $url('GIPHY_API_URL', 'https://api.giphy.com/v1'),
+            'website' => $url('GIPHY_WEBSITE_URL', 'https://giphy.com'),
+            'download_hosts' => env('GIPHY_DOWNLOAD_HOSTS', '*.giphy.com'),
+            'rating' => env('GIPHY_RATING', 'g'),
+            'requests_per_user_per_minute' => (int) env('GIPHY_REQUESTS_PER_MINUTE', 30),
+        ],
         'unsplash' => [
             'api' => $url('UNSPLASH_API_URL', 'https://api.unsplash.com'),
             'website' => $url('UNSPLASH_WEBSITE_URL', 'https://unsplash.com'),

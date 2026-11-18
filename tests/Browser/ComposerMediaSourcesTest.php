@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\Media\Source;
+use App\Enums\PostPlatform\ContentType;
+use App\Models\Idea;
 use App\Models\Media;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -74,6 +77,7 @@ function enableOnlyUnsplashForMediaSources(int $apiStatus = 200): void
     fakePublicDns();
     config()->set([
         'services.unsplash.access_key' => 'unsplash-key',
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => null,
         'services.google_media.api_key' => null,
         'services.google_media.app_id' => null,
@@ -114,6 +118,7 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     config()->set([
         'services.canva.client_id' => 'canva-client-id',
         'services.canva.client_secret' => 'canva-client-secret',
+        'services.giphy.api_key' => 'giphy-key',
         'trypost.media_sources.canva.enabled' => true,
         'trypost.media_sources.google_drive.enabled' => false,
         'trypost.media_sources.google_photos.enabled' => false,
@@ -146,7 +151,7 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     waitFor($page, '@composer-base-media-source-list');
 
     expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"composer-base-media-source-list\"] [data-testid^=\"media-source-\"]')).map((item) => item.dataset.testid)"))
-        ->toBe(['media-source-upload', 'media-source-canva', 'media-source-unsplash']);
+        ->toBe(['media-source-upload', 'media-source-canva', 'media-source-giphy', 'media-source-unsplash']);
 
     expect($page->script(<<<'JS'
         (() => {
@@ -246,10 +251,198 @@ test('an unsplash outage shows an error instead of an empty result', function ()
         ->assertNoJavaScriptErrors();
 });
 
+/**
+ * @return array<string, mixed>
+ */
+function giphyBrowserGif(string $id): array
+{
+    $png = 'data:image/png;base64,'.base64_encode(file_get_contents(base_path('tests/fixtures/1x1.png')));
+
+    return [
+        'id' => $id,
+        'title' => "Dancing {$id} GIF",
+        'url' => "https://giphy.com/gifs/dancing-{$id}",
+        'images' => [
+            'fixed_width' => ['url' => $png, 'width' => '200', 'height' => '150'],
+            'downsized_medium' => ['url' => "https://media1.giphy.com/media/{$id}/giphy.gif"],
+        ],
+    ];
+}
+
+/**
+ * Trending answers one GIF on page 1 and says there is a second page with
+ * another; `$apiStatus` makes every GIPHY API call fail instead.
+ */
+function enableOnlyGiphyForMediaSources(int $apiStatus = 200): void
+{
+    fakePublicDns();
+    Cache::flush();
+    config()->set([
+        'services.giphy.api_key' => 'giphy-key',
+        'services.unsplash.access_key' => null,
+        'services.google_media.client_id' => null,
+        'services.google_media.api_key' => null,
+        'services.google_media.app_id' => null,
+        'services.canva.client_id' => null,
+        'services.canva.client_secret' => null,
+    ]);
+
+    $api = config('trypost.media_sources.giphy.api');
+    $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+
+    Http::fake(function (Request $request) use ($api, $gif, $apiStatus) {
+        $url = $request->url();
+
+        if (str_starts_with($url, 'https://media1.giphy.com/')) {
+            return Http::response($gif, 200, ['Content-Type' => 'image/gif']);
+        }
+        if (! str_starts_with($url, "{$api}/")) {
+            return Http::response('', 404);
+        }
+        if ($apiStatus !== 200) {
+            return Http::response(['message' => 'Too many requests'], $apiStatus);
+        }
+
+        if (str_contains($url, '/gifs/search')) {
+            return Http::response([
+                'data' => [giphyBrowserGif('happy')],
+                'pagination' => ['total_count' => 1, 'count' => 1, 'offset' => 0],
+            ]);
+        }
+
+        $first = ! str_contains($url, 'offset=') || str_contains($url, 'offset=0');
+
+        return Http::response([
+            'data' => [giphyBrowserGif($first ? 'party' : 'cheers')],
+            'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $first ? 0 : 1],
+        ]);
+    });
+}
+
+test('picking a gif from giphy adds a tile and keeps where it came from', function () {
+    enableOnlyGiphyForMediaSources();
+
+    $page = openComposerForMediaSources($this);
+    waitFor($page, '@composer-base-media-source-menu');
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-dialog');
+    waitFor($page, '@giphy-gif-0');
+
+    $page->assertSeeIn('@giphy-attribution', __('posts.composer.giphy.powered_by'))
+        ->assertAttribute('@giphy-gif-0', 'aria-label', 'Dancing party GIF');
+
+    $page->click('@giphy-gif-0');
+    waitFor($page, '@composer-media-item');
+    waitForGone($page, '@giphy-dialog');
+
+    $page->assertPresent('@composer-media-item')
+        ->assertNoJavaScriptErrors();
+
+    $media = Media::query()->sole();
+    expect($media->collection)->toBe(Media::COLLECTION_UPLOADS)
+        ->and($media->mime_type)->toBe('image/gif')
+        ->and(data_get($media->meta, 'source'))->toBe(Source::Giphy->value)
+        ->and(data_get($media->meta, 'source_meta.gif_id'))->toBe('party');
+});
+
+test('a gif picked while a thread reply is edited lands on that reply, not on the post', function () {
+    enableOnlyGiphyForMediaSources();
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create(['user_id' => $user->id, 'content' => 'The thread starts here']);
+    $this->actingAs($user);
+    $id = $account->id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+
+    chooseComposerMediaSource($page, "composer-{$id}", 'giphy');
+    waitFor($page, '@giphy-gif-0');
+    $page->click('@giphy-gif-0');
+    waitFor($page, "@composer-{$id}-reply-0-media-item-0");
+
+    $page->assertMissing("@composer-{$id}-media-item-0")
+        ->assertNotPresent('@giphy-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a gif picked in the idea editor joins the idea', function () {
+    enableOnlyGiphyForMediaSources();
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $idea = Idea::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'idea_stage_id' => null, 'position' => 0, 'title' => 'GIF idea']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.show', $idea));
+    waitFor($page, '@idea-editor-media-source-menu');
+
+    chooseComposerMediaSource($page, 'idea-editor', 'giphy');
+    waitFor($page, '@giphy-gif-0');
+    $page->click('@giphy-gif-0');
+    waitFor($page, '@idea-media-item-0');
+    waitForGone($page, '@giphy-dialog');
+
+    $page->click('@idea-editor-save');
+    waitForGone($page, '@idea-editor');
+
+    $media = Media::query()->sole();
+
+    expect($media->idea_id)->toBe($idea->id)
+        ->and(data_get($media->meta, 'source'))->toBe(Source::Giphy->value)
+        ->and(data_get($idea->refresh()->media, '0.id'))->toBe($media->id);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the giphy dialog loads the next page and searches as the user types', function () {
+    enableOnlyGiphyForMediaSources();
+
+    $page = openComposerForMediaSources($this);
+    waitFor($page, '@composer-base-media-source-menu');
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-gif-1');
+
+    $page->assertAttribute('@giphy-gif-1', 'aria-label', 'Dancing cheers GIF')
+        ->assertNotPresent('@giphy-error');
+
+    $page->type('@giphy-search', 'happy');
+    waitForState($page, '@giphy-gif-0', "element.getAttribute('aria-label') === 'Dancing happy GIF'");
+    waitForCount($page, '[data-testid^="giphy-gif-"]', 1);
+
+    $page->assertNoJavaScriptErrors();
+
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), '/gifs/search') && str_contains($request->url(), 'q=happy'));
+});
+
+test('a giphy outage shows an error instead of an empty result', function () {
+    enableOnlyGiphyForMediaSources(apiStatus: 429);
+
+    $page = openComposerForMediaSources($this);
+    waitFor($page, '@composer-base-media-source-menu');
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-error');
+
+    $page->assertSeeIn('@giphy-error', __('posts.composer.giphy.error'))
+        ->assertNotPresent('@giphy-empty')
+        ->assertNoJavaScriptErrors();
+});
+
 function enableOnlyGoogleDriveForMediaSources(): string
 {
     config()->set([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => 'media-client-id',
         'services.google_media.client_secret' => 'media-client-secret',
         'services.google_media.redirect' => 'https://trypost.example/integrations/google/callback',

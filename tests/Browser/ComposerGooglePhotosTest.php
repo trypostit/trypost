@@ -52,6 +52,7 @@ function enableOnlyGooglePhotosForComposer(bool $mediaItemsSet = true): string
 {
     config()->set([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => 'media-client-id',
         'services.google_media.client_secret' => 'media-client-secret',
         'services.google_media.redirect' => 'https://trypost.example/integrations/google/callback',

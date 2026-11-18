@@ -38,6 +38,7 @@ import {
     ref,
     shallowReactive,
     watch,
+    type WritableComputedRef,
 } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -50,6 +51,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import FilterEmptyState from '@/components/FilterEmptyState.vue';
 import LabelChips from '@/components/labels/LabelChips.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
+import GiphyDialog from '@/components/media/GiphyDialog.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
@@ -771,26 +773,48 @@ watch(
         if (!open) suggestedMedia.value = {};
     },
 );
-const unsplashOpen = ref(false);
-const unsplashGroupKey = ref<string | null>(null);
-const unsplashReplyKey = ref<string | null>(null);
-const openUnsplash = (
+/** The media libraries the composer opens in a dialog of its own. */
+type LibrarySource = 'giphy' | 'unsplash';
+
+const openLibrarySource = ref<LibrarySource | null>(null);
+const libraryGroupKey = ref<string | null>(null);
+const libraryReplyKey = ref<string | null>(null);
+const openLibrary = (
+    source: LibrarySource,
     groupKey: string | null,
     replyKey: string | null = null,
 ): void => {
-    unsplashGroupKey.value = groupKey;
-    unsplashReplyKey.value = replyKey;
-    unsplashOpen.value = true;
+    libraryGroupKey.value = groupKey;
+    libraryReplyKey.value = replyKey;
+    openLibrarySource.value = source;
 };
-const onUnsplashPicked = (item: MediaItem): void => {
-    if (unsplashGroupKey.value !== null && unsplashReplyKey.value !== null) {
-        setReplyMedia(unsplashGroupKey.value, unsplashReplyKey.value, (media) =>
+/** One library dialog's `open`: it is open while it is the library picked. */
+const libraryOpen = (source: LibrarySource): WritableComputedRef<boolean> =>
+    computed({
+        get: (): boolean => openLibrarySource.value === source,
+        set: (open: boolean): void => {
+            if (open) {
+                openLibrarySource.value = source;
+
+                return;
+            }
+
+            if (openLibrarySource.value === source) {
+                openLibrarySource.value = null;
+            }
+        },
+    });
+const unsplashOpen = libraryOpen('unsplash');
+const giphyOpen = libraryOpen('giphy');
+const onLibraryPicked = (item: MediaItem): void => {
+    if (libraryGroupKey.value !== null && libraryReplyKey.value !== null) {
+        setReplyMedia(libraryGroupKey.value, libraryReplyKey.value, (media) =>
             withMediaAdded(media, item, null),
         );
 
         return;
     }
-    appendMedia(unsplashGroupKey.value, item);
+    appendMedia(libraryGroupKey.value, item);
 };
 
 const mediaImport = useMediaImport();
@@ -1380,8 +1404,8 @@ const onGroupImportStarted = (
     started: MediaImportStarted,
     group: NetworkGroup,
 ): void => mediaImport.track(groupMediaUploader(group), started);
-const openGroupUnsplash = (group: NetworkGroup): void =>
-    openUnsplash(group.key, activeReply(group)?.key ?? null);
+const openGroupLibrary = (source: LibrarySource, group: NetworkGroup): void =>
+    openLibrary(source, group.key, activeReply(group)?.key ?? null);
 const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
     if (!activeReply(group)) {
         onMediaDropped(event, group.key);
@@ -2707,7 +2731,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     :signatures="availableSignatures"
                                     :media-disabled="!acceptsMedia(null)"
                                     @import-started="onImportStarted($event, null)"
-                                    @open-unsplash="openUnsplash(null)"
+                                    @open-giphy="openLibrary('giphy', null)"
+                                    @open-unsplash="openLibrary('unsplash', null)"
                                     @upload="pickBaseFiles"
                                     @select-emoji="appendEmoji($event, null)"
                                     @select-signature="appendSignature($event, null)"
@@ -3120,7 +3145,12 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @import-started="
                                             onGroupImportStarted($event, group)
                                         "
-                                        @open-unsplash="openGroupUnsplash(group)"
+                                        @open-giphy="
+                                            openGroupLibrary('giphy', group)
+                                        "
+                                        @open-unsplash="
+                                            openGroupLibrary('unsplash', group)
+                                        "
                                         @upload="pickGroupFiles(group)"
                                         @select-emoji="
                                             appendEmoji($event, group.key)
@@ -3650,8 +3680,9 @@ const onDialogOpenChange = (value: boolean): void => {
     />
     <UnsplashDialog
         v-model:open="unsplashOpen"
-        @picked="onUnsplashPicked"
+        @picked="onLibraryPicked"
     />
+    <GiphyDialog v-model:open="giphyOpen" @picked="onLibraryPicked" />
     <ComposerDiscardDialog
         v-model:open="unsavedChanges.confirming.value"
         :title="$t('common.unsaved_changes.title')"

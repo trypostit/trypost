@@ -53,6 +53,14 @@ return [
         'upload_cancel' => 'Batalkan unggahan',
         'upload_remove' => 'Hapus',
         'dropzone_select' => 'pilih file',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Cari GIF',
+            'empty' => 'GIF tidak ditemukan. Coba kata kunci lain.',
+            'load_more' => 'Muat lainnya',
+            'error' => 'GIPHY sedang tidak tersedia. Coba lagi dalam beberapa menit.',
+            'powered_by' => 'Didukung oleh GIPHY',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Cari foto resolusi tinggi gratis',
