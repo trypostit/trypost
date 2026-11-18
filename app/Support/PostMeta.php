@@ -53,7 +53,7 @@ class PostMeta
      */
     private static function withPoll(array $meta, ?ContentType $contentType): array
     {
-        $poll = Poll::forContentType($contentType);
+        $poll = $contentType?->poll();
 
         if (blank($poll)) {
             return Arr::except($meta, 'poll');

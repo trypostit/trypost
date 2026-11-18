@@ -9,7 +9,10 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
+use App\Support\Social\MastodonPoll;
 use App\Support\Social\Poll;
+use App\Support\Social\ThreadsPoll;
+use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
 use Illuminate\Support\Str;
 
@@ -87,12 +90,24 @@ enum ContentType: string
     }
 
     /**
-     * A network's poll (`x_poll`, `mastodon_poll`, `threads_poll`): its
-     * question is the post text and it takes no media.
+     * The rules of a network's poll (its question is the post text and it
+     * takes no media), or null for any other type.
+     *
+     * @return class-string<Poll>|null
      */
+    public function poll(): ?string
+    {
+        return match ($this) {
+            self::XPoll => XPoll::class,
+            self::MastodonPoll => MastodonPoll::class,
+            self::ThreadsPoll => ThreadsPoll::class,
+            default => null,
+        };
+    }
+
     public function isPoll(): bool
     {
-        return filled(Poll::forContentType($this));
+        return filled($this->poll());
     }
 
     public function label(): string
@@ -126,13 +141,13 @@ enum ContentType: string
         };
     }
 
+    /**
+     * The type's description; a poll's names how many choices it takes, and
+     * every other description has no placeholder to fill.
+     */
     public function description(): string
     {
-        if ($this->isPoll()) {
-            return (string) trans("posts.content_types.{$this->value}.description", ['min' => Poll::MIN_OPTIONS, 'max' => Poll::MAX_OPTIONS]);
-        }
-
-        return (string) trans("posts.content_types.{$this->value}.description");
+        return (string) trans("posts.content_types.{$this->value}.description", ['min' => Poll::MIN_OPTIONS, 'max' => Poll::MAX_OPTIONS]);
     }
 
     public function platform(): SocialPlatform
@@ -217,13 +232,10 @@ enum ContentType: string
             return $limit;
         }
 
-        $poll = Poll::forContentType($type);
-
-        if (blank($poll) || blank($poll::QUESTION_MAX_LENGTH)) {
-            return $limit;
-        }
-
-        return min($limit, $poll::QUESTION_MAX_LENGTH);
+        return match ($type) {
+            self::XPoll => min($limit, XPoll::QUESTION_MAX_LENGTH),
+            default => $limit,
+        };
     }
 
     public function maxMediaCount(): int
@@ -998,12 +1010,6 @@ enum ContentType: string
      */
     public static function fromPublication(SocialPlatform $platform, PublicationContentType $type): self
     {
-        $poll = Poll::for($platform);
-
-        if ($type === PublicationContentType::Poll && filled($poll)) {
-            return $poll::contentType();
-        }
-
         return match ($platform) {
             SocialPlatform::Instagram, SocialPlatform::InstagramFacebook => match ($type) {
                 PublicationContentType::Reel => self::InstagramReel,
@@ -1023,6 +1029,18 @@ enum ContentType: string
                 PublicationContentType::Video => self::PinterestVideoPin,
                 PublicationContentType::Carousel => self::PinterestCarousel,
                 default => self::PinterestPin,
+            },
+            SocialPlatform::X => match ($type) {
+                PublicationContentType::Poll => self::XPoll,
+                default => self::XPost,
+            },
+            SocialPlatform::Mastodon => match ($type) {
+                PublicationContentType::Poll => self::MastodonPoll,
+                default => self::MastodonPost,
+            },
+            SocialPlatform::Threads => match ($type) {
+                PublicationContentType::Poll => self::ThreadsPoll,
+                default => self::ThreadsPost,
             },
             default => self::defaultFor($platform),
         };

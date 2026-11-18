@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  * the networks that let the author pick them, how long voting stays open,
  * whether a voter may pick several choices and whether the totals stay hidden
  * until it ends. Each network's rules live in its subclass (`XPoll`,
- * `MastodonPoll`, `ThreadsPoll`), which `for()` and `forContentType()` pick;
+ * `MastodonPoll`, `ThreadsPoll`), which `for()` and `ContentType::poll()` pick;
  * the post text is always the question. Blank choices are dropped when the
  * meta is normalized, so the rules below read the cleaned list.
  *
@@ -123,22 +123,6 @@ abstract class Poll
             Platform::Facebook, Platform::Instagram, Platform::InstagramFacebook, Platform::Pinterest,
             Platform::Bluesky, Platform::Telegram, Platform::Discord, Platform::GoogleBusiness, null => null,
         };
-    }
-
-    /**
-     * The poll rules of a poll content type, or null for any other type.
-     *
-     * @return class-string<self>|null
-     */
-    public static function forContentType(?ContentType $type): ?string
-    {
-        $poll = self::for($type?->platform());
-
-        if (blank($poll) || $poll::contentType() !== $type) {
-            return null;
-        }
-
-        return $poll;
     }
 
     /**

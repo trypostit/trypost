@@ -466,7 +466,7 @@ class ImportExternalPosts
             'publish_status' => PublishStatus::Published,
             'platform_post_id' => $publication->remote_id,
             'platform_url' => $publication->permalink,
-            'meta' => transform(Poll::forContentType($contentType), fn (string $poll): array => ['poll' => $poll::fromPublication($publication)], []),
+            'meta' => transform($contentType?->poll(), fn (string $poll): array => ['poll' => $poll::fromPublication($publication)], []),
         ]);
     }
 }

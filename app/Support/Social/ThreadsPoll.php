@@ -47,7 +47,7 @@ final class ThreadsPoll extends Poll
     public static function payload(?array $meta): array
     {
         return collect(self::options($meta))
-            ->take(count(self::OPTION_KEYS))
+            ->take(self::MAX_OPTIONS)
             ->mapWithKeys(fn (string $option, int $index): array => [self::OPTION_KEYS[$index] => $option])
             ->all();
     }

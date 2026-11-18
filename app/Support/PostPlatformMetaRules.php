@@ -315,7 +315,7 @@ class PostPlatformMetaRules
             throw ValidationException::withMessages(["meta.{$field}" => $message]);
         }
 
-        $question = transform(Poll::forContentType($post->content_type), fn (string $poll): ?string => $poll::questionViolation($post->content));
+        $question = transform($post->content_type?->poll(), fn (string $poll): ?string => $poll::questionViolation($post->content));
 
         if (filled($question)) {
             throw ValidationException::withMessages(['content' => $question]);
@@ -424,7 +424,7 @@ class PostPlatformMetaRules
         }
 
         return [
-            ...transform(Poll::forContentType($contentType), fn (string $poll): array => $poll::formatErrors($meta), []),
+            ...transform($contentType?->poll(), fn (string $poll): array => $poll::formatErrors($meta), []),
             ...ThreadReplies::pollFormatErrors($platform, $meta),
         ];
     }
@@ -455,7 +455,7 @@ class PostPlatformMetaRules
             $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
-            $type?->isPoll() === true => Poll::forContentType($type)::firstViolation($meta),
+            $type?->isPoll() === true => $type->poll()::firstViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $needsGoogleBusinessEvent

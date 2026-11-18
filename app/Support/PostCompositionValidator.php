@@ -15,7 +15,6 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
-use App\Support\Social\Poll;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -225,7 +224,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                $questionViolation = transform(Poll::forContentType($contentType), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
+                $questionViolation = transform($contentType?->poll(), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
                 if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
                 } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
@@ -234,7 +233,7 @@ class PostCompositionValidator
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)
                     ?? PostPlatformMetaRules::contentMetaViolation($account->platform, $destination['meta'] ?? [], (string) $destination['content']);
-                if ($metaViolation !== null && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
+                if (filled($metaViolation) && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
                     [$field, $message] = $metaViolation;
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }

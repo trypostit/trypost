@@ -86,7 +86,7 @@ class PostPreviewer
 
         $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($post->meta) : [];
 
-        $poll = Poll::forContentType($post->content_type);
+        $poll = $post->content_type?->poll();
 
         if (filled($poll)) {
             $preview['poll'] = $poll::preview($post->meta);
