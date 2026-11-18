@@ -245,7 +245,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         ],
         'linkedin_post' => [
             'requires_media' => false,
-            'accepts_gif' => false,
+            'accepts_gif' => true,
             'max_files' => 10,
             'max_document_bytes' => min(100 * $mb, $hardDocument),
             'max_video_bytes' => $hardVideo,
