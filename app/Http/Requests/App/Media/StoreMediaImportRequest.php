@@ -6,16 +6,20 @@ namespace App\Http\Requests\App\Media;
 
 use App\Dto\RemoteFile;
 use App\Enums\Media\Source;
+use App\Enums\Media\Type as MediaType;
+use App\Services\Media\RemoteMediaImporter;
 use App\Services\Media\Sources\GoogleDriveFiles;
 use App\Services\Media\Sources\GooglePhotosPicker;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Uri;
 use Illuminate\Validation\Rule;
 use LogicException;
 
 /**
  * One pick per request. A picker source is importable once it has an arm
- * here (its own rules and the payload the job downloads) and is enabled.
+ * here (its own rules, the payload the job downloads and, when it may not
+ * be every media type, the types it may be) and is enabled.
  */
 class StoreMediaImportRequest extends FormRequest
 {
@@ -45,9 +49,25 @@ class StoreMediaImportRequest extends FormRequest
 
     public function importPayload(): RemoteFile|string
     {
-        $arm = data_get($this->arms(), $this->importSource()->value) ?? throw new LogicException("No import arm for {$this->importSource()->value}.");
+        return data_get($this->arm(), 'payload')();
+    }
 
-        return data_get($arm, 'payload')();
+    /**
+     * The media types the pick may be, every type when null.
+     *
+     * @return list<MediaType>|null
+     */
+    public function importTypes(): ?array
+    {
+        return data_get($this->arm(), 'types');
+    }
+
+    /**
+     * @return array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types?: list<MediaType>}
+     */
+    private function arm(): array
+    {
+        return data_get($this->arms(), $this->importSource()->value) ?? throw new LogicException("No import arm for {$this->importSource()->value}.");
     }
 
     /**
@@ -64,11 +84,52 @@ class StoreMediaImportRequest extends FormRequest
     /**
      * Per-source rules and payload, keyed by the source value.
      *
-     * @return array<string, array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string)}>
+     * @return array<string, array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types?: list<MediaType>}>
      */
     private function arms(): array
     {
         return [
+            Source::Giphy->value => [
+                'rules' => fn (): array => [
+                    'url' => ['bail', 'required', 'string', 'url:https', $this->onHosts(Source::Giphy->downloadHosts())],
+                    'gif_id' => ['required', 'string', 'alpha_num', 'max:64'],
+                    'giphy_url' => ['bail', 'nullable', 'string', 'url:https', 'max:2048', $this->onHosts([$this->configuredHost('trypost.media_sources.giphy.website')])],
+                ],
+                'payload' => fn (): RemoteFile => new RemoteFile(
+                    (string) $this->validated('url'),
+                    "giphy-{$this->validated('gif_id')}.gif",
+                    allowedHosts: Source::Giphy->downloadHosts(),
+                    source: Source::Giphy,
+                    sourceMeta: [
+                        'gif_id' => (string) $this->validated('gif_id'),
+                        'giphy_url' => $this->validated('giphy_url'),
+                    ],
+                ),
+                'types' => [MediaType::Image],
+            ],
+            Source::Unsplash->value => [
+                'rules' => fn (): array => [
+                    'url' => ['bail', 'required', 'string', 'url:https', $this->onHosts(Source::Unsplash->downloadHosts())],
+                    'filename' => ['required', 'string', 'max:255'],
+                    'download_location' => ['bail', 'required', 'string', 'url:https', $this->onHosts([$this->configuredHost('trypost.media_sources.unsplash.api')])],
+                    'photo_id' => ['required', 'string', 'max:255'],
+                    'author_name' => ['required', 'string', 'max:255'],
+                    'author_url' => ['bail', 'nullable', 'string', 'url:https', 'max:2048', $this->onHosts([$this->configuredHost('trypost.media_sources.unsplash.website')])],
+                ],
+                'payload' => fn (): RemoteFile => new RemoteFile(
+                    (string) $this->validated('url'),
+                    (string) $this->validated('filename'),
+                    allowedHosts: Source::Unsplash->downloadHosts(),
+                    source: Source::Unsplash,
+                    sourceMeta: [
+                        'photo_id' => (string) $this->validated('photo_id'),
+                        'author_name' => (string) $this->validated('author_name'),
+                        'author_url' => $this->validated('author_url'),
+                        'download_location' => (string) $this->validated('download_location'),
+                    ],
+                ),
+                'types' => [MediaType::Image],
+            ],
             Source::GoogleDrive->value => [
                 'rules' => fn (): array => [
                     'access_token' => ['required', 'string', 'max:4096'],
@@ -99,5 +160,24 @@ class StoreMediaImportRequest extends FormRequest
                 'payload' => fn (): string => (string) $this->validated('session_id'),
             ],
         ];
+    }
+
+    /**
+     * The URL must sit on one of the hosts.
+     *
+     * @param  list<string>  $hosts
+     */
+    private function onHosts(array $hosts): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($hosts): void {
+            if (! app(RemoteMediaImporter::class)->hostAllowed((string) $value, $hosts)) {
+                $fail(__('validation.url', ['attribute' => $attribute]));
+            }
+        };
+    }
+
+    private function configuredHost(string $key): string
+    {
+        return (string) Uri::of((string) config($key))->host();
     }
 }

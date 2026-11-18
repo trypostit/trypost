@@ -795,6 +795,15 @@ function parityApi(string $token): array
 }
 
 /**
+ * The status of the first import a media import request started, read the
+ * way the composer reads it, as the user signed in for the test.
+ */
+function startedImportStatus(TestResponse $started): TestResponse
+{
+    return test()->getJson(route('app.media.imports.show', $started->assertAccepted()->json('import_id')))->assertOk();
+}
+
+/**
  * The structured content an MCP list tool returns for the same page as a paginated API list response.
  *
  * @return array<string, mixed>
@@ -1138,6 +1147,26 @@ function clickWithoutPointer(mixed $page, string $selector): void
     $selector = jsSelector($selector);
 
     $page->script("document.querySelector({$selector}).click()");
+}
+
+/**
+ * Plays a broadcast on the page as if Reverb delivered it: the event reaches
+ * the `useEcho` listeners of that private channel through the page's own
+ * Echo connection (`window.Echo`). Browser tests broadcast with the null
+ * driver, so a server event never arrives on its own. `$channel` is the
+ * name the app listens on (`workspace.{id}`), `$event` the event's
+ * `broadcastAs()` name.
+ *
+ * @param  array<string, mixed>  $payload
+ */
+function broadcastToPage(mixed $page, string $channel, string $event, array $payload): void
+{
+    $name = json_encode("private-{$channel}");
+    $eventName = json_encode($event);
+    $data = json_encode($payload);
+
+    waitForCondition($page, "Boolean(window.Echo.connector.pusher.channel({$name}))");
+    $page->script("window.Echo.connector.pusher.channel({$name}).emit({$eventName}, {$data})");
 }
 
 /**

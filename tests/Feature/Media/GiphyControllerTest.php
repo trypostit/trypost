@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Dto\ImportedFile;
 use App\Enums\Media\Source;
 use App\Enums\Media\Type as MediaType;
 use App\Models\Account;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\MediaImportStatus;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -68,6 +70,7 @@ function giphyApiPage(array $gifs, int $total, int $offset = 0): array
 function giphyPick(array $overrides = []): array
 {
     return [
+        'source' => Source::Giphy->value,
         'url' => 'https://media1.giphy.com/media/abc123/giphy.gif',
         'gif_id' => 'abc123',
         'giphy_url' => 'https://giphy.com/gifs/dancing-abc123',
@@ -174,19 +177,18 @@ test('while giphy is off or has no key the picker gets nothing and giphy is neve
     'turned off' => [['trypost.media_sources.giphy.enabled' => false]],
 ]);
 
-test('a picked gif imports as a temporary upload with its giphy attribution', function () {
+test('a picked gif imports through the queue as a temporary upload with its giphy attribution', function () {
     $gif = giphyAnimatedBytes();
     Http::fake(['media1.giphy.com/*' => Http::response($gif, 200, ['Content-Type' => 'image/gif'])]);
 
-    $response = $this->actingAs($this->user)
-        ->postJson(route('app.media.giphy.store'), giphyPick())
-        ->assertCreated()
-        ->assertJsonPath('type', MediaType::Image->value)
-        ->assertJsonPath('mime_type', 'image/gif');
+    $status = startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick()))
+        ->assertJsonPath('status', MediaImportStatus::DONE)
+        ->assertJsonPath('media.type', MediaType::Image->value)
+        ->assertJsonPath('media.mime_type', 'image/gif');
 
     $media = Media::query()->sole();
 
-    expect($response->json('upload_token'))->toBe($media->upload_token)
+    expect($status->json('media.upload_token'))->toBe($media->upload_token)
         ->and($media->collection)->toBe(Media::COLLECTION_UPLOADS)
         ->and($media->workspace_id)->toBe($this->workspace->id)
         ->and($media->original_filename)->toBe('giphy-abc123.gif')
@@ -202,7 +204,7 @@ test('a gif off the giphy hosts is refused before any request', function (array 
     Http::fake();
 
     $this->actingAs($this->user)
-        ->postJson(route('app.media.giphy.store'), giphyPick($overrides))
+        ->postJson(route('app.media.imports.store'), giphyPick($overrides))
         ->assertUnprocessable()
         ->assertJsonValidationErrors($field);
 
@@ -221,9 +223,9 @@ test('gif picks are refused while giphy is off or has no key', function (array $
     Http::fake();
 
     $this->actingAs($this->user)
-        ->postJson(route('app.media.giphy.store'), giphyPick())
+        ->postJson(route('app.media.imports.store'), giphyPick())
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('url');
+        ->assertJsonValidationErrors('source');
 
     Http::assertNothingSent();
 })->with([
@@ -234,10 +236,18 @@ test('gif picks are refused while giphy is off or has no key', function (array $
 test('a file giphy serves that is not an image is refused and leaves nothing', function () {
     Http::fake(['media1.giphy.com/*' => Http::response('<html>not a gif</html>', 200, ['Content-Type' => 'text/html'])]);
 
-    $this->actingAs($this->user)
-        ->postJson(route('app.media.giphy.store'), giphyPick())
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['url' => __('posts.composer.media_sources.errors.import_failed')]);
+    startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick()))
+        ->assertJsonPath('status', MediaImportStatus::FAILED);
+
+    $this->assertDatabaseEmpty(Media::class);
+});
+
+test('a video giphy serves is refused, since a pick is a gif', function () {
+    Http::fake(['media1.giphy.com/*' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4'])]);
+
+    startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick(['url' => 'https://media1.giphy.com/media/abc123/giphy.mp4'])))
+        ->assertJsonPath('status', MediaImportStatus::FAILED)
+        ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
 
     $this->assertDatabaseEmpty(Media::class);
 });

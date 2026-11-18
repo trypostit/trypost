@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Media\Source;
 use App\Enums\PostPlatform\ContentType;
+use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Idea;
 use App\Models\Media;
 use App\Models\Post;
@@ -15,6 +16,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 
@@ -339,6 +341,32 @@ test('picking a gif from giphy adds a tile and keeps where it came from', functi
         ->and($media->mime_type)->toBe('image/gif')
         ->and(data_get($media->meta, 'source'))->toBe(Source::Giphy->value)
         ->and(data_get($media->meta, 'source_meta.gif_id'))->toBe('party');
+});
+
+test('a picked gif loads on the post until the socket says its import settled, with no polling', function () {
+    enableOnlyGiphyForMediaSources();
+    Queue::fake([ImportRemoteMedia::class]);
+
+    $page = openComposerForMediaSources($this);
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-gif-0');
+    $page->click('@giphy-gif-0');
+    waitForGone($page, '@giphy-dialog');
+    waitFor($page, '@composer-import-item');
+
+    $job = Queue::pushed(ImportRemoteMedia::class)->sole();
+    app()->call([$job, 'handle']);
+    letPageRun($page, 3000);
+
+    $page->assertPresent('@composer-import-item')
+        ->assertMissing('@composer-media-item');
+
+    broadcastToPage($page, "workspace.{$job->workspaceId}", 'media.import.settled', ['import_id' => $job->importId]);
+    waitFor($page, '@composer-media-item');
+
+    $page->assertMissing('@composer-import-item')
+        ->assertNoJavaScriptErrors();
+    expect(Media::query()->sole()->mime_type)->toBe('image/gif');
 });
 
 test('a gif picked while a thread reply is edited lands on that reply, not on the post', function () {

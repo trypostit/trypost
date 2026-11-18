@@ -301,18 +301,12 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::post('media/chunked', [MediaUploadController::class, 'storeChunked'])->name('app.media.store-chunked');
     Route::get('media/{media}/file', [MediaFileController::class, 'show'])->whereUuid('media')->name('app.media.file');
-    Route::post('media/from-url', [MediaUploadController::class, 'storeFromUrl'])
-        ->middleware('throttle:media-imports')
-        ->name('app.media.store-from-url');
     Route::get('media/giphy/search', [GiphyController::class, 'search'])
         ->middleware('throttle:giphy')
         ->name('app.media.giphy.search');
     Route::get('media/giphy/trending', [GiphyController::class, 'trending'])
         ->middleware('throttle:giphy')
         ->name('app.media.giphy.trending');
-    Route::post('media/giphy', [GiphyController::class, 'store'])
-        ->middleware('throttle:media-imports')
-        ->name('app.media.giphy.store');
     Route::get('media/unsplash/search', [UnsplashController::class, 'search'])
         ->middleware('throttle:unsplash')
         ->name('app.media.unsplash.search');

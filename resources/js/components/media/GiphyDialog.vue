@@ -5,7 +5,6 @@ import Giphy from '@thesvg/vue/giphy';
 import { useIntersectionObserver } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,11 +14,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    type MediaImportStarted,
+    startMediaImport,
+} from '@/composables/useMediaImport';
 import debounce from '@/debounce';
 import { blank, filled, transform } from '@/lib/helpers';
-import { extractErrorMessage } from '@/lib/httpError';
-import { search, store, trending } from '@/routes/app/media/giphy';
-import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
+import { search, trending } from '@/routes/app/media/giphy';
 
 interface GiphyGif {
     id: string;
@@ -36,17 +37,10 @@ interface GiphyPage {
     has_more: boolean;
 }
 
-type ImportedMedia = MediaItem & {
-    meta?: MediaItem['meta'] & {
-        source?: MediaSource;
-        source_meta?: Record<string, SourceMetaValue>;
-    };
-};
-
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
-    (event: 'picked', item: MediaItem): void;
+    (event: 'import-started', started: MediaImportStarted): void;
 }>();
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -63,10 +57,6 @@ const sentinel = useTemplateRef<HTMLElement>('sentinel');
 let latestRequest = 0;
 
 const browseHttp = useHttp<Record<string, never>, GiphyPage>({});
-const pickHttp = useHttp<
-    { url: string; gif_id: string; giphy_url: string | null },
-    ImportedMedia
->({ url: '', gif_id: '', giphy_url: null });
 
 const hasGifs = computed((): boolean => filled(gifs.value));
 
@@ -210,29 +200,33 @@ const gifLabel = (gif: GiphyGif, t: (key: string) => string): string => {
 
 const isSaving = (gif: GiphyGif): boolean => savingId.value === gif.id;
 
+/** Starts the GIF's import and hands it to the post, which shows it loading. */
 const pick = async (gif: GiphyGif): Promise<void> => {
     if (isPicking.value) {
         return;
     }
 
     savingId.value = gif.id;
-    pickHttp.url = gif.url;
-    pickHttp.gif_id = gif.id;
-    pickHttp.giphy_url = gif.giphy_url;
 
     try {
-        const media = await pickHttp.post(store.url());
-        emit('picked', {
-            ...media,
-            source: media.meta?.source,
-            source_meta: media.meta?.source_meta,
+        const importIds = await startMediaImport({
+            source: 'giphy',
+            url: gif.url,
+            gif_id: gif.id,
+            giphy_url: gif.giphy_url,
         });
-        open.value = false;
-    } catch (exception) {
-        toast.error(
-            extractErrorMessage(exception) ??
-                trans('posts.composer.media_sources.errors.import_failed'),
+
+        if (blank(importIds)) {
+            return;
+        }
+
+        importIds.forEach((importId) =>
+            emit('import-started', {
+                importId,
+                label: trans('posts.composer.giphy.title'),
+            }),
         );
+        open.value = false;
     } finally {
         savingId.value = null;
     }

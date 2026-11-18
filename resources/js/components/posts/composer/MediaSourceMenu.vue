@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
     type MediaImportPayload,
-    useMediaImport,
+    startMediaImport,
 } from '@/composables/useMediaImport';
 import { filled } from '@/lib/helpers';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
@@ -75,13 +75,12 @@ const ICON_CLASSES: Partial<Record<SourceKey, string>> = {
 };
 
 const page = usePage();
-const mediaImport = useMediaImport();
 
 const startImport = async (
     option: MediaSourceOption,
     payload: MediaImportPayload,
 ): Promise<void> => {
-    const importIds = await mediaImport.run(payload);
+    const importIds = await startMediaImport(payload);
     importIds.forEach((importId) =>
         emit('import-started', { importId, label: option.label }),
     );

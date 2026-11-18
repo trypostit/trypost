@@ -4,24 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Media\StartMediaImport;
 use App\Dto\RemoteFile;
 use App\Enums\Media\Type as MediaType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Post\StoreLinkPreviewMediaRequest;
-use App\Http\Resources\App\MediaResource;
-use App\Services\Media\RemoteMediaImporter;
+use App\Http\Resources\App\MediaImportStartedResource;
 use App\Services\Social\LinkCard\LinkCardFetcher;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * "Replace link preview with media": imports the card's image as a temporary
- * upload that the first save adopts, like any other composer upload.
+ * "Replace link preview with media": reads the card's image (the composer
+ * already fetched the card, so it comes from the cache) and queues its
+ * import as a temporary upload the first save adopts, like any other
+ * composer import.
  */
 class LinkPreviewMediaController extends Controller
 {
-    private const int TIMEOUT_SECONDS = 30;
-
-    public function __invoke(StoreLinkPreviewMediaRequest $request, LinkCardFetcher $fetcher, RemoteMediaImporter $importer): MediaResource
+    public function __invoke(StoreLinkPreviewMediaRequest $request, LinkCardFetcher $fetcher): JsonResponse
     {
         $imageUrl = $fetcher->fetch($request->validated('url'))?->imageUrl;
 
@@ -29,18 +31,15 @@ class LinkPreviewMediaController extends Controller
             throw ValidationException::withMessages(['url' => __('posts.composer.link_preview.no_image')]);
         }
 
-        $imported = $importer->import(
+        $importIds = StartMediaImport::execute(
+            $request->user(),
             $request->user()->currentWorkspace,
             RemoteFile::fromUrl($imageUrl),
             [MediaType::Image],
-            self::TIMEOUT_SECONDS,
-            followRedirects: true,
         );
 
-        if (! $imported->succeeded()) {
-            throw ValidationException::withMessages(['url' => __('posts.composer.media_sources.errors.import_failed')]);
-        }
-
-        return new MediaResource($imported->media);
+        return (new MediaImportStartedResource($importIds))
+            ->response()
+            ->setStatusCode(Response::HTTP_ACCEPTED);
     }
 }

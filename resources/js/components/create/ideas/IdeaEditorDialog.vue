@@ -697,6 +697,9 @@ const iconButtonClass =
         :content-types="[]"
         @apply="onMediaEdited"
     />
-    <UnsplashDialog v-model:open="unsplashOpen" @picked="appendMedia" />
-    <GiphyDialog v-model:open="giphyOpen" @picked="appendMedia" />
+    <UnsplashDialog
+        v-model:open="unsplashOpen"
+        @import-started="onImportStarted"
+    />
+    <GiphyDialog v-model:open="giphyOpen" @import-started="onImportStarted" />
 </template>

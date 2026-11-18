@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use App\Dto\RemoteFile;
-use App\Enums\Media\Source;
+use App\Enums\Media\Type as MediaType;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\User;
 use App\Models\Workspace;
@@ -21,11 +21,13 @@ class StartMediaImport
      * download of a file. The file's headers go to MediaImportHeaders,
      * never into the queued job. A string is a Google Photos picker
      * session: every item picked in it becomes its own import, in the
-     * user's order. Returns the import ids the composer polls.
+     * user's order. `$types` are the media types the file may be, every
+     * type when null. Returns the import ids the composer waits on.
      *
+     * @param  list<MediaType>|null  $types
      * @return list<string>
      */
-    public static function execute(User $user, Workspace $workspace, Source $source, RemoteFile|string $fileOrSession): array
+    public static function execute(User $user, Workspace $workspace, RemoteFile|string $fileOrSession, ?array $types = null): array
     {
         if (is_string($fileOrSession)) {
             return self::startGooglePhotosSession($user, $workspace, $fileOrSession);
@@ -38,7 +40,7 @@ class StartMediaImport
             $fileOrSession = $fileOrSession->withHeaders([]);
         }
 
-        ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $fileOrSession);
+        ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $fileOrSession, types: $types);
 
         return [$importId];
     }

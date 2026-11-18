@@ -1,4 +1,4 @@
-import { configureEcho } from '@laravel/echo-vue';
+import { configureEcho, echo } from '@laravel/echo-vue';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -9,3 +9,9 @@ configureEcho({
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
 });
+
+/**
+ * Laravel's `window.Echo`, read on demand so a page that never listens
+ * never connects. Browser tests play a broadcast through it.
+ */
+Object.defineProperty(window, 'Echo', { get: echo });

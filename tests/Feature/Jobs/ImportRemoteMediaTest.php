@@ -6,6 +6,7 @@ use App\Actions\Media\StartMediaImport;
 use App\Dto\ImportedFile;
 use App\Dto\RemoteFile;
 use App\Enums\Media\Source;
+use App\Events\MediaImportSettled;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Media;
 use App\Models\User;
@@ -13,7 +14,9 @@ use App\Models\Workspace;
 use App\Services\Media\RemoteMediaImporter;
 use App\Support\MediaImportStatus;
 use Carbon\CarbonInterface;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +50,7 @@ test('starting an import queues an encrypted job and records it as pending', fun
     Queue::fake();
     config()->set('trypost.media_sources.import_timeout_seconds', 321);
 
-    [$importId] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, driveFile());
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
 
     Queue::assertPushed(ImportRemoteMedia::class, fn (ImportRemoteMedia $job): bool => $job instanceof ShouldBeEncrypted
         && $job->importId === $importId
@@ -64,7 +67,7 @@ test('a successful job ends done with one temporary upload the status endpoint r
     Queue::fake();
     Http::fake(['https://93.184.216.34/*' => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')))]);
 
-    [$importId] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, driveFile());
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
     (new ImportRemoteMedia($importId, $this->workspace->id, $this->user->id, driveFile()))->handle(app(RemoteMediaImporter::class));
 
     $media = Media::query()->sole();
@@ -83,12 +86,46 @@ test('a successful job ends done with one temporary upload the status endpoint r
         ->assertJsonPath('media.upload_token', $media->upload_token);
 });
 
+test('settling an import tells the workspace channel which import it was, and nothing else', function (int $downloadStatus) {
+    Queue::fake();
+    Event::fake([MediaImportSettled::class]);
+    Http::fake(['https://93.184.216.34/*' => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), $downloadStatus)]);
+
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
+
+    Event::assertNotDispatched(MediaImportSettled::class);
+
+    (new ImportRemoteMedia($importId, $this->workspace->id, $this->user->id, driveFile()))->handle(app(RemoteMediaImporter::class));
+
+    Event::assertDispatchedTimes(MediaImportSettled::class, 1);
+    Event::assertDispatched(MediaImportSettled::class, function (MediaImportSettled $event) use ($importId): bool {
+        $channels = collect($event->broadcastOn())->map(fn (PrivateChannel $channel): string => $channel->name)->all();
+
+        return $event->importId === $importId
+            && $channels === ["private-workspace.{$this->workspace->id}"]
+            && $event->broadcastWith() === ['import_id' => $importId];
+    });
+})->with([
+    'imported' => [200],
+    'failed' => [404],
+]);
+
+test('a job that dies tells the workspace channel too', function () {
+    Queue::fake();
+    Event::fake([MediaImportSettled::class]);
+
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
+    (new ImportRemoteMedia($importId, $this->workspace->id, $this->user->id, driveFile()))->failed(new RuntimeException('timed out'));
+
+    Event::assertDispatched(MediaImportSettled::class, fn (MediaImportSettled $event): bool => $event->importId === $importId);
+});
+
 test('a disallowed host ends failed with host_not_allowed', function () {
     Queue::fake();
     Http::fake();
 
     $file = driveFile('https://93.184.216.99/files/abc');
-    [$importId] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, $file);
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, $file);
     (new ImportRemoteMedia($importId, $this->workspace->id, $this->user->id, $file))->handle(app(RemoteMediaImporter::class));
 
     expect(MediaImportStatus::find($importId, $this->user->id, $this->workspace->id))
@@ -101,7 +138,7 @@ test('a disallowed host ends failed with host_not_allowed', function () {
 test('a job that dies marks the import failed', function () {
     Queue::fake();
 
-    [$importId] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, driveFile());
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
     (new ImportRemoteMedia($importId, $this->workspace->id, $this->user->id, driveFile()))->failed(new RuntimeException('timed out'));
 
     expect(MediaImportStatus::find($importId, $this->user->id, $this->workspace->id))
@@ -111,7 +148,7 @@ test('a job that dies marks the import failed', function () {
 test('a deleted workspace ends failed', function () {
     Queue::fake();
 
-    [$importId] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, driveFile());
+    [$importId] = StartMediaImport::execute($this->user, $this->workspace, driveFile());
     (new ImportRemoteMedia($importId, (string) Str::uuid(), $this->user->id, driveFile()))->handle(app(RemoteMediaImporter::class));
 
     expect(MediaImportStatus::find($importId, $this->user->id, $this->workspace->id))
@@ -121,7 +158,7 @@ test('a deleted workspace ends failed', function () {
 test('the job runs on the media-imports queue', function () {
     Queue::fake();
 
-    StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, driveFile());
+    StartMediaImport::execute($this->user, $this->workspace, driveFile());
 
     Queue::assertPushedOn(ImportRemoteMedia::QUEUE, ImportRemoteMedia::class);
 });
@@ -148,7 +185,7 @@ test('a user who lost access by the time the job runs gets nothing imported', fu
     $member = User::factory()->create();
     $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
-    [$importId] = StartMediaImport::execute($member, $this->workspace, Source::GoogleDrive, driveFile());
+    [$importId] = StartMediaImport::execute($member, $this->workspace, driveFile());
     $this->workspace->members()->detach($member->id);
 
     (new ImportRemoteMedia($importId, $this->workspace->id, $member->id, driveFile()))->handle(app(RemoteMediaImporter::class));

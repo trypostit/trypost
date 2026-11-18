@@ -125,6 +125,7 @@ import {
 import { useMediaEditSwap, withMediaAdded } from '@/composables/useMediaEditSwap';
 import {
     type MediaImportStarted,
+    startMediaImport,
     useMediaImport,
 } from '@/composables/useMediaImport';
 import { getMediaRulesForContentType } from '@/composables/useMediaRules';
@@ -164,7 +165,6 @@ import {
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
 import { blank, filled, transform } from '@/lib/helpers';
-import { extractErrorMessage } from '@/lib/httpError';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
 import {
@@ -701,21 +701,21 @@ watch(
     },
     { immediate: true },
 );
-const linkCardMediaHttp = useHttp<{ url: string }, MediaItem>({ url: '' });
+const replacingLinkCard = ref(false);
+/** Imports the link card's image into the card's post, which shows it loading. */
 const replaceLinkCardWithMedia = async (group: NetworkGroup): Promise<void> => {
     if (!openLinkCard.value) return;
-    linkCardMediaHttp.url = openLinkCard.value.uri;
-    try {
-        appendMedia(
-            group.key,
-            await linkCardMediaHttp.post(linkPreviewMedia.url()),
-        );
-    } catch (exception) {
-        toast.error(
-            extractErrorMessage(exception) ??
-                trans('posts.composer.media_sources.errors.import_failed'),
-        );
-    }
+    const link = openLinkCard.value.uri;
+    replacingLinkCard.value = true;
+    const importIds = await startMediaImport(
+        { url: link },
+        linkPreviewMedia.url(),
+    );
+    replacingLinkCard.value = false;
+
+    importIds.forEach((importId) =>
+        mediaImport.track(uploaderFor(group.key), { importId, label: link }),
+    );
 };
 const uploadScope = effectScope();
 const uploaders = shallowReactive(new Map<string, MediaUploader>());
@@ -806,18 +806,24 @@ const libraryOpen = (source: LibrarySource): WritableComputedRef<boolean> =>
     });
 const unsplashOpen = libraryOpen('unsplash');
 const giphyOpen = libraryOpen('giphy');
-const onLibraryPicked = (item: MediaItem): void => {
+/** The uploader of the post the open library adds to: the thread reply it was opened on, else the card or the shared post. */
+const libraryUploader = (): MediaUploader => {
     if (filled(libraryGroupKey.value) && filled(libraryReplyKey.value)) {
-        setReplyMedia(libraryGroupKey.value, libraryReplyKey.value, (media) =>
-            withMediaAdded(media, item, null),
+        const replyUploader = replyUploaders.get(
+            replyUploaderKey(libraryGroupKey.value, libraryReplyKey.value),
         );
 
-        return;
+        if (filled(replyUploader)) {
+            return replyUploader;
+        }
     }
-    appendMedia(libraryGroupKey.value, item);
+
+    return uploaderFor(libraryGroupKey.value);
 };
 
 const mediaImport = useMediaImport();
+const onLibraryImportStarted = (started: MediaImportStarted): void =>
+    mediaImport.track(libraryUploader(), started);
 const onImportStarted = (
     started: MediaImportStarted,
     groupKey: string | null,
@@ -2905,7 +2911,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :removable="
                                             linkPreviewDroppable(group.platform)
                                         "
-                                        :replacing="linkCardMediaHttp.processing"
+                                        :replacing="replacingLinkCard"
                                         :disabled="cropUploading"
                                         @remove="dropLinkCard(group)"
                                         @replace="replaceLinkCardWithMedia(group)"
@@ -3680,9 +3686,9 @@ const onDialogOpenChange = (value: boolean): void => {
     />
     <UnsplashDialog
         v-model:open="unsplashOpen"
-        @picked="onLibraryPicked"
+        @import-started="onLibraryImportStarted"
     />
-    <GiphyDialog v-model:open="giphyOpen" @picked="onLibraryPicked" />
+    <GiphyDialog v-model:open="giphyOpen" @import-started="onLibraryImportStarted" />
     <ComposerDiscardDialog
         v-model:open="unsavedChanges.confirming.value"
         :title="$t('common.unsaved_changes.title')"

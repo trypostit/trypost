@@ -210,10 +210,10 @@ test('the stashed token is dropped when the job fails or the user lost access', 
     Queue::fake();
     $file = GoogleDriveFiles::toRemoteFile(GOOGLE_DRIVE_TEST_TOKEN, ['id' => 'abc', 'name' => 'a.png']);
 
-    [$failed] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, $file);
+    [$failed] = StartMediaImport::execute($this->user, $this->workspace, $file);
     (new ImportRemoteMedia($failed, $this->workspace->id, $this->user->id, $file->withHeaders([])))->failed(new RuntimeException('worker died'));
 
-    [$revoked] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, $file);
+    [$revoked] = StartMediaImport::execute($this->user, $this->workspace, $file);
     $this->workspace->members()->detach($this->user->id);
     app()->call([new ImportRemoteMedia($revoked, $this->workspace->id, $this->user->id, $file->withHeaders([])), 'handle']);
 
