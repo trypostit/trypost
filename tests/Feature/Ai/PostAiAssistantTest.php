@@ -217,6 +217,28 @@ test('the assistant writes a poll question within 280 characters even on an acco
     PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
 });
 
+test('the assistant writes a mastodon or threads poll question within the account limit, not 280', function (string $platform, ContentType $type) {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $this->workspace->id]);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'ask our followers about tabs or spaces',
+            'platform' => $account->platform->value,
+            'social_account_id' => $account->id,
+            'content_type' => $type->value,
+        ])
+        ->assertOk();
+
+    expect($account->maxContentLength())->toBe(500);
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), "Hard limit: {$account->maxContentLength()} characters"));
+})->with([
+    'mastodon' => ['mastodon', ContentType::MastodonPoll],
+    'threads' => ['threads', ContentType::ThreadsPoll],
+]);
+
 test('the assistant ignores a post type of another network when picking the limit', function () {
     PostWritingAssistant::fake(['Big news.']);
 

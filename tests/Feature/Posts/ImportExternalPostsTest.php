@@ -1174,10 +1174,10 @@ test('imports a mastodon poll with its length from publishing to its end', funct
         ->and($poll->meta)->toEqual(['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 2880, 'multiple' => true]]);
 });
 
-test('a mastodon poll found before its choices were read is imported as a plain post', function () {
-    $account = SocialAccount::factory()->mastodon()->create();
+test('a poll found before its choices were read is imported as a plain post', function (string $platform, ContentType $expected) {
+    $account = SocialAccount::factory()->{$platform}()->create();
     externalPublication($account, [
-        'remote_id' => 'mastodon-poll-old',
+        'remote_id' => 'poll-old',
         'excerpt' => 'Tabs or spaces?',
         'content_type' => PublicationContentType::Poll,
         'provider_metadata' => ['visibility' => 'public'],
@@ -1185,11 +1185,15 @@ test('a mastodon poll found before its choices were read is imported as a plain 
 
     ImportExternalPosts::execute($account);
 
-    $post = Post::query()->imported()->where('platform_post_id', 'mastodon-poll-old')->sole();
+    $post = Post::query()->imported()->where('platform_post_id', 'poll-old')->sole();
 
-    expect($post->content_type)->toBe(ContentType::MastodonPost)
+    expect($post->content_type)->toBe($expected)
         ->and($post->meta)->toBe([]);
-});
+})->with([
+    'x' => ['x', ContentType::XPost],
+    'mastodon' => ['mastodon', ContentType::MastodonPost],
+    'threads' => ['threads', ContentType::ThreadsPost],
+]);
 
 test('imports a threads poll with its choices', function () {
     $account = SocialAccount::factory()->threads()->create();
@@ -1213,11 +1217,11 @@ test('imports a threads poll with its choices', function () {
         ->and($poll->meta)->toEqual(['poll' => ['options' => ['Tabs', 'Spaces']]]);
 });
 
-test('a poll published through trypost is linked, not imported again', function () {
-    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
-    $tryPost = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create(['platform_post_id' => 'x-poll-2']);
+test('a poll published through trypost is linked, not imported again', function (string $platform, ContentType $type) {
+    $account = SocialAccount::factory()->{$platform}()->create();
+    $tryPost = Post::factory()->forAccount($account, $type)->published()->create(['platform_post_id' => 'poll-2']);
     $publication = externalPublication($account, [
-        'remote_id' => 'x-poll-2',
+        'remote_id' => 'poll-2',
         'content_type' => PublicationContentType::Poll,
         'provider_metadata' => ['poll' => ['options' => [['label' => 'Yes', 'votes' => 3], ['label' => 'No', 'votes' => 1]], 'voting_status' => 'open', 'duration_minutes' => 1440]],
     ]);
@@ -1225,6 +1229,10 @@ test('a poll published through trypost is linked, not imported again', function 
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->count())->toBe($count)
-        ->and(Post::query()->where('content_type', ContentType::XPoll)->sole()->id)->toBe($tryPost->id)
+        ->and(Post::query()->where('content_type', $type)->sole()->id)->toBe($tryPost->id)
         ->and($publication->fresh()->post_id)->toBe($tryPost->id);
-});
+})->with([
+    'x' => ['x', ContentType::XPoll],
+    'mastodon' => ['mastodon', ContentType::MastodonPoll],
+    'threads' => ['threads', ContentType::ThreadsPoll],
+]);

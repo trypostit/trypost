@@ -385,3 +385,47 @@ test('a sent mastodon or threads poll shows the votes its network returned, like
     'mastodon' => [ContentType::MastodonPoll],
     'threads' => [ContentType::ThreadsPoll],
 ]);
+
+test('a sent mastodon multiple choice poll shows each share of the people who voted', function () {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 8], ['label' => 'Linux', 'votes' => 6], ['label' => 'Windows', 'votes' => 6]],
+        'voting_status' => 'closed',
+        'end_datetime' => now()->subHour()->toIso8601String(),
+        'duration_minutes' => null,
+        'multiple' => true,
+        'voters' => 10,
+        'totals_hidden' => false,
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '80%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1-votes", '60%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-2-votes", '60%')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", '20 votes')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a sent mastodon poll that hides its votes says so and shows no votes per choice', function () {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 0], ['label' => 'Linux', 'votes' => 0]],
+        'voting_status' => 'open',
+        'end_datetime' => now()->addHours(5)->toIso8601String(),
+        'duration_minutes' => null,
+        'multiple' => false,
+        'voters' => null,
+        'totals_hidden' => true,
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", __('posts.poll_results.hidden'))
+        ->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertMissing("@post-poll-{$post->id}-option-0-votes")
+        ->assertMissing("@post-poll-{$post->id}-option-1-votes")
+        ->assertNoJavaScriptErrors();
+});

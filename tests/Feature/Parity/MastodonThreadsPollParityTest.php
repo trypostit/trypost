@@ -5,7 +5,12 @@ declare(strict_types=1);
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\CreatePostsTool;
+use App\Mcp\Tools\Post\CreatePostTool;
 use App\Models\Media;
+use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Support\Social\MastodonPoll;
 use App\Support\Social\Poll;
 use App\Support\Social\ThreadsPoll;
@@ -194,3 +199,114 @@ test('a choice too long is reported on the field it was sent in, blank choices b
     'the post poll' => ['', ['poll' => ['options' => ['Yes', '', Str::repeat('a', MastodonPoll::OPTION_MAX_LENGTH + 1)]]]],
     'a reply poll' => ['thread_replies.0.', ['thread_replies' => [['text' => 'Which one?', 'poll' => ['options' => ['Yes', '', Str::repeat('a', MastodonPoll::OPTION_MAX_LENGTH + 1)], 'duration_minutes' => 60]]]]],
 ]);
+
+/**
+ * Creates one draft through one surface: the web composer, the REST API or
+ * the MCP tool, and returns that surface's own response.
+ *
+ * @param  array<string, mixed>  $meta
+ */
+function pollParityCreate(string $surface, SocialAccount $account, ContentType $type, array $meta): TestResponse|McpTestResponse
+{
+    $destination = ['social_account_id' => $account->id, 'content_type' => $type->value, 'meta' => $meta];
+
+    return match ($surface) {
+        'web' => test()->actingAs(test()->user)->postJson(route('app.posts.store'), [
+            'status' => Status::Draft->value,
+            'content' => 'Tabs or spaces?',
+            'media' => [],
+            'destinations' => [$destination],
+        ]),
+        'api' => test()->withHeaders(parityApi(test()->token))->postJson(route('api.posts.store'), [
+            'status' => Status::Draft->value,
+            'content' => 'Tabs or spaces?',
+            ...$destination,
+        ]),
+        'mcp' => TryPostServer::actingAs(test()->user)->tool(CreatePostTool::class, [
+            'content' => 'Tabs or spaces?',
+            ...$destination,
+        ]),
+    };
+}
+
+test('a new poll stores only what its network takes on the web, api and mcp', function (string $surface, ContentType $type, array $expected) {
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => test()->workspace->id]);
+
+    $response = pollParityCreate($surface, $account, $type, ['poll' => [
+        'options' => [' Yes ', '', 'No'],
+        'duration_minutes' => 60,
+        'multiple' => true,
+        'hide_totals' => true,
+    ]]);
+
+    assertPollParityPassed($surface, $response);
+    expect(Post::where('social_account_id', $account->id)->sole()->meta['poll'])->toEqual($expected);
+})->with(['web', 'api', 'mcp'])->with([
+    'x' => [ContentType::XPoll, ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+    'mastodon' => [ContentType::MastodonPoll, ['options' => ['Yes', 'No'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    'threads' => [ContentType::ThreadsPoll, ['options' => ['Yes', 'No']]],
+]);
+
+test('a new mastodon post keeps a reply poll on the web, api and mcp', function (string $surface) {
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => test()->workspace->id]);
+    $poll = ['options' => ['Yes', 'No'], 'duration_minutes' => 60, 'hide_totals' => true];
+
+    $response = pollParityCreate($surface, $account, ContentType::MastodonPost, ['thread_replies' => [['text' => 'Which one?', 'poll' => $poll]]]);
+
+    assertPollParityPassed($surface, $response);
+    expect(Post::where('social_account_id', $account->id)->sole()->meta['thread_replies'][0]['poll'])->toEqual($poll);
+})->with(['web', 'api', 'mcp']);
+
+test('a batch reports a poll choice too long on its own destination on the api', function () {
+    $mastodon = SocialAccount::factory()->mastodon()->create(['workspace_id' => test()->workspace->id]);
+    $threads = SocialAccount::factory()->threads()->create(['workspace_id' => test()->workspace->id]);
+
+    test()->withHeaders(parityApi(test()->token))->postJson(route('api.posts.batch.store'), [
+        'status' => Status::Draft->value,
+        'content' => 'Tabs or spaces?',
+        'destinations' => [
+            ['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPoll->value, 'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]],
+            ['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPoll->value, 'meta' => ['poll' => ['options' => ['Yes', Str::repeat('a', ThreadsPoll::OPTION_MAX_LENGTH + 1)]]]],
+        ],
+    ])->assertUnprocessable()->assertJsonValidationErrors([
+        'destinations.1.meta.poll.options.1' => __('posts.form.poll.choice_max', ['max' => ThreadsPoll::OPTION_MAX_LENGTH]),
+    ])->assertJsonMissingValidationErrors('destinations.0.meta.poll.options.1');
+
+    expect(Post::where('workspace_id', test()->workspace->id)->exists())->toBeFalse();
+});
+
+test('a batch refuses a poll choice too long on its own destination on mcp', function () {
+    $mastodon = SocialAccount::factory()->mastodon()->create(['workspace_id' => test()->workspace->id]);
+    $threads = SocialAccount::factory()->threads()->create(['workspace_id' => test()->workspace->id]);
+
+    TryPostServer::actingAs(test()->user)->tool(CreatePostsTool::class, [
+        'status' => Status::Draft->value,
+        'content' => 'Tabs or spaces?',
+        'destinations' => [
+            ['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPoll->value, 'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]],
+            ['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPoll->value, 'meta' => ['poll' => ['options' => ['Yes', Str::repeat('a', ThreadsPoll::OPTION_MAX_LENGTH + 1)]]]],
+        ],
+    ])->assertHasErrors([__('posts.form.poll.choice_max', ['max' => ThreadsPoll::OPTION_MAX_LENGTH])]);
+
+    expect(Post::where('workspace_id', test()->workspace->id)->exists())->toBeFalse();
+});
+
+test('a mastodon poll shorter than mastodon allows is refused on the post and on a reply on the web, api and mcp', function (string $surface, ContentType $type, string $prefix, array $meta) {
+    $post = pollParityPost($type);
+
+    $response = pollParityUpdate($surface, $post, ['meta' => $meta]);
+
+    assertPollParityRefused($surface, $response, ["meta.{$prefix}poll.duration_minutes" => MastodonPoll::durationRangeMessage()]);
+})->with(['web', 'api', 'mcp'])->with([
+    'the post poll' => [ContentType::MastodonPoll, '', ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => MastodonPoll::MIN_DURATION - 1]]],
+    'a reply poll' => [ContentType::MastodonPost, 'thread_replies.0.', ['thread_replies' => [['text' => 'Which one?', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => MastodonPoll::MIN_DURATION - 1]]]]],
+]);
+
+test('a threads poll takes and drops a length threads does not use on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPoll);
+
+    $response = pollParityUpdate($surface, $post, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 99999]]]);
+
+    assertPollParityPassed($surface, $response);
+    expect($post->fresh()->meta['poll'])->toEqual(['options' => ['Yes', 'No']]);
+})->with(['web', 'api', 'mcp']);

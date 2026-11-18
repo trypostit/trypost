@@ -98,12 +98,11 @@ test('execute refuses a duplicate when the channel was removed', function () {
         ->toThrow(ValidationException::class);
 });
 
-test('execute keeps an x poll with its choices and length', function () {
+test('execute keeps a poll with its choices and settings', function (string $platform, ContentType $type, array $poll) {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 4320];
-    $original = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $workspace->id]);
+    $original = Post::factory()->forAccount($account, $type)->published()->create([
         'user_id' => $user->id,
         'content' => 'Tabs or spaces?',
         'meta' => ['poll' => $poll],
@@ -111,6 +110,10 @@ test('execute keeps an x poll with its choices and length', function () {
 
     $copy = DuplicatePost::execute($original, $user)->fresh();
 
-    expect($copy->content_type)->toBe(ContentType::XPoll)
+    expect($copy->content_type)->toBe($type)
         ->and($copy->meta['poll'])->toEqual($poll);
-});
+})->with([
+    'x' => ['x', ContentType::XPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Tabs', 'Spaces', 'Both']]],
+]);

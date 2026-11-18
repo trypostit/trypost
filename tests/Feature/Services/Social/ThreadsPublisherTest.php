@@ -1149,5 +1149,24 @@ test('a threads poll that cannot go fails before calling threads', function (arr
 })->with([
     'media' => [['media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]], 'posts.errors.media_not_accepted'],
     'one choice' => [['meta' => ['poll' => ['options' => ['Tabs']]]], 'posts.form.poll.options_required'],
+    'repeated choices' => [['meta' => ['poll' => ['options' => ['Tabs', ' tabs']]]], 'posts.form.poll.options_distinct'],
     'no question' => [['content' => ''], 'posts.form.poll.question_required'],
 ]);
+
+test('a threads poll with four choices sends option_a to option_d', function () {
+    $this->post->update([
+        'content' => 'Pick a color',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Red', 'Green', 'Blue', 'Gold']]],
+    ]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'poll_attachment') === [
+        'option_a' => 'Red',
+        'option_b' => 'Green',
+        'option_c' => 'Blue',
+        'option_d' => 'Gold',
+    ]);
+});

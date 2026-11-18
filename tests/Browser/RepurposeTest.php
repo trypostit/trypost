@@ -566,6 +566,34 @@ test('an x destination offers no poll, while a threads destination still offers 
         ->assertNoJavaScriptErrors();
 });
 
+test('mastodon and threads destinations offer no poll', function () {
+    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
+    $mastodon = SocialAccount::factory()->for($workspace)->mastodon()->create();
+    $threads = SocialAccount::factory()->for($workspace)->threads()->create();
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $source->id,
+        'destinations' => [
+            ['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => []],
+            ['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
+        ],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.repurposes.show', $repurpose))->resize(1440, 1000);
+    waitFor($page, "@channel-row-{$mastodon->id}");
+    waitFor($page, "@channel-row-{$threads->id}");
+    waitForState($page, "@channel-{$mastodon->id}", "element.getAttribute('aria-checked') === 'true'");
+
+    $page->assertAttribute("@channel-{$threads->id}", 'aria-checked', 'true')
+        ->assertMissing("@channel-type-{$mastodon->id}-mastodon_poll")
+        ->assertMissing("@channel-type-{$mastodon->id}")
+        ->assertPresent("@channel-type-{$threads->id}-threads_post")
+        ->assertMissing("@channel-type-{$threads->id}-threads_poll")
+        ->assertNoJavaScriptErrors();
+});
+
 test('on a phone the header puts the summary and the actions on their own rows', function () {
     [$user, $workspace, $source, $destination] = repurposeOwnerWithAccounts();
 
