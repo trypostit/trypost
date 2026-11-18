@@ -12,7 +12,7 @@ import type {
     PreviewMediaLayout,
 } from '@/components/posts/previews/types';
 import VerifiedBadge from '@/components/VerifiedBadge.vue';
-import { useLinkCard } from '@/composables/useLinkCard';
+import { firstHttpUrl, useLinkCard } from '@/composables/useLinkCard';
 import type { MediaItem } from '@/types/media';
 
 
@@ -80,10 +80,23 @@ const props = withDefaults(
     },
 );
 
+/** The link whose card the preview draws: none when it shows no card, so nothing is fetched. */
+const cardUrl = (text: string): string | null => {
+    if (!props.linkCard) {
+        return null;
+    }
+
+    if (props.linkUrl !== undefined) {
+        return props.linkUrl(text);
+    }
+
+    return firstHttpUrl(text);
+};
+
 const { card, loading } = useLinkCard(
     toRef(props, 'content'),
     toRef(props, 'media'),
-    props.linkUrl,
+    cardUrl,
 );
 
 const isStacked = computed((): boolean => props.variant === 'stacked');

@@ -21,7 +21,7 @@ trait PublishesThreads
      * part (ThreadProgress::failureMessage()).
      *
      * @param  callable(): array{id: string, url?: ?string, uri?: string, cid?: string}  $postRoot
-     * @param  callable(string, Collection<int, MediaItem>, array<string, mixed>, array<string, mixed>, ?array<string, mixed>): array{id: string, url?: ?string, uri?: string, cid?: string}  $postReply  the last argument is the reply's poll (X only)
+     * @param  callable(string, Collection<int, MediaItem>, array<string, mixed>, array<string, mixed>, ?array<string, mixed>): array{id: string, url?: ?string, uri?: string, cid?: string}  $postReply  the last argument is the reply's poll (X and Mastodon)
      * @param  (callable(array<string, mixed>): void)|null  $afterThread
      * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
      */

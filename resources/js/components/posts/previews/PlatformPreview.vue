@@ -27,16 +27,17 @@ import {
     threadReplyContentType,
 } from '@/lib/threadReplies';
 import { withCoversFor } from '@/lib/videoFrame';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { THREAD_PLATFORMS } from '@/types/network-options';
-import type { PublishConfig } from '@/types/platform';
+import { isThreadPlatform } from '@/types/network-options';
+import type { PlatformValue, PublishConfig } from '@/types/platform';
 
 interface Props {
-    platform: string;
+    platform: PlatformValue;
     socialAccount: PreviewAccount | null | undefined;
     content: string;
     media: MediaItem[];
-    contentType?: string;
+    contentType?: ContentTypeValue;
     meta?: Record<string, any>;
     /** Local scheduled datetime (datetime-local); falls back to now in previews. */
     postedAt?: string | null;
@@ -68,18 +69,25 @@ const takesCoverImage = computed((): boolean => {
 
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
-const shownReplies = computed((): { reply: ThreadReply; index: number }[] =>
-    THREAD_PLATFORMS.includes(props.platform) && !repliesAreComments(props.platform)
-        ? threadRepliesOf(props.meta)
-              .map((reply, index) => ({ reply, index }))
-              .filter(
-                  ({ reply }) =>
-                      filled(reply.text) ||
-                      filled(reply.media) ||
-                      filled(reply.poll),
-              )
-        : [],
-);
+const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
+    if (!isThreadPlatform(props.platform) || repliesAreComments(props.platform)) {
+        return [];
+    }
+
+    return threadRepliesOf(props.meta)
+        .map((reply, index) => ({ reply, index }))
+        .filter(({ reply }) => hasContent(reply));
+});
+
+/** A reply shows once it holds text, media or a poll. */
+const hasContent = (reply: ThreadReply): boolean => {
+    if (filled(reply.text) || filled(reply.media)) {
+        return true;
+    }
+
+    return filled(reply.poll);
+};
+
 const threadReplies = computed((): ThreadReply[] =>
     shownReplies.value.map(({ reply }) => reply),
 );

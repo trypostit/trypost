@@ -59,15 +59,17 @@ it('lists content types per platform', function () {
     expect($pinterestTypes->firstWhere('value', 'pinterest_pin')['min_media_count'])->toBe(0);
 });
 
-it('lists the x poll without media capabilities', function () {
+it('lists each poll without media capabilities', function (string $platform, string $type) {
     $response = $this->withToken($this->plainToken)
         ->getJson(route('api.content-types'))
         ->assertOk();
 
-    $poll = collect(data_get($response->collect('platforms')->firstWhere('platform', 'x'), 'content_types'))->firstWhere('value', 'x_poll');
+    $poll = collect(data_get($response->collect('platforms')->firstWhere('platform', $platform), 'content_types'))->firstWhere('value', $type);
 
     expect($poll)->toMatchArray([
         'max_media_count' => 0,
+        'accept_images' => false,
+        'accept_videos' => false,
         'accepts_gif' => false,
         'accepts_mov' => false,
         'supports_alt_text' => false,
@@ -75,7 +77,11 @@ it('lists the x poll without media capabilities', function () {
         'max_video_bytes' => null,
         'max_video_duration_sec' => null,
     ]);
-});
+})->with([
+    'x' => ['x', 'x_poll'],
+    'mastodon' => ['mastodon', 'mastodon_poll'],
+    'threads' => ['threads', 'threads_poll'],
+]);
 
 it('rejects content-types without auth', function () {
     $this->getJson(route('api.content-types'))->assertUnauthorized();

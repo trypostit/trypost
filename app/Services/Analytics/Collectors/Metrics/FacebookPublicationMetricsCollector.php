@@ -13,7 +13,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -131,29 +130,5 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         }
 
         return $this->observation($date, $metrics);
-    }
-
-    /**
-     * @param  array<string, string>  $query
-     * @return array<string, mixed>
-     */
-    private function optional(SocialAccount $account, string $url, array $query): array
-    {
-        try {
-            return (array) $this->get($account, $url, $query)->json();
-        } catch (AnalyticsCollectionException $exception) {
-            if (! in_array($exception->category, ['permission', 'malformed'], true)) {
-                throw $exception;
-            }
-
-            $this->recordRefusal($exception);
-            Log::info('analytics.facebook_read_refused', [
-                'path' => parse_url($url, PHP_URL_PATH),
-                'category' => $exception->category,
-                'reason' => $exception->getMessage(),
-            ]);
-
-            return [];
-        }
     }
 }

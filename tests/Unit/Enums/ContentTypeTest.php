@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Support\Social\MastodonPoll;
+use App\Support\Social\ThreadsPoll;
+use App\Support\Social\XPoll;
 
 test('content type has correct labels', function () {
     expect(ContentType::InstagramFeed->label())->toBe('Feed Post');
@@ -522,8 +525,27 @@ test('a post type that takes no media advertises no media capability', function 
         ->and($type->preferredImageDimensions())->toBe(ContentType::ThreadsGhostPost->preferredImageDimensions());
 })->with([
     'x poll' => [ContentType::XPoll],
+    'mastodon poll' => [ContentType::MastodonPoll],
+    'threads poll' => [ContentType::ThreadsPoll],
     'threads ghost post' => [ContentType::ThreadsGhostPost],
 ]);
+
+test('a poll type names its network\'s poll rules', function (ContentType $type, string $poll) {
+    expect($type->poll())->toBe($poll)
+        ->and($type->isPoll())->toBeTrue();
+})->with([
+    'x poll' => [ContentType::XPoll, XPoll::class],
+    'mastodon poll' => [ContentType::MastodonPoll, MastodonPoll::class],
+    'threads poll' => [ContentType::ThreadsPoll, ThreadsPoll::class],
+]);
+
+test('every other type has no poll rules', function () {
+    $withPoll = collect(ContentType::cases())->filter(fn (ContentType $type): bool => filled($type->poll()))->values()->all();
+
+    expect($withPoll)->toEqualCanonicalizing([ContentType::XPoll, ContentType::MastodonPoll, ContentType::ThreadsPoll])
+        ->and(ContentType::MastodonPost->isPoll())->toBeFalse()
+        ->and(ContentType::ThreadsPost->isPoll())->toBeFalse();
+});
 
 test('a post type is compatible with the platforms it can go to', function () {
     expect(ContentType::InstagramReel->isCompatibleWith(Platform::Instagram))->toBeTrue()

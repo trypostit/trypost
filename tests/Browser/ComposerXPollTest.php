@@ -6,12 +6,9 @@ use App\Ai\Agents\PostWritingAssistant;
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Support\Social\XPoll;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -24,40 +21,7 @@ use Laravel\Ai\Prompts\AgentPrompt;
  */
 function seedXPollPost(ContentType $contentType = ContentType::XPost, array $attributes = [], array $accountMeta = [], array $userAttributes = []): Post
 {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $user = User::factory()->create($userAttributes);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('member'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    connectAiTo($user);
-
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => Platform::X,
-        'username' => 'trypostit',
-        'access_token' => 'x-token',
-        'token_expires_at' => now()->addDays(20),
-        'meta' => $accountMeta,
-    ]);
-
-    $post = Post::factory()->forAccount($account, $contentType)->create([
-        'user_id' => $user->id,
-        'content' => 'Which network brings you the most customers?',
-        ...$attributes,
-    ]);
-
-    test()->actingAs($user);
-
-    return $post;
-}
-
-function openXPollComposer(Post $post): mixed
-{
-    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, "@composer-type-{$post->social_account_id}-x_poll");
-
-    return $page;
+    return seedPollComposerPost($contentType, $attributes, ['access_token' => 'x-token', 'meta' => $accountMeta], $userAttributes);
 }
 
 function pickXPoll(mixed $page, Post $post): void
@@ -69,7 +33,7 @@ function pickXPoll(mixed $page, Post $post): void
 test('picking poll shows two choices and turns media off', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     $page->assertVisible("@composer-{$id}-media-source-menu");
     pickXPoll($page, $post);
@@ -80,14 +44,14 @@ test('picking poll shows two choices and turns media off', function () {
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'));
-    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.x.poll.attachments'))
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.poll.attachments'));
+    $page->assertSeeIn('[data-slot="tooltip-content"]', __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
 test('adds choices up to four and removes one', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->assertMissing('@x-poll-remove-choice-0')
@@ -110,7 +74,7 @@ test('adds choices up to four and removes one', function () {
 
 test('a new choice takes focus after one was removed', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->click('@x-poll-add-choice');
@@ -132,22 +96,22 @@ test('a new choice takes focus after one was removed', function () {
 
 test('duplicate choices show the error under the choices', function () {
     $post = seedXPollPost(ContentType::XPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', 'Yes')
         ->fill('@x-poll-choice-1', 'yes')
         ->click('@composer-submit');
-    waitForText($page, '@x-poll-options-error', __('posts.form.x.poll.options_distinct'));
+    waitForText($page, '@x-poll-options-error', __('posts.form.poll.options_distinct'));
 
-    $page->assertSeeIn('@x-poll-options-error', __('posts.form.x.poll.options_distinct'))
+    $page->assertSeeIn('@x-poll-options-error', __('posts.form.poll.options_distinct'))
         ->assertVisible('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
 });
 
 test('seven days zeroes hours and minutes', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1520]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-days');
 
     $page->assertSeeIn('@x-poll-days', '1')
@@ -171,7 +135,7 @@ test('seven days zeroes hours and minutes', function () {
 test('remove poll returns to post', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->assertMissing("@composer-{$id}-dropzone")
@@ -195,20 +159,20 @@ test('poll is disabled while the card has media', function () {
     $id = $post->social_account_id;
     $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
     $post->update(['media' => [MediaItem::fromMedia($image)->toArray()]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     expect($page->script("document.querySelector('[data-testid=\"composer-type-{$id}-x_poll\"]').disabled"))->toBeTrue();
 
     $page->hover("@composer-type-{$id}-x_poll-label");
     waitFor($page, "@composer-type-{$id}-x_poll-reason");
 
-    $page->assertSeeIn("@composer-type-{$id}-x_poll-reason", __('posts.form.x.poll.attachments'))
+    $page->assertSeeIn("@composer-type-{$id}-x_poll-reason", __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
 test('the preview shows the choices and length', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', 'Yes')
@@ -222,7 +186,7 @@ test('the preview shows the choices and length', function () {
 
 test('schedules a poll', function () {
     $post = seedXPollPost(ContentType::XPost, ['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', ' Yes ')
@@ -239,14 +203,14 @@ test('schedules a poll', function () {
 
 test('a reopened poll draft shows two choices', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
     expect($post->fresh()->content_type)->toBe(ContentType::XPoll);
 
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-choice-0');
 
     $page->assertVisible('@x-poll-choice-1')
@@ -256,14 +220,14 @@ test('a reopened poll draft shows two choices', function () {
 
 test('editing a choice is an unsaved change', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-choice-0');
 
     $page->click('@composer-close');
     waitForGone($page, '@post-composer-dialog');
     $page->assertMissing('@unsaved-changes-dialog');
 
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-choice-0');
     $page->click('@x-poll-choice-1')
         ->fill('@x-poll-choice-1', 'Nope')
@@ -276,7 +240,7 @@ test('editing a choice is an unsaved change', function () {
 test('picking poll then post again leaves no unsaved change', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->click("@composer-type-{$id}-x_post");
@@ -293,7 +257,7 @@ test('picking poll then post again leaves no unsaved change', function () {
 test('switching to post and back to poll brings the typed poll back', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', 'Yes')
@@ -326,7 +290,7 @@ test('switching to post and back to poll brings the typed poll back', function (
 test('a saved poll switched to post and back has no unsaved change', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No', 'Maybe'], 'duration_minutes' => 4320]]]);
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-choice-2');
 
     $page->click("@composer-type-{$id}-x_post");
@@ -346,7 +310,7 @@ test('a saved draft with a poll on a thread reply closes without an unsaved chan
     $post = seedXPollPost(attributes: ['meta' => ['thread_replies' => [
         ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
     ]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@thread-reply-collapsed-0');
 
     $page->click('@composer-close');
@@ -361,7 +325,7 @@ test('a saved poll with other settings switched to post and back has no unsaved 
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'is_ai_generated' => true]]);
     $id = $post->social_account_id;
     expect(array_keys($post->fresh()->meta))->toBe(['poll', 'is_ai_generated']);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-choice-1');
 
     $page->click("@composer-type-{$id}-x_post");
@@ -512,7 +476,7 @@ test('poll is disabled while a file is still uploading to the card', function ()
     $id = $post->social_account_id;
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $uploadUrl = route('app.media.store-chunked', absolute: false);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitForState($page, "@composer-{$id}-file-input", 'true');
 
     $page->script(<<<JS
@@ -542,7 +506,7 @@ test('poll is disabled while a file is still uploading to the card', function ()
 
 test('a choice counter does not count the spaces around it', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', Str::repeat('a', 25).' ');
@@ -554,7 +518,7 @@ test('a choice counter does not count the spaces around it', function () {
 
 test('a choice stops at 25 characters while typing, counted as x counts them (a penguin emoji is two) and leaving out the spaces before it', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', Str::repeat('a', 30));
@@ -571,7 +535,7 @@ test('a choice stops at 25 characters while typing, counted as x counts them (a 
 test('a thread reply under a poll can still take media while the poll root cannot', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     waitFor($page, '@thread-start');
@@ -593,7 +557,7 @@ test('a thread reply under a poll can still take media while the poll root canno
 test('in a thread the poll shows on the root and hides while a reply is edited', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     waitFor($page, '@thread-start');
@@ -617,7 +581,7 @@ test('a poll question on a long post account counts against 280', function () {
         'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
     ], ['x_subscription_type' => 'Premium']);
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitForText($page, "@composer-char-count-{$id}", '-10');
 
     $page->assertSeeIn("@composer-char-count-{$id}", '-10')
@@ -659,13 +623,13 @@ test('a server error on the poll shows on the x card when x is not the first cha
         ->assertNoJavaScriptErrors();
     expect(Post::query()->where('workspace_id', $post->workspace_id)->count())->toBe(1);
 })->with([
-    'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.x.poll.options_distinct')],
+    'repeated choices' => fn () => [['Yes', 'yes'], 'x-poll-options-error', __('posts.form.poll.options_distinct')],
 ]);
 
 test('the ai-generated switch survives a switch from poll to post', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     waitFor($page, '@x-ai-generated');
@@ -686,7 +650,7 @@ test('the ai-generated switch survives a switch from poll to post', function () 
 
 test('removing the poll forgets it, so picking poll again starts empty', function () {
     $post = seedXPollPost();
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     pickXPoll($page, $post);
 
     $page->fill('@x-poll-choice-0', 'Yes')
@@ -710,7 +674,7 @@ test('removing the poll forgets it, so picking poll again starts empty', functio
 
 test('a length of zero saves the shortest poll and seven days locks hours and minutes', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-days');
 
     $page->click('@x-poll-days');
@@ -751,11 +715,11 @@ test('on a phone the poll editor fits the screen', function () {
 
 test('the length selects are labelled and a choice is added with the keyboard', function () {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitFor($page, '@x-poll-add-choice');
 
     expect($page->script("['days', 'hours', 'minutes'].map((part) => document.querySelector(`[data-testid=\"x-poll-\${part}\"]`).labels[0]?.textContent.trim())"))
-        ->toBe([__('posts.form.x.poll.days'), __('posts.form.x.poll.hours'), __('posts.form.x.poll.minutes')]);
+        ->toBe([__('posts.form.poll.days'), __('posts.form.poll.hours'), __('posts.form.poll.minutes')]);
 
     $page->keys('@x-poll-add-choice', 'Enter');
     waitFor($page, '@x-poll-choice-2');
@@ -767,7 +731,7 @@ test('the writing assistant writes a poll question for 280 characters on a long 
     config()->set('trypost.self_hosted', true);
     PostWritingAssistant::fake(['Tabs or spaces?']);
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 1440]]], ['x_subscription_type' => 'Premium']);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     $page->click('@composer-ai-assistant');
     waitFor($page, '@writing-assistant-channel');
@@ -784,7 +748,7 @@ test('the writing assistant writes a poll question for 280 characters on a long 
 test('a link in a poll question shows no link card in the preview', function () {
     Http::fake(['https://93.184.216.34/*' => Http::response('<meta property="og:title" content="Article card">')]);
     $post = seedXPollPost(ContentType::XPost, ['content' => 'Read https://93.184.216.34/article']);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitForText($page, '@link-card-title', 'Article card');
     $page->assertPresent('@link-card');
 
@@ -798,7 +762,7 @@ test('a link in a poll question shows no link card in the preview', function () 
 
 test('the preview shows the poll length in its largest unit and the user language', function (int $minutes, string $locale, string $expected) {
     $post = seedXPollPost(ContentType::XPoll, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => $minutes]]], userAttributes: ['locale' => $locale]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
     waitForText($page, '@x-preview-poll', $expected);
 
     $page->assertSeeIn('@x-preview-poll', $expected)->assertNoJavaScriptErrors();
@@ -811,7 +775,7 @@ test('the preview shows the poll length in its largest unit and the user languag
 test('a thread reply turns into a poll from its toolbar, turns its media off and saves the poll on the reply', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-start');
     $page->click('@thread-start');
@@ -828,7 +792,7 @@ test('a thread reply turns into a poll from its toolbar, turns its media off and
 
     $page->assertMissing("@composer-{$id}-poll")
         ->assertMissing('@x-poll')
-        ->assertAttribute("@composer-{$id}-media-source-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertAttribute("@composer-{$id}-media-source-disabled", 'aria-label', __('posts.form.poll.attachments'))
         ->assertSeeIn('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]', 'Tabs');
 
     $page->click('@composer-save-draft');
@@ -843,7 +807,7 @@ test('a thread reply turns into a poll from its toolbar, turns its media off and
 test('a thread reply poll shows in the preview before its question, and its choice errors only under the choices', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-start');
     $page->click('@thread-start');
@@ -855,9 +819,9 @@ test('a thread reply poll shows in the preview before its question, and its choi
     waitForText($page, '@preview-thread-reply-0 @x-preview-poll', 'Tabs');
     $page->assertVisible('[data-testid="preview-thread-reply-0"] [data-testid="x-preview-poll"]')
         ->click('@composer-save-draft');
-    waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'));
+    waitForText($page, '@thread-reply-0-poll-options-error', __('posts.form.poll.options_distinct'));
 
-    $page->assertSeeIn('@thread-reply-0-poll-options-error', __('posts.form.x.poll.options_distinct'))
+    $page->assertSeeIn('@thread-reply-0-poll-options-error', __('posts.form.poll.options_distinct'))
         ->assertMissing('@thread-reply-error-0')
         ->assertAttributeMissing('@thread-reply-0', 'aria-invalid')
         ->assertVisible('@post-composer-dialog')
@@ -867,7 +831,7 @@ test('a thread reply poll shows in the preview before its question, and its choi
 test('removing a thread reply poll gives the reply its media back', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-start');
     $page->click('@thread-start');
@@ -888,14 +852,14 @@ test('a thread reply with media cannot turn into a poll and says why', function 
     $id = $post->social_account_id;
     $image = Media::factory()->ownedByPost($post)->create(['mime_type' => 'image/png']);
     $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]]]]);
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-reply-collapsed-0');
     $page->click('@thread-reply-collapsed-0');
     waitFor($page, "@composer-{$id}-poll-disabled");
 
     $page->assertMissing("@composer-{$id}-poll")
-        ->assertAttribute("@composer-{$id}-poll-disabled", 'aria-label', __('posts.form.x.poll.attachments'))
+        ->assertAttribute("@composer-{$id}-poll-disabled", 'aria-label', __('posts.form.poll.attachments'))
         ->assertNoJavaScriptErrors();
 });
 
@@ -904,7 +868,7 @@ test('a thread reply poll question on a long post account counts against 280', f
         ['text' => Str::repeat('a', 290), 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
     ]]], accountMeta: ['x_subscription_type' => 'Premium']);
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-reply-collapsed-0');
     $page->click('@thread-reply-collapsed-0');
@@ -919,7 +883,7 @@ test('pasting an image into a thread reply poll adds no media to it', function (
     $post = seedXPollPost();
     $id = $post->social_account_id;
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     waitFor($page, '@thread-start');
     $page->click('@thread-start');
@@ -946,7 +910,7 @@ test('pasting an image into a thread reply poll adds no media to it', function (
 test('every toolbar button names itself in a tooltip and the ai-generated hint opens above its icon', function () {
     $post = seedXPollPost();
     $id = $post->social_account_id;
-    $page = openXPollComposer($post);
+    $page = openPollComposer($post);
 
     foreach ([
         "composer-{$id}-media-source" => __('posts.edit.add_media'),
@@ -967,7 +931,7 @@ test('every toolbar button names itself in a tooltip and the ai-generated hint o
     waitFor($page, "@composer-{$id}-poll");
     $page->hover("@composer-{$id}-poll");
     waitFor($page, "@composer-{$id}-poll-tooltip");
-    $page->assertSeeIn("@composer-{$id}-poll-tooltip", __('posts.form.x.poll.add'))
+    $page->assertSeeIn("@composer-{$id}-poll-tooltip", __('posts.form.poll.add'))
         ->hover('@composer-header');
     waitForGone($page, "@composer-{$id}-poll-tooltip");
 

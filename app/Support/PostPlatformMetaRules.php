@@ -17,6 +17,9 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\MastodonPoll;
+use App\Support\Social\Poll;
+use App\Support\Social\ThreadsPoll;
 use App\Support\Social\XPoll;
 use Closure;
 use Illuminate\Support\Arr;
@@ -50,7 +53,7 @@ class PostPlatformMetaRules
      * clients by every tool that schedules or publishes, so a new rule is
      * written here once.
      */
-    public const SCHEDULING_REQUIREMENTS = 'Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text), an X poll (content_type x_poll) meta.poll with at least 2 options and duration_minutes plus text as its question (a reply poll in meta.thread_replies needs the same, its text being the question); list-content-types-tool lists the TikTok, Pinterest and Discord ones per platform as required_meta. A scheduled or published post also needs text or media; an X poll needs text and takes no media.';
+    public const SCHEDULING_REQUIREMENTS = 'Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text), a poll (content_type x_poll, mastodon_poll or threads_poll) meta.poll with at least 2 options plus text as its question, and on X and Mastodon duration_minutes (a reply poll in meta.thread_replies on X or Mastodon needs the same, its text being the question); list-content-types-tool lists the TikTok, Pinterest and Discord ones per platform as required_meta. A scheduled or published post also needs text or media; a poll needs text and takes no media.';
 
     /** An Instagram username, with or without its leading @. */
     public const INSTAGRAM_USERNAME_PATTERN = '/^@?[A-Za-z0-9._]{1,30}$/';
@@ -82,8 +85,10 @@ class PostPlatformMetaRules
 
             "{$prefix}.poll" => ['sometimes', 'nullable', 'array'],
             "{$prefix}.poll.options" => ['sometimes', 'nullable', 'array', self::pollOptionsCount(...)],
-            "{$prefix}.poll.options.*" => ['nullable', 'string', self::pollChoiceLength(...)],
-            "{$prefix}.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
+            "{$prefix}.poll.options.*" => ['nullable', 'string'],
+            "{$prefix}.poll.duration_minutes" => ['sometimes', 'nullable', 'integer'],
+            "{$prefix}.poll.multiple" => ['sometimes', 'nullable', 'boolean'],
+            "{$prefix}.poll.hide_totals" => ['sometimes', 'nullable', 'boolean'],
 
             "{$prefix}.spoiler_text" => ['sometimes', 'nullable', 'string', 'max:500'],
 
@@ -105,8 +110,10 @@ class PostPlatformMetaRules
             "{$prefix}.thread_replies.*.media.*.url" => ['sometimes', 'nullable', 'string'],
             "{$prefix}.thread_replies.*.poll" => ['sometimes', 'nullable', 'array'],
             "{$prefix}.thread_replies.*.poll.options" => ['sometimes', 'nullable', 'array', self::pollOptionsCount(...)],
-            "{$prefix}.thread_replies.*.poll.options.*" => ['nullable', 'string', self::pollChoiceLength(...)],
-            "{$prefix}.thread_replies.*.poll.duration_minutes" => ['sometimes', 'nullable', 'integer', 'between:'.XPoll::MIN_DURATION.','.XPoll::MAX_DURATION],
+            "{$prefix}.thread_replies.*.poll.options.*" => ['nullable', 'string'],
+            "{$prefix}.thread_replies.*.poll.duration_minutes" => ['sometimes', 'nullable', 'integer'],
+            "{$prefix}.thread_replies.*.poll.multiple" => ['sometimes', 'nullable', 'boolean'],
+            "{$prefix}.thread_replies.*.poll.hide_totals" => ['sometimes', 'nullable', 'boolean'],
 
             "{$prefix}.document_title" => ['sometimes', 'nullable', 'string', 'max:300'],
 
@@ -202,33 +209,25 @@ class PostPlatformMetaRules
             "{$prefix}.collaborators.*.regex" => __('posts.form.instagram.collaborators.invalid'),
             "{$prefix}.event.end_date.after_or_equal" => __('posts.form.google_business.event_end_date_before_start'),
             "{$prefix}.event.title.max" => __('posts.form.google_business.title_max'),
-            "{$prefix}.poll.array" => __('posts.form.x.poll.poll_object'),
-            "{$prefix}.poll.options.array" => __('posts.form.x.poll.options_list'),
-            "{$prefix}.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
-            "{$prefix}.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
-            "{$prefix}.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
-            "{$prefix}.thread_replies.*.poll.array" => __('posts.form.x.poll.poll_object'),
-            "{$prefix}.thread_replies.*.poll.options.array" => __('posts.form.x.poll.options_list'),
-            "{$prefix}.thread_replies.*.poll.options.*.string" => __('posts.form.x.poll.choice_text'),
-            "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => XPoll::durationRangeMessage(),
-            "{$prefix}.thread_replies.*.poll.duration_minutes.between" => XPoll::durationRangeMessage(),
+            "{$prefix}.poll.array" => __('posts.form.poll.poll_object'),
+            "{$prefix}.poll.options.array" => __('posts.form.poll.options_list'),
+            "{$prefix}.poll.options.*.string" => __('posts.form.poll.choice_text'),
+            "{$prefix}.poll.duration_minutes.integer" => __('posts.form.poll.duration_whole'),
+            "{$prefix}.thread_replies.*.poll.array" => __('posts.form.poll.poll_object'),
+            "{$prefix}.thread_replies.*.poll.options.array" => __('posts.form.poll.options_list'),
+            "{$prefix}.thread_replies.*.poll.options.*.string" => __('posts.form.poll.choice_text'),
+            "{$prefix}.thread_replies.*.poll.duration_minutes.integer" => __('posts.form.poll.duration_whole'),
         ];
     }
 
     /**
-     * A poll's choices, checked by `XPoll` (the post's poll and each reply's).
+     * A poll's choices (the post's poll and each reply's): four at most on
+     * every network. The length of each choice and of the poll depends on the
+     * network, so `formatErrors()` checks them once the channel is known.
      */
     private static function pollOptionsCount(string $attribute, mixed $value, Closure $fail): void
     {
-        transform(XPoll::optionsCountViolation($value), $fail);
-    }
-
-    /**
-     * One poll choice, checked by `XPoll`.
-     */
-    private static function pollChoiceLength(string $attribute, mixed $value, Closure $fail): void
-    {
-        transform(XPoll::choiceLengthViolation($value), $fail);
+        transform(Poll::optionsCountViolation($value), $fail);
     }
 
     /**
@@ -261,13 +260,15 @@ class PostPlatformMetaRules
             'Discord: channel_id (required to publish — call list-discord-channels-tool first), mentions ([{token,label}], e.g. {token: "@everyone"} or {token: "<@&roleId>"}), embeds (up to 10 [{title ≤256, description ≤4096, url, image (URL), color (#RRGGBB)}]).',
             'YouTube Shorts: title (≤100, no < or >; omitted, it is derived from the first non-empty line of the content with < and > removed, cut to 100 characters), description (plain text, at most 5000 bytes; omit or null to use the content), category_id (YouTube category id: '.collect(Category::cases())->map(fn (Category $category): string => "{$category->value}=".__($category->labelKey(), [], 'en'))->implode(', ').'; default '.Category::DEFAULT->value.'), privacy_status (public|unlisted|private, default public), license (youtube|creativeCommon), notify_subscribers (default true), embeddable (default true), made_for_kids (default false), is_ai_generated (discloses altered or synthetic content). A cover image is the media item meta.cover, set as the thumbnail once YouTube processes the video.',
             'Instagram: is_ai_generated (feed, reels, stories, carousels), share_to_feed (instagram_reel only, default true), collaborators (up to '.self::INSTAGRAM_MAX_COLLABORATORS.' Instagram usernames invited as co-authors; feed, reels and carousels, not stories; the post shows on a collaborator\'s profile only after they accept the invite in the Instagram app, and a username that does not exist is only refused when the post publishes, so confirm the usernames first), trial_graduation (instagram_reel only: MANUAL|SS_PERFORMANCE publishes a trial reel shown only to non-followers, graduated by hand in the app or by Instagram when it performs well; not with collaborators, and only on accounts where Instagram offers trial reels), audio (instagram_reel only, Instagram connected through Facebook, platform instagram-facebook: {id} of an Instagram audio track from search-instagram-audio-tool, with optional title, artist, cover_url and preview_url copied from that result so the app can show the track, and audio_volume and video_volume from 0 to 100, default 100). An instagram_feed post with a single video publishes as a Reel. People tags are the media item meta.user_tags, a video cover frame is meta.cover_offset_ms and an instagram_reel may take an uploaded image as its cover in the media item meta.cover with cover_source image (it then wins over the frame).',
-            'X: is_ai_generated (sent as made_with_ai, discloses AI-generated media on the post). poll (content_type x_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies, up to '.XPoll::QUESTION_MAX_LENGTH.' characters): {options (list of '.XPoll::MIN_OPTIONS.' to '.XPoll::MAX_OPTIONS.' choices of 1 to '.XPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.XPoll::MIN_DURATION.' to '.XPoll::MAX_DURATION.', how long voting stays open)}, both required to schedule or publish.',
+            'X: is_ai_generated (sent as made_with_ai, discloses AI-generated media on the post). poll (content_type x_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies, up to '.XPoll::QUESTION_MAX_LENGTH.' characters): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.XPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.XPoll::MIN_DURATION.' to '.XPoll::MAX_DURATION.', how long voting stays open)}, both required to schedule or publish.',
+            'Mastodon poll (content_type mastodon_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.MastodonPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.MastodonPoll::MIN_DURATION.' to '.MastodonPoll::MAX_DURATION.', how long voting stays open), multiple (default false: voters may pick several choices), hide_totals (default false: votes stay hidden until the poll ends)}, options and duration_minutes required to schedule or publish.',
+            'Threads poll (content_type threads_poll only, a text post without media; the post content is the question): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.ThreadsPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped)}, required to schedule or publish; Threads sets how long it stays open.',
             'Threads: topic_tag (1-50 characters after a leading # is dropped, no . or &). Use content_type threads_ghost_post for a text-only post archived after 24 hours (no media, no topic).',
             'Facebook, Bluesky, LinkedIn: link_preview (default true; false publishes a text post with a link without its preview card).',
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
-            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X; on LinkedIn (profile and page) a post takes one reply, published as a comment from the same profile or page, text only, up to 3000 characters; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X a reply may instead be a poll: {text, poll} with poll {options, duration_minutes} under the same rules as meta.poll, no media, and the reply text as its question (required, up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
+            'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X; on LinkedIn (profile and page) a post takes one reply, published as a comment from the same profile or page, text only, up to 3000 characters; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts). On X and Mastodon a reply may instead be a poll: {text, poll} with poll under the same rules as that network\'s meta.poll, no media, and the reply text as its question (required; on X up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
         ]);
     }
 
@@ -275,7 +276,7 @@ class PostPlatformMetaRules
      * Adds the validation error for meta that becomes mandatory once a post is
      * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
      */
-    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', mixed $contentType = null): void
+    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', ?ContentType $contentType = null): void
     {
         $violation = self::requiredMetaViolation($target, $meta, $contentType);
 
@@ -314,7 +315,7 @@ class PostPlatformMetaRules
             throw ValidationException::withMessages(["meta.{$field}" => $message]);
         }
 
-        $question = $post->content_type === ContentType::XPoll ? XPoll::questionViolation($post->content) : null;
+        $question = transform($post->content_type?->poll(), fn (string $poll): ?string => $poll::questionViolation($post->content));
 
         if (filled($question)) {
             throw ValidationException::withMessages(['content' => $question]);
@@ -344,7 +345,7 @@ class PostPlatformMetaRules
         }
 
         if (is_array(data_get($meta, 'poll'))) {
-            $meta['poll'] = XPoll::normalize($meta['poll']);
+            $meta['poll'] = Poll::normalize($meta['poll']);
         }
 
         if (is_array(data_get($meta, 'collaborators'))) {
@@ -393,19 +394,22 @@ class PostPlatformMetaRules
     }
 
     /**
-     * A meta value no post may store, even as a draft: a YouTube title with
-     * < or >.
+     * Every meta value no post may store, even as a draft, keyed by field: a
+     * YouTube title with < or >, and on a poll (the post's or a reply's)
+     * repeated choices, a choice or a length beyond what the network takes.
      *
-     * @return array{0: string, 1: string}|null [field, message]
+     * @return array<string, string>
      */
-    public static function formatViolation(?Platform $platform, mixed $meta, ContentType|string|null $contentType = null): ?array
+    public static function formatErrors(?Platform $platform, ?array $meta, ?ContentType $contentType = null): array
     {
         if ($platform === Platform::YouTube) {
-            return YouTubeMetadata::violation($meta);
+            return transform(YouTubeMetadata::violation($meta), fn (array $violation): array => [$violation[0] => $violation[1]], []);
         }
 
-        return (ContentType::resolve($contentType) === ContentType::XPoll ? XPoll::violation($meta) : null)
-            ?? ($platform === Platform::X ? ThreadReplies::pollFormatViolation($meta) : null);
+        return [
+            ...transform($contentType?->poll(), fn (string $poll): array => $poll::formatErrors($meta), []),
+            ...ThreadReplies::pollFormatErrors($platform, $meta),
+        ];
     }
 
     /**
@@ -416,10 +420,9 @@ class PostPlatformMetaRules
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, mixed $contentType = null): ?array
+    public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $type = ContentType::resolve($contentType);
         $threadViolation = ThreadReplies::violation($target, $meta);
 
         if ($threadViolation !== null) {
@@ -431,10 +434,10 @@ class PostPlatformMetaRules
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();
 
         return match (true) {
-            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
+            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? YouTubeMetadata::violation($meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
-            $type === ContentType::XPoll => XPoll::violation($meta) ?? XPoll::requiredViolation($meta),
+            $type?->isPoll() === true => $type->poll()::firstViolation($meta),
             $platform === Platform::Pinterest && blank(data_get($meta, 'board_id')) => ['board_id', trans('posts.form.pinterest.board_required')],
             $platform === Platform::Discord && blank(data_get($meta, 'channel_id')) => ['channel_id', trans('posts.form.discord.channel_required')],
             $needsGoogleBusinessEvent

@@ -12,12 +12,14 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Factories\AnalyticsPublicationFactory;
+use Illuminate\Support\Str;
 
 /**
- * @param  array<string, mixed>|null  $poll
- * @return array{0: User, 1: SocialAccount, 2: Post}
+ * A subscribed admin in a workspace of their own, and a channel of `$network` there.
+ *
+ * @return array{0: User, 1: SocialAccount}
  */
-function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme = 'light'): array
+function pollResultsAccount(string $network, string $theme = 'light'): array
 {
     $user = User::factory()->create(['timezone' => 'UTC', 'theme' => $theme]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -26,19 +28,28 @@ function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme 
     subscribeAccount($user->account);
     connectAiTo($user);
 
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
+    return [$user, SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id])];
+}
+
+/**
+ * @param  array<string, mixed>|null  $poll
+ * @return array{0: User, 1: SocialAccount, 2: Post}
+ */
+function pollResultsSetup(?array $poll, bool $withMetrics = true, string $theme = 'light', ContentType $type = ContentType::XPoll): array
+{
+    [$user, $account] = pollResultsAccount($type->platform()->value, $theme);
+    $post = Post::factory()->forAccount($account, $type)->published()->create([
         'user_id' => $user->id,
         'scheduled_at' => now()->subHour(),
         'published_at' => now()->subHour(),
     ]);
     $publication = AnalyticsPublication::factory()->when(filled($poll), fn (AnalyticsPublicationFactory $factory): AnalyticsPublicationFactory => $factory->withPoll($poll))->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
         'post_id' => $post->id,
-        'platform' => Platform::X,
-        'network' => Platform::X->network(),
+        'platform' => $account->platform,
+        'network' => $account->platform->network(),
         'remote_id' => $post->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
@@ -121,13 +132,7 @@ test('where voting stands is read from the instant, whatever zone the browser is
 ]);
 
 test('a poll whose publication x has not read yet shows its choices with no votes and when it ends', function () {
-    $user = User::factory()->create(['timezone' => 'UTC']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    connectAiTo($user);
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    [$user, $account] = pollResultsAccount('x');
     $post = Post::factory()->forAccount($account, ContentType::XPoll)->published()->create([
         'user_id' => $user->id,
         'scheduled_at' => now()->subMinutes(5),
@@ -138,7 +143,7 @@ test('a poll whose publication x has not read yet shows its choices with no vote
         ],
     ]);
     $publication = AnalyticsPublication::factory()->create([
-        'workspace_id' => $workspace->id,
+        'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
         'post_id' => $post->id,
@@ -166,13 +171,7 @@ test('a poll whose publication x has not read yet shows its choices with no vote
 });
 
 test('a poll still in the queue shows its choices with no votes and no end yet', function () {
-    $user = User::factory()->create(['timezone' => 'UTC']);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    connectAiTo($user);
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    [$user, $account] = pollResultsAccount('x');
     $post = Post::factory()->forAccount($account, ContentType::XPoll)->create([
         'user_id' => $user->id,
         'status' => Status::Scheduled,
@@ -346,5 +345,204 @@ test('the polls of thread replies show under the post on the sent card and in th
 
     $page->assertSeeIn('@post-details-poll-reply-1-caption', __('posts.poll_results.thread_post', ['number' => '3']))
         ->assertSeeIn('@post-details-poll-reply-1', '25%')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a mastodon or threads poll still in the queue shows its choices with no votes, like an x poll', function (string $network, ContentType $type, array $poll) {
+    [$user, $account] = pollResultsAccount($network);
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'user_id' => $user->id,
+        'status' => Status::Scheduled,
+        'scheduled_at' => now()->addDay(),
+        'meta' => ['poll' => $poll],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', $account));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", 'Linux')
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Ends')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Mac', 'Linux']]],
+]);
+
+test('a sent mastodon or threads poll shows the votes its network returned, like an x poll', function (ContentType $type) {
+    [$user, $account, $post] = pollResultsSetup(refundPoll(), type: $type);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", '1 vote')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", '2 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", '3 votes')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+]);
+
+test('a sent mastodon multiple choice poll shows each share of the people who voted', function () {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 8], ['label' => 'Linux', 'votes' => 6], ['label' => 'Windows', 'votes' => 6]],
+        'voting_status' => 'closed',
+        'end_datetime' => now()->subHour()->toIso8601String(),
+        'duration_minutes' => null,
+        'multiple' => true,
+        'voters' => 10,
+        'totals_hidden' => false,
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '80%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1-votes", '60%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-2-votes", '60%')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", trans_choice('posts.poll_results.voters', 10, ['count' => 10]))
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", '20 votes')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a sent mastodon poll that hides its votes says so and shows no votes per choice', function () {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 0], ['label' => 'Linux', 'votes' => 0]],
+        'voting_status' => 'open',
+        'end_datetime' => now()->addHours(5)->toIso8601String(),
+        'duration_minutes' => null,
+        'multiple' => false,
+        'voters' => null,
+        'totals_hidden' => true,
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", __('posts.poll_results.hidden'))
+        ->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertMissing("@post-poll-{$post->id}-option-0-votes")
+        ->assertMissing("@post-poll-{$post->id}-option-1-votes")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a sent mastodon poll that hides its votes still says where voting stands', function (Closure $overrides, string $shown, array $hidden) {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 0], ['label' => 'Linux', 'votes' => 0]],
+        'duration_minutes' => null,
+        'multiple' => false,
+        'voters' => null,
+        'totals_hidden' => true,
+        ...$overrides(),
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $summary = Str::squish((string) $page->text("@post-poll-{$post->id}-summary"));
+
+    expect($summary)->toStartWith(__('posts.poll_results.hidden')." · {$shown}");
+
+    foreach ($hidden as $text) {
+        expect($summary)->not->toContain($text);
+    }
+
+    $page->assertMissing("@post-poll-{$post->id}-option-0-votes")->assertNoJavaScriptErrors();
+})->with([
+    'closed: final results' => [fn (): array => ['voting_status' => 'closed', 'end_datetime' => now()->subHour()->toIso8601String()], 'Final results', ['Voting ended']],
+    'open, end ahead: when it ends' => [fn (): array => ['voting_status' => 'open', 'end_datetime' => now()->addHours(5)->toIso8601String()], 'Ends ', ['Final results', 'Voting ended']],
+]);
+
+test('a published threads poll threads has not read yet shows its choices with no votes and no end', function () {
+    [$user, $account] = pollResultsAccount('threads');
+    $post = Post::factory()->forAccount($account, ContentType::ThreadsPoll)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subMinutes(5),
+        'published_at' => now()->subMinutes(5),
+        'meta' => ['poll' => ['options' => ['Mac', 'Linux']]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1", 'Linux')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", '0 votes')
+        ->assertDontSeeIn("@post-poll-{$post->id}-summary", 'Ends')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a published mastodon poll that hides its votes says so before its first read', function () {
+    [$user, $account] = pollResultsAccount('mastodon');
+    $post = Post::factory()->forAccount($account, ContentType::MastodonPoll)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subMinutes(5),
+        'published_at' => now()->subMinutes(5),
+        'meta' => ['poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440, 'hide_totals' => true]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", __('posts.poll_results.hidden'))
+        ->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertMissing("@post-poll-{$post->id}-option-0-votes")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a mastodon reply poll the last read did not return shows its choices with no votes next to the one it did', function () {
+    [$user, $account, $post] = pollResultsSetup(null, type: ContentType::MastodonPost);
+    $post->update(['meta' => ['thread_replies' => [
+        ['text' => 'Which one?', 'media' => [], 'poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440]],
+        ['text' => 'And at work?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+    ]]]);
+    $publication = AnalyticsPublication::query()->where('post_id', $post->id)->sole();
+    $publication->forceFill(['provider_metadata' => [...($publication->provider_metadata ?? []), 'thread_polls' => [
+        ['reply' => 1, ...refundPoll(), 'options' => [['label' => 'Yes', 'votes' => 3], ['label' => 'No', 'votes' => 1]]],
+    ]]])->save();
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}-reply-1");
+    waitFor($page, "@post-poll-{$post->id}-reply-0");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-reply-0-option-0", 'Mac')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-0-option-0-votes", '0 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-1-option-0", 'Yes')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-1-option-0-votes", '3 votes')
+        ->assertSeeIn("@post-poll-{$post->id}-reply-1-option-0-votes", '75%')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a multiple choice poll that counts no voters but has votes shows 0% for every choice', function () {
+    [$user, $account, $post] = pollResultsSetup([
+        'options' => [['label' => 'Mac', 'votes' => 2], ['label' => 'Linux', 'votes' => 1]],
+        'voting_status' => 'open',
+        'end_datetime' => now()->addHours(5)->toIso8601String(),
+        'duration_minutes' => null,
+        'multiple' => true,
+        'voters' => 0,
+        'totals_hidden' => false,
+    ], type: ContentType::MastodonPoll);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-option-0-votes", '0%')
+        ->assertSeeIn("@post-poll-{$post->id}-option-1-votes", '0%')
+        ->assertSeeIn("@post-poll-{$post->id}-summary", trans_choice('posts.poll_results.voters', 0, ['count' => 0]))
+        ->assertDontSeeIn("@post-poll-{$post->id}", 'NaN')
+        ->assertDontSeeIn("@post-poll-{$post->id}", 'Infinity')
         ->assertNoJavaScriptErrors();
 });

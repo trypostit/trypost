@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 
+import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import type { PublishConfig } from '@/types/platform';
 import type { VerifiedBadge } from '@/types/social-account';
@@ -19,7 +20,7 @@ export interface PreviewProps {
     socialAccount: PreviewAccount;
     content: string;
     media: MediaItem[];
-    contentType?: string;
+    contentType?: ContentTypeValue;
     meta?: Record<string, any>;
     postedAt?: string | null;
     /** The account's `publishConfig` (`Platform::publishConfig()`), e.g. X's poll limits. */

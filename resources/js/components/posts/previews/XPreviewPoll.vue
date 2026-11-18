@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { editablePollOptions, formatPollLength } from '@/lib/xPoll';
-import type { XPoll, XPollLimits } from '@/types/x';
+import {
+    editablePollOptions,
+    formatPollLength,
+    pollDurationOf,
+} from '@/lib/poll';
+import type { Poll, PollLimits } from '@/types/poll';
 
 const props = defineProps<{
-    poll: Partial<XPoll>;
+    poll: Partial<Poll>;
     /** The account's poll limits, from its `publishConfig`. */
-    limits: XPollLimits;
+    limits: PollLimits;
 }>();
 
 const options = computed((): string[] =>
@@ -15,7 +19,7 @@ const options = computed((): string[] =>
 );
 
 const length = computed((): string =>
-    formatPollLength(props.poll.duration_minutes ?? props.limits.defaultDuration),
+    formatPollLength(pollDurationOf(props.poll, props.limits)),
 );
 </script>
 

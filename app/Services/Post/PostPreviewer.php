@@ -8,7 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
-use App\Support\Social\XPoll;
+use App\Support\Social\Poll;
 use App\Support\ThreadReplies;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
@@ -86,18 +86,38 @@ class PostPreviewer
 
         $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($post->meta) : [];
 
-        if ($post->content_type === ContentType::XPoll) {
-            $preview['poll'] = XPoll::payload($post->meta);
+        $poll = $post->content_type?->poll();
+
+        if (filled($poll)) {
+            $preview['poll'] = $poll::preview($post->meta);
         }
 
         if ($replies !== []) {
+            $replyPoll = ThreadReplies::replyPoll($platform);
+
             $preview['thread_replies'] = array_map(fn (array $reply): array => [
                 'text' => $this->sanitizer->sanitize($reply['text'], $platform),
                 'media' => $reply['media'],
-                ...(ThreadReplies::hasPoll($reply) ? ['poll' => XPoll::payload($reply)] : []),
+                ...self::replyPollPreview($replyPoll, $reply),
             ], $replies);
         }
 
         return $preview;
+    }
+
+    /**
+     * A reply's poll as the preview shows it, on a network whose replies can be polls.
+     *
+     * @param  class-string<Poll>|null  $poll
+     * @param  array<string, mixed>  $reply
+     * @return array{poll?: array<string, mixed>}
+     */
+    private static function replyPollPreview(?string $poll, array $reply): array
+    {
+        if (blank($poll) || ! ThreadReplies::hasPoll($reply)) {
+            return [];
+        }
+
+        return ['poll' => $poll::preview($reply)];
     }
 }

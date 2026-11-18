@@ -1,6 +1,6 @@
 import { filled } from '@/lib/helpers';
 import type { MediaType } from '@/lib/mediaType';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformValue } from '@/types/platform';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import {
     SocialAccountStatus,
@@ -32,7 +32,7 @@ export interface ChannelListRow extends ConnectedAccount, PostingGoalProgress {
 
 export interface ConnectedAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     network: string;
     username: string;
     display_name: string;

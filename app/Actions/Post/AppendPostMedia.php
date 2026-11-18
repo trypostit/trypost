@@ -22,7 +22,7 @@ class AppendPostMedia
      * again from the new media. Changing an approved, scheduled post goes back
      * through UpdatePost, so a member who needs approval sends it back for
      * approval like any other edit, even when the approval landed just before.
-     * An X poll, which takes no media, is refused.
+     * A poll, which takes no media, is refused.
      *
      * @param  list<array<string, mixed>>  $items
      *
@@ -50,7 +50,7 @@ class AppendPostMedia
     }
 
     /**
-     * Refuses media on an X poll, which carries none. `execute()` always checks
+     * Refuses media on a poll, which carries none. `execute()` always checks
      * it; an entry point that stores or downloads a file first calls it before
      * doing so.
      *
@@ -58,7 +58,7 @@ class AppendPostMedia
      */
     public static function ensureAcceptsMedia(Post $post, string $field = 'media'): void
     {
-        if ($post->content_type === ContentType::XPoll) {
+        if ($post->content_type?->isPoll() === true) {
             throw ValidationException::withMessages([$field => trans('posts.errors.media_not_accepted')]);
         }
     }

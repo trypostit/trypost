@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\BlueskyPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -312,4 +314,43 @@ test('bluesky stops at the cutoff even when the older records are replies', func
     expect($page->publications)->toBe([])
         ->and($page->nextCursor)->toBeNull()
         ->and($page->providerExhausted)->toBeTrue();
+});
+
+/**
+ * A collector that sends one GET, as every API collector does.
+ */
+function plainApiCollector(): AbstractApiPublicationCollector
+{
+    return new class extends AbstractApiPublicationCollector
+    {
+        /** @param array<string, mixed> $query */
+        public function read(string $url, array $query): Response
+        {
+            return $this->get(SocialAccount::factory()->mastodon()->make(), $url, $query, authenticated: false);
+        }
+    };
+}
+
+test('a collector read sends only the filled query parameters, keeping zero and false', function () {
+    Http::fake(['https://api.example/*' => Http::response([])]);
+
+    plainApiCollector()->read('https://api.example/items', [
+        'space' => ' ',
+        'list' => [],
+        'none' => null,
+        'empty' => '',
+        'zero' => 0,
+        'off' => false,
+        'limit' => 20,
+    ]);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.example/items?zero=0&off=0&limit=20');
+});
+
+test('a collector read without a filled query parameter keeps the query its url carries', function () {
+    Http::fake(['https://api.example/*' => Http::response([])]);
+
+    plainApiCollector()->read('https://api.example/items?id%5B%5D=1&id%5B%5D=2', ['none' => null, 'empty' => '']);
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://api.example/items?id%5B%5D=1&id%5B%5D=2');
 });

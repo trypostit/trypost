@@ -13,6 +13,7 @@ use App\Support\Analytics\MetaAnalyticsResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Uri;
 
 abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicationMetricsCollector
 {
@@ -86,15 +87,54 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         return $this->get($account, "{$graph}/{$publication->remote_id}", ['fields' => 'id']);
     }
 
-    protected function recordRefusal(AnalyticsCollectionException $exception): void
+    /**
+     * Keeps a read the token was refused (its category, and whether the object
+     * was missing) and logs it under `$event`.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function recordRefusal(AnalyticsCollectionException $exception, string $event, array $context): void
     {
         $this->refusals[] = $exception->category;
         $this->refusedMissingObject = $this->refusedMissingObject || $exception->missingObject;
+
+        Log::info($event, [...$context, 'category' => $exception->category, 'reason' => $exception->getMessage()]);
+    }
+
+    /**
+     * An optional read fails for good only when the token was not refused it
+     * (a field its permissions do not cover, or one Meta calls malformed).
+     */
+    private function rethrowUnlessRefused(AnalyticsCollectionException $exception): void
+    {
+        if (! collect(['permission', 'malformed'])->containsStrict($exception->category)) {
+            throw $exception;
+        }
     }
 
     protected function successfulResponse(Response $response): Response
     {
         return MetaAnalyticsResponse::successful($response, 'publication metrics collection');
+    }
+
+    /**
+     * A read the token may be refused (a field its permissions do not cover):
+     * a refusal is recorded and reads as nothing, so the metrics already
+     * measured are kept; any other failure is rethrown.
+     *
+     * @param  array<string, string>  $query
+     * @return array<string, mixed>
+     */
+    protected function optional(SocialAccount $account, string $url, array $query): array
+    {
+        try {
+            return (array) $this->get($account, $url, $query)->json();
+        } catch (AnalyticsCollectionException $exception) {
+            $this->rethrowUnlessRefused($exception);
+            $this->recordRefusal($exception, "analytics.{$account->platform->value}_read_refused", ['path' => Uri::of($url)->path()]);
+
+            return [];
+        }
     }
 
     /**
@@ -107,9 +147,7 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
         try {
             $response = $this->get($account, $url, ['metric' => implode(',', $metrics), ...$query]);
         } catch (AnalyticsCollectionException $exception) {
-            if (! in_array($exception->category, ['permission', 'malformed'], true)) {
-                throw $exception;
-            }
+            $this->rethrowUnlessRefused($exception);
 
             if (count($metrics) > 1) {
                 return array_merge(...array_map(
@@ -118,20 +156,15 @@ abstract class AbstractMetaPublicationMetricsCollector extends AbstractPublicati
                 ));
             }
 
-            $this->recordRefusal($exception);
-            Log::info('analytics.meta_metric_rejected', [
+            $this->recordRefusal($exception, 'analytics.meta_metric_rejected', [
                 'platform' => $account->platform->value,
-                'path' => parse_url($url, PHP_URL_PATH),
+                'path' => Uri::of($url)->path(),
                 'metric' => data_get($metrics, 0),
-                'category' => $exception->category,
-                'reason' => $exception->getMessage(),
             ]);
 
             return [];
         }
 
-        $data = $response->json('data');
-
-        return is_array($data) ? array_values(array_filter($data, 'is_array')) : [];
+        return collect($response->json('data'))->filter(fn (mixed $item): bool => is_array($item))->values()->all();
     }
 }

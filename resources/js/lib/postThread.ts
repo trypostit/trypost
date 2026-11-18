@@ -1,16 +1,16 @@
-import { blank } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
+import { postPollResults } from '@/lib/poll';
 import {
     isBlankThreadReply,
     type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
-import { postPollResults } from '@/lib/xPoll';
 import type {
     PublicationPoll,
     PublicationThreadPoll,
 } from '@/types/analytics';
 import type { MediaItem } from '@/types/media';
-import { THREAD_PLATFORMS } from '@/types/network-options';
+import { isThreadPlatform } from '@/types/network-options';
 import type { PostCard } from '@/types/publish';
 
 /** One post of a thread as the post card and its details show it, with its own poll. */
@@ -39,7 +39,7 @@ const replyPostOf = (
  * when the post has no reply to show.
  */
 export const postThreadOf = (post: PostCard): ThreadPost[] => {
-    if (!THREAD_PLATFORMS.includes(post.platform ?? '')) {
+    if (!filled(post.platform) || !isThreadPlatform(post.platform)) {
         return [];
     }
 

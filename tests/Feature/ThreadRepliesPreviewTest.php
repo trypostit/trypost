@@ -7,6 +7,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Post\PostPreviewer;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\MastodonPoll;
 
 test('previews thread replies with the network sanitizer', function () {
     $post = Post::factory()->bluesky()->create([
@@ -62,4 +63,39 @@ test('an x preview shows the poll of the post and of each reply that has one', f
             ['text' => 'And on Fridays?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]],
             ['text' => 'Thanks!', 'media' => []],
         ]);
+});
+
+test('a mastodon preview shows its poll with the defaults it publishes with, on the post and a reply', function () {
+    $post = Post::factory()->mastodon()->create([
+        'content' => 'Pick one',
+        'content_type' => ContentType::MastodonPoll,
+        'meta' => [
+            'poll' => ['options' => ['Yes', 'No'], 'multiple' => true],
+            'thread_replies' => [['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120, 'hide_totals' => true]]],
+        ],
+    ]);
+
+    $preview = app(PostPreviewer::class)->forPost($post->fresh());
+
+    expect($preview['poll'])->toEqual(['options' => ['Yes', 'No'], 'duration_minutes' => MastodonPoll::DEFAULT_DURATION, 'multiple' => true, 'hide_totals' => false])
+        ->and($preview['thread_replies'][0]['poll'])->toEqual(['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120, 'multiple' => false, 'hide_totals' => true]);
+});
+
+test('a threads preview shows only the choices of its poll', function () {
+    $post = Post::factory()->threads()->create([
+        'content' => 'Pick one',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]],
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh())['poll'])->toEqual(['options' => ['Yes', 'No']]);
+});
+
+test('a bluesky reply shows no poll in the preview', function () {
+    $post = Post::factory()->bluesky()->create([
+        'content' => 'Root',
+        'meta' => ['thread_replies' => [['text' => 'Two', 'poll' => ['options' => ['Yes', 'No']]]]],
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh())['thread_replies'])->toEqual([['text' => 'Two', 'media' => []]]);
 });

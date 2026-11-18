@@ -12,7 +12,10 @@ import {
 import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
+import ThreadsPreviewPoll from '@/components/posts/previews/ThreadsPreviewPoll.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
+import { blank } from '@/lib/helpers';
+import { type PreviewPoll, previewPollOf } from '@/lib/poll';
 import { ContentType } from '@/types/content-type';
 
 
@@ -21,6 +24,19 @@ const props = defineProps<PreviewProps>();
 const isGhost = computed(
     (): boolean => props.contentType === ContentType.ThreadsGhostPost,
 );
+
+const previewPoll = computed((): PreviewPoll | null =>
+    previewPollOf(props.contentType, props.meta, props.publishConfig),
+);
+
+/** A ghost post and a poll show no link card. */
+const showsLinkCard = computed((): boolean => {
+    if (isGhost.value) {
+        return false;
+    }
+
+    return blank(previewPoll.value);
+});
 </script>
 
 <template>
@@ -35,7 +51,7 @@ const isGhost = computed(
         tags="bare"
         media-layout="peek"
         mute-badge
-        :link-card="!isGhost"
+        :link-card="showsLinkCard"
         :content-testid="isGhost ? 'threads-ghost-bubble' : undefined"
         :text-class="
             isGhost
@@ -64,6 +80,11 @@ const isGhost = computed(
         <template v-if="isGhost" #aside>
             <IconDots class="ml-auto size-4 shrink-0 self-center" />
         </template>
+        <ThreadsPreviewPoll
+            v-if="previewPoll"
+            :poll="previewPoll.poll"
+            :limits="previewPoll.limits"
+        />
         <div
             v-if="isGhost"
             class="flex items-center gap-6 pt-1 text-muted-foreground"

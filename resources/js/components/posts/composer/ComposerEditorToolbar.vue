@@ -111,7 +111,7 @@ const selectEmoji = (emoji: string): void => {
                         <button
                             type="button"
                             :data-testid="`${testIdPrefix}-poll`"
-                            :aria-label="$t('posts.form.x.poll.add')"
+                            :aria-label="$t('posts.form.poll.add')"
                             class="flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                             @click="addPoll"
                         >
@@ -119,7 +119,7 @@ const selectEmoji = (emoji: string): void => {
                         </button>
                     </TooltipTrigger>
                     <TooltipContent :data-testid="`${testIdPrefix}-poll-tooltip`">
-                        {{ $t('posts.form.x.poll.add') }}
+                        {{ $t('posts.form.poll.add') }}
                     </TooltipContent>
                 </Tooltip>
             </template>

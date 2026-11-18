@@ -17,9 +17,9 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\ContentSanitizer;
 use App\Support\PostHistoryRetention;
+use App\Support\Social\Poll;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
-use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -430,9 +430,25 @@ class ImportExternalPosts
             && Str::startsWith($sent, $truncated);
     }
 
-    private static function createPost(SocialAccount $account, AnalyticsPublication $publication): Post
+    /**
+     * The type an imported post is shown as. A poll found before its choices
+     * were read (a Mastodon poll discovered before polls were supported) stays
+     * a plain post, so it never shows as a poll without choices.
+     */
+    private static function importedContentType(SocialAccount $account, AnalyticsPublication $publication): ContentType
     {
         $contentType = ContentType::fromPublication($account->platform, $publication->content_type);
+
+        if ($contentType->isPoll() && blank(data_get($publication->provider_metadata, 'poll.options'))) {
+            return ContentType::defaultFor($account->platform);
+        }
+
+        return $contentType;
+    }
+
+    private static function createPost(SocialAccount $account, AnalyticsPublication $publication): Post
+    {
+        $contentType = self::importedContentType($account, $publication);
 
         return Post::query()->forceCreate([
             'workspace_id' => $account->workspace_id,
@@ -450,7 +466,7 @@ class ImportExternalPosts
             'publish_status' => PublishStatus::Published,
             'platform_post_id' => $publication->remote_id,
             'platform_url' => $publication->permalink,
-            'meta' => $contentType === ContentType::XPoll ? ['poll' => XPoll::fromPublication($publication)] : [],
+            'meta' => transform($contentType?->poll(), fn (string $poll): array => ['poll' => $poll::fromPublication($publication)], []),
         ]);
     }
 }

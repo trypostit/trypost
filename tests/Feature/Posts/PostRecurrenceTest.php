@@ -707,11 +707,10 @@ test('an author who left the workspace hands the next occurrence to the workspac
     expect(nextOccurrence($post)->user_id)->toBe($this->user->id);
 });
 
-test('the next occurrence of a recurring x poll keeps its poll', function () {
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'timezone' => 'UTC']);
-    $poll = ['options' => ['Tabs', 'Spaces', 'Both'], 'duration_minutes' => 60];
-    $post = recurringPost($x, $this->user, [
-        'content_type' => ContentType::XPoll,
+test('the next occurrence of a recurring poll keeps its poll', function (string $platform, ContentType $type, array $poll) {
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $this->workspace->id, 'timezone' => 'UTC']);
+    $post = recurringPost($account, $this->user, [
+        'content_type' => $type,
         'content' => 'Tabs or spaces?',
         'scheduled_at' => now()->subMinute(),
         'recurrence_interval' => 1,
@@ -723,6 +722,10 @@ test('the next occurrence of a recurring x poll keeps its poll', function () {
     publishRecurringPost($post);
 
     expect(nextOccurrence($post))
-        ->content_type->toBe(ContentType::XPoll)
+        ->content_type->toBe($type)
         ->meta->toEqual(['poll' => $poll]);
-});
+})->with([
+    'x' => ['x', ContentType::XPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Tabs', 'Spaces', 'Both']]],
+]);

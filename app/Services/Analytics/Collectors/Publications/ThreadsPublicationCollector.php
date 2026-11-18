@@ -8,13 +8,14 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
+use App\Support\Social\ThreadsPoll;
 use Carbon\CarbonImmutable;
 
 class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
 {
     private const PAGE_SIZE = 50;
 
-    private const FIELDS = 'id,media_product_type,media_type,media_url,permalink,text,timestamp,thumbnail_url,is_quote_post';
+    private const FIELDS = 'id,media_product_type,media_type,media_url,permalink,text,timestamp,thumbnail_url,is_quote_post,'.ThreadsPoll::LOOKUP_FIELDS;
 
     public function page(
         SocialAccount $account,
@@ -57,7 +58,10 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
                 permalink: data_get($row, 'permalink'),
                 excerpt: data_get($row, 'text'),
                 previewMetadata: $this->preview(data_get($row, 'thumbnail_url') ?: data_get($row, 'media_url')),
-                providerMetadata: ['is_quote_post' => (bool) data_get($row, 'is_quote_post', false)],
+                providerMetadata: [
+                    'is_quote_post' => (bool) data_get($row, 'is_quote_post', false),
+                    ...ThreadsPoll::metadataFrom(data_get($row, 'poll_attachment')),
+                ],
             );
         }
 
@@ -67,6 +71,10 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
     /** @param array<string, mixed> $row */
     private function contentType(array $row): PublicationContentType
     {
+        if (filled(data_get($row, 'poll_attachment'))) {
+            return PublicationContentType::Poll;
+        }
+
         return match (strtoupper((string) data_get($row, 'media_type'))) {
             'VIDEO' => PublicationContentType::Video,
             'IMAGE' => PublicationContentType::Image,

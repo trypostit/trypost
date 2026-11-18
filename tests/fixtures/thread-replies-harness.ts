@@ -1,6 +1,6 @@
 /**
  * Prints what the composer's thread helpers (`lib/threadReplies.ts`) answer for
- * each platform given as an argument, so `ThreadRepliesParityTest.php` can
+ * each platform given as an argument (a reply that is a poll included), so `ThreadRepliesParityTest.php` can
  * compare them with `ThreadReplies` on the server.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
@@ -19,18 +19,27 @@ registerHooks({
             : nextResolve(specifier, context),
 });
 
-const { replyEmptyKey, replyTooLongKey, startThreadKey, threadMaxReplies } = await import(
+const {
+    replyEmptyKey,
+    replyTooLongKey,
+    startThreadKey,
+    threadMaxReplies,
+    threadReplyContentType,
+} = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/threadReplies.ts')).href
 );
 const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
 );
 
+const pollReply = { text: 'Which one?', media: [], poll: { options: ['Yes', 'No'] } };
+
 const results = Object.fromEntries(
     platforms.map((platform) => [
         platform,
         {
             reply_content_type: THREAD_REPLY_CONTENT_TYPES[platform] ?? null,
+            reply_poll_content_type: threadReplyContentType(platform, pollReply) ?? null,
             max_replies: threadMaxReplies(platform),
             empty_key: replyEmptyKey(platform),
             too_long_key: replyTooLongKey(platform),

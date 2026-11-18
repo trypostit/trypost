@@ -1489,7 +1489,7 @@ it('explains what is wrong with an x poll in plain words', function (mixed $poll
     'choice over 25 characters' => [['options' => [Str::repeat('a', 26), 'b'], 'duration_minutes' => 60], 'meta.poll.options.0', 'Each poll choice can have up to 25 characters. Shorten the longer one.'],
     'five options' => [['options' => ['a', 'b', 'c', 'd', 'e'], 'duration_minutes' => 60], 'meta.poll.options', 'A poll can have up to 4 choices. Remove the extra ones.'],
     'duration above 10080' => [['options' => ['a', 'b'], 'duration_minutes' => 10081], 'meta.poll.duration_minutes', 'A poll can stay open from 5 minutes to 7 days. Choose a length in that range.'],
-    'poll that is not an object' => ['Yes or no', 'meta.poll', 'Send the poll with its choices (options) and length (duration_minutes).'],
+    'poll that is not an object' => ['Yes or no', 'meta.poll', 'Send the poll with its choices (options) and, on X and Mastodon, its length (duration_minutes).'],
     'choices sent as text' => [['options' => 'Yes, No', 'duration_minutes' => 60], 'meta.poll.options', 'Send the poll choices as a list of text.'],
     'a choice that is not text' => [['options' => ['Yes', ['No']], 'duration_minutes' => 60], 'meta.poll.options.1', 'Each poll choice must be text.'],
 ]);
@@ -1615,9 +1615,9 @@ it('refuses media on an x poll', function () {
     $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 });
 
-it('refuses to attach media to an x poll', function () {
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+it('refuses to attach media to a poll', function (ContentType $type) {
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($account, $type)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
     $storedMedia = Media::query()->count();
     Http::fake();
@@ -1637,7 +1637,11 @@ it('refuses to attach media to an x poll', function () {
     expect($post->fresh()->media)->toBeEmpty()
         ->and(Media::query()->count())->toBe($storedMedia);
     Http::assertNothingSent();
-});
+})->with([
+    'x' => [ContentType::XPoll],
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+]);
 
 it('still saves a threads ghost post draft with media and attaches media to it, the poll rules being x only', function () {
     $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $this->workspace->id]);

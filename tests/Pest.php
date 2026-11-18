@@ -3,17 +3,23 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
 use App\Support\Social\PendingConnection;
+use App\Support\Social\Poll;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
 use Illuminate\Support\Facades\Bus;
@@ -22,6 +28,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Laravel\Mcp\Server\Testing\TestResponse as McpTestResponse;
 use Stripe\ApiRequestor;
 use Stripe\HttpClient\ClientInterface;
 use Tests\BrowserTestCase;
@@ -685,6 +692,98 @@ function parityContext(): array
         'workspace' => $result['workspace'],
         'token' => $result['plain_token'],
     ];
+}
+
+/**
+ * A post on a channel of a poll's network (X, Mastodon or Threads), owned by a
+ * signed-in member, for the composer's browser tests. Every request to a
+ * network answers empty.
+ *
+ * @param  array<string, mixed>  $attributes
+ * @param  array<string, mixed>  $accountAttributes
+ * @param  array<string, mixed>  $userAttributes
+ */
+function seedPollComposerPost(ContentType $type, array $attributes = [], array $accountAttributes = [], array $userAttributes = []): Post
+{
+    Http::fake(['*' => Http::response([], 200)]);
+
+    $user = User::factory()->create($userAttributes);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    connectAiTo($user);
+
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create([
+        'workspace_id' => $workspace->id,
+        'username' => 'trypostit',
+        'token_expires_at' => now()->addDays(20),
+        ...$accountAttributes,
+    ]);
+
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'user_id' => $user->id,
+        'content' => 'Which network brings you the most customers?',
+        ...$attributes,
+    ]);
+
+    test()->actingAs($user);
+
+    return $post;
+}
+
+/**
+ * Opens a post in the composer, once its network's Poll type can be picked.
+ */
+function openPollComposer(Post $post): mixed
+{
+    $pollType = Poll::for($post->platform)::contentType()->value;
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-type-{$post->social_account_id}-{$pollType}");
+
+    return $page;
+}
+
+/**
+ * A draft of a poll's network (X, Mastodon or Threads) in the parity
+ * context's workspace, asking 'Tabs or spaces?'.
+ *
+ * @param  array<string, mixed>  $meta
+ * @param  array<string, mixed>  $accountMeta
+ */
+function pollParityPost(ContentType $type, array $meta = [], array $accountMeta = []): Post
+{
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => test()->workspace->id, 'meta' => $accountMeta]);
+
+    return Post::factory()->forAccount($account, $type)->create([
+        'user_id' => test()->user->id,
+        'content' => 'Tabs or spaces?',
+        'status' => PostStatus::Draft,
+        'media' => [],
+        'meta' => $meta,
+    ]);
+}
+
+/**
+ * Sends the same post update through one surface: the web composer, the REST
+ * API or the MCP tool, and returns that surface's own response, which is why
+ * the return type is a union.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function pollParityUpdate(string $surface, Post $post, array $changes): TestResponse|McpTestResponse
+{
+    $payload = [
+        'content' => $post->content,
+        'content_type' => $post->content_type->value,
+        'status' => PostStatus::Draft->value,
+        ...$changes,
+    ];
+
+    return match ($surface) {
+        'web' => test()->actingAs(test()->user)->putJson(route('app.posts.update', $post), ['media' => [], ...$payload]),
+        'api' => test()->withHeaders(parityApi(test()->token))->putJson(route('api.posts.update', $post), $payload),
+        'mcp' => TryPostServer::actingAs(test()->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, ...$payload]),
+    };
 }
 
 /**

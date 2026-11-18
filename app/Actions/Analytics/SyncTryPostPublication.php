@@ -59,9 +59,12 @@ class SyncTryPostPublication
             ContentType::YouTubeShort => PublicationContentType::Short,
             ContentType::TikTokVideo, ContentType::PinterestVideoPin => PublicationContentType::Video,
             ContentType::TikTokPhoto, ContentType::PinterestCarousel => PublicationContentType::Carousel,
-            ContentType::XPoll => PublicationContentType::Poll,
             default => null,
         };
+
+        if ($post->content_type?->isPoll() === true) {
+            return PublicationContentType::Poll;
+        }
 
         if ($specializedType) {
             return $specializedType;
