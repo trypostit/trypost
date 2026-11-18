@@ -28,8 +28,7 @@ enum Source: string
     {
         return match ($this) {
             self::Unsplash => filled(config('services.unsplash.access_key')),
-            self::Giphy => (bool) config('trypost.media_sources.giphy.enabled')
-                && filled(config('services.giphy.api_key')),
+            self::Giphy => self::giphyConfigured(),
             self::GoogleDrive => (bool) config('trypost.media_sources.google_drive.enabled')
                 && self::googleOAuthConfigured()
                 && filled(config('services.google_media.api_key'))
@@ -41,6 +40,13 @@ enum Source: string
                 && filled(config('services.canva.client_secret')),
             self::Ai => false,
         };
+    }
+
+    /** GIPHY needs its flag on and an API key. */
+    private static function giphyConfigured(): bool
+    {
+        return (bool) config('trypost.media_sources.giphy.enabled')
+            && filled(config('services.giphy.api_key'));
     }
 
     /**
