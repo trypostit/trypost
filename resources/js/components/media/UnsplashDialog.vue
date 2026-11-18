@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import { IconLoader2, IconSearch } from '@tabler/icons-vue';
+import Unsplash from '@thesvg/vue/unsplash';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ref, useTemplateRef, watch } from 'vue';
 
@@ -184,9 +185,13 @@ const creditParts = (
             :aria-describedby="undefined"
         >
             <DialogHeader>
-                <DialogTitle>{{
-                    $t('posts.composer.unsplash.title')
-                }}</DialogTitle>
+                <DialogTitle class="flex items-center gap-2">
+                    <Unsplash
+                        class="size-5 fill-current text-foreground"
+                        aria-hidden="true"
+                    />
+                    {{ $t('posts.composer.unsplash.title') }}
+                </DialogTitle>
             </DialogHeader>
             <div class="relative">
                 <IconSearch
