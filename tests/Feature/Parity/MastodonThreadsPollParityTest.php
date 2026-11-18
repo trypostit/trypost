@@ -378,6 +378,30 @@ test('a mastodon reply poll with media is refused even as a draft on the web, ap
     expect($post->fresh()->meta)->toBe([]);
 })->with(['web', 'api', 'mcp']);
 
+test('scheduling a reply poll with too many files gives it one media error on the web and api', function (string $surface) {
+    $post = pollParityPost(ContentType::MastodonPost);
+    $uploads = Media::factory()->count(5)->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => [
+            [
+                'text' => 'Tabs or spaces?',
+                'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+                'media' => $uploads->map(fn (Media $upload): array => $surface === 'web'
+                    ? MediaItem::fromMedia($upload)->toArray()
+                    : ['upload_token' => $upload->upload_token])->all(),
+            ],
+        ]],
+    ]);
+
+    expect($response->assertUnprocessable()->json('errors'))
+        ->toBe(['meta.thread_replies.0.media' => [__('posts.errors.media_not_accepted')]]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api']);
+
 test('scheduling a mastodon poll with a choice too long reports it once on the web and api', function (string $surface) {
     $post = pollParityPost(ContentType::MastodonPoll);
 

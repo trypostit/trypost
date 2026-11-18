@@ -11,6 +11,7 @@ use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
 use App\Support\ThreadReplies;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,12 @@ trait HasSocialHttpClient
 
         if ($threadViolation !== null) {
             throw new ContentLimitException($post->platform, $threadViolation[1]);
+        }
+
+        $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));
+
+        if (filled($replyPollMediaError)) {
+            throw new ContentLimitException($post->platform, $replyPollMediaError);
         }
 
         $maxLength = ContentType::maxContentLengthFor($post->socialAccount, $post->platform, $post->content_type);

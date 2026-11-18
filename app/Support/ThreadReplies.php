@@ -300,10 +300,6 @@ class ThreadReplies
             return [null, $questionViolation];
         }
 
-        if (filled($reply['media'])) {
-            return ['media', __('posts.errors.media_not_accepted')];
-        }
-
         return self::lengthViolation($reply['text'], $poll::platform(), $account, $poll::contentType(), $reserved)
             ?? $poll::firstViolation($reply);
     }
@@ -333,7 +329,8 @@ class ThreadReplies
 
     /**
      * Each reply's media against the reply content type, keyed
-     * `thread_replies.{n}.media`.
+     * `thread_replies.{n}.media`. A reply poll takes no media at all, which
+     * `pollMediaErrors()` reports, so it is left out here.
      *
      * @return array<string, string>
      */
@@ -346,9 +343,14 @@ class ThreadReplies
         }
 
         $errors = [];
+        $pollsTakeReplies = filled(self::replyPoll($platform));
 
         foreach (self::of($meta) as $index => $reply) {
             $key = "thread_replies.{$index}.media";
+
+            if ($pollsTakeReplies && self::hasPoll($reply)) {
+                continue;
+            }
             $count = count($reply['media']);
 
             if ($count > $contentType->maxMediaCount()) {

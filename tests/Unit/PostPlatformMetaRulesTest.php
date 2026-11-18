@@ -471,8 +471,8 @@ test('instagram music and trial reel rules apply only to reels', function () {
     $music = ['audio' => ['id' => '1234567890']];
 
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::InstagramFacebook, $trialWithCollaborators, ContentType::InstagramReel)[0] ?? null)->toBe('trial_graduation')
-        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::Instagram, $music, 'instagram_reel')[0] ?? null)->toBe('audio')
-        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], 'instagram_reel')[0] ?? null)->toBe('audio.id')
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::Instagram, $music, ContentType::InstagramReel)[0] ?? null)->toBe('audio')
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::InstagramFacebook, ['audio' => ['title' => 'Song']], ContentType::InstagramReel)[0] ?? null)->toBe('audio.id')
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['audio' => ['title' => 'Song']], ContentType::LinkedInPost))->toBeNull()
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::InstagramFacebook, $trialWithCollaborators, ContentType::InstagramFeed))->toBeNull()
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::Instagram, $music, ContentType::InstagramStory))->toBeNull();

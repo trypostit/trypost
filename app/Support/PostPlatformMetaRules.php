@@ -276,7 +276,7 @@ class PostPlatformMetaRules
      * Adds the validation error for meta that becomes mandatory once a post is
      * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
      */
-    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', mixed $contentType = null): void
+    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', ?ContentType $contentType = null): void
     {
         $violation = self::requiredMetaViolation($target, $meta, $contentType);
 
@@ -420,10 +420,9 @@ class PostPlatformMetaRules
      *
      * @return array{0: string, 1: string}|null [field, message]
      */
-    public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, mixed $contentType = null): ?array
+    public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $type = ContentType::resolve($contentType);
         $threadViolation = ThreadReplies::violation($target, $meta);
 
         if ($threadViolation !== null) {

@@ -231,7 +231,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)
+                $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $contentType)
                     ?? PostPlatformMetaRules::contentMetaViolation($account->platform, $destination['meta'] ?? [], (string) $destination['content']);
                 if (filled($metaViolation) && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
                     [$field, $message] = $metaViolation;
