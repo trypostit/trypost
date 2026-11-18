@@ -28,6 +28,7 @@ use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollecto
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
 use App\Support\Analytics\SyncCadence;
 use App\Support\PostStatusRules;
+use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Bus;
@@ -177,8 +178,8 @@ test('regular collection respects the X and non-X refresh windows', function (Pl
 })->with([
     [Platform::X, 28, true],
     [Platform::X, 29, false],
-    [Platform::Mastodon, 30, true],
-    [Platform::Mastodon, 31, false],
+    [Platform::Mastodon, 31, true],
+    [Platform::Mastodon, 32, false],
 ]);
 
 test('an old imported publication receives one baseline measurement only', function () {
@@ -271,7 +272,7 @@ test('daily dispatcher includes old publications without a baseline and excludes
     }
 
     metricJobPublication(Platform::LinkedIn, $date->subDay());
-    $old = metricJobPublication(Platform::Mastodon, $date->subDays(31));
+    $old = metricJobPublication(Platform::Mastodon, $date->subDays(32));
     $expiredStory = metricJobPublication(Platform::Instagram, $date->subDays(31));
     $expiredStory->update(['content_type' => PublicationContentType::Story]);
     Bus::fake([CollectPublicationMetrics::class]);
@@ -474,6 +475,29 @@ test('other networks keep the daily thirty day window', function () {
     $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
 
     Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 4);
+});
+
+test('the daily run reads a mastodon post one day longer, after its longest poll ends', function () {
+    $now = now('UTC')->startOfDay()->addHours(3);
+    $this->travelTo($now);
+    $published = $now->subDays(31)->setTime(23, 0);
+
+    expect($published->addMinutes(MastodonPoll::MAX_DURATION)->lessThan($now))->toBeTrue();
+
+    $mastodon = metricJobPublication(Platform::Mastodon, $published);
+    $instagram = metricJobPublication(Platform::Instagram, $published);
+
+    foreach ([$mastodon, $instagram] as $publication) {
+        AnalyticsPublicationDailySnapshot::factory()->create([
+            'publication_id' => $publication->id,
+            'date' => $now->subDay()->toDateString(),
+        ]);
+    }
+
+    Bus::fake([CollectPublicationMetrics::class]);
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    expect(Bus::dispatched(CollectPublicationMetrics::class)->pluck('publicationId')->all())->toBe([$mastodon->id]);
 });
 
 test('a published post is first read an hour after publishing on every network', function (Platform $platform) {
@@ -847,4 +871,42 @@ test('a rediscovery keeps the poll results of the thread replies, which only the
     ));
 
     expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4), 'thread_polls' => $threadPolls]);
+});
+
+test('a mastodon poll whose totals were hidden is replaced by the result read once mastodon shows them', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::Mastodon, $date->subDay());
+    $endsAt = $date->subHour()->toIso8601ZuluString();
+    $status = fn (?int $tabs, ?int $spaces, bool $expired): array => [
+        'id' => $publication->remote_id,
+        'replies_count' => 0,
+        'reblogs_count' => 0,
+        'favourites_count' => 1,
+        'poll' => [
+            'expires_at' => $endsAt,
+            'expired' => $expired,
+            'multiple' => false,
+            'options' => [['title' => 'Tabs', 'votes_count' => $tabs], ['title' => 'Spaces', 'votes_count' => $spaces]],
+        ],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($status(null, null, false))
+        ->push($status(4, 6, true))]);
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 0], ['label' => 'Spaces', 'votes' => 0]],
+        'voting_status' => 'open',
+        'totals_hidden' => true,
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 4], ['label' => 'Spaces', 'votes' => 6]],
+        'voting_status' => 'closed',
+        'totals_hidden' => false,
+    ]);
 });

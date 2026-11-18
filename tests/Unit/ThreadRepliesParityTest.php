@@ -24,6 +24,7 @@ test('the composer threads every network the way the server does', function () {
 
         return [$platform->value => [
             'reply_content_type' => ThreadReplies::replyContentType($platform)?->value,
+            'reply_poll_content_type' => transform(ThreadReplies::replyPoll($platform), fn (string $poll): string => $poll::contentType()->value),
             'max_replies' => ThreadReplies::maxReplies($platform),
             'empty_key' => $comments ? 'posts.form.thread.comment_empty' : 'posts.form.thread.reply_empty',
             'too_long_key' => $comments ? 'posts.form.thread.comment_too_long' : 'posts.form.thread.reply_too_long',

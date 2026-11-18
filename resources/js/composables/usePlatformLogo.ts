@@ -1,79 +1,83 @@
 import { derivesContentType } from '@/lib/derivedContentType';
+import { filled } from '@/lib/helpers';
+import { ContentType, type ContentTypeValue } from '@/types/content-type';
+import { Platform } from '@/types/platform';
 
 const PLATFORM_LOGOS: Record<string, string> = {
-    linkedin: '/images/accounts/linkedin.png',
-    'linkedin-page': '/images/accounts/linkedin.png',
-    x: '/images/accounts/x.png',
-    tiktok: '/images/accounts/tiktok.png',
-    instagram: '/images/accounts/instagram.png',
-    'instagram-facebook': '/images/accounts/instagram.png',
-    facebook: '/images/accounts/facebook.png',
-    youtube: '/images/accounts/youtube.png',
-    threads: '/images/accounts/threads.png',
-    bluesky: '/images/accounts/bluesky.png',
-    pinterest: '/images/accounts/pinterest.png',
-    mastodon: '/images/accounts/mastodon.png',
-    telegram: '/images/accounts/telegram.png',
-    discord: '/images/accounts/discord.png',
-    google_business: '/images/accounts/google_business.png',
+    [Platform.LinkedIn]: '/images/accounts/linkedin.png',
+    [Platform.LinkedInPage]: '/images/accounts/linkedin.png',
+    [Platform.X]: '/images/accounts/x.png',
+    [Platform.TikTok]: '/images/accounts/tiktok.png',
+    [Platform.Instagram]: '/images/accounts/instagram.png',
+    [Platform.InstagramFacebook]: '/images/accounts/instagram.png',
+    [Platform.Facebook]: '/images/accounts/facebook.png',
+    [Platform.YouTube]: '/images/accounts/youtube.png',
+    [Platform.Threads]: '/images/accounts/threads.png',
+    [Platform.Bluesky]: '/images/accounts/bluesky.png',
+    [Platform.Pinterest]: '/images/accounts/pinterest.png',
+    [Platform.Mastodon]: '/images/accounts/mastodon.png',
+    [Platform.Telegram]: '/images/accounts/telegram.png',
+    [Platform.Discord]: '/images/accounts/discord.png',
+    [Platform.GoogleBusiness]: '/images/accounts/google_business.png',
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
-    linkedin: 'LinkedIn',
-    'linkedin-page': 'LinkedIn Page',
-    x: 'X',
-    tiktok: 'TikTok',
-    instagram: 'Instagram',
-    'instagram-facebook': 'Instagram',
-    facebook: 'Facebook',
-    youtube: 'YouTube',
-    threads: 'Threads',
-    bluesky: 'Bluesky',
-    pinterest: 'Pinterest',
-    mastodon: 'Mastodon',
-    telegram: 'Telegram',
-    discord: 'Discord',
-    google_business: 'Google Business Profile',
+    [Platform.LinkedIn]: 'LinkedIn',
+    [Platform.LinkedInPage]: 'LinkedIn Page',
+    [Platform.X]: 'X',
+    [Platform.TikTok]: 'TikTok',
+    [Platform.Instagram]: 'Instagram',
+    [Platform.InstagramFacebook]: 'Instagram',
+    [Platform.Facebook]: 'Facebook',
+    [Platform.YouTube]: 'YouTube',
+    [Platform.Threads]: 'Threads',
+    [Platform.Bluesky]: 'Bluesky',
+    [Platform.Pinterest]: 'Pinterest',
+    [Platform.Mastodon]: 'Mastodon',
+    [Platform.Telegram]: 'Telegram',
+    [Platform.Discord]: 'Discord',
+    [Platform.GoogleBusiness]: 'Google Business Profile',
 };
 
-const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
-    instagram: ['instagram_feed', 'instagram_reel', 'instagram_story'],
-    'instagram-facebook': [
-        'instagram_feed',
-        'instagram_reel',
-        'instagram_story',
+const PLATFORM_CONTENT_TYPES: Readonly<Record<string, ContentTypeValue[]>> = {
+    [Platform.Instagram]: [ContentType.InstagramFeed, ContentType.InstagramReel, ContentType.InstagramStory],
+    [Platform.InstagramFacebook]: [
+        ContentType.InstagramFeed,
+        ContentType.InstagramReel,
+        ContentType.InstagramStory,
     ],
-    linkedin: ['linkedin_post'],
-    'linkedin-page': ['linkedin_page_post'],
-    facebook: ['facebook_post', 'facebook_reel', 'facebook_story'],
-    tiktok: ['tiktok_video', 'tiktok_photo'],
-    youtube: ['youtube_short'],
-    x: ['x_post', 'x_poll'],
-    threads: ['threads_post', 'threads_ghost_post'],
-    pinterest: ['pinterest_pin', 'pinterest_video_pin', 'pinterest_carousel'],
-    bluesky: ['bluesky_post'],
-    mastodon: ['mastodon_post'],
-    telegram: ['telegram_post'],
-    discord: ['discord_message'],
-    google_business: ['google_business_post'],
+    [Platform.LinkedIn]: [ContentType.LinkedInPost],
+    [Platform.LinkedInPage]: [ContentType.LinkedInPagePost],
+    [Platform.Facebook]: [ContentType.FacebookPost, ContentType.FacebookReel, ContentType.FacebookStory],
+    [Platform.TikTok]: [ContentType.TikTokVideo, ContentType.TikTokPhoto],
+    [Platform.YouTube]: [ContentType.YouTubeShort],
+    [Platform.X]: [ContentType.XPost, ContentType.XPoll],
+    [Platform.Threads]: [ContentType.ThreadsPost, ContentType.ThreadsGhostPost, ContentType.ThreadsPoll],
+    [Platform.Pinterest]: [ContentType.PinterestPin, ContentType.PinterestVideoPin, ContentType.PinterestCarousel],
+    [Platform.Bluesky]: [ContentType.BlueskyPost],
+    [Platform.Mastodon]: [ContentType.MastodonPost, ContentType.MastodonPoll],
+    [Platform.Telegram]: [ContentType.TelegramPost],
+    [Platform.Discord]: [ContentType.DiscordMessage],
+    [Platform.GoogleBusiness]: [ContentType.GoogleBusinessPost],
 };
 
-const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
-    instagram: ['instagram_reel', 'instagram_story'],
-    'instagram-facebook': ['instagram_reel', 'instagram_story'],
-    facebook: ['facebook_reel', 'facebook_story'],
-    threads: ['threads_ghost_post'],
-    x: ['x_poll'],
+const PLATFORM_CONTENT_TYPE_BADGES: Readonly<Record<string, ContentTypeValue[]>> = {
+    [Platform.Instagram]: [ContentType.InstagramReel, ContentType.InstagramStory],
+    [Platform.InstagramFacebook]: [ContentType.InstagramReel, ContentType.InstagramStory],
+    [Platform.Facebook]: [ContentType.FacebookReel, ContentType.FacebookStory],
+    [Platform.Threads]: [ContentType.ThreadsGhostPost, ContentType.ThreadsPoll],
+    [Platform.X]: [ContentType.XPoll],
+    [Platform.Mastodon]: [ContentType.MastodonPoll],
 };
 
 export interface ContentTypeOption {
-    value: string;
+    value: ContentTypeValue;
     labelKey: string;
     disabledReasonKey?: string;
 }
 
 export const getPlatformLogo = (platform: string): string =>
-    PLATFORM_LOGOS[platform] ?? PLATFORM_LOGOS.linkedin;
+    PLATFORM_LOGOS[platform] ?? PLATFORM_LOGOS[Platform.LinkedIn];
 
 export const getPlatformLabel = (platform: string): string =>
     PLATFORM_LABELS[platform] ?? platform;
@@ -112,8 +116,15 @@ export const hasMultipleContentTypes = (platform: string): boolean =>
 /** Translation key for a format explicitly shown as a badge on post cards. */
 export const getContentTypeBadgeKey = (
     platform: string,
-    contentType: string | null,
-): string | null =>
-    contentType && PLATFORM_CONTENT_TYPE_BADGES[platform]?.includes(contentType)
-        ? translationKeyFor(contentType)
-        : null;
+    contentType: ContentTypeValue | null,
+): string | null => {
+    if (!filled(contentType)) {
+        return null;
+    }
+
+    if (!PLATFORM_CONTENT_TYPE_BADGES[platform]?.includes(contentType)) {
+        return null;
+    }
+
+    return translationKeyFor(contentType);
+};

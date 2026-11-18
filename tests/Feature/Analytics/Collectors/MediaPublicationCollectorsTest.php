@@ -7,11 +7,14 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\PinterestPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
+use App\Services\Analytics\Collectors\Publications\ThreadsPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\TikTokPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\XPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\YouTubePublicationCollector;
+use App\Support\Social\ThreadsPoll;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
@@ -503,4 +506,93 @@ test('x discovery keeps the poll of a post made on x', function () {
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $request): bool => $request['expansions'] === 'attachments.media_keys,attachments.poll_ids'
         && $request['poll.fields'] === XPoll::LOOKUP_FIELDS);
+});
+
+test('mastodon discovery keeps the poll of a status made on mastodon', function () {
+    $createdAt = now()->subDay()->toIso8601ZuluString();
+    $endsAt = now()->addDay()->toIso8601ZuluString();
+    Http::fake(['*' => Http::response([
+        [
+            'id' => 'status-poll',
+            'created_at' => $createdAt,
+            'content' => '<p>Tabs or spaces?</p>',
+            'media_attachments' => [],
+            'poll' => [
+                'expires_at' => $endsAt,
+                'expired' => false,
+                'multiple' => false,
+                'options' => [['title' => 'Tabs', 'votes_count' => 2], ['title' => 'Spaces', 'votes_count' => 5]],
+            ],
+        ],
+        ['id' => 'status-plain', 'created_at' => $createdAt, 'content' => '<p>Plain</p>', 'media_attachments' => []],
+    ])]);
+    $account = SocialAccount::factory()->mastodon()->create();
+
+    $page = app(MastodonPublicationCollector::class)->page($account, null, now()->subYear()->toImmutable());
+
+    expect($page->publications[0]->contentType)->toBe(PublicationContentType::Poll)
+        ->and($page->publications[0]->providerMetadata['poll'])->toEqual([
+            'options' => [['label' => 'Tabs', 'votes' => 2], ['label' => 'Spaces', 'votes' => 5]],
+            'voting_status' => 'open',
+            'end_datetime' => $endsAt,
+            'duration_minutes' => null,
+            'multiple' => false,
+            'voters' => null,
+            'totals_hidden' => false,
+        ])
+        ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Text)
+        ->and($page->publications[1]->providerMetadata)->not->toHaveKey('poll');
+    Http::assertSentCount(1);
+});
+
+test('threads discovery reads the poll in the same request and works out its votes', function () {
+    $endsAt = now()->addHours(12)->startOfSecond();
+    Http::fake(['*' => Http::response(['data' => [
+        [
+            'id' => 'thread-poll',
+            'media_type' => 'TEXT_POST',
+            'text' => 'Tabs or spaces?',
+            'timestamp' => now()->subHour()->toIso8601String(),
+            'poll_attachment' => [
+                'option_a' => 'Tabs',
+                'option_b' => 'Spaces',
+                'option_c' => 'Both',
+                'option_a_votes_percentage' => 0.25,
+                'option_b_votes_percentage' => 0.7,
+                'option_c_votes_percentage' => 0.05,
+                'total_votes' => 20,
+                'expiration_timestamp' => $endsAt->toIso8601String(),
+            ],
+        ],
+        ['id' => 'thread-plain', 'media_type' => 'TEXT_POST', 'text' => 'Plain', 'timestamp' => now()->subHour()->toIso8601String()],
+    ]])]);
+    $account = SocialAccount::factory()->threads()->create();
+
+    $page = app(ThreadsPublicationCollector::class)->page($account, null, now()->subYear()->toImmutable());
+
+    expect($page->publications[0]->contentType)->toBe(PublicationContentType::Poll)
+        ->and($page->publications[0]->providerMetadata['poll'])->toEqual([
+            'options' => [['label' => 'Tabs', 'votes' => 5], ['label' => 'Spaces', 'votes' => 14], ['label' => 'Both', 'votes' => 1]],
+            'voting_status' => 'open',
+            'end_datetime' => $endsAt->utc()->toIso8601ZuluString(),
+            'duration_minutes' => null,
+        ])
+        ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Text)
+        ->and($page->publications[1]->providerMetadata)->toBe(['is_quote_post' => false]);
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => str_contains((string) $request['fields'], ThreadsPoll::LOOKUP_FIELDS));
+});
+
+test('a threads poll whose end has passed is closed', function () {
+    $result = ThreadsPoll::result([
+        'option_a' => 'Tabs',
+        'option_b' => 'Spaces',
+        'option_a_votes_percentage' => 0.4,
+        'option_b_votes_percentage' => 0.6,
+        'total_votes' => 10,
+        'expiration_timestamp' => now()->subMinute()->toIso8601String(),
+    ]);
+
+    expect($result['voting_status'])->toBe('closed')
+        ->and($result['options'])->toBe([['label' => 'Tabs', 'votes' => 4], ['label' => 'Spaces', 'votes' => 6]]);
 });

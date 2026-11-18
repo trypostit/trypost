@@ -8,6 +8,8 @@ import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { isShiftEnter } from '@/lib/keyboard';
 import {
     CAPTIONLESS_CONTENT_TYPES,
+    type ContentTypeValue,
+    isContentType,
     MEDIALESS_CONTENT_TYPES,
 } from '@/types/content-type';
 
@@ -46,7 +48,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
     'update:content': [value: string];
-    'update:contentType': [value: string];
+    'update:contentType': [value: ContentTypeValue];
     paste: [event: ClipboardEvent];
     drop: [event: DragEvent];
     'open-templates': [];
@@ -54,6 +56,13 @@ const emit = defineEmits<{
     'start-thread': [];
     'next-post': [];
 }>();
+
+/** A picked post type, read from the radio as text. */
+const selectContentType = (value: string): void => {
+    if (isContentType(value)) {
+        emit('update:contentType', value);
+    }
+};
 
 const caption = ref<HTMLTextAreaElement | null>(null);
 
@@ -165,7 +174,7 @@ const showsHeader = computed(
                     :model-value="contentType"
                     :test-id-prefix="typeTestIdPrefix"
                     :disabled="disabled"
-                    @update:model-value="emit('update:contentType', $event)"
+                    @update:model-value="selectContentType"
                 />
                 <slot name="header" />
             </div>

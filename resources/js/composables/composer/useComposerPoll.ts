@@ -1,22 +1,32 @@
 import type {
     ComposerAccount,
+    DestinationDraft,
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
+import { newPoll } from '@/lib/poll';
 import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
-import { newPoll } from '@/lib/xPoll';
 import {
-    ContentType,
+    type ContentTypeValue,
     MEDIALESS_CONTENT_TYPE_REASONS,
+    POLL_CONTENT_TYPES,
+    POLL_POST_CONTENT_TYPES,
 } from '@/types/content-type';
-import type { XPoll, XPollLimits } from '@/types/x';
+import {
+    isReplyPollPlatform,
+    THREAD_REPLY_POLL_CONTENT_TYPES,
+} from '@/types/network-options';
+import type { Poll, PollLimits } from '@/types/poll';
 
 /** What the composer gives the card polls: each card's destination and the override that changes it. */
 type ComposerCards = Pick<
     ReturnType<typeof usePostComposition>,
     'resolvedDestination' | 'setGroupOverride'
 >;
+
+/** A card's meta as the composer keeps it: what the post sends as `meta`. */
+type CardMeta = Record<string, any>;
 
 /** What the composer's thread gives the reply polls: the reply being edited, the replies, a reply's text limit, and whether a reply's file is still uploading. */
 export interface ComposerThread {
@@ -28,20 +38,21 @@ export interface ComposerThread {
 }
 
 /**
- * The X polls of each composer card: the post's (picking Poll starts one,
- * editing writes it into the card's meta, and any other type drops it, as the
- * server does) and each thread reply's (the toolbar's poll button).
+ * The polls of each composer card (X, Mastodon and Threads): the post's
+ * (picking Poll starts one, editing writes it into the card's meta, and any
+ * other type drops it, as the server does) and each thread reply's (the
+ * toolbar's poll button).
  */
 export const useComposerPoll = (
     composition: ComposerCards,
-    pollLimits: (account: ComposerAccount) => XPollLimits | null,
+    pollLimits: (account: ComposerAccount) => PollLimits | null,
     thread: ComposerThread,
 ) => {
-    const destination = (group: NetworkGroup) =>
+    const destination = (group: NetworkGroup): DestinationDraft =>
         composition.resolvedDestination(group.anchor);
 
     /** The card's poll limits, or null on a network without polls. */
-    const groupPollLimits = (group: NetworkGroup): XPollLimits | null =>
+    const groupPollLimits = (group: NetworkGroup): PollLimits | null =>
         pollLimits(group.anchor);
 
     /** An account's text limit for its post type: a poll's question keeps the poll's cap, even with long posts. */
@@ -50,9 +61,9 @@ export const useComposerPoll = (
         limit: number | undefined,
     ): number | undefined => {
         const questionCap = pollLimits(account)?.questionMaxLength;
-        const isPoll =
-            composition.resolvedDestination(account).content_type ===
-            ContentType.XPoll;
+        const isPoll = POLL_CONTENT_TYPES.has(
+            composition.resolvedDestination(account).content_type,
+        );
 
         if (isPoll && filled(limit) && filled(questionCap)) {
             return Math.min(limit, questionCap);
@@ -67,22 +78,30 @@ export const useComposerPoll = (
      * arrives as `[]` (PHP's empty array), and putting back `{}` instead would
      * count as an unsaved change.
      */
-    const metaBeforePoll = new Map<string, Record<string, any>>();
+    const metaBeforePoll = new Map<string, CardMeta>();
     /**
      * Each card's meta, poll included, from before another type was picked:
      * picking Poll again brings the poll back, and the very same object when
      * nothing else changed, so its keys keep their order and the switch counts
      * as no change.
      */
-    const metaBeforeOtherType = new Map<string, Record<string, any>>();
+    const metaBeforeOtherType = new Map<string, CardMeta>();
 
     const isPollGroup = (group: NetworkGroup): boolean =>
-        destination(group).content_type === ContentType.XPoll;
+        POLL_CONTENT_TYPES.has(destination(group).content_type);
 
-    const groupPoll = (group: NetworkGroup): Partial<XPoll> =>
-        destination(group).meta?.poll ?? {};
+    /** The card's poll, or an empty one before Poll is picked. */
+    const groupPoll = (group: NetworkGroup): Partial<Poll> => {
+        const poll = destination(group).meta?.poll;
 
-    const setGroupPoll = (group: NetworkGroup, poll: XPoll): void => {
+        if (!filled(poll)) {
+            return {};
+        }
+
+        return poll;
+    };
+
+    const setGroupPoll = (group: NetworkGroup, poll: Poll): void => {
         composition.setGroupOverride(group.key, 'meta', {
             ...destination(group).meta,
             poll,
@@ -94,15 +113,15 @@ export const useComposerPoll = (
      * stored empty arrives as `[]` (PHP's empty array) and counts as `{}`.
      */
     const sameMeta = (
-        first: Record<string, any>,
-        second: Record<string, any>,
+        first: CardMeta,
+        second: CardMeta,
     ): boolean => JSON.stringify({ ...first }) === JSON.stringify({ ...second });
 
     /** Takes a card's saved meta out of `saved`, so it is used once. */
     const takeSaved = (
-        saved: Map<string, Record<string, any>>,
+        saved: Map<string, CardMeta>,
         group: NetworkGroup,
-    ): Record<string, any> | undefined => {
+    ): CardMeta | undefined => {
         const meta = saved.get(group.key);
         saved.delete(group.key);
 
@@ -111,9 +130,9 @@ export const useComposerPoll = (
 
     /** The card's last poll back on its meta: the very same object when nothing else changed. */
     const restorePoll = (
-        previous: Record<string, any>,
-        current: Record<string, any>,
-    ): Record<string, any> => {
+        previous: CardMeta,
+        current: CardMeta,
+    ): CardMeta => {
         const { poll, ...previousMeta } = previous;
 
         if (sameMeta(previousMeta, current)) {
@@ -126,8 +145,8 @@ export const useComposerPoll = (
     /** Picking Poll: the card's last poll comes back, else a new one starts. */
     const metaWithPoll = (
         group: NetworkGroup,
-        current: Record<string, any>,
-    ): Record<string, any> => {
+        current: CardMeta,
+    ): CardMeta => {
         metaBeforePoll.set(group.key, current);
         const previous = takeSaved(metaBeforeOtherType, group);
 
@@ -141,9 +160,9 @@ export const useComposerPoll = (
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
     const metaWithoutPoll = (
         group: NetworkGroup,
-        current: Record<string, any>,
-        meta: Record<string, any>,
-    ): Record<string, any> => {
+        current: CardMeta,
+        meta: CardMeta,
+    ): CardMeta => {
         metaBeforeOtherType.set(group.key, current);
         const before = takeSaved(metaBeforePoll, group);
 
@@ -160,12 +179,12 @@ export const useComposerPoll = (
      */
     const pollMetaForContentType = (
         group: NetworkGroup,
-        contentType: string,
-    ): Record<string, any> | null => {
+        contentType: ContentTypeValue,
+    ): CardMeta | null => {
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
         const hasPoll = poll !== undefined;
-        const picksPoll = contentType === ContentType.XPoll;
+        const picksPoll = POLL_CONTENT_TYPES.has(contentType);
 
         if (picksPoll && !hasPoll) {
             return metaWithPoll(group, current);
@@ -186,7 +205,7 @@ export const useComposerPoll = (
     /** Picks the card's post type, adding or dropping its poll with it. */
     const setGroupContentType = (
         group: NetworkGroup,
-        contentType: string,
+        contentType: ContentTypeValue,
     ): void => {
         const meta = pollMetaForContentType(group, contentType);
         composition.setGroupOverride(group.key, 'content_type', contentType);
@@ -196,9 +215,15 @@ export const useComposerPoll = (
         }
     };
 
-    /** The card's Remove poll: back to a plain post, and picking Poll again starts a new one. */
+    /** The card's Remove poll: back to the network's plain post, and picking Poll again starts a new one. */
     const removeGroupPoll = (group: NetworkGroup): void => {
-        setGroupContentType(group, ContentType.XPost);
+        const postType =
+            POLL_POST_CONTENT_TYPES[destination(group).content_type];
+
+        if (filled(postType)) {
+            setGroupContentType(group, postType);
+        }
+
         forgetGroupPoll(group);
     };
 
@@ -208,9 +233,16 @@ export const useComposerPoll = (
         metaBeforeOtherType.clear();
     };
 
-    /** A reply poll's question keeps the poll's cap, even on an account with long posts. */
-    const replyPollLimit = (group: NetworkGroup): number =>
-        groupPollLimits(group)?.questionMaxLength ?? Infinity;
+    /** A reply poll's question keeps the poll's cap (X), even on an account with long posts; no cap elsewhere. */
+    const replyPollLimit = (group: NetworkGroup): number => {
+        const cap = groupPollLimits(group)?.questionMaxLength;
+
+        if (!filled(cap)) {
+            return Infinity;
+        }
+
+        return cap;
+    };
 
     /** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
     const replyTextLimit = (
@@ -229,7 +261,7 @@ export const useComposerPoll = (
     const setReplyPoll = (
         group: NetworkGroup,
         replyKey: string,
-        poll: XPoll | undefined,
+        poll: Poll | undefined,
     ): void => {
         const replies = thread.replies(group).map((reply) => {
             if (reply.key !== replyKey) {
@@ -242,27 +274,43 @@ export const useComposerPoll = (
         thread.setReplies(group, replies);
     };
 
-    /** The poll button shows on an X reply that is not a poll yet. */
+    /** The poll button shows on a reply that is not a poll yet, on a network whose replies can be polls. */
     const replyPollAvailable = (group: NetworkGroup): boolean => {
         const reply = thread.activeReply(group);
 
-        return (
-            filled(reply) && blank(reply.poll) && filled(groupPollLimits(group))
-        );
+        if (!filled(reply) || filled(reply.poll)) {
+            return false;
+        }
+
+        if (!isReplyPollPlatform(group.platform)) {
+            return false;
+        }
+
+        return filled(groupPollLimits(group));
     };
 
     /** Media in the reply (or on its way) keeps the poll button off, saying why. */
     const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
         const reply = thread.activeReply(group);
-        const carriesMedia =
-            filled(reply) &&
-            (filled(reply.media) || thread.uploading(group, reply));
 
-        if (carriesMedia) {
-            return MEDIALESS_CONTENT_TYPE_REASONS[ContentType.XPoll];
+        if (!filled(reply) || !isReplyPollPlatform(group.platform)) {
+            return null;
         }
 
-        return null;
+        if (blank(reply.media) && !thread.uploading(group, reply)) {
+            return null;
+        }
+
+        const reason =
+            MEDIALESS_CONTENT_TYPE_REASONS[
+                THREAD_REPLY_POLL_CONTENT_TYPES[group.platform]
+            ];
+
+        if (!filled(reason)) {
+            return null;
+        }
+
+        return reason;
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {
@@ -282,7 +330,6 @@ export const useComposerPoll = (
         setGroupPoll,
         setGroupContentType,
         removeGroupPoll,
-        forgetGroupPoll,
         forgetPolls,
         replyPollLimit,
         replyTextLimit,

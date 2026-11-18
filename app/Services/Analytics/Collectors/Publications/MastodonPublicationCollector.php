@@ -9,6 +9,7 @@ use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use App\Services\Social\Mastodon\MastodonApi;
+use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
@@ -72,6 +73,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
                     'replies_count' => (int) data_get($row, 'replies_count', 0),
                     'history_visibility' => $hasPrivateHistoryScope ? 'authorized' : 'public_only',
                     'reconnect_required' => ! $hasPrivateHistoryScope,
+                    ...MastodonPoll::metadataFrom(data_get($row, 'poll')),
                 ],
             );
         }

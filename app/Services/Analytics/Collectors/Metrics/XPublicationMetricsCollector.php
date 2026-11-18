@@ -11,7 +11,6 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Support\Social\XPoll;
-use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
@@ -45,10 +44,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             $this->count(MetricKey::Quotes, $public, 'quote_count'),
             $this->count(MetricKey::Bookmarks, $public, 'bookmark_count'),
             $this->count(MetricKey::LinkClicks, $private, 'url_link_clicks'),
-        ])), Arr::whereNotNull([
-            'poll' => transform($poll, XPoll::result(...)),
-            'thread_polls' => filled($threadPolls) ? $threadPolls : null,
-        ]) ?: null);
+        ])), $this->pollMetadata(XPoll::metadataFrom($poll), $threadPolls));
     }
 
     /**
@@ -60,7 +56,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
      */
     private function read(SocialAccount $account, AnalyticsPublication $publication, array $fields): array
     {
-        $replyPolls = $this->replyPollTweetIds($publication);
+        $replyPolls = $this->replyPollIds($publication);
 
         if (blank($replyPolls)) {
             return $this->readPost($account, $publication->remote_id, $fields);
@@ -99,14 +95,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
         $tweets = $response->collect('data')->keyBy('id');
         $polls = $response->collect('includes.polls')->keyBy('id');
         $pollOf = fn (mixed $tweet): mixed => $polls->get((string) data_get($tweet, 'attachments.poll_ids.0'));
-        $threadPolls = collect($replyPolls)
-            ->map(fn (string $replyId, int $reply): ?array => transform(
-                $pollOf($tweets->get($replyId)),
-                fn (array $poll): array => ['reply' => $reply, ...XPoll::result($poll)],
-            ))
-            ->filter()
-            ->values()
-            ->all();
+        $threadPolls = $this->threadPolls($replyPolls, fn (string $replyId): mixed => $pollOf($tweets->get($replyId)), XPoll::class);
 
         $tweet = $this->postTweet($response, $id, $tweets->get($id));
 
@@ -149,26 +138,5 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
             'expansions' => 'attachments.poll_ids',
             'poll.fields' => XPoll::LOOKUP_FIELDS,
         ];
-    }
-
-    /**
-     * The tweet ids of the thread replies TryPost published with a poll, keyed by
-     * reply position, so their votes come in the same lookup as the post's.
-     *
-     * @return array<int, string>
-     */
-    private function replyPollTweetIds(AnalyticsPublication $publication): array
-    {
-        if (blank($publication->post_id)) {
-            return [];
-        }
-
-        $post = $publication->post()->first(['id', 'meta', 'thread_reply_ids']);
-        $replyIds = (array) $post?->thread_reply_ids;
-
-        return collect(ThreadReplies::of($post?->meta))
-            ->filter(fn (array $reply, int $index): bool => ThreadReplies::hasPoll($reply) && is_string(data_get($replyIds, $index)))
-            ->map(fn (array $reply, int $index): string => (string) data_get($replyIds, $index))
-            ->all();
     }
 }

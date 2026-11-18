@@ -12,22 +12,17 @@ import { computed } from 'vue';
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import type { PreviewProps } from '@/components/posts/previews/types';
 import XPreviewPoll from '@/components/posts/previews/XPreviewPoll.vue';
-import { pollLimitsOf } from '@/lib/xPoll';
-import { ContentType } from '@/types/content-type';
-import type { XPoll } from '@/types/x';
+import { blank } from '@/lib/helpers';
+import { type PreviewPoll, previewPollOf } from '@/lib/poll';
 
 const props = defineProps<PreviewProps>();
 
-/** The poll the post shows: only a Poll post has one, whatever its meta still holds. */
-const poll = computed((): Partial<XPoll> | undefined => {
-    if (props.contentType !== ContentType.XPoll) {
-        return undefined;
-    }
+const previewPoll = computed((): PreviewPoll | null =>
+    previewPollOf(props.contentType, props.meta, props.publishConfig),
+);
 
-    return props.meta?.poll;
-});
-
-const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
+/** A poll shows no link card. */
+const showsLinkCard = computed((): boolean => blank(previewPoll.value));
 </script>
 
 <template>
@@ -39,7 +34,7 @@ const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
         :handle="`@${socialAccount.username || socialAccount.handle_label}`"
         content-testid="x-preview-content"
         media-layout="grid"
-        :link-card="!poll"
+        :link-card="showsLinkCard"
         :actions="[
             { icon: IconMessageCircle },
             { icon: IconRepeat },
@@ -48,8 +43,8 @@ const pollLimits = computed(() => pollLimitsOf(props.publishConfig));
         ]"
         :trailing-actions="[{ icon: IconBookmark }, { icon: IconUpload }]"
     >
-        <template v-if="poll && pollLimits" #default>
-            <XPreviewPoll :poll="poll" :limits="pollLimits" />
+        <template v-if="previewPoll" #default>
+            <XPreviewPoll :poll="previewPoll.poll" :limits="previewPoll.limits" />
         </template>
     </PreviewTextPost>
 </template>

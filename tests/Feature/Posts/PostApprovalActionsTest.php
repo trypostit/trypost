@@ -357,27 +357,26 @@ test('approving a pending edit whose slot vanished places it in the first free s
         ->and($edited->schedule_mode)->toBe(ScheduleMode::Queue);
 });
 
-test('approving an x poll request schedules it as a poll with its choices', function (array $timing) {
-    $x = SocialAccount::factory()->x()->create([
+test('approving a poll request schedules it as a poll with its choices', function (string $platform, ContentType $type, array $poll, array $timing) {
+    $account = SocialAccount::factory()->{$platform}()->create([
         'workspace_id' => $this->workspace->id,
         'timezone' => 'America/Sao_Paulo',
         'posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00'),
     ]);
-    $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60];
     $request = CreatePosts::execute($this->workspace, $this->requester, [
         'status' => 'scheduled',
         'content' => 'Tabs or spaces?',
         'media' => [],
         'destinations' => [[
-            'social_account_id' => $x->id,
-            'content_type' => ContentType::XPoll->value,
+            'social_account_id' => $account->id,
+            'content_type' => $type->value,
             'meta' => ['poll' => $poll],
         ]],
         ...$timing,
     ])->sole();
 
     expect($request->status)->toBe(PostStatus::PendingApproval)
-        ->and($request->content_type)->toBe(ContentType::XPoll)
+        ->and($request->content_type)->toBe($type)
         ->and($request->meta['poll'])->toEqual($poll);
 
     $this->actingAs($this->owner)
@@ -387,9 +386,13 @@ test('approving an x poll request schedules it as a poll with its choices', func
     expect($request->refresh())
         ->status->toBe(PostStatus::Scheduled)
         ->scheduled_at->not->toBeNull()
-        ->content_type->toBe(ContentType::XPoll)
+        ->content_type->toBe($type)
         ->meta->toEqual(['poll' => $poll]);
 })->with([
+    'x' => ['x', ContentType::XPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Tabs', 'Spaces', 'Both']]],
+])->with([
     'custom time' => [fn () => ['queue' => null, 'scheduled_at' => now()->addDays(2)->toIso8601String()]],
     'queue' => [['queue' => 'next']],
 ]);

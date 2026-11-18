@@ -2019,7 +2019,7 @@ test('x publisher asks for the question of an x poll without text', function () 
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.question_required'))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.poll.question_required'))
             ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
@@ -2029,7 +2029,7 @@ test('x publisher refuses to publish an x poll without a length', function () {
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.x.poll.duration_required'))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.poll.duration_required'))
             ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
     Http::assertNothingSent();
 });
@@ -2116,7 +2116,7 @@ test('x publisher refuses a thread reply poll without its question before postin
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(ContentLimitException::class, __('posts.form.x.poll.question_required'));
+        ->toThrow(ContentLimitException::class, __('posts.form.poll.question_required'));
     Http::assertNothingSent();
 });
 
@@ -2131,12 +2131,25 @@ test('x publisher refuses a reply poll question over 280 characters on a long po
     Http::assertNothingSent();
 });
 
+test('x publisher refuses a reply poll carrying media before posting anything', function () {
+    $this->post->update(['content' => 'Pick one', 'meta' => ['thread_replies' => [[
+        'text' => 'Tabs or spaces?',
+        'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+        'media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']],
+    ]]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.errors.media_not_accepted'));
+    Http::assertNothingSent();
+});
+
 test('x publisher refuses a poll with repeated choices before calling x', function (array $meta) {
     $this->post->update(['content' => 'Pick one', ...$meta]);
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(Exception::class, __('posts.form.x.poll.options_distinct'));
+        ->toThrow(Exception::class, __('posts.form.poll.options_distinct'));
     Http::assertNothingSent();
 })->with([
     'on the post' => [['content_type' => ContentType::XPoll, 'meta' => ['poll' => ['options' => ['Yes', 'yes'], 'duration_minutes' => 60]]]],

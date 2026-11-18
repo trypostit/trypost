@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Jobs\PostHog\TrackRepurposeActivated;
@@ -88,7 +89,7 @@ class ActivateRepurpose
                 continue;
             }
 
-            $violation = PostPlatformMetaRules::requiredMetaViolation($account, data_get($destination, 'meta'), data_get($destination, 'content_type'));
+            $violation = PostPlatformMetaRules::requiredMetaViolation($account, data_get($destination, 'meta'), ContentType::resolve(data_get($destination, 'content_type')));
 
             if ($violation !== null) {
                 throw ValidationException::withMessages(['destinations' => $violation[1]]);

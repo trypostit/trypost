@@ -70,8 +70,8 @@ import MediaEditorDialog, {
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
+import PollField from '@/components/posts/editor/PollField.vue';
 import ThreadRepliesField from '@/components/posts/editor/ThreadRepliesField.vue';
-import XPollField from '@/components/posts/editor/XPollField.vue';
 import PlatformPreview from '@/components/posts/previews/PlatformPreview.vue';
 import PreviewPanelTitle from '@/components/posts/previews/PreviewPanelTitle.vue';
 import PublishEmptyIllustration from '@/components/publish/PublishEmptyIllustration.vue';
@@ -173,6 +173,7 @@ import {
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
+import { pollLimitsOf } from '@/lib/poll';
 import {
     newThreadReply,
     repliesAreComments,
@@ -184,9 +185,9 @@ import {
     type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
+    threadReplyPostType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
-import { pollLimitsOf } from '@/lib/xPoll';
 import { userTimezone } from '@/preferences';
 import { settings as channelSettings } from '@/routes/app/channels';
 import { linkPreviewMedia } from '@/routes/app/posts';
@@ -198,15 +199,14 @@ import type {
 } from '@/types';
 import {
     CAPTIONLESS_CONTENT_TYPES,
-    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
+    POLL_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    THREAD_PLATFORMS,
-    THREAD_REPLY_CONTENT_TYPES,
+    isThreadPlatform,
 } from '@/types/network-options';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformValue } from '@/types/platform';
 import {
     PostStatus,
     ScheduleMode,
@@ -485,7 +485,6 @@ const {
     setGroupPoll,
     setGroupContentType,
     removeGroupPoll,
-    forgetGroupPoll,
     forgetPolls,
     replyPollLimit,
     replyTextLimit,
@@ -506,27 +505,23 @@ const {
     },
 );
 /**
- * Step 1 shows no post type, so an X poll, which takes no media, would quietly
+ * Step 1 shows no post type, so a poll, which takes no media, would quietly
  * refuse the shared media there. Entering it (a second network added) puts
- * the poll card back on X's first type and forgets its poll, as going back to
- * step 1 does.
+ * the poll card back on its network's first type and forgets its poll, as
+ * going back to step 1 does.
  */
 watch(sharedStep, (shared) => {
     if (!shared) return;
 
     networkGroups.value
-        .filter(
-            (group) =>
-                groupDestination(group).content_type === ContentType.XPoll,
+        .filter((group) =>
+            POLL_CONTENT_TYPES.has(groupDestination(group).content_type),
         )
-        .forEach((group) => {
-            const [firstType] = getPickableContentTypeOptions(group.platform);
-            if (!firstType) return;
-
-            setGroupContentType(group, firstType.value);
-            forgetGroupPoll(group);
-        });
+        .forEach(removeGroupPoll);
 });
+/** The test ids of a card's poll: `x-poll`, `mastodon-poll`, `threads-poll`. */
+const pollTestIdPrefix = (group: NetworkGroup): string =>
+    `${group.platform}-poll`;
 /** Why the media button is off: a type that takes no media says so, and so does a reply poll. */
 const groupMediaDisabledReasonKey = (group: NetworkGroup): string => {
     const contentType = transform(
@@ -1152,7 +1147,7 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
 const supportsThread = (group: NetworkGroup): boolean =>
-    THREAD_PLATFORMS.includes(group.platform);
+    isThreadPlatform(group.platform);
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
@@ -1363,9 +1358,15 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
-const replyAcceptsMedia = (platform: string): boolean =>
-    getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
-    0;
+const replyAcceptsMedia = (platform: PlatformValue): boolean => {
+    const replyType = threadReplyPostType(platform);
+
+    if (!filled(replyType)) {
+        return false;
+    }
+
+    return getMediaRulesForContentType(replyType).maxFiles > 0;
+};
 const groupAcceptsMedia = (group: NetworkGroup): boolean => {
     const reply = activeReply(group);
 
@@ -1504,7 +1505,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
-    const replyContentType = THREAD_REPLY_CONTENT_TYPES[account.platform];
+    const replyContentType = threadReplyPostType(account.platform);
     if (replyContentType) {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
@@ -1767,7 +1768,7 @@ const editorContentTypes = (
 ): string[] => {
     const group = findGroup(groupKey);
     if (group && replyKey !== null) {
-        const replyContentType = THREAD_REPLY_CONTENT_TYPES[group.platform];
+        const replyContentType = threadReplyPostType(group.platform);
 
         return replyContentType ? [replyContentType] : [];
     }
@@ -2937,12 +2938,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                     "
                                     #attachment
                                 >
-                                    <XPollField
+                                    <PollField
                                         :model-value="groupPoll(group)"
                                         :limits="groupPollLimits(group)!"
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
+                                        :test-id-prefix="pollTestIdPrefix(group)"
                                         :disabled="cropUploading"
                                         @update:model-value="
                                             setGroupPoll(group, $event)
@@ -3005,7 +3007,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         @paste="onReplyMediaPasted($event, group)"
                                     >
                                         <template #media="{ reply, index }">
-                                            <XPollField
+                                            <PollField
                                                 v-if="
                                                     filled(reply.poll) &&
                                                     threadActive === index &&
@@ -3040,9 +3042,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 <ChannelMediaWarnings
                                                     :platform="group.platform"
                                                     :content-type="
-                                                        THREAD_REPLY_CONTENT_TYPES[
-                                                            group.platform
-                                                        ]
+                                                        threadReplyPostType(
+                                                            group.platform,
+                                                        )!
                                                     "
                                                     :media="reply.media"
                                                     :media-editing="true"

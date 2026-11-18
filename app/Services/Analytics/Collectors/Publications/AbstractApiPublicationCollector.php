@@ -11,6 +11,7 @@ use App\Support\Analytics\InvalidPublicationCursor;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -23,8 +24,7 @@ abstract class AbstractApiPublicationCollector
         array $query = [],
         bool $authenticated = true,
     ): Response {
-        $response = $this->client($account, $authenticated)
-            ->get($url, array_filter($query, fn (mixed $value): bool => $value !== null && $value !== ''));
+        $response = $this->client($account, $authenticated)->get($url, self::queryParameters($query));
 
         if ((filled(data_get($query, 'pageToken'))
                 || filled(data_get($query, 'pagination_token'))
@@ -34,6 +34,24 @@ abstract class AbstractApiPublicationCollector
         }
 
         return $this->successfulResponse($response);
+    }
+
+    /**
+     * The query's filled parameters, or null without any: an empty query would
+     * replace the query a URL already carries (`MastodonApi::url()`).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>|null
+     */
+    protected static function queryParameters(array $query): ?array
+    {
+        $parameters = Arr::where($query, fn (mixed $value): bool => filled($value));
+
+        if (blank($parameters)) {
+            return null;
+        }
+
+        return $parameters;
     }
 
     /** @param array<string, mixed> $payload */

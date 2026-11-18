@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use App\Support\Social\Poll;
 use Illuminate\Support\Arr;
 
 /**
@@ -34,18 +35,35 @@ class PostMeta
             ...Arr::only($stored, PostPlatformMetaRules::SYSTEM_KEYS),
         ];
 
-        if (ContentType::resolve($contentType) !== ContentType::XPoll) {
-            $meta = Arr::except($meta, 'poll');
-        }
-
-        if ($account->platform !== Platform::X) {
-            $meta = ThreadReplies::withoutPolls($meta);
-        }
+        $meta = self::withPoll($meta, ContentType::resolve($contentType));
+        $meta = ThreadReplies::forNetwork($account->platform, $meta);
 
         return match ($account->platform) {
             Platform::Discord => self::withDiscordChannelName($account, $meta),
             default => $meta,
         };
+    }
+
+    /**
+     * A poll type keeps its poll with only what its network takes; any other
+     * type drops it.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    private static function withPoll(array $meta, ?ContentType $contentType): array
+    {
+        $poll = $contentType?->poll();
+
+        if (blank($poll)) {
+            return Arr::except($meta, 'poll');
+        }
+
+        if (is_array(data_get($meta, 'poll'))) {
+            $meta['poll'] = $poll::forNetwork(data_get($meta, 'poll'));
+        }
+
+        return $meta;
     }
 
     /**

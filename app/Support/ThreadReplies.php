@@ -12,7 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\ContentSanitizer;
-use App\Support\Social\XPoll;
+use App\Support\Social\Poll;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -22,9 +22,9 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post with the scopes we hold.
  * Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply. On X a reply may carry a poll instead of media
- * (`{text, media, poll}`), following `XPoll`'s rules with the reply text as
- * its question.
+ * string is a text-only reply. On X and Mastodon a reply may carry a poll
+ * instead of media (`{text, media, poll}`), following that network's `Poll`
+ * rules with the reply text as its question.
  */
 class ThreadReplies
 {
@@ -88,14 +88,29 @@ class ThreadReplies
         ];
 
         if (is_array($poll) && filled($poll)) {
-            $normalized['poll'] = XPoll::normalize($poll);
+            $normalized['poll'] = Poll::normalize($poll);
         }
 
         return $normalized;
     }
 
     /**
-     * Whether a reply is a poll (an X reply only; `of()` drops an empty one).
+     * The poll rules a reply of this network follows, or null when its
+     * replies cannot be polls (a network without polls, or without threads).
+     *
+     * @return class-string<Poll>|null
+     */
+    public static function replyPoll(?Platform $platform): ?string
+    {
+        if (! self::supports($platform)) {
+            return null;
+        }
+
+        return Poll::for($platform);
+    }
+
+    /**
+     * Whether a reply is a poll (`of()` drops an empty one).
      *
      * @param  array<string, mixed>  $reply
      */
@@ -105,49 +120,67 @@ class ThreadReplies
     }
 
     /**
-     * Replies without their polls, for a network other than X.
+     * The replies as the network keeps them: each poll with only what that
+     * network's polls take, or no polls on a network whose replies cannot be
+     * polls.
      *
      * @param  array<string, mixed>  $meta
      * @return array<string, mixed>
      */
-    public static function withoutPolls(array $meta): array
+    public static function forNetwork(?Platform $platform, array $meta): array
     {
         if (blank(data_get($meta, 'thread_replies'))) {
             return $meta;
         }
 
-        $meta['thread_replies'] = collect(self::of($meta))->map(fn (array $reply): array => Arr::except($reply, 'poll'))->all();
+        $poll = self::replyPoll($platform);
+
+        $meta['thread_replies'] = collect(self::of($meta))
+            ->map(function (array $reply) use ($poll): array {
+                if (! self::hasPoll($reply)) {
+                    return $reply;
+                }
+
+                if (blank($poll)) {
+                    return Arr::except($reply, 'poll');
+                }
+
+                return [...$reply, 'poll' => $poll::forNetwork(data_get($reply, 'poll'))];
+            })
+            ->all();
 
         return $meta;
     }
 
     /**
-     * A reply poll no post may store, even as a draft: repeated choices.
-     *
-     * @return array{0: string, 1: string}|null [field, message]
-     */
-    public static function pollFormatViolation(mixed $meta): ?array
-    {
-        foreach (self::of($meta) as $index => $reply) {
-            $violation = self::hasPoll($reply) ? XPoll::violation($reply) : null;
-
-            if (filled($violation)) {
-                return ["thread_replies.{$index}.{$violation[0]}", $violation[1]];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * A reply poll carries no media, drafts included. Only X has reply polls;
-     * any other network drops them on save.
+     * What no reply poll may store, even as a draft (repeated choices, a
+     * choice or a length beyond what the network takes), keyed by field.
      *
      * @return array<string, string>
      */
-    public static function pollMediaErrors(?Platform $platform, mixed $meta): array
+    public static function pollFormatErrors(?Platform $platform, ?array $meta): array
     {
-        if ($platform !== Platform::X) {
+        $poll = self::replyPoll($platform);
+
+        if (blank($poll)) {
+            return [];
+        }
+
+        return collect(self::of($meta))
+            ->filter(self::hasPoll(...))
+            ->flatMap(fn (array $reply, int $index): array => $poll::formatErrors($reply, "thread_replies.{$index}."))
+            ->all();
+    }
+
+    /**
+     * A reply poll carries no media, drafts included. A network whose replies
+     * cannot be polls drops them on save.
+     *
+     * @return array<string, string>
+     */
+    public static function pollMediaErrors(?Platform $platform, ?array $meta): array
+    {
+        if (blank(self::replyPoll($platform))) {
             return [];
         }
 
@@ -230,8 +263,10 @@ class ThreadReplies
      */
     private static function replyViolation(array $reply, Platform $platform, ?SocialAccount $account, int $reserved): ?array
     {
-        if ($platform === Platform::X && self::hasPoll($reply)) {
-            return self::pollReplyViolation($reply, $account, $reserved);
+        $poll = self::replyPoll($platform);
+
+        if (filled($poll) && self::hasPoll($reply)) {
+            return self::pollReplyViolation($poll, $reply, $account, $reserved);
         }
 
         if (filled(Str::trim($reply['text']))) {
@@ -251,22 +286,22 @@ class ThreadReplies
 
     /**
      * A reply poll needs its question (the reply's text) within the poll's cap,
-     * and choices and a length X accepts.
+     * and choices and a length the network accepts.
      *
+     * @param  class-string<Poll>  $poll
      * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
      * @return array{0: string|null, 1: string}|null
      */
-    private static function pollReplyViolation(array $reply, ?SocialAccount $account, int $reserved): ?array
+    private static function pollReplyViolation(string $poll, array $reply, ?SocialAccount $account, int $reserved): ?array
     {
-        $questionViolation = XPoll::questionViolation($reply['text']);
+        $questionViolation = $poll::questionViolation($reply['text']);
 
         if (filled($questionViolation)) {
             return [null, $questionViolation];
         }
 
-        return self::lengthViolation($reply['text'], Platform::X, $account, ContentType::XPoll, $reserved)
-            ?? XPoll::violation($reply)
-            ?? XPoll::requiredViolation($reply);
+        return self::lengthViolation($reply['text'], $poll::platform(), $account, $poll::contentType(), $reserved)
+            ?? $poll::firstViolation($reply);
     }
 
     /**
@@ -294,7 +329,8 @@ class ThreadReplies
 
     /**
      * Each reply's media against the reply content type, keyed
-     * `thread_replies.{n}.media`.
+     * `thread_replies.{n}.media`. A reply poll takes no media at all, which
+     * `pollMediaErrors()` reports, so it is left out here.
      *
      * @return array<string, string>
      */
@@ -307,9 +343,14 @@ class ThreadReplies
         }
 
         $errors = [];
+        $pollsTakeReplies = filled(self::replyPoll($platform));
 
         foreach (self::of($meta) as $index => $reply) {
             $key = "thread_replies.{$index}.media";
+
+            if ($pollsTakeReplies && self::hasPoll($reply)) {
+                continue;
+            }
             $count = count($reply['media']);
 
             if ($count > $contentType->maxMediaCount()) {

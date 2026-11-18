@@ -16,6 +16,8 @@ use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractApiPublicationCollector;
+use App\Support\Social\Poll;
+use App\Support\ThreadReplies;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Client\Response;
@@ -23,6 +25,72 @@ use Illuminate\Http\Client\Response;
 abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicationCollector
 {
     abstract public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation;
+
+    /**
+     * The network ids of the thread replies TryPost published with a poll,
+     * keyed by reply position, so their votes come in the same read as the
+     * post's (X and Mastodon).
+     *
+     * @return array<int, string>
+     */
+    protected function replyPollIds(AnalyticsPublication $publication): array
+    {
+        if (blank($publication->post_id)) {
+            return [];
+        }
+
+        $post = $publication->post()->first(['id', 'meta', 'thread_reply_ids']);
+        $replyIds = (array) $post?->thread_reply_ids;
+
+        return collect(ThreadReplies::of($post?->meta))
+            ->filter(fn (array $reply, int $index): bool => ThreadReplies::hasPoll($reply) && is_string(data_get($replyIds, $index)))
+            ->map(fn (array $reply, int $index): string => (string) data_get($replyIds, $index))
+            ->all();
+    }
+
+    /**
+     * The results of the reply polls a read returned, as `thread_polls` keeps
+     * them: each with its reply position, a reply the read left out skipped.
+     *
+     * @param  array<int, string>  $replyPolls  network ids keyed by reply position
+     * @param  Closure(string): mixed  $pollOf  the poll the read returned for one reply id
+     * @param  class-string<Poll>  $poll
+     * @return list<array<string, mixed>>
+     */
+    protected function threadPolls(array $replyPolls, Closure $pollOf, string $poll): array
+    {
+        return collect($replyPolls)
+            ->map(fn (string $replyId, int $reply): ?array => transform(
+                $poll::resultOf($pollOf($replyId)),
+                fn (array $result): array => ['reply' => $reply, ...$result],
+            ))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * What a read stores in `provider_metadata`: the post's poll result
+     * (`Poll::metadataFrom()`) and its reply polls; null when there is none.
+     *
+     * @param  array{poll?: array<string, mixed>}  $poll
+     * @param  list<array<string, mixed>>  $threadPolls
+     * @return array<string, mixed>|null
+     */
+    protected function pollMetadata(array $poll, array $threadPolls = []): ?array
+    {
+        $metadata = $poll;
+
+        if (filled($threadPolls)) {
+            $metadata['thread_polls'] = $threadPolls;
+        }
+
+        if (blank($metadata)) {
+            return null;
+        }
+
+        return $metadata;
+    }
 
     protected function account(AnalyticsPublication $publication): SocialAccount
     {
@@ -99,7 +167,7 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
      * A confirming read that failed only for now is rethrown, so the job retries
      * instead of settling the post's read without a confirmation.
      */
-    private function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
+    protected function rethrowWhenTemporary(AnalyticsCollectionException $exception): void
     {
         if (in_array($exception->category, ['rate_limited', 'transient'], true)) {
             throw $exception;

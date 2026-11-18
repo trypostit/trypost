@@ -1,4 +1,4 @@
-import type { XPollLimits } from '@/types/x';
+import type { PollLimits } from '@/types/poll';
 
 export const Platform = {
     LinkedIn: 'linkedin',
@@ -29,6 +29,6 @@ export interface PublishConfig {
     /** YouTube: the category list and the default category. */
     categoryOptions?: { value: string; labelKey: string }[];
     defaultCategoryId?: string;
-    /** X: the poll limits. */
-    poll?: XPollLimits;
+    /** X, Mastodon and Threads: the poll limits. */
+    poll?: PollLimits;
 }

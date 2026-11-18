@@ -64,12 +64,12 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { blank, filled } from '@/lib/helpers';
 import { isImage, isVideo } from '@/lib/mediaType';
+import { postPollResults } from '@/lib/poll';
 import { postAttemptAt, postNoTimeKey } from '@/lib/postCard';
 import { isDeletedOnNetwork, postPermalink } from '@/lib/postNetwork';
 import { postThreadOf } from '@/lib/postThread';
 import { compactPublicationMetrics } from '@/lib/publicationMetrics';
 import { recurrenceRuleOf } from '@/lib/recurrence';
-import { postPollResults } from '@/lib/xPoll';
 import { Platform } from '@/types/platform';
 import {
     PostOrigin,
@@ -277,6 +277,8 @@ const CONTENT_TYPE_ICONS: Record<string, Component> = {
     facebook_reel: IconCirclePlay,
     threads_ghost_post: IconGhost2,
     x_poll: IconListDetails,
+    mastodon_poll: IconListDetails,
+    threads_poll: IconListDetails,
 };
 
 const contentTypeIcon = computed(() =>

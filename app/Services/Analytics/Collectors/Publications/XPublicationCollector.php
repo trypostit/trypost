@@ -75,7 +75,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 fn (array $item): bool => filled(data_get($item, 'preview_image_url')) || filled(data_get($item, 'url')),
             );
 
-            $poll = transform($polls->get((string) data_get($row, 'attachments.poll_ids.0')), XPoll::result(...));
+            $poll = XPoll::resultOf($polls->get((string) data_get($row, 'attachments.poll_ids.0')));
 
             $publications[] = new DiscoveredPublication(
                 providerPostId: $postId,

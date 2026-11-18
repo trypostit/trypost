@@ -1,24 +1,28 @@
 import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
-import { ContentType } from '@/types/content-type';
+import { ContentType, type ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
+    isReplyPollPlatform,
+    isThreadPlatform,
     THREAD_MAX_REPLIES,
     THREAD_REPLY_CONTENT_TYPES,
+    THREAD_REPLY_POLL_CONTENT_TYPES,
 } from '@/types/network-options';
-import type { XPoll } from '@/types/x';
+import type { PlatformValue } from '@/types/platform';
+import type { Poll } from '@/types/poll';
 
 /**
  * One post of a thread after the first. `key` only lives in the composer: it
  * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it. On X a reply may carry a poll instead of
- * media, its text being the question.
+ * above it, and the server drops it. On X and Mastodon a reply may carry a
+ * poll instead of media, its text being the question.
  */
 export type ThreadReply = {
     key: string;
     text: string;
     media: MediaItem[];
-    poll?: Partial<XPoll>;
+    poll?: Partial<Poll>;
 };
 
 export const newThreadReply = (): ThreadReply => ({
@@ -58,7 +62,7 @@ export const threadRepliesOf = (
 /** The reply as a poll, which carries no media, or as a plain post without one. */
 export const withReplyPoll = (
     { key, text, media }: ThreadReply,
-    poll: Partial<XPoll> | undefined,
+    poll: Partial<Poll> | undefined,
 ): ThreadReply => {
     if (blank(poll)) {
         return { key, text, media };
@@ -82,25 +86,45 @@ export const replyErrorOf = (
     errors[`${prefix}.${index}.text`] ??
     errors[`${prefix}.${index}.media`];
 
-/** The post type a reply publishes as: a poll, or its network's reply type. */
-export const threadReplyContentType = (
-    platform: string,
-    reply: ThreadReply,
-): string | undefined => {
-    if (filled(reply.poll)) {
-        return ContentType.XPoll;
+/** The post type a reply that is no poll publishes as, on a network that chains replies. */
+export const threadReplyPostType = (
+    platform: PlatformValue,
+): ContentTypeValue | undefined => {
+    if (!isThreadPlatform(platform)) {
+        return undefined;
     }
 
     return THREAD_REPLY_CONTENT_TYPES[platform];
 };
 
-export const threadMaxReplies = (platform: string): number =>
-    THREAD_MAX_REPLIES[platform] ?? 0;
+/** The post type a reply publishes as: a poll, or its network's reply type. */
+export const threadReplyContentType = (
+    platform: PlatformValue,
+    reply: ThreadReply,
+): ContentTypeValue | undefined => {
+    if (!filled(reply.poll)) {
+        return threadReplyPostType(platform);
+    }
 
-export const repliesAreComments = (platform: string): boolean =>
-    THREAD_REPLY_CONTENT_TYPES[platform] === ContentType.LinkedInComment;
+    if (!isReplyPollPlatform(platform)) {
+        return undefined;
+    }
 
-export const replyTooLongKey = (platform: string): string => {
+    return THREAD_REPLY_POLL_CONTENT_TYPES[platform];
+};
+
+export const threadMaxReplies = (platform: PlatformValue): number => {
+    if (!isThreadPlatform(platform)) {
+        return 0;
+    }
+
+    return THREAD_MAX_REPLIES[platform];
+};
+
+export const repliesAreComments = (platform: PlatformValue): boolean =>
+    threadReplyPostType(platform) === ContentType.LinkedInComment;
+
+export const replyTooLongKey = (platform: PlatformValue): string => {
     if (repliesAreComments(platform)) {
         return 'posts.form.thread.comment_too_long';
     }
@@ -108,7 +132,7 @@ export const replyTooLongKey = (platform: string): string => {
     return 'posts.form.thread.reply_too_long';
 };
 
-export const startThreadKey = (platform: string): string => {
+export const startThreadKey = (platform: PlatformValue): string => {
     if (repliesAreComments(platform)) {
         return 'posts.form.thread.add_comment';
     }
@@ -116,7 +140,7 @@ export const startThreadKey = (platform: string): string => {
     return 'posts.form.thread.start';
 };
 
-export const replyEmptyKey = (platform: string): string => {
+export const replyEmptyKey = (platform: PlatformValue): string => {
     if (repliesAreComments(platform)) {
         return 'posts.form.thread.comment_empty';
     }
