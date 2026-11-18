@@ -18,7 +18,15 @@ const MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
 /** The poll limits in an account's `publishConfig`, or null on a network without polls. */
 export const pollLimitsOf = (
     publishConfig: PublishConfig | null | undefined,
-): PollLimits | null => publishConfig?.poll ?? null;
+): PollLimits | null => {
+    const limits = publishConfig?.poll;
+
+    if (!filled(limits)) {
+        return null;
+    }
+
+    return limits;
+};
 
 /** Whether the author picks how long the poll runs (not on Threads, which sets it). */
 export const pollHasDuration = (limits: PollLimits): boolean =>
@@ -84,25 +92,23 @@ export const pollDurationOf = (
 export const newPoll = (limits: PollLimits): Poll => {
     const options = Array.from({ length: limits.minOptions }, () => '');
 
-    const length = limits.defaultDuration;
-
-    if (!filled(length)) {
+    if (!filled(limits.defaultDuration)) {
         return { options };
     }
 
-    return { options, duration_minutes: length };
+    return { options, duration_minutes: limits.defaultDuration };
 };
 
 /**
- * A choice's length as X counts it, without the spaces around it: in UTF-16
- * units (a string's `length`), so an emoji like 🐧 counts two, as on the server
- * (`Poll::choiceLength()`).
+ * A choice's length without the spaces around it, in UTF-16 units (a string's
+ * `length`), so an emoji like 🐧 counts two: X counts that way, and the server
+ * counts every network's choices the same (`Poll::choiceLength()`).
  */
 export const pollChoiceLength = (choice: string): number => choice.trim().length;
 
 /**
- * A choice cut to the longest X accepts, counted as X counts it
- * (`pollChoiceLength`): the last character goes until it fits, so a character
+ * A choice cut to the longest the network accepts, counted by
+ * `pollChoiceLength`: the last character goes until it fits, so a character
  * is never split and the spaces before the choice stay.
  */
 export const fitPollChoice = (choice: string, maxLength: number): string => {
@@ -115,12 +121,21 @@ export const fitPollChoice = (choice: string, maxLength: number): string => {
     return characters.join('');
 };
 
+/** The stored choices as text, none when the poll has no list yet. */
+const storedPollOptions = (options: string[] | undefined): string[] => {
+    if (!Array.isArray(options)) {
+        return [];
+    }
+
+    return options.map(String);
+};
+
 /** The choices the editor shows: the stored ones, padded to the number a poll starts with. */
 export const editablePollOptions = (
     options: string[] | undefined,
     minOptions: number,
 ): string[] => {
-    const stored = Array.isArray(options) ? options.map(String) : [];
+    const stored = storedPollOptions(options);
 
     return Array.from(
         { length: Math.max(minOptions, stored.length) },
@@ -135,11 +150,22 @@ const POLL_LENGTH_UNITS = [
     ['minute', 1],
 ] as const;
 
-/** The poll's length in its largest whole unit, as X shows it ("1 day", "23 hours", "5 minutes"). */
+/** The largest unit the length fills at least once; minutes below a minute. */
+const pollLengthUnit = (
+    minutes: number,
+): (typeof POLL_LENGTH_UNITS)[number] => {
+    const unit = POLL_LENGTH_UNITS.find(([, size]) => minutes >= size);
+
+    if (!filled(unit)) {
+        return POLL_LENGTH_UNITS[POLL_LENGTH_UNITS.length - 1];
+    }
+
+    return unit;
+};
+
+/** The poll's length in its largest whole unit ("1 day", "23 hours", "5 minutes"). */
 export const formatPollLength = (minutes: number): string => {
-    const [unit, size] =
-        POLL_LENGTH_UNITS.find(([, size]) => minutes >= size) ??
-        POLL_LENGTH_UNITS[POLL_LENGTH_UNITS.length - 1];
+    const [unit, size] = pollLengthUnit(minutes);
 
     return new Intl.NumberFormat(activeLocale.value, {
         style: 'unit',
@@ -149,21 +175,31 @@ export const formatPollLength = (minutes: number): string => {
 };
 
 /**
- * A poll before X has been read for it: its choices with no votes. Once its
- * post is published it is open until its length from publishing; before
- * that, voting has not started and has no end.
+ * When a published poll ends: its length from publishing. Unknown before it
+ * is published, and on a network that sets the length itself (Threads).
+ */
+const pollEndsAt = (
+    poll: Partial<Poll>,
+    publishedAt: string | null,
+): string | null => {
+    if (!filled(publishedAt) || !filled(poll.duration_minutes)) {
+        return null;
+    }
+
+    return dayjs.utc(publishedAt).add(poll.duration_minutes, 'minute').toISOString();
+};
+
+/**
+ * A poll before its network has been read for it: its choices with no votes.
+ * Once its post is published it is open; before that, voting has not started.
  */
 const unreadPollResult = (
     poll: Partial<Poll>,
     publishedAt: string | null,
 ): PublicationPoll => ({
-    options: (poll.options ?? []).map((label) => ({ label, votes: 0 })),
+    options: storedPollOptions(poll.options).map((label) => ({ label, votes: 0 })),
     voting_status: transform(publishedAt, (): 'open' => 'open'),
-    end_datetime: transform(publishedAt, (at) =>
-        transform(poll.duration_minutes, (minutes) =>
-            dayjs.utc(at).add(minutes, 'minute').toISOString(),
-        ),
-    ),
+    end_datetime: pollEndsAt(poll, publishedAt),
     duration_minutes: poll.duration_minutes ?? null,
 });
 
@@ -201,14 +237,11 @@ export const previewPollOf = (
     return { poll, limits };
 };
 
-const ownPollOf = (post: PostCard): Partial<Poll> | undefined =>
-    pollOf(post.content_type, post.meta);
-
 /** A post's own polls (the post's and its replies') with no votes yet. */
 const unreadPollsOf = (
     post: PostCard,
 ): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => ({
-    poll: transform(ownPollOf(post), (poll) =>
+    poll: transform(pollOf(post.content_type, post.meta), (poll) =>
         unreadPollResult(poll, post.published_at),
     ),
     threadPolls: threadRepliesOf(post.meta).flatMap((reply, index) => {
@@ -225,27 +258,45 @@ const unreadPollsOf = (
     }),
 });
 
+/** The polls the network returned at the last read, none before the first one. */
+const readPollsOf = (
+    post: PostCard,
+): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
+    const metrics = post.metrics;
+
+    if (!filled(metrics) || !metrics.available) {
+        return { poll: null, threadPolls: [] };
+    }
+
+    return {
+        poll: metrics.publication.poll,
+        threadPolls: metrics.publication.thread_polls,
+    };
+};
+
 /**
- * The polls a post shows, in every tab: each one as X returned it at the last
- * read, or, until X has been read for it (about an hour after publishing, and
- * never for a post still in the queue, a draft or a request), with its
- * choices and no votes.
+ * The polls a post shows, in every tab: each one as its network returned it
+ * at the last read, or, until it has been read (about an hour after
+ * publishing, and never for a post still in the queue, a draft or a request),
+ * with its choices and no votes.
  */
 export const postPollResults = (
     post: PostCard,
 ): { poll: PublicationPoll | null; threadPolls: PublicationThreadPoll[] } => {
-    const read = post.metrics?.available ? post.metrics.publication : null;
-    const readReplies = read?.thread_polls ?? [];
+    const read = readPollsOf(post);
     const unread = unreadPollsOf(post);
     const unreadReplies = unread.threadPolls.filter(
         (unreadReply) =>
-            !readReplies.some((readReply) => readReply.reply === unreadReply.reply),
+            !read.threadPolls.some((readReply) => readReply.reply === unreadReply.reply),
     );
 
-    return {
-        poll: read?.poll ?? unread.poll,
-        threadPolls: [...readReplies, ...unreadReplies].sort(
-            (first, second) => first.reply - second.reply,
-        ),
-    };
+    const threadPolls = [...read.threadPolls, ...unreadReplies].sort(
+        (first, second) => first.reply - second.reply,
+    );
+
+    if (filled(read.poll)) {
+        return { poll: read.poll, threadPolls };
+    }
+
+    return { poll: unread.poll, threadPolls };
 };

@@ -1,5 +1,6 @@
 import type {
     ComposerAccount,
+    DestinationDraft,
     NetworkGroup,
     usePostComposition,
 } from '@/composables/usePostComposition';
@@ -24,6 +25,9 @@ type ComposerCards = Pick<
     'resolvedDestination' | 'setGroupOverride'
 >;
 
+/** A card's meta as the composer keeps it: what the post sends as `meta`. */
+type CardMeta = Record<string, any>;
+
 /** What the composer's thread gives the reply polls: the reply being edited, the replies, a reply's text limit, and whether a reply's file is still uploading. */
 export interface ComposerThread {
     activeReply: (group: NetworkGroup) => ThreadReply | undefined;
@@ -44,7 +48,7 @@ export const useComposerPoll = (
     pollLimits: (account: ComposerAccount) => PollLimits | null,
     thread: ComposerThread,
 ) => {
-    const destination = (group: NetworkGroup) =>
+    const destination = (group: NetworkGroup): DestinationDraft =>
         composition.resolvedDestination(group.anchor);
 
     /** The card's poll limits, or null on a network without polls. */
@@ -74,20 +78,28 @@ export const useComposerPoll = (
      * arrives as `[]` (PHP's empty array), and putting back `{}` instead would
      * count as an unsaved change.
      */
-    const metaBeforePoll = new Map<string, Record<string, any>>();
+    const metaBeforePoll = new Map<string, CardMeta>();
     /**
      * Each card's meta, poll included, from before another type was picked:
      * picking Poll again brings the poll back, and the very same object when
      * nothing else changed, so its keys keep their order and the switch counts
      * as no change.
      */
-    const metaBeforeOtherType = new Map<string, Record<string, any>>();
+    const metaBeforeOtherType = new Map<string, CardMeta>();
 
     const isPollGroup = (group: NetworkGroup): boolean =>
         POLL_CONTENT_TYPES.has(destination(group).content_type);
 
-    const groupPoll = (group: NetworkGroup): Partial<Poll> =>
-        destination(group).meta?.poll ?? {};
+    /** The card's poll, or an empty one before Poll is picked. */
+    const groupPoll = (group: NetworkGroup): Partial<Poll> => {
+        const poll = destination(group).meta?.poll;
+
+        if (!filled(poll)) {
+            return {};
+        }
+
+        return poll;
+    };
 
     const setGroupPoll = (group: NetworkGroup, poll: Poll): void => {
         composition.setGroupOverride(group.key, 'meta', {
@@ -101,15 +113,15 @@ export const useComposerPoll = (
      * stored empty arrives as `[]` (PHP's empty array) and counts as `{}`.
      */
     const sameMeta = (
-        first: Record<string, any>,
-        second: Record<string, any>,
+        first: CardMeta,
+        second: CardMeta,
     ): boolean => JSON.stringify({ ...first }) === JSON.stringify({ ...second });
 
     /** Takes a card's saved meta out of `saved`, so it is used once. */
     const takeSaved = (
-        saved: Map<string, Record<string, any>>,
+        saved: Map<string, CardMeta>,
         group: NetworkGroup,
-    ): Record<string, any> | undefined => {
+    ): CardMeta | undefined => {
         const meta = saved.get(group.key);
         saved.delete(group.key);
 
@@ -118,9 +130,9 @@ export const useComposerPoll = (
 
     /** The card's last poll back on its meta: the very same object when nothing else changed. */
     const restorePoll = (
-        previous: Record<string, any>,
-        current: Record<string, any>,
-    ): Record<string, any> => {
+        previous: CardMeta,
+        current: CardMeta,
+    ): CardMeta => {
         const { poll, ...previousMeta } = previous;
 
         if (sameMeta(previousMeta, current)) {
@@ -133,8 +145,8 @@ export const useComposerPoll = (
     /** Picking Poll: the card's last poll comes back, else a new one starts. */
     const metaWithPoll = (
         group: NetworkGroup,
-        current: Record<string, any>,
-    ): Record<string, any> => {
+        current: CardMeta,
+    ): CardMeta => {
         metaBeforePoll.set(group.key, current);
         const previous = takeSaved(metaBeforeOtherType, group);
 
@@ -148,9 +160,9 @@ export const useComposerPoll = (
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
     const metaWithoutPoll = (
         group: NetworkGroup,
-        current: Record<string, any>,
-        meta: Record<string, any>,
-    ): Record<string, any> => {
+        current: CardMeta,
+        meta: CardMeta,
+    ): CardMeta => {
         metaBeforeOtherType.set(group.key, current);
         const before = takeSaved(metaBeforePoll, group);
 
@@ -168,7 +180,7 @@ export const useComposerPoll = (
     const pollMetaForContentType = (
         group: NetworkGroup,
         contentType: ContentTypeValue,
-    ): Record<string, any> | null => {
+    ): CardMeta | null => {
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
         const hasPoll = poll !== undefined;
@@ -221,9 +233,16 @@ export const useComposerPoll = (
         metaBeforeOtherType.clear();
     };
 
-    /** A reply poll's question keeps the poll's cap, even on an account with long posts. */
-    const replyPollLimit = (group: NetworkGroup): number =>
-        groupPollLimits(group)?.questionMaxLength ?? Infinity;
+    /** A reply poll's question keeps the poll's cap (X), even on an account with long posts; no cap elsewhere. */
+    const replyPollLimit = (group: NetworkGroup): number => {
+        const cap = groupPollLimits(group)?.questionMaxLength;
+
+        if (!filled(cap)) {
+            return Infinity;
+        }
+
+        return cap;
+    };
 
     /** A reply's text limit: a poll's question keeps the poll's cap, even on an account with long posts. */
     const replyTextLimit = (
@@ -259,27 +278,35 @@ export const useComposerPoll = (
     const replyPollAvailable = (group: NetworkGroup): boolean => {
         const reply = thread.activeReply(group);
 
-        return (
-            filled(reply) && blank(reply.poll) && filled(groupPollLimits(group))
-        );
+        if (!filled(reply) || filled(reply.poll)) {
+            return false;
+        }
+
+        return filled(groupPollLimits(group));
     };
 
     /** Media in the reply (or on its way) keeps the poll button off, saying why. */
     const replyPollDisabledReasonKey = (group: NetworkGroup): string | null => {
         const reply = thread.activeReply(group);
-        const carriesMedia =
-            filled(reply) &&
-            (filled(reply.media) || thread.uploading(group, reply));
 
-        if (!carriesMedia || !isReplyPollPlatform(group.platform)) {
+        if (!filled(reply) || !isReplyPollPlatform(group.platform)) {
             return null;
         }
 
-        return (
+        if (blank(reply.media) && !thread.uploading(group, reply)) {
+            return null;
+        }
+
+        const reason =
             MEDIALESS_CONTENT_TYPE_REASONS[
                 THREAD_REPLY_POLL_CONTENT_TYPES[group.platform]
-            ] ?? null
-        );
+            ];
+
+        if (!filled(reason)) {
+            return null;
+        }
+
+        return reason;
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {
