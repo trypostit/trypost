@@ -708,6 +708,7 @@ const replacingLinkCard = ref(false);
  */
 const replaceLinkCardWithMedia = async (group: NetworkGroup): Promise<void> => {
     if (!openLinkCard.value) return;
+    if (replacingLinkCard.value) return;
     const link = openLinkCard.value.uri;
     const label = new URL(link).hostname;
     replacingLinkCard.value = true;
