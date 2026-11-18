@@ -6,6 +6,7 @@ namespace App\Services;
 
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -83,7 +84,7 @@ class GiphyService
                 'rating' => config('trypost.media_sources.giphy.rating'),
             ]);
 
-            if ($data === null) {
+            if (blank($data)) {
                 return null;
             }
 
@@ -92,7 +93,7 @@ class GiphyService
 
             return [
                 'results' => collect(data_get($data, 'data', []))
-                    ->filter(fn (mixed $gif): bool => is_array($gif) && filled(data_get($gif, 'images.downsized_medium.url')))
+                    ->filter(fn (mixed $gif): bool => Arr::accessible($gif) && filled(data_get($gif, 'images.downsized_medium.url')))
                     ->map(fn (array $gif): array => $this->formatGif($gif))
                     ->values()
                     ->all(),
@@ -123,13 +124,13 @@ class GiphyService
         $cacheKey = "giphy:{$key}";
         $cached = Cache::get($cacheKey);
 
-        if (is_array($cached)) {
+        if (filled($cached)) {
             return $cached;
         }
 
         $fresh = $load();
 
-        if ($fresh !== null) {
+        if (filled($fresh)) {
             Cache::put($cacheKey, $fresh, now()->addMinutes(self::CACHE_MINUTES));
         }
 
@@ -152,7 +153,7 @@ class GiphyService
 
         $data = $response->json();
 
-        if ($response->failed() || ! is_array($data)) {
+        if ($response->failed() || ! Arr::accessible($data)) {
             Log::warning('GIPHY request failed', ['path' => $path, 'status' => $response->status()]);
 
             return null;

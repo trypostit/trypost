@@ -15,6 +15,8 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Illuminate\Support\Uri;
 
 function openComposerForMediaSources(mixed $test): mixed
 {
@@ -289,34 +291,29 @@ function enableOnlyGiphyForMediaSources(int $apiStatus = 200): void
 
     $api = config('trypost.media_sources.giphy.api');
     $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    $page = fn (string $id, int $offset): array => ['data' => [giphyBrowserGif($id)], 'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $offset]];
 
-    Http::fake(function (Request $request) use ($api, $gif, $apiStatus) {
-        $url = $request->url();
-
-        if (str_starts_with($url, 'https://media1.giphy.com/')) {
-            return Http::response($gif, 200, ['Content-Type' => 'image/gif']);
-        }
-        if (! str_starts_with($url, "{$api}/")) {
-            return Http::response('', 404);
-        }
-        if ($apiStatus !== 200) {
-            return Http::response(['message' => 'Too many requests'], $apiStatus);
-        }
-
-        if (str_contains($url, '/gifs/search')) {
-            return Http::response([
-                'data' => [giphyBrowserGif('happy')],
-                'pagination' => ['total_count' => 1, 'count' => 1, 'offset' => 0],
-            ]);
-        }
-
-        $first = ! str_contains($url, 'offset=') || str_contains($url, 'offset=0');
-
-        return Http::response([
-            'data' => [giphyBrowserGif($first ? 'party' : 'cheers')],
-            'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $first ? 0 : 1],
+    if ($apiStatus !== 200) {
+        Http::fake([
+            "{$api}/*" => Http::response(['message' => 'Too many requests'], $apiStatus),
+            '*' => Http::response('', 404),
         ]);
-    });
+
+        return;
+    }
+
+    Http::fake([
+        'media1.giphy.com/*' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
+        "{$api}/gifs/search*" => Http::response(['data' => [giphyBrowserGif('happy')], 'pagination' => ['total_count' => 1, 'count' => 1, 'offset' => 0]]),
+        "{$api}/gifs/trending*" => function (Request $request) use ($page) {
+            if ((int) Uri::of($request->url())->query()->get('offset', 0) === 0) {
+                return Http::response($page('party', 0));
+            }
+
+            return Http::response($page('cheers', 1));
+        },
+        '*' => Http::response('', 404),
+    ]);
 }
 
 test('picking a gif from giphy adds a tile and keeps where it came from', function () {
@@ -422,7 +419,8 @@ test('the giphy dialog loads the next page and searches as the user types', func
 
     $page->assertNoJavaScriptErrors();
 
-    Http::assertSent(fn (Request $request) => str_contains($request->url(), '/gifs/search') && str_contains($request->url(), 'q=happy'));
+    Http::assertSent(fn (Request $request) => Str::is(config('trypost.media_sources.giphy.api').'/gifs/search*', $request->url())
+        && Uri::of($request->url())->query()->get('q') === 'happy');
 });
 
 test('a giphy outage shows an error instead of an empty result', function () {

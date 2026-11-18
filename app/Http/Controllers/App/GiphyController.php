@@ -65,7 +65,7 @@ class GiphyController extends Controller
      */
     private function respond(?array $page): JsonResponse
     {
-        if ($page === null) {
+        if (blank($page)) {
             return response()->json(['message' => __('posts.composer.giphy.error')], Response::HTTP_SERVICE_UNAVAILABLE);
         }
 

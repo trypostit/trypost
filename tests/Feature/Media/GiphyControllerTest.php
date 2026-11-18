@@ -19,9 +19,6 @@ beforeEach(function () {
     config()->set([
         'services.giphy.api_key' => 'giphy-key',
         'trypost.media_sources.giphy.enabled' => true,
-        'trypost.media_sources.giphy.api' => 'https://api.giphy.com/v1',
-        'trypost.media_sources.giphy.website' => 'https://giphy.com',
-        'trypost.media_sources.giphy.download_hosts' => '*.giphy.com',
     ]);
 
     $this->account = Account::factory()->create();
@@ -77,13 +74,18 @@ function giphyPick(array $overrides = []): array
     ];
 }
 
+function giphyApi(string $path): string
+{
+    return config('trypost.media_sources.giphy.api').$path;
+}
+
 function giphyAnimatedBytes(): string
 {
     return base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 }
 
 test('trending gifs come back in the picker shape, with a next page while giphy has more', function () {
-    Http::fake(['api.giphy.com/v1/gifs/trending*' => Http::response(giphyApiPage([giphyApiGif('one'), giphyApiGif('two')], 100))]);
+    Http::fake([giphyApi('/gifs/trending*') => Http::response(giphyApiPage([giphyApiGif('one'), giphyApiGif('two')], 100))]);
 
     $this->actingAs($this->user)
         ->getJson(route('app.media.giphy.trending'))
@@ -107,7 +109,7 @@ test('trending gifs come back in the picker shape, with a next page while giphy 
 
 test('a search asks giphy for the page offset and stops when there is no more', function () {
     $perPage = (int) config('app.pagination.default');
-    Http::fake(['api.giphy.com/v1/gifs/search*' => Http::response(giphyApiPage([giphyApiGif('last')], $perPage + 1, $perPage))]);
+    Http::fake([giphyApi('/gifs/search*') => Http::response(giphyApiPage([giphyApiGif('last')], $perPage + 1, $perPage))]);
 
     $this->actingAs($this->user)
         ->getJson(route('app.media.giphy.search', ['query' => '  Happy Dance ', 'page' => 2]))
@@ -119,7 +121,7 @@ test('a search asks giphy for the page offset and stops when there is no more', 
 });
 
 test('a gif without a rendition to import is left out', function () {
-    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage([
         giphyApiGif('kept'),
         giphyApiGif('dropped', ['images' => ['fixed_width' => ['url' => 'https://media1.giphy.com/x/200w.gif']]]),
     ], 2))]);
@@ -132,7 +134,7 @@ test('a gif without a rendition to import is left out', function () {
 });
 
 test('giphy being down answers 503 with a message, and is not cached', function () {
-    Http::fake(['api.giphy.com/*' => Http::sequence()
+    Http::fake([giphyApi('/*') => Http::sequence()
         ->push(['message' => 'Too many requests'], 429)
         ->push(giphyApiPage([giphyApiGif('back')], 1))]);
 
@@ -148,7 +150,7 @@ test('giphy being down answers 503 with a message, and is not cached', function 
 });
 
 test('a page giphy answered is cached for the next user', function () {
-    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([giphyApiGif('one')], 1))]);
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage([giphyApiGif('one')], 1))]);
 
     $this->actingAs($this->user)->getJson(route('app.media.giphy.trending'))->assertOk();
     $this->actingAs($this->user)->getJson(route('app.media.giphy.trending'))->assertOk();
@@ -241,7 +243,7 @@ test('a file giphy serves that is not an image is refused and leaves nothing', f
 
 test('searching giphy is throttled per user, while another user keeps searching', function () {
     config()->set('trypost.media_sources.giphy.requests_per_user_per_minute', 2);
-    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([giphyApiGif('one')], 1))]);
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage([giphyApiGif('one')], 1))]);
 
     foreach (range(1, 2) as $attempt) {
         $this->actingAs($this->user)->getJson(route('app.media.giphy.search', ['query' => "cats {$attempt}"]))->assertOk();
@@ -262,7 +264,7 @@ test('the last page giphy can serve has no next one, whatever its total says', f
     config()->set('app.pagination.default', 100);
     $perPage = 100;
     $lastPage = intdiv(4999, $perPage) + 1;
-    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage(array_map(fn (int $i): array => giphyApiGif("g{$i}"), range(1, $perPage)), 100000, ($lastPage - 1) * $perPage))]);
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage(array_map(fn (int $i): array => giphyApiGif("g{$i}"), range(1, $perPage)), 100000, ($lastPage - 1) * $perPage))]);
 
     $this->actingAs($this->user)
         ->getJson(route('app.media.giphy.trending', ['page' => $lastPage]))
@@ -276,7 +278,7 @@ test('the last page giphy can serve has no next one, whatever its total says', f
 });
 
 test('an empty page ends the list, even when giphy counts more results', function () {
-    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([], 5000, 25))]);
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage([], 5000, 25))]);
 
     $this->actingAs($this->user)
         ->getJson(route('app.media.giphy.search', ['query' => 'rare', 'page' => 2]))

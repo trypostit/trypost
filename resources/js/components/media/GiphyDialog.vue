@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import debounce from '@/debounce';
-import { blank, filled } from '@/lib/helpers';
+import { blank, filled, transform } from '@/lib/helpers';
 import { extractErrorMessage } from '@/lib/httpError';
 import { search, store, trending } from '@/routes/app/media/giphy';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
@@ -122,7 +122,10 @@ const load = async (nextPage: number): Promise<void> => {
             return;
         }
 
-        gifs.value = mergedGifs(response?.results ?? [], nextPage);
+        gifs.value = mergedGifs(
+            transform(response, (found) => found.results, []),
+            nextPage,
+        );
         page.value = nextPage;
         hasMore.value = response?.has_more === true;
     } catch {
@@ -189,7 +192,7 @@ watch(
 
 /** The GIF's own size, so the grid keeps its shape while it loads. */
 const gifAspectRatio = (gif: GiphyGif): string | undefined => {
-    if (!gif.width || !gif.height) {
+    if (gif.width === 0 || gif.height === 0) {
         return undefined;
     }
 

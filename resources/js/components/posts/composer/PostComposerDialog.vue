@@ -807,7 +807,7 @@ const libraryOpen = (source: LibrarySource): WritableComputedRef<boolean> =>
 const unsplashOpen = libraryOpen('unsplash');
 const giphyOpen = libraryOpen('giphy');
 const onLibraryPicked = (item: MediaItem): void => {
-    if (libraryGroupKey.value !== null && libraryReplyKey.value !== null) {
+    if (filled(libraryGroupKey.value) && filled(libraryReplyKey.value)) {
         setReplyMedia(libraryGroupKey.value, libraryReplyKey.value, (media) =>
             withMediaAdded(media, item, null),
         );

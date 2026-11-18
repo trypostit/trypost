@@ -16,6 +16,7 @@ use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
 use App\Support\Social\ThreadProgress;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -235,39 +236,30 @@ test('linkedin publisher uploads an animated gif as it is, without re-encoding i
 
     $this->mock(MediaOptimizer::class)->shouldNotReceive('optimizeImage');
 
+    $api = config('trypost.platforms.linkedin.api');
     $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/gif-upload';
     $uploaded = null;
 
-    Http::fake(function ($request) use ($uploadUrl, $gif, &$uploaded) {
-        $url = $request->url();
-
-        if (str_contains($url, '/rest/images')) {
-            return Http::response(['value' => ['uploadUrl' => $uploadUrl, 'image' => 'urn:li:image:gifUrn']], 200);
-        }
-
-        if ($url === $uploadUrl) {
+    Http::fake([
+        "{$api}/rest/images*" => Http::response(['value' => ['uploadUrl' => $uploadUrl, 'image' => 'urn:li:image:gifUrn']]),
+        "{$api}/rest/posts*" => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:gif']),
+        $uploadUrl => function (Request $request) use (&$uploaded) {
             $uploaded = $request->body();
 
             return Http::response(null, 201);
-        }
-
-        if (str_contains($url, '/rest/posts')) {
-            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:gif']);
-        }
-
-        return Http::response($gif, 200, ['Content-Type' => 'image/gif']);
-    });
+        },
+        'example.com/medias/loop.gif' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
+    ]);
 
     $this->publisher->publish($this->post);
 
     expect($uploaded)->toBe($gif);
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+    Http::assertSent(fn (Request $request) => $request->url() === "{$api}/rest/posts"
         && data_get($request->data(), 'content.media.id') === 'urn:li:image:gifUrn');
 });
 
 test('linkedin publisher sends an animated gif in a multi-image post next to a re-encoded jpeg', function () {
     $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-    $jpeg = linkedInJpegBytes();
     $this->post->update([
         'media' => [
             ['id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/medias/loop.gif', 'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif'],
@@ -280,39 +272,27 @@ test('linkedin publisher sends an animated gif in a multi-image post next to a r
         ->once()
         ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'li_jpg_'), fn ($path) => file_put_contents($path, 'jpeg-bytes')));
 
-    $uploads = 0;
+    $api = config('trypost.platforms.linkedin.api');
     $uploaded = [];
 
-    Http::fake(function ($request) use ($gif, $jpeg, &$uploads, &$uploaded) {
-        $url = $request->url();
-
-        if (str_contains($url, '/rest/images')) {
-            $uploads++;
-
-            return Http::response(['value' => ['uploadUrl' => "https://www.linkedin.com/dms/upload/{$uploads}", 'image' => "urn:li:image:img{$uploads}"]], 200);
-        }
-
-        if (str_contains($url, 'linkedin.com/dms/upload/')) {
+    Http::fake([
+        "{$api}/rest/images*" => Http::sequence()
+            ->push(['value' => ['uploadUrl' => 'https://www.linkedin.com/dms/upload/1', 'image' => 'urn:li:image:img1']])
+            ->push(['value' => ['uploadUrl' => 'https://www.linkedin.com/dms/upload/2', 'image' => 'urn:li:image:img2']]),
+        "{$api}/rest/posts*" => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:multi']),
+        'www.linkedin.com/dms/upload/*' => function (Request $request) use (&$uploaded) {
             $uploaded[] = $request->body();
 
             return Http::response(null, 201);
-        }
-
-        if (str_contains($url, '/rest/posts')) {
-            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:multi']);
-        }
-
-        if (str_ends_with($url, '.gif')) {
-            return Http::response($gif, 200, ['Content-Type' => 'image/gif']);
-        }
-
-        return Http::response($jpeg, 200, ['Content-Type' => 'image/jpeg']);
-    });
+        },
+        'example.com/medias/loop.gif' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
+        'example.com/medias/photo.jpg' => Http::response(linkedInJpegBytes(), 200, ['Content-Type' => 'image/jpeg']),
+    ]);
 
     $this->publisher->publish($this->post);
 
     expect($uploaded)->toBe([$gif, 'jpeg-bytes']);
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
+    Http::assertSent(fn (Request $request) => $request->url() === "{$api}/rest/posts"
         && count(data_get($request->data(), 'content.multiImage.images', [])) === 2);
 });
 
