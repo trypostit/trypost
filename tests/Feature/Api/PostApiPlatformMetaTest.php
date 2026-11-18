@@ -1615,9 +1615,9 @@ it('refuses media on an x poll', function () {
     $this->assertDatabaseMissing(Post::class, ['social_account_id' => $x->id]);
 });
 
-it('refuses to attach media to an x poll', function () {
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+it('refuses to attach media to a poll', function (ContentType $type) {
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($account, $type)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
     $storedMedia = Media::query()->count();
     Http::fake();
@@ -1637,7 +1637,11 @@ it('refuses to attach media to an x poll', function () {
     expect($post->fresh()->media)->toBeEmpty()
         ->and(Media::query()->count())->toBe($storedMedia);
     Http::assertNothingSent();
-});
+})->with([
+    'x' => [ContentType::XPoll],
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+]);
 
 it('still saves a threads ghost post draft with media and attaches media to it, the poll rules being x only', function () {
     $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $this->workspace->id]);

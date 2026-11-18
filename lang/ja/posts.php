@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count票|[0,*] :count票',
+        'voters' => '{1} :count 人|[0,*] :count 人',
         'final' => '最終結果',
         'ended' => '投票は終了しました',
         'ends' => '終了:time',

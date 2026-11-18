@@ -848,3 +848,41 @@ test('a rediscovery keeps the poll results of the thread replies, which only the
 
     expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4), 'thread_polls' => $threadPolls]);
 });
+
+test('a mastodon poll whose totals were hidden is replaced by the result read once mastodon shows them', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::Mastodon, $date->subDay());
+    $endsAt = $date->subHour()->toIso8601ZuluString();
+    $status = fn (?int $tabs, ?int $spaces, bool $expired): array => [
+        'id' => $publication->remote_id,
+        'replies_count' => 0,
+        'reblogs_count' => 0,
+        'favourites_count' => 1,
+        'poll' => [
+            'expires_at' => $endsAt,
+            'expired' => $expired,
+            'multiple' => false,
+            'options' => [['title' => 'Tabs', 'votes_count' => $tabs], ['title' => 'Spaces', 'votes_count' => $spaces]],
+        ],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($status(null, null, false))
+        ->push($status(4, 6, true))]);
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 0], ['label' => 'Spaces', 'votes' => 0]],
+        'voting_status' => 'open',
+        'totals_hidden' => true,
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 4], ['label' => 'Spaces', 'votes' => 6]],
+        'voting_status' => 'closed',
+        'totals_hidden' => false,
+    ]);
+});

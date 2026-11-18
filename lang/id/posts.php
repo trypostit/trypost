@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count suara|[0,*] :count suara',
+        'voters' => '{1} :count orang|[0,*] :count orang',
         'final' => 'Hasil akhir',
         'ended' => 'Voting berakhir',
         'ends' => 'Berakhir :time',

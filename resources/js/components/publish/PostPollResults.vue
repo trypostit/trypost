@@ -45,6 +45,18 @@ const shareBase = computed((): number => {
     return totalVotes.value;
 });
 
+/**
+ * The total under the choices, counted like the shares: the people who voted
+ * on a multiple choice poll ("3 people"), else the votes.
+ */
+const summary = computed((): { key: string; count: number } => {
+    if (filled(props.poll.voters)) {
+        return { key: 'posts.poll_results.voters', count: props.poll.voters };
+    }
+
+    return { key: 'posts.poll_results.votes', count: totalVotes.value };
+});
+
 /** A choice's percentage of the votes; none before the first vote. */
 const percentOf = (count: number): number => {
     if (!hasVotes.value || shareBase.value === 0) {
@@ -139,12 +151,12 @@ const status = computed((): PollStatus | null => {
                 $t('posts.poll_results.hidden')
             }}</template>
             <template v-else>{{
-                $tChoice('posts.poll_results.votes', totalVotes, {
-                    count: formatFullNumber(totalVotes),
+                $tChoice(summary.key, summary.count, {
+                    count: formatFullNumber(summary.count),
                 })
             }}</template>
-            <template v-if="status"
-                >· {{ $t(status.key, status.replacements) }}</template
+            <template v-if="status">
+                · {{ $t(status.key, status.replacements) }}</template
             >
         </p>
     </div>

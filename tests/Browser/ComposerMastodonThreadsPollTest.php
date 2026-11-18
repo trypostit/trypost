@@ -151,7 +151,7 @@ test('a saved mastodon poll switched to post and back brings the poll back with 
     $page->click("@composer-type-{$id}-mastodon_poll");
     waitFor($page, '@mastodon-poll-choice-2');
 
-    expect($page->script('[0, 1, 2].map((index) => document.querySelector(`[data-testid="mastodon-poll-choice-${index}"]`).value)'))->toBe(['Tabs', 'Spaces', 'Both']);
+    expect(elementsMap($page, '@mastodon-poll-choice-0, @mastodon-poll-choice-1, @mastodon-poll-choice-2', 'element.value'))->toBe(['Tabs', 'Spaces', 'Both']);
     $page->assertSeeIn('@mastodon-poll-days', '3')
         ->assertAttribute('@mastodon-poll-multiple', 'aria-checked', 'true')
         ->assertAttribute('@mastodon-poll-hide-totals', 'aria-checked', 'true')
@@ -174,7 +174,7 @@ test('a saved threads poll switched to a ghost post and back brings the poll bac
     $page->click("@composer-type-{$id}-threads_poll");
     waitFor($page, '@threads-poll-choice-2');
 
-    expect($page->script('[0, 1, 2].map((index) => document.querySelector(`[data-testid="threads-poll-choice-${index}"]`).value)'))->toBe(['Tabs', 'Spaces', 'Both']);
+    expect(elementsMap($page, '@threads-poll-choice-0, @threads-poll-choice-1, @threads-poll-choice-2', 'element.value'))->toBe(['Tabs', 'Spaces', 'Both']);
     $page->click('@composer-close');
     waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
 
@@ -263,7 +263,7 @@ test('thirty days locks the hours and minutes of a mastodon poll', function () {
     $page->click('@mastodon-poll-days-30');
     waitForState($page, '@mastodon-poll-hours', 'element.disabled');
 
-    expect($page->script("['days', 'hours', 'minutes'].map((part) => document.querySelector(`[data-testid=\"mastodon-poll-\${part}\"]`).disabled)"))->toBe([false, true, true]);
+    expect(elementsMap($page, '@mastodon-poll-days, @mastodon-poll-hours, @mastodon-poll-minutes', 'element.disabled'))->toBe([false, true, true]);
     $page->assertSeeIn('@mastodon-poll-hours', '0')
         ->assertSeeIn('@mastodon-poll-minutes', '0')
         ->click('@composer-save-draft');
@@ -349,3 +349,52 @@ test('a server error on the poll shows on the mastodon card when mastodon is not
         ->assertNoJavaScriptErrors();
     expect(Post::query()->where('workspace_id', $post->workspace_id)->count())->toBe(1);
 });
+
+test('a mastodon poll choice the server refuses as too long is marked on that choice only', function () {
+    $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => [Str::repeat('a', MastodonPoll::OPTION_MAX_LENGTH + 1), 'Spaces'], 'duration_minutes' => 60]]]);
+    $page = openPollComposer($post);
+    waitFor($page, '@mastodon-poll-choice-1');
+
+    $page->click('@composer-save-draft');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@mastodon-poll-choice-0-error');
+    waitForText($page, '@mastodon-poll-choice-0-error', __('posts.form.poll.choice_max', ['max' => MastodonPoll::OPTION_MAX_LENGTH]));
+
+    $page->assertAttribute('@mastodon-poll-choice-0', 'aria-invalid', 'true')
+        ->assertAttributeMissing('@mastodon-poll-choice-1', 'aria-invalid')
+        ->assertMissing('@mastodon-poll-choice-1-error')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'poll.options.0'))->toBe(Str::repeat('a', MastodonPoll::OPTION_MAX_LENGTH + 1));
+});
+
+test('a mastodon poll length the server refuses shows the range under the length', function () {
+    $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 50000]]]);
+    $page = openPollComposer($post);
+    waitFor($page, '@mastodon-poll-days');
+
+    $page->click('@composer-save-draft');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@mastodon-poll-duration-error');
+    waitForText($page, '@mastodon-poll-duration-error', MastodonPoll::durationRangeMessage());
+
+    $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'poll.duration_minutes'))->toBe(50000);
+});
+
+test('a thread reply on a network without polls has no poll button', function (ContentType $type) {
+    $post = seedPollComposerPost($type);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'One more thing');
+    waitFor($page, "@composer-{$id}-toolbar");
+
+    $page->assertMissing("@composer-{$id}-poll")
+        ->assertMissing("@composer-{$id}-poll-disabled")
+        ->assertNoJavaScriptErrors();
+})->with([
+    'bluesky reply' => [ContentType::BlueskyPost],
+    'linkedin comment' => [ContentType::LinkedInPost],
+]);

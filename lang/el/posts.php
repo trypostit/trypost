@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count ψήφος|[0,*] :count ψήφοι',
+        'voters' => '{1} :count άτομο|[0,*] :count άτομα',
         'final' => 'Τελικά αποτελέσματα',
         'ended' => 'Η ψηφοφορία έληξε',
         'ends' => 'Λήγει :time',

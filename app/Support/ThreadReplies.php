@@ -300,6 +300,10 @@ class ThreadReplies
             return [null, $questionViolation];
         }
 
+        if (filled($reply['media'])) {
+            return ['media', __('posts.errors.media_not_accepted')];
+        }
+
         return self::lengthViolation($reply['text'], $poll::platform(), $account, $poll::contentType(), $reserved)
             ?? $poll::firstViolation($reply);
     }

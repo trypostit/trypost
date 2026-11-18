@@ -94,6 +94,21 @@ abstract class Poll
     }
 
     /**
+     * A poll the network returned, reduced to its stored result; null when the
+     * post carries no poll.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function resultOf(mixed $poll): ?array
+    {
+        if (! is_array($poll)) {
+            return null;
+        }
+
+        return static::result($poll);
+    }
+
+    /**
      * A poll the network returned, as `provider_metadata` keeps it; nothing
      * when the post carries no poll.
      *
@@ -101,11 +116,13 @@ abstract class Poll
      */
     public static function metadataFrom(mixed $poll): array
     {
-        if (! is_array($poll)) {
+        $result = static::resultOf($poll);
+
+        if (blank($result)) {
             return [];
         }
 
-        return ['poll' => static::result($poll)];
+        return ['poll' => $result];
     }
 
     /**

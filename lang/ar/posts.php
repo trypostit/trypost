@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count صوت|[0,*] :count أصوات',
+        'voters' => '{1} شخص واحد|[0,*] :count أشخاص',
         'final' => 'النتائج النهائية',
         'ended' => 'انتهى التصويت',
         'ends' => 'تنتهي :time',

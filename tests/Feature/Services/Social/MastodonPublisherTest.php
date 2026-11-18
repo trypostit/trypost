@@ -822,6 +822,48 @@ test('a mastodon reply poll that cannot go fails before posting anything', funct
     'no question' => [['text' => '', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]], 'posts.form.poll.question_required'],
 ]);
 
+test('a mastodon reply poll with media is refused at publish and never sent', function () {
+    $this->post->update(['meta' => ['thread_replies' => [[
+        'text' => 'Which one?',
+        'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60],
+        'media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']],
+    ]]]]);
+    $instance = data_get($this->socialAccount->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::response(['id' => '1', 'url' => "{$instance}/@t/1"])]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.errors.media_not_accepted'));
+    Http::assertNothingSent();
+});
+
+test('a mastodon reply poll changed before a retry is sent again under a new idempotency key, its post resumed and a plain reply keeping its text hash', function () {
+    $instance = data_get($this->socialAccount->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
+        ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
+        ->push(['id' => '2', 'url' => "{$instance}/@t/2"])
+        ->push(['id' => '3', 'url' => "{$instance}/@t/3"])
+        ->push(['id' => '4', 'url' => "{$instance}/@t/4"])
+        ->push(['id' => '5', 'url' => "{$instance}/@t/5"])]);
+    $first = ['options' => ['Yes', 'No'], 'duration_minutes' => 60];
+    $changed = ['options' => ['Yes', 'Maybe'], 'duration_minutes' => 60];
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'Which one?', 'poll' => $first], 'Thanks!']]]);
+
+    $this->publisher->publish($this->post->fresh());
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'Which one?', 'poll' => $changed], 'Thanks!']]]);
+    $this->publisher->publish($this->post->fresh());
+
+    $keys = collect(Http::recorded())->map(fn (array $pair): string => $pair[0]->header('Idempotency-Key')[0])->values();
+
+    expect($keys->all())->toBe([
+        "{$this->post->id}:".ThreadProgress::hash('Hello from Mastodon!'),
+        "{$this->post->id}:1:".ThreadProgress::hash('Which one?', [], $first),
+        "{$this->post->id}:2:".ThreadProgress::hash('Thanks!'),
+        "{$this->post->id}:1:".ThreadProgress::hash('Which one?', [], $changed),
+        "{$this->post->id}:4:".ThreadProgress::hash('Thanks!'),
+    ])
+        ->and($keys->get(1))->not->toBe($keys->get(3));
+});
+
 test('a mastodon poll with a content warning sends both', function () {
     $this->post->update([
         'content' => 'Tabs or spaces?',

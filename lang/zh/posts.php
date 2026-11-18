@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count 票|[0,*] :count 票',
+        'voters' => '{1} :count 人|[0,*] :count 人',
         'final' => '最终结果',
         'ended' => '投票已结束',
         'ends' => ':time结束',

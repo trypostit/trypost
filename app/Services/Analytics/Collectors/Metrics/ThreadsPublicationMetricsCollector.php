@@ -49,8 +49,8 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
     /**
      * A poll's result, read on each metrics read like X's: the insights edge
      * carries no poll, so a poll is read once more for its `poll_attachment`.
-     * Only a poll still open makes that read (a closed one's stored result is
-     * final), and one the token cannot read keeps the metrics measured.
+     * Only a poll not yet stored closed makes that read (a closed one's result
+     * is final), and one the token cannot read keeps the metrics measured.
      *
      * @return array{poll: array<string, mixed>}|null
      */
@@ -66,8 +66,8 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
     }
 
     /**
-     * A poll whose stored result can still change: not closed by a read after
-     * its end, and with no stored end already past.
+     * A poll whose stored result can still change: until a read after its end
+     * stores it closed (`ThreadsPoll::result()`), so the final tally is read.
      */
     private function pollMayChange(AnalyticsPublication $publication): bool
     {
@@ -75,14 +75,6 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
             return false;
         }
 
-        $poll = data_get($publication->provider_metadata, 'poll');
-
-        if (data_get($poll, 'voting_status') === PollVotingStatus::Closed->value) {
-            return false;
-        }
-
-        $endsAt = data_get($poll, 'end_datetime');
-
-        return blank($endsAt) || ! CarbonImmutable::parse($endsAt)->isPast();
+        return data_get($publication->provider_metadata, 'poll.voting_status') !== PollVotingStatus::Closed->value;
     }
 }

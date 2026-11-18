@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count표|[0,*] :count표',
+        'voters' => '{1} :count명|[0,*] :count명',
         'final' => '최종 결과',
         'ended' => '투표 종료',
         'ends' => '종료 :time',

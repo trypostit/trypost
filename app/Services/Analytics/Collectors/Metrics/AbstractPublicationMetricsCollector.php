@@ -61,7 +61,7 @@ abstract class AbstractPublicationMetricsCollector extends AbstractApiPublicatio
     {
         return collect($replyPolls)
             ->map(fn (string $replyId, int $reply): ?array => transform(
-                data_get($poll::metadataFrom($pollOf($replyId)), 'poll'),
+                $poll::resultOf($pollOf($replyId)),
                 fn (array $result): array => ['reply' => $reply, ...$result],
             ))
             ->filter()

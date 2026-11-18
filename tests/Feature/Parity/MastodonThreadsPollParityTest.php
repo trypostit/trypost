@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
+use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -310,3 +311,91 @@ test('a threads poll takes and drops a length threads does not use on the web, a
     assertPollParityPassed($surface, $response);
     expect($post->fresh()->meta['poll'])->toEqual(['options' => ['Yes', 'No']]);
 })->with(['web', 'api', 'mcp']);
+
+test('scheduling a mastodon or threads poll without a question asks for the question on the web, api and mcp', function (string $surface, ContentType $type, string $content) {
+    $post = pollParityPost($type, ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
+
+    $response = pollParityUpdate($surface, $post, [
+        'content' => $content,
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    assertPollParityRefused($surface, $response, ['content' => __('posts.form.poll.question_required')]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp'])->with([
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+])->with([
+    'no text' => [''],
+    'editor markup without words' => ['<p></p>'],
+]);
+
+test('publishing a stored mastodon or threads poll without a question is refused on mcp', function (ContentType $type) {
+    $post = pollParityPost($type, ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60]]);
+    $post->update(['content' => '<p></p>']);
+
+    TryPostServer::actingAs(test()->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('posts.form.poll.question_required')]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with([
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+]);
+
+test('scheduling a mastodon poll without a length is refused on the post and on a reply on the web, api and mcp', function (string $surface, ContentType $type, string $prefix, array $meta) {
+    $post = pollParityPost($type);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => $meta,
+    ]);
+
+    assertPollParityRefused($surface, $response, ["meta.{$prefix}poll.duration_minutes" => __('posts.form.poll.duration_required')]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp'])->with([
+    'the post poll' => [ContentType::MastodonPoll, '', ['poll' => ['options' => ['Yes', 'No']]]],
+    'a reply poll' => [ContentType::MastodonPost, 'thread_replies.0.', ['thread_replies' => [['text' => 'Which one?', 'poll' => ['options' => ['Yes', 'No']]]]]],
+]);
+
+test('a mastodon reply poll with media is refused even as a draft on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::MastodonPost);
+    $upload = Media::factory()->temporaryUpload(test()->workspace)->stored()->create();
+    Http::fake();
+
+    $response = pollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        [
+            'text' => 'Tabs or spaces?',
+            'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+            'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+        ],
+    ]]]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies.0.media' => __('posts.errors.media_not_accepted')]);
+    expect($post->fresh()->meta)->toBe([]);
+})->with(['web', 'api', 'mcp']);
+
+test('scheduling a mastodon poll with a choice too long reports it once on the web and api', function (string $surface) {
+    $post = pollParityPost(ContentType::MastodonPoll);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['poll' => ['options' => ['Yes', Str::repeat('a', MastodonPoll::OPTION_MAX_LENGTH + 1)], 'duration_minutes' => 60]],
+    ]);
+
+    $response->assertUnprocessable();
+    expect($response->json('errors')['meta.poll.options.1'])->toBe([__('posts.form.poll.choice_max', ['max' => MastodonPoll::OPTION_MAX_LENGTH])]);
+})->with(['web', 'api']);
+
+test('a mastodon poll switch that is not true or false is refused on the web and api', function (string $surface, string $switch) {
+    $post = pollParityPost(ContentType::MastodonPoll);
+
+    $response = pollParityUpdate($surface, $post, ['meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60, $switch => 'abc']]]);
+
+    $response->assertUnprocessable()->assertJsonValidationErrors(["meta.poll.{$switch}"]);
+    expect($post->fresh()->meta)->toBe([]);
+})->with(['web', 'api'])->with(['multiple', 'hide_totals']);

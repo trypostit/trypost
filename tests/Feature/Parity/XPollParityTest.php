@@ -353,3 +353,14 @@ test('a choice is measured as x counts it, an emoji like a penguin counting two,
     $surface === 'mcp' ? $accepted->assertOk() : $accepted->assertSessionHasNoErrors();
     expect($post->fresh()->meta['poll']['options'])->toBe([$fits, 'No']);
 })->with(['web', 'api', 'mcp']);
+
+test('an x reply poll drops the switches only mastodon has on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::XPost);
+
+    $response = pollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    ]]]);
+
+    $surface === 'mcp' ? $response->assertOk() : $response->assertSessionHasNoErrors();
+    expect($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual(['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]);
+})->with(['web', 'api', 'mcp']);

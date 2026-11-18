@@ -2131,6 +2131,19 @@ test('x publisher refuses a reply poll question over 280 characters on a long po
     Http::assertNothingSent();
 });
 
+test('x publisher refuses a reply poll carrying media before posting anything', function () {
+    $this->post->update(['content' => 'Pick one', 'meta' => ['thread_replies' => [[
+        'text' => 'Tabs or spaces?',
+        'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+        'media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']],
+    ]]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.errors.media_not_accepted'));
+    Http::assertNothingSent();
+});
+
 test('x publisher refuses a poll with repeated choices before calling x', function (array $meta) {
     $this->post->update(['content' => 'Pick one', ...$meta]);
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);

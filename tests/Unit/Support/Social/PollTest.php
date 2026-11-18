@@ -147,3 +147,63 @@ test('normalizing a poll keeps blank choices at their position while the network
         ->and(XPoll::forNetwork($poll))->toBe(['options' => ['Tea', 'Coffee'], 'duration_minutes' => 60])
         ->and(ThreadsPoll::forNetwork($poll))->toBe(['options' => ['Tea', 'Coffee']]);
 });
+
+test('a poll the network returned reads as its result, and anything else as none', function (mixed $poll) {
+    expect(MastodonPoll::resultOf($poll))->toBeNull()
+        ->and(MastodonPoll::metadataFrom($poll))->toBe([]);
+})->with([
+    'no poll' => [null],
+    'a string' => ['poll'],
+    'a number' => [3],
+]);
+
+test('a poll the network returned reads as the same result its metadata keeps', function () {
+    $poll = [
+        'expired' => false,
+        'expires_at' => now('UTC')->addDay()->toIso8601ZuluString(),
+        'multiple' => false,
+        'options' => [['title' => 'Tea', 'votes_count' => 2], ['title' => 'Coffee', 'votes_count' => 1]],
+    ];
+
+    expect(MastodonPoll::resultOf($poll))->toBe(MastodonPoll::result($poll))
+        ->and(MastodonPoll::metadataFrom($poll))->toBe(['poll' => MastodonPoll::result($poll)]);
+});
+
+test('a mastodon poll result without an expired flag has no voting status', function () {
+    $result = MastodonPoll::result([
+        'expires_at' => now('UTC')->addDay()->toIso8601ZuluString(),
+        'options' => [['title' => 'Tea', 'votes_count' => 1], ['title' => 'Coffee', 'votes_count' => 0]],
+    ]);
+
+    expect(data_get($result, 'voting_status'))->toBeNull();
+});
+
+test('a threads poll result without an end has no voting status and no end', function () {
+    $result = ThreadsPoll::result([
+        'option_a' => 'Red',
+        'option_b' => 'Green',
+        'option_a_votes_percentage' => 0.5,
+        'option_b_votes_percentage' => 0.5,
+        'total_votes' => 4,
+    ]);
+
+    expect(data_get($result, 'voting_status'))->toBeNull()
+        ->and(data_get($result, 'end_datetime'))->toBeNull()
+        ->and(data_get($result, 'options'))->toBe([['label' => 'Red', 'votes' => 2], ['label' => 'Green', 'votes' => 2]]);
+});
+
+test('a mastodon poll found ending sooner than mastodon allows keeps the shortest length', function () {
+    $publishedAt = now('UTC')->subHour();
+
+    $publication = (new AnalyticsPublication)->forceFill([
+        'provider_published_at' => $publishedAt,
+        'provider_metadata' => ['poll' => [
+            'options' => [['label' => 'Tea', 'votes' => 0], ['label' => 'Coffee', 'votes' => 0]],
+            'end_datetime' => $publishedAt->addMinutes(2)->toIso8601ZuluString(),
+        ]],
+    ]);
+
+    expect(MastodonPoll::fromPublication($publication))->toMatchArray([
+        'duration_minutes' => MastodonPoll::MIN_DURATION,
+    ]);
+});

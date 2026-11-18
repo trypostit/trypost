@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count vote|[0,*] :count votes',
+        'voters' => '{1} :count person|[0,*] :count people',
         'final' => 'Final results',
         'ended' => 'Voting ended',
         'ends' => 'Ends :time',

@@ -1006,6 +1006,7 @@ return [
     ],
     'poll_results' => [
         'votes' => '{1} :count oy|[0,*] :count oy',
+        'voters' => '{1} :count kişi|[0,*] :count kişi',
         'final' => 'Nihai sonuçlar',
         'ended' => 'Oylama sona erdi',
         'ends' => 'Bitiş: :time',

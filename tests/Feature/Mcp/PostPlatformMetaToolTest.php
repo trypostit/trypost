@@ -1142,10 +1142,11 @@ test('publish post refuses a stored x poll without options or duration', functio
     'no duration' => [['options' => ['Yes', 'No']], 'posts.form.poll.duration_required'],
 ]);
 
-test('the attach media tools refuse media on an x poll', function () {
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($account, ContentType::XPoll)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
+test('the attach media tools refuse media on a poll', function (ContentType $type) {
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($account, $type)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    $storedMedia = Media::query()->count();
     Http::fake();
 
     TryPostServer::actingAs($this->user)->tool(AttachMediaFromUploadTool::class, [
@@ -1158,9 +1159,14 @@ test('the attach media tools refuse media on an x poll', function () {
         'urls' => [['url' => 'https://example.com/photo.png']],
     ])->assertHasErrors([__('posts.errors.media_not_accepted')]);
 
-    expect($post->fresh()->media)->toBeEmpty();
+    expect($post->fresh()->media)->toBeEmpty()
+        ->and(Media::query()->count())->toBe($storedMedia);
     Http::assertNothingSent();
-});
+})->with([
+    'x' => [ContentType::XPoll],
+    'mastodon' => [ContentType::MastodonPoll],
+    'threads' => [ContentType::ThreadsPoll],
+]);
 
 test('the get post tool returns the poll of an x poll', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
