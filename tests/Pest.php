@@ -1151,11 +1151,11 @@ function clickWithoutPointer(mixed $page, string $selector): void
 
 /**
  * Plays a broadcast on the page as if Reverb delivered it: the event reaches
- * the `useEcho` listeners of that private channel through the page's own
- * Echo connection (`window.Echo`). Browser tests broadcast with the null
- * driver, so a server event never arrives on its own. `$channel` is the
- * name the app listens on (`workspace.{id}`), `$event` the event's
- * `broadcastAs()` name.
+ * the `useEcho` listeners of that private channel through the Pusher client
+ * Echo connects with (pusher-js keeps every client in `Pusher.instances`).
+ * Browser tests broadcast with the null driver, so a server event never
+ * arrives on its own. `$channel` is the name the app listens on
+ * (`workspace.{id}`), `$event` the event's `broadcastAs()` name.
  *
  * @param  array<string, mixed>  $payload
  */
@@ -1165,20 +1165,21 @@ function broadcastToPage(mixed $page, string $channel, string $event, array $pay
     $eventName = json_encode($event);
     $data = json_encode($payload);
 
-    waitForCondition($page, "Boolean(window.Echo.connector.pusher.channel({$name}))");
-    $page->script("window.Echo.connector.pusher.channel({$name}).emit({$eventName}, {$data})");
+    waitForCondition($page, "Boolean(window.Pusher.instances[0]?.channel({$name}))");
+    $page->script("window.Pusher.instances[0].channel({$name}).emit({$eventName}, {$data})");
 }
 
 /**
- * Plays the page's socket dropping and connecting again, as Echo reports a
- * reconnection to `useConnectionStatus()` listeners. Each change is its own
- * script, so the page sees the drop before the reconnection.
+ * Plays the page's socket dropping and connecting again on the Pusher client
+ * Echo connects with, which Echo reports to `useConnectionStatus()`
+ * listeners. Each change is its own script, so the page sees the drop
+ * before the reconnection.
  */
 function reconnectPageSocket(mixed $page): void
 {
     foreach (['disconnected', 'connected'] as $state) {
-        $page->script("const connection = window.Echo.connector.pusher.connection; connection.state = '{$state}'; connection.emit('state_change', { current: '{$state}' });");
-        waitForCondition($page, "window.Echo.connectionStatus() === '{$state}'");
+        $page->script("const connection = window.Pusher.instances[0].connection; connection.state = '{$state}'; connection.emit('state_change', { current: '{$state}' });");
+        waitForCondition($page, "window.Pusher.instances[0].connection.state === '{$state}'");
     }
 }
 

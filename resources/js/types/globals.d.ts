@@ -1,11 +1,8 @@
-import type { echo } from '@laravel/echo-vue';
-
 import { AppPageProps } from '@/types/index';
 
 declare global {
     interface Window {
         dataLayer: Record<string, unknown>[];
-        readonly Echo: ReturnType<typeof echo>;
         $crisp?: {
             push: (command: unknown[]) => void;
         };
