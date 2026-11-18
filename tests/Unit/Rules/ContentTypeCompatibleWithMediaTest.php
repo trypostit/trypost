@@ -162,7 +162,7 @@ test('x still accepts a mov video', function () {
 test('a gif is rejected on content types that do not accept gifs', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
 
-    foreach ([ContentType::InstagramFeed, ContentType::LinkedInPost, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
+    foreach ([ContentType::InstagramFeed, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
         $errors = runMediaRule($type->value, $media);
 
         expect($errors)->toHaveCount(1, $type->value);
@@ -189,13 +189,21 @@ test('an image over the content type cap is rejected by size', function () {
 });
 
 test('a kind violation is reported alone and is not overwritten by a size violation on the same item', function () {
-    // A 6 MB GIF on LinkedIn breaks two rules; the root cause ("does not accept GIF") must be the one message.
+    // A 6 MB GIF on a Facebook post breaks two rules; the root cause ("does not accept GIF") must be the one message.
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 6 * 1024 * 1024]];
 
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('GIF');
+});
+
+test('linkedin accepts an animated gif within its image cap', function () {
+    // The LinkedIn Images API takes GIF (up to 250 frames) and the publisher uploads it untouched.
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 2 * 1024 * 1024]];
+
+    expect(runMediaRule(ContentType::LinkedInPost->value, $media))->toBe([]);
+    expect(runMediaRule(ContentType::LinkedInPagePost->value, $media))->toBe([]);
 });
 
 test('an item that cannot be classified is not measured against any cap', function () {

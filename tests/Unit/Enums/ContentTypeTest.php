@@ -184,6 +184,8 @@ test('content type requires media correctly', function () {
 test('media rules keep editor parity for gif and requires_media flags', function () {
     expect(ContentType::DiscordMessage->acceptsGif())->toBeTrue();
     expect(ContentType::TelegramPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPagePost->acceptsGif())->toBeTrue();
     expect(ContentType::InstagramFeed->mediaRules()['requires_media'])->toBeTrue();
     expect(ContentType::DiscordMessage->mediaRules()['accepts_gif'])->toBeTrue();
 });

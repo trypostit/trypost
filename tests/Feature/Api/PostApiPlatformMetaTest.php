@@ -304,9 +304,9 @@ it('rejects publishing when the uploaded video runs past the content type durati
         ->assertJsonFragment(['Video is 1min 30s long, but this post type allows up to 1min.']);
 });
 
-it('rejects publishing a LinkedIn post with a GIF', function () {
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create([
+it('rejects publishing a Facebook post with a GIF', function () {
+    $facebook = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Facebook]);
+    $post = Post::factory()->forAccount($facebook, ContentType::FacebookPost)->create([
         'user_id' => $this->user->id,
         'media' => [[
             'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/loop.gif',
@@ -317,7 +317,7 @@ it('rejects publishing a LinkedIn post with a GIF', function () {
     $this->withHeaders($this->headers)
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Publishing->value,
-            'content_type' => ContentType::LinkedInPost->value,
+            'content_type' => ContentType::FacebookPost->value,
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['content_type'])
