@@ -131,20 +131,17 @@ const lengthParts: {
     },
 ];
 
-/** The poll as this network keeps it: a length and switches only where it has them. */
+/**
+ * The poll with the editor's choices and length. Every other key stays as it
+ * came, in its order (MySQL reorders a stored poll's keys), and a switch is
+ * only added once it is used, so a stored poll edited back to what it was is
+ * no unsaved change.
+ */
 const currentPoll = (): Poll => {
-    const poll: Poll = { options: options.value };
+    const poll: Poll = { ...props.modelValue, options: options.value };
 
     if (hasDuration.value) {
         poll.duration_minutes = durationMinutes.value;
-    }
-
-    if (props.limits.multipleChoice) {
-        poll.multiple = multiple.value;
-    }
-
-    if (props.limits.hideTotals) {
-        poll.hide_totals = hideTotals.value;
     }
 
     return poll;

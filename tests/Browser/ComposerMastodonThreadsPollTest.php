@@ -81,7 +81,7 @@ test('a mastodon thread reply turns into a poll and saves it on the reply', func
     waitForGone($page, '@post-composer-dialog');
 
     expect($post->fresh()->meta['thread_replies'])->toEqual([
-        ['text' => 'Which one?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => MastodonPoll::DEFAULT_DURATION, 'multiple' => false, 'hide_totals' => false]],
+        ['text' => 'Which one?', 'media' => [], 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => MastodonPoll::DEFAULT_DURATION]],
     ]);
     $page->assertNoJavaScriptErrors();
 });
@@ -138,6 +138,28 @@ test('a reopened poll closes without an unsaved change', function (ContentType $
 })->with([
     'mastodon with multiple choice and hidden votes' => [ContentType::MastodonPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true], 'mastodon-poll-choice-1'],
     'threads' => [ContentType::ThreadsPoll, ['options' => ['Tabs', 'Spaces']], 'threads-poll-choice-1'],
+]);
+
+test('a stored poll edited back to what it was closes without an unsaved change', function (array $poll) {
+    $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => $poll]]);
+    $page = openPollComposer($post);
+    waitFor($page, '@mastodon-poll-choice-1');
+
+    $page->click('@mastodon-poll-choice-1')
+        ->fill('@mastodon-poll-choice-1', 'Spacesx');
+    waitForState($page, '@mastodon-poll-choice-1', "element.value === 'Spacesx'");
+    $page->fill('@mastodon-poll-choice-1', 'Spaces');
+    waitForState($page, '@mastodon-poll-choice-1', "element.value === 'Spaces'");
+
+    $page->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'saved without the switches (API or MCP)' => [['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    'keys in the order MySQL returns them' => [['options' => ['Tabs', 'Spaces'], 'multiple' => true, 'hide_totals' => false, 'duration_minutes' => 60]],
 ]);
 
 test('a saved mastodon poll switched to post and back brings the poll back with no unsaved change', function () {

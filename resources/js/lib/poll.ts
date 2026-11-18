@@ -192,6 +192,7 @@ const pollEndsAt = (
 /**
  * A poll before its network has been read for it: its choices with no votes.
  * Once its post is published it is open; before that, voting has not started.
+ * Votes hidden until the end (Mastodon) show as hidden from the start.
  */
 const unreadPollResult = (
     poll: Partial<Poll>,
@@ -201,6 +202,7 @@ const unreadPollResult = (
     voting_status: transform(publishedAt, (): 'open' => 'open'),
     end_datetime: pollEndsAt(poll, publishedAt),
     duration_minutes: poll.duration_minutes ?? null,
+    totals_hidden: poll.hide_totals === true,
 });
 
 /** A post's own poll: only a poll type has one, whatever its meta still holds. */

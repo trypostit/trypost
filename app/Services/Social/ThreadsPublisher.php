@@ -405,11 +405,11 @@ class ThreadsPublisher
     }
 
     /**
-     * A poll goes on a text post only, with its question and choices.
-     *
-     * @return array<string, string>
+     * A poll goes on a text post only, with its question and choices, sent as
+     * a JSON string as the Threads docs show it (like Instagram's nested
+     * parameters).
      */
-    private function pollAttachment(Post $post, ?string $content): array
+    private function pollAttachment(Post $post, ?string $content): string
     {
         $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
 
@@ -417,7 +417,7 @@ class ThreadsPublisher
             throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
         }
 
-        return ThreadsPoll::payload($post->meta);
+        return (string) json_encode(ThreadsPoll::payload($post->meta));
     }
 
     /**

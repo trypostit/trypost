@@ -1132,7 +1132,7 @@ test('a threads poll is a text container carrying its choices as option_a to opt
         && data_get($request->data(), 'media_type') === 'TEXT'
         && data_get($request->data(), 'text') === 'Tabs or spaces?'
         && data_get($request->data(), 'topic_tag') === 'laravel'
-        && data_get($request->data(), 'poll_attachment') === ['option_a' => 'Tabs', 'option_b' => 'Spaces', 'option_c' => 'Both']);
+        && json_decode((string) data_get($request->data(), 'poll_attachment'), true) === ['option_a' => 'Tabs', 'option_b' => 'Spaces', 'option_c' => 'Both']);
 });
 
 test('a threads poll that cannot go fails before calling threads', function (array $changes, string $message) {
@@ -1163,7 +1163,7 @@ test('a threads poll with four choices sends option_a to option_d', function () 
 
     $this->publisher->publish($this->post->fresh());
 
-    Http::assertSent(fn ($request): bool => data_get($request->data(), 'poll_attachment') === [
+    Http::assertSent(fn ($request): bool => json_decode((string) data_get($request->data(), 'poll_attachment'), true) === [
         'option_a' => 'Red',
         'option_b' => 'Green',
         'option_c' => 'Blue',

@@ -481,6 +481,25 @@ test('a published threads poll threads has not read yet shows its choices with n
         ->assertNoJavaScriptErrors();
 });
 
+test('a published mastodon poll that hides its votes says so before its first read', function () {
+    [$user, $account] = pollResultsAccount('mastodon');
+    $post = Post::factory()->forAccount($account, ContentType::MastodonPoll)->published()->create([
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subMinutes(5),
+        'published_at' => now()->subMinutes(5),
+        'meta' => ['poll' => ['options' => ['Mac', 'Linux'], 'duration_minutes' => 1440, 'hide_totals' => true]],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.publish', [$account, 'tab' => 'sent']));
+    waitFor($page, "@post-poll-{$post->id}");
+
+    $page->assertSeeIn("@post-poll-{$post->id}-summary", __('posts.poll_results.hidden'))
+        ->assertSeeIn("@post-poll-{$post->id}-option-0", 'Mac')
+        ->assertMissing("@post-poll-{$post->id}-option-0-votes")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a mastodon reply poll the last read did not return shows its choices with no votes next to the one it did', function () {
     [$user, $account, $post] = pollResultsSetup(null, type: ContentType::MastodonPost);
     $post->update(['meta' => ['thread_replies' => [
