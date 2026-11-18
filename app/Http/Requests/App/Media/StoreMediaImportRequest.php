@@ -18,8 +18,8 @@ use LogicException;
 
 /**
  * One pick per request. A picker source is importable once it has an arm
- * here (its own rules, the payload the job downloads and, when it may not
- * be every media type, the types it may be) and is enabled.
+ * here (its own rules, the payload the job downloads and the media types
+ * it may be) and is enabled.
  */
 class StoreMediaImportRequest extends FormRequest
 {
@@ -53,17 +53,17 @@ class StoreMediaImportRequest extends FormRequest
     }
 
     /**
-     * The media types the pick may be, every type when null.
+     * The media types the pick may be.
      *
-     * @return list<MediaType>|null
+     * @return list<MediaType>
      */
-    public function importTypes(): ?array
+    public function importTypes(): array
     {
         return data_get($this->arm(), 'types');
     }
 
     /**
-     * @return array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types?: list<MediaType>}
+     * @return array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types: list<MediaType>}
      */
     private function arm(): array
     {
@@ -84,7 +84,7 @@ class StoreMediaImportRequest extends FormRequest
     /**
      * Per-source rules and payload, keyed by the source value.
      *
-     * @return array<string, array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types?: list<MediaType>}>
+     * @return array<string, array{rules: Closure(): array<string, array<int, mixed>>, payload: Closure(): (RemoteFile|string), types: list<MediaType>}>
      */
     private function arms(): array
     {
@@ -141,6 +141,7 @@ class StoreMediaImportRequest extends FormRequest
                     (string) $this->validated('access_token'),
                     (array) $this->validated('file'),
                 ),
+                'types' => MediaType::cases(),
             ],
             Source::GooglePhotos->value => [
                 'rules' => fn (): array => [
@@ -158,6 +159,7 @@ class StoreMediaImportRequest extends FormRequest
                     ],
                 ],
                 'payload' => fn (): string => (string) $this->validated('session_id'),
+                'types' => MediaType::cases(),
             ],
         ];
     }

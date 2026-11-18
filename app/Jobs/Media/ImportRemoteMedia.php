@@ -46,15 +46,15 @@ class ImportRemoteMedia implements ShouldBeEncrypted, ShouldQueue
     public int $timeout;
 
     /**
-     * @param  list<MediaType>|null  $types  the media types the file may be, every type when null
+     * @param  list<MediaType>  $types  the media types the file may be
      */
     public function __construct(
         public string $importId,
         public string $workspaceId,
         public string $userId,
         public RemoteFile $file,
+        public array $types,
         public ?string $googlePhotosSession = null,
-        public ?array $types = null,
     ) {
         $this->onQueue(self::QUEUE);
         $this->timeout = self::timeoutSeconds();
@@ -123,7 +123,7 @@ class ImportRemoteMedia implements ShouldBeEncrypted, ShouldQueue
         $imported = $importer->import(
             $workspace,
             $file,
-            $this->types ?? MediaType::cases(),
+            $this->types,
             $this->timeout,
             now()->addSeconds(intdiv($this->timeout, 2)),
             followRedirects: true,
