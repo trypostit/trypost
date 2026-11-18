@@ -97,6 +97,8 @@ test('every token of a workspace draws on the same limit', function () {
 
     mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
 
+    auth()->forgetGuards();
+
     mcpRateLimitRequest($this, $secondToken, Method::Ping->value)->assertTooManyRequests();
 });
 
@@ -107,6 +109,8 @@ test('one workspace reaching its limit leaves another workspace alone', function
 
     mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
     mcpRateLimitRequest($this, $this->mcpToken, Method::Ping->value)->assertTooManyRequests();
+
+    auth()->forgetGuards();
 
     mcpRateLimitRequest($this, $otherToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace())->assertOk();
 });
