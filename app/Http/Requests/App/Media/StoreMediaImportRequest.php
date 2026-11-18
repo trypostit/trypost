@@ -42,7 +42,7 @@ class StoreMediaImportRequest extends FormRequest
         ];
     }
 
-    public function importSource(): Source
+    private function importSource(): Source
     {
         return Source::from((string) $this->validated('source'));
     }

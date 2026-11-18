@@ -122,7 +122,7 @@ const openGiphy = (): void => {
 };
 
 const mediaImport = useMediaImport();
-const onImportStarted = (started: MediaImportStarted): void =>
+const onImportStarted = (started: MediaImportStarted): Promise<void> =>
     mediaImport.track(uploader, started);
 const {
     uploading: editUploading,

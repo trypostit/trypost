@@ -1,6 +1,7 @@
 import { useHttp } from '@inertiajs/vue3';
+import { useConnectionStatus } from '@laravel/echo-vue';
 import { trans } from 'laravel-vue-i18n';
-import { getCurrentScope, onScopeDispose } from 'vue';
+import { getCurrentScope, onScopeDispose, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { useWorkspaceEcho } from '@/composables/echo/useWorkspaceEcho';
@@ -99,8 +100,9 @@ export const startMediaImport = async (
  * import failed. The job tells the workspace channel when an import
  * settled (`MediaImportSettled`), and only then is its status read; it is
  * also read once right after the tile appears, in case the job finished
- * before the composer heard of the import. Failures toast; successes are
- * shown by the tile they fill.
+ * before the composer heard of the import, and again whenever the socket
+ * connects anew, since an event sent while it was down never arrives.
+ * Failures toast; successes are shown by the tile they fill.
  */
 export const useMediaImport = () => {
     let disposed = false;
@@ -120,6 +122,14 @@ export const useMediaImport = () => {
     useWorkspaceEcho<MediaImportSettled>('.media.import.settled', (payload) =>
         wake(payload.import_id),
     );
+
+    watch(useConnectionStatus(), (status) => {
+        if (status !== 'connected') {
+            return;
+        }
+
+        [...waiting.keys()].forEach(wake);
+    });
 
     if (getCurrentScope()) {
         onScopeDispose(() => {
@@ -191,7 +201,7 @@ export const useMediaImport = () => {
     /**
      * Shows a started import as a pending tile of `uploader` and fills or
      * fails that tile when the import settles; a tile removed meanwhile
-     * stops waiting for it.
+     * stops waiting for it. Resolves once the tile settled.
      */
     const track = (
         uploader: Pick<
@@ -199,9 +209,10 @@ export const useMediaImport = () => {
             'addPending' | 'resolvePending' | 'imports'
         >,
         { importId, label, replaces = null }: MediaImportStarted,
-    ): void => {
+    ): Promise<void> => {
         uploader.addPending(importId, label, replaces);
-        void waitFor(
+
+        return waitFor(
             importId,
             (reason) => uploader.resolvePending(importId, null, reason),
             () =>

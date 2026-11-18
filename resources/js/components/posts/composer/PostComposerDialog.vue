@@ -702,20 +702,30 @@ watch(
     { immediate: true },
 );
 const replacingLinkCard = ref(false);
-/** Imports the link card's image into the card's post, which shows it loading. */
+/**
+ * Imports the link card's image into the card's post, which shows it
+ * loading under the link's site; the card's button waits until it landed.
+ */
 const replaceLinkCardWithMedia = async (group: NetworkGroup): Promise<void> => {
     if (!openLinkCard.value) return;
     const link = openLinkCard.value.uri;
+    const label = new URL(link).hostname;
     replacingLinkCard.value = true;
-    const importIds = await startMediaImport(
-        { url: link },
-        linkPreviewMedia.url(),
-    );
-    replacingLinkCard.value = false;
 
-    importIds.forEach((importId) =>
-        mediaImport.track(uploaderFor(group.key), { importId, label: link }),
-    );
+    try {
+        const importIds = await startMediaImport(
+            { url: link },
+            linkPreviewMedia.url(),
+        );
+
+        await Promise.all(
+            importIds.map((importId) =>
+                mediaImport.track(uploaderFor(group.key), { importId, label }),
+            ),
+        );
+    } finally {
+        replacingLinkCard.value = false;
+    }
 };
 const uploadScope = effectScope();
 const uploaders = shallowReactive(new Map<string, MediaUploader>());
@@ -822,12 +832,12 @@ const libraryUploader = (): MediaUploader => {
 };
 
 const mediaImport = useMediaImport();
-const onLibraryImportStarted = (started: MediaImportStarted): void =>
+const onLibraryImportStarted = (started: MediaImportStarted): Promise<void> =>
     mediaImport.track(libraryUploader(), started);
 const onImportStarted = (
     started: MediaImportStarted,
     groupKey: string | null,
-): void => mediaImport.track(uploaderFor(groupKey), started);
+): Promise<void> => mediaImport.track(uploaderFor(groupKey), started);
 watch(customizing, (isCustomizing) => {
     if (isCustomizing) return;
     uploaders.forEach((uploader, key) => {
@@ -1409,7 +1419,7 @@ const groupAcceptsMedia = (group: NetworkGroup): boolean => {
 const onGroupImportStarted = (
     started: MediaImportStarted,
     group: NetworkGroup,
-): void => mediaImport.track(groupMediaUploader(group), started);
+): Promise<void> => mediaImport.track(groupMediaUploader(group), started);
 const openGroupLibrary = (source: LibrarySource, group: NetworkGroup): void =>
     openLibrary(source, group.key, activeReply(group)?.key ?? null);
 const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
