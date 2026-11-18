@@ -220,7 +220,13 @@ test('an unsplash photo imports through the queue as a temporary upload and send
         $download => Http::response(['url' => 'https://example.test']),
     ]);
 
-    $status = startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    $status = test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE)
         ->assertJsonPath('media.type', MediaType::Image->value);
 
@@ -352,7 +358,13 @@ test('an allowed host that redirects is refused and nothing is tracked', functio
     ]);
     $this->mock(UnsplashService::class)->shouldReceive('trackDownload')->never();
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED)
         ->assertJsonPath('reason', ImportedFile::HOST_NOT_ALLOWED);
 
@@ -519,7 +531,13 @@ test('an unsplash body that is not an image fails the import whatever its conten
     Http::fake([unsplashImagesPattern() => Http::response('<html>not an image</html>', 200, ['Content-Type' => 'image/png'])]);
     $this->mock(UnsplashService::class)->shouldReceive('trackDownload')->never();
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED);
 
     expect(Media::query()->count())->toBe(0)
@@ -534,7 +552,13 @@ test('a gif body labelled jpeg is stored as a gif', function () {
         config('trypost.media_sources.unsplash.api').'/*' => Http::response([]),
     ]);
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('media.mime_type', 'image/gif');
 
     expect(Media::query()->sole())
@@ -549,7 +573,13 @@ test('an unsplash photo over the image cap is rejected and leaves no row or file
     ]);
     $this->mock(UnsplashService::class)->shouldReceive('trackDownload')->never();
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED)
         ->assertJsonPath('reason', ImportedFile::TOO_LARGE);
 
@@ -564,7 +594,13 @@ test('a failed tracking hit does not undo the pick', function () {
         config('trypost.media_sources.unsplash.api').'/*' => Http::failedConnection(),
     ]);
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick()))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE);
 
     expect(Media::query()->count())->toBe(1);
@@ -608,7 +644,13 @@ test('a photo without a photographer link keeps a null author link', function ()
         config('trypost.media_sources.unsplash.api').'/*' => Http::response([]),
     ]);
 
-    startedImportStatus(test()->actingAs($this->user)->postJson(route('app.media.imports.store'), unsplashPick(['author_url' => null])))
+    $importId = test()->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), unsplashPick(['author_url' => null]))
+        ->assertAccepted()
+        ->json('import_id');
+
+    test()->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE)
         ->assertJsonPath('media.meta.source_meta.author_url', null);
 });

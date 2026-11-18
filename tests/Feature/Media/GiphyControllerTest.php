@@ -176,7 +176,13 @@ test('a picked gif imports through the queue as a temporary upload with its giph
     $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     Http::fake(['media1.giphy.com/*' => Http::response($gif, 200, ['Content-Type' => 'image/gif'])]);
 
-    $status = startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick()))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), giphyPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    $status = $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE)
         ->assertJsonPath('media.type', MediaType::Image->value)
         ->assertJsonPath('media.mime_type', 'image/gif');
@@ -231,7 +237,13 @@ test('gif picks are refused while giphy is off or has no key', function (array $
 test('a file giphy serves that is not an image is refused and leaves nothing', function () {
     Http::fake(['media1.giphy.com/*' => Http::response('<html>not a gif</html>', 200, ['Content-Type' => 'text/html'])]);
 
-    startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick()))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), giphyPick())
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED);
 
     $this->assertDatabaseEmpty(Media::class);
@@ -240,7 +252,13 @@ test('a file giphy serves that is not an image is refused and leaves nothing', f
 test('a video giphy serves is refused, since a pick is a gif', function () {
     Http::fake(['media1.giphy.com/*' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4'])]);
 
-    startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick(['url' => 'https://media1.giphy.com/media/abc123/giphy.mp4'])))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), giphyPick(['url' => 'https://media1.giphy.com/media/abc123/giphy.mp4']))
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED)
         ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
 

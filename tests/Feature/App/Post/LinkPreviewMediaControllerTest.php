@@ -51,7 +51,13 @@ test('the card image is imported through the queue as a temporary upload', funct
     $image = file_get_contents($fake->getPathname());
     Http::fake(['https://93.184.216.34/card.jpg' => Http::response($image, 200, ['Content-Type' => 'image/jpeg'])]);
 
-    $status = startedImportStatus($this->actingAs($this->user)->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article']))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
+        ->assertAccepted()
+        ->json('import_id');
+
+    $status = $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE)
         ->assertJsonPath('media.type', MediaType::Image->value);
 
@@ -79,7 +85,13 @@ test('an image the importer refuses fails the import', function () {
     linkPreviewMediaCard('https://93.184.216.34/card.jpg');
     Http::fake(['https://93.184.216.34/card.jpg' => Http::response('not an image', 200, ['Content-Type' => 'text/html'])]);
 
-    startedImportStatus($this->actingAs($this->user)->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article']))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED);
 
     expect(Media::query()->count())->toBe(0);
@@ -89,7 +101,13 @@ test('a video behind the card is refused, since the card shows an image', functi
     linkPreviewMediaCard('https://93.184.216.34/card.mp4');
     Http::fake(['https://93.184.216.34/card.mp4' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4'])]);
 
-    startedImportStatus($this->actingAs($this->user)->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article']))
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::FAILED)
         ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
 

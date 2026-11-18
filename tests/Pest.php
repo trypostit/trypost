@@ -795,15 +795,6 @@ function parityApi(string $token): array
 }
 
 /**
- * The status of the first import a media import request started, read the
- * way the composer reads it, as the user signed in for the test.
- */
-function startedImportStatus(TestResponse $started): TestResponse
-{
-    return test()->getJson(route('app.media.imports.show', $started->assertAccepted()->json('import_id')))->assertOk();
-}
-
-/**
  * The structured content an MCP list tool returns for the same page as a paginated API list response.
  *
  * @return array<string, mixed>
