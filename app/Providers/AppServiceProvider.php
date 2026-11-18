@@ -75,6 +75,12 @@ use Symfony\Component\HttpFoundation\IpUtils;
 class AppServiceProvider extends ServiceProvider
 {
     /**
+     * What one workspace may send per minute to the REST API and, counted
+     * apart, to the MCP server. One number keeps the two surfaces in step.
+     */
+    private const int WORKSPACE_REQUESTS_PER_MINUTE = 60;
+
+    /**
      * Register any application services.
      */
     public function register(): void
@@ -185,7 +191,18 @@ class AppServiceProvider extends ServiceProvider
                 ? "workspace:{$workspaceId}"
                 : "user:{$user->id}";
 
-            return Limit::perMinute(60)->by($key);
+            return Limit::perMinute(self::WORKSPACE_REQUESTS_PER_MINUTE)->by($key);
+        });
+
+        RateLimiter::for('mcp', function (Request $request): Limit {
+            $user = $request->user();
+
+            // ChatGPT reading the tool list before sign-in has no token, so no workspace to count against.
+            if ($user === null || $this->app->environment('local')) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(self::WORKSPACE_REQUESTS_PER_MINUTE)->by("workspace:{$user->current_workspace_id}");
         });
 
         RateLimiter::for(

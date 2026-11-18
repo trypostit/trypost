@@ -17,6 +17,8 @@ use App\Models\Webhook;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 beforeEach(function () {
@@ -87,4 +89,15 @@ test('a bad label color is rejected by the api, the web and mcp with the same me
 
     TryPostServer::actingAs($this->user)->tool(CreateLabelTool::class, $payload)
         ->assertHasErrors([$api->json('errors.color.0')]);
+});
+
+test('the api and mcp allow a workspace the same requests per minute', function () {
+    $request = Request::create('/');
+    $request->setUserResolver(fn () => $this->user);
+
+    $api = RateLimiter::limiter('api')($request);
+    $mcp = RateLimiter::limiter('mcp')($request);
+
+    expect($mcp->maxAttempts)->toBe($api->maxAttempts)
+        ->and($mcp->decaySeconds)->toBe($api->decaySeconds);
 });
