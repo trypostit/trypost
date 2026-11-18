@@ -203,10 +203,10 @@ return [
     'media_sources' => [
         'giphy' => [
             'enabled' => (bool) env('GIPHY_ENABLED', true),
-            'api' => $url('GIPHY_API_URL', 'https://api.giphy.com/v1'),
-            'website' => $url('GIPHY_WEBSITE_URL', 'https://giphy.com'),
-            'download_hosts' => env('GIPHY_DOWNLOAD_HOSTS', '*.giphy.com'),
-            'rating' => env('GIPHY_RATING', 'g'),
+            'api' => 'https://api.giphy.com/v1',
+            'website' => 'https://giphy.com',
+            'download_hosts' => '*.giphy.com',
+            'rating' => 'g',
             'requests_per_user_per_minute' => (int) env('GIPHY_REQUESTS_PER_MINUTE', 30),
         ],
         'unsplash' => [
