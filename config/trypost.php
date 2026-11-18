@@ -207,7 +207,7 @@ return [
             'website' => 'https://giphy.com',
             'download_hosts' => '*.giphy.com',
             'rating' => 'g',
-            'requests_per_user_per_minute' => (int) env('GIPHY_REQUESTS_PER_MINUTE', 30),
+            'requests_per_user_per_minute' => 30,
         ],
         'unsplash' => [
             'api' => $url('UNSPLASH_API_URL', 'https://api.unsplash.com'),
