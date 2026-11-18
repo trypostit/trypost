@@ -81,7 +81,8 @@ class GiphyService
                 return null;
             }
 
-            $next = $offset + (int) data_get($data, 'pagination.count', 0);
+            $count = (int) data_get($data, 'pagination.count', 0);
+            $next = $offset + $count;
 
             return [
                 'results' => collect(data_get($data, 'data', []))
@@ -89,9 +90,22 @@ class GiphyService
                     ->map(fn (array $gif): array => $this->formatGif($gif))
                     ->values()
                     ->all(),
-                'has_more' => $next < (int) data_get($data, 'pagination.total_count', 0) && $next <= self::MAX_OFFSET,
+                'has_more' => $this->hasMore($count, $next, (int) data_get($data, 'pagination.total_count', 0)),
             ];
         });
+    }
+
+    /**
+     * Whether another page follows. GIPHY's `total_count` runs ahead of what a
+     * search can reach, so an empty page ends the list whatever it says.
+     */
+    private function hasMore(int $count, int $next, int $total): bool
+    {
+        if ($count === 0 || $next > self::MAX_OFFSET) {
+            return false;
+        }
+
+        return $next < $total;
     }
 
     /**
@@ -159,23 +173,7 @@ class GiphyService
             'width' => (int) data_get($gif, 'images.fixed_width.width'),
             'height' => (int) data_get($gif, 'images.fixed_width.height'),
             'giphy_url' => data_get($gif, 'url'),
-            'author' => $this->author($gif),
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $gif
-     * @return array{name: string, url: ?string}|null
-     */
-    private function author(array $gif): ?array
-    {
-        $name = data_get($gif, 'user.display_name');
-
-        if (blank($name)) {
-            return null;
-        }
-
-        return ['name' => (string) $name, 'url' => data_get($gif, 'user.profile_url')];
     }
 
     private function perPage(): int

@@ -47,7 +47,6 @@ function giphyApiGif(string $id, array $overrides = []): array
         'id' => $id,
         'title' => "Dancing {$id} GIF",
         'url' => "https://giphy.com/gifs/dancing-{$id}",
-        'user' => ['display_name' => 'Ana Animator', 'profile_url' => 'https://giphy.com/ana/'],
         'images' => [
             'fixed_width' => ['url' => "https://media1.giphy.com/media/{$id}/200w.gif", 'width' => '200', 'height' => '150'],
             'downsized_medium' => ['url' => "https://media1.giphy.com/media/{$id}/giphy.gif", 'size' => '1048576'],
@@ -99,7 +98,6 @@ test('trending gifs come back in the picker shape, with a next page while giphy 
             'width' => 200,
             'height' => 150,
             'giphy_url' => 'https://giphy.com/gifs/dancing-one',
-            'author' => ['name' => 'Ana Animator', 'url' => 'https://giphy.com/ana/'],
         ]);
 
     Http::assertSent(fn ($request) => $request['api_key'] === 'giphy-key'
@@ -120,9 +118,9 @@ test('a search asks giphy for the page offset and stops when there is no more', 
     Http::assertSent(fn ($request) => $request['q'] === 'happy dance' && (int) $request['offset'] === $perPage);
 });
 
-test('a gif without a rendition to import, or without an author, is handled', function () {
+test('a gif without a rendition to import is left out', function () {
     Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([
-        giphyApiGif('kept', ['user' => null]),
+        giphyApiGif('kept'),
         giphyApiGif('dropped', ['images' => ['fixed_width' => ['url' => 'https://media1.giphy.com/x/200w.gif']]]),
     ], 2))]);
 
@@ -130,8 +128,7 @@ test('a gif without a rendition to import, or without an author, is handled', fu
         ->getJson(route('app.media.giphy.trending'))
         ->assertOk()
         ->assertJsonCount(1, 'results')
-        ->assertJsonPath('results.0.id', 'kept')
-        ->assertJsonPath('results.0.author', null);
+        ->assertJsonPath('results.0.id', 'kept');
 });
 
 test('giphy being down answers 503 with a message, and is not cached', function () {
@@ -276,4 +273,13 @@ test('the last page giphy can serve has no next one, whatever its total says', f
         ->getJson(route('app.media.giphy.trending', ['page' => $lastPage - 1]))
         ->assertOk()
         ->assertJsonPath('has_more', true);
+});
+
+test('an empty page ends the list, even when giphy counts more results', function () {
+    Http::fake(['api.giphy.com/*' => Http::response(giphyApiPage([], 5000, 25))]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.media.giphy.search', ['query' => 'rare', 'page' => 2]))
+        ->assertOk()
+        ->assertExactJson(['results' => [], 'has_more' => false]);
 });
