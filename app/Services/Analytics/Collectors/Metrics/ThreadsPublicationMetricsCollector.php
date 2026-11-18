@@ -66,8 +66,8 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
     }
 
     /**
-     * A poll whose stored result is not closed yet: a Threads poll is closed
-     * once a read came after its end, so its result can no longer change.
+     * A poll whose stored result can still change: not closed by a read after
+     * its end, and with no stored end already past.
      */
     private function pollMayChange(AnalyticsPublication $publication): bool
     {
@@ -75,6 +75,14 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
             return false;
         }
 
-        return data_get($publication->provider_metadata, 'poll.voting_status') !== PollVotingStatus::Closed->value;
+        $poll = data_get($publication->provider_metadata, 'poll');
+
+        if (data_get($poll, 'voting_status') === PollVotingStatus::Closed->value) {
+            return false;
+        }
+
+        $endsAt = data_get($poll, 'end_datetime');
+
+        return blank($endsAt) || ! CarbonImmutable::parse($endsAt)->isPast();
     }
 }

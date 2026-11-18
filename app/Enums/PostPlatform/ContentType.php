@@ -101,7 +101,14 @@ enum ContentType: string
             self::XPoll => XPoll::class,
             self::MastodonPoll => MastodonPoll::class,
             self::ThreadsPoll => ThreadsPoll::class,
-            default => null,
+            self::InstagramFeed, self::InstagramReel, self::InstagramStory,
+            self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment,
+            self::FacebookPost, self::FacebookReel, self::FacebookStory,
+            self::TikTokVideo, self::TikTokPhoto, self::YouTubeShort, self::XPost,
+            self::ThreadsPost, self::ThreadsGhostPost,
+            self::PinterestPin, self::PinterestVideoPin, self::PinterestCarousel,
+            self::BlueskyPost, self::MastodonPost, self::TelegramPost, self::DiscordMessage,
+            self::GoogleBusinessPost => null,
         };
     }
 

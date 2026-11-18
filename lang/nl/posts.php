@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Stemmen gesloten',
         'ends' => 'Eindigt :time',
         'thread_post' => 'Bericht :number van de thread',
+        'hidden' => 'Stemmen verborgen tot de poll afloopt',
     ],
 
     'publish' => [

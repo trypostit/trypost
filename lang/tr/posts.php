@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Oylama sona erdi',
         'ends' => 'Bitiş: :time',
         'thread_post' => 'Zincirin :number. gönderisi',
+        'hidden' => 'Oylar anket bitene kadar gizli',
     ],
 
     'publish' => [

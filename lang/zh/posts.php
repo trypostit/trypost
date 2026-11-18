@@ -1010,6 +1010,7 @@ return [
         'ended' => '投票已结束',
         'ends' => ':time结束',
         'thread_post' => '帖子串中的第 :number 条',
+        'hidden' => '投票结束前结果隐藏',
     ],
 
     'publish' => [

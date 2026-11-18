@@ -426,9 +426,9 @@ test('the meta documentation names every youtube category', function () {
 });
 
 test('youtube title format is checked regardless of publishing', function () {
-    expect(PostPlatformMetaRules::formatViolation(Platform::YouTube, ['title' => '<x>']))->toBe(['title', __('posts.form.youtube.title_invalid')])
-        ->and(PostPlatformMetaRules::formatViolation(Platform::Pinterest, ['title' => '<x>']))->toBeNull()
-        ->and(PostPlatformMetaRules::formatViolation(Platform::YouTube, ['title' => 'ok']))->toBeNull();
+    expect(PostPlatformMetaRules::formatErrors(Platform::YouTube, ['title' => '<x>']))->toBe(['title' => __('posts.form.youtube.title_invalid')])
+        ->and(PostPlatformMetaRules::formatErrors(Platform::Pinterest, ['title' => '<x>']))->toBe([])
+        ->and(PostPlatformMetaRules::formatErrors(Platform::YouTube, ['title' => 'ok']))->toBe([]);
 });
 
 test('a mastodon content warning counts toward the post limit', function () {

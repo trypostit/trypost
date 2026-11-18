@@ -65,11 +65,13 @@ final class MastodonPoll extends Poll
     }
 
     /**
-     * A status's `poll` reduced to what is stored. A total Mastodon hides
-     * until the poll ends reads as no votes.
+     * A status's `poll` reduced to what is stored. A multiple choice poll
+     * keeps how many people voted (`voters`), which its shares are worked out
+     * of, as Mastodon does; a poll whose totals Mastodon hides until it ends
+     * is marked `totals_hidden`, its votes reading as none.
      *
      * @param  array<string, mixed>  $poll
-     * @return array{options: list<array{label: string, votes: int}>, voting_status: ?string, end_datetime: ?string, duration_minutes: null, multiple: bool}
+     * @return array{options: list<array{label: string, votes: int}>, voting_status: ?string, end_datetime: ?string, duration_minutes: null, multiple: bool, voters: ?int, totals_hidden: bool}
      */
     public static function result(array $poll): array
     {
@@ -87,6 +89,8 @@ final class MastodonPoll extends Poll
             'end_datetime' => data_get($poll, 'expires_at'),
             'duration_minutes' => null,
             'multiple' => data_get($poll, 'multiple') === true,
+            'voters' => transform(data_get($poll, 'voters_count'), fn (mixed $voters): int => (int) $voters),
+            'totals_hidden' => collect(data_get($poll, 'options'))->contains(fn (mixed $option): bool => blank(data_get($option, 'votes_count'))),
         ];
     }
 

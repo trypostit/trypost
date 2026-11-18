@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Votação encerrada',
         'ends' => 'Termina :time',
         'thread_post' => 'Post :number da sequência',
+        'hidden' => 'Votos ocultos até a enquete terminar',
     ],
 
     'publish' => [

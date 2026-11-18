@@ -1011,6 +1011,7 @@ return [
         'ended' => 'Votación cerrada',
         'ends' => 'Termina :time',
         'thread_post' => 'Publicación :number del hilo',
+        'hidden' => 'Votos ocultos hasta que termine la encuesta',
     ],
 
     'publish' => [

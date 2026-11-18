@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Abstimmung beendet',
         'ends' => 'Endet :time',
         'thread_post' => 'Beitrag :number im Thread',
+        'hidden' => 'Stimmen bis zum Ende der Umfrage verborgen',
     ],
 
     'publish' => [

@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Voting ended',
         'ends' => 'Ends :time',
         'thread_post' => 'Post :number of the thread',
+        'hidden' => 'Votes hidden until the poll ends',
     ],
 
     'publish' => [

@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Vote terminé',
         'ends' => 'Se termine :time',
         'thread_post' => 'Publication :number du fil',
+        'hidden' => 'Votes masqués jusqu’à la fin du sondage',
     ],
 
     'publish' => [

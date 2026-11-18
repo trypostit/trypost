@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Voting berakhir',
         'ends' => 'Berakhir :time',
         'thread_post' => 'Postingan ke-:number di thread',
+        'hidden' => 'Suara disembunyikan hingga polling berakhir',
     ],
 
     'publish' => [

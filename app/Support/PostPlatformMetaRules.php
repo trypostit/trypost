@@ -394,23 +394,6 @@ class PostPlatformMetaRules
     }
 
     /**
-     * A meta value no post may store, even as a draft: a YouTube title with
-     * < or >.
-     *
-     * @return array{0: string, 1: string}|null [field, message]
-     */
-    public static function formatViolation(?Platform $platform, mixed $meta, ContentType|string|null $contentType = null): ?array
-    {
-        $errors = collect(self::formatErrors($platform, $meta, ContentType::resolve($contentType)));
-
-        if ($errors->isEmpty()) {
-            return null;
-        }
-
-        return [$errors->keys()->first(), $errors->first()];
-    }
-
-    /**
      * Every meta value no post may store, even as a draft, keyed by field: a
      * YouTube title with < or >, and on a poll (the post's or a reply's)
      * repeated choices, a choice or a length beyond what the network takes.
@@ -452,7 +435,7 @@ class PostPlatformMetaRules
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();
 
         return match (true) {
-            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? self::formatViolation($platform, $meta),
+            $platform === Platform::YouTube => self::youtubeDescriptionViolation($meta) ?? YouTubeMetadata::violation($meta),
             $platform === Platform::TikTok => self::tiktokPrivacyViolation($meta),
             $type === ContentType::InstagramReel => self::instagramReelViolation($platform, $meta),
             $type?->isPoll() === true => $type->poll()::firstViolation($meta),

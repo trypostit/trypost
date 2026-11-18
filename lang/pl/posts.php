@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Głosowanie zakończone',
         'ends' => 'Kończy się :time',
         'thread_post' => 'Post :number w wątku',
+        'hidden' => 'Głosy ukryte do końca ankiety',
     ],
 
     'publish' => [

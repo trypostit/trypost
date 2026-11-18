@@ -537,6 +537,8 @@ test('mastodon discovery keeps the poll of a status made on mastodon', function 
             'end_datetime' => $endsAt,
             'duration_minutes' => null,
             'multiple' => false,
+            'voters' => null,
+            'totals_hidden' => false,
         ])
         ->and($page->publications[1]->contentType)->toBe(PublicationContentType::Text)
         ->and($page->publications[1]->providerMetadata)->not->toHaveKey('poll');

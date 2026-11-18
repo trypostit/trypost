@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 import date from '@/date';
-import { transform } from '@/lib/helpers';
+import { filled, transform } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type { PublicationPoll } from '@/types/analytics';
 
@@ -30,13 +30,28 @@ const topVotes = computed((): number => Math.max(...votes.value));
 
 const hasVotes = computed((): boolean => totalVotes.value > 0);
 
+/** Whether the network hides the votes until the poll ends (Mastodon). */
+const totalsHidden = computed((): boolean => props.poll.totals_hidden === true);
+
+/**
+ * What each share is of: the people who voted on a multiple choice poll
+ * (Mastodon counts each voter once, whatever they picked), else the votes.
+ */
+const shareBase = computed((): number => {
+    if (filled(props.poll.voters)) {
+        return props.poll.voters;
+    }
+
+    return totalVotes.value;
+});
+
 /** A choice's percentage of the votes; none before the first vote. */
 const percentOf = (count: number): number => {
-    if (!hasVotes.value) {
+    if (!hasVotes.value || shareBase.value === 0) {
         return 0;
     }
 
-    return (count / totalVotes.value) * 100;
+    return (count / shareBase.value) * 100;
 };
 
 /** The choice with the most votes leads, ties included; none before the first vote. */
@@ -102,6 +117,7 @@ const status = computed((): PollStatus | null => {
             />
             <span class="relative min-w-0 truncate">{{ row.label }}</span>
             <span
+                v-if="!totalsHidden"
                 class="relative shrink-0 tabular-nums"
                 :data-testid="`${testId}-option-${index}-votes`"
             >
@@ -119,11 +135,14 @@ const status = computed((): PollStatus | null => {
             class="text-xs text-muted-foreground"
             :data-testid="`${testId}-summary`"
         >
-            {{
+            <template v-if="totalsHidden">{{
+                $t('posts.poll_results.hidden')
+            }}</template>
+            <template v-else>{{
                 $tChoice('posts.poll_results.votes', totalVotes, {
                     count: formatFullNumber(totalVotes),
                 })
-            }}
+            }}</template>
             <template v-if="status"
                 >· {{ $t(status.key, status.replacements) }}</template
             >

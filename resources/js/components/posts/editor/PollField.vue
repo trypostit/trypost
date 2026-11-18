@@ -175,6 +175,24 @@ const choiceLabelKey = (index: number): string => {
     return 'posts.form.poll.choice_optional';
 };
 
+/** A choice past the ones every poll needs can be removed. */
+const isOptionalChoice = (index: number): boolean =>
+    index >= props.limits.minOptions;
+
+/** Another choice fits until the network's most. */
+const canAddChoice = computed(
+    (): boolean => options.value.length < props.limits.maxOptions,
+);
+
+/** A choice the server refused is marked invalid for assistive tech; none otherwise. */
+const choiceInvalid = (index: number): true | undefined => {
+    if (!filled(choiceErrors[index]?.value)) {
+        return undefined;
+    }
+
+    return true;
+};
+
 /** A choice's counter turns red once it runs over the network's limit. */
 const choiceCountClass = (option: string): string => {
     if (pollChoiceLength(option) > props.limits.optionMaxLength) {
@@ -213,7 +231,9 @@ const setChoice = async (
 };
 
 const addChoice = async (): Promise<void> => {
-    if (options.value.length >= props.limits.maxOptions) return;
+    if (!canAddChoice.value) {
+        return;
+    }
 
     const added = options.value.length;
     update({ options: [...options.value, ''] });
@@ -264,9 +284,7 @@ const removePoll = (): void => {
                         :placeholder="
                             $t(choiceLabelKey(index), choiceNumber(index))
                         "
-                        :aria-invalid="
-                            choiceErrors[index]?.value ? true : undefined
-                        "
+                        :aria-invalid="choiceInvalid(index)"
                         :disabled="disabled"
                         :data-testid="`${testIdPrefix}-choice-${index}`"
                         @update:model-value="setChoice(index, $event)"
@@ -279,7 +297,7 @@ const removePoll = (): void => {
                         {{ limits.optionMaxLength }}</span
                     >
                     <Button
-                        v-if="index >= limits.minOptions"
+                        v-if="isOptionalChoice(index)"
                         type="button"
                         variant="ghost"
                         size="icon-sm"
@@ -308,7 +326,7 @@ const removePoll = (): void => {
                 :data-testid="`${testIdPrefix}-options-error`"
             />
             <Button
-                v-if="options.length < limits.maxOptions"
+                v-if="canAddChoice"
                 type="button"
                 variant="outline"
                 size="sm"

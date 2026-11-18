@@ -282,6 +282,10 @@ export const useComposerPoll = (
             return false;
         }
 
+        if (!isReplyPollPlatform(group.platform)) {
+            return false;
+        }
+
         return filled(groupPollLimits(group));
     };
 

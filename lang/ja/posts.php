@@ -1010,6 +1010,7 @@ return [
         'ended' => '投票は終了しました',
         'ends' => '終了:time',
         'thread_post' => 'スレッドの投稿 :number',
+        'hidden' => '投票が終わるまで結果は非表示',
     ],
 
     'publish' => [

@@ -669,6 +669,8 @@ test('mastodon keeps the poll result from the status it already reads', function
         'end_datetime' => $endsAt,
         'duration_minutes' => null,
         'multiple' => true,
+        'voters' => null,
+        'totals_hidden' => blank($hiddenVotes),
     ]]);
     Http::assertSentCount(1);
 })->with([
@@ -1797,6 +1799,8 @@ test('the mastodon collector reads the polls of the thread replies in the same r
             'end_datetime' => $endsAt,
             'duration_minutes' => null,
             'multiple' => false,
+            'voters' => null,
+            'totals_hidden' => false,
         ]]);
     expect(collect($observation->metrics)->mapWithKeys(fn ($metric) => [$metric->key->value => $metric->value])->all())
         ->toMatchArray(['reactions' => 3, 'comments' => 1, 'shares' => 2]);

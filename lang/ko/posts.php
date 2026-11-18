@@ -1010,6 +1010,7 @@ return [
         'ended' => '투표 종료',
         'ends' => '종료 :time',
         'thread_post' => '스레드의 게시물 :number',
+        'hidden' => '투표가 끝날 때까지 결과는 숨겨져요',
     ],
 
     'publish' => [

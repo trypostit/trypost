@@ -1010,6 +1010,7 @@ return [
         'ended' => 'Votazione chiusa',
         'ends' => 'Termina :time',
         'thread_post' => 'Post :number del thread',
+        'hidden' => 'Voti nascosti fino alla fine del sondaggio',
     ],
 
     'publish' => [
