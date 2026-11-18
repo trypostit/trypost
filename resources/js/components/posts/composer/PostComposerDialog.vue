@@ -1420,8 +1420,18 @@ const onGroupImportStarted = (
     started: MediaImportStarted,
     group: NetworkGroup,
 ): Promise<void> => mediaImport.track(groupMediaUploader(group), started);
-const openGroupLibrary = (source: LibrarySource, group: NetworkGroup): void =>
-    openLibrary(source, group.key, activeReply(group)?.key ?? null);
+/** Opens a library for a network card, or for the thread reply being edited on it. */
+const openGroupLibrary = (source: LibrarySource, group: NetworkGroup): void => {
+    const reply = activeReply(group);
+
+    if (filled(reply)) {
+        openLibrary(source, group.key, reply.key);
+
+        return;
+    }
+
+    openLibrary(source, group.key);
+};
 const onGroupMediaDropped = (event: DragEvent, group: NetworkGroup): void => {
     if (!activeReply(group)) {
         onMediaDropped(event, group.key);

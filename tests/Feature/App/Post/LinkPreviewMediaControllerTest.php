@@ -93,7 +93,7 @@ test('a video behind the card is refused, since the card shows an image', functi
         ->assertJsonPath('status', MediaImportStatus::FAILED)
         ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
 
-    expect(Media::query()->count())->toBe(0);
+    $this->assertDatabaseEmpty(Media::class);
 });
 
 test('the url is required and guests are refused', function () {

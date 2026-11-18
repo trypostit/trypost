@@ -83,11 +83,6 @@ function giphyApi(string $path): string
     return config('trypost.media_sources.giphy.api').$path;
 }
 
-function giphyAnimatedBytes(): string
-{
-    return base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-}
-
 test('trending gifs come back in the picker shape, with a next page while giphy has more', function () {
     Http::fake([giphyApi('/gifs/trending*') => Http::response(giphyApiPage([giphyApiGif('one'), giphyApiGif('two')], 100))]);
 
@@ -178,7 +173,7 @@ test('while giphy is off or has no key the picker gets nothing and giphy is neve
 ]);
 
 test('a picked gif imports through the queue as a temporary upload with its giphy attribution', function () {
-    $gif = giphyAnimatedBytes();
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     Http::fake(['media1.giphy.com/*' => Http::response($gif, 200, ['Content-Type' => 'image/gif'])]);
 
     $status = startedImportStatus($this->actingAs($this->user)->postJson(route('app.media.imports.store'), giphyPick()))

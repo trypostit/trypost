@@ -528,7 +528,7 @@ test('an unsplash body that is not an image fails the import whatever its conten
 
 test('a gif body labelled jpeg is stored as a gif', function () {
     config()->set('services.unsplash.access_key', 'unsplash-key');
-    $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     Http::fake([
         unsplashImagesPattern() => Http::response($gif, 200, ['Content-Type' => 'image/jpeg']),
         config('trypost.media_sources.unsplash.api').'/*' => Http::response([]),

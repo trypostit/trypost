@@ -226,7 +226,7 @@ test('linkedin publisher can publish post with image', function () {
 });
 
 test('linkedin publisher uploads an animated gif as it is, without re-encoding it', function () {
-    $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     $this->post->update([
         'media' => [[
             'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/medias/loop.gif',
@@ -259,7 +259,7 @@ test('linkedin publisher uploads an animated gif as it is, without re-encoding i
 });
 
 test('linkedin publisher sends an animated gif in a multi-image post next to a re-encoded jpeg', function () {
-    $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     $this->post->update([
         'media' => [
             ['id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/medias/loop.gif', 'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif'],
@@ -293,7 +293,7 @@ test('linkedin publisher sends an animated gif in a multi-image post next to a r
 
     expect($uploaded)->toBe([$gif, 'jpeg-bytes']);
     Http::assertSent(fn (Request $request) => $request->url() === "{$api}/rest/posts"
-        && count(data_get($request->data(), 'content.multiImage.images', [])) === 2);
+        && data_get($request->data(), 'content.multiImage.images.*.id') === ['urn:li:image:img1', 'urn:li:image:img2']);
 });
 
 test('linkedin publisher sends the real alt text on a single image post', function () {

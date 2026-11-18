@@ -292,7 +292,7 @@ function enableOnlyGiphyForMediaSources(int $apiStatus = 200): void
     ]);
 
     $api = config('trypost.media_sources.giphy.api');
-    $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
     $trendingPage = fn (string $id, int $offset): array => ['data' => [giphyBrowserGif($id)], 'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $offset]];
 
     if ($apiStatus !== 200) {
@@ -367,6 +367,41 @@ test('a picked gif loads on the post until the socket says its import settled, w
     $page->assertMissing('@composer-import-item')
         ->assertNoJavaScriptErrors();
     expect(Media::query()->sole()->mime_type)->toBe('image/gif');
+});
+
+test('an import that settled while the socket was down lands once the socket connects again', function () {
+    enableOnlyGiphyForMediaSources();
+    Queue::fake([ImportRemoteMedia::class]);
+
+    $page = openComposerForMediaSources($this);
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-gif-0');
+    $page->click('@giphy-gif-0');
+    waitFor($page, '@composer-import-item');
+
+    app()->call([Queue::pushed(ImportRemoteMedia::class)->sole(), 'handle']);
+    reconnectPageSocket($page);
+    waitFor($page, '@composer-media-item');
+
+    $page->assertMissing('@composer-import-item')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a gif whose import cannot start says why and keeps the dialog open', function () {
+    enableOnlyGiphyForMediaSources();
+
+    $page = openComposerForMediaSources($this);
+    chooseComposerMediaSource($page, 'composer-base', 'giphy');
+    waitFor($page, '@giphy-gif-0');
+
+    config()->set('trypost.media_sources.giphy.enabled', false);
+    $page->click('@giphy-gif-0');
+    waitForText($page, '[data-sonner-toast]', __('validation.in', ['attribute' => 'source']));
+
+    $page->assertPresent('@giphy-dialog')
+        ->assertMissing('@composer-import-item')
+        ->assertMissing('@composer-media-item')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a gif picked while a thread reply is edited lands on that reply, not on the post', function () {

@@ -75,17 +75,19 @@ class StartMediaImport
             GooglePhotosPicker::trackImports($user->id, $sessionId, count($downloads));
         }
 
-        return array_map(function (RemoteFile|string $file) use ($user, $workspace, $sessionId, $types): string {
-            $importId = self::pending($user, $workspace);
+        return collect($files)
+            ->map(function (RemoteFile|string $file) use ($user, $workspace, $sessionId, $types): string {
+                $importId = self::pending($user, $workspace);
 
-            if (is_string($file)) {
-                MediaImportStatus::fail($importId, $file);
-            } else {
-                ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $file, $types, $sessionId);
-            }
+                if (is_string($file)) {
+                    MediaImportStatus::fail($importId, $file);
+                } else {
+                    ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $file, $types, $sessionId);
+                }
 
-            return $importId;
-        }, $files);
+                return $importId;
+            })
+            ->all();
     }
 
     private static function pending(User $user, Workspace $workspace): string

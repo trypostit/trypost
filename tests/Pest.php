@@ -1170,6 +1170,19 @@ function broadcastToPage(mixed $page, string $channel, string $event, array $pay
 }
 
 /**
+ * Plays the page's socket dropping and connecting again, as Echo reports a
+ * reconnection to `useConnectionStatus()` listeners. Each change is its own
+ * script, so the page sees the drop before the reconnection.
+ */
+function reconnectPageSocket(mixed $page): void
+{
+    foreach (['disconnected', 'connected'] as $state) {
+        $page->script("const connection = window.Echo.connector.pusher.connection; connection.state = '{$state}'; connection.emit('state_change', { current: '{$state}' });");
+        waitForCondition($page, "window.Echo.connectionStatus() === '{$state}'");
+    }
+}
+
+/**
  * Tells the page that the user's browser storage changed in another tab, as
  * the browser does with a `storage` event: seed the change with
  * `setBrowserStorageItem()` first.
