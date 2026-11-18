@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Enums\Media\Source;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -35,6 +34,13 @@ class GiphyService
         $this->apiKey = (string) config('services.giphy.api_key', '');
     }
 
+    /** GIPHY needs its flag on and an API key. */
+    public static function isEnabled(): bool
+    {
+        return (bool) config('trypost.media_sources.giphy.enabled')
+            && filled(config('services.giphy.api_key'));
+    }
+
     /**
      * Null when GIPHY could not answer (unreachable, rate limited, rejected).
      *
@@ -63,7 +69,7 @@ class GiphyService
      */
     private function page(string $key, string $path, array $query, int $page): ?array
     {
-        if (! Source::Giphy->isEnabled()) {
+        if (! self::isEnabled()) {
             return ['results' => [], 'has_more' => false];
         }
 

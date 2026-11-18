@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enums\Media;
 
+use App\Services\GiphyService;
+
 /**
  * Origin of a media attachment on a post. `null`/absent means "uploaded by
  * the user". The picker sources are the ones offered in the composer's media
@@ -28,7 +30,7 @@ enum Source: string
     {
         return match ($this) {
             self::Unsplash => filled(config('services.unsplash.access_key')),
-            self::Giphy => self::giphyConfigured(),
+            self::Giphy => GiphyService::isEnabled(),
             self::GoogleDrive => (bool) config('trypost.media_sources.google_drive.enabled')
                 && self::googleOAuthConfigured()
                 && filled(config('services.google_media.api_key'))
@@ -40,13 +42,6 @@ enum Source: string
                 && filled(config('services.canva.client_secret')),
             self::Ai => false,
         };
-    }
-
-    /** GIPHY needs its flag on and an API key. */
-    private static function giphyConfigured(): bool
-    {
-        return (bool) config('trypost.media_sources.giphy.enabled')
-            && filled(config('services.giphy.api_key'));
     }
 
     /**
