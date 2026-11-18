@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\Services\GiphyService;
 use App\Services\UnsplashService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -91,7 +92,7 @@ test('giphy calls the configured api host with its key and safe rating', functio
 
     (new GiphyService)->search('cats');
 
-    Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://giphy.example.test/v1/gifs/search')
+    Http::assertSent(fn ($request) => Str::is('https://giphy.example.test/v1/gifs/search*', $request->url())
         && $request['api_key'] === 'key'
         && $request['q'] === 'cats'
         && $request['rating'] === 'g');

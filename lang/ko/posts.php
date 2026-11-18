@@ -59,7 +59,6 @@ return [
             'empty' => 'GIF를 찾을 수 없습니다. 다른 검색어를 입력해 보세요.',
             'load_more' => '더 불러오기',
             'error' => '지금은 GIPHY를 사용할 수 없습니다. 몇 분 후에 다시 시도해 주세요.',
-            'powered_by' => 'GIPHY 제공',
         ],
         'unsplash' => [
             'title' => 'Unsplash',

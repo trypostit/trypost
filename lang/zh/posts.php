@@ -59,7 +59,6 @@ return [
             'empty' => '未找到 GIF，请换个关键词试试。',
             'load_more' => '加载更多',
             'error' => 'GIPHY 当前不可用，请几分钟后重试。',
-            'powered_by' => '由 GIPHY 提供',
         ],
         'unsplash' => [
             'title' => 'Unsplash',

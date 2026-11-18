@@ -291,7 +291,7 @@ function enableOnlyGiphyForMediaSources(int $apiStatus = 200): void
 
     $api = config('trypost.media_sources.giphy.api');
     $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-    $page = fn (string $id, int $offset): array => ['data' => [giphyBrowserGif($id)], 'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $offset]];
+    $trendingPage = fn (string $id, int $offset): array => ['data' => [giphyBrowserGif($id)], 'pagination' => ['total_count' => 2, 'count' => 1, 'offset' => $offset]];
 
     if ($apiStatus !== 200) {
         Http::fake([
@@ -305,12 +305,12 @@ function enableOnlyGiphyForMediaSources(int $apiStatus = 200): void
     Http::fake([
         'media1.giphy.com/*' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
         "{$api}/gifs/search*" => Http::response(['data' => [giphyBrowserGif('happy')], 'pagination' => ['total_count' => 1, 'count' => 1, 'offset' => 0]]),
-        "{$api}/gifs/trending*" => function (Request $request) use ($page) {
+        "{$api}/gifs/trending*" => function (Request $request) use ($trendingPage) {
             if ((int) Uri::of($request->url())->query()->get('offset', 0) === 0) {
-                return Http::response($page('party', 0));
+                return Http::response($trendingPage('party', 0));
             }
 
-            return Http::response($page('cheers', 1));
+            return Http::response($trendingPage('cheers', 1));
         },
         '*' => Http::response('', 404),
     ]);
@@ -325,8 +325,7 @@ test('picking a gif from giphy adds a tile and keeps where it came from', functi
     waitFor($page, '@giphy-dialog');
     waitFor($page, '@giphy-gif-0');
 
-    $page->assertSeeIn('@giphy-attribution', __('posts.composer.giphy.powered_by'))
-        ->assertAttribute('@giphy-gif-0', 'aria-label', 'Dancing party GIF');
+    $page->assertAttribute('@giphy-gif-0', 'aria-label', 'Dancing party GIF');
 
     $page->click('@giphy-gif-0');
     waitFor($page, '@composer-media-item');

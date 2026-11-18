@@ -28,14 +28,14 @@ class GiphyController extends Controller
     public function search(SearchRequest $request, GiphyService $giphy): JsonResponse
     {
         return $this->respond($giphy->search(
-            query: (string) $request->validated('query'),
-            page: (int) $request->validated('page', 1),
+            query: $request->safe()->string('query')->value(),
+            page: $request->safe()->integer('page', 1),
         ));
     }
 
     public function trending(TrendingRequest $request, GiphyService $giphy): JsonResponse
     {
-        return $this->respond($giphy->trending(page: (int) $request->validated('page', 1)));
+        return $this->respond($giphy->trending(page: $request->safe()->integer('page', 1)));
     }
 
     public function store(StoreGiphyMediaRequest $request, RemoteMediaImporter $importer): MediaResource

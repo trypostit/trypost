@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -206,7 +207,7 @@ test('a gif off the giphy hosts is refused before any request', function (array 
         ->assertJsonValidationErrors($field);
 
     Http::assertNothingSent();
-    expect(Media::query()->count())->toBe(0);
+    $this->assertDatabaseEmpty(Media::class);
 })->with([
     'another host' => [['url' => 'https://images.unsplash.com/photo.gif'], 'url'],
     'a look-alike host' => [['url' => 'https://media1.giphy.com.evil.test/x.gif'], 'url'],
@@ -238,7 +239,7 @@ test('a file giphy serves that is not an image is refused and leaves nothing', f
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['url' => __('posts.composer.media_sources.errors.import_failed')]);
 
-    expect(Media::query()->count())->toBe(0);
+    $this->assertDatabaseEmpty(Media::class);
 });
 
 test('searching giphy is throttled per user, while another user keeps searching', function () {
@@ -264,7 +265,7 @@ test('the last page giphy can serve has no next one, whatever its total says', f
     config()->set('app.pagination.default', 100);
     $perPage = 100;
     $lastPage = intdiv(4999, $perPage) + 1;
-    Http::fake([giphyApi('/*') => Http::response(giphyApiPage(array_map(fn (int $i): array => giphyApiGif("g{$i}"), range(1, $perPage)), 100000, ($lastPage - 1) * $perPage))]);
+    Http::fake([giphyApi('/*') => Http::response(giphyApiPage(Collection::times($perPage, fn (int $i): array => giphyApiGif("g{$i}"))->all(), 100000, ($lastPage - 1) * $perPage))]);
 
     $this->actingAs($this->user)
         ->getJson(route('app.media.giphy.trending', ['page' => $lastPage]))

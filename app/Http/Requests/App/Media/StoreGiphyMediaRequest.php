@@ -30,7 +30,7 @@ class StoreGiphyMediaRequest extends FormRequest
         return [
             'url' => ['bail', 'required', 'string', 'url:https', $this->onHosts(Source::Giphy->downloadHosts())],
             'gif_id' => ['required', 'string', 'alpha_num', 'max:64'],
-            'giphy_url' => ['bail', 'nullable', 'string', 'url:https', 'max:2048', $this->onHosts([Uri::of((string) config('trypost.media_sources.giphy.website'))->host()])],
+            'giphy_url' => ['bail', 'nullable', 'string', 'url:https', 'max:2048', $this->onHosts([$this->websiteHost()])],
         ];
     }
 
@@ -50,6 +50,11 @@ class StoreGiphyMediaRequest extends FormRequest
             'gif_id' => (string) $this->validated('gif_id'),
             'giphy_url' => $this->validated('giphy_url'),
         ];
+    }
+
+    private function websiteHost(): string
+    {
+        return Uri::of((string) config('trypost.media_sources.giphy.website'))->host();
     }
 
     /**

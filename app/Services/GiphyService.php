@@ -22,6 +22,8 @@ class GiphyService
 {
     private const int CACHE_MINUTES = 10;
 
+    private const int TIMEOUT_SECONDS = 10;
+
     /** GIPHY refuses an offset past this one. */
     private const int MAX_OFFSET = 4999;
 
@@ -50,8 +52,9 @@ class GiphyService
     public function search(string $query, int $page = 1): ?array
     {
         $term = Str::lower(Str::trim($query));
+        $hash = md5($term);
 
-        return $this->page("search:{$page}:".md5($term), 'gifs/search', ['q' => $term], $page);
+        return $this->page("search:{$page}:{$hash}", 'gifs/search', ['q' => $term], $page);
     }
 
     /**
@@ -144,7 +147,7 @@ class GiphyService
     private function fetch(string $path, array $query): ?array
     {
         try {
-            $response = Http::timeout(10)->get("{$this->baseUrl}/{$path}", [...$query, 'api_key' => $this->apiKey]);
+            $response = Http::timeout(self::TIMEOUT_SECONDS)->get("{$this->baseUrl}/{$path}", [...$query, 'api_key' => $this->apiKey]);
         } catch (ConnectionException $exception) {
             Log::warning('GIPHY request failed', ['path' => $path, 'error' => $exception->getMessage()]);
 

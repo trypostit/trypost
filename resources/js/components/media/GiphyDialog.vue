@@ -127,7 +127,7 @@ const load = async (nextPage: number): Promise<void> => {
             nextPage,
         );
         page.value = nextPage;
-        hasMore.value = response?.has_more === true;
+        hasMore.value = transform(response, (found) => found.has_more, false);
     } catch {
         if (request !== latestRequest) {
             return;
@@ -247,7 +247,10 @@ const pick = async (gif: GiphyGif): Promise<void> => {
             :aria-describedby="undefined"
         >
             <DialogHeader>
-                <DialogTitle>{{ $t('posts.composer.giphy.title') }}</DialogTitle>
+                <DialogTitle class="flex items-center gap-2">
+                    <Giphy class="size-5" aria-hidden="true" />
+                    {{ $t('posts.composer.giphy.title') }}
+                </DialogTitle>
             </DialogHeader>
             <div class="relative">
                 <IconSearch
@@ -335,13 +338,6 @@ const pick = async (gif: GiphyGif): Promise<void> => {
                     </Button>
                 </div>
             </div>
-            <p
-                class="flex items-center justify-end gap-1.5 text-xs text-muted-foreground"
-                data-testid="giphy-attribution"
-            >
-                <Giphy class="size-4" aria-hidden="true" />
-                {{ $t('posts.composer.giphy.powered_by') }}
-            </p>
         </DialogContent>
     </Dialog>
 </template>

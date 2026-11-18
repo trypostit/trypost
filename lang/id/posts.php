@@ -59,7 +59,6 @@ return [
             'empty' => 'GIF tidak ditemukan. Coba kata kunci lain.',
             'load_more' => 'Muat lainnya',
             'error' => 'GIPHY sedang tidak tersedia. Coba lagi dalam beberapa menit.',
-            'powered_by' => 'Didukung oleh GIPHY',
         ],
         'unsplash' => [
             'title' => 'Unsplash',

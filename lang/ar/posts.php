@@ -59,7 +59,6 @@ return [
             'empty' => 'لم يتم العثور على صور GIF. جرّب بحثًا آخر.',
             'load_more' => 'تحميل المزيد',
             'error' => 'GIPHY غير متاح الآن. حاول مرة أخرى بعد بضع دقائق.',
-            'powered_by' => 'مدعوم من GIPHY',
         ],
         'unsplash' => [
             'title' => 'Unsplash',

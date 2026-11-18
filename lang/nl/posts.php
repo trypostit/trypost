@@ -59,7 +59,6 @@ return [
             'empty' => 'Geen GIF\'s gevonden. Probeer een andere zoekopdracht.',
             'load_more' => 'Meer laden',
             'error' => 'GIPHY is nu niet beschikbaar. Probeer het over een paar minuten opnieuw.',
-            'powered_by' => 'Mogelijk gemaakt door GIPHY',
         ],
         'unsplash' => [
             'title' => 'Unsplash',
