@@ -7,11 +7,15 @@ import { blank, filled, transform } from '@/lib/helpers';
 import { newPoll } from '@/lib/poll';
 import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
 import {
+    type ContentTypeValue,
     MEDIALESS_CONTENT_TYPE_REASONS,
     POLL_CONTENT_TYPES,
     POLL_POST_CONTENT_TYPES,
 } from '@/types/content-type';
-import { THREAD_REPLY_POLL_CONTENT_TYPES } from '@/types/network-options';
+import {
+    isReplyPollPlatform,
+    THREAD_REPLY_POLL_CONTENT_TYPES,
+} from '@/types/network-options';
 import type { Poll, PollLimits } from '@/types/poll';
 
 /** What the composer gives the card polls: each card's destination and the override that changes it. */
@@ -163,7 +167,7 @@ export const useComposerPoll = (
      */
     const pollMetaForContentType = (
         group: NetworkGroup,
-        contentType: string,
+        contentType: ContentTypeValue,
     ): Record<string, any> | null => {
         const current = destination(group).meta ?? {};
         const { poll, ...meta } = current;
@@ -189,7 +193,7 @@ export const useComposerPoll = (
     /** Picks the card's post type, adding or dropping its poll with it. */
     const setGroupContentType = (
         group: NetworkGroup,
-        contentType: string,
+        contentType: ContentTypeValue,
     ): void => {
         const meta = pollMetaForContentType(group, contentType);
         composition.setGroupOverride(group.key, 'content_type', contentType);
@@ -267,13 +271,15 @@ export const useComposerPoll = (
             filled(reply) &&
             (filled(reply.media) || thread.uploading(group, reply));
 
-        if (carriesMedia) {
-            return MEDIALESS_CONTENT_TYPE_REASONS[
-                THREAD_REPLY_POLL_CONTENT_TYPES[group.platform]
-            ];
+        if (!carriesMedia || !isReplyPollPlatform(group.platform)) {
+            return null;
         }
 
-        return null;
+        return (
+            MEDIALESS_CONTENT_TYPE_REASONS[
+                THREAD_REPLY_POLL_CONTENT_TYPES[group.platform]
+            ] ?? null
+        );
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {

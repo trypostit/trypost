@@ -6,7 +6,7 @@ import type {
     PublicationPoll,
     PublicationThreadPoll,
 } from '@/types/analytics';
-import { POLL_CONTENT_TYPES } from '@/types/content-type';
+import { type ContentTypeValue, POLL_CONTENT_TYPES } from '@/types/content-type';
 import type { PublishConfig } from '@/types/platform';
 import type { Poll, PollDuration, PollLimits } from '@/types/poll';
 import type { PostCard } from '@/types/publish';
@@ -169,7 +169,7 @@ const unreadPollResult = (
 
 /** A post's own poll: only a poll type has one, whatever its meta still holds. */
 export const pollOf = (
-    contentType: string | null | undefined,
+    contentType: ContentTypeValue | null | undefined,
     meta: Record<string, any> | null | undefined,
 ): Partial<Poll> | undefined => {
     if (!filled(contentType) || !POLL_CONTENT_TYPES.has(contentType)) {
@@ -187,7 +187,7 @@ export interface PreviewPoll {
 
 /** The poll a preview draws, or null for a post that is no poll or an account without poll limits. */
 export const previewPollOf = (
-    contentType: string | undefined,
+    contentType: ContentTypeValue | undefined,
     meta: Record<string, any> | undefined,
     publishConfig: PublishConfig | null | undefined,
 ): PreviewPoll | null => {

@@ -3,6 +3,7 @@ import type {
     MetricsUnavailableReason,
     PublicationAnalyticsDetail,
 } from '@/types/analytics';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import type { PlatformValue } from '@/types/platform';
 import type {
@@ -76,8 +77,8 @@ export interface PostCard {
     publish_status: PublishStatusValue;
     social_account_id: string | null;
     social_account: PublishSocialAccount | null;
-    platform: string | null;
-    content_type?: string | null;
+    platform: PlatformValue | null;
+    content_type?: ContentTypeValue | null;
     meta?: Record<string, any> | null;
     platform_url?: string | null;
     error_message?: string | null;

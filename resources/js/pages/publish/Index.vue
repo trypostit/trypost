@@ -649,7 +649,7 @@ const initialPost = computed<ComposerInitialPost | null>(() => {
         schedule_mode: post.schedule_mode ?? null,
         queue_position: post.approval_queue_position ?? null,
         social_account_id: post.social_account_id,
-        content_type: post.content_type ?? '',
+        content_type: post.content_type ?? undefined,
         meta: post.meta ?? {},
         label_ids: post.labels?.map((label) => label.id) ?? [],
     };

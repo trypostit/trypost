@@ -185,6 +185,7 @@ import {
     type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
+    threadReplyPostType,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { userTimezone } from '@/preferences';
@@ -203,10 +204,9 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    THREAD_PLATFORMS,
-    THREAD_REPLY_CONTENT_TYPES,
+    isThreadPlatform,
 } from '@/types/network-options';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformValue } from '@/types/platform';
 import {
     PostStatus,
     ScheduleMode,
@@ -1147,7 +1147,7 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
 const supportsThread = (group: NetworkGroup): boolean =>
-    THREAD_PLATFORMS.includes(group.platform);
+    isThreadPlatform(group.platform);
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
@@ -1358,9 +1358,15 @@ const onMediaFilesSelected = (event: Event): void => {
         mediaFileTarget.value.add(files);
     }
 };
-const replyAcceptsMedia = (platform: string): boolean =>
-    getMediaRulesForContentType(THREAD_REPLY_CONTENT_TYPES[platform]).maxFiles >
-    0;
+const replyAcceptsMedia = (platform: PlatformValue): boolean => {
+    const replyType = threadReplyPostType(platform);
+
+    if (!filled(replyType)) {
+        return false;
+    }
+
+    return getMediaRulesForContentType(replyType).maxFiles > 0;
+};
 const groupAcceptsMedia = (group: NetworkGroup): boolean => {
     const reply = activeReply(group);
 
@@ -1499,7 +1505,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
-    const replyContentType = THREAD_REPLY_CONTENT_TYPES[account.platform];
+    const replyContentType = threadReplyPostType(account.platform);
     if (replyContentType) {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
@@ -1762,7 +1768,7 @@ const editorContentTypes = (
 ): string[] => {
     const group = findGroup(groupKey);
     if (group && replyKey !== null) {
-        const replyContentType = THREAD_REPLY_CONTENT_TYPES[group.platform];
+        const replyContentType = threadReplyPostType(group.platform);
 
         return replyContentType ? [replyContentType] : [];
     }
@@ -3036,9 +3042,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 <ChannelMediaWarnings
                                                     :platform="group.platform"
                                                     :content-type="
-                                                        THREAD_REPLY_CONTENT_TYPES[
-                                                            group.platform
-                                                        ]
+                                                        threadReplyPostType(
+                                                            group.platform,
+                                                        )!
                                                     "
                                                     :media="reply.media"
                                                     :media-editing="true"

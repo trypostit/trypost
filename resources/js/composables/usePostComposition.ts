@@ -2,8 +2,9 @@ import { computed, ref } from 'vue';
 
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformValue } from '@/types/platform';
 import {
     PostStatus,
     type QueuePositionValue,
@@ -15,7 +16,7 @@ import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface ComposerAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     display_name: string;
     username: string;
     display_label: string;
@@ -30,7 +31,7 @@ export interface ComposerAccount {
 
 export interface DestinationDraft {
     social_account_id: string;
-    content_type: string;
+    content_type: ContentTypeValue;
     meta: Record<string, any>;
     content?: string;
     media?: MediaItem[];
@@ -58,7 +59,7 @@ export interface ComposerInitialPost {
     schedule_mode?: ScheduleModeValue | null;
     queue_position?: QueuePositionValue | null;
     social_account_id: string;
-    content_type: string;
+    content_type?: ContentTypeValue;
     meta: Record<string, any>;
     label_ids: string[];
 }
@@ -78,7 +79,7 @@ type Override = DestinationOverride;
 
 export interface NetworkGroup {
     key: string;
-    platform: string;
+    platform: PlatformValue;
     accounts: ComposerAccount[];
     anchor: ComposerAccount;
 }
@@ -149,7 +150,7 @@ export const usePostComposition = (
     };
 
     const networkGroups = computed<NetworkGroup[]>(() => {
-        const members = new Map<string, ComposerAccount[]>();
+        const members = new Map<PlatformValue, ComposerAccount[]>();
         const ordered = accounts().filter((account) =>
             selectedAccountIds.value.includes(account.id),
         );
