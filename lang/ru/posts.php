@@ -53,6 +53,13 @@ return [
         'upload_cancel' => 'Отменить загрузку',
         'upload_remove' => 'Удалить',
         'dropzone_select' => 'выберите файл',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Искать GIF',
+            'empty' => 'GIF не найдены. Попробуйте другой запрос.',
+            'load_more' => 'Загрузить ещё',
+            'error' => 'GIPHY сейчас недоступен. Попробуйте снова через несколько минут.',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Искать бесплатные фото в высоком разрешении',

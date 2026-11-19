@@ -201,6 +201,14 @@ return [
     */
 
     'media_sources' => [
+        'giphy' => [
+            'enabled' => (bool) env('GIPHY_ENABLED', true),
+            'api' => 'https://api.giphy.com/v1',
+            'website' => 'https://giphy.com',
+            'download_hosts' => '*.giphy.com',
+            'rating' => 'g',
+            'requests_per_user_per_minute' => 30,
+        ],
         'unsplash' => [
             'api' => $url('UNSPLASH_API_URL', 'https://api.unsplash.com'),
             'website' => $url('UNSPLASH_WEBSITE_URL', 'https://unsplash.com'),

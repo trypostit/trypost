@@ -2,7 +2,7 @@ import type { ImageSize } from '@/composables/useImageCrop';
 import type { MediaEdit } from '@/lib/mediaEditor';
 import type { MediaType } from '@/lib/mediaType';
 
-export type MediaSource = 'ai' | 'unsplash' | 'google_drive' | 'google_photos' | 'canva';
+export type MediaSource = 'ai' | 'unsplash' | 'giphy' | 'google_drive' | 'google_photos' | 'canva';
 
 export type SourceMetaValue = string | number | boolean | null | SourceMetaValue[];
 

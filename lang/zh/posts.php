@@ -53,6 +53,13 @@ return [
         'upload_cancel' => '取消上传',
         'upload_remove' => '移除',
         'dropzone_select' => '选择文件',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => '搜索 GIF',
+            'empty' => '未找到 GIF，请换个关键词试试。',
+            'load_more' => '加载更多',
+            'error' => 'GIPHY 当前不可用，请几分钟后重试。',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => '搜索免费高清图片',

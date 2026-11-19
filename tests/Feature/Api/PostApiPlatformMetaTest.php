@@ -304,9 +304,9 @@ it('rejects publishing when the uploaded video runs past the content type durati
         ->assertJsonFragment(['Video is 1min 30s long, but this post type allows up to 1min.']);
 });
 
-it('rejects publishing a LinkedIn post with a GIF', function () {
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create([
+it('rejects publishing a Facebook post with a GIF', function () {
+    $facebook = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Facebook]);
+    $post = Post::factory()->forAccount($facebook, ContentType::FacebookPost)->create([
         'user_id' => $this->user->id,
         'media' => [[
             'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/loop.gif',
@@ -317,12 +317,36 @@ it('rejects publishing a LinkedIn post with a GIF', function () {
     $this->withHeaders($this->headers)
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Publishing->value,
-            'content_type' => ContentType::LinkedInPost->value,
+            'content_type' => ContentType::FacebookPost->value,
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['content_type'])
         ->assertJsonFragment(['This platform does not accept GIF. Remove the GIF or choose a different network.']);
 });
+
+it('accepts scheduling a LinkedIn post with a GIF', function (Platform $platform, ContentType $type) {
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $platform]);
+    $post = Post::factory()->forAccount($linkedin, $type)->create([
+        'user_id' => $this->user->id,
+        'media' => [[
+            'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/loop.gif',
+            'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif', 'size' => 2 * 1024 * 1024,
+        ]],
+    ]);
+
+    $this->withHeaders($this->headers)
+        ->putJson(route('api.posts.update', $post), [
+            'status' => PostStatus::Scheduled->value,
+            'scheduled_at' => now()->addDay()->toIso8601String(),
+            'content_type' => $type->value,
+        ])
+        ->assertOk();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Scheduled);
+})->with([
+    'profile' => [Platform::LinkedIn, ContentType::LinkedInPost],
+    'page' => [Platform::LinkedInPage, ContentType::LinkedInPagePost],
+]);
 
 it('rejects publishing an Instagram Reel whose stored video exceeds 300 MB', function () {
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);

@@ -39,6 +39,7 @@ withDefaults(
 
 const emit = defineEmits<{
     (event: 'import-started', payload: { importId: string; label: string }): void;
+    (event: 'open-giphy'): void;
     (event: 'open-unsplash'): void;
     (event: 'upload'): void;
     (event: 'add-poll'): void;
@@ -90,6 +91,7 @@ const selectEmoji = (emoji: string): void => {
                 :disabled="mediaDisabled"
                 :disabled-reason="$t(mediaDisabledReasonKey)"
                 @import-started="emit('import-started', $event)"
+                @open-giphy="emit('open-giphy')"
                 @open-unsplash="emit('open-unsplash')"
                 @upload="requestUpload"
             />

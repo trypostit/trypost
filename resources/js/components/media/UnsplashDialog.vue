@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import { IconLoader2, IconSearch } from '@tabler/icons-vue';
+import Unsplash from '@thesvg/vue/unsplash';
 import { useIntersectionObserver } from '@vueuse/core';
-import { trans } from 'laravel-vue-i18n';
 import { ref, useTemplateRef, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,11 +13,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    type MediaImportStarted,
+    startMediaImport,
+} from '@/composables/useMediaImport';
 import debounce from '@/debounce';
-import { extractErrorMessage } from '@/lib/httpError';
-import { storeFromUrl } from '@/routes/app/media';
+import { blank } from '@/lib/helpers';
 import { search, trending } from '@/routes/app/media/unsplash';
-import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
 
 interface UnsplashPhoto {
     id: string;
@@ -37,20 +38,14 @@ interface UnsplashPage {
     total_pages?: number;
 }
 
-type ImportedMedia = MediaItem & {
-    meta?: MediaItem['meta'] & {
-        source?: MediaSource;
-        source_meta?: Record<string, SourceMetaValue>;
-    };
-};
-
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
-    (event: 'picked', item: MediaItem): void;
+    (event: 'import-started', started: MediaImportStarted): void;
 }>();
 
 const SEARCH_DEBOUNCE_MS = 400;
+const SOURCE_LABEL = 'Unsplash';
 
 const query = ref('');
 const photos = ref<UnsplashPhoto[]>([]);
@@ -64,24 +59,6 @@ const sentinel = useTemplateRef<HTMLElement>('sentinel');
 let latestRequest = 0;
 
 const browseHttp = useHttp<Record<string, never>, UnsplashPage>({});
-const pickHttp = useHttp<
-    {
-        url: string;
-        filename: string;
-        download_location: string;
-        photo_id: string;
-        author_name: string;
-        author_url: string | null;
-    },
-    ImportedMedia
->({
-    url: '',
-    filename: '',
-    download_location: '',
-    photo_id: '',
-    author_name: '',
-    author_url: null,
-});
 
 const load = async (nextPage: number): Promise<void> => {
     const request = ++latestRequest;
@@ -150,28 +127,30 @@ watch(
     { immediate: true },
 );
 
+/** Starts the photo's import and hands it to the post, which shows it loading. */
 const pick = async (photo: UnsplashPhoto): Promise<void> => {
     if (savingId.value) return;
     savingId.value = photo.id;
-    pickHttp.url = photo.url_regular;
-    pickHttp.filename = `unsplash-${photo.id}.jpg`;
-    pickHttp.download_location = photo.download_location;
-    pickHttp.photo_id = photo.id;
-    pickHttp.author_name = photo.author.name;
-    pickHttp.author_url = photo.author.url;
+
     try {
-        const media = await pickHttp.post(storeFromUrl.url());
-        emit('picked', {
-            ...media,
-            source: media.meta?.source,
-            source_meta: media.meta?.source_meta,
+        const importIds = await startMediaImport({
+            source: 'unsplash',
+            url: photo.url_regular,
+            filename: `unsplash-${photo.id}.jpg`,
+            download_location: photo.download_location,
+            photo_id: photo.id,
+            author_name: photo.author.name,
+            author_url: photo.author.url,
         });
-        open.value = false;
-    } catch (exception) {
-        toast.error(
-            extractErrorMessage(exception) ??
-                trans('posts.composer.media_sources.errors.import_failed'),
+
+        if (blank(importIds)) {
+            return;
+        }
+
+        importIds.forEach((importId) =>
+            emit('import-started', { importId, label: SOURCE_LABEL }),
         );
+        open.value = false;
     } finally {
         savingId.value = null;
     }
@@ -206,9 +185,13 @@ const creditParts = (
             :aria-describedby="undefined"
         >
             <DialogHeader>
-                <DialogTitle>{{
-                    $t('posts.composer.unsplash.title')
-                }}</DialogTitle>
+                <DialogTitle class="flex items-center gap-2">
+                    <Unsplash
+                        class="size-5 fill-current text-foreground"
+                        aria-hidden="true"
+                    />
+                    {{ $t('posts.composer.unsplash.title') }}
+                </DialogTitle>
             </DialogHeader>
             <div class="relative">
                 <IconSearch

@@ -226,6 +226,12 @@ class AppServiceProvider extends ServiceProvider
         );
 
         RateLimiter::for(
+            'giphy',
+            fn (Request $request): Limit => Limit::perMinute((int) config('trypost.media_sources.giphy.requests_per_user_per_minute'))
+                ->by("user:{$request->user()?->id}"),
+        );
+
+        RateLimiter::for(
             'unsplash',
             fn (Request $request): Limit => Limit::perMinute((int) config('trypost.media_sources.unsplash.requests_per_user_per_minute'))
                 ->by("user:{$request->user()?->id}"),

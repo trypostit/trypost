@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Dto\ImportedFile;
 use App\Enums\Media\Type as MediaType;
 use App\Models\Account;
 use App\Models\Media;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\MediaImportStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -43,20 +45,25 @@ function linkPreviewMediaCard(?string $image): void
         ));
 }
 
-test('the card image is imported as a temporary upload', function () {
+test('the card image is imported through the queue as a temporary upload', function () {
     linkPreviewMediaCard('https://93.184.216.34/card.jpg');
     $fake = UploadedFile::fake()->image('card.jpg', 1200, 630);
     $image = file_get_contents($fake->getPathname());
     Http::fake(['https://93.184.216.34/card.jpg' => Http::response($image, 200, ['Content-Type' => 'image/jpeg'])]);
 
-    $response = $this->actingAs($this->user)
+    $importId = $this->actingAs($this->user)
         ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
-        ->assertCreated()
-        ->assertJsonPath('type', MediaType::Image->value);
+        ->assertAccepted()
+        ->json('import_id');
+
+    $status = $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
+        ->assertJsonPath('status', MediaImportStatus::DONE)
+        ->assertJsonPath('media.type', MediaType::Image->value);
 
     $media = Media::query()->sole();
 
-    expect($response->json('upload_token'))->toBe($media->upload_token)
+    expect($status->json('media.upload_token'))->toBe($media->upload_token)
         ->and($media->collection)->toBe(Media::COLLECTION_UPLOADS)
         ->and($media->workspace_id)->toBe($this->workspace->id)
         ->and($media->post_id)->toBeNull()
@@ -74,16 +81,37 @@ test('a card without an image is rejected', function () {
     expect(Media::query()->count())->toBe(0);
 });
 
-test('an image the importer refuses is rejected', function () {
+test('an image the importer refuses fails the import', function () {
     linkPreviewMediaCard('https://93.184.216.34/card.jpg');
     Http::fake(['https://93.184.216.34/card.jpg' => Http::response('not an image', 200, ['Content-Type' => 'text/html'])]);
 
-    $this->actingAs($this->user)
+    $importId = $this->actingAs($this->user)
         ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['url' => __('posts.composer.media_sources.errors.import_failed')]);
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
+        ->assertJsonPath('status', MediaImportStatus::FAILED);
 
     expect(Media::query()->count())->toBe(0);
+});
+
+test('a video behind the card is refused, since the card shows an image', function () {
+    linkPreviewMediaCard('https://93.184.216.34/card.mp4');
+    Http::fake(['https://93.184.216.34/card.mp4' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4'])]);
+
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.posts.link-preview-media'), ['url' => 'https://example.com/article'])
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
+        ->assertJsonPath('status', MediaImportStatus::FAILED)
+        ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
+
+    $this->assertDatabaseEmpty(Media::class);
 });
 
 test('the url is required and guests are refused', function () {
