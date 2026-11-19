@@ -120,9 +120,8 @@ return [
     | MCP rate limit
     |--------------------------------------------------------------------------
     |
-    | Requests one MCP connection (one AI client, for one user, in one
-    | workspace) may send to the MCP server. A refreshed token keeps the
-    | connection's count; the REST API counts apart.
+    | Requests one MCP token (one AI client, for one user, in one workspace)
+    | may send to the MCP server. The REST API counts apart.
     |
     */
 
