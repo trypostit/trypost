@@ -33,7 +33,7 @@ class RemoteMediaImporter
      * that ends past it fails as `unreachable` before anything is stored.
      * Redirects are refused unless `$followRedirects`.
      *
-     * @param  array<MediaType>  $allowedTypes
+     * @param  list<MediaType>  $allowedTypes
      */
     public function import(Workspace $workspace, RemoteFile $file, array $allowedTypes, int $timeoutSeconds, ?CarbonInterface $deadline = null, bool $followRedirects = false): ImportedFile
     {

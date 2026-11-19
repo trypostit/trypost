@@ -320,7 +320,8 @@ enum ContentType: string
     {
         return match ($this) {
             self::XPost, self::BlueskyPost, self::MastodonPost,
-            self::DiscordMessage, self::TelegramPost => true,
+            self::DiscordMessage, self::TelegramPost,
+            self::LinkedInPost, self::LinkedInPagePost => true,
             default => false,
         };
     }

@@ -21,8 +21,8 @@ class MediaImportController extends Controller
         $importIds = StartMediaImport::execute(
             $request->user(),
             $request->user()->currentWorkspace,
-            $request->importSource(),
             $request->importPayload(),
+            $request->importTypes(),
         );
 
         return (new MediaImportStartedResource($importIds))

@@ -6,11 +6,13 @@ namespace App\Jobs\Media;
 
 use App\Dto\ImportedFile;
 use App\Dto\RemoteFile;
+use App\Enums\Media\Source;
 use App\Enums\Media\Type as MediaType;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\RemoteMediaImporter;
 use App\Services\Media\Sources\GooglePhotosPicker;
+use App\Services\UnsplashService;
 use App\Support\MediaImportHeaders;
 use App\Support\MediaImportStatus;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
@@ -43,11 +45,15 @@ class ImportRemoteMedia implements ShouldBeEncrypted, ShouldQueue
 
     public int $timeout;
 
+    /**
+     * @param  list<MediaType>  $types  the media types the file may be
+     */
     public function __construct(
         public string $importId,
         public string $workspaceId,
         public string $userId,
         public RemoteFile $file,
+        public array $types,
         public ?string $googlePhotosSession = null,
     ) {
         $this->onQueue(self::QUEUE);
@@ -117,7 +123,7 @@ class ImportRemoteMedia implements ShouldBeEncrypted, ShouldQueue
         $imported = $importer->import(
             $workspace,
             $file,
-            MediaType::cases(),
+            $this->types,
             $this->timeout,
             now()->addSeconds(intdiv($this->timeout, 2)),
             followRedirects: true,
@@ -130,6 +136,25 @@ class ImportRemoteMedia implements ShouldBeEncrypted, ShouldQueue
         }
 
         MediaImportStatus::complete($this->importId, $imported->media);
+
+        $this->trackUnsplashDownload($file);
+    }
+
+    /**
+     * Unsplash asks to be told when one of its photos is used, once the
+     * photo landed and never for a failed import.
+     *
+     * @see https://help.unsplash.com/en/articles/2511258-guideline-triggering-a-download
+     */
+    private function trackUnsplashDownload(RemoteFile $file): void
+    {
+        $downloadLocation = data_get($file->sourceMeta, 'download_location');
+
+        if ($file->source !== Source::Unsplash || blank($downloadLocation)) {
+            return;
+        }
+
+        app(UnsplashService::class)->trackDownload((string) $downloadLocation);
     }
 
     public function failed(?Throwable $exception): void

@@ -53,6 +53,13 @@ return [
         'upload_cancel' => 'Cancel upload',
         'upload_remove' => 'Remove',
         'dropzone_select' => 'select a file',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Search GIFs',
+            'empty' => 'No GIFs found. Try another search.',
+            'load_more' => 'Load more',
+            'error' => 'GIPHY isn\'t available right now. Try again in a few minutes.',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Search free high-resolution photos',

@@ -53,6 +53,13 @@ return [
         'upload_cancel' => 'Ακύρωση μεταφόρτωσης',
         'upload_remove' => 'Αφαίρεση',
         'dropzone_select' => 'επιλέξτε αρχείο',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Αναζήτηση GIF',
+            'empty' => 'Δεν βρέθηκαν GIF. Δοκιμάστε άλλη αναζήτηση.',
+            'load_more' => 'Φόρτωση περισσότερων',
+            'error' => 'Το GIPHY δεν είναι διαθέσιμο αυτή τη στιγμή. Δοκιμάστε ξανά σε λίγα λεπτά.',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Αναζήτηση δωρεάν φωτογραφιών υψηλής ανάλυσης',
