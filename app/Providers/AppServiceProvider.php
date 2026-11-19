@@ -75,12 +75,6 @@ use Symfony\Component\HttpFoundation\IpUtils;
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * What one workspace may send per minute to the REST API and, counted
-     * apart, to the MCP server. One number keeps the two surfaces in step.
-     */
-    private const int WORKSPACE_REQUESTS_PER_MINUTE = 60;
-
-    /**
      * Register any application services.
      */
     public function register(): void
@@ -191,19 +185,10 @@ class AppServiceProvider extends ServiceProvider
                 ? "workspace:{$workspaceId}"
                 : "user:{$user->id}";
 
-            return Limit::perMinute(self::WORKSPACE_REQUESTS_PER_MINUTE)->by($key);
+            return Limit::perMinute(60)->by($key);
         });
 
-        RateLimiter::for('mcp', function (Request $request): Limit {
-            $user = $request->user();
-
-            // ChatGPT reading the tool list before sign-in has no token, so no workspace to count against.
-            if ($user === null || $this->app->environment('local')) {
-                return Limit::none();
-            }
-
-            return Limit::perMinute(self::WORKSPACE_REQUESTS_PER_MINUTE)->by("workspace:{$user->current_workspace_id}");
-        });
+        RateLimiter::for('mcp', fn (Request $request): array => $this->mcpLimits($request));
 
         RateLimiter::for(
             'mcp-oauth',
@@ -269,6 +254,30 @@ class AppServiceProvider extends ServiceProvider
 
             return $limits;
         });
+    }
+
+    /**
+     * Each MCP connection (one AI client, for one user, in one workspace) has
+     * its own budget, so ChatGPT's and Claude's shared addresses and a busy
+     * teammate never spend anyone else's. ChatGPT listing the tools before
+     * sign-in carries no token and is never limited.
+     *
+     * @return list<Limit>
+     */
+    private function mcpLimits(Request $request): array
+    {
+        $user = $request->user();
+
+        if (blank($user) || $this->app->environment('local')) {
+            return [];
+        }
+
+        $connection = AccessToken::query()->findOrFail($user->token()->oauth_access_token_id)->mcpConnection();
+
+        return [
+            Limit::perMinute(config()->integer('trypost.mcp_requests_per_minute'))->by("minute:{$connection}"),
+            Limit::perHour(config()->integer('trypost.mcp_requests_per_hour'))->by("hour:{$connection}"),
+        ];
     }
 
     protected function configureSocialite(): void

@@ -13,6 +13,7 @@ use App\Models\AccessToken;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
@@ -91,13 +92,10 @@ test('a bad label color is rejected by the api, the web and mcp with the same me
         ->assertHasErrors([$api->json('errors.color.0')]);
 });
 
-test('the api and mcp allow a workspace the same requests per minute', function () {
-    $request = Request::create('/');
-    $request->setUserResolver(fn () => $this->user);
+test('an mcp connection may send at least what the api allows a workspace per minute', function () {
+    $request = Request::create(route('api.posts.index'));
+    $request->setUserResolver(fn (): User => $this->user);
 
-    $api = RateLimiter::limiter('api')($request);
-    $mcp = RateLimiter::limiter('mcp')($request);
-
-    expect($mcp->maxAttempts)->toBe($api->maxAttempts)
-        ->and($mcp->decaySeconds)->toBe($api->decaySeconds);
+    expect(config()->integer('trypost.mcp_requests_per_minute'))
+        ->toBeGreaterThanOrEqual(RateLimiter::limiter('api')($request)->maxAttempts);
 });

@@ -3,136 +3,173 @@
 declare(strict_types=1);
 
 use App\Enums\Mcp\Method;
+use App\Models\AccessToken;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use App\Models\Workspace;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
+use Tests\TestCase;
 
 const MCP_RATE_LIMIT_CHATGPT_IP = '203.0.113.5';
 
 beforeEach(function () {
     fakeChatGptEgressRanges(['203.0.113.0/24']);
 
-    $result = createApiTestToken();
-    subscribeAccount($result['user']->account);
-
-    $this->user = $result['user'];
-    $this->workspace = $result['workspace'];
-    $this->mcpToken = mcpBearerToken($this->user, $this->workspace, clientName: 'Claude')['plain_token'];
+    config([
+        'trypost.mcp_requests_per_minute' => 3,
+        'trypost.mcp_requests_per_hour' => 5,
+    ]);
 });
+
+/**
+ * An MCP connection: one AI client, for a subscribed user, in their workspace.
+ */
+function mcpRateLimitConnection(): AccessToken
+{
+    ['user' => $user, 'workspace' => $workspace] = createApiTestToken();
+    subscribeAccount($user->account);
+
+    return mcpBearerToken($user, $workspace, clientName: 'Claude')['token'];
+}
+
+/**
+ * A new token of the connection, as a refresh gives one, or of another
+ * connection when the user, workspace or AI client differs.
+ */
+function mcpRateLimitToken(AccessToken $connection, ?User $user = null, ?Workspace $workspace = null, ?string $clientId = null): string
+{
+    $token = mcpBearerToken($user ?? $connection->user, $workspace ?? $connection->workspace);
+    $token['token']->forceFill(['client_id' => $clientId ?? $connection->client_id])->saveQuietly();
+
+    return $token['plain_token'];
+}
 
 /**
  * @param  array<string, mixed>  $params
  */
-function mcpRateLimitRequest(object $test, ?string $token, string $method, array $params = [], ?string $ip = null): TestResponse
+function mcpRateLimitCall(TestCase $test, ?string $token, Method $method = Method::Ping, array $params = [], ?string $ip = null): TestResponse
 {
-    return $test->withServerVariables(array_filter(['REMOTE_ADDR' => $ip]))
-        ->withHeaders(array_filter([
-            'Authorization' => $token ? "Bearer {$token}" : null,
+    auth()->forgetGuards();
+
+    return $test->withServerVariables(Arr::whereNotNull(['REMOTE_ADDR' => $ip]))
+        ->withHeaders(Arr::whereNotNull([
+            'Authorization' => transform($token, fn (string $token): string => "Bearer {$token}"),
             'Accept' => 'application/json, text/event-stream',
         ]))
         ->postJson(route('mcp.trypost'), [
             'jsonrpc' => '2.0',
             'id' => 1,
-            'method' => $method,
+            'method' => $method->value,
             'params' => (object) $params,
         ]);
 }
 
-function mcpRequestsPerMinute(User $user): int
+function mcpRateLimitSpend(TestCase $test, string $token, int $requests): void
 {
-    $request = Request::create(route('mcp.trypost'), 'POST');
-    $request->setUserResolver(fn (): User => $user);
-
-    return RateLimiter::limiter('mcp')($request)->maxAttempts;
+    Collection::times($requests, fn () => mcpRateLimitCall($test, $token)->assertOk());
 }
 
-/**
- * @return array{name: string, arguments: object}
- */
-function mcpRateLimitGetWorkspace(): array
-{
-    return ['name' => 'get-workspace-tool', 'arguments' => (object) []];
-}
+test('a tool call past the minute limit is refused with 429 and Retry-After', function () {
+    $connection = mcpRateLimitConnection();
+    $token = mcpRateLimitToken($connection);
 
-function mcpRateLimitSpend(object $test, string $token, int $requests): void
-{
-    foreach (range(1, $requests) as $ignored) {
-        mcpRateLimitRequest($test, $token, Method::Ping->value)->assertOk();
-    }
-}
+    mcpRateLimitSpend($this, $token, 3);
 
-test('the request after the limit is refused with 429 and Retry-After', function () {
-    mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
-
-    $response = mcpRateLimitRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace());
+    $response = mcpRateLimitCall($this, $token, Method::ToolsCall, ['name' => 'get-workspace-tool', 'arguments' => (object) []]);
 
     $response->assertTooManyRequests();
 
-    expect((int) $response->headers->get('Retry-After'))->toBeGreaterThan(0)->toBeLessThanOrEqual(60)
-        ->and($response->headers->get('X-RateLimit-Remaining'))->toBe('0');
+    expect((int) $response->headers->get('Retry-After'))->toBeBetween(1, 60);
 });
 
-test('the limit lifts when the minute is over', function () {
-    mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
-    mcpRateLimitRequest($this, $this->mcpToken, Method::Ping->value)->assertTooManyRequests();
+test('the minute limit lifts once the minute is over', function () {
+    $connection = mcpRateLimitConnection();
+    $token = mcpRateLimitToken($connection);
+
+    mcpRateLimitSpend($this, $token, 3);
+    mcpRateLimitCall($this, $token)->assertTooManyRequests();
 
     $this->travel(61)->seconds();
 
-    mcpRateLimitRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace())->assertOk();
+    mcpRateLimitCall($this, $token)->assertOk();
 });
 
-test('a repeated tool call counts each time it is answered', function () {
-    $limit = mcpRequestsPerMinute($this->user);
+test('the hour limit holds across minutes until the hour is over', function () {
+    $connection = mcpRateLimitConnection();
+    $token = mcpRateLimitToken($connection);
 
-    foreach (range(1, $limit) as $ignored) {
-        mcpRateLimitRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace())->assertOk();
-    }
+    mcpRateLimitSpend($this, $token, 3);
+    $this->travel(61)->seconds();
+    mcpRateLimitSpend($this, $token, 2);
+    $this->travel(61)->seconds();
 
-    mcpRateLimitRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace())->assertTooManyRequests();
+    mcpRateLimitCall($this, $token)->assertTooManyRequests();
+
+    $this->travel(1)->hours();
+
+    mcpRateLimitCall($this, $token)->assertOk();
 });
 
-test('every token of a workspace draws on the same limit', function () {
-    $secondToken = mcpBearerToken($this->user, $this->workspace, clientName: 'ChatGPT')['plain_token'];
+test('a refreshed token keeps the count of its connection', function () {
+    $connection = mcpRateLimitConnection();
 
-    mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
+    mcpRateLimitSpend($this, mcpRateLimitToken($connection), 3);
 
-    auth()->forgetGuards();
-
-    mcpRateLimitRequest($this, $secondToken, Method::Ping->value)->assertTooManyRequests();
+    mcpRateLimitCall($this, mcpRateLimitToken($connection))
+        ->assertTooManyRequests();
 });
 
-test('one workspace reaching its limit leaves another workspace alone', function () {
-    $other = createApiTestToken();
-    subscribeAccount($other['user']->account);
-    $otherToken = mcpBearerToken($other['user'], $other['workspace'], clientName: 'Claude')['plain_token'];
+test('another AI client of the same user keeps its own limit', function () {
+    $connection = mcpRateLimitConnection();
 
-    mcpRateLimitSpend($this, $this->mcpToken, mcpRequestsPerMinute($this->user));
-    mcpRateLimitRequest($this, $this->mcpToken, Method::Ping->value)->assertTooManyRequests();
+    mcpRateLimitSpend($this, mcpRateLimitToken($connection), 3);
 
-    auth()->forgetGuards();
-
-    mcpRateLimitRequest($this, $otherToken, Method::ToolsCall->value, mcpRateLimitGetWorkspace())->assertOk();
+    mcpRateLimitCall($this, mcpRateLimitToken($connection, clientId: mcpOauthClient('ChatGPT')))
+        ->assertOk();
 });
 
-test('requests refused before the workspace is known do not count', function () {
-    foreach (range(1, mcpRequestsPerMinute($this->user) + 1) as $ignored) {
-        mcpRateLimitRequest($this, 'not-a-token', Method::Ping->value)->assertUnauthorized();
-    }
+test('a teammate on the same AI client keeps their own limit', function () {
+    $connection = mcpRateLimitConnection();
+    $teammate = workspaceMember($connection->workspace);
 
-    mcpRateLimitRequest($this, $this->mcpToken, Method::Ping->value)->assertOk();
+    mcpRateLimitSpend($this, mcpRateLimitToken($connection), 3);
+
+    mcpRateLimitCall($this, mcpRateLimitToken($connection, user: $teammate))
+        ->assertOk();
 });
 
-test('ChatGPT reading the tool list before sign-in is not limited', function () {
-    foreach (range(1, mcpRequestsPerMinute($this->user) + 1) as $ignored) {
-        mcpRateLimitRequest($this, null, Method::ToolsList->value, ip: MCP_RATE_LIMIT_CHATGPT_IP)->assertOk();
-    }
+test('the same AI client in another workspace keeps its own limit', function () {
+    $connection = mcpRateLimitConnection();
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $connection->user->account_id,
+        'user_id' => $connection->user->id,
+    ]);
+    $otherWorkspace->members()->attach($connection->user->id, membershipPivot('admin'));
+
+    mcpRateLimitSpend($this, mcpRateLimitToken($connection), 3);
+
+    mcpRateLimitCall($this, mcpRateLimitToken($connection, workspace: $otherWorkspace))
+        ->assertOk();
 });
 
-test('local is unlimited', function () {
-    $limit = mcpRequestsPerMinute($this->user);
+test('requests refused at sign-in do not count', function () {
+    $connection = mcpRateLimitConnection();
 
-    app()->detectEnvironment(fn () => 'local');
+    Collection::times(4, fn () => mcpRateLimitCall($this, 'not-a-token')->assertUnauthorized());
 
-    mcpRateLimitSpend($this, $this->mcpToken, $limit + 1);
+    mcpRateLimitCall($this, mcpRateLimitToken($connection))
+        ->assertOk();
+});
+
+test('ChatGPT listing the tools before sign-in is not limited', function () {
+    Collection::times(4, fn () => mcpRateLimitCall($this, null, Method::ToolsList, ip: MCP_RATE_LIMIT_CHATGPT_IP)->assertOk());
+});
+
+test('local is not limited', function () {
+    $connection = mcpRateLimitConnection();
+
+    app()->detectEnvironment(fn (): string => 'local');
+
+    mcpRateLimitSpend($this, mcpRateLimitToken($connection), 4);
 });
