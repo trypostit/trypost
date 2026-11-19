@@ -88,6 +88,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     Storage::fake();
     config()->set([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => null,
         'services.google_media.api_key' => null,
         'services.google_media.app_id' => null,
@@ -161,6 +162,7 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
         ->and($page->script("document.querySelectorAll('[data-testid^=\"composer-media-item-\"]').length"))->toBe(2);
 
     MediaImportStatus::complete($exporting, $sharedEdited['media']);
+    broadcastToPage($page, "workspace.{$workspace->id}", 'media.import.settled', ['import_id' => $exporting]);
     waitForState($page, '@composer-media-item-0 img', "element.getAttribute('src') === '{$sharedEdited['media']->url}'");
 
     expect(editInCanvaTileSrc($page, 'composer', 0))->toBe($sharedEdited['media']->url)

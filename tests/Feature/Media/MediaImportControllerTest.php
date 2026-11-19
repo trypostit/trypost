@@ -49,7 +49,7 @@ test('a source that cannot be imported is rejected', function (string $source) {
         ->assertJsonValidationErrors('source');
 
     Queue::assertNotPushed(ImportRemoteMedia::class);
-})->with(['canva', 'unsplash', 'giphy', 'ai', 'dropbox']);
+})->with(['canva', 'ai', 'dropbox']);
 
 test('a disabled source is rejected', function () {
     config()->set('trypost.media_sources.google_drive.enabled', false);

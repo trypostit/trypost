@@ -14,6 +14,7 @@ use App\Http\Controllers\App\ChannelQueueController;
 use App\Http\Controllers\App\ComposerAccountDataController;
 use App\Http\Controllers\App\ComposerLiveDataController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
+use App\Http\Controllers\App\GiphyController;
 use App\Http\Controllers\App\GoogleMediaController;
 use App\Http\Controllers\App\GooglePhotosSessionController;
 use App\Http\Controllers\App\IdeaController;
@@ -300,9 +301,12 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
     Route::post('media/chunked', [MediaUploadController::class, 'storeChunked'])->name('app.media.store-chunked');
     Route::get('media/{media}/file', [MediaFileController::class, 'show'])->whereUuid('media')->name('app.media.file');
-    Route::post('media/from-url', [MediaUploadController::class, 'storeFromUrl'])
-        ->middleware('throttle:media-imports')
-        ->name('app.media.store-from-url');
+    Route::get('media/giphy/search', [GiphyController::class, 'search'])
+        ->middleware('throttle:giphy')
+        ->name('app.media.giphy.search');
+    Route::get('media/giphy/trending', [GiphyController::class, 'trending'])
+        ->middleware('throttle:giphy')
+        ->name('app.media.giphy.trending');
     Route::get('media/unsplash/search', [UnsplashController::class, 'search'])
         ->middleware('throttle:unsplash')
         ->name('app.media.unsplash.search');
