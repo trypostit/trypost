@@ -1631,7 +1631,8 @@ const metaRequirement = (account: ComposerAccount): string | null => {
     return result.valid ? null : result.tooltipKey;
 };
 /** Media rules about the set as a whole; a single item's issue shows on that item. */
-const SET_MEDIA_WARNINGS = new Set([
+/** Media warnings about the post's set as a whole, shown above the card's editor. */
+const SET_MEDIA_WARNINGS = [
     'requires_media',
     'no_mixed_media',
     'max_files_exceeded',
@@ -1640,7 +1641,7 @@ const SET_MEDIA_WARNINGS = new Set([
     'no_image_allowed',
     'no_document_allowed',
     'document_not_alone',
-]);
+];
 const setMediaWarning = (
     account: ComposerAccount | undefined,
 ): MediaValidationWarning | null => {
@@ -1651,7 +1652,15 @@ const setMediaWarning = (
         destination.media,
     );
 
-    return warning && SET_MEDIA_WARNINGS.has(warning.key) ? warning : null;
+    if (!filled(warning)) {
+        return null;
+    }
+
+    if (!SET_MEDIA_WARNINGS.includes(warning.key)) {
+        return null;
+    }
+
+    return warning;
 };
 const hasBlockingIssues = computed(() => blockingIssue.value !== null);
 const isBatch = computed(
@@ -2912,6 +2921,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             groupDestination(group).content_type
                                         "
                                         :media="groupDestination(group).media"
+                                        :shown-elsewhere="SET_MEDIA_WARNINGS"
                                         :media-editing="true"
                                         :disabled="cropUploading"
                                         @edit:media="

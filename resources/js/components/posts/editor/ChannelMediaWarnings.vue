@@ -4,16 +4,10 @@ import { computed } from 'vue';
 
 import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
 import { getMediaValidationWarning } from '@/composables/useMedia';
+import { filled } from '@/lib/helpers';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
-
-const RULES_WARNING_PLATFORMS: string[] = [
-    Platform.Instagram,
-    Platform.InstagramFacebook,
-    Platform.Facebook,
-    Platform.Pinterest,
-];
 
 const ASPECT_KEYS = ['aspect_ratio_too_narrow', 'aspect_ratio_too_wide'];
 
@@ -24,8 +18,10 @@ const props = withDefaults(
         media: MediaItem[];
         disabled?: boolean;
         mediaEditing?: boolean;
+        /** Warning keys the parent already shows, so they are not shown twice. */
+        shownElsewhere?: string[];
     }>(),
-    { disabled: false, mediaEditing: false },
+    { disabled: false, mediaEditing: false, shownElsewhere: () => [] },
 );
 
 const emit = defineEmits<{ 'edit:media': [index: number] }>();
@@ -42,15 +38,15 @@ const aspectIssues = computed(() =>
         : [],
 );
 
-const hiddenKeys = computed(() =>
-    aspectIssues.value.length ? ASPECT_KEYS : [],
-);
-
-const hasRulesWarning = computed(() => {
-    if (!RULES_WARNING_PLATFORMS.includes(props.platform)) {
-        return false;
+const hiddenKeys = computed((): string[] => {
+    if (filled(aspectIssues.value)) {
+        return [...ASPECT_KEYS, ...props.shownElsewhere];
     }
 
+    return props.shownElsewhere;
+});
+
+const hasRulesWarning = computed(() => {
     const warning = getMediaValidationWarning(props.contentType, props.media);
 
     return (

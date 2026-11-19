@@ -264,3 +264,90 @@ test('an Instagram feed post without media shows the inline warning once, under 
         ->assertDisabled('@composer-submit')
         ->assertNoJavaScriptErrors();
 });
+
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function channelMediaIssueItem(string $id, array $overrides = []): array
+{
+    return [
+        'id' => $id,
+        'type' => 'image',
+        'mime_type' => 'image/jpeg',
+        'path' => "uploads/{$id}.jpg",
+        'url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'size' => 1024,
+        'meta' => ['width' => 1080, 'height' => 1080],
+        ...$overrides,
+    ];
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function seedChannelMediaIssuePost(Platform $platform, ContentType $type, array $attributes): Post
+{
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $type)->create(['user_id' => $user->id, ...$attributes]);
+    test()->actingAs($user);
+
+    return $post;
+}
+
+test('a network outside Instagram, Facebook and Pinterest says why its media is refused, not only counts it', function () {
+    $post = seedChannelMediaIssuePost(Platform::Threads, ContentType::ThreadsPost, [
+        'content' => 'A GIF on Threads',
+        'media' => [channelMediaIssueItem('gif-1', ['mime_type' => 'image/gif', 'path' => 'uploads/gif-1.gif'])],
+    ]);
+
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, '@media-rules-warning');
+
+    $page->assertSeeIn('@media-rules-warning', __('posts.form.warnings.gif_not_allowed'))
+        ->assertDisabled('@composer-submit')
+        ->assertNoJavaScriptErrors();
+    expect($page->script('document.querySelector("[data-testid=media-rules-warning] a")?.href'))
+        ->toBe('https://docs.trypost.it/knowledge-base/media#threads');
+});
+
+test('a thread reply says why its media is refused', function () {
+    $post = seedChannelMediaIssuePost(Platform::X, ContentType::XPost, [
+        'content' => 'The thread starts here',
+        'media' => [],
+        'meta' => ['thread_replies' => [[
+            'text' => 'Five photos in one reply',
+            'media' => array_map(fn (int $index): array => channelMediaIssueItem("reply-photo-{$index}"), range(1, 5)),
+        ]]],
+    ]);
+
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, '@media-rules-warning');
+
+    $page->assertSeeIn('@media-rules-warning', __('posts.form.warnings.max_files_exceeded', ['max' => '4', 'current' => '5']))
+        ->assertDisabled('@composer-submit')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a warning about the post\'s media as a whole shows once, above the editor', function () {
+    $post = seedChannelMediaIssuePost(Platform::LinkedIn, ContentType::LinkedInPost, [
+        'content' => 'A photo next to a video',
+        'media' => [
+            channelMediaIssueItem('photo-1'),
+            channelMediaIssueItem('video-1', ['type' => 'video', 'mime_type' => 'video/mp4', 'path' => 'uploads/video-1.mp4', 'meta' => ['duration' => 10]]),
+        ],
+    ]);
+
+    $page = visit(route('app.posts.edit', $post));
+    $warning = "composer-media-warning-{$post->social_account_id}";
+    waitFor($page, "@{$warning}");
+
+    $page->assertSeeIn("@{$warning}", __('posts.form.warnings.no_mixed_media'))
+        ->assertMissing('@media-rules-warning')
+        ->assertNoJavaScriptErrors();
+});
