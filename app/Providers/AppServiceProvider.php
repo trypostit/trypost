@@ -266,13 +266,9 @@ class AppServiceProvider extends ServiceProvider
      */
     private function mcpLimits(Request $request): array
     {
-        if (! $this->app->isProduction()) {
-            return [];
-        }
-
         $user = $request->user();
 
-        if (blank($user)) {
+        if (blank($user) || ! $this->app->isProduction()) {
             return [];
         }
 
