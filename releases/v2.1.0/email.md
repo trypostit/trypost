@@ -1,8 +1,8 @@
 ---
-subject: "Changelog v2.1.0 — See your posts on a board, polls on X, Mastodon and Threads and more..."
+subject: "Changelog v2.1.0 — See every post on a board, poll your followers and more..."
 ---
 
-# Changelog v2.1.0 — See your posts on a board, polls on X, Mastodon and Threads and more...
+# Changelog v2.1.0 — See every post on a board, poll your followers and more...
 
 By TryPost Product Team • [Release v2.1.0](https://github.com/trypostit/trypost/releases/tag/v2.1.0)
 
@@ -10,30 +10,32 @@ Hello! Welcome to this week's update. Here's what's new in TryPost.
 
 ## See every post on a board
 
-Publish has a third view next to List and Calendar: a Board. Group your posts by status (Draft, Approvals, Scheduled, Published, Failed), by tag or by channel, and each one gets its own column. Click a card to open the post, or approve a pending one without leaving the board. Publish now opens on whichever view you used last. While we were at it, Settings → Channels got a cleaner layout, and the first time you open Publish or Insights a short tour shows you where the new bits are.
+Want to know what's waiting for approval, or which channel has nothing scheduled? Open Publish and switch to Board. Your posts line up in columns by status (Draft, Approvals, Scheduled, Published, Failed), by tag or by channel, so the whole plan fits on one screen. You can approve a pending post right on its card, and Publish now opens on the view you used last.
 
-## Polls on X, Mastodon and Threads
+## Poll your followers on X, Mastodon and Threads
 
-Want to know what your followers think? Schedule a poll like any other post: the post text is the question, you add up to four choices and pick how long it stays open (Threads decides that one for you). On X and Mastodon, any post of a thread can be a poll, and Mastodon also lets people pick more than one answer or keeps the votes hidden until the end. Every poll in Sent shows how the votes are splitting and when voting ends. If you post a poll straight on the network, it shows up in TryPost too, with its results.
+Got a question for your audience? Pick Poll as the post type, write the question, add up to four choices and schedule it like any other post. On X and Mastodon a poll can go anywhere in a thread, and Mastodon also lets people pick more than one answer or hides the votes until the end. Sent shows how the votes split and when voting closes. Polls you post on the networks directly show up in TryPost too, with their results.
 
-## Better covers, GIFs and alt text for your media
+## Your own cover on Reels and Shorts, and GIFs from GIPHY
 
-Instagram Reels and YouTube Shorts can have a cover image now. Upload your own, or scroll a strip of the video's frames and pick one, like you would in the Instagram app. GIPHY sits next to Unsplash in the composer, so you can find a GIF without leaving TryPost, and LinkedIn takes animated GIFs. And on Mastodon, Bluesky, Threads and Discord, videos get alt text just like images do.
+The first frame of a video is rarely the one you want people to see. Now you can upload a cover for an Instagram Reel or a YouTube Short, or scroll through the video's frames and pick one. Need a GIF? Search GIPHY right in the composer, next to Unsplash. LinkedIn takes animated GIFs now too.
 
 ## New features
 
-- Mention a teammate with @ in a post's notes (or @all for everyone) and react to a note with any emoji. Notes and reactions show up live, and you get an email when someone mentions you
-- A LinkedIn post can publish one comment right after it, from the same profile or page
-- A post deleted on the network is marked as such in TryPost, and you can delete it here too
-- TryPost speaks Indonesian (Bahasa Indonesia)
-- Move up and Move down on a channel's queue can move a post into a free posting time
-- A small card invites you to connect Claude or ChatGPT from inside the app, instead of a step during signup
+- Mention a teammate with @ in a post's notes, or @all for everyone, and they get an email. You can also react to any note with an emoji
+- Add a first comment to a LinkedIn post: TryPost publishes it right after the post, from the same profile or page
+- If a post you published gets deleted on the network (Instagram, X, YouTube and most others), TryPost marks it as deleted and lets you delete it here too
+- Add alt text to videos on Mastodon, Bluesky, Threads and Discord, not only to images
+- On a channel's queue, Move up and Move down can move a post into an empty posting time
+- TryPost now speaks Indonesian (Bahasa Indonesia)
+- Settings → Channels has a cleaner layout, and a short tour shows you around the first time you open Publish or Insights
+- Connect Claude or ChatGPT from a small card inside the app. It used to be a step during signup
 
 ## Fixes
 
-- Facebook videos and reels are no longer counted twice in Insights
-- The composer tells you why a file can't go on a network, on every network, not only on Instagram, Facebook and Pinterest
-- Pages no longer break for accounts saved with an older time zone name, like Asia/Calcutta or Europe/Kiev
+- Facebook videos and reels are counted once in Insights, not twice
+- When a network can't take a file, the composer now tells you why, on every network
+- Accounts saved with an older time zone name (like Asia/Calcutta or Europe/Kiev) no longer hit an error page
 
 Cheers,
 Paulo from TryPost.it

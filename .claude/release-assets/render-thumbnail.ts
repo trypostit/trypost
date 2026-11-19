@@ -188,7 +188,7 @@ try {
                 `margin:0;font-family:${titleStyle.fontFamily};font-weight:${titleStyle.fontWeight};font-size:${layout.title}px;line-height:1.04;letter-spacing:-0.035em;color:${titleStyle.color}`,
             );
             for (const text of [line1, line2]) {
-                headline.append(element('span', 'display:block', text));
+                headline.append(element('span', 'display:block;white-space:nowrap;width:max-content', text));
             }
 
             const chips = element('div', 'display:flex;flex-wrap:wrap;gap:10px;margin-top:30px');
@@ -204,6 +204,14 @@ try {
 
             column.append(pill, headline, chips);
             section.append(logo, column);
+
+            // Each line stays on one line: the headline shrinks until its longest line fits the column.
+            const widest = (): number => Math.max(...[...headline.children].map((line) => (line as HTMLElement).offsetWidth));
+            let size = layout.title;
+            while (size > 36 && widest() > column.clientWidth) {
+                size -= 1;
+                headline.style.fontSize = `${size}px`;
+            }
             window.scrollTo(0, 0);
         },
         { layout, line1, line2, themes, version: args.version },

@@ -134,6 +134,16 @@ You're receiving this because you subscribed.
 
 **Always end with the unsubscribe footer** — the `---` separator, the "You're receiving this because you subscribed." line, and an `[Unsubscribe]({{unsubscribe_url}})` link below the signature. Keep `{{unsubscribe_url}}` as a literal placeholder; the email sending tool fills it in. This footer is required on every customer email.
 
+#### Voice
+
+The email is copy, not a commit log: apply the `copywriting` skill's principles (`.agents/skills/copywriting/SKILL.md`) and the voice of the `in-app-copy` skill (`.claude/skills/in-app-copy/SKILL.md`). In practice:
+
+- **Run every header, subject slot and bullet through "Now you can…".** If "Now you can see every post on a board" reads as a concrete, true new ability, keep it. If it reads vague ("Now you can… plan it on a board") or isn't an ability at all, rewrite it.
+- **Talk to the reader and lead with the point.** "You", "your posts". The first sentence of a section says what they can do now; the details come after. A rhetorical question that names their situation is a good opener ("Want to know what's waiting for approval?").
+- **Use the words on screen.** Name buttons, tabs and types as the app shows them (Publish, Board, Poll, Sent, Move up), so the reader can find the thing the email talks about. No internal names (slots, holders, meta, destinations).
+- **Specific over clever.** Say which networks, which view, which limit. A line that sounds nice but could describe any release ("Plan it on a board, ask your followers") fails.
+- **Bullets start with what the reader can do** (an imperative or "you can"), not with the name of a feature: "Add a first comment to a LinkedIn post", not "LinkedIn comments".
+
 #### Section headers
 
 A theme header names the outcome the reader gets or the symptom that is gone. Sentence case. It has to make sense to someone who never saw the bug report.
@@ -222,10 +232,11 @@ The humanizer skill itself covers all patterns. Trust it.
 Derive these inputs from the release. The **headline and the chips play different roles — never make one restate the other**:
 
 - **version** — always pass the release version (e.g. `v1.0.6`). It is shown in the violet pill under the logo (`● Changelog · v1.0.6`) so every release image is consistent. Not optional.
-- **headline** — a crafted marketing hero line (2-6 words, at most two lines), in the voice of the marketing site's hero (`Run your social media on autopilot`). It sells the *benefit* of the release's biggest wins; it is the loudest thing on the image. Do **NOT** paste the subject line, and do **NOT** just list the theme/chip words — the chips already name the areas, so the headline sits one level above them. Read the email's themes **and** the "New features" bullets, find the strongest story, and write a fresh benefit line. A little rhythm helps (a parallel pair reads well, e.g. `Speak every language, reach every reader`). Sentence case, no version number in the headline itself (it lives in the pill), no period. It always renders on two lines: put a `|` where the second line starts (`Speak every language, | reach every reader`) so the break lands on the phrase; without one the script splits at the middle word.
-  - ❌ `Your language, mobile, and per-image alt text` (this is just the chip labels)
-  - ✅ `Speak every language, reach every reader` (benefit-driven, distinct from the chips)
-- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered as white glass pills under the headline. Keep them concrete and distinct from the headline's wording. **Order the chips to match the email's section order**, so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
+- **headline** — the release's single biggest win, as a hero line that passes the "Now you can…" test (see Voice in Step 4): "Now you can see every post on one board" is concrete and true, so `See every post | on one board` works; `Plan it on a board, ask your followers` does not (vague, two ideas, says nothing a reader can picture). One idea only: the widest-reach theme, which is also the email's first section. The rest of the release goes in the chips. Two short lines of about 15–20 characters each, split with `|` (`See every post | on one board`); the script shrinks a line that is too long for the column, so a long line comes out small: shorten it instead. Sentence case, no version number (it lives in the pill), no period.
+  - ❌ `Plan it on a board, ask your followers` (clever, vague, two ideas)
+  - ❌ `All your posts on one board, polls on X, Mastodon and Threads` (two ideas, too long for the column)
+  - ✅ `See every post | on one board`
+- **themes** — 2-4 short chip labels naming the other things that shipped (never the headline's own feature again), condensed to 1-3 words each (e.g. `Polls`, `Reel & Short covers`, `GIPHY`). These are secondary supporting labels, rendered as white glass pills under the headline. Keep them concrete. **Order the chips to match the email's section order** (after the first section, which the headline carries), so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
