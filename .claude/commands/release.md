@@ -8,7 +8,7 @@ You are running the Friday release ritual for TryPost. Four artifacts are produc
 1. A git tag (semver)
 2. A GitHub release with the **auto-generated** changelog (PR list + authors via GitHub's native generator — flat, technical, for developers)
 3. A **customer-facing email draft** in Cal.com style (themed prose, end-user voice, no commit/PR references)
-4. A **changelog thumbnail** (1200×630 PNG) rendered from the email's headline and themes, using the TryPost brand template
+4. A **changelog thumbnail** (1200×630 PNG) rendered from the email's headline and themes, on the marketing site's hero design
 
 Plus local mirrors in `releases/<version>/` (changelog, email, and thumbnail), versioned via the artifacts PR.
 
@@ -221,26 +221,24 @@ The humanizer skill itself covers all patterns. Trust it.
 
 Derive these inputs from the release. The **headline and the chips play different roles — never make one restate the other**:
 
-- **version** — always pass the release version (e.g. `v1.0.6`). It is stamped in the badge as a mono segment (`★ CHANGELOG | v1.0.6`) so every release image is consistent. Not optional.
-- **headline** — a crafted marketing hero line (2-6 words, at most two lines), in the voice of the marketing site's hero (`Run your social media on autopilot`). It sells the *benefit* of the release's biggest wins; it is the loudest thing on the image. Do **NOT** paste the subject line, and do **NOT** just list the theme/chip words — the chips already name the areas, so the headline sits one level above them. Read the email's themes **and** the "New features" bullets, find the strongest story, and write a fresh benefit line. A little rhythm helps (a parallel pair reads well, e.g. `Speak every language, reach every reader`). Sentence case, no version number in the headline itself (it lives in the badge), no period.
+- **version** — always pass the release version (e.g. `v1.0.6`). It is shown in the violet pill under the logo (`● Changelog · v1.0.6`) so every release image is consistent. Not optional.
+- **headline** — a crafted marketing hero line (2-6 words, at most two lines), in the voice of the marketing site's hero (`Run your social media on autopilot`). It sells the *benefit* of the release's biggest wins; it is the loudest thing on the image. Do **NOT** paste the subject line, and do **NOT** just list the theme/chip words — the chips already name the areas, so the headline sits one level above them. Read the email's themes **and** the "New features" bullets, find the strongest story, and write a fresh benefit line. A little rhythm helps (a parallel pair reads well, e.g. `Speak every language, reach every reader`). Sentence case, no version number in the headline itself (it lives in the pill), no period. It always renders on two lines: put a `|` where the second line starts (`Speak every language, | reach every reader`) so the break lands on the phrase; without one the script splits at the middle word.
   - ❌ `Your language, mobile, and per-image alt text` (this is just the chip labels)
   - ✅ `Speak every language, reach every reader` (benefit-driven, distinct from the chips)
-- **underline** — a short emphasis phrase *inside* the headline (1-3 words) to carry the hand-drawn violet squiggle, usually the last / most important phrase (e.g. `every reader`). Must appear in the headline verbatim. Optional; omit for no squiggle.
-- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered smaller than the headline; the template auto-colors them (violet / green / sky / orange / rose, in order). Keep them concrete and distinct from the headline's wording. **Order the chips to match the email's section order**, so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
+- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered as white glass pills under the headline, where the site's hero shows the network tiles. Keep them concrete and distinct from the headline's wording. **Order the chips to match the email's section order**, so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
 ```bash
 mkdir -p releases/<version>
-node .claude/release-assets/render-thumbnail.mjs \
+node .claude/release-assets/render-thumbnail.ts \
   --version "<version>" \
-  --headline "<headline>" \
-  --underline "<emphasis phrase>" \
+  --headline "<first line> | <second line>" \
   --themes "<label 1>,<label 2>,<label 3>" \
   --out releases/<version>/thumbnail.png
 ```
 
-This uses the shared brand template (`.claude/release-assets/thumbnail.template.html`) + TryPost logo. It mirrors the marketing-site hero / OG image: a warm cream→lavender wash, an ink dot-grid, an Instrument Serif headline with a hand-drawn violet squiggle under the emphasis phrase, an amber "Changelog" sticker badge with the version stamped in mono, and colored ink-bordered theme chips with solid offset shadows. 1200×630. It needs Playwright + chromium (already installed for browser tests). If the render fails, report and stop before tagging.
+It renders the marketing site's hero, the same way the site's share image and the profile banners are made (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac, the logo, the version pill, the headline in the site's heading font, the theme pills and the app's week calendar, 1200×630 at 2x. It shoots trypost-site's dev server on port 4390, and starts it (then stops it) when nothing answers there; the site lives next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`). It needs Playwright + chromium (already installed for browser tests). If the render fails, report and stop before tagging.
 
 ### Step 6 — Confirm with the user
 
