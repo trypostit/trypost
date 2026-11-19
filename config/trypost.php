@@ -117,6 +117,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | MCP rate limit
+    |--------------------------------------------------------------------------
+    |
+    | Requests one MCP token (one AI client, for one user, in one workspace)
+    | may send to the MCP server. The REST API counts apart.
+    |
+    */
+
+    'mcp_requests_per_minute' => (int) env('MCP_REQUESTS_PER_MINUTE', 240),
+    'mcp_requests_per_hour' => (int) env('MCP_REQUESTS_PER_HOUR', 2400),
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |
