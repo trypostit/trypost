@@ -1,6 +1,7 @@
 // Render a release changelog thumbnail (1200x630 at 2x) on the marketing site's design: the
-// /channels hero of trypost-site with the logo, a "Changelog · <version>" pill, the release
-// headline, the themes as glass pills and the app's week calendar. It follows the site's share
+// lilac of trypost-site's /channels hero, the text on the left (logo, a "Changelog · <version>"
+// pill, the release headline, the themes as glass pills) and the app's week calendar on the right,
+// running off the right and bottom edges. It follows the site's share
 // image (trypost-site/.claude/og-assets/shoot-og-hero.mjs) and the profile banners
 // (~/Herd/paulo-social-media-banners).
 //
@@ -100,7 +101,7 @@ const startSite = async (): Promise<ChildProcess> => {
     throw new Error(`trypost-site did not start on ${SITE_URL} (from ${SITE_DIR})`);
 };
 
-const layout = { w: 1200, h: 630, appw: 1320, title: 54, logo: 34, scale: 0.66, pad: -150, top: 40, dpr: 2 };
+const layout = { w: 1200, h: 630, title: 60, logo: 30, appw: 1320, appx: 640, appy: 104, scale: 0.72, dpr: 2 };
 
 let server: ChildProcess | null = null;
 if (!(await siteAnswers())) {
@@ -110,98 +111,106 @@ if (!(await siteAnswers())) {
 const browser = await chromium.launch();
 try {
     const page = await browser.newPage({
-        viewport: { width: layout.w, height: 1000 },
+        viewport: { width: layout.w, height: layout.h },
         deviceScaleFactor: layout.dpr,
     });
     await page.goto(`${SITE_URL}/en/channels`, { waitUntil: 'load', timeout: 120000 });
     await page.waitForTimeout(2500);
 
+    // The hero section becomes the 1200x630 canvas: its lilac stays, the text column is built on the
+    // left and the app window sits on the right, running off the right and bottom edges.
     await page.evaluate(
         ({ layout, line1, line2, themes, version }) => {
             const q = (selector: string): HTMLElement => document.querySelector(selector) as HTMLElement;
-            const hide = (element: HTMLElement | null | undefined): void => {
-                if (element) {
-                    element.style.display = 'none';
+            const element = (tag: string, css: string, text?: string): HTMLElement => {
+                const node = document.createElement(tag);
+                node.style.cssText = css;
+                if (text) {
+                    node.textContent = text;
                 }
+
+                return node;
             };
 
-            document.querySelectorAll<HTMLElement>('header, astro-dev-toolbar').forEach(hide);
-            hide(q('[data-testid="feature-hero-description"]'));
-            hide(q('[data-testid="feature-hero-google"]')?.parentElement);
-            hide(q('[data-testid="social-proof"]')?.parentElement);
-            hide(q('[data-testid="hero-eyebrow"]'));
-            document.querySelectorAll<HTMLElement>('[data-testid="feature-hero-decor"]').forEach(hide);
+            document.querySelectorAll<HTMLElement>('header, astro-dev-toolbar, [data-testid="feature-hero-decor"]').forEach((node) => {
+                node.style.display = 'none';
+            });
 
+            const section = q('[data-testid="feature-hero"]');
             const title = q('[data-testid="feature-hero-title"]');
-            title.style.fontSize = `${layout.title}px`;
-            title.style.whiteSpace = 'nowrap';
-            title.innerHTML = '';
-            for (const text of [line1, line2]) {
-                const line = document.createElement('span');
-                line.style.display = 'block';
-                line.textContent = text;
-                title.append(line);
-            }
+            const titleStyle = getComputedStyle(title);
+            const app = q('[data-testid="feature-hero-app"]');
+            const lilac = getComputedStyle(q('[data-testid="feature-hero-stage"]')).backgroundImage;
 
-            const logo = document.createElement('img');
-            logo.src = '/images/trypost/logo-light.png';
+            Object.assign(section.style, {
+                backgroundImage: lilac,
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: `${layout.w}px`,
+                height: `${layout.h}px`,
+                margin: '0',
+                overflow: 'hidden',
+                zIndex: '2147483000',
+            });
+            q('[data-testid="feature-hero-frame"]').style.display = 'none';
+            q('[data-testid="feature-hero-inner"]').style.display = 'none';
+
+            section.append(app);
+            Object.assign(app.style, {
+                position: 'absolute',
+                left: `${layout.appx}px`,
+                top: `${layout.appy}px`,
+                width: `${layout.appw}px`,
+                maxWidth: 'none',
+                margin: '0',
+                transform: `scale(${layout.scale})`,
+                transformOrigin: 'top left',
+            });
+
+            const column = element(
+                'div',
+                'position:absolute;left:64px;top:0;bottom:0;width:540px;display:flex;flex-direction:column;justify-content:center;z-index:5',
+            );
+
+            const logo = element('img', `position:absolute;left:64px;top:52px;height:${layout.logo}px;z-index:5`);
+            logo.setAttribute('src', '/images/trypost/logo-light.png');
             logo.id = 'banner-logo';
-            logo.style.cssText = `height:${layout.logo}px;display:block;margin:0 auto 18px`;
 
-            const pill = document.createElement('div');
-            pill.style.cssText =
-                'display:flex;width:max-content;margin:0 auto 18px;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.75);box-shadow:0 0 0 1px rgba(124,58,237,.18),0 4px 14px rgba(91,33,182,.10);font:600 14px/1 var(--font-sans);letter-spacing:.02em;color:#6d28d9';
-            pill.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:#7c3aed"></span>';
-            pill.append(`Changelog · ${version}`);
+            const pill = element(
+                'div',
+                'display:flex;width:max-content;align-items:center;gap:8px;margin-bottom:22px;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.8);box-shadow:0 0 0 1px rgba(124,58,237,.18),0 4px 14px rgba(91,33,182,.10);font:600 14px/1 var(--font-sans);letter-spacing:.02em;color:#6d28d9',
+            );
+            pill.append(element('span', 'width:7px;height:7px;border-radius:50%;background:#7c3aed'), `Changelog · ${version}`);
 
-            title.parentElement!.insertBefore(logo, title);
-            title.parentElement!.insertBefore(pill, title);
+            const headline = element(
+                'h1',
+                `margin:0;font-family:${titleStyle.fontFamily};font-weight:${titleStyle.fontWeight};font-size:${layout.title}px;line-height:1.04;letter-spacing:-0.035em;color:${titleStyle.color}`,
+            );
+            for (const text of [line1, line2]) {
+                headline.append(element('span', 'display:block', text));
+            }
 
-            const chips = document.createElement('div');
-            chips.style.cssText = 'display:flex;justify-content:center;gap:12px;margin:26px 0 74px';
+            const chips = element('div', 'display:flex;flex-wrap:wrap;gap:10px;margin-top:30px');
             for (const theme of themes) {
-                const chip = document.createElement('span');
-                chip.textContent = theme;
-                chip.style.cssText =
-                    'padding:10px 18px;border-radius:14px;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(15,15,30,.06),0 6px 16px rgba(60,40,140,.10);font:550 18px/1 var(--font-sans);color:#18181b';
-                chips.append(chip);
+                chips.append(
+                    element(
+                        'span',
+                        'padding:9px 15px;border-radius:12px;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(15,15,30,.06),0 6px 16px rgba(60,40,140,.10);font:550 16px/1 var(--font-sans);color:#18181b',
+                        theme,
+                    ),
+                );
             }
 
-            const strip = q('[data-testid="feature-hero-strip"]');
-            if (strip) {
-                strip.replaceWith(chips);
-            } else {
-                title.after(chips);
-            }
-
+            column.append(pill, headline, chips);
+            section.append(logo, column);
             window.scrollTo(0, 0);
         },
         { layout, line1, line2, themes, version: args.version },
     );
     await page.waitForTimeout(800);
 
-    await page.evaluate((layout) => {
-        const q = (selector: string): HTMLElement => document.querySelector(selector) as HTMLElement;
-        const inner = q('[data-testid="feature-hero-inner"]');
-        Object.assign(inner.style, { transform: `translateY(${layout.pad}px)`, position: 'relative', zIndex: '5' });
-        Object.assign(q('[data-testid="feature-hero-app"]').style, {
-            maxWidth: 'none',
-            width: `${layout.appw}px`,
-            position: 'relative',
-            left: '50%',
-            marginLeft: '0',
-            marginRight: '0',
-            transform: `translateX(-50%) scale(${layout.scale})`,
-            transformOrigin: 'top center',
-        });
-        q('[data-testid="feature-hero-frame"]').style.padding = '0';
-        Object.assign(q('[data-testid="feature-hero-stage"]').style, { borderRadius: '0', margin: '0' });
-    }, layout);
-    await page.waitForTimeout(600);
-
-    const logoTop: number = await page.evaluate(() => document.getElementById('banner-logo')!.getBoundingClientRect().top + window.scrollY);
-    const y = Math.max(0, logoTop - layout.top);
-    await page.screenshot({ path: args.out, clip: { x: 0, y, width: layout.w, height: layout.h } });
+    await page.screenshot({ path: args.out, clip: { x: 0, y: 0, width: layout.w, height: layout.h } });
 } finally {
     await browser.close();
     if (server) {
