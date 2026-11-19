@@ -14,6 +14,7 @@ use Tests\TestCase;
 const MCP_RATE_LIMIT_CHATGPT_IP = '203.0.113.5';
 
 beforeEach(function () {
+    app()->detectEnvironment(fn (): string => 'production');
     fakeChatGptEgressRanges(['203.0.113.0/24']);
 
     config([
@@ -166,10 +167,10 @@ test('ChatGPT listing the tools before sign-in is not limited', function () {
     Collection::times(4, fn () => mcpRateLimitCall($this, null, Method::ToolsList, ip: MCP_RATE_LIMIT_CHATGPT_IP)->assertOk());
 });
 
-test('local is not limited', function () {
+test('outside production is not limited', function () {
     $connection = mcpRateLimitConnection();
 
-    app()->detectEnvironment(fn (): string => 'local');
+    app()->detectEnvironment(fn (): string => 'staging');
 
     mcpRateLimitSpend($this, mcpRateLimitToken($connection), 4);
 });
