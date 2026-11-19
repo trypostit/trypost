@@ -1,24 +1,30 @@
 // Render a release changelog thumbnail (1200x630 at 2x) on the marketing site's design: the
 // lilac of trypost-site's /channels hero, the text on the left (logo, a "Changelog · <version>"
-// pill, the release headline, the themes as glass pills) and the app's week calendar on the right,
-// running off the right and bottom edges. It follows the site's share
-// image (trypost-site/.claude/og-assets/shoot-og-hero.mjs) and the profile banners
-// (~/Herd/paulo-social-media-banners).
+// pill, the release headline, the themes as glass pills) and, on the right, a window holding a
+// real screenshot of the app screen the release is about, running off the right and bottom
+// edges. The layout follows the site's share image (trypost-site/.claude/og-assets/
+// shoot-og-hero.mjs) and the profile banners (~/Herd/paulo-social-media-banners).
 //
 // Usage:
 //   node .claude/release-assets/render-thumbnail.ts \
 //     --version "v2.1.0" \
-//     --headline "Plan it on a board, | ask your followers" \
-//     --themes "Board view,Polls,Covers & GIFs" \
+//     --headline "See every post | on one board" \
+//     --themes "By status,By tag,By channel" \
+//     --scene "/schedule/board" \
 //     --out releases/v2.1.0/thumbnail.png
 //
-// The headline breaks into its two lines at "|" (or at the middle word without one).
+// The headline breaks into its two lines at "|" (or at the middle word without one). `--scene`
+// is the app path to shoot, with its query (`/schedule/board?group=tag`).
 //
-// It shoots trypost-site's dev server on port 4390. When nothing answers there, it starts
-// `astro dev` in TRYPOST_SITE_DIR (default: the trypost-site folder next to this repo) and stops
-// it at the end. Playwright comes from this repo's node_modules.
+// The screenshot comes from the local app (APP_URL, with `npm run dev` running): the script
+// seeds the demo workspace (database/seeders/DemoWorkspaceSeeder.php), signs in as its user,
+// shoots the scene without its sidebar, and removes the demo workspace at the end. The demo
+// photos are answered from ./demo-media. The canvas comes from trypost-site's dev server on port
+// 4390; when nothing answers there, it starts `astro dev` in TRYPOST_SITE_DIR (default: the
+// trypost-site folder next to this repo) and stops it at the end.
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -38,8 +44,8 @@ for (let i = 2; i < process.argv.length; i += 2) {
     args[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
 }
 
-if (!args.headline || !args.out || !args.version) {
-    console.error('usage: render-thumbnail.ts --version "v2.1.0" --headline "line one | line two" --themes "a,b,c" --out path.png');
+if (!args.headline || !args.out || !args.version || !args.scene) {
+    console.error('usage: render-thumbnail.ts --version "v2.1.0" --headline "line one | line two" --themes "a,b,c" --scene "/schedule/board" --out path.png');
     process.exit(1);
 }
 
@@ -101,15 +107,76 @@ const startSite = async (): Promise<ChildProcess> => {
     throw new Error(`trypost-site did not start on ${SITE_URL} (from ${SITE_DIR})`);
 };
 
-const layout = { w: 1200, h: 630, title: 60, logo: 30, appw: 1320, appx: 640, appy: 104, scale: 0.72, dpr: 2 };
+const layout = { w: 1200, h: 630, title: 60, logo: 30, appx: 640, appy: 104, windoww: 940, dpr: 2 };
+const APP_URL = execFileSync('php', ['artisan', 'tinker', '--execute', 'echo config("app.url");'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+const DEMO_MEDIA = join(here, 'demo-media');
+const DEMO_MEDIA_HOST = 'demo-media.trypost.invalid/';
+
+if (!existsSync(join(repoRoot, 'public', 'hot'))) {
+    console.error('The app needs the Vite dev server: run `npm run dev` first.');
+    process.exit(1);
+}
+
+const artisan = (...command: string[]): void => {
+    execFileSync('php', ['artisan', ...command], { cwd: repoRoot, stdio: 'ignore' });
+};
+
+// A screenshot of the scene in the demo workspace, without the app's sidebar, as a data URI.
+const shootScene = async (): Promise<string> => {
+    const context = await browser.newContext({
+        viewport: { width: 1600, height: 1000 },
+        deviceScaleFactor: layout.dpr,
+        ignoreHTTPSErrors: true,
+    });
+    await context.route(new RegExp(DEMO_MEDIA_HOST.replaceAll('.', '\\.')), (route: { request: () => { url: () => string }; fulfill: (response: object) => void }) => {
+        const file = route.request().url().split(DEMO_MEDIA_HOST)[1];
+        route.fulfill({ body: readFileSync(join(DEMO_MEDIA, file)), contentType: file.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg' });
+    });
+    await context.addInitScript(() => {
+        const style = document.createElement('style');
+        style.textContent = '[data-testid="mcp-prompt"], [data-sonner-toaster] { display: none !important; }';
+        document.addEventListener('DOMContentLoaded', () => document.head.append(style));
+    });
+
+    const app = await context.newPage();
+    await app.goto(`${APP_URL}/login`);
+    await app.fill('[data-testid="login-email"]', 'demo@trypost.it');
+    await app.fill('[data-testid="login-password"]', 'password');
+    await app.click('[data-testid="login-submit"]');
+    await app.waitForURL((url: URL) => !url.pathname.startsWith('/login'), { timeout: 60000 });
+    await app.goto(`${APP_URL}${args.scene}`);
+    await app.waitForTimeout(3000);
+
+    // A tour that opens on the scene is closed; the next one waiting there opens after it.
+    for (let attempt = 0; attempt < 5 && (await app.locator('[data-testid="tour-backdrop"]').count()) > 0; attempt++) {
+        await app.keyboard.press('Escape');
+        await app.waitForTimeout(600);
+    }
+    await app.mouse.move(0, 999);
+    await app.waitForTimeout(800);
+
+    const main: { x: number; width: number } = await app.evaluate(() => {
+        const box = document.querySelector('main')!.getBoundingClientRect();
+
+        return { x: box.left, width: box.width };
+    });
+    const shot: Buffer = await app.screenshot({ clip: { x: main.x, y: 0, width: main.width, height: 1000 } });
+    await context.close();
+
+    return `data:image/png;base64,${shot.toString('base64')}`;
+};
 
 let server: ChildProcess | null = null;
 if (!(await siteAnswers())) {
     server = await startSite();
 }
 
+artisan('db:seed', '--class=DemoWorkspaceSeeder', '--no-interaction');
+
 const browser = await chromium.launch();
 try {
+    const sceneShot = await shootScene();
+
     const page = await browser.newPage({
         viewport: { width: layout.w, height: layout.h },
         deviceScaleFactor: layout.dpr,
@@ -120,7 +187,7 @@ try {
     // The hero section becomes the 1200x630 canvas: its lilac stays, the text column is built on the
     // left and the app window sits on the right, running off the right and bottom edges.
     await page.evaluate(
-        ({ layout, line1, line2, themes, version }) => {
+        ({ layout, line1, line2, themes, version, sceneShot }) => {
             const q = (selector: string): HTMLElement => document.querySelector(selector) as HTMLElement;
             const element = (tag: string, css: string, text?: string): HTMLElement => {
                 const node = document.createElement(tag);
@@ -156,17 +223,19 @@ try {
             q('[data-testid="feature-hero-frame"]').style.display = 'none';
             q('[data-testid="feature-hero-inner"]').style.display = 'none';
 
-            section.append(app);
-            Object.assign(app.style, {
-                position: 'absolute',
-                left: `${layout.appx}px`,
-                top: `${layout.appy}px`,
-                width: `${layout.appw}px`,
-                maxWidth: 'none',
-                margin: '0',
-                transform: `scale(${layout.scale})`,
-                transformOrigin: 'top left',
-            });
+            app.remove();
+            const window = element(
+                'div',
+                `position:absolute;left:${layout.appx}px;top:${layout.appy}px;width:${layout.windoww}px;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(15,15,30,.08),0 24px 60px rgba(60,40,140,.18)`,
+            );
+            const bar = element('div', 'display:flex;gap:7px;padding:12px 14px;border-bottom:1px solid rgba(15,15,30,.06)');
+            for (const color of ['#ff5f57', '#febc2e', '#28c840']) {
+                bar.append(element('span', `width:11px;height:11px;border-radius:50%;background:${color}`));
+            }
+            const screen = element('img', 'display:block;width:100%');
+            screen.setAttribute('src', sceneShot);
+            window.append(bar, screen);
+            section.append(window);
 
             const column = element(
                 'div',
@@ -214,13 +283,14 @@ try {
             }
             window.scrollTo(0, 0);
         },
-        { layout, line1, line2, themes, version: args.version },
+        { layout, line1, line2, themes, version: args.version, sceneShot },
     );
     await page.waitForTimeout(800);
 
     await page.screenshot({ path: args.out, clip: { x: 0, y: 0, width: layout.w, height: layout.h } });
 } finally {
     await browser.close();
+    artisan('tinker', '--execute', 'Database\\Seeders\\DemoWorkspaceSeeder::forget();');
     if (server) {
         stopSite(server);
     }

@@ -229,14 +229,15 @@ The humanizer skill itself covers all patterns. Trust it.
 
 ### Step 5b — Render the changelog thumbnail
 
-Derive these inputs from the release. The **headline and the chips play different roles — never make one restate the other**:
+**The image tells one story: the headline, the screenshot and the chips are all about the same feature**, the release's widest-reach one (the email's first section). A headline about the board next to a calendar, with chips about other features, reads as three unrelated things. The rest of the release lives in the email, not in the image.
 
-- **version** — always pass the release version (e.g. `v1.0.6`). It is shown in the violet pill under the logo (`● Changelog · v1.0.6`) so every release image is consistent. Not optional.
-- **headline** — the release's single biggest win, as a hero line that passes the "Now you can…" test (see Voice in Step 4): "Now you can see every post on one board" is concrete and true, so `See every post | on one board` works; `Plan it on a board, ask your followers` does not (vague, two ideas, says nothing a reader can picture). One idea only: the widest-reach theme, which is also the email's first section. The rest of the release goes in the chips. Two short lines of about 15–20 characters each, split with `|` (`See every post | on one board`); the script shrinks a line that is too long for the column, so a long line comes out small: shorten it instead. Sentence case, no version number (it lives in the pill), no period.
+- **version** — always pass the release version (e.g. `v1.0.6`). It is shown in the violet pill above the headline (`● Changelog · v1.0.6`). Not optional.
+- **headline** — that feature as a hero line that passes the "Now you can…" test (see Voice in Step 4): "Now you can see every post on one board" is concrete and true, so `See every post | on one board` works; `Plan it on a board, ask your followers` does not (vague, two ideas, says nothing a reader can picture). Two short lines of about 15–20 characters each, split with `|`; the script shrinks a line that is too long for the column, so a long line comes out small: shorten it instead. Sentence case, no version number, no period.
   - ❌ `Plan it on a board, ask your followers` (clever, vague, two ideas)
   - ❌ `All your posts on one board, polls on X, Mastodon and Threads` (two ideas, too long for the column)
   - ✅ `See every post | on one board`
-- **themes** — 2-4 short chip labels naming the other things that shipped (never the headline's own feature again), condensed to 1-3 words each (e.g. `Polls`, `Reel & Short covers`, `GIPHY`). These are secondary supporting labels, rendered as white glass pills under the headline. Keep them concrete. **Order the chips to match the email's section order** (after the first section, which the headline carries), so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
+- **scene** — the app path that shows that feature, with its query (`/schedule/board`, `/schedule/board?group=tag`, `/insights`). The script shoots it in the demo workspace (`database/seeders/DemoWorkspaceSeeder.php`: John Doe / Doe Media, ten channels, three tags, posts in every status, the site's photos). When the feature needs data the demo does not have yet (a poll, a cover, an idea), add it to the seeder in the same PR, so the screenshot shows the feature with real-looking content.
+- **themes** — 2-4 short chips about the same feature: what it lets the reader do, in the words the screen uses (`By status`, `By tag`, `By channel` for the board). Never another feature of the release.
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
@@ -246,10 +247,11 @@ node .claude/release-assets/render-thumbnail.ts \
   --version "<version>" \
   --headline "<first line> | <second line>" \
   --themes "<label 1>,<label 2>,<label 3>" \
+  --scene "<app path>" \
   --out releases/<version>/thumbnail.png
 ```
 
-It renders the marketing site's hero, the same way the site's share image and the profile banners are made (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac with the text on the left (logo, version pill, the headline in the site's heading font, the theme pills) and the app's week calendar on the right, running off the edges, 1200×630 at 2x. It shoots trypost-site's dev server on port 4390, and starts it (then stops it) when nothing answers there; the site lives next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`). It needs Playwright + chromium (already installed for browser tests). If the render fails, report and stop before tagging.
+It draws the marketing site's hero, like the site's share image and the profile banners (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac with the text on the left (logo, version pill, headline, chips) and, on the right, a window holding the real screenshot of the scene, running off the edges, 1200×630 at 2x. It needs the app's Vite dev server (`npm run dev`; start it if `public/hot` is missing) and trypost-site next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`), whose dev server on port 4390 it starts and stops when nothing answers there. It seeds the demo workspace before the shot and removes it after (`DemoWorkspaceSeeder::forget()`), so the scheduler never picks its posts up. If the render fails, report and stop before tagging.
 
 ### Step 6 — Confirm with the user
 
