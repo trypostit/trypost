@@ -193,15 +193,6 @@ class AccessToken extends Token
     }
 
     /**
-     * The MCP connection this token belongs to: one AI client, for one user, in
-     * one workspace. A refreshed token is a new row of the same connection.
-     */
-    public function mcpConnection(): string
-    {
-        return "{$this->client_id}:{$this->user_id}:{$this->workspace_id}";
-    }
-
-    /**
      * Whether this MCP grant can actually use the product (active token + a
      * workspace the owner can view — write tools enforce createPost themselves).
      */

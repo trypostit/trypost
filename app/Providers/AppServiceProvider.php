@@ -258,9 +258,9 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Each MCP connection (one AI client, for one user, in one workspace) has
-     * its own budget, so ChatGPT's and Claude's shared addresses and a busy
-     * teammate never spend anyone else's. ChatGPT listing the tools before
-     * sign-in carries no token and is never limited.
+     * its own budget, kept across token refreshes, so ChatGPT's and Claude's
+     * shared addresses and a busy teammate never spend anyone else's. ChatGPT
+     * listing the tools before sign-in carries no token and is never limited.
      *
      * @return list<Limit>
      */
@@ -276,7 +276,8 @@ class AppServiceProvider extends ServiceProvider
             return [];
         }
 
-        $connection = AccessToken::query()->findOrFail($user->token()->oauth_access_token_id)->mcpConnection();
+        $token = AccessToken::query()->findOrFail($user->token()->oauth_access_token_id);
+        $connection = "{$token->client_id}:{$token->user_id}:{$token->workspace_id}";
 
         return [
             Limit::perMinute(config()->integer('trypost.mcp_requests_per_minute'))->by("minute:{$connection}"),
