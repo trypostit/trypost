@@ -236,8 +236,77 @@ The humanizer skill itself covers all patterns. Trust it.
   - ❌ `Plan it on a board, ask your followers` (clever, vague, two ideas)
   - ❌ `All your posts on one board, polls on X, Mastodon and Threads` (two ideas, too long for the column)
   - ✅ `See every post | on one board`
-- **scene** — the app path that shows that feature, with its query (`/schedule/board`, `/schedule/board?group=tag`, `/insights`). The script shoots it in the demo workspace (`database/seeders/DemoWorkspaceSeeder.php`: John Doe / Doe Media, ten channels, three tags, posts in every status, the site's photos). When the feature needs data the demo does not have yet (a poll, a cover, an idea), add it to the seeder in the same PR, so the screenshot shows the feature with real-looking content.
+- **scene** — the app path that shows that feature, with its query (`/schedule/board`, `/schedule/board?group=tag`, `/insights`). The script signs in as the demo user and shoots it (see Demo data below).
 - **themes** — 2-4 short chips about the same feature: what it lets the reader do, in the words the screen uses (`By status`, `By tag`, `By channel` for the board). Never another feature of the release.
+
+#### Demo data
+
+The screenshot is the real app with demo content, never a real workspace. There is no seeder file for it: create it with tinker right before the render and remove it right after, so the scheduler never picks its posts up.
+
+- **The brand is the site's:** John Doe / Doe Media, the channel avatar and the coffee and ceramics photos of trypost-site (`public/images/avatars`, `public/images/mockup/posts`). Media URLs use the host `https://demo-media.trypost.invalid/<path under the site's public/images>`; the render script answers them from the site, so nothing is uploaded to a disk.
+- **Shape it for the scene:** the base below fills the board and the calendar (ten channels, three tags, posts in every status dated around today). When the feature needs other data (a poll with results, a cover, ideas, insights), add it to the snippet, built with the model factories and their states (`database/factories`).
+- **Sign-in:** `demo@trypost.it` / `password`, with an active subscription so the app opens without Welcome.
+
+Write the snippet to the scratchpad and run it with `--execute` (never `php artisan tinker <file>`, which stays in the interactive shell and hangs):
+
+```bash
+php artisan tinker --execute "$(cat <scratchpad>/release-demo.php)" < /dev/null
+```
+
+Base snippet:
+
+```php
+use App\Models\{Account, Post, SocialAccount, User, Workspace, WorkspaceLabel};
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
+
+$media = fn (?string $photo) => blank($photo) ? [] : [['id' => (string) Str::uuid(), 'path' => "demo/{$photo}", 'url' => "https://demo-media.trypost.invalid/mockup/posts/{$photo}", 'type' => 'image', 'mime_type' => 'image/jpeg']];
+
+$user = User::factory()->create(['name' => 'John Doe', 'email' => 'demo@trypost.it', 'password' => 'password', 'timezone' => 'America/New_York']);
+$user->account->update(['name' => 'Doe Media']);
+$user->account->subscriptions()->create(['type' => Account::SUBSCRIPTION_NAME, 'stripe_id' => 'sub_demo', 'stripe_status' => 'active', 'stripe_price' => 'price_demo']);
+$workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id, 'name' => 'Doe Media']);
+$workspace->members()->attach($user->id, ['is_admin' => true, 'requires_approval' => false]);
+$user->update(['current_workspace_id' => $workspace->id]);
+
+$channels = [];
+foreach (['instagram' => 'doe.media', 'linkedin' => 'Doe Media', 'x' => 'doemedia', 'tiktok' => 'doe.media', 'youtube' => 'Doe Media', 'threads' => 'doe.media', 'bluesky' => 'doemedia.bsky.social', 'mastodon' => 'doemedia@mastodon.social', 'facebook' => 'Doe Media', 'pinterest' => 'doemedia'] as $network => $username) {
+    $channels[$network] = SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id, 'display_name' => 'John Doe', 'username' => $username, 'avatar_url' => 'https://demo-media.trypost.invalid/avatars/persona.svg', 'position' => count($channels) + 1, 'timezone' => 'America/New_York']);
+}
+
+$labels = [];
+foreach (['Launch' => '#DDA0DD', 'Behind the scenes' => '#89CFF0', 'Promo' => '#FFD580'] as $name => $color) {
+    $labels[$name] = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => $name, 'color' => $color]);
+}
+
+foreach ([
+    ['instagram', 'draft', 3, 9, 'New mugs, same morning ritual. Which glaze is your favorite?', 'mugs.jpg', ['Launch']],
+    ['linkedin', 'draft', 4, 11, 'Three things we learned shipping our first ceramics collection.', null, ['Behind the scenes']],
+    ['pinterest', 'draft', 5, 15, 'Moodboard for the spring collection: soft clay, warm light.', 'moodboard.jpg', []],
+    ['tiktok', 'pendingApproval', 1, 18, 'From a lump of clay to your morning latte, in 30 seconds.', 'wheel.jpg', ['Behind the scenes']],
+    ['facebook', 'pendingApproval', 2, 10, 'Weekend market this Saturday: come say hi and try a cup.', 'shelf.jpg', ['Promo']],
+    ['instagram', 'scheduled', 1, 9, 'Latte art Friday. Tag a friend who needs a coffee.', 'latte.jpg', ['Promo']],
+    ['x', 'scheduled', 1, 12, 'The spring collection drops Monday. Set a reminder.', null, ['Launch']],
+    ['youtube', 'scheduled', 2, 14, 'How we glaze a mug, start to finish', 'shoot.jpg', ['Behind the scenes']],
+    ['threads', 'scheduled', 3, 11, 'Coffee first, emails later. What is your morning order?', null, []],
+    ['instagram', 'published', -1, 9, 'Our studio shelf is officially full. Thank you for an amazing month.', 'shelf.jpg', []],
+    ['linkedin', 'published', -1, 13, 'We are hiring a part-time studio assistant. Know someone?', 'laptop.jpg', []],
+    ['bluesky', 'published', -2, 10, 'Fresh batch out of the kiln this morning.', 'mug.jpg', ['Behind the scenes']],
+    ['mastodon', 'failed', -1, 16, 'Spring collection preview, now with photos.', 'mugs.jpg', ['Launch']],
+] as [$network, $state, $day, $hour, $text, $photo, $tags]) {
+    $at = CarbonImmutable::now('America/New_York')->startOfDay()->addDays($day)->setHour($hour)->utc();
+    $post = Post::factory()->forAccount($channels[$network])->{$state}()->create(['user_id' => $user->id, 'content' => "<p>{$text}</p>", 'media' => $media($photo), 'scheduled_at' => $at, 'published_at' => $state === 'published' ? $at : null, 'meta' => $network === 'youtube' ? ['title' => $text] : []]);
+    $post->labels()->attach(collect($tags)->map(fn ($tag) => $labels[$tag]->id)->all());
+}
+
+echo "demo ready\n";
+```
+
+After the render (and before anything else), remove it, and check that no demo user is left:
+
+```bash
+php artisan tinker --execute '$user = App\Models\User::where("email", "demo@trypost.it")->first(); $account = $user->account; $account->workspaces()->each(fn ($workspace) => $workspace->delete()); $user->delete(); $account->delete(); echo App\Models\User::where("email", "demo@trypost.it")->count();' < /dev/null
+```
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
@@ -251,7 +320,7 @@ node .claude/release-assets/render-thumbnail.ts \
   --out releases/<version>/thumbnail.png
 ```
 
-It draws the marketing site's hero, like the site's share image and the profile banners (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac with the text on the left (logo, version pill, headline, chips) and, on the right, a window holding the real screenshot of the scene, running off the edges, 1200×630 at 2x. It needs the app's Vite dev server (`npm run dev`; start it if `public/hot` is missing) and trypost-site next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`), whose dev server on port 4390 it starts and stops when nothing answers there. It seeds the demo workspace before the shot and removes it after (`DemoWorkspaceSeeder::forget()`), so the scheduler never picks its posts up. If the render fails, report and stop before tagging.
+It draws the marketing site's hero, like the site's share image and the profile banners (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac with the text on the left (logo, version pill, headline, chips) and, on the right, a window holding the real screenshot of the scene, running off the edges, 1200×630 at 2x. It needs the app's Vite dev server (`npm run dev`; start it if `public/hot` is missing) and trypost-site next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`), whose dev server on port 4390 it starts and stops when nothing answers there. It needs the demo data above to exist while it runs. If the render fails, report and stop before tagging.
 
 ### Step 6 — Confirm with the user
 

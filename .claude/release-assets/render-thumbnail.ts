@@ -16,10 +16,12 @@
 // The headline breaks into its two lines at "|" (or at the middle word without one). `--scene`
 // is the app path to shoot, with its query (`/schedule/board?group=tag`).
 //
-// The screenshot comes from the local app (APP_URL, with `npm run dev` running): the script
-// seeds the demo workspace (database/seeders/DemoWorkspaceSeeder.php), signs in as its user,
-// shoots the scene without its sidebar, and removes the demo workspace at the end. The demo
-// photos are answered from ./demo-media. The canvas comes from trypost-site's dev server on port
+// The screenshot comes from the local app (APP_URL, with `npm run dev` running): the script signs
+// in as demo@trypost.it / password, the demo workspace /release creates with tinker before the
+// render (and removes after), and shoots the scene without its sidebar. Demo media URLs on
+// https://demo-media.trypost.invalid/<path> are answered from trypost-site's public/images/<path>.
+//
+// The canvas comes from trypost-site's dev server on port
 // 4390; when nothing answers there, it starts `astro dev` in TRYPOST_SITE_DIR (default: the
 // trypost-site folder next to this repo) and stops it at the end.
 
@@ -109,7 +111,7 @@ const startSite = async (): Promise<ChildProcess> => {
 
 const layout = { w: 1200, h: 630, title: 60, logo: 30, appx: 640, appy: 104, windoww: 940, dpr: 2 };
 const APP_URL = execFileSync('php', ['artisan', 'tinker', '--execute', 'echo config("app.url");'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-const DEMO_MEDIA = join(here, 'demo-media');
+const DEMO_MEDIA = join(SITE_DIR, 'public', 'images');
 const DEMO_MEDIA_HOST = 'demo-media.trypost.invalid/';
 
 if (!existsSync(join(repoRoot, 'public', 'hot'))) {
@@ -117,8 +119,16 @@ if (!existsSync(join(repoRoot, 'public', 'hot'))) {
     process.exit(1);
 }
 
-const artisan = (...command: string[]): void => {
-    execFileSync('php', ['artisan', ...command], { cwd: repoRoot, stdio: 'ignore' });
+const mediaType = (file: string): string => {
+    if (file.endsWith('.svg')) {
+        return 'image/svg+xml';
+    }
+
+    if (file.endsWith('.png')) {
+        return 'image/png';
+    }
+
+    return 'image/jpeg';
 };
 
 // A screenshot of the scene in the demo workspace, without the app's sidebar, as a data URI.
@@ -130,7 +140,7 @@ const shootScene = async (): Promise<string> => {
     });
     await context.route(new RegExp(DEMO_MEDIA_HOST.replaceAll('.', '\\.')), (route: { request: () => { url: () => string }; fulfill: (response: object) => void }) => {
         const file = route.request().url().split(DEMO_MEDIA_HOST)[1];
-        route.fulfill({ body: readFileSync(join(DEMO_MEDIA, file)), contentType: file.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg' });
+        route.fulfill({ body: readFileSync(join(DEMO_MEDIA, file)), contentType: mediaType(file) });
     });
     await context.addInitScript(() => {
         const style = document.createElement('style');
@@ -170,8 +180,6 @@ let server: ChildProcess | null = null;
 if (!(await siteAnswers())) {
     server = await startSite();
 }
-
-artisan('db:seed', '--class=DemoWorkspaceSeeder', '--no-interaction');
 
 const browser = await chromium.launch();
 try {
@@ -290,7 +298,6 @@ try {
     await page.screenshot({ path: args.out, clip: { x: 0, y: 0, width: layout.w, height: layout.h } });
 } finally {
     await browser.close();
-    artisan('tinker', '--execute', 'Database\\Seeders\\DemoWorkspaceSeeder::forget();');
     if (server) {
         stopSite(server);
     }
