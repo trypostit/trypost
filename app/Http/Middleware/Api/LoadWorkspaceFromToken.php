@@ -69,7 +69,6 @@ class LoadWorkspaceFromToken
 
         $user->setRelation('currentWorkspace', $workspace);
         $user->current_workspace_id = $workspace->id;
-        $request->attributes->set(AccessToken::class, $token);
 
         $token->forceFill(['last_used_at' => now()])->saveQuietly();
 

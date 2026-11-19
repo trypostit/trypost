@@ -266,13 +266,13 @@ class AppServiceProvider extends ServiceProvider
      */
     private function mcpLimits(Request $request): array
     {
-        $token = $request->attributes->get(AccessToken::class);
+        $user = $request->user();
 
-        if (blank($token) || ! $this->app->isProduction()) {
+        if (blank($user) || ! $this->app->isProduction()) {
             return [];
         }
 
-        $connection = "{$token->client_id}:{$token->user_id}:{$token->workspace_id}";
+        $connection = "{$user->token()->oauth_client_id}:{$user->id}:{$user->current_workspace_id}";
 
         return [
             Limit::perMinute(config()->integer('trypost.mcp_requests_per_minute'))->by("minute:{$connection}"),

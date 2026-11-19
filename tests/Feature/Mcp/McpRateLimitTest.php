@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
+use Laravel\Passport\AccessToken as PassportAccessToken;
 use Tests\TestCase;
 
 const MCP_RATE_LIMIT_CHATGPT_IP = '203.0.113.5';
@@ -31,33 +32,39 @@ function mcpRateLimitConnection(): AccessToken
     ['user' => $user, 'workspace' => $workspace] = createApiTestToken();
     subscribeAccount($user->account);
 
-    return mcpBearerToken($user, $workspace, clientName: 'Claude')['token'];
+    return mcpAccessToken($user, mcpOauthClient('Claude'), $workspace);
 }
 
 /**
  * A new token of the connection, as a refresh gives one, or of another
  * connection when the user, workspace or AI client differs.
  */
-function mcpRateLimitToken(AccessToken $connection, ?User $user = null, ?Workspace $workspace = null, ?string $clientId = null): string
+function mcpRateLimitToken(AccessToken $connection, ?User $user = null, ?Workspace $workspace = null, ?string $clientId = null): AccessToken
 {
-    $token = mcpBearerToken($user ?? $connection->user, $workspace ?? $connection->workspace);
-    $token['token']->forceFill(['client_id' => $clientId ?? $connection->client_id])->saveQuietly();
-
-    return $token['plain_token'];
+    return mcpAccessToken($user ?? $connection->user, $clientId ?? $connection->client_id, $workspace ?? $connection->workspace);
 }
 
 /**
+ * Sends the request as the token's holder, with the claims Passport's guard
+ * reads from a signed token of that client.
+ *
  * @param  array<string, mixed>  $params
  */
-function mcpRateLimitCall(TestCase $test, ?string $token, Method $method = Method::Ping, array $params = [], ?string $ip = null): TestResponse
+function mcpRateLimitCall(TestCase $test, ?AccessToken $token, Method $method = Method::Ping, array $params = [], ?string $ip = null): TestResponse
 {
     auth()->forgetGuards();
 
+    if (filled($token)) {
+        $test->actingAs($token->user->withAccessToken(new PassportAccessToken([
+            'oauth_access_token_id' => $token->id,
+            'oauth_client_id' => $token->client_id,
+            'oauth_user_id' => $token->user_id,
+            'oauth_scopes' => $token->scopes,
+        ])), 'api');
+    }
+
     return $test->withServerVariables(Arr::whereNotNull(['REMOTE_ADDR' => $ip]))
-        ->withHeaders(Arr::whereNotNull([
-            'Authorization' => transform($token, fn (string $token): string => "Bearer {$token}"),
-            'Accept' => 'application/json, text/event-stream',
-        ]))
+        ->withHeader('Accept', 'application/json, text/event-stream')
         ->postJson(route('mcp.trypost'), [
             'jsonrpc' => '2.0',
             'id' => 1,
@@ -66,7 +73,7 @@ function mcpRateLimitCall(TestCase $test, ?string $token, Method $method = Metho
         ]);
 }
 
-function mcpRateLimitSpend(TestCase $test, string $token, int $requests): void
+function mcpRateLimitSpend(TestCase $test, AccessToken $token, int $requests): void
 {
     Collection::times($requests, fn () => mcpRateLimitCall($test, $token)->assertOk());
 }
@@ -157,8 +164,10 @@ test('the same AI client in another workspace keeps its own limit', function () 
 test('requests refused at sign-in do not count', function () {
     $connection = mcpRateLimitConnection();
 
-    Collection::times(4, fn () => mcpRateLimitCall($this, 'not-a-token')->assertUnauthorized());
+    $this->withToken('not-a-token');
+    Collection::times(4, fn () => mcpRateLimitCall($this, null)->assertUnauthorized());
 
+    $this->withoutToken();
     mcpRateLimitCall($this, mcpRateLimitToken($connection))
         ->assertOk();
 });
