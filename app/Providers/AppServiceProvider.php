@@ -266,13 +266,12 @@ class AppServiceProvider extends ServiceProvider
      */
     private function mcpLimits(Request $request): array
     {
-        $user = $request->user();
+        $token = $request->attributes->get(AccessToken::class);
 
-        if (blank($user) || ! $this->app->isProduction()) {
+        if (blank($token) || ! $this->app->isProduction()) {
             return [];
         }
 
-        $token = AccessToken::query()->findOrFail($user->token()->oauth_access_token_id);
         $connection = "{$token->client_id}:{$token->user_id}:{$token->workspace_id}";
 
         return [
