@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Locatie niet gevonden.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Verzoek om gegevens te verwijderen',
+        'pending_title' => 'We verwijderen je gegevens',
+        'completed_title' => 'Je gegevens zijn verwijderd',
+        'pending_description' => 'We hebben je verzoek op :date ontvangen en verwijderen de gegevens die we over je hebben opgeslagen. Op deze pagina zie je wanneer het klaar is.',
+        'completed_description' => 'Op :date hebben we de gegevens verwijderd die we over je hadden opgeslagen.',
+        'confirmation_code' => 'Bevestigingscode',
+    ],
 ];

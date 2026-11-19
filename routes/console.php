@@ -14,6 +14,7 @@ use App\Console\Commands\PruneWebhookLogs;
 use App\Console\Commands\ReconcileGoogleBusinessPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
+use App\Console\Commands\RefreshLinkedInPageProfiles;
 use App\Console\Commands\Repurpose\PollRepurposes;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(ProcessScheduledPosts::class)->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command(CheckSocialConnections::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(RefreshLinkedInPageProfiles::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(CheckUpcomingPostConnections::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();

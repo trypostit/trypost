@@ -13,6 +13,7 @@ use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\AnalyticsSyncState;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
+use App\Models\DataDeletionRequest;
 use App\Models\Idea;
 use App\Models\IdeaStage;
 use App\Models\Invite;
@@ -131,6 +132,7 @@ class AppServiceProvider extends ServiceProvider
             'analyticsSyncState' => AnalyticsSyncState::class,
             'changelogEntry' => ChangelogEntry::class,
             'changelogEntryView' => ChangelogEntryView::class,
+            'dataDeletionRequest' => DataDeletionRequest::class,
             'idea' => Idea::class,
             'ideaStage' => IdeaStage::class,
             'invite' => Invite::class,

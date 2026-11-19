@@ -8,6 +8,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\RevokeGoogleGrant;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\AccessToken;
@@ -51,7 +52,7 @@ pest()->extend(TestCase::class)
         Http::preventStrayRequests();
         fakePwnedPasswords();
         fakeChatGptEgressRanges();
-        Queue::fake([BootstrapAccountAnalytics::class]);
+        Queue::fake([BootstrapAccountAnalytics::class, RevokeGoogleGrant::class]);
     })
     ->in('Feature', 'Unit');
 
@@ -64,7 +65,7 @@ pest()->extend(BrowserTestCase::class)
     ->in('Browser');
 
 pest()->in('Feature/Social')
-    ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
+    ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, RevokeGoogleGrant::class]));
 
 /*
 |--------------------------------------------------------------------------
