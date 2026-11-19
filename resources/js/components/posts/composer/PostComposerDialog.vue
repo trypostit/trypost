@@ -1630,7 +1630,6 @@ const metaRequirement = (account: ComposerAccount): string | null => {
 
     return result.valid ? null : result.tooltipKey;
 };
-/** Media rules about the set as a whole; a single item's issue shows on that item. */
 /** Media warnings about the post's set as a whole, shown above the card's editor. */
 const SET_MEDIA_WARNINGS = [
     'requires_media',
@@ -1642,6 +1641,8 @@ const SET_MEDIA_WARNINGS = [
     'no_document_allowed',
     'document_not_alone',
 ];
+/** Every media warning the card already shows above its editor, so its media warnings skip them. */
+const MEDIA_WARNINGS_ABOVE_EDITOR = [...SET_MEDIA_WARNINGS, 'text_only'];
 const setMediaWarning = (
     account: ComposerAccount | undefined,
 ): MediaValidationWarning | null => {
@@ -2921,7 +2922,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             groupDestination(group).content_type
                                         "
                                         :media="groupDestination(group).media"
-                                        :shown-elsewhere="SET_MEDIA_WARNINGS"
+                                        :shown-elsewhere="MEDIA_WARNINGS_ABOVE_EDITOR"
                                         :media-editing="true"
                                         :disabled="cropUploading"
                                         @edit:media="

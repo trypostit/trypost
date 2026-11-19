@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 test('an Instagram media warning links to the network limits', function () {
     [$post] = seedInstagramFeedImagePost(size: 9 * 1024 * 1024);
@@ -300,24 +301,8 @@ function seedChannelMediaIssuePost(Platform $platform, ContentType $type, array 
     return $post;
 }
 
-test('a network outside Instagram, Facebook and Pinterest says why its media is refused, not only counts it', function () {
-    $post = seedChannelMediaIssuePost(Platform::Threads, ContentType::ThreadsPost, [
-        'content' => 'A GIF on Threads',
-        'media' => [channelMediaIssueItem('gif-1', ['mime_type' => 'image/gif', 'path' => 'uploads/gif-1.gif'])],
-    ]);
-
-    $page = visit(route('app.posts.edit', $post));
-    waitFor($page, '@media-rules-warning');
-
-    $page->assertSeeIn('@media-rules-warning', __('posts.form.warnings.gif_not_allowed'))
-        ->assertDisabled('@composer-submit')
-        ->assertNoJavaScriptErrors();
-    expect($page->script('document.querySelector("[data-testid=media-rules-warning] a")?.href'))
-        ->toBe('https://docs.trypost.it/knowledge-base/media#threads');
-});
-
-test('a thread reply says why its media is refused', function () {
-    $post = seedChannelMediaIssuePost(Platform::X, ContentType::XPost, [
+test('a thread reply says why its media is refused', function (Platform $platform, ContentType $type) {
+    $post = seedChannelMediaIssuePost($platform, $type, [
         'content' => 'The thread starts here',
         'media' => [],
         'meta' => ['thread_replies' => [[
@@ -332,7 +317,11 @@ test('a thread reply says why its media is refused', function () {
     $page->assertSeeIn('@media-rules-warning', __('posts.form.warnings.max_files_exceeded', ['max' => '4', 'current' => '5']))
         ->assertDisabled('@composer-submit')
         ->assertNoJavaScriptErrors();
-});
+})->with([
+    'X' => [Platform::X, ContentType::XPost],
+    'Bluesky' => [Platform::Bluesky, ContentType::BlueskyPost],
+    'Mastodon' => [Platform::Mastodon, ContentType::MastodonPost],
+]);
 
 test('a warning about the post\'s media as a whole shows once, above the editor', function () {
     $post = seedChannelMediaIssuePost(Platform::LinkedIn, ContentType::LinkedInPost, [
@@ -348,6 +337,58 @@ test('a warning about the post\'s media as a whole shows once, above the editor'
     waitFor($page, "@{$warning}");
 
     $page->assertSeeIn("@{$warning}", __('posts.form.warnings.no_mixed_media'))
+        ->assertMissing('@media-rules-warning')
+        ->assertNoJavaScriptErrors();
+});
+
+test('every network says why its media is refused inside its card', function (Platform $platform, ContentType $type, array $item, string $warning, string $docsAnchor) {
+    $post = seedChannelMediaIssuePost($platform, $type, ['content' => 'A file this network refuses', 'media' => [$item]]);
+
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, '@media-rules-warning');
+
+    expect((string) $page->script('document.querySelector("[data-testid=media-rules-warning] span")?.firstChild?.textContent'))
+        ->toContain(Str::before(__("posts.form.warnings.{$warning}"), ':'))
+        ->and($page->script('document.querySelector("[data-testid=media-rules-warning] a")?.href'))
+        ->toBe("https://docs.trypost.it/knowledge-base/media#{$docsAnchor}");
+    $page->assertDisabled('@composer-submit')
+        ->assertNoJavaScriptErrors();
+})->with(function (): array {
+    $tooLargeImage = channelMediaIssueItem('photo-1', ['size' => 60 * 1024 * 1024]);
+    $tooLargeVideo = channelMediaIssueItem('video-1', ['type' => 'video', 'mime_type' => 'video/mp4', 'path' => 'uploads/video-1.mp4', 'size' => 2 * 1024 * 1024 * 1024, 'meta' => ['duration' => 10]]);
+    $gif = channelMediaIssueItem('gif-1', ['mime_type' => 'image/gif', 'path' => 'uploads/gif-1.gif']);
+
+    return [
+        'Facebook' => [Platform::Facebook, ContentType::FacebookPost, $tooLargeImage, 'image_too_large', 'facebook'],
+        'Instagram' => [Platform::Instagram, ContentType::InstagramFeed, $tooLargeImage, 'image_too_large', 'instagram'],
+        'Instagram via Facebook' => [Platform::InstagramFacebook, ContentType::InstagramFeed, $tooLargeImage, 'image_too_large', 'instagram'],
+        'Threads' => [Platform::Threads, ContentType::ThreadsPost, $gif, 'gif_not_allowed', 'threads'],
+        'X' => [Platform::X, ContentType::XPost, $tooLargeImage, 'image_too_large', 'x-twitter'],
+        'LinkedIn' => [Platform::LinkedIn, ContentType::LinkedInPost, $tooLargeImage, 'image_too_large', 'linkedin'],
+        'LinkedIn Page' => [Platform::LinkedInPage, ContentType::LinkedInPagePost, $tooLargeImage, 'image_too_large', 'linkedin'],
+        'TikTok' => [Platform::TikTok, ContentType::TikTokVideo, $tooLargeVideo, 'video_too_large', 'tiktok'],
+        'YouTube' => [Platform::YouTube, ContentType::YouTubeShort, $tooLargeVideo, 'video_too_large', 'youtube'],
+        'Pinterest' => [Platform::Pinterest, ContentType::PinterestPin, $tooLargeImage, 'image_too_large', 'pinterest'],
+        'Bluesky' => [Platform::Bluesky, ContentType::BlueskyPost, $tooLargeVideo, 'video_too_large', 'bluesky'],
+        'Mastodon' => [Platform::Mastodon, ContentType::MastodonPost, $tooLargeImage, 'image_too_large', 'mastodon'],
+        'Telegram' => [Platform::Telegram, ContentType::TelegramPost, $tooLargeImage, 'image_too_large', 'telegram'],
+        'Discord' => [Platform::Discord, ContentType::DiscordMessage, $tooLargeImage, 'image_too_large', 'discord'],
+        'Google Business' => [Platform::GoogleBusiness, ContentType::GoogleBusinessPost, $gif, 'gif_not_allowed', 'google-business-profile'],
+    ];
+});
+
+test('a post type that takes no media says so once, above the editor', function () {
+    $post = seedChannelMediaIssuePost(Platform::X, ContentType::XPoll, [
+        'content' => 'Which one?',
+        'meta' => ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]],
+        'media' => [channelMediaIssueItem('photo-1')],
+    ]);
+
+    $page = visit(route('app.posts.edit', $post));
+    $warning = "composer-text-only-warning-{$post->social_account_id}";
+    waitFor($page, "@{$warning}");
+
+    $page->assertSeeIn("@{$warning}", __('posts.form.warnings.text_only'))
         ->assertMissing('@media-rules-warning')
         ->assertNoJavaScriptErrors();
 });
