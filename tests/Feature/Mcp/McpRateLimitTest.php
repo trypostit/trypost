@@ -123,6 +123,28 @@ test('requests refused at sign-in do not count', function () {
     mcpRateLimitCall($this, $token)->assertOk();
 });
 
+test('requests refused for the workspace do not count', function () {
+    ['workspace' => $workspace] = mcpRateLimitWorkspace();
+    $outsider = workspaceOutsider($workspace);
+    $token = mcpRateLimitToken($outsider, $workspace);
+
+    Collection::times(4, fn () => mcpRateLimitCall($this, $token)->assertForbidden());
+
+    $workspace->members()->attach($outsider->id, membershipPivot('member'));
+
+    mcpRateLimitCall($this, $token)->assertOk();
+});
+
+test('ChatGPT with a token is limited by its token like any client', function () {
+    ['user' => $user, 'workspace' => $workspace] = mcpRateLimitWorkspace();
+    $token = mcpRateLimitToken($user, $workspace);
+
+    Collection::times(3, fn () => mcpRateLimitCall($this, $token, ip: MCP_RATE_LIMIT_CHATGPT_IP)->assertOk());
+
+    mcpRateLimitCall($this, $token, Method::ToolsCall, ['name' => 'get-workspace-tool', 'arguments' => (object) []], MCP_RATE_LIMIT_CHATGPT_IP)
+        ->assertTooManyRequests();
+});
+
 test('ChatGPT listing the tools before sign-in is not limited', function () {
     Collection::times(4, fn () => mcpRateLimitCall($this, null, Method::ToolsList, ip: MCP_RATE_LIMIT_CHATGPT_IP)->assertOk());
 });
