@@ -326,3 +326,9 @@ test('the sidebar streak follows a publication insights re-dates or drops', func
 
     expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
 });
+
+test('a post on a network insights reads counts through its publication only', function () {
+    postingStreakPost($this->instagram, $this->thisWeek->addDay());
+
+    expect(postingStreak($this->workspace)['weeks'])->toBe(0);
+});

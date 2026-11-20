@@ -419,6 +419,12 @@ class Post extends Model
         return $query->whereIn('posts.platform', Platform::analyticsValues());
     }
 
+    /** Posts on the networks Insights does not read (LinkedIn, Google Business, Telegram, Discord). */
+    public function scopeOutsideAnalytics(Builder $query): Builder
+    {
+        return $query->whereNotIn('posts.platform', Platform::analyticsValues());
+    }
+
     /**
      * Posts carrying any of the labels, plus posts without labels when $untagged is set; no filter when both are empty.
      *

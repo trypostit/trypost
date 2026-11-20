@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Actions\Analytics;
 
-use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\WeekStart;
+use App\Models\AnalyticsPublication;
+use App\Models\Post;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
 
 /**
@@ -53,20 +53,20 @@ final class BuildPostingStreak
      */
     public static function postingInstants(array $workspaceIds, CarbonInterface $since): LazyCollection
     {
-        $publications = DB::table('analytics_publications')
+        $publications = AnalyticsPublication::query()
             ->select(['workspace_id', 'provider_published_at as at'])
             ->whereIn('platform', Platform::analyticsValues())
-            ->where('provider_published_at', '>=', $since)
-            ->whereIn('workspace_id', $workspaceIds);
+            ->whereIn('workspace_id', $workspaceIds)
+            ->where('provider_published_at', '>=', $since);
 
-        $posts = DB::table('posts')
+        $posts = Post::query()
             ->select(['workspace_id', 'published_at as at'])
-            ->whereIn('platform', self::platformsOutsideInsights())
-            ->whereIn('publish_status', collect(PublishStatus::wentOutCases())->map(fn (PublishStatus $status): string => $status->value)->all())
-            ->where('published_at', '>=', $since)
-            ->whereIn('workspace_id', $workspaceIds);
+            ->wentOut()
+            ->outsideAnalytics()
+            ->whereIn('workspace_id', $workspaceIds)
+            ->where('published_at', '>=', $since);
 
-        return $publications->unionAll($posts)->cursor();
+        return $publications->toBase()->unionAll($posts->toBase())->cursor();
     }
 
     /** The first day of the week `$instant` falls in, in the viewer's zone and week. */
@@ -99,17 +99,5 @@ final class BuildPostingStreak
         }
 
         return $streak;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private static function platformsOutsideInsights(): array
-    {
-        return collect(Platform::cases())
-            ->reject(fn (Platform $platform): bool => $platform->isIncludedInAnalytics())
-            ->map(fn (Platform $platform): string => $platform->value)
-            ->values()
-            ->all();
     }
 }
