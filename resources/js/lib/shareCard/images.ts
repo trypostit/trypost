@@ -35,7 +35,7 @@ const optionText = (option: Partial<ShareCardOptions> & Pick<ShareMetricOption, 
         .join(' ');
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first, with the glyphs the card writes. */
-const loadFonts = async (text: string): Promise<void> => {
+export const loadFonts = async (text: string): Promise<void> => {
     if (!('fonts' in document)) {
         return;
     }

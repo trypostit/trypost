@@ -107,7 +107,7 @@ export const paintPanel = (context: CanvasRenderingContext2D): Box => {
 const LOGO_GRID = 410;
 
 /** The TryPost mark, the four quarters of `AppLogo.vue`. */
-const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
+export const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
     const quarters: [string, string][] = [
         ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
         ['M410 0H281.138L205 81.3178L410 300.264V0Z', '#855ED4'],

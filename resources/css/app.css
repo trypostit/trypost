@@ -707,3 +707,22 @@ html {
         animation: motion-sound-wave 0.9s ease-in-out infinite;
     }
 }
+
+@keyframes streak-sway {
+    0%,
+    100% {
+        transform: rotate(-8deg);
+    }
+
+    50% {
+        transform: rotate(8deg);
+    }
+}
+
+@utility streak-sway {
+    transform-origin: 50% 85%;
+
+    @media (prefers-reduced-motion: no-preference) {
+        animation: streak-sway 2.4s ease-in-out infinite;
+    }
+}

@@ -1,0 +1,168 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Actions\Analytics\BuildPostingStreak;
+use App\Actions\Analytics\RankPostingStreaks;
+use App\Actions\Analytics\ShowPostingStreak;
+use App\Enums\Post\PublishStatus;
+use App\Enums\SocialAccount\Platform;
+use App\Enums\User\WeekStart;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
+
+beforeEach(function () {
+    Bus::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $wednesday = now('UTC')->startOfWeek(CarbonImmutable::MONDAY)->addWeek()->addDays(2)->setTime(12, 0);
+    $this->travelTo($wednesday);
+
+    $this->workspace = Workspace::factory()->create();
+    $this->instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+    $this->linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+    $this->thisWeek = CarbonImmutable::now('UTC')->startOfWeek(CarbonImmutable::MONDAY);
+});
+
+function postingStreakPublication(SocialAccount $account, CarbonImmutable $at, ?Post $post = null): AnalyticsPublication
+{
+    return AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'network' => $account->platform->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'platform' => $account->platform,
+        'post_id' => $post?->id,
+        'provider_published_at' => $at,
+    ]);
+}
+
+function postingStreakPost(SocialAccount $account, CarbonImmutable $at, PublishStatus $status = PublishStatus::Published): Post
+{
+    $post = Post::factory()->forAccount($account)->published()->create();
+    $post->forceFill(['publish_status' => $status, 'published_at' => $at])->save();
+
+    return $post;
+}
+
+/**
+ * @return array{weeks: int, posted_this_week: bool}
+ */
+function postingStreak(Workspace $workspace, string $timezone = 'UTC', WeekStart $weekStart = WeekStart::Monday): array
+{
+    return app(BuildPostingStreak::class)->execute($workspace, $timezone, $weekStart);
+}
+
+test('it counts the weeks in a row with a post, this week included', function () {
+    foreach ([0, 1, 2] as $weeksAgo) {
+        postingStreakPublication($this->instagram, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+    }
+
+    expect(postingStreak($this->workspace))->toBe(['weeks' => 3, 'posted_this_week' => true]);
+});
+
+test('a week without a post yet keeps the streak of the weeks before it', function () {
+    foreach ([1, 2] as $weeksAgo) {
+        postingStreakPublication($this->instagram, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+    }
+
+    expect(postingStreak($this->workspace))->toBe(['weeks' => 2, 'posted_this_week' => false]);
+});
+
+test('a week without posts before last week ends the streak', function () {
+    postingStreakPublication($this->instagram, $this->thisWeek->subWeeks(2)->addDay());
+
+    expect(postingStreak($this->workspace))->toBe(['weeks' => 0, 'posted_this_week' => false]);
+});
+
+test('posts from networks outside insights count through trypost', function () {
+    postingStreakPost($this->linkedin, $this->thisWeek->addDay());
+    postingStreakPublication($this->instagram, $this->thisWeek->subWeek()->addDay());
+
+    expect(postingStreak($this->workspace)['weeks'])->toBe(2);
+});
+
+test('a linkedin post that did not go out does not count', function () {
+    postingStreakPost($this->linkedin, $this->thisWeek->addDay(), PublishStatus::Failed);
+
+    expect(postingStreak($this->workspace)['weeks'])->toBe(0);
+});
+
+test('weeks follow the user week start and zone', function () {
+    $sunday = $this->thisWeek->subDay()->setTime(12, 0);
+    postingStreakPublication($this->instagram, $sunday);
+
+    expect(postingStreak($this->workspace, 'UTC', WeekStart::Monday))->toBe(['weeks' => 1, 'posted_this_week' => false])
+        ->and(postingStreak($this->workspace, 'UTC', WeekStart::Sunday))->toBe(['weeks' => 1, 'posted_this_week' => true]);
+});
+
+test('another workspace does not count', function () {
+    $other = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+    postingStreakPublication($other, $this->thisWeek->addDay());
+
+    expect(postingStreak($this->workspace)['weeks'])->toBe(0);
+});
+
+test('the ranking places a streak among the workspaces with app access', function () {
+    foreach (range(0, 3) as $weeksAgo) {
+        postingStreakPublication($this->instagram, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+    }
+
+    foreach (range(1, 9) as $_) {
+        $workspace = Workspace::factory()->create();
+        subscribeAccount($workspace->account);
+        $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+        postingStreakPublication($account, $this->thisWeek->addDay());
+    }
+
+    subscribeAccount($this->workspace->account);
+    app(RankPostingStreaks::class)->execute();
+
+    expect(RankPostingStreaks::topPercent(4))->toBe(10)
+        ->and(RankPostingStreaks::topPercent(1))->toBeNull();
+});
+
+test('the sidebar gets nothing without a streak and the streak with its rank otherwise', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
+
+    Cache::flush();
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBe(['weeks' => 1, 'posted_this_week' => true, 'top_percent' => null]);
+});
+
+test('every app page shares the streak of the current workspace', function () {
+    $user = User::factory()->create(['timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    $this->workspace->update(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $this->workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $this->workspace->id]);
+    subscribeAccount($user->account);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    $this->actingAs($user)
+        ->get(route('app.insights'))
+        ->assertInertia(fn ($page) => $page->where('postingStreak.weeks', 1)->etc());
+});
+
+test('the sidebar streak names its rank once the workspaces are ranked', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    subscribeAccount($this->workspace->account);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    foreach (range(1, 9) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBe(['weeks' => 1, 'posted_this_week' => true, 'top_percent' => 10]);
+});

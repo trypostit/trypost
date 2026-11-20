@@ -469,4 +469,16 @@ return [
             'total' => 'Tutto ciò che hai pubblicato negli ultimi 12 mesi, compresi i post fatti fuori da TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Vedi serie',
+        'title' => '{1} Serie di :count settimana|[0,*] Serie di :count settimane',
+        'top' => 'Top :percent%',
+        'keep_going' => 'Ottimo lavoro! Programma un post per la prossima settimana per mantenere la serie.',
+        'post_this_week' => 'Non hai ancora pubblicato questa settimana. Programma un post per mantenere la serie.',
+        'schedule' => 'Programma post',
+        'share' => 'Condividi serie',
+        'share_caption' => 'Pubblico da :count settimane di fila con TryPost!',
+        'image_weeks' => '{1} settimana|[0,*] settimane',
+        'image_tagline' => 'di pubblicazioni costanti!',
+    ],
 ];

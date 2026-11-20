@@ -469,4 +469,16 @@ return [
             'total' => 'Todo lo que publicaste en los últimos 12 meses, incluidas las publicaciones hechas fuera de TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Ver racha',
+        'title' => '{1} Racha de :count semana|[0,*] Racha de :count semanas',
+        'top' => 'Top :percent%',
+        'keep_going' => '¡Buen trabajo! Programa una publicación para la próxima semana y mantén la racha.',
+        'post_this_week' => 'Aún no has publicado esta semana. Programa una publicación para mantener tu racha.',
+        'schedule' => 'Programar publicación',
+        'share' => 'Compartir racha',
+        'share_caption' => '¡Llevo :count semanas seguidas publicando con TryPost!',
+        'image_weeks' => '{1} semana|[0,*] semanas',
+        'image_tagline' => 'publicando sin parar',
+    ],
 ];

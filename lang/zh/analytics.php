@@ -469,4 +469,16 @@ return [
             'total' => '过去 12 个月你发布的所有帖子，包括在 TryPost 之外发布的。',
         ],
     ],
+    'posting_streak' => [
+        'button' => '查看连续记录',
+        'title' => '连续 :count 周',
+        'top' => '前 :percent%',
+        'keep_going' => '做得好！安排下周的帖子，保持连续记录。',
+        'post_this_week' => '你本周还没有发布。安排一篇帖子来保持连续记录。',
+        'schedule' => '安排帖子',
+        'share' => '分享记录',
+        'share_caption' => '我已用 TryPost 连续发布 :count 周！',
+        'image_weeks' => '周',
+        'image_tagline' => '持续发布中！',
+    ],
 ];

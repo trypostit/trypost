@@ -469,4 +469,16 @@ return [
             'total' => 'Wszystkie posty z ostatnich 12 miesięcy, także te opublikowane poza TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Zobacz serię',
+        'title' => 'Tygodnie z rzędu: :count',
+        'top' => 'Top :percent%',
+        'keep_going' => 'Świetnie! Zaplanuj post na przyszły tydzień, żeby utrzymać serię.',
+        'post_this_week' => 'W tym tygodniu nie ma jeszcze posta. Zaplanuj post, żeby utrzymać serię.',
+        'schedule' => 'Zaplanuj post',
+        'share' => 'Udostępnij serię',
+        'share_caption' => 'Publikuję z TryPost już od tygodni: :count z rzędu!',
+        'image_weeks' => 'tyg.',
+        'image_tagline' => 'regularnego publikowania!',
+    ],
 ];

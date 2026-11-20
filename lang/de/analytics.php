@@ -469,4 +469,16 @@ return [
             'total' => 'Alles, was du in den letzten 12 Monaten gepostet hast, auch außerhalb von TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Serie ansehen',
+        'title' => '{1} :count Woche in Folge|[0,*] :count Wochen in Folge',
+        'top' => 'Top :percent %',
+        'keep_going' => 'Super! Plane einen Beitrag für nächste Woche, damit die Serie weiterläuft.',
+        'post_this_week' => 'Du hast diese Woche noch nichts gepostet. Plane einen Beitrag, damit deine Serie weiterläuft.',
+        'schedule' => 'Beitrag planen',
+        'share' => 'Serie teilen',
+        'share_caption' => 'Ich poste seit :count Wochen in Folge mit TryPost!',
+        'image_weeks' => '{1} Woche|[0,*] Wochen',
+        'image_tagline' => 'regelmäßig gepostet!',
+    ],
 ];

@@ -469,4 +469,16 @@ return [
             'total' => 'Semua yang kamu posting dalam 12 bulan terakhir, termasuk postingan di luar TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Lihat rangkaian',
+        'title' => 'Rangkaian :count minggu',
+        'top' => 'Top :percent%',
+        'keep_going' => 'Kerja bagus! Jadwalkan postingan untuk minggu depan agar rangkaiannya berlanjut.',
+        'post_this_week' => 'Kamu belum memposting minggu ini. Jadwalkan postingan agar rangkaianmu berlanjut.',
+        'schedule' => 'Jadwalkan postingan',
+        'share' => 'Bagikan rangkaian',
+        'share_caption' => 'Aku sudah :count minggu berturut-turut memposting dengan TryPost!',
+        'image_weeks' => 'minggu',
+        'image_tagline' => 'posting secara konsisten!',
+    ],
 ];

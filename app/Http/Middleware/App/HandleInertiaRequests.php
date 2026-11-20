@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Actions\AccessToken\HasConnectedMcpClient;
+use App\Actions\Analytics\ShowPostingStreak;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
@@ -65,6 +66,9 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
+            'postingStreak' => fn (): ?array => $user?->currentWorkspace && $account?->hasAppAccess()
+                ? ShowPostingStreak::cached($user, $user->currentWorkspace)
+                : null,
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],

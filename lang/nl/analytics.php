@@ -469,4 +469,16 @@ return [
             'total' => 'Alles wat je de afgelopen 12 maanden hebt gepost, ook buiten TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'Reeks bekijken',
+        'title' => '{1} :count week op rij|[0,*] :count weken op rij',
+        'top' => 'Top :percent%',
+        'keep_going' => 'Goed bezig! Plan een bericht voor volgende week om de reeks vast te houden.',
+        'post_this_week' => 'Je hebt deze week nog niet gepost. Plan een bericht om je reeks vast te houden.',
+        'schedule' => 'Bericht plannen',
+        'share' => 'Reeks delen',
+        'share_caption' => 'Ik post al :count weken op rij met TryPost!',
+        'image_weeks' => '{1} week|[0,*] weken',
+        'image_tagline' => 'consequent gepost!',
+    ],
 ];

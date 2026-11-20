@@ -469,4 +469,16 @@ return [
             'total' => '過去12か月の投稿すべてです。TryPost 以外で投稿したものも含みます。',
         ],
     ],
+    'posting_streak' => [
+        'button' => '連続記録を見る',
+        'title' => ':count週連続',
+        'top' => '上位:percent%',
+        'keep_going' => 'すばらしい！来週の投稿を予約して記録を続けましょう。',
+        'post_this_week' => '今週はまだ投稿していません。投稿を予約して記録を続けましょう。',
+        'schedule' => '投稿を予約',
+        'share' => '記録をシェア',
+        'share_caption' => 'TryPostで:count週連続で投稿しています！',
+        'image_weeks' => '週',
+        'image_tagline' => '継続して投稿中！',
+    ],
 ];

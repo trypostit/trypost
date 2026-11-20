@@ -469,4 +469,16 @@ return [
             'total' => 'Everything you posted in the last 12 months, including posts made outside TryPost.',
         ],
     ],
+    'posting_streak' => [
+        'button' => 'View streak',
+        'title' => '{1} :count week streak|[0,*] :count week streak',
+        'top' => 'Top :percent%',
+        'keep_going' => 'Great job! Schedule a post for next week to keep the streak going.',
+        'post_this_week' => 'You haven\'t posted this week yet. Schedule a post to keep your streak going.',
+        'schedule' => 'Schedule post',
+        'share' => 'Share streak',
+        'share_caption' => 'I\'ve reached a :count-week posting streak with TryPost!',
+        'image_weeks' => '{1} week|[0,*] weeks',
+        'image_tagline' => 'of consistent posting!',
+    ],
 ];

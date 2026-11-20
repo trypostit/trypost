@@ -11,6 +11,7 @@ import type {
 } from '@/preferences';
 import type { ScrollChangelogEntries, SharedChangelog } from '@/types/changelog';
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
+import type { PostingStreak } from '@/types/posting-streak';
 
 export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
 export type { WelcomeStep } from '@/types/welcome';
@@ -114,6 +115,7 @@ export interface SharedData {
     mediaSources?: { menu: MediaSourceOption[] } | null;
     referralSources?: string[] | null;
     mcpPrompt?: { mcp_url: string } | null;
+    postingStreak?: PostingStreak | null;
     changelog?: SharedChangelog | null;
     changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;
