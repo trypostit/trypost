@@ -140,10 +140,8 @@ class PostController extends Controller
             default => [],
         };
 
-        if ($request->filled('queue') && $posts->isNotEmpty()) {
-            $added = trans_choice('posts.composer.queue.added', $posts->count(), ['count' => $posts->count()]);
-
-            $this->flashQueuedToast($posts->first(), $added);
+        if ($request->filled('queue')) {
+            $this->flashQueuedToast($posts->first(), trans_choice('posts.composer.queue.added', $posts->count(), ['count' => $posts->count()]));
         }
 
         return redirect($this->originPageUrl($tab))

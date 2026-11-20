@@ -170,11 +170,7 @@ trait RendersPublishPage
     /** The toast once a post goes to the queue, linking to it: a member who needs approval only asked for it. */
     private function flashQueuedToast(Post $post, string $queued): void
     {
-        $message = $queued;
-
-        if ($post->status === PostStatus::PendingApproval) {
-            $message = __('posts.approvals.requested');
-        }
+        $message = $post->status === PostStatus::PendingApproval ? __('posts.approvals.requested') : $queued;
 
         $this->flashSuccessWithLink($message, __('posts.actions.view'), route('app.posts.index', ['post' => $post->id]));
     }

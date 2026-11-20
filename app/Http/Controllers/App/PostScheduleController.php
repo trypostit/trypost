@@ -42,10 +42,9 @@ class PostScheduleController extends Controller
         $action = data_get($result, 'action');
 
         if ($action === PostAction::Finalized) {
-            session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
-            session()->flash('flash.bannerStyle', 'danger');
-
-            return back();
+            return back()
+                ->with('flash.banner', __('posts.flash.cannot_edit_finalized'))
+                ->with('flash.bannerStyle', 'danger');
         }
 
         $queuedMessage = $scheduleAction->queuedMessage();

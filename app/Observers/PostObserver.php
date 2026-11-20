@@ -54,7 +54,7 @@ class PostObserver
             return;
         }
 
-        if ($this->changedWhetherItWentOut($post)) {
+        if ($this->movesPostingStreak($post)) {
             ShowPostingStreak::forget($post->workspace_id);
         }
 
@@ -117,7 +117,7 @@ class PostObserver
     }
 
     /** Whether the post started or stopped counting as sent, the only change the posting streak sees. */
-    private function changedWhetherItWentOut(Post $post): bool
+    private function movesPostingStreak(Post $post): bool
     {
         return $post->publish_status->wentOut() !== $post->getOriginal('publish_status')->wentOut();
     }
