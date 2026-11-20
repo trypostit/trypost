@@ -4,8 +4,8 @@ import type { SeriesMetric } from '@/types/analytics';
 import type { VerifiedBadge } from '@/types/social-account';
 
 
-/** One line per channel, the channel chart, columns split by channel over time, one bar per channel, or the Summary's numbers. */
-export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';
+/** One line per channel, the channel chart, columns split by channel over time, one bar per channel, the Summary's numbers, or the posting activity grid. */
+export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles' | 'heatmap';
 
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
 export type ShareChannel = {
@@ -65,8 +65,20 @@ export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 /** One number of the Summary, as its card prints it; `missing` while the metric has no value, which the card draws muted and the post leaves out. */
 export type ShareTile = { label: string; figure: string; missing: boolean; change: MetricDelta | null };
 
-/** What a share option draws, which names its file: one metric of a series, the channel's chart, or the whole Summary. */
-type ShareMetricKey = SeriesMetric | 'channel' | 'summary';
+/**
+ * The posting activity grid for `heatmap`: one count per day, oldest first,
+ * filled column by column (one column per week) after `offset` empty cells.
+ */
+export type ShareHeatmap = {
+    counts: number[];
+    maxCount: number;
+    offset: number;
+    /** The column each month starts in, with its short name. */
+    months: { column: number; label: string }[];
+};
+
+/** What a share option draws, which names its file: one metric of a series, the channel's chart, the whole Summary, or the posting activity. */
+type ShareMetricKey = SeriesMetric | 'channel' | 'summary' | 'posting_activity';
 
 /** One metric a share dialog can draw, with the post text it opens the composer with. */
 export type ShareMetricOption = {
@@ -84,6 +96,8 @@ export type ShareMetricOption = {
     series: ShareSeries[];
     /** The periods `combo` shows, as the page's chart toggle sets them. */
     chartMode: ChartMode;
+    /** The posting activity grid, for `heatmap`. */
+    heatmap: ShareHeatmap | null;
     caption: string;
 };
 

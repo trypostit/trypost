@@ -428,6 +428,11 @@ return [
         'caption_workspace' => '全チャンネルの:metric: :value (:range) 📈',
         'caption_summary_workspace' => ':rangeの数字 📈 :metrics',
         'caption_summary_channel' => ':channelの:rangeの数字 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 :days連続で投稿中、これまでで最長の記録です！過去12か月の投稿は:posts件。',
+            'on_streak' => '🔥 :days連続で投稿中。最長記録は:bestで、過去12か月の投稿は:posts件です。',
+            'no_streak' => '📅 過去12か月の投稿は:posts件、最長連続記録は:bestです。',
+        ],
         'export_failed' => '画像を作成できませんでした。もう一度お試しください。',
         'colors' => [
             'violet' => 'バイオレット',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'フクシア',
             'orange' => 'オレンジ',
             'slate' => 'スレート',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => '投稿アクティビティ',
+        'subtitle' => '過去12か月',
+        'current_streak' => '現在の連続記録',
+        'best_streak' => '最長連続記録',
+        'total' => '投稿',
+        'days' => ':count日',
+        'less' => '少',
+        'more' => '多',
+        'posts_on_day' => '{0} 投稿なし|[1,*] :count件の投稿',
+        'about' => [
+            'current_streak' => '連続で投稿した日数です。記録を続けるには毎日1回以上投稿しましょう。',
+            'best_streak' => '過去12か月で、連続して投稿した最長の日数です。',
+            'total' => '過去12か月の投稿すべてです。TryPost 以外で投稿したものも含みます。',
         ],
     ],
 ];

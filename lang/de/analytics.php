@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric auf unseren Kanälen: :value (:range) 📈',
         'caption_summary_workspace' => 'Unsere Zahlen für :range 📈 :metrics',
         'caption_summary_channel' => 'Unsere Zahlen auf :channel für :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '{1} 🔥 :days in Folge gepostet, unsere bisher längste Serie! :posts Beitrag in den letzten 12 Monaten.|[0,*] 🔥 :days in Folge gepostet, unsere bisher längste Serie! :posts Beiträge in den letzten 12 Monaten.',
+            'on_streak' => '{1} 🔥 :days in Folge gepostet. Unser Rekord liegt bei :best, mit :posts Beitrag in den letzten 12 Monaten.|[0,*] 🔥 :days in Folge gepostet. Unser Rekord liegt bei :best, mit :posts Beiträgen in den letzten 12 Monaten.',
+            'no_streak' => '{1} 📅 :posts Beitrag in den letzten 12 Monaten und eine längste Serie von :best in Folge.|[0,*] 📅 :posts Beiträge in den letzten 12 Monaten und eine längste Serie von :best in Folge.',
+        ],
         'export_failed' => 'Bild konnte nicht erstellt werden. Versuche es erneut.',
         'colors' => [
             'violet' => 'Violett',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fuchsia',
             'orange' => 'Orange',
             'slate' => 'Schiefer',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Posting-Aktivität',
+        'subtitle' => 'Letzte 12 Monate',
+        'current_streak' => 'Aktuelle Serie',
+        'best_streak' => 'Längste Serie',
+        'total' => 'Beiträge',
+        'days' => '{1} :count Tag|[0,*] :count Tage',
+        'less' => 'Weniger',
+        'more' => 'Mehr',
+        'posts_on_day' => '{0} Keine Beiträge|{1} :count Beitrag|[2,*] :count Beiträge',
+        'about' => [
+            'current_streak' => 'Tage in Folge, an denen du gepostet hast. Poste mindestens einmal am Tag, um die Serie zu halten.',
+            'best_streak' => 'Deine meisten Tage in Folge mit einem Beitrag in den letzten 12 Monaten.',
+            'total' => 'Alles, was du in den letzten 12 Monaten gepostet hast, auch außerhalb von TryPost.',
         ],
     ],
 ];

@@ -29,6 +29,7 @@ const optionText = (option: Partial<ShareCardOptions> & Pick<ShareMetricOption, 
         ...option.lines.map((line) => line.figure),
         ...(option.series ?? []).flatMap((series) => [series.label, series.figure, series.previousFigure]),
         ...(option.tiles ?? []).flatMap((tile) => [tile.label, tile.figure]),
+        ...(option.heatmap?.months ?? []).map((month) => month.label),
     ]
         .filter((text): text is string => Boolean(text))
         .join(' ');

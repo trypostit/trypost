@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import InsightsExportMenu from '@/components/analytics/InsightsExportMenu.vue';
 import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
+import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
 import FollowersChart from '@/components/analytics/workspace/FollowersChart.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
 import InsightsEmptyState from '@/components/analytics/workspace/InsightsEmptyState.vue';
@@ -26,6 +27,7 @@ import { insights as insightsRoute } from '@/routes/app';
 import type {
     AnalyticsChannelOption,
     InsightsSyncCadence,
+    PostingActivity,
     SummaryMetric,
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
@@ -37,6 +39,7 @@ const props = defineProps<{
     labels: PostCardLabel[];
     availableMetrics: SummaryMetric[] | null;
     sync: InsightsSyncCadence;
+    postingActivity?: PostingActivity;
 }>();
 
 const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
@@ -138,7 +141,10 @@ watch(
     { deep: true },
 );
 
-useAnalyticsCoveragePoll(() => props.report.coverage);
+useAnalyticsCoveragePoll(() => props.report.coverage, {
+    firstDay: () => props.report.bounds.min,
+    only: ['postingActivity'],
+});
 
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [
@@ -244,6 +250,7 @@ const accountColors = computed<Record<string, string>>(() => {
                     :available-metrics="availableMetrics ?? undefined"
                     subtitle-testid="insights-range-caption"
                 />
+                <PostingActivityCard :activity="postingActivity" />
                 <TopPosts
                     :top-posts="report.top_posts"
                     :range="report.range"

@@ -227,6 +227,11 @@ export default {
         return localized(date).format('D MMM');
     },
 
+    /** A weekday by its number (0 = Sunday), short: "Mon". */
+    formatShortWeekday(weekday: number) {
+        return localized().day(weekday).format('ddd');
+    },
+
     formatDayMonthYear(date: string | Date) {
         return localized(date).format('D MMM YYYY');
     },

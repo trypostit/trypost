@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Analytics\BuildChannelMetricSeries;
 use App\Actions\Analytics\BuildFollowerGrowthRateSeries;
 use App\Actions\Analytics\BuildInsightsExport;
+use App\Actions\Analytics\BuildPostingActivity;
 use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
 use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ListChannelPublicationPerformance;
@@ -167,6 +168,7 @@ class ChannelController extends Controller
         ListChannelPublicationPerformance $performance,
         BuildChannelMetricSeries $series,
         BuildFollowerGrowthRateSeries $growthRate,
+        BuildPostingActivity $postingActivity,
     ): Response {
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('view', $workspace);
@@ -238,6 +240,7 @@ class ChannelController extends Controller
                         : null,
                 ];
             }),
+            'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute($workspace, [$accountKey], $request->user()->timezone, $filter)),
             'publications' => function () use ($resolve, $performance, $account, $accountKey, $period, $sort, $filter, $request): LengthAwarePaginator {
                 $current = data_get($resolve(), 'range');
 

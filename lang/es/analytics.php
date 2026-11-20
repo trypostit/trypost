@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric en nuestros canales: :value (:range) 📈',
         'caption_summary_workspace' => 'Nuestros números de :range 📈 :metrics',
         'caption_summary_channel' => 'Nuestros números en :channel de :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '{1} 🔥 :days seguidos publicando, ¡nuestra mejor racha hasta ahora! :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days seguidos publicando, ¡nuestra mejor racha hasta ahora! :posts publicaciones en los últimos 12 meses.',
+            'on_streak' => '{1} 🔥 :days seguidos publicando. Nuestro récord es de :best, con :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days seguidos publicando. Nuestro récord es de :best, con :posts publicaciones en los últimos 12 meses.',
+            'no_streak' => '{1} 📅 :posts publicación en los últimos 12 meses, con una racha récord de :best seguidos.|[0,*] 📅 :posts publicaciones en los últimos 12 meses, con una racha récord de :best seguidos.',
+        ],
         'export_failed' => 'No se pudo crear la imagen. Inténtalo de nuevo.',
         'colors' => [
             'violet' => 'Violeta',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fucsia',
             'orange' => 'Naranja',
             'slate' => 'Pizarra',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Actividad de publicación',
+        'subtitle' => 'Últimos 12 meses',
+        'current_streak' => 'Racha actual',
+        'best_streak' => 'Racha más larga',
+        'total' => 'Publicaciones',
+        'days' => '{1} :count día|[0,*] :count días',
+        'less' => 'Menos',
+        'more' => 'Más',
+        'posts_on_day' => '{0} Sin publicaciones|{1} :count publicación|[2,*] :count publicaciones',
+        'about' => [
+            'current_streak' => 'Días seguidos en los que publicaste. Publica al menos una vez al día para mantener la racha.',
+            'best_streak' => 'Tu mayor cantidad de días seguidos con una publicación en los últimos 12 meses.',
+            'total' => 'Todo lo que publicaste en los últimos 12 meses, incluidas las publicaciones hechas fuera de TryPost.',
         ],
     ],
 ];

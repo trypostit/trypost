@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric di semua channel kami: :value (:range) 📈',
         'caption_summary_workspace' => 'Angka kami untuk :range 📈 :metrics',
         'caption_summary_channel' => 'Angka kami di :channel untuk :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 :days berturut-turut memposting, rangkaian terpanjang kami sejauh ini! :posts postingan dalam 12 bulan terakhir.',
+            'on_streak' => '🔥 :days berturut-turut memposting. Rekor kami :best, dengan :posts postingan dalam 12 bulan terakhir.',
+            'no_streak' => '📅 :posts postingan dalam 12 bulan terakhir, dengan rangkaian terpanjang :best berturut-turut.',
+        ],
         'export_failed' => 'Gambar gagal dibuat. Coba lagi.',
         'colors' => [
             'violet' => 'Violet',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fusia',
             'orange' => 'Oranye',
             'slate' => 'Abu kebiruan',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Aktivitas posting',
+        'subtitle' => '12 bulan terakhir',
+        'current_streak' => 'Rangkaian saat ini',
+        'best_streak' => 'Rangkaian terpanjang',
+        'total' => 'Postingan',
+        'days' => ':count hari',
+        'less' => 'Lebih sedikit',
+        'more' => 'Lebih banyak',
+        'posts_on_day' => '{0} Tidak ada postingan|[1,*] :count postingan',
+        'about' => [
+            'current_streak' => 'Hari berturut-turut kamu memposting. Posting setidaknya sekali sehari agar rangkaiannya berlanjut.',
+            'best_streak' => 'Hari berturut-turut terbanyak kamu memposting dalam 12 bulan terakhir.',
+            'total' => 'Semua yang kamu posting dalam 12 bulan terakhir, termasuk postingan di luar TryPost.',
         ],
     ],
 ];

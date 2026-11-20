@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric sur nos canaux : :value (:range) 📈',
         'caption_summary_workspace' => 'Nos chiffres du :range 📈 :metrics',
         'caption_summary_channel' => 'Nos chiffres sur :channel du :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '{1} 🔥 :days d’affilée à publier, notre meilleure série jusqu’ici ! :posts publication sur les 12 derniers mois.|[0,*] 🔥 :days d’affilée à publier, notre meilleure série jusqu’ici ! :posts publications sur les 12 derniers mois.',
+            'on_streak' => '{1} 🔥 :days d’affilée à publier. Notre record est de :best, avec :posts publication sur les 12 derniers mois.|[0,*] 🔥 :days d’affilée à publier. Notre record est de :best, avec :posts publications sur les 12 derniers mois.',
+            'no_streak' => '{1} 📅 :posts publication sur les 12 derniers mois, et une plus longue série de :best d’affilée.|[0,*] 📅 :posts publications sur les 12 derniers mois, et une plus longue série de :best d’affilée.',
+        ],
         'export_failed' => 'Impossible de créer l’image. Réessayez.',
         'colors' => [
             'violet' => 'Violet',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fuchsia',
             'orange' => 'Orange',
             'slate' => 'Ardoise',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Activité de publication',
+        'subtitle' => '12 derniers mois',
+        'current_streak' => 'Série en cours',
+        'best_streak' => 'Plus longue série',
+        'total' => 'Publications',
+        'days' => '{1} :count jour|[0,*] :count jours',
+        'less' => 'Moins',
+        'more' => 'Plus',
+        'posts_on_day' => '{0} Aucune publication|{1} :count publication|[2,*] :count publications',
+        'about' => [
+            'current_streak' => 'Jours d’affilée où vous avez publié. Publiez au moins une fois par jour pour continuer la série.',
+            'best_streak' => 'Votre plus grand nombre de jours d’affilée avec une publication sur les 12 derniers mois.',
+            'total' => 'Tout ce que vous avez publié ces 12 derniers mois, y compris en dehors de TryPost.',
         ],
     ],
 ];

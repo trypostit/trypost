@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric nos nossos canais: :value (:range) 📈',
         'caption_summary_workspace' => 'Nossos números de :range 📈 :metrics',
         'caption_summary_channel' => 'Nossos números em :channel de :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '{1} 🔥 :days seguidos postando, nossa maior sequência até agora! Foi :posts post nos últimos 12 meses.|[0,*] 🔥 :days seguidos postando, nossa maior sequência até agora! Foram :posts posts nos últimos 12 meses.',
+            'on_streak' => '{1} 🔥 :days seguidos postando. Nosso recorde é de :best, com :posts post nos últimos 12 meses.|[0,*] 🔥 :days seguidos postando. Nosso recorde é de :best, com :posts posts nos últimos 12 meses.',
+            'no_streak' => '{1} 📅 :posts post nos últimos 12 meses, com um recorde de :best seguidos.|[0,*] 📅 :posts posts nos últimos 12 meses, com um recorde de :best seguidos.',
+        ],
         'export_failed' => 'Não foi possível criar a imagem. Tente de novo.',
         'colors' => [
             'violet' => 'Violeta',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fúcsia',
             'orange' => 'Laranja',
             'slate' => 'Ardósia',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Atividade de publicação',
+        'subtitle' => 'Últimos 12 meses',
+        'current_streak' => 'Sequência atual',
+        'best_streak' => 'Maior sequência',
+        'total' => 'Posts',
+        'days' => '{1} :count dia|[0,*] :count dias',
+        'less' => 'Menos',
+        'more' => 'Mais',
+        'posts_on_day' => '{0} Nenhum post|{1} :count post|[2,*] :count posts',
+        'about' => [
+            'current_streak' => 'Dias seguidos em que você postou. Poste pelo menos uma vez por dia para manter a sequência.',
+            'best_streak' => 'Seu maior número de dias seguidos com post nos últimos 12 meses.',
+            'total' => 'Tudo o que você postou nos últimos 12 meses, incluindo posts feitos fora do TryPost.',
         ],
     ],
 ];

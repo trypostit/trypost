@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric sui nostri canali: :value (:range) 📈',
         'caption_summary_workspace' => 'I nostri numeri del :range 📈 :metrics',
         'caption_summary_channel' => 'I nostri numeri su :channel del :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '{1} 🔥 :days di fila a pubblicare, la nostra serie più lunga finora! :posts post negli ultimi 12 mesi.|[0,*] 🔥 :days di fila a pubblicare, la nostra serie più lunga finora! :posts post negli ultimi 12 mesi.',
+            'on_streak' => '{1} 🔥 :days di fila a pubblicare. Il nostro record è di :best, con :posts post negli ultimi 12 mesi.|[0,*] 🔥 :days di fila a pubblicare. Il nostro record è di :best, con :posts post negli ultimi 12 mesi.',
+            'no_streak' => '{1} 📅 :posts post negli ultimi 12 mesi, con una serie record di :best di fila.|[0,*] 📅 :posts post negli ultimi 12 mesi, con una serie record di :best di fila.',
+        ],
         'export_failed' => 'Impossibile creare l’immagine. Riprova.',
         'colors' => [
             'violet' => 'Viola',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fucsia',
             'orange' => 'Arancione',
             'slate' => 'Ardesia',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Attività di pubblicazione',
+        'subtitle' => 'Ultimi 12 mesi',
+        'current_streak' => 'Serie attuale',
+        'best_streak' => 'Serie più lunga',
+        'total' => 'Post',
+        'days' => '{1} :count giorno|[0,*] :count giorni',
+        'less' => 'Meno',
+        'more' => 'Più',
+        'posts_on_day' => '{0} Nessun post|{1} :count post|[2,*] :count post',
+        'about' => [
+            'current_streak' => 'Giorni di fila in cui hai pubblicato. Pubblica almeno una volta al giorno per non interrompere la serie.',
+            'best_streak' => 'Il numero più alto di giorni di fila con un post negli ultimi 12 mesi.',
+            'total' => 'Tutto ciò che hai pubblicato negli ultimi 12 mesi, compresi i post fatti fuori da TryPost.',
         ],
     ],
 ];

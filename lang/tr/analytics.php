@@ -428,6 +428,11 @@ return [
         'caption_workspace' => 'Kanallarımızda :metric: :value (:range) 📈',
         'caption_summary_workspace' => ':range rakamlarımız 📈 :metrics',
         'caption_summary_channel' => ':channel üzerinde :range rakamlarımız 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 :days üst üste paylaşım yaptık, şimdiye kadarki en uzun serimiz! Son 12 ayda :posts gönderi.',
+            'on_streak' => '🔥 :days üst üste paylaşım yaptık. Rekorumuz :best, son 12 ayda :posts gönderi.',
+            'no_streak' => '📅 Son 12 ayda :posts gönderi, en uzun serimiz :best üst üste.',
+        ],
         'export_failed' => 'Görsel oluşturulamadı. Tekrar dene.',
         'colors' => [
             'violet' => 'Menekşe',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'Fuşya',
             'orange' => 'Turuncu',
             'slate' => 'Arduvaz',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'Paylaşım etkinliği',
+        'subtitle' => 'Son 12 ay',
+        'current_streak' => 'Mevcut seri',
+        'best_streak' => 'En uzun seri',
+        'total' => 'Gönderiler',
+        'days' => ':count gün',
+        'less' => 'Daha az',
+        'more' => 'Daha fazla',
+        'posts_on_day' => '{0} Gönderi yok|[1,*] :count gönderi',
+        'about' => [
+            'current_streak' => 'Üst üste paylaşım yaptığın günler. Seriyi sürdürmek için her gün en az bir kez paylaş.',
+            'best_streak' => 'Son 12 ayda üst üste paylaşım yaptığın en fazla gün sayısı.',
+            'total' => 'Son 12 ayda paylaştığın her şey, TryPost dışında paylaştıkların da dahil.',
         ],
     ],
 ];

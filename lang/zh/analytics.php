@@ -428,6 +428,11 @@ return [
         'caption_workspace' => '我们所有频道的:metric：:value（:range）📈',
         'caption_summary_workspace' => '我们 :range 的数据 📈 :metrics',
         'caption_summary_channel' => '我们在 :channel 上 :range 的数据 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 已连续发布 :days，创下我们的最长纪录！过去 12 个月共发布 :posts 篇帖子。',
+            'on_streak' => '🔥 已连续发布 :days。我们的纪录是 :best，过去 12 个月共发布 :posts 篇帖子。',
+            'no_streak' => '📅 过去 12 个月共发布 :posts 篇帖子，最长连续发布 :best。',
+        ],
         'export_failed' => '无法生成图片，请重试。',
         'colors' => [
             'violet' => '紫罗兰色',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => '品红色',
             'orange' => '橙色',
             'slate' => '石板色',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => '发布活跃度',
+        'subtitle' => '过去 12 个月',
+        'current_streak' => '当前连续',
+        'best_streak' => '最长连续',
+        'total' => '帖子',
+        'days' => ':count 天',
+        'less' => '少',
+        'more' => '多',
+        'posts_on_day' => '{0} 没有帖子|[1,*] :count 篇帖子',
+        'about' => [
+            'current_streak' => '你连续发布的天数。每天至少发布一次，才能保持连续。',
+            'best_streak' => '过去 12 个月中你连续发布的最长天数。',
+            'total' => '过去 12 个月你发布的所有帖子，包括在 TryPost 之外发布的。',
         ],
     ],
 ];

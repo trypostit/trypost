@@ -428,6 +428,11 @@ return [
         'caption_workspace' => ':metric عبر قنواتنا: :value (:range) 📈',
         'caption_summary_workspace' => 'أرقامنا للفترة :range 📈 :metrics',
         'caption_summary_channel' => 'أرقامنا على :channel للفترة :range 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 ننشر منذ :days متتالية، وهذه أطول سلسلة لنا حتى الآن! عدد المنشورات خلال آخر 12 شهرًا: :posts.',
+            'on_streak' => '🔥 ننشر منذ :days متتالية. رقمنا القياسي :best، وعدد المنشورات خلال آخر 12 شهرًا: :posts.',
+            'no_streak' => '📅 عدد المنشورات خلال آخر 12 شهرًا: :posts، وأطول سلسلة لنا :best متتالية.',
+        ],
         'export_failed' => 'تعذّر إنشاء الصورة. حاول مرة أخرى.',
         'colors' => [
             'violet' => 'بنفسجي',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => 'فوشيا',
             'orange' => 'برتقالي',
             'slate' => 'أردوازي',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => 'نشاط النشر',
+        'subtitle' => 'آخر 12 شهرًا',
+        'current_streak' => 'السلسلة الحالية',
+        'best_streak' => 'أطول سلسلة',
+        'total' => 'المنشورات',
+        'days' => '{1} يوم واحد|{2} يومان|[3,10] :count أيام|[0,*] :count يومًا',
+        'less' => 'أقل',
+        'more' => 'أكثر',
+        'posts_on_day' => '{0} لا توجد منشورات|[1,*] المنشورات: :count',
+        'about' => [
+            'current_streak' => 'الأيام المتتالية التي نشرت فيها. انشر مرة واحدة على الأقل يوميًا للحفاظ على السلسلة.',
+            'best_streak' => 'أكبر عدد من الأيام المتتالية التي نشرت فيها خلال آخر 12 شهرًا.',
+            'total' => 'كل ما نشرته خلال آخر 12 شهرًا، بما في ذلك ما نشرته خارج TryPost.',
         ],
     ],
 ];

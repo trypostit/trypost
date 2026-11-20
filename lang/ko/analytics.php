@@ -428,6 +428,11 @@ return [
         'caption_workspace' => '전체 채널 :metric: :value (:range) 📈',
         'caption_summary_workspace' => ':range 우리 숫자 📈 :metrics',
         'caption_summary_channel' => ':channel의 :range 숫자 📈 :metrics',
+        'caption_posting_activity' => [
+            'record_streak' => '🔥 :days 연속 게시 중, 지금까지 가장 긴 기록이에요! 최근 12개월 동안 게시물 :posts개.',
+            'on_streak' => '🔥 :days 연속 게시 중. 최고 기록은 :best이고, 최근 12개월 동안 게시물 :posts개를 올렸어요.',
+            'no_streak' => '📅 최근 12개월 동안 게시물 :posts개, 최장 연속 기록은 :best이에요.',
+        ],
         'export_failed' => '이미지를 만들지 못했어요. 다시 시도하세요.',
         'colors' => [
             'violet' => '바이올렛',
@@ -446,6 +451,22 @@ return [
             'fuchsia' => '푸크시아',
             'orange' => '오렌지',
             'slate' => '슬레이트',
+        ],
+    ],
+    'posting_activity' => [
+        'title' => '게시 활동',
+        'subtitle' => '최근 12개월',
+        'current_streak' => '현재 연속 기록',
+        'best_streak' => '최장 연속 기록',
+        'total' => '게시물',
+        'days' => ':count일',
+        'less' => '적음',
+        'more' => '많음',
+        'posts_on_day' => '{0} 게시물 없음|[1,*] 게시물 :count개',
+        'about' => [
+            'current_streak' => '연속으로 게시한 일수입니다. 기록을 이어가려면 매일 한 번 이상 게시하세요.',
+            'best_streak' => '최근 12개월 동안 연속으로 게시한 가장 긴 일수입니다.',
+            'total' => '최근 12개월 동안 게시한 모든 게시물입니다. TryPost 밖에서 게시한 것도 포함됩니다.',
         ],
     ],
 ];
