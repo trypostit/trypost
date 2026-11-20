@@ -67,10 +67,9 @@ const sharePost = async (): Promise<void> => {
     try {
         const file = await streakShareFile(props.streak.weeks, {
             number: weeks(),
-            title: transChoice(
-                'analytics.posting_streak.title',
+            unit: transChoice(
+                'analytics.posting_streak.image_weeks',
                 props.streak.weeks,
-                { count: weeks() },
             ),
             tagline: trans('analytics.posting_streak.image_tagline'),
         });

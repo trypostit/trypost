@@ -479,6 +479,7 @@ return [
         'schedule' => 'Programar publicación',
         'share' => 'Compartir racha',
         'share_caption' => '¡Llevo :count semanas seguidas publicando con TryPost!',
+        'image_weeks' => '{1} semana|[0,*] semanas',
         'image_tagline' => 'publicando sin parar',
     ],
 ];

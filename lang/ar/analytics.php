@@ -479,6 +479,7 @@ return [
         'schedule' => 'جدولة منشور',
         'share' => 'مشاركة السلسلة',
         'share_caption' => 'أنشر مع TryPost منذ أسابيع متتالية: :count!',
+        'image_weeks' => 'أسبوع',
         'image_tagline' => 'من النشر المنتظم!',
     ],
 ];

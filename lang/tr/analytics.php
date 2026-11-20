@@ -479,6 +479,7 @@ return [
         'schedule' => 'Gönderi planla',
         'share' => 'Seriyi paylaş',
         'share_caption' => 'TryPost ile :count haftadır üst üste paylaşım yapıyorum!',
+        'image_weeks' => 'hafta',
         'image_tagline' => 'düzenli paylaşım!',
     ],
 ];

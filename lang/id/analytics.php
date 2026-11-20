@@ -479,6 +479,7 @@ return [
         'schedule' => 'Jadwalkan postingan',
         'share' => 'Bagikan rangkaian',
         'share_caption' => 'Aku sudah :count minggu berturut-turut memposting dengan TryPost!',
+        'image_weeks' => 'minggu',
         'image_tagline' => 'posting secara konsisten!',
     ],
 ];

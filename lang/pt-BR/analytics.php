@@ -479,6 +479,7 @@ return [
         'schedule' => 'Agendar post',
         'share' => 'Compartilhar sequência',
         'share_caption' => 'Cheguei a :count semanas seguidas postando com o TryPost!',
+        'image_weeks' => '{1} semana|[0,*] semanas',
         'image_tagline' => 'postando sem parar!',
     ],
 ];

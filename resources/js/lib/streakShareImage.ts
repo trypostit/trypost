@@ -1,11 +1,17 @@
 /**
- * The image a posting streak shares: the top of the streak popover drawn large
- * (the violet band with its light blob, darker wedge and confetti, the number's
- * circle and the flame's), with the streak and TryPost's signature under it.
- * Drawn on a canvas like the Insights share cards.
+ * The image a posting streak shares: the streak popover's band art (violet,
+ * a light blob, a darker wedge and white and dark confetti) as the whole
+ * background, with translucent tiles over it, the number in the largest one,
+ * the unit and a line under it, signed with the TryPost logo. Drawn on a
+ * canvas like the Insights share cards.
  */
 
-import { IconFlameFilled } from '@tabler/icons-vue';
+import type { Icon } from '@tabler/icons-vue';
+import {
+    IconCrownFilled,
+    IconFlameFilled,
+    IconSendFilled,
+} from '@tabler/icons-vue';
 
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
@@ -15,77 +21,61 @@ import { loadFonts } from '@/lib/shareCard/images';
 import { writeText } from '@/lib/shareCard/text';
 import { heading, sans } from '@/lib/shareCard/theme';
 
-/** A square, which every network shows whole. */
-const SIZE = 1080;
+/** A 4:5 portrait, the size feeds show whole. */
+const SIZE = { width: 1080, height: 1350 };
 
-/** The popover's band is 228px wide; the image draws it this many times larger. */
-const SCALE = 1000 / 228;
-
-/** The popover's colors, as Tailwind draws them. */
+/** The popover band's colors, as Tailwind draws them. */
 const COLORS = {
-    surface: '#ffffff',
-    band: '#ede9fe',
+    ground: '#ede9fe',
     blob: '#f5f3ff',
     wedge: '#c4b5fd',
-    circle: '#ddd6fe',
-    flameCircle: '#ffedd5',
-    flame: '#f97316',
-    ink: '#292928',
-    muted: '#6b6966',
+    tile: 'rgba(255, 255, 255, 0.55)',
+    ink: '#1f1633',
+    muted: '#4c4466',
     dots: { light: '#a78bfa', white: '#ffffff', dark: '#2e1065' },
 };
 
-/** The band, and everything on it, in the popover's pixels. */
-const BAND = { x: 40, y: 40, width: 228, height: 66, radius: 8 };
-
-/** The confetti on the band, in the popover's pixels: left, top and size of each dot. */
+/** The confetti over the background: left, top and diameter of each dot. */
 const DOTS: { x: number; y: number; size: number; color: string }[] = [
-    { x: 12, y: 10, size: 4, color: COLORS.dots.light },
-    { x: 36, y: 36, size: 6, color: COLORS.dots.white },
-    { x: 144, y: 8, size: 4, color: COLORS.dots.dark },
-    { x: 192, y: 44, size: 4, color: COLORS.dots.white },
-    { x: 210, y: 16, size: 6, color: COLORS.dots.dark },
+    { x: 60, y: 300, size: 18, color: COLORS.dots.light },
+    { x: 210, y: 520, size: 26, color: COLORS.dots.white },
+    { x: 650, y: 40, size: 18, color: COLORS.dots.dark },
+    { x: 1000, y: 330, size: 26, color: COLORS.dots.dark },
+    { x: 860, y: 760, size: 18, color: COLORS.dots.white },
+    { x: 120, y: 1100, size: 22, color: COLORS.dots.dark },
+    { x: 940, y: 1080, size: 22, color: COLORS.dots.white },
+    { x: 300, y: 1210, size: 16, color: COLORS.dots.light },
 ];
 
-const px = (value: number): number => value * SCALE;
+/** The small tiles around the number, some with the posting activity's icons. */
+const TILES: { x: number; y: number; icon?: Icon; color?: string }[] = [
+    { x: 70, y: 70 },
+    { x: 270, y: 70, icon: IconFlameFilled, color: '#f97316' },
+    { x: 70, y: 280, icon: IconCrownFilled, color: '#fbbf24' },
+    { x: 990, y: 70 },
+    { x: 800, y: 280 },
+    { x: 800, y: 490, icon: IconSendFilled, color: '#7c3aed' },
+    { x: -80, y: 490 },
+];
 
-const bandBox = () => ({
-    x: BAND.x,
-    y: BAND.y,
-    width: px(BAND.width),
-    height: px(BAND.height),
-});
+const TILE = { size: 170, radius: 36, icon: 84 };
 
-/** The band: a light blob on the left, a darker wedge on the right that reaches the flame, and the confetti. */
-const paintBand = (context: CanvasRenderingContext2D): void => {
-    const band = bandBox();
+const NUMBER_TILE = { x: 320, y: 260, size: 440, radius: 64 };
 
-    context.save();
-    context.beginPath();
-    context.roundRect(band.x, band.y, band.width, band.height, px(BAND.radius));
-    context.clip();
-
-    context.fillStyle = COLORS.band;
-    context.fillRect(band.x, band.y, band.width, band.height);
+const paintBackground = (context: CanvasRenderingContext2D): void => {
+    context.fillStyle = COLORS.ground;
+    context.fillRect(0, 0, SIZE.width, SIZE.height);
 
     context.beginPath();
-    context.ellipse(
-        band.x + px(32),
-        band.y + px(12),
-        px(48),
-        px(24),
-        0,
-        0,
-        Math.PI * 2,
-    );
+    context.ellipse(140, 60, 420, 260, 0, 0, Math.PI * 2);
     context.fillStyle = COLORS.blob;
     context.fill();
 
     context.beginPath();
-    context.moveTo(band.x + band.width * 0.6, band.y);
-    context.lineTo(band.x + band.width, band.y);
-    context.lineTo(band.x + band.width, band.y + band.height);
-    context.lineTo(band.x + band.width * 0.57, band.y + band.height);
+    context.moveTo(SIZE.width * 0.6, 0);
+    context.lineTo(SIZE.width, 0);
+    context.lineTo(SIZE.width, SIZE.height);
+    context.lineTo(SIZE.width * 0.57, SIZE.height);
     context.closePath();
     context.fillStyle = COLORS.wedge;
     context.fill();
@@ -93,109 +83,111 @@ const paintBand = (context: CanvasRenderingContext2D): void => {
     DOTS.forEach((dot) => {
         context.beginPath();
         context.arc(
-            band.x + px(dot.x + dot.size / 2),
-            band.y + px(dot.y + dot.size / 2),
-            px(dot.size / 2),
+            dot.x + dot.size / 2,
+            dot.y + dot.size / 2,
+            dot.size / 2,
             0,
             Math.PI * 2,
         );
         context.fillStyle = dot.color;
         context.fill();
     });
+};
 
+const paintIcon = (
+    context: CanvasRenderingContext2D,
+    icon: Icon,
+    color: string,
+    at: { x: number; y: number },
+    size: number,
+): void => {
+    context.save();
+    context.translate(at.x, at.y);
+    context.scale(size / 24, size / 24);
+    context.fillStyle = color;
+    iconPaths(icon).forEach((path) => context.fill(new Path2D(path)));
     context.restore();
 };
 
-/** Three digits shrink so the number stays inside its circle, as on the popover. */
-const numberSize = (weeks: number): number => {
-    if (weeks >= 100) {
-        return px(30);
-    }
+const paintTiles = (context: CanvasRenderingContext2D): void => {
+    TILES.forEach((tile) => {
+        context.beginPath();
+        context.roundRect(tile.x, tile.y, TILE.size, TILE.size, TILE.radius);
+        context.fillStyle = COLORS.tile;
+        context.fill();
 
-    return px(40);
+        if (!filled(tile.icon)) {
+            return;
+        }
+
+        if (!filled(tile.color)) {
+            return;
+        }
+
+        const inset = (TILE.size - TILE.icon) / 2;
+
+        paintIcon(
+            context,
+            tile.icon,
+            tile.color,
+            { x: tile.x + inset, y: tile.y + inset },
+            TILE.icon,
+        );
+    });
 };
 
-/** The number's circle over the band's edge, and the flame's circle on its corner. */
-const paintCircles = (
+/** Three digits shrink so the number stays inside its tile. */
+const numberSize = (weeks: number): number => {
+    if (weeks >= 100) {
+        return 230;
+    }
+
+    return 300;
+};
+
+const paintNumber = (
     context: CanvasRenderingContext2D,
     weeks: number,
     number: string,
 ): void => {
-    const circle = { x: BAND.x + px(69), y: BAND.y + px(16), size: px(80) };
-    const flame = { x: BAND.x + px(119), y: BAND.y + px(60), size: px(40) };
-
     context.beginPath();
-    context.arc(
-        circle.x + circle.size / 2,
-        circle.y + circle.size / 2,
-        circle.size / 2,
-        0,
-        Math.PI * 2,
+    context.roundRect(
+        NUMBER_TILE.x,
+        NUMBER_TILE.y,
+        NUMBER_TILE.size,
+        NUMBER_TILE.size,
+        NUMBER_TILE.radius,
     );
-    context.fillStyle = COLORS.circle;
+    context.fillStyle = COLORS.tile;
     context.fill();
 
     writeText(
         context,
         number,
-        { x: circle.x + circle.size / 2, y: circle.y + circle.size / 2 },
         {
-            font: heading(400, numberSize(weeks)),
+            x: NUMBER_TILE.x + NUMBER_TILE.size / 2,
+            y: NUMBER_TILE.y + NUMBER_TILE.size / 2 + 12,
+        },
+        {
+            font: heading(600, numberSize(weeks)),
             color: COLORS.ink,
             align: 'center',
             baseline: 'middle',
         },
     );
-
-    context.beginPath();
-    context.arc(
-        flame.x + flame.size / 2,
-        flame.y + flame.size / 2,
-        flame.size / 2 + px(2),
-        0,
-        Math.PI * 2,
-    );
-    context.fillStyle = COLORS.surface;
-    context.fill();
-
-    context.beginPath();
-    context.arc(
-        flame.x + flame.size / 2,
-        flame.y + flame.size / 2,
-        flame.size / 2,
-        0,
-        Math.PI * 2,
-    );
-    context.fillStyle = COLORS.flameCircle;
-    context.fill();
-
-    const icon = px(24);
-
-    context.save();
-    context.translate(
-        flame.x + (flame.size - icon) / 2,
-        flame.y + (flame.size - icon) / 2,
-    );
-    context.scale(icon / 24, icon / 24);
-    context.fillStyle = COLORS.flame;
-    iconPaths(IconFlameFilled).forEach((path) =>
-        context.fill(new Path2D(path)),
-    );
-    context.restore();
 };
 
-/** The streak and the line under it, centred below the circles. */
 const paintTexts = (
     context: CanvasRenderingContext2D,
-    title: string,
+    unit: string,
     tagline: string,
 ): void => {
     writeText(
         context,
-        title,
-        { x: SIZE / 2, y: 640 },
+        unit,
+        { x: SIZE.width / 2, y: 900 },
         {
-            font: heading(500, 76),
+            font: heading(600, 170),
             color: COLORS.ink,
             align: 'center',
         },
@@ -203,9 +195,9 @@ const paintTexts = (
     writeText(
         context,
         tagline,
-        { x: SIZE / 2, y: 720 },
+        { x: SIZE.width / 2, y: 990 },
         {
-            font: sans(400, 44),
+            font: sans(500, 52),
             color: COLORS.muted,
             align: 'center',
         },
@@ -213,14 +205,14 @@ const paintTexts = (
 };
 
 const paintSignature = (context: CanvasRenderingContext2D): void => {
-    const logo = 56;
-    const font = heading(600, 44);
+    const logo = 60;
+    const font = heading(600, 46);
 
     context.font = font;
 
     const width = logo + 16 + context.measureText('TryPost').width;
-    const left = (SIZE - width) / 2;
-    const centre = SIZE - 110;
+    const left = (SIZE.width - width) / 2;
+    const centre = SIZE.height - 120;
 
     paintLogo(context, { x: left, y: centre - logo / 2 }, logo);
     writeText(
@@ -238,14 +230,14 @@ const paintSignature = (context: CanvasRenderingContext2D): void => {
 /** The streak image as a PNG file, named after the streak: `trypost-streak-20-weeks.png`. */
 export const streakShareFile = async (
     weeks: number,
-    texts: { number: string; title: string; tagline: string },
+    texts: { number: string; unit: string; tagline: string },
 ): Promise<File> => {
-    await loadFonts(`${texts.number} ${texts.title} ${texts.tagline} TryPost`);
+    await loadFonts(`${texts.number} ${texts.unit} ${texts.tagline} TryPost`);
 
     const canvas = document.createElement('canvas');
 
-    canvas.width = SIZE;
-    canvas.height = SIZE;
+    canvas.width = SIZE.width;
+    canvas.height = SIZE.height;
 
     const context = canvas.getContext('2d');
 
@@ -253,11 +245,10 @@ export const streakShareFile = async (
         throw new Error('Canvas is not available');
     }
 
-    context.fillStyle = COLORS.surface;
-    context.fillRect(0, 0, SIZE, SIZE);
-    paintBand(context);
-    paintCircles(context, weeks, texts.number);
-    paintTexts(context, texts.title, texts.tagline);
+    paintBackground(context);
+    paintTiles(context);
+    paintNumber(context, weeks, texts.number);
+    paintTexts(context, texts.unit, texts.tagline);
     paintSignature(context);
 
     return canvasToFile(

@@ -479,6 +479,7 @@ return [
         'schedule' => '投稿を予約',
         'share' => '記録をシェア',
         'share_caption' => 'TryPostで:count週連続で投稿しています！',
+        'image_weeks' => '週',
         'image_tagline' => '継続して投稿中！',
     ],
 ];

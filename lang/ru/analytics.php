@@ -479,6 +479,7 @@ return [
         'schedule' => 'Запланировать',
         'share' => 'Поделиться серией',
         'share_caption' => 'Публикую с TryPost уже недель подряд: :count!',
+        'image_weeks' => 'нед.',
         'image_tagline' => 'регулярных публикаций!',
     ],
 ];

@@ -479,6 +479,7 @@ return [
         'schedule' => 'Schedule post',
         'share' => 'Share streak',
         'share_caption' => 'I\'ve reached a :count-week posting streak with TryPost!',
+        'image_weeks' => '{1} week|[0,*] weeks',
         'image_tagline' => 'of consistent posting!',
     ],
 ];

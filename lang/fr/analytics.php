@@ -479,6 +479,7 @@ return [
         'schedule' => 'Programmer',
         'share' => 'Partager la série',
         'share_caption' => 'J\'ai publié :count semaines d\'affilée avec TryPost !',
+        'image_weeks' => '{1} semaine|[0,*] semaines',
         'image_tagline' => 'de publication régulière !',
     ],
 ];

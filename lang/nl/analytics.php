@@ -479,6 +479,7 @@ return [
         'schedule' => 'Bericht plannen',
         'share' => 'Reeks delen',
         'share_caption' => 'Ik post al :count weken op rij met TryPost!',
+        'image_weeks' => '{1} week|[0,*] weken',
         'image_tagline' => 'consequent gepost!',
     ],
 ];
