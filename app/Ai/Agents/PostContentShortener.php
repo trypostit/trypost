@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Ai\Agents;
 
-use Laravel\Ai\Attributes\Temperature;
+use App\Ai\Concerns\OmitsUnsupportedTemperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Promptable;
 
-#[Temperature(0.2)]
 class PostContentShortener implements Agent
 {
+    use OmitsUnsupportedTemperature;
     use Promptable;
 
     public function __construct(
@@ -25,5 +25,10 @@ class PostContentShortener implements Agent
             'limit' => $this->limit,
             'target' => max(1, (int) floor($this->limit * 0.95)),
         ])->render();
+    }
+
+    protected function preferredTemperature(): float
+    {
+        return 0.2;
     }
 }

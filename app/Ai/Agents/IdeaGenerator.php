@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Ai\Agents;
 
+use App\Ai\Concerns\OmitsUnsupportedTemperature;
 use App\Enums\User\Locale;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
 use Laravel\Ai\Promptable;
 
-#[Temperature(0.8)]
 class IdeaGenerator implements Agent, HasStructuredOutput
 {
+    use OmitsUnsupportedTemperature;
     use Promptable;
 
     public function __construct(
@@ -42,5 +42,10 @@ class IdeaGenerator implements Agent, HasStructuredOutput
             'title' => $schema->string()->required(),
             'body' => $schema->string()->required(),
         ];
+    }
+
+    protected function preferredTemperature(): float
+    {
+        return 0.8;
     }
 }
