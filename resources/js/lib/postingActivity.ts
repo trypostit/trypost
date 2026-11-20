@@ -1,8 +1,28 @@
+import {
+    IconCrownFilled,
+    IconFlameFilled,
+    IconSendFilled,
+    type Icon,
+} from '@tabler/icons-vue';
+
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { filled } from '@/lib/helpers';
 import { weekStartIndex } from '@/preferences';
 import type { PostingActivityDay } from '@/types/analytics';
+
+/** The three numbers over the grid, in the order the card and the share image show them. */
+export type PostingActivityStat = 'current_streak' | 'best_streak' | 'total';
+
+/** Each number's icon and color (a CSS color, so the share card's canvas can resolve it too). */
+export const POSTING_ACTIVITY_STAT_ICONS: Record<
+    PostingActivityStat,
+    { icon: Icon; color: string }
+> = {
+    current_streak: { icon: IconFlameFilled, color: 'var(--color-orange-500)' },
+    best_streak: { icon: IconCrownFilled, color: 'var(--color-amber-400)' },
+    total: { icon: IconSendFilled, color: 'var(--chart-3)' },
+};
 
 /** The grid's rows: one per weekday, one column per week. */
 export const DAYS_PER_WEEK = 7;

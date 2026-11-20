@@ -19,7 +19,7 @@ import {
     seriesDelta,
     shownPeriod,
 } from '@/lib/channelMetrics';
-import { postingActivityMonths, postingActivityOffset } from '@/lib/postingActivity';
+import { POSTING_ACTIVITY_STAT_ICONS, type PostingActivityStat, postingActivityMonths, postingActivityOffset } from '@/lib/postingActivity';
 import {
     periodFigure,
     type ShareChannel,
@@ -422,15 +422,21 @@ const postingActivityCaption = (activity: PostingActivity): string => {
 };
 
 /** A number of the posting activity card, which always has a value. */
-const activityTile = (label: string, figure: string): ShareTile => ({ label, figure, missing: false, change: null });
+const activityTile = (stat: PostingActivityStat, figure: string): ShareTile => ({
+    label: trans(`analytics.posting_activity.${stat}`),
+    figure,
+    missing: false,
+    change: null,
+    icon: POSTING_ACTIVITY_STAT_ICONS[stat],
+});
 
 /** The posting activity card: the streaks and posts as the card prints them, and the year's grid. */
 export const postingActivityShareOption = (activity: PostingActivity): ShareMetricOption => {
     const offset = postingActivityOffset(activity.days);
     const tiles = [
-        activityTile(trans('analytics.posting_activity.current_streak'), streakDays(activity.current_streak)),
-        activityTile(trans('analytics.posting_activity.best_streak'), streakDays(activity.best_streak)),
-        activityTile(trans('analytics.posting_activity.total'), formatFullNumber(activity.total)),
+        activityTile('current_streak', streakDays(activity.current_streak)),
+        activityTile('best_streak', streakDays(activity.best_streak)),
+        activityTile('total', formatFullNumber(activity.total)),
     ];
 
     return shareOption({

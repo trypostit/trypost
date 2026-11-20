@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import {
-    IconCrownFilled,
-    IconFlameFilled,
-    IconSendFilled,
-} from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
-import { computed, type Component } from 'vue';
+import { computed } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -14,11 +9,13 @@ import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { blank } from '@/lib/helpers';
 import { postingActivityShareOption } from '@/lib/insightsShare';
+import {
+    POSTING_ACTIVITY_STAT_ICONS,
+    type PostingActivityStat,
+} from '@/lib/postingActivity';
 import type { ShareMetricOption } from '@/lib/shareCard';
 import { formatFullNumber } from '@/lib/utils';
 import type { PostingActivity } from '@/types/analytics';
-
-type StatKey = 'current_streak' | 'best_streak' | 'total';
 
 const props = defineProps<{
     activity?: PostingActivity;
@@ -26,14 +23,7 @@ const props = defineProps<{
     channel?: string;
 }>();
 
-const STATS: StatKey[] = ['current_streak', 'best_streak', 'total'];
-
-/** Each number's icon and color, in place of the series swatch the Metrics card's legend draws. */
-const STAT_ICONS: Record<StatKey, { icon: Component; color: string }> = {
-    current_streak: { icon: IconFlameFilled, color: 'text-orange-500' },
-    best_streak: { icon: IconCrownFilled, color: 'text-amber-400' },
-    total: { icon: IconSendFilled, color: 'text-chart-3' },
-};
+const STATS: PostingActivityStat[] = ['current_streak', 'best_streak', 'total'];
 
 const isLoading = computed((): boolean => blank(props.activity));
 
@@ -42,7 +32,7 @@ const days = (count: number): string =>
         count: formatFullNumber(count),
     });
 
-const statValue = (activity: PostingActivity, key: StatKey): string => {
+const statValue = (activity: PostingActivity, key: PostingActivityStat): string => {
     if (key === 'total') {
         return formatFullNumber(activity.total);
     }
@@ -50,16 +40,21 @@ const statValue = (activity: PostingActivity, key: StatKey): string => {
     return days(activity[key]);
 };
 
-const labelKey = (key: StatKey): string => `analytics.posting_activity.${key}`;
+const labelKey = (key: PostingActivityStat): string => `analytics.posting_activity.${key}`;
 
-const aboutKey = (key: StatKey): string =>
+const aboutKey = (key: PostingActivityStat): string =>
     `analytics.posting_activity.about.${key}`;
 
 /** The share card's builder for the loaded activity. */
 const shareBuilder = (activity: PostingActivity) => (): ShareMetricOption =>
     postingActivityShareOption(activity);
 
-const testId = (key: StatKey): string =>
+/** The number's icon color, as the share card draws it. */
+const iconStyle = (key: PostingActivityStat): { color: string } => ({
+    color: POSTING_ACTIVITY_STAT_ICONS[key].color,
+});
+
+const testId = (key: PostingActivityStat): string =>
     `posting-activity-${key.replace('_', '-')}`;
 </script>
 
@@ -108,9 +103,9 @@ const testId = (key: StatKey): string =>
                     </span>
                     <span class="flex items-center gap-1.5">
                         <component
-                            :is="STAT_ICONS[key].icon"
+                            :is="POSTING_ACTIVITY_STAT_ICONS[key].icon"
                             class="size-5 shrink-0"
-                            :class="STAT_ICONS[key].color"
+                            :style="iconStyle(key)"
                             aria-hidden="true"
                         />
                         <span

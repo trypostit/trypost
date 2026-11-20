@@ -1,3 +1,5 @@
+import type { Icon } from '@tabler/icons-vue';
+
 import type { ChartMode, MetricDelta } from '@/lib/channelMetrics';
 import type { ShareTint } from '@/lib/shareCard/theme';
 import type { SeriesMetric } from '@/types/analytics';
@@ -63,7 +65,10 @@ export type ShareSeries = {
 export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
 /** One number of the Summary, as its card prints it; `missing` while the metric has no value, which the card draws muted and the post leaves out. */
-export type ShareTile = { label: string; figure: string; missing: boolean; change: MetricDelta | null };
+/** The icon drawn before a tile's figure, in a CSS color. */
+export type ShareTileIcon = { icon: Icon; color: string };
+
+export type ShareTile = { label: string; figure: string; missing: boolean; change: MetricDelta | null; icon?: ShareTileIcon };
 
 /**
  * The posting activity grid for `heatmap`: one count per day, oldest first,
