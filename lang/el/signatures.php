@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Υπογραφές',
     'description' => 'Έτοιμα κείμενα για τις αναρτήσεις σας.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Δημιουργήθηκε',
     ],
 
-    'row_actions' => 'Ενέργειες υπογραφής',
     'actions' => [
         'edit' => 'Επεξεργασία υπογραφής',
-        'delete' => 'Διαγραφή υπογραφής',
+        'delete' => 'Διαγραφή',
+        'settings' => 'Ρυθμίσεις',
     ],
 
     'create' => [

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Підписи',
     'description' => 'Готові тексти для ваших дописів.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Створено',
     ],
 
-    'row_actions' => 'Дії з підписом',
     'actions' => [
         'edit' => 'Редагувати підпис',
-        'delete' => 'Видалити підпис',
+        'delete' => 'Видалити',
+        'settings' => 'Налаштування',
     ],
 
     'create' => [

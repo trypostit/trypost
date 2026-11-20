@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'bf26' => [
+        'name' => 'ブラックフライデー',
+        'headline' => '最初の3か月50%オフ',
+        'price' => '$9.50',
+        'unit' => '/月',
+        'period' => '最初の3か月',
+        'checkout_button' => 'アカウントを有効にする',
+    ],
+    'fm1' => [
+        'name' => '初月',
+        'headline' => '初月は$1',
+        'price' => '$1',
+        'period' => '初月の料金',
+        'checkout_button' => 'アカウントを有効にする',
+    ],
+    'ft7d' => [
+        'price' => '無料',
+        'period' => '7日間',
+        'checkout_button' => '無料で試す',
+    ],
+    'ft7dnc' => [
+        'price' => '無料',
+        'period' => '7日間',
+        'checkout_button' => '無料で試す',
+        'terms' => 'クレジットカードは不要です',
+    ],
+];

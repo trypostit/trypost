@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -453,6 +454,8 @@ test('it starts over when the failure category is not resumable', function (?str
 ]);
 
 test('a TikTok retry after a remote FAILED starts a new publish', function () {
+    Sleep::fake();
+
     $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'username' => 'tiktoker',

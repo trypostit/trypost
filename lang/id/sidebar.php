@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'workspaces' => 'Workspace',
+    'select_workspace' => 'Pilih workspace',
+    'create_workspace' => 'Buat workspace',
+    'new' => 'Baru',
+    'unfinished_post' => 'Ada postingan yang belum kamu selesaikan',
+    'create' => 'Buat',
+    'new_menu' => [
+        'post' => 'Postingan',
+        'post_description' => 'Terbitkan konten ke channel',
+        'idea' => 'Ide',
+        'idea_description' => 'Catat ide konten',
+        'channel' => 'Hubungkan channel baru',
+        'member' => 'Undang anggota tim',
+    ],
+    'settings' => 'Pengaturan',
+    'plans_billing' => 'Paket dan tagihan',
+    'log_out' => 'Keluar',
+    'help' => 'Bantuan',
+    'language' => 'Bahasa: :name',
+    'theme' => 'Tema: :name',
+    'manage_team' => 'Kelola tim',
+    'channels_count' => '{1} :count channel|[0,*] :count channel',
+    'groups' => [
+        'posts' => 'Terbitkan',
+        'others' => 'Lainnya',
+    ],
+    'channels' => 'Channel',
+    'connect_channels' => 'Hubungkan channel',
+    'search_channels' => 'Cari channel',
+    'channel_submenu' => 'Submenu :name',
+    'toggle' => 'Buka/tutup sidebar',
+    'collapse' => 'Ciutkan sidebar',
+    'expand' => 'Luaskan sidebar',
+    'mobile_title' => 'Navigasi',
+    'mobile_description' => 'Navigasi utama aplikasi.',
+    'repurposes' => 'Repurpose',
+    'posts' => [
+        'all' => 'Semua',
+    ],
+    'support' => [
+        'menu' => 'Bantuan & dukungan',
+        'help_center' => 'Pusat bantuan',
+        'feature_requests' => 'Usulan fitur',
+        'github' => 'GitHub',
+        'status' => 'Status aplikasi',
+        'chat' => 'Dukungan chat',
+        'changelog' => 'Yang Baru',
+        'referral' => 'Dapatkan komisi 30%',
+        'discord' => 'Komunitas Discord',
+        'community' => 'Komunitas',
+    ],
+];

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enums\Media;
 
+use App\Services\GiphyService;
+
 /**
  * Origin of a media attachment on a post. `null`/absent means "uploaded by
  * the user". The picker sources are the ones offered in the composer's media
@@ -13,6 +15,7 @@ enum Source: string
 {
     case Ai = 'ai';
     case Unsplash = 'unsplash';
+    case Giphy = 'giphy';
     case GoogleDrive = 'google_drive';
     case GooglePhotos = 'google_photos';
     case Canva = 'canva';
@@ -21,13 +24,14 @@ enum Source: string
     /** @return list<self> */
     public static function pickerSources(): array
     {
-        return [self::Canva, self::GoogleDrive, self::GooglePhotos, self::Unsplash, self::Webdav];
+        return [self::Canva, self::Giphy, self::GoogleDrive, self::GooglePhotos, self::Unsplash, self::Webdav];
     }
 
     public function isEnabled(): bool
     {
         return match ($this) {
             self::Unsplash => filled(config('services.unsplash.access_key')),
+            self::Giphy => GiphyService::isEnabled(),
             self::GoogleDrive => (bool) config('trypost.media_sources.google_drive.enabled')
                 && self::googleOAuthConfigured()
                 && filled(config('services.google_media.api_key'))
@@ -61,6 +65,7 @@ enum Source: string
         return match ($this) {
             self::Ai => 'AI',
             self::Unsplash => 'Unsplash',
+            self::Giphy => 'GIPHY',
             self::GoogleDrive => 'Google Drive',
             self::GooglePhotos => 'Google Photos',
             self::Canva => 'Canva',
@@ -72,7 +77,7 @@ enum Source: string
     public function downloadHosts(): array
     {
         $hosts = match ($this) {
-            self::Unsplash, self::GoogleDrive, self::GooglePhotos, self::Canva => config("trypost.media_sources.{$this->value}.download_hosts"),
+            self::Unsplash, self::Giphy, self::GoogleDrive, self::GooglePhotos, self::Canva => config("trypost.media_sources.{$this->value}.download_hosts"),
             // Exactly the configured share, nothing else.
             self::Webdav => (string) parse_url((string) config('trypost.media_sources.webdav.url'), PHP_URL_HOST),
             default => '',
@@ -104,7 +109,7 @@ enum Source: string
             self::GoogleDrive => [
                 'api_key' => (string) config('services.google_media.api_key'),
                 'app_id' => (string) config('services.google_media.app_id'),
-                'picker_sdk' => (string) config('trypost.media_sources.google_drive.picker_sdk'),
+                'picker_sdk' => config('trypost.media_sources.google_drive.picker_sdk'),
             ],
             default => [],
         };

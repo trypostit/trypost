@@ -103,7 +103,7 @@ class GitHubController extends Controller
             return redirect()->route('app.invites.show', $invite);
         }
 
-        return redirect()->route('app.home');
+        return redirect()->intended(route('app.calendar'));
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
@@ -124,6 +124,7 @@ class GitHubController extends Controller
             'email_verified_at' => now(),
             'is_invite' => $invite !== null,
             'registration_ip' => request()->ip(),
+            'locale' => data_get($preferences, 'locale'),
             'timezone' => data_get($preferences, 'timezone'),
             'week_starts_on' => data_get($preferences, 'week_starts_on'),
             'time_format' => data_get($preferences, 'time_format'),

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Dto\BlueskySession;
+use App\Actions\SocialAccount\ReadBlueskySession;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Models\SocialAccount;
@@ -60,7 +60,7 @@ class BlueskyController extends SocialController
 
         try {
             // Authenticate with Bluesky
-            $response = Http::post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
+            $response = Http::post(BlueskyLexicon::xrpc($service, BlueskyLexicon::CREATE_SESSION), [
                 'identifier' => $request->identifier,
                 'password' => $request->password,
             ]);
@@ -74,7 +74,7 @@ class BlueskyController extends SocialController
                 throw ValidationException::withMessages(['password' => __('accounts.bluesky.invalid_credentials')]);
             }
 
-            $session = BlueskySession::fromResponse($response);
+            $session = ReadBlueskySession::execute($response);
 
             if ($session === null || ! $session->hasTokens()) {
                 return $this->failConnection('error_connecting');
@@ -88,7 +88,7 @@ class BlueskyController extends SocialController
 
             // Get profile
             $profileResponse = Http::withToken($session->accessToken)
-                ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
+                ->get(BlueskyLexicon::xrpc($service, BlueskyLexicon::GET_PROFILE), [
                     'actor' => $session->did,
                 ]);
 
@@ -133,9 +133,9 @@ class BlueskyController extends SocialController
         $response = Http::withToken(data_get($identity, 'attributes.access_token'))
             ->connectTimeout(10)
             ->timeout(30)
-            ->get(config('trypost.platforms.bluesky.default_service').'/xrpc/'.BlueskyLexicon::GET_SESSION);
+            ->get(BlueskyLexicon::xrpc(config('trypost.platforms.bluesky.default_service'), BlueskyLexicon::GET_SESSION));
 
-        $session = BlueskySession::fromResponse($response);
+        $session = ReadBlueskySession::execute($response);
 
         if ($session === null || $session->did !== data_get($identity, 'platform_user_id')) {
             throw new ConnectFlowException('error_connecting', $this->platform);

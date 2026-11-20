@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Repurpose;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\Status;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
@@ -63,7 +64,7 @@ class DestinationMetaRules
             $violation = PostPlatformMetaRules::requiredMetaViolation(
                 $platforms->get(data_get($destination, 'social_account_id')),
                 data_get($destination, 'meta'),
-                data_get($destination, 'content_type'),
+                ContentType::resolve(data_get($destination, 'content_type')),
             );
 
             if ($violation !== null) {

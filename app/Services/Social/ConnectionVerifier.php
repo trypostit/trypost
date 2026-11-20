@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Actions\SocialAccount\ReadBlueskySession;
 use App\Actions\SocialAccount\SyncXSubscription;
-use App\Dto\BlueskySession;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -21,6 +21,7 @@ use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use App\Services\Social\Mastodon\MastodonApi;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
 use App\Support\GoogleBusinessResourceName;
@@ -338,12 +339,15 @@ class ConnectionVerifier
 
     private function refreshBlueskyToken(SocialAccount $account): void
     {
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
         $client = TokenRefreshClient::for(Platform::Bluesky);
 
         try {
+            // refreshSession must be POSTed with NO body: `post()` without data
+            // still sends an empty JSON body, and bsky.social now rejects it
+            // with "A request body was provided when none was expected".
             $response = $client->send(fn () => $this->refreshHttp()->withToken($account->refresh_token)
-                ->post("{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
+                ->send('POST', BlueskyLexicon::xrpc($service, BlueskyLexicon::REFRESH_SESSION)));
 
             $this->updateBlueskySession($account, $response);
 
@@ -354,7 +358,7 @@ class ConnectionVerifier
 
         if (isset($account->meta['password'])) {
             try {
-                $reauth = $client->send(fn () => $this->refreshHttp()->post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
+                $reauth = $client->send(fn () => $this->refreshHttp()->post(BlueskyLexicon::xrpc($service, BlueskyLexicon::CREATE_SESSION), [
                     'identifier' => $account->meta['identifier'],
                     'password' => decrypt($account->meta['password']),
                 ]));
@@ -372,7 +376,7 @@ class ConnectionVerifier
 
     private function updateBlueskySession(SocialAccount $account, Response $response): void
     {
-        $session = BlueskySession::fromResponse($response);
+        $session = ReadBlueskySession::execute($response);
 
         if ($session === null || ! $session->hasTokens() || $session->did !== $account->platform_user_id) {
             throw new PlatformUnavailableException('Bluesky returned an invalid session response.');
@@ -653,7 +657,7 @@ class ConnectionVerifier
      */
     private function verifyInstagram(SocialAccount $account): bool
     {
-        $response = Http::get("{$account->platform->instagramGraphBaseUrl()}/me", [
+        $response = Http::get("{$account->platform->graphApiUrl()}/me", [
             'fields' => 'id,username,user_id',
             'access_token' => $account->access_token,
         ]);
@@ -674,7 +678,7 @@ class ConnectionVerifier
      */
     private function verifyInstagramFacebook(SocialAccount $account): bool
     {
-        $response = Http::get("{$account->platform->instagramGraphBaseUrl()}/me", [
+        $response = Http::get("{$account->platform->graphApiUrl()}/me", [
             'fields' => 'id,username',
             'access_token' => $account->access_token,
         ]);
@@ -810,10 +814,10 @@ class ConnectionVerifier
 
     private function verifyBluesky(SocialAccount $account): bool
     {
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = $account->bluesky_service;
 
         $response = Http::withToken($account->access_token)
-            ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
+            ->get(BlueskyLexicon::xrpc($service, BlueskyLexicon::GET_PROFILE), [
                 'actor' => $account->platform_user_id,
             ]);
 
@@ -867,10 +871,10 @@ class ConnectionVerifier
 
     private function verifyMastodon(SocialAccount $account): bool
     {
-        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+        $instance = $account->mastodon_instance;
 
         $response = Http::withToken($account->access_token)
-            ->get("{$instance}/api/v1/accounts/verify_credentials");
+            ->get(MastodonApi::url($instance, 'accounts/verify_credentials'));
 
         // 403 here (unlike a publish-time 403 on the write-scoped /statuses
         // endpoint) means even read access is gone — verify_credentials is

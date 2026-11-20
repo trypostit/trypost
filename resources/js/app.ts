@@ -1,5 +1,4 @@
-import '../css/app.css';
-import './echo';
+import '@/echo';
 
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -8,13 +7,13 @@ import { ConfigProvider } from 'reka-ui';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 
-import { initializeDataLayer } from './datalayer';
-import { bootLocale, i18nConfig, syncLocale, textDirection } from './language';
-import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
-import { trackInAppPushes } from './lib/inAppHistory';
-import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
-import { syncPreferences } from './preferences';
-import type { Auth } from './types';
+import { initializeDataLayer } from '@/datalayer';
+import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
+import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
+import { trackInAppPushes } from '@/lib/inAppHistory';
+import { capturePageview, initializePostHog, syncPostHogContext } from '@/posthog';
+import { syncPreferences } from '@/preferences';
+import type { Auth } from '@/types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
 

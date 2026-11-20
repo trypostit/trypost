@@ -15,13 +15,11 @@ function selectPhoto(mixed $page): void
 {
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
 
+    waitForState($page, 'input[type="file"]', 'true');
+
     $page->script(<<<JS
-        (async () => {
-            const findInput = () => document.querySelector('input[type="file"]');
-            for (let attempt = 0; attempt < 50 && !findInput(); attempt++) {
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-            const input = findInput();
+        (() => {
+            const input = document.querySelector('input[type="file"]');
             const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
             const file = new File([bytes], 'logo.png', { type: 'image/png' });
             const data = new DataTransfer();
@@ -67,27 +65,6 @@ function recordUpload(mixed $page): void
             };
         })();
     JS);
-}
-
-/**
- * Polls from the page until `$condition` holds (never sleep(): the test server
- * only ticks while Pest awaits Playwright).
- */
-function waitForImageCrop(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
-function waitForCropSelection(mixed $page): void
-{
-    waitForImageCrop($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
 }
 
 /**
@@ -182,7 +159,7 @@ test('a profile photo opens the media editor locked to a square 1:1 crop and sav
     $page = visit(route('app.profile.edit'));
 
     selectPhoto($page);
-    waitForCropSelection($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     recordUpload($page);
 
     $selection = cropSelectionBox($page);
@@ -206,7 +183,7 @@ test('a profile photo opens the media editor locked to a square 1:1 crop and sav
     expect($resized['width'])->toEqualWithDelta($resized['height'], 1);
 
     $page->click('@media-editor-reset');
-    waitForImageCrop($page, "document.querySelector('[data-testid=\"media-editor-reset\"]').disabled");
+    waitForState($page, '@media-editor-reset', 'element.disabled');
 
     $page->click('@media-editor-apply')
         ->assertNoJavaScriptErrors();
@@ -225,7 +202,7 @@ test('a profile photo opens the media editor locked to a square 1:1 crop and sav
         ->and(isQuadrantColour($request['pixels']['bottomLeft'], [0, 0, 255]))->toBeTrue()
         ->and(isQuadrantColour($request['pixels']['bottomRight'], [255, 255, 0]))->toBeTrue();
 
-    waitForImageCrop($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
 
     expect($page->script("Boolean(document.querySelector('[data-testid=\"media-editor\"]'))"))->toBeFalse();
 });
@@ -236,11 +213,11 @@ test('cancelling the editor discards the photo without uploading', function () {
     $page = visit(route('app.profile.edit'));
 
     selectPhoto($page);
-    waitForCropSelection($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     recordUpload($page);
 
     $page->click('@media-editor-cancel');
-    waitForImageCrop($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+    waitForGone($page, '@media-editor');
 
     expect($page->script("Boolean(document.querySelector('[data-testid=\"media-editor\"]'))"))->toBeFalse()
         ->and($page->script('window.__uploadRequest'))->toBeNull();
@@ -258,7 +235,7 @@ test('the workspace logo opens the same editor with a square 1:1 crop', function
     $page = visit(route('app.workspace.settings'));
 
     selectPhoto($page);
-    waitForCropSelection($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     recordUpload($page);
 
     $selection = cropSelectionBox($page);

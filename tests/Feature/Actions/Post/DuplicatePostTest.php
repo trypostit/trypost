@@ -97,3 +97,23 @@ test('execute refuses a duplicate when the channel was removed', function () {
     expect(fn () => DuplicatePost::execute($original->fresh(), $user))
         ->toThrow(ValidationException::class);
 });
+
+test('execute keeps a poll with its choices and settings', function (string $platform, ContentType $type, array $poll) {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $workspace->id]);
+    $original = Post::factory()->forAccount($account, $type)->published()->create([
+        'user_id' => $user->id,
+        'content' => 'Tabs or spaces?',
+        'meta' => ['poll' => $poll],
+    ]);
+
+    $copy = DuplicatePost::execute($original, $user)->fresh();
+
+    expect($copy->content_type)->toBe($type)
+        ->and($copy->meta['poll'])->toEqual($poll);
+})->with([
+    'x' => ['x', ContentType::XPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    'mastodon' => ['mastodon', ContentType::MastodonPoll, ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60, 'multiple' => true, 'hide_totals' => true]],
+    'threads' => ['threads', ContentType::ThreadsPoll, ['options' => ['Tabs', 'Spaces', 'Both']]],
+]);

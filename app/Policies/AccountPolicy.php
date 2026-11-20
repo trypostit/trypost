@@ -40,7 +40,7 @@ class AccountPolicy
             return Response::deny(__('billing.flash.cannot_manage'));
         }
 
-        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+        if (! $account->subscribed(Account::SUBSCRIPTION_NAME) && ! $account->onGenericTrial()) {
             return Response::deny(__('billing.flash.subscription_required'));
         }
 

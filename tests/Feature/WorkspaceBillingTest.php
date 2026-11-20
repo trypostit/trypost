@@ -56,7 +56,7 @@ test('ensure subscribed middleware redirects without subscription in saas mode',
 
     $response = $this->actingAs($this->user)->get(route('app.calendar'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome.plan'));
 });
 
 test('billing page is accessible by account owner', function () {
@@ -100,7 +100,7 @@ test('subscribe redirects to welcome', function () {
 
     $response = $this->actingAs($this->user)->get(route('app.subscribe'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome.plan'));
 });
 
 test('stripe email returns account owner email', function () {

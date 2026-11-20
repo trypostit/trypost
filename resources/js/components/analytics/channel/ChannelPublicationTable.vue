@@ -11,9 +11,10 @@ import {
     IconLink,
     IconPhoto,
 } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
+import RankBadge from '@/components/analytics/RankBadge.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -35,6 +36,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
 import { isVideo } from '@/lib/mediaType';
@@ -52,6 +54,7 @@ import type {
     PublicationPeriod,
     SummaryMetric,
 } from '@/types/analytics';
+import type { PlatformValue } from '@/types/platform';
 
 const props = defineProps<{
     report: AnalyticsReport;
@@ -60,7 +63,7 @@ const props = defineProps<{
     availableMetrics: SummaryMetric[];
     sortableMetrics: SummaryMetric[];
     url: string;
-    platform: string;
+    platform: PlatformValue;
 }>();
 
 const TABLE_METRICS: SummaryMetric[] = [
@@ -79,21 +82,7 @@ const TABLE_METRICS: SummaryMetric[] = [
     'watch_time_minutes',
     'average_watch_time_seconds',
 ];
-const storageKey = computed(() => `insights.columns.${props.platform}`);
-
-const readStoredColumns = (): SummaryMetric[] | null => {
-    try {
-        const stored = JSON.parse(
-            window.localStorage.getItem(storageKey.value) ?? 'null',
-        );
-
-        return Array.isArray(stored) ? (stored as SummaryMetric[]) : null;
-    } catch {
-        return null;
-    }
-};
-
-const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
+const storedColumns = useUserStorage(`insights.columns.${props.platform}`, []);
 const choosableColumns = computed<SummaryMetric[]>(() =>
     TABLE_METRICS.filter((metric) => props.availableMetrics.includes(metric)),
 );
@@ -103,10 +92,9 @@ const defaultColumns = computed<SummaryMetric[]>(() =>
     ),
 );
 const columns = computed<SummaryMetric[]>(() => {
-    const chosen = storedColumns.value;
-    const picked = chosen
-        ? choosableColumns.value.filter((metric) => chosen.includes(metric))
-        : [];
+    const picked = choosableColumns.value.filter((metric) =>
+        storedColumns.value.includes(metric),
+    );
 
     const shown = picked.length ? picked : defaultColumns.value;
 
@@ -115,9 +103,6 @@ const columns = computed<SummaryMetric[]>(() => {
     );
 });
 
-watch(storageKey, () => {
-    storedColumns.value = readStoredColumns();
-});
 const isSortable = (metric: SummaryMetric): boolean =>
     props.sortableMetrics.includes(metric);
 
@@ -136,12 +121,6 @@ const toggleColumn = (
     }
 
     storedColumns.value = next;
-
-    try {
-        window.localStorage.setItem(storageKey.value, JSON.stringify(next));
-    } catch {
-        return;
-    }
 };
 
 const keepMenuOpen = (event: Event): void => {
@@ -208,7 +187,6 @@ const pages = computed<PageItem[]>(() => {
 
     return items;
 });
-
 
 const isReloading = ref(false);
 
@@ -302,17 +280,12 @@ const openRow = (row: ChannelPublicationRow): void => {
     openPublication(row.id);
 };
 
-
 const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
-    const value = row.metrics[key];
-
-    if (value === null || value === undefined) {
-        return '—';
+    if (key === 'engagement_rate') {
+        return formatPercent(row.metrics[key]);
     }
 
-    return key === 'engagement_rate'
-        ? formatPercent(value)
-        : formatNumberCompact(value);
+    return formatNumberCompact(row.metrics[key]);
 };
 </script>
 
@@ -322,6 +295,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         :info="$t('analytics.insights.about.channel_posts')"
         info-testid="insights-posts-about"
         :range="periodRange"
+        flush
     >
         <template #actions>
             <AnalyticsModeToggle
@@ -333,7 +307,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         </template>
 
         <div
-            class="min-w-0 overflow-hidden rounded-lg border border-border bg-card transition-opacity"
+            class="min-w-0 border-t border-border transition-opacity"
             :class="{ 'opacity-60': isReloading }"
             :aria-busy="isReloading"
         >
@@ -349,10 +323,10 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                     <Table class="min-w-[720px]" data-testid="insights-posts">
                         <TableHeader>
                             <TableRow
-                                class="border-border-strong hover:bg-transparent"
+                                class="border-border bg-muted/60 hover:bg-muted/60"
                             >
                                 <TableHead
-                                    class="h-12 border-r-0 px-4 py-3 leading-[17.5px]"
+                                    class="h-10 border-r-0 px-4 py-2 text-xs font-medium text-muted-foreground sm:ps-5"
                                 >
                                     {{
                                         $t('analytics.channel.posts_count', {
@@ -363,7 +337,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                 <TableHead
                                     v-for="column in columns"
                                     :key="column"
-                                    class="h-12 border-r-0 px-4 py-3 leading-[17.5px]"
+                                    class="h-10 border-r-0 px-4 py-2 text-xs font-medium text-muted-foreground"
                                     :aria-sort="
                                         filters.sort === column
                                             ? 'descending'
@@ -404,7 +378,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     </button>
                                 </TableHead>
                                 <TableHead
-                                    class="sticky right-0 h-12 w-12 border-r-0 bg-card px-2 py-3 text-right"
+                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -464,21 +438,20 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                             <TableRow
                                 v-for="row in rows"
                                 :key="row.id"
-                                class="border-border-strong last:border-b-0"
+                                class="border-border last:border-b-0"
                                 :data-testid="`insights-posts-row-${row.id}`"
                             >
-                                <TableCell class="border-r-0 px-4 py-3">
+                                <TableCell class="border-r-0 px-4 py-3 sm:ps-5">
                                     <button
                                         type="button"
                                         class="flex max-w-md min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                         :data-testid="`insights-posts-link-${row.id}`"
                                         @click="openRow(row)"
                                     >
-                                        <span
-                                            class="w-7 shrink-0 text-sm text-muted-foreground tabular-nums"
+                                        <RankBadge
+                                            :rank="row.rank"
                                             :data-testid="`insights-posts-rank-${row.id}`"
-                                            >#{{ row.rank }}</span
-                                        >
+                                        />
                                         <span
                                             class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
                                         >
@@ -546,12 +519,12 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                 <TableCell
                                     v-for="column in columns"
                                     :key="column"
-                                    class="border-r-0 px-4 py-3 tabular-nums"
+                                    class="border-r-0 px-4 py-3 text-foreground tabular-nums"
                                 >
                                     {{ display(row, column) }}
                                 </TableCell>
                                 <TableCell
-                                    class="border-r-0 px-2 py-3 text-right"
+                                    class="border-r-0 px-2 py-3 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -631,7 +604,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         </div>
         <nav
             v-if="lastPage > 1"
-            class="flex items-center justify-center gap-1 pt-3 pb-1"
+            class="flex items-center justify-center gap-1 border-t border-border px-4 py-3"
             :aria-label="$t('analytics.channel.pagination.label')"
             data-testid="insights-posts-pagination"
         >

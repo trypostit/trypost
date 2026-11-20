@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Assinaturas',
     'description' => 'Textos reutilizáveis para seus posts.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Criado em',
     ],
 
-    'row_actions' => 'Ações da assinatura',
     'actions' => [
         'edit' => 'Editar assinatura',
-        'delete' => 'Excluir assinatura',
+        'delete' => 'Excluir',
+        'settings' => 'Configurações',
     ],
 
     'create' => [

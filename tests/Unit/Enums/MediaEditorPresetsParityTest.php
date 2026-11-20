@@ -8,7 +8,7 @@ use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 /**
- * Runs `tests/fixtures/media-editor-harness.js` over the real `mediaRules()`
+ * Runs `tests/fixtures/media-editor-harness.ts` over the real `mediaRules()`
  * payload of every content type and returns its JSON output.
  *
  * @return array<string, mixed>
@@ -30,7 +30,7 @@ function runMediaEditorPresetsHarness(): array
     try {
         $process = (new Process([
             $node,
-            base_path('tests/fixtures/media-editor-harness.js'),
+            base_path('tests/fixtures/media-editor-harness.ts'),
             resource_path('js'),
             $input,
         ]))->mustRun();
@@ -93,5 +93,14 @@ test('the no-channel presets sit inside every content type bounds or are filtere
 
         expect(array_column(data_get($output, "noChannelWithinBounds.{$type->value}"), 'value'))
             ->toBe(['freeform', 'original', ...$inside], $type->value);
+    }
+});
+
+test('the typescript media editor offers alt text on a video exactly where the backend takes it', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    foreach (ContentType::cases() as $type) {
+        expect(in_array('alt', data_get($output, "videoTabs.{$type->value}"), true))
+            ->toBe($type->supportsVideoAltText(), $type->value);
     }
 });

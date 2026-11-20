@@ -1,7 +1,34 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => '列表',
+    'board' => [
+        'view' => '看板',
+        'group_by' => '分组依据',
+        'group_by_value' => '分组依据：:group',
+        'groups' => [
+            'status' => '状态',
+            'tag' => '标签',
+            'channel' => '频道',
+        ],
+        'columns' => [
+            'draft' => '草稿',
+            'approvals' => '审批',
+            'scheduled' => '已排期',
+            'published' => '已发布',
+            'failed' => '已失败',
+            'untagged' => '无标签',
+            'no_channel' => '无频道',
+        ],
+        'empty_column' => '这里空空如也',
+        'no_columns' => [
+            'title' => '没有符合这些筛选条件的内容',
+            'description' => '清除标签或频道筛选即可查看所有列。',
+        ],
+        'column_aria' => '{1} :name，:count 篇帖子|[0,*] :name，:count 篇帖子',
+    ],
     'view_switcher' => '日程视图',
     'all_posts' => '所有帖子',
     'composer' => [
@@ -26,6 +53,13 @@ return [
         'upload_cancel' => '取消上传',
         'upload_remove' => '移除',
         'dropzone_select' => '选择文件',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => '搜索 GIF',
+            'empty' => '未找到 GIF，请换个关键词试试。',
+            'load_more' => '加载更多',
+            'error' => 'GIPHY 当前不可用，请几分钟后重试。',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => '搜索免费高清图片',
@@ -163,6 +197,7 @@ return [
             'save' => '保存',
             'photo' => '照片',
             'ghost_expires' => '剩余 24 小时',
+            'poll_summary' => '0 票 · 剩余 :time',
         ],
         'preview_empty' => '帖子预览将显示在这里',
         'select_all' => '全选',
@@ -254,8 +289,14 @@ return [
             'tags_invalid' => '请输入有效的 Instagram 用户名。',
             'thumbnail_tab' => '缩略图',
             'thumbnail_heading' => '选择缩略图',
-            'thumbnail_hint' => '拖动滑块，选择用作视频封面的画面。',
+            'thumbnail_hint' => '沿视频画面拖动，选择用作封面的画面。',
             'thumbnail_value' => ':seconds 秒',
+            'thumbnail_source_frame' => '视频帧',
+            'thumbnail_source_image' => '图片',
+            'thumbnail_image_hint' => '你的视频会以这张图片作为封面。请使用 9:16 的图片，避免被裁切。',
+            'thumbnail_capture_failed' => '无法截取这一帧。请改为上传一张图片作为封面。',
+            'thumbnail_image_upload' => '上传图片',
+            'thumbnail_image_replace' => '更换图片',
             'video_thumbnail' => '视频 :number',
             'thumbnail' => '图片 :number',
             'cancel' => '取消',
@@ -413,6 +454,33 @@ return [
             'topic_invalid' => '话题须为 1 到 50 个字符，且不含 . 或 &。',
             'ghost_post_attachments' => '幽灵帖子不支持附件',
         ],
+        'poll' => [
+            'options_required' => '请为投票至少添加 :min 个选项。',
+            'options_distinct' => '每个投票选项必须不同，请修改重复的选项。',
+            'duration_required' => '请选择投票的开放时长。',
+            'question_required' => '请在帖子正文中写下投票问题。',
+            'options_max' => '投票最多可以有 :max 个选项。请删除多余的选项。',
+            'poll_object' => '请发送包含选项（options）的投票；在 X 和 Mastodon 上还需包含时长（duration_minutes）。',
+            'options_list' => '请以文本列表的形式发送投票选项。',
+            'choice_text' => '每个投票选项都必须是文本。',
+            'choice_max' => '每个投票选项最多 :max 个字符。请缩短较长的选项。',
+            'duration_range' => '投票可开放 :min 分钟到 :max 天。请在此范围内选择时长。',
+            'choices' => '选项',
+            'choice' => '选项 :number',
+            'choice_optional' => '选项 :number（可选）',
+            'add_choice' => '添加选项',
+            'remove_choice' => '删除选项 :number',
+            'length' => '时长',
+            'days' => '天',
+            'hours' => '小时',
+            'minutes' => '分钟',
+            'remove' => '删除投票',
+            'attachments' => '投票不支持媒体',
+            'add' => '添加投票',
+            'duration_whole' => '请以整数分钟发送投票时长。',
+            'multiple' => '允许多选',
+            'hide_totals' => '投票结束前隐藏结果',
+        ],
         'linkedin' => [
             'document_title' => '文档标题',
             'document_title_placeholder' => '显示在你的 PDF 文档帖子上',
@@ -471,6 +539,14 @@ return [
             'unsupported' => '此网络不支持帖子串。',
             'reply_empty' => '帖子串中的一条回复为空。',
             'reply_too_long' => '一条回复超出 :limit 字符上限 :over 个字符。',
+            'too_many' => '{1} 此帖子只能添加一条评论。|[0,*] 此帖子最多可添加 :max 条回复。',
+            'add_comment' => '添加评论',
+            'comment_placeholder' => '添加链接或更多背景信息',
+            'comment_label' => '你的评论',
+            'remove_comment' => '移除评论',
+            'comment_too_long' => '你的评论超出 :limit 个字符的限制 :over 个字符。',
+            'comment_empty' => '你的评论是空的。',
+            'comment_attachments' => 'LinkedIn 评论不能包含媒体。',
         ],
 
         'pinterest' => [
@@ -593,6 +669,8 @@ return [
         'retrying' => '重试中',
         'published' => '已发布',
         'failed' => '已失败',
+        'pending_review' => 'Google 审核中',
+        'deleted_on_network' => '已删除',
     ],
 
     'descriptions' => [
@@ -792,6 +870,18 @@ return [
             'label' => '帖子',
             'description' => '带文字和媒体的推文',
         ],
+        'x_poll' => [
+            'label' => '投票',
+            'description' => '带 :min 到 :max 个选项的问题',
+        ],
+        'mastodon_poll' => [
+            'label' => '投票',
+            'description' => '带 :min 到 :max 个选项的问题',
+        ],
+        'threads_poll' => [
+            'label' => '投票',
+            'description' => '带 :min 到 :max 个选项的问题',
+        ],
         'threads_post' => [
             'label' => '串文',
             'description' => '可附带媒体的文字帖子',
@@ -859,9 +949,12 @@ return [
         'media_expired' => '此上传已过期。请重新添加文件。',
         'cover_offset_min' => '视频封面时间必须不小于 0 毫秒。',
         'cover_offset_max' => '视频封面时间不能超过 :max 毫秒。',
+        'cover_invalid' => '请为视频封面选择一张图片。',
+        'cover_not_image' => '视频封面必须是 JPEG、PNG 或 WebP 图片。',
         'media_item_shape' => '每个媒体项必须且只能提供 upload_token、url 或 id 中的一个。',
         'media_url_unreachable' => '无法从 :url 获取媒体。',
         'media_type_unsupported' => '帖子的频道不支持此文件类型。',
+        'media_not_accepted' => '此帖子类型不能包含媒体。请更改帖子类型以添加媒体。',
         'media_file_unsupported' => '不支持此文件类型。',
         'media_file_too_large' => '此文件超过其类型允许的 :size MB。',
         'queue_requires_schedule' => '此频道尚未设置发布时间。请在频道设置中添加发布时间以使用队列。',
@@ -926,10 +1019,21 @@ return [
             'media_title' => '媒体选项',
         ],
     ],
+    'poll_results' => [
+        'votes' => '{1} :count 票|[0,*] :count 票',
+        'voters' => '{1} :count 人|[0,*] :count 人',
+        'final' => '最终结果',
+        'ended' => '投票已结束',
+        'ends' => ':time结束',
+        'thread_post' => '帖子串中的第 :number 条',
+        'hidden' => '投票结束前结果隐藏',
+    ],
+
     'publish' => [
         'title' => '发布',
         'all_channels' => '所有频道',
         'tabs' => [
+            'label' => '状态',
             'queue' => '队列',
             'approvals' => '审批',
             'drafts' => '草稿',
@@ -958,9 +1062,21 @@ return [
         'published_directly_from' => '直接从 :network 发布',
         'slot_aria' => '在 :time 为 :network 上的 :channel 添加帖子',
         'no_time' => '无时间',
+        'pending_slot' => [
+            'next' => '下一个空档',
+            'top' => '队首',
+        ],
         'new_in_slot' => '新建',
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',
+        'youtube_thumbnail_warning' => [
+            'badge' => '注意',
+            'title' => '封面未应用',
+            'forbidden' => '你的 YouTube 频道尚未验证。要使用自己的封面发布，请在 :url 验证频道。',
+            'daily_limit' => '你的频道已达到 YouTube 每日自定义封面上限。明天起你的帖子会重新带上封面，这篇的封面可以在 YouTube 工作室中设置。',
+            'invalid_image' => 'YouTube 无法读取你的封面图片。你可以在 YouTube 工作室中设置另一张。',
+            'failed' => 'YouTube 未应用你的封面。你可以在 YouTube 工作室中设置。',
+        ],
         'failure' => [
             'title' => '失败原因',
             'generic' => '无法发布此帖子。',
@@ -1020,6 +1136,11 @@ return [
             'edit_labels' => '编辑标签',
             'edit_labels_failed' => '无法更新标签。请重试。',
         ],
+        'deleted_on_network' => [
+            'badge' => '已删除',
+            'title' => '已在 :network 删除',
+            'hint' => '该帖子发布后已被删除，链接和 Insights 不再可用。',
+        ],
         'created_by' => '创建者：:name :when',
         'welcome' => [
             'title' => '欢迎使用 TryPost 👋',
@@ -1050,13 +1171,18 @@ return [
         'channels' => '频道 (:count)',
     ],
     'approvals' => [
-        'badge' => '审批',
         'time_passed' => '时间已过',
         'approve' => '批准',
         'schedule' => '排期',
         'reject' => '拒绝',
         'revert' => '撤回审批请求',
         'requested' => '已提交审批请求',
+        'toasts' => [
+            'scheduled' => '帖子已批准并已排期',
+            'queued' => '帖子已批准并已加入队列',
+            'publishing' => '帖子已批准，正在发布',
+            'rejected' => '帖子已拒绝并移回草稿',
+        ],
         'errors' => [
             'not_pending' => '该帖子已不再等待审批。',
             'time_passed' => '请求的时间已过，请选择新的时间。',

@@ -1,7 +1,7 @@
-import type { ChartConfig } from '@/components/ui/chart';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { type ChartConfig, numericTick } from '@/components/ui/chart';
+import { accountLabel } from '@/lib/analyticsAccounts';
 import { accountColor } from '@/lib/analyticsColors';
-import { formatNumberCompact } from '@/lib/utils';
+import { distinctCountLabels } from '@/lib/utils';
 import type { AccountIdentityData } from '@/types/analytics';
 
 export const socialAccountChartConfig = (
@@ -10,9 +10,7 @@ export const socialAccountChartConfig = (
 ): ChartConfig =>
     Object.fromEntries(
         accounts.map((account, index) => {
-            const label = account.username
-                ? `@${account.username}`
-                : account.name || getPlatformLabel(account.platform);
+            const label = accountLabel(account);
 
             return [
                 `account_${index}`,
@@ -25,11 +23,14 @@ export const socialAccountChartConfig = (
                         platform: account.platform,
                         name: label,
                         src: account.avatar_url,
+                        verified: account.verified_badge ?? null,
                     },
                 },
             ];
         }),
     );
 
-export const formatCountTick = (tick: number | Date): string =>
-    typeof tick === 'number' ? formatNumberCompact(tick) : '';
+/** A count axis' tick, compact but never like its neighbours: close values (9,990 to 10,010) keep the decimals that tell them apart. */
+export const formatCountTick = numericTick(
+    (_tick, index, ticks): string => distinctCountLabels(ticks)[index] ?? '',
+);

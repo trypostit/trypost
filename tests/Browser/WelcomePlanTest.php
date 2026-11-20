@@ -5,29 +5,10 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
+use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
-
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
-function waitForWelcomePlanTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-
-    waitForWebFonts($page);
-}
 
 function welcomePlanVisibleReview(mixed $page): ?string
 {
@@ -131,32 +112,6 @@ function welcomePlanPhoneLayout(mixed $page): array
     JS);
 }
 
-function waitForWelcomePlanPopoverOpen(mixed $page): bool
-{
-    return $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 50; i++) {
-                if (document.querySelector('[data-slot="popover-content"]')) return true;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-            return false;
-        })()
-    JS);
-}
-
-function waitForWelcomePlanPopoverClosed(mixed $page): bool
-{
-    return $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 50; i++) {
-                if (!document.querySelector('[data-slot="popover-content"]')) return true;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-            return false;
-        })()
-    JS);
-}
-
 function welcomePlanFocus(mixed $page, string $testId): void
 {
     $page->script(<<<JS
@@ -207,26 +162,34 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows the offer, what is included and the G2 rating', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+test('the plan step shows the free trial offer, what is included and the G2 rating', function () {
+    config(['trypost.self_hosted' => false]);
 
-    $this->actingAs(welcomeOwnerOnPlanStep());
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->freeTrial()->create(), ['claimed_at' => now()]);
+    $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
 
-    waitForWelcomePlanTestId($page, 'plan-card-socials');
-    waitForWelcomePlanTestId($page, 'welcome-plan-reviews');
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@plan-card-socials');
+    waitForWebFonts($page);
+    waitFor($page, '@welcome-plan-reviews');
+    waitForWebFonts($page);
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     $page->assertRoute('app.welcome.plan')
         ->assertSee('Activate your account')
         ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
-        ->assertSeeIn('@plan-price-socials', '$1')
-        ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
+        ->assertSeeIn('@plan-price-socials', 'Free')
+        ->assertSeeIn('@plan-price-suffix-socials', 'for 7 days')
+        ->assertSeeIn('@plan-price-original-socials', '$19/month')
+        ->assertMissing('@plan-price-unit-socials')
         ->assertVisible('@plan-networks-info-socials')
-        ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
-        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime')
+        ->assertMissing('@welcome-plan-offer')
         ->assertVisible('@welcome-step-plan')
         ->assertNoJavaScriptErrors();
 
@@ -249,22 +212,27 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertVisible('@plan-feature-info-socials-ideas');
 });
 
-test('the plan step shows the full price when checkout will not apply the first-month coupon', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => '']);
+test('the plan step shows the full price without an offer, even when a trial offer exists', function () {
+    config(['trypost.self_hosted' => false]);
+    Offer::factory()->freeTrial()->create();
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     $page->assertSeeIn('@plan-price-socials', '$19')
-        ->assertSeeIn('@plan-price-suffix-socials', 'per month')
-        ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
-        ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
-        ->assertDontSee('first month')
+        ->assertSeeIn('@plan-price-unit-socials', '/month')
+        ->assertMissing('@plan-price-original-socials')
+        ->assertMissing('@plan-price-suffix-socials')
+        ->assertSeeIn('@welcome-plan-continue', 'Activate my account')
+        ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime')
+        ->assertDontSee('7 days')
         ->assertNoJavaScriptErrors();
 
-    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
+    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19')
+        ->and(trim((string) $page->text('@welcome-plan-terms')))->toBe('Cancel anytime');
 });
 
 test('the plan step does not list the workspace limit, so team members close the list', function () {
@@ -273,7 +241,8 @@ test('the plan step does not list the workspace limit, so team members close the
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'plan-feature-list-socials');
+    waitFor($page, '@plan-feature-list-socials');
+    waitForWebFonts($page);
 
     expect(welcomePlanLastFeatureLabelTestId($page, 'plan-feature-list-socials'))->toBe('plan-feature-label-socials-team');
 
@@ -288,7 +257,8 @@ test('the review quotes rotate on their own', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-review-paulo_dantas');
+    waitFor($page, '@welcome-plan-review-paulo_dantas');
+    waitForWebFonts($page);
 
     expect(welcomePlanVisibleReview($page))->toBe('welcome-plan-review-paulo_dantas')
         ->and(waitForWelcomePlanReviewOtherThan($page, 'welcome-plan-review-paulo_dantas'))->toBe('welcome-plan-review-diego');
@@ -300,10 +270,12 @@ test('clicking a reviewer photo shows their quote', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-reviewer-pedro');
+    waitFor($page, '@welcome-plan-reviewer-pedro');
+    waitForWebFonts($page);
 
     $page->click('@welcome-plan-reviewer-pedro');
-    waitForWelcomePlanTestId($page, 'welcome-plan-review-pedro');
+    waitFor($page, '@welcome-plan-review-pedro');
+    waitForWebFonts($page);
 
     $page->assertVisible('@welcome-plan-review-pedro')
         ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
@@ -319,7 +291,8 @@ test('the plan step fits a phone without scrolling and hides the quotes there', 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize(390, 844);
-    waitForWelcomePlanTestId($page, 'plan-card-socials');
+    waitFor($page, '@plan-card-socials');
+    waitForWebFonts($page);
 
     expect(welcomePlanPhoneLayout($page))->toBe(['scrolls' => false, 'quoteVisible' => false]);
 
@@ -333,16 +306,20 @@ test('the feature info opens on a tap or click', function (int $width, int $heig
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize($width, $height);
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
     $page->click('@plan-feature-info-socials-team');
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
-    expect(waitForWelcomePlanPopoverOpen($page))->toBeTrue()
-        ->and(trim((string) $page->text('[data-slot="popover-content"]')))->toStartWith('Invite as many people as you want');
+    waitFor($page, '[data-slot="popover-content"]');
+
+    expect(trim((string) $page->text('[data-slot="popover-content"]')))->toStartWith('Invite as many people as you want');
 
     $page->click('@plan-networks-info-socials');
-    waitForWelcomePlanTestId($page, 'plan-networks-socials');
+    waitFor($page, '@plan-networks-socials');
+    waitForWebFonts($page);
 
     $page->assertVisible('@plan-networks-socials')
         ->assertNoJavaScriptErrors();
@@ -357,16 +334,19 @@ test('the feature info opens from the keyboard and closes with Escape', function
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize(1440, 900);
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
     welcomePlanFocus($page, 'plan-feature-info-socials-team');
     $page->keys('@plan-feature-info-socials-team', 'Enter');
 
-    expect(waitForWelcomePlanPopoverOpen($page))->toBeTrue();
+    waitFor($page, '[data-slot="popover-content"]');
+    $page->assertVisible('[data-slot="popover-content"]');
 
     $page->keys('@plan-feature-info-socials-team', 'Escape');
+    waitForGone($page, '[data-slot="popover-content"]');
 
-    expect(waitForWelcomePlanPopoverClosed($page))->toBeTrue();
+    $page->assertMissing('[data-slot="popover-content"]');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -377,10 +357,92 @@ test('the activate button shows a spinner while checkout opens', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     welcomePlanStallRequests($page);
     $page->click('@welcome-plan-continue');
 
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
+});
+
+test('the plan step shows an offer\'s banner and price', function (string $offer, string $name, string $headline, string $price, ?string $unit, string $period) {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->{$offer}()->withBanner()->create(), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@welcome-plan-offer');
+
+    $page->assertSeeIn('@welcome-plan-offer-name', $name)
+        ->assertSeeIn('@welcome-plan-offer-headline', $headline)
+        ->assertSeeIn('@plan-price-original-socials', '$19/month')
+        ->assertSeeIn('@plan-price-socials', $price)
+        ->assertSeeIn('@plan-price-suffix-socials', $period)
+        ->assertSeeIn('@welcome-plan-continue', 'Activate my account')
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime')
+        ->assertNoJavaScriptErrors();
+
+    if ($unit === null) {
+        $page->assertMissing('@plan-price-unit-socials');
+    } else {
+        $page->assertSeeIn('@plan-price-unit-socials', $unit);
+    }
+})->with([
+    'black friday shows its unit' => ['blackFriday', 'Black Friday', '50% off your first 3 months', '$9.50', '/month', 'for your first 3 months'],
+    'first month has no unit' => ['firstMonth', 'First month', 'Your first month for $1', '$1', null, 'for your first month'],
+]);
+
+test('the plan step keeps an offer\'s price but hides its banner when the offer does not show one', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->blackFriday()->create(['show_banner' => false]), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@plan-price-socials');
+
+    $page->assertMissing('@welcome-plan-offer')
+        ->assertSeeIn('@plan-price-socials', '$9.50')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the plan step shows neither a banner nor an offer price for an offer without copy', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@plan-price-socials');
+
+    $page->assertMissing('@welcome-plan-offer')
+        ->assertSeeIn('@plan-price-unit-socials', '/month')
+        ->assertMissing('@plan-price-original-socials')
+        ->assertDontSee('offers.')
+        ->assertNoJavaScriptErrors();
+
+    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
+});
+
+test('a trial without a card says so under the button', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->freeTrial()->withoutCard()->create(['slug' => 'ft7dnc']), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@welcome-plan-terms');
+
+    $page->assertSeeIn('@plan-price-socials', 'Free')
+        ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
+        ->assertSeeIn('@welcome-plan-terms', 'No credit card required')
+        ->assertDontSee('Cancel anytime')
+        ->assertDontSee('Then $19/month')
+        ->assertNoJavaScriptErrors();
 });

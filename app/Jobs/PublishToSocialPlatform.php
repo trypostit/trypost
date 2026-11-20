@@ -221,6 +221,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))
                 ->afterCommit();
         }
+
+        if ($this->post->awaitsYouTubeCover()) {
+            SetYouTubeCover::dispatch($this->post)
+                ->delay(now()->addSeconds(SetYouTubeCover::CHECK_EVERY_SECONDS))
+                ->afterCommit();
+        }
     }
 
     private function refreshAccountToken(): void
@@ -399,6 +405,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ...Arr::except($previousContext, [
                 PublishCheckpoint::TIKTOK_PUBLISH_ID,
                 PublishCheckpoint::TIKTOK_STATUS,
+                PublishCheckpoint::TIKTOK_INIT_AT,
                 PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS,
                 PublishCheckpoint::X_MEDIA,
             ]),

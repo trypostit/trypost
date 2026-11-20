@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Billing',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Billed monthly',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Yearly',
         'save_two_months' => '2 months free',
         'per_month' => '/month',
+        'per_year' => '/year',
         'workspaces_one' => 'One workspace',
         'workspaces_unlimited' => 'Unlimited workspaces',
         'workspaces_tooltip' => 'A workspace is one brand or client, kept separate from the rest: its own social accounts, signatures, labels, analytics, member permissions, and MCP connection.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Choose :plan',
         'upgrade' => 'Upgrade to :plan',
         'downgrade' => 'Downgrade to :plan',
-        'start_first_month' => 'Activate for :price',
         'billed_yearly_total' => 'Billed annually · :price (2 months free)',
         'socials_tagline' => 'Best for creators and small brands.',
         'workspaces_tagline' => 'Best for agencies and larger businesses.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Active',
+            'trial' => 'Free trial',
+            'cancelling' => 'Cancelled',
+            'past_due' => 'Past due',
+        ],
         'change' => 'Change plan',
-        'price_monthly' => ':price/month',
-        'price_yearly' => ':price/year',
+        'subscribe' => 'Subscribe now',
         'trial_until' => 'Trial until :date',
-        'renews' => 'Renews automatically',
         'cancelled' => 'Cancelled, ends on :date',
-        'workspaces_usage' => 'Workspaces: :count of :limit',
+        'discount_until' => ':discount off until :date',
+        'discount_forever' => ':discount off on every payment',
+        'discount_once' => ':discount off your next payment',
     ],
 
     'subscription' => [
-        'title' => 'Payment method',
+        'title' => 'Payment methods',
+        'default' => 'Default',
         'description' => 'Update your card or billing details on Stripe.',
         'no_payment_method' => 'No payment method on file yet.',
         'expires_on' => 'Expires :month/:year',
         'manage_stripe' => 'Manage on Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Invoices',
+    ],
+
     'invoices' => [
-        'title' => 'Invoices',
-        'description' => 'Download your past invoices.',
+        'columns' => [
+            'date' => 'Date',
+            'amount' => 'Amount',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'No invoices yet',
+        'empty_description' => 'Your invoices show up here after your first payment.',
         'paid' => 'Paid',
         'download' => 'Download invoice',
     ],

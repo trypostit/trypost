@@ -60,7 +60,7 @@ function channelAltTextPost(SocialAccount $account): Post
  */
 function storeChannelAltTextComposition(object $test): void
 {
-    $test->actingAs($test->user)->post(route('app.posts.store'), [
+    $test->actingAs($test->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'Alt text per channel',
         'media' => [channelAltTextItem($test->upload, ['alt_text' => 'Shared description'])],

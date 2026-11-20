@@ -4,6 +4,7 @@ import { IconCheck, IconChevronDown } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
+import { formatNumberCompact } from '@/lib/utils';
 import type { PublishCounts, PublishTab } from '@/types/publish';
 
 defineProps<{
@@ -41,12 +42,15 @@ const closeSelect = (): void => {
                     {{ $t(`posts.publish.tabs.${tab}`) }}
                     <span
                         class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1.5 text-xs font-medium text-foreground"
-                        >{{ counts[tab] }}</span
+                        >{{ formatNumberCompact(counts[tab]) }}</span
                     >
                     <IconChevronDown class="size-4 text-muted-foreground" />
                 </button>
             </template>
-            <nav class="flex flex-col gap-1" :aria-label="$t('posts.publish.title')">
+            <nav class="flex flex-col gap-1" :aria-label="$t('posts.publish.tabs.label')">
+                <p class="px-2 pt-1 pb-0.5 text-xs text-muted-foreground">
+                    {{ $t('posts.publish.tabs.label') }}
+                </p>
                 <Link
                     v-for="key in tabs"
                     :key="key"
@@ -59,7 +63,7 @@ const closeSelect = (): void => {
                     {{ $t(`posts.publish.tabs.${key}`) }}
                     <span
                         class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1.5 text-xs font-medium text-foreground"
-                        >{{ counts[key] }}</span
+                        >{{ formatNumberCompact(counts[key]) }}</span
                     >
                     <IconCheck
                         v-if="tab === key"
@@ -81,7 +85,7 @@ const closeSelect = (): void => {
                 :href="hrefFor(key)"
                 :aria-current="tab === key ? 'page' : undefined"
                 :data-testid="`publish-tab-${key}`"
-                class="relative inline-flex h-[45px] shrink-0 items-center gap-2 px-2 text-sm font-medium transition-control after:absolute after:inset-x-0.5 after:-bottom-px after:h-px after:bg-primary-text after:opacity-0 aria-[current=page]:after:opacity-100"
+                class="group relative inline-flex h-[45px] shrink-0 items-center gap-2 px-2 text-sm font-medium transition-control after:absolute after:inset-x-0.5 after:-bottom-px after:h-px after:bg-primary-text after:opacity-0 aria-[current=page]:after:opacity-100"
                 :class="
                     tab === key
                         ? 'text-foreground'
@@ -90,9 +94,9 @@ const closeSelect = (): void => {
             >
                 {{ $t(`posts.publish.tabs.${key}`) }}
                 <span
-                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground"
+                    class="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground group-aria-[current=page]:bg-primary-selected group-aria-[current=page]:text-primary-text"
                     :data-testid="`publish-tab-count-${key}`"
-                    >{{ counts[key] }}</span
+                    >{{ formatNumberCompact(counts[key]) }}</span
                 >
             </Link>
         </nav>

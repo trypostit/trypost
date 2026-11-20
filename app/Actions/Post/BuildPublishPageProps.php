@@ -6,8 +6,8 @@ namespace App\Actions\Post;
 
 use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\Queue\BuildQueueTimeline;
-use App\Actions\SocialAccount\CountPostsScheduledThisWeek;
-use App\Actions\SocialAccount\CountPostsSentThisWeek;
+use App\Actions\PostNote\BuildPostNotesProps;
+use App\Actions\SocialAccount\BuildPostingGoalProgress;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\WeekStart;
@@ -18,6 +18,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostStatusRules;
+use App\Support\PublishFilters;
 use App\Support\RequestIds;
 use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,12 +63,11 @@ class BuildPublishPageProps
     {
         $user = $request->user();
         $requester = self::pendingApprovalsRequester($user, $workspace);
-        $userTimezone = Timezone::normalize($user->timezone);
-        $displayTimezone = self::displayTimezone($request->query('tz'), $userTimezone);
-
-        $labelIds = RequestIds::uuidList($request->collect('labels'));
-        $untagged = $request->boolean('untagged');
-        $requestedChannelIds = $channel ? [] : RequestIds::uuidList($request->collect('channels')->unique());
+        $filters = PublishFilters::fromRequest($request, $channel, $user);
+        $displayTimezone = $filters->displayTimezone;
+        $labelIds = $filters->labelIds;
+        $untagged = $filters->untagged;
+        $requestedChannelIds = $filters->requestedChannelIds;
 
         $workspaceAccounts = null;
         $filterAccounts = function () use (&$workspaceAccounts, $channel, $workspace): Collection {
@@ -80,12 +80,10 @@ class BuildPublishPageProps
             default => $filterAccounts(),
         };
 
-        $scopedChannelIds = $channel ? [$channel->id] : ($requestedChannelIds !== [] ? $requestedChannelIds : null);
+        $basePosts = $workspace->posts()->onChannels($filters->scopedChannelIds);
 
-        $basePosts = $workspace->posts()->onChannels($scopedChannelIds);
-
-        $openPostNotesId = self::uuidQuery($request, 'notes');
-        $openPostDetailsId = self::uuidQuery($request, 'post');
+        $openPostNotesId = RequestIds::uuid($request->query('notes'));
+        $openPostDetailsId = RequestIds::uuid($request->query('post'));
         $focusedPostId = $openPostNotesId ?? $openPostDetailsId;
 
         $resolveTab = fn (mixed $requested, ?string $focusedId): string => self::tab($requested, $focusedId ? (clone $basePosts)->whereKey($focusedId)->visiblePendingApprovalsFor($requester)->value('status') : null);
@@ -117,11 +115,7 @@ class BuildPublishPageProps
             'displayTimezone' => $displayTimezone,
             'timezones' => fn (): array => Timezone::options(),
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
-            'filters' => [
-                'labels' => $labelIds,
-                'untagged' => $untagged,
-                'channels' => $requestedChannelIds,
-            ],
+            'filters' => $filters->toProp(),
             'filterAccounts' => fn () => SocialAccountResource::collection($filterAccounts()),
             'hasData' => $hasData,
             'hasQueueSlots' => $hasQueueSlots,
@@ -143,9 +137,8 @@ class BuildPublishPageProps
             ...$props,
             'openComposer' => $editPost !== null,
             'openComposerAssistant' => $request->boolean('assistant'),
-            'openPostNotesId' => $openPostNotesId,
+            ...BuildPostNotesProps::handle($request, $workspace),
             'openPostDetailsId' => $openPostDetailsId,
-            'highlightNoteId' => is_string($request->query('note')) ? $request->query('note') : null,
             'authUserId' => $user->id,
             'editPost' => $editPost,
         ];
@@ -158,22 +151,9 @@ class BuildPublishPageProps
     {
         return [
             ...SocialAccountResource::make($channel)->resolve(),
-            'posting_goal' => $channel->posting_goal,
-            'sent_this_week' => CountPostsSentThisWeek::handle($channel, $weekStart),
-            'scheduled_this_week' => CountPostsScheduledThisWeek::handle($channel, $weekStart),
+            ...BuildPostingGoalProgress::forChannel($channel, $weekStart),
             'has_grid' => $channel->platform->hasProfileGrid(),
         ];
-    }
-
-    public static function displayTimezone(mixed $requested, string $userTimezone): string
-    {
-        if (! is_string($requested) || $requested === '') {
-            return $userTimezone;
-        }
-
-        $normalized = Timezone::normalize($requested);
-
-        return $normalized === Timezone::DEFAULT && $requested !== Timezone::DEFAULT ? $userTimezone : $normalized;
     }
 
     /**
@@ -226,13 +206,6 @@ class BuildPublishPageProps
             ->first(fn (mixed $value): bool => is_string($value) && Str::isUuid($value));
 
         return $resolveTab(data_get($query, 'tab'), $focusedId) === $tab;
-    }
-
-    private static function uuidQuery(Request $request, string $key): ?string
-    {
-        $value = $request->query($key);
-
-        return is_string($value) && Str::isUuid($value) ? $value : null;
     }
 
     private static function tab(mixed $requested, ?PostStatus $focusedPostStatus): string
@@ -359,9 +332,7 @@ class BuildPublishPageProps
                 ->latest('posts.created_at'),
             self::TAB_APPROVALS => $query->pendingApproval()
                 ->visiblePendingApprovalsFor($requester)
-                ->orderByRaw('CASE WHEN posts.scheduled_at IS NULL THEN 1 ELSE 0 END')
-                ->orderBy('posts.scheduled_at')
-                ->orderBy('posts.approval_requested_at'),
+                ->approvalOrder(),
             default => $query->whereIn('status', self::SENT_STATUSES)
                 ->latestAttempt(),
         };
@@ -374,7 +345,7 @@ class BuildPublishPageProps
             self::attachMetrics($paginator->getCollection());
         }
 
-        return $paginator->through(fn (Post $post): array => PostCardResource::make($post)->resolve());
+        return $paginator->through(PostCardResource::serializer());
     }
 
     /**

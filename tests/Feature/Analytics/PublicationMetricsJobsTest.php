@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Actions\Analytics\SyncTryPostPublication;
+use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
@@ -16,6 +18,8 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
+use App\Jobs\Analytics\SyncTryPostPublication as SyncTryPostPublicationJob;
+use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
@@ -23,8 +27,12 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
 use App\Support\Analytics\SyncCadence;
+use App\Support\PostStatusRules;
+use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -170,8 +178,8 @@ test('regular collection respects the X and non-X refresh windows', function (Pl
 })->with([
     [Platform::X, 28, true],
     [Platform::X, 29, false],
-    [Platform::Mastodon, 30, true],
-    [Platform::Mastodon, 31, false],
+    [Platform::Mastodon, 31, true],
+    [Platform::Mastodon, 32, false],
 ]);
 
 test('an old imported publication receives one baseline measurement only', function () {
@@ -264,7 +272,7 @@ test('daily dispatcher includes old publications without a baseline and excludes
     }
 
     metricJobPublication(Platform::LinkedIn, $date->subDay());
-    $old = metricJobPublication(Platform::Mastodon, $date->subDays(31));
+    $old = metricJobPublication(Platform::Mastodon, $date->subDays(32));
     $expiredStory = metricJobPublication(Platform::Instagram, $date->subDays(31));
     $expiredStory->update(['content_type' => PublicationContentType::Story]);
     Bus::fake([CollectPublicationMetrics::class]);
@@ -469,6 +477,29 @@ test('other networks keep the daily thirty day window', function () {
     Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 4);
 });
 
+test('the daily run reads a mastodon post one day longer, after its longest poll ends', function () {
+    $now = now('UTC')->startOfDay()->addHours(3);
+    $this->travelTo($now);
+    $published = $now->subDays(31)->setTime(23, 0);
+
+    expect($published->addMinutes(MastodonPoll::MAX_DURATION)->lessThan($now))->toBeTrue();
+
+    $mastodon = metricJobPublication(Platform::Mastodon, $published);
+    $instagram = metricJobPublication(Platform::Instagram, $published);
+
+    foreach ([$mastodon, $instagram] as $publication) {
+        AnalyticsPublicationDailySnapshot::factory()->create([
+            'publication_id' => $publication->id,
+            'date' => $now->subDay()->toDateString(),
+        ]);
+    }
+
+    Bus::fake([CollectPublicationMetrics::class]);
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    expect(Bus::dispatched(CollectPublicationMetrics::class)->pluck('publicationId')->all())->toBe([$mastodon->id]);
+});
+
 test('a published post is first read an hour after publishing on every network', function (Platform $platform) {
     $now = CarbonImmutable::parse('2026-10-10 12:00:00', 'UTC');
     CarbonImmutable::setTestNow($now);
@@ -539,3 +570,343 @@ test('the daily run leaves a fresh post to its first read an hour after publishi
     Bus::assertNotDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $fresh->id);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
 })->with([Platform::X, Platform::Instagram]);
+
+test('a post deleted on Instagram is marked deleted and can then be deleted in TryPost', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::InstagramFacebook, 'platform_user_id' => '17841400000000001']);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => '17897891718416700']);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'platform' => Platform::InstagramFacebook,
+        'network' => Platform::InstagramFacebook->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '17897891718416700',
+        'provider_published_at' => now()->subHours(2),
+    ]);
+    $graph = Platform::InstagramFacebook->graphApiUrl();
+    Http::fake([
+        "{$graph}/17841400000000001*" => Http::response(['id' => '17841400000000001']),
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33, 'type' => 'GraphMethodException']], 400),
+    ]);
+
+    expect(PostStatusRules::blocksDeletion($post))->toBeTrue();
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Deleted)
+        ->and(PostStatusRules::blocksDeletion($post->fresh()))->toBeFalse();
+});
+
+test('a post marked deleted that the network lists again is published again', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, now('UTC')->subDay());
+    $post = Post::factory()->forAccount($publication->socialAccount)->deletedOnNetwork()->create();
+    $publication->forceFill(['post_id' => $post->id, 'availability' => PublicationAvailability::Deleted])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($publication->refresh()->availability)->toBe(PublicationAvailability::Available)
+        ->and($post->refresh()->publish_status)->toBe(PublishStatus::Published);
+    Queue::assertNotPushed(SyncTryPostPublicationJob::class);
+    Queue::assertNotPushed(SyncAccountPublishingActivity::class);
+    Queue::assertPushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id);
+});
+
+test('a post a stale discovery lists again after its metrics window is read again and stays deleted', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, SyncCadence::metricsWindowStart(Platform::Instagram, now('UTC'))->subDays(3));
+    $post = Post::factory()->forAccount($publication->socialAccount)->deletedOnNetwork()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id, 'availability' => PublicationAvailability::Deleted, 'last_seen_at' => now()->subDay()])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($post->refresh()->publish_status)->toBe(PublishStatus::Published);
+
+    $publication->forceFill(['last_seen_at' => now()->subHour()])->save();
+    $graph = Platform::Instagram->graphApiUrl();
+    Http::fake([
+        "{$graph}/{$publication->platform_user_id}/media*" => Http::response(['data' => [['id' => '1']]]),
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33]], 400),
+    ]);
+
+    Queue::pushed(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id)
+        ->each(fn (CollectPublicationMetrics $job) => app()->call([$job, 'handle']));
+
+    expect($post->refresh()->publish_status)->toBe(PublishStatus::Deleted);
+});
+
+test('a discovery of a live publication never reads its post', function () {
+    Queue::fake();
+    $publication = metricJobPublication(Platform::Instagram, now('UTC')->subDay());
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create();
+    $publication->forceFill(['post_id' => $post->id])->save();
+    $postsRead = 0;
+    Event::listen('eloquent.retrieved: '.Post::class, function () use (&$postsRead): void {
+        $postsRead++;
+    });
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+    expect($postsRead)->toBe(0)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
+});
+
+test('a discovery during the deletion check keeps the post published, even in the same second', function () {
+    $this->travelTo(now()->startOfSecond());
+    $publication = metricJobPublication(Platform::InstagramFacebook, now('UTC')->subHours(2));
+    $publication->forceFill(['last_seen_at' => now()->subHour()])->save();
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    $graph = Platform::InstagramFacebook->graphApiUrl();
+    Http::fake([
+        "{$graph}/{$publication->platform_user_id}/media*" => function () use ($publication) {
+            app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, discoveredFor($publication));
+
+            return Http::response(['data' => [['id' => '1']]]);
+        },
+        '*' => Http::response(['error' => ['code' => 100, 'error_subcode' => 33]], 400),
+    ]);
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Available)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Published);
+});
+
+test('a confirmed deletion moves the post, while a bare 404 only marks its publication', function (Platform $platform, array $response, PublishStatus $expected) {
+    $publication = metricJobPublication($platform, now('UTC')->subHours(2));
+    $post = Post::factory()->forAccount($publication->socialAccount)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    Http::fake(['*' => Http::response(...$response)]);
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and($post->fresh()->publish_status)->toBe($expected);
+})->with([
+    'youtube no longer lists the video' => [Platform::YouTube, [['items' => []]], PublishStatus::Deleted],
+    'x answers 404' => [Platform::X, [[], 404], PublishStatus::Published],
+]);
+
+test('a deletion X, Bluesky, Mastodon or Pinterest confirms moves the post', function (Platform $platform, array $scopes, Closure $fakes) {
+    $publication = metricJobPublication($platform, now('UTC')->subHours(2));
+    $account = $publication->socialAccount;
+    $account->update(['scopes' => $scopes]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    Http::fake($fakes($publication, $account->fresh()));
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($publication->fresh()->availability)->toBe(PublicationAvailability::Deleted)
+        ->and($post->fresh()->publish_status)->toBe(PublishStatus::Deleted);
+})->with([
+    'x' => [Platform::X, ['tweet.read', 'users.read'], fn (AnalyticsPublication $publication): array => ['*' => Http::response(['errors' => [[
+        'type' => 'https://api.x.com/2/problems/resource-not-found',
+        'resource_type' => 'tweet',
+        'resource_id' => $publication->remote_id,
+    ]]])]],
+    'bluesky' => [Platform::Bluesky, [], fn (AnalyticsPublication $publication, SocialAccount $account): array => [
+        config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+        "{$account->bluesky_service}/xrpc/com.atproto.repo.getRecord*" => Http::response(['error' => 'RecordNotFound'], 400),
+        "{$account->bluesky_service}/xrpc/com.atproto.repo.listRecords*" => Http::response(['records' => []]),
+    ]],
+    'mastodon' => [Platform::Mastodon, ['read'], fn (AnalyticsPublication $publication, SocialAccount $account): array => [
+        "{$account->mastodon_instance}/api/v1/statuses/*" => Http::response([], 404),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => Http::response([]),
+    ]],
+    'pinterest' => [Platform::Pinterest, ['pins:read', 'boards:read'], function (AnalyticsPublication $publication): array {
+        $api = config('trypost.platforms.pinterest.api');
+
+        return [
+            "{$api}/pins/{$publication->remote_id}*" => Http::response(['code' => 2], 404),
+            "{$api}/pins?page_size=1" => Http::response(['items' => []]),
+        ];
+    }],
+]);
+
+test('a publication removed while its deletion is being checked is left alone', function () {
+    $publication = metricJobPublication(Platform::Mastodon, now('UTC')->subHours(2));
+    $account = $publication->socialAccount;
+    $account->update(['scopes' => ['read']]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => $publication->remote_id]);
+    $publication->forceFill(['post_id' => $post->id])->save();
+    Http::fake([
+        "{$account->mastodon_instance}/api/v1/statuses/*" => Http::response([], 404),
+        "{$account->mastodon_instance}/api/v1/accounts/*" => function () use ($publication): PromiseInterface {
+            $publication->delete();
+
+            return Http::response([]);
+        },
+    ]);
+
+    app()->call([new CollectPublicationMetrics($publication->id, now('UTC')->toDateString()), 'handle']);
+
+    expect($post->fresh()->publish_status)->toBe(PublishStatus::Published);
+});
+
+test('only a published post is marked deleted, and only a deleted one is restored', function () {
+    $inReview = Post::factory()->published()->create(['publish_status' => PublishStatus::PendingReview]);
+    $failed = Post::factory()->published()->create(['publish_status' => PublishStatus::Failed]);
+
+    $inReview->markPublicationDeleted();
+    $failed->markPublicationRestored();
+
+    expect($inReview->fresh()->publish_status)->toBe(PublishStatus::PendingReview)
+        ->and($failed->fresh()->publish_status)->toBe(PublishStatus::Failed);
+});
+
+test('collecting x metrics stores the poll on the publication', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $response = fn (int $votes): array => [
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [
+                ['position' => 1, 'label' => 'Yes', 'votes' => $votes],
+                ['position' => 2, 'label' => 'No', 'votes' => 2],
+            ],
+        ]]],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($response(1))
+        ->push($response(5))
+        ->push(['data' => ['public_metrics' => ['impression_count' => 12, 'like_count' => 1]]])]);
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options'))->toEqual([
+        ['label' => 'Yes', 'votes' => 1],
+        ['label' => 'No', 'votes' => 2],
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
+
+    app()->call([$job, 'handle']);
+
+    expect(data_get($publication->refresh()->provider_metadata, 'poll.options.0.votes'))->toBe(5);
+});
+
+test('storing an x poll result leaves the publication updated_at alone', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $updatedAt = $publication->refresh()->updated_at;
+    $this->travel(1)->hours();
+
+    Http::fake(['*' => Http::response([
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 1], ['position' => 2, 'label' => 'No', 'votes' => 2]],
+        ]]],
+    ])]);
+    app()->call([new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true), 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->not->toBeNull()
+        ->and($publication->updated_at->equalTo($updatedAt))->toBeTrue();
+});
+
+test('an x poll published by TryPost keeps its result from the metrics read through a rediscovery', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => null])->save();
+    $poll = fn (int $votes): array => [
+        'options' => [['label' => 'Yes', 'votes' => $votes], ['label' => 'No', 'votes' => 2]],
+        'voting_status' => 'open',
+        'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+        'duration_minutes' => 1440,
+    ];
+
+    Http::fake(['*' => Http::response([
+        'data' => ['public_metrics' => ['impression_count' => 10, 'like_count' => 1]],
+        'includes' => ['polls' => [[
+            'duration_minutes' => 1440,
+            'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+            'voting_status' => 'open',
+            'options' => [['position' => 1, 'label' => 'Yes', 'votes' => 1], ['position' => 2, 'label' => 'No', 'votes' => 2]],
+        ]]],
+    ])]);
+    app()->call([new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true), 'handle']);
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(1)]);
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, new DiscoveredPublication(
+        providerPostId: $publication->remote_id,
+        publishedAt: $publication->provider_published_at->toImmutable(),
+        contentType: PublicationContentType::Text,
+        providerMetadata: ['poll' => $poll(4)],
+    ));
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4)]);
+});
+
+test('a rediscovery keeps the poll results of the thread replies, which only the metrics read sees, and drops what it no longer reports', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::X, $date->subDay());
+    $poll = fn (int $votes): array => [
+        'options' => [['label' => 'Yes', 'votes' => $votes], ['label' => 'No', 'votes' => 2]],
+        'voting_status' => 'open',
+        'end_datetime' => $date->addDay()->toIso8601ZuluString('millisecond'),
+        'duration_minutes' => 1440,
+    ];
+    $threadPolls = [['reply' => 0, ...$poll(7)]];
+    $publication->forceFill(['origin' => PublicationOrigin::TryPost, 'provider_metadata' => ['poll' => $poll(1), 'thread_polls' => $threadPolls, 'media' => [['type' => 'photo', 'url' => 'https://pbs.twimg.com/media/old.jpg']]]])->save();
+
+    app(UpsertAnalyticsPublication::class)->external($publication->socialAccount, new DiscoveredPublication(
+        providerPostId: $publication->remote_id,
+        publishedAt: $publication->provider_published_at->toImmutable(),
+        contentType: PublicationContentType::Text,
+        providerMetadata: ['poll' => $poll(4)],
+    ));
+
+    expect($publication->refresh()->provider_metadata)->toEqual(['poll' => $poll(4), 'thread_polls' => $threadPolls]);
+});
+
+test('a mastodon poll whose totals were hidden is replaced by the result read once mastodon shows them', function () {
+    $date = CarbonImmutable::now('UTC');
+    $publication = metricJobPublication(Platform::Mastodon, $date->subDay());
+    $endsAt = $date->subHour()->toIso8601ZuluString();
+    $status = fn (?int $tabs, ?int $spaces, bool $expired): array => [
+        'id' => $publication->remote_id,
+        'replies_count' => 0,
+        'reblogs_count' => 0,
+        'favourites_count' => 1,
+        'poll' => [
+            'expires_at' => $endsAt,
+            'expired' => $expired,
+            'multiple' => false,
+            'options' => [['title' => 'Tabs', 'votes_count' => $tabs], ['title' => 'Spaces', 'votes_count' => $spaces]],
+        ],
+    ];
+    $job = new CollectPublicationMetrics($publication->id, $date->toDateString(), refreshSameDay: true);
+
+    Http::fake(['*' => Http::sequence()
+        ->push($status(null, null, false))
+        ->push($status(4, 6, true))]);
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 0], ['label' => 'Spaces', 'votes' => 0]],
+        'voting_status' => 'open',
+        'totals_hidden' => true,
+    ]);
+
+    app()->call([$job, 'handle']);
+
+    expect($publication->refresh()->provider_metadata['poll'])->toMatchArray([
+        'options' => [['label' => 'Tabs', 'votes' => 4], ['label' => 'Spaces', 'votes' => 6]],
+        'voting_status' => 'closed',
+        'totals_hidden' => false,
+    ]);
+});

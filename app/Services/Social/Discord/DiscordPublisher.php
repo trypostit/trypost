@@ -127,7 +127,7 @@ class DiscordPublisher
 
                 $attachment = ['id' => $index, 'filename' => $filename];
 
-                $alt = $item->isImage() ? $item->altTextFor(Platform::Discord) : null;
+                $alt = $item->altTextFor(Platform::Discord);
 
                 if ($alt !== null) {
                     $attachment['description'] = $alt;

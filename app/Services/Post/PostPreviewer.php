@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Post;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\Poll;
 use App\Support\ThreadReplies;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
@@ -37,7 +39,8 @@ class PostPreviewer
      *     title?: string,
      *     description?: string,
      *     description_length_bytes?: int,
-     *     thread_replies?: list<array{text: string, media: list<array<string, mixed>>}>
+     *     poll?: array{options: list<string>, duration_minutes: int},
+     *     thread_replies?: list<array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes: int}}>
      * }
      */
     public function forPost(Post $post): array
@@ -70,7 +73,7 @@ class PostPreviewer
             'content_type' => $post->content_type?->value,
             'sanitized_content' => $sanitized,
             'sanitized_length' => mb_strlen($sanitized),
-            'max_content_length' => $post->socialAccount?->maxContentLength() ?? $platform->maxContentLength(),
+            'max_content_length' => ContentType::maxContentLengthFor($post->socialAccount, $platform, $post->content_type),
             'truncated' => mb_strlen($sanitized) < mb_strlen($original),
         ];
 
@@ -83,13 +86,38 @@ class PostPreviewer
 
         $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($post->meta) : [];
 
+        $poll = $post->content_type?->poll();
+
+        if (filled($poll)) {
+            $preview['poll'] = $poll::preview($post->meta);
+        }
+
         if ($replies !== []) {
+            $replyPoll = ThreadReplies::replyPoll($platform);
+
             $preview['thread_replies'] = array_map(fn (array $reply): array => [
                 'text' => $this->sanitizer->sanitize($reply['text'], $platform),
                 'media' => $reply['media'],
+                ...self::replyPollPreview($replyPoll, $reply),
             ], $replies);
         }
 
         return $preview;
+    }
+
+    /**
+     * A reply's poll as the preview shows it, on a network whose replies can be polls.
+     *
+     * @param  class-string<Poll>|null  $poll
+     * @param  array<string, mixed>  $reply
+     * @return array{poll?: array<string, mixed>}
+     */
+    private static function replyPollPreview(?string $poll, array $reply): array
+    {
+        if (blank($poll) || ! ThreadReplies::hasPoll($reply)) {
+            return [];
+        }
+
+        return ['poll' => $poll::preview($reply)];
     }
 }

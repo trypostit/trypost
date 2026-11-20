@@ -28,8 +28,7 @@ test('verifying an x account stores its subscription tier', function () {
 test('the content limit follows the x tier', function (array $meta, int $limit) {
     $account = SocialAccount::factory()->x()->create(['meta' => $meta]);
 
-    expect($account->maxContentLength())->toBe($limit)
-        ->and($account->contentOverflow(str_repeat('a', 300)))->toBe(max(0, 300 - $limit));
+    expect($account->maxContentLength())->toBe($limit);
 })->with([
     'no tier stored' => [[], 280],
     'free' => [['x_subscription_type' => 'None', 'x_verified_type' => 'none'], 280],

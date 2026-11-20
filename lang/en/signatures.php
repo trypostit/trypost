@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Signatures',
     'description' => 'Reusable text to append to your posts.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Created',
     ],
 
-    'row_actions' => 'Signature actions',
     'actions' => [
         'edit' => 'Edit signature',
-        'delete' => 'Delete signature',
+        'delete' => 'Delete',
+        'settings' => 'Settings',
     ],
 
     'create' => [

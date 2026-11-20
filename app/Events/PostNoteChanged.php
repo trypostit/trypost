@@ -9,6 +9,10 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 
+/**
+ * A note of the post was created, updated (its text or its reactions) or
+ * deleted. It names the note, so an open thread updates that note alone.
+ */
 class PostNoteChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets;
@@ -17,6 +21,7 @@ class PostNoteChanged implements ShouldBroadcast
         public string $postId,
         public string $workspaceId,
         public string $change,
+        public ?string $noteId = null,
     ) {}
 
     public function broadcastAs(): string
@@ -32,10 +37,10 @@ class PostNoteChanged implements ShouldBroadcast
         ];
     }
 
-    /** @return array{post_id: string, change: string} */
+    /** @return array{post_id: string, note_id: string|null, change: string} */
     public function broadcastWith(): array
     {
-        return ['post_id' => $this->postId, 'change' => $this->change];
+        return ['post_id' => $this->postId, 'note_id' => $this->noteId, 'change' => $this->change];
     }
 
     public function broadcastQueue(): string

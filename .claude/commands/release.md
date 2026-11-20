@@ -8,7 +8,7 @@ You are running the Friday release ritual for TryPost. Four artifacts are produc
 1. A git tag (semver)
 2. A GitHub release with the **auto-generated** changelog (PR list + authors via GitHub's native generator — flat, technical, for developers)
 3. A **customer-facing email draft** in Cal.com style (themed prose, end-user voice, no commit/PR references)
-4. A **changelog thumbnail** (1200×630 PNG) rendered from the email's headline and themes, using the TryPost brand template
+4. A **changelog thumbnail** (1200×630 PNG) rendered from the email's headline and themes, on the marketing site's hero design
 
 Plus local mirrors in `releases/<version>/` (changelog, email, and thumbnail), versioned via the artifacts PR.
 
@@ -134,6 +134,16 @@ You're receiving this because you subscribed.
 
 **Always end with the unsubscribe footer** — the `---` separator, the "You're receiving this because you subscribed." line, and an `[Unsubscribe]({{unsubscribe_url}})` link below the signature. Keep `{{unsubscribe_url}}` as a literal placeholder; the email sending tool fills it in. This footer is required on every customer email.
 
+#### Voice
+
+The email is copy, not a commit log: apply the `copywriting` skill's principles (`.agents/skills/copywriting/SKILL.md`) and the voice of the `in-app-copy` skill (`.claude/skills/in-app-copy/SKILL.md`). In practice:
+
+- **Run every header, subject slot and bullet through "Now you can…".** If "Now you can see every post on a board" reads as a concrete, true new ability, keep it. If it reads vague ("Now you can… plan it on a board") or isn't an ability at all, rewrite it.
+- **Talk to the reader and lead with the point.** "You", "your posts". The first sentence of a section says what they can do now; the details come after. A rhetorical question that names their situation is a good opener ("Want to know what's waiting for approval?").
+- **Use the words on screen.** Name buttons, tabs and types as the app shows them (Publish, Board, Poll, Sent, Move up), so the reader can find the thing the email talks about. No internal names (slots, holders, meta, destinations).
+- **Specific over clever.** Say which networks, which view, which limit. A line that sounds nice but could describe any release ("Plan it on a board, ask your followers") fails.
+- **Bullets start with what the reader can do** (an imperative or "you can"), not with the name of a feature: "Add a first comment to a LinkedIn post", not "LinkedIn comments".
+
 #### Section headers
 
 A theme header names the outcome the reader gets or the symptom that is gone. Sentence case. It has to make sense to someone who never saw the bug report.
@@ -219,28 +229,98 @@ The humanizer skill itself covers all patterns. Trust it.
 
 ### Step 5b — Render the changelog thumbnail
 
-Derive these inputs from the release. The **headline and the chips play different roles — never make one restate the other**:
+**The image tells one story: the headline, the screenshot and the chips are all about the same feature**, the release's widest-reach one (the email's first section). A headline about the board next to a calendar, with chips about other features, reads as three unrelated things. The rest of the release lives in the email, not in the image.
 
-- **version** — always pass the release version (e.g. `v1.0.6`). It is stamped in the badge as a mono segment (`★ CHANGELOG | v1.0.6`) so every release image is consistent. Not optional.
-- **headline** — a crafted marketing hero line (2-6 words, at most two lines), in the voice of the marketing site's hero (`Run your social media on autopilot`). It sells the *benefit* of the release's biggest wins; it is the loudest thing on the image. Do **NOT** paste the subject line, and do **NOT** just list the theme/chip words — the chips already name the areas, so the headline sits one level above them. Read the email's themes **and** the "New features" bullets, find the strongest story, and write a fresh benefit line. A little rhythm helps (a parallel pair reads well, e.g. `Speak every language, reach every reader`). Sentence case, no version number in the headline itself (it lives in the badge), no period.
-  - ❌ `Your language, mobile, and per-image alt text` (this is just the chip labels)
-  - ✅ `Speak every language, reach every reader` (benefit-driven, distinct from the chips)
-- **underline** — a short emphasis phrase *inside* the headline (1-3 words) to carry the hand-drawn violet squiggle, usually the last / most important phrase (e.g. `every reader`). Must appear in the headline verbatim. Optional; omit for no squiggle.
-- **themes** — 2-4 short chip labels naming the concrete areas that shipped, condensed to 1-2 words each (e.g. `Languages`, `Mobile`, `Alt text & previews`). These are secondary supporting labels, rendered smaller than the headline; the template auto-colors them (violet / green / sky / orange / rose, in order). Keep them concrete and distinct from the headline's wording. **Order the chips to match the email's section order**, so the image and the email tell the story in the same sequence. Chips are the one place a bare area label is correct: the headline sells the benefit, the chips name where it landed.
+- **version** — always pass the release version (e.g. `v1.0.6`). It is shown in the violet pill above the headline (`● Changelog · v1.0.6`). Not optional.
+- **headline** — that feature as a hero line that passes the "Now you can…" test (see Voice in Step 4): "Now you can see every post on one board" is concrete and true, so `See every post | on one board` works; `Plan it on a board, ask your followers` does not (vague, two ideas, says nothing a reader can picture). Two short lines of about 15–20 characters each, split with `|`; the script shrinks a line that is too long for the column, so a long line comes out small: shorten it instead. Sentence case, no version number, no period.
+  - ❌ `Plan it on a board, ask your followers` (clever, vague, two ideas)
+  - ❌ `All your posts on one board, polls on X, Mastodon and Threads` (two ideas, too long for the column)
+  - ✅ `See every post | on one board`
+- **scene** — the app path that shows that feature, with its query (`/schedule/board`, `/schedule/board?group=tag`, `/insights`). The script signs in as the demo user and shoots it (see Demo data below).
+- **themes** — 2-4 short chips about the same feature: what it lets the reader do, in the words the screen uses (`By status`, `By tag`, `By channel` for the board). Never another feature of the release.
+
+#### Demo data
+
+The screenshot is the real app with demo content, never a real workspace. There is no seeder file for it: create it with tinker right before the render and remove it right after, so the scheduler never picks its posts up.
+
+- **The brand is the site's:** John Doe / Doe Media, the channel avatar and the coffee and ceramics photos of trypost-site (`public/images/avatars`, `public/images/mockup/posts`). Media URLs use the host `https://demo-media.trypost.invalid/<path under the site's public/images>`; the render script answers them from the site, so nothing is uploaded to a disk.
+- **Shape it for the scene:** the base below fills the board and the calendar (ten channels, three tags, posts in every status dated around today). When the feature needs other data (a poll with results, a cover, ideas, insights), add it to the snippet, built with the model factories and their states (`database/factories`).
+- **Sign-in:** `demo@trypost.it` / `password`, with an active subscription so the app opens without Welcome.
+
+Write the snippet to the scratchpad and run it with `--execute` (never `php artisan tinker <file>`, which stays in the interactive shell and hangs):
+
+```bash
+php artisan tinker --execute "$(cat <scratchpad>/release-demo.php)" < /dev/null
+```
+
+Base snippet:
+
+```php
+use App\Models\{Account, Post, SocialAccount, User, Workspace, WorkspaceLabel};
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
+
+$media = fn (?string $photo) => blank($photo) ? [] : [['id' => (string) Str::uuid(), 'path' => "demo/{$photo}", 'url' => "https://demo-media.trypost.invalid/mockup/posts/{$photo}", 'type' => 'image', 'mime_type' => 'image/jpeg']];
+
+$user = User::factory()->create(['name' => 'John Doe', 'email' => 'demo@trypost.it', 'password' => 'password', 'timezone' => 'America/New_York']);
+$user->account->update(['name' => 'Doe Media']);
+$user->account->subscriptions()->create(['type' => Account::SUBSCRIPTION_NAME, 'stripe_id' => 'sub_demo', 'stripe_status' => 'active', 'stripe_price' => 'price_demo']);
+$workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id, 'name' => 'Doe Media']);
+$workspace->members()->attach($user->id, ['is_admin' => true, 'requires_approval' => false]);
+$user->update(['current_workspace_id' => $workspace->id]);
+
+$channels = [];
+foreach (['instagram' => 'doe.media', 'linkedin' => 'Doe Media', 'x' => 'doemedia', 'tiktok' => 'doe.media', 'youtube' => 'Doe Media', 'threads' => 'doe.media', 'bluesky' => 'doemedia.bsky.social', 'mastodon' => 'doemedia@mastodon.social', 'facebook' => 'Doe Media', 'pinterest' => 'doemedia'] as $network => $username) {
+    $channels[$network] = SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id, 'display_name' => 'John Doe', 'username' => $username, 'avatar_url' => 'https://demo-media.trypost.invalid/avatars/persona.svg', 'position' => count($channels) + 1, 'timezone' => 'America/New_York']);
+}
+
+$labels = [];
+foreach (['Launch' => '#DDA0DD', 'Behind the scenes' => '#89CFF0', 'Promo' => '#FFD580'] as $name => $color) {
+    $labels[$name] = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => $name, 'color' => $color]);
+}
+
+foreach ([
+    ['instagram', 'draft', 3, 9, 'New mugs, same morning ritual. Which glaze is your favorite?', 'mugs.jpg', ['Launch']],
+    ['linkedin', 'draft', 4, 11, 'Three things we learned shipping our first ceramics collection.', null, ['Behind the scenes']],
+    ['pinterest', 'draft', 5, 15, 'Moodboard for the spring collection: soft clay, warm light.', 'moodboard.jpg', []],
+    ['tiktok', 'pendingApproval', 1, 18, 'From a lump of clay to your morning latte, in 30 seconds.', 'wheel.jpg', ['Behind the scenes']],
+    ['facebook', 'pendingApproval', 2, 10, 'Weekend market this Saturday: come say hi and try a cup.', 'shelf.jpg', ['Promo']],
+    ['instagram', 'scheduled', 1, 9, 'Latte art Friday. Tag a friend who needs a coffee.', 'latte.jpg', ['Promo']],
+    ['x', 'scheduled', 1, 12, 'The spring collection drops Monday. Set a reminder.', null, ['Launch']],
+    ['youtube', 'scheduled', 2, 14, 'How we glaze a mug, start to finish', 'shoot.jpg', ['Behind the scenes']],
+    ['threads', 'scheduled', 3, 11, 'Coffee first, emails later. What is your morning order?', null, []],
+    ['instagram', 'published', -1, 9, 'Our studio shelf is officially full. Thank you for an amazing month.', 'shelf.jpg', []],
+    ['linkedin', 'published', -1, 13, 'We are hiring a part-time studio assistant. Know someone?', 'laptop.jpg', []],
+    ['bluesky', 'published', -2, 10, 'Fresh batch out of the kiln this morning.', 'mug.jpg', ['Behind the scenes']],
+    ['mastodon', 'failed', -1, 16, 'Spring collection preview, now with photos.', 'mugs.jpg', ['Launch']],
+] as [$network, $state, $day, $hour, $text, $photo, $tags]) {
+    $at = CarbonImmutable::now('America/New_York')->startOfDay()->addDays($day)->setHour($hour)->utc();
+    $post = Post::factory()->forAccount($channels[$network])->{$state}()->create(['user_id' => $user->id, 'content' => "<p>{$text}</p>", 'media' => $media($photo), 'scheduled_at' => $at, 'published_at' => $state === 'published' ? $at : null, 'meta' => $network === 'youtube' ? ['title' => $text] : []]);
+    $post->labels()->attach(collect($tags)->map(fn ($tag) => $labels[$tag]->id)->all());
+}
+
+echo "demo ready\n";
+```
+
+After the render (and before anything else), remove it, and check that no demo user is left:
+
+```bash
+php artisan tinker --execute '$user = App\Models\User::where("email", "demo@trypost.it")->first(); $account = $user->account; $account->workspaces()->each(fn ($workspace) => $workspace->delete()); $user->delete(); $account->delete(); echo App\Models\User::where("email", "demo@trypost.it")->count();' < /dev/null
+```
 
 Create the directory and render the thumbnail so the user can preview it before confirming:
 
 ```bash
 mkdir -p releases/<version>
-node .claude/release-assets/render-thumbnail.mjs \
+node .claude/release-assets/render-thumbnail.ts \
   --version "<version>" \
-  --headline "<headline>" \
-  --underline "<emphasis phrase>" \
+  --headline "<first line> | <second line>" \
   --themes "<label 1>,<label 2>,<label 3>" \
+  --scene "<app path>" \
   --out releases/<version>/thumbnail.png
 ```
 
-This uses the shared brand template (`.claude/release-assets/thumbnail.template.html`) + TryPost logo. It mirrors the marketing-site hero / OG image: a warm cream→lavender wash, an ink dot-grid, an Instrument Serif headline with a hand-drawn violet squiggle under the emphasis phrase, an amber "Changelog" sticker badge with the version stamped in mono, and colored ink-bordered theme chips with solid offset shadows. 1200×630. It needs Playwright + chromium (already installed for browser tests). If the render fails, report and stop before tagging.
+It draws the marketing site's hero, like the site's share image and the profile banners (`trypost-site/.claude/og-assets/shoot-og-hero.mjs`, `~/Herd/paulo-social-media-banners`): the hero's lilac with the text on the left (logo, version pill, headline, chips) and, on the right, a window holding the real screenshot of the scene, running off the edges, 1200×630 at 2x. It needs the app's Vite dev server (`npm run dev`; start it if `public/hot` is missing) and trypost-site next to this repo (`../trypost-site`, or `TRYPOST_SITE_DIR`), whose dev server on port 4390 it starts and stops when nothing answers there. It needs the demo data above to exist while it runs. If the render fails, report and stop before tagging.
 
 ### Step 6 — Confirm with the user
 

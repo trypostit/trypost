@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
-use App\Enums\Plan\Slug;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\PostHog\UserEvent;
 use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
-use App\Models\Plan;
 use App\Models\User;
 use App\Services\PostHogService;
 use App\Support\Timezone;
@@ -21,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User
@@ -29,19 +28,18 @@ class CreateUser
         $isInviteRegistration = (bool) data_get($data, 'is_invite', false);
 
         $user = DB::transaction(function () use ($data, $attributionParameters, $isInviteRegistration): User {
-            $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
             $accountAttributes = [
                 'name' => data_get($data, 'name')."'s Account",
             ];
 
-            if (! $requiresCardForTrial) {
-                $accountAttributes['plan_id'] = Plan::where('slug', Slug::Socials)->value('id');
-                $accountAttributes['trial_ends_at'] = now()->addDays(config('cashier.trial_days'));
+            if (PostHogService::isEnabled()) {
+                $accountAttributes['lifecycle_stage'] = LifecycleStage::SignedUp;
+                $accountAttributes['lifecycle_stage_changed_at'] = now();
             }
 
-            $account = Account::create($accountAttributes);
+            $account = Account::query()->forceCreate($accountAttributes);
 
-            $locale = Locale::from(data_get($data, 'locale', Locale::DEFAULT->value));
+            $locale = Locale::tryFrom((string) data_get($data, 'locale')) ?? Locale::DEFAULT;
 
             $user = User::create(array_merge([
                 'name' => data_get($data, 'name'),

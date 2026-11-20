@@ -4,8 +4,7 @@ import { IconWorld } from '@tabler/icons-vue';
 import InputError from '@/components/InputError.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-import WebhookEventsPicker from './WebhookEventsPicker.vue';
+import WebhookEventsPicker from '@/components/webhook/WebhookEventsPicker.vue';
 
 const endpoint = defineModel<string>('endpoint', { required: true });
 const events = defineModel<string[]>('events', { required: true });

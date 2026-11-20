@@ -1,11 +1,12 @@
 import type { PinterestBoard } from '@/types';
+import type { PlatformValue, PublishConfig } from '@/types/platform';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 export interface ChannelAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     display_name: string;
     username: string;
     display_label: string;
@@ -26,7 +27,7 @@ export interface ChannelTikTokCreatorInfo {
 
 export interface Channel {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     displayName: string;
     username: string | null;
     avatarUrl: string | null;
@@ -37,7 +38,7 @@ export interface Channel {
     issueDocsUrl?: string | null;
     status?: string | null;
     contentTypeError?: string;
-    publishConfig?: Record<string, any> | null;
+    publishConfig?: PublishConfig | null;
     creatorInfo?: ChannelTikTokCreatorInfo | null;
     boards?: PinterestBoard[];
     boardsTruncated?: boolean;
@@ -45,7 +46,7 @@ export interface Channel {
 
 export interface SidebarChannel {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     network: string;
     username: string;
     display_name: string | null;

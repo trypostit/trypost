@@ -6,31 +6,9 @@ use App\Enums\User\ReferralSource;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForReferralSurveyCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForReferralSurveyTestIdPresent(mixed $page, string $testId): void
-{
-    waitForReferralSurveyCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
-function waitForReferralSurveyTestIdGone(mixed $page, string $testId): void
-{
-    waitForReferralSurveyCondition($page, "!document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
 function waitForReferralSurveySheetAtBottom(mixed $page): void
 {
-    waitForReferralSurveyCondition($page, "(() => { const sheet = document.querySelector('[data-testid=\"referral-source-survey\"]'); return sheet && Math.abs(window.innerHeight - sheet.getBoundingClientRect().bottom) < 1; })()");
+    waitForState($page, '@referral-source-survey', 'Math.abs(window.innerHeight - element.getBoundingClientRect().bottom) < 1');
 }
 
 /**
@@ -63,13 +41,13 @@ test('a user who has not said where they found us answers from the in-app card',
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForReferralSurveyTestIdPresent($page, 'referral-source-survey');
+    waitForState($page, '@referral-source-survey', 'true');
 
     $page->assertButtonDisabled('@referral-source-submit');
 
     $page->click('@referral-source-option-'.ReferralSource::ProductHunt->value)
         ->click('@referral-source-submit');
-    waitForReferralSurveyTestIdGone($page, 'referral-source-survey');
+    waitForGone($page, '@referral-source-survey');
 
     $page->assertMissing('@referral-source-survey')
         ->assertNoJavaScriptErrors();
@@ -98,7 +76,7 @@ test('on a phone the survey slides up as a bottom sheet and can be answered', fu
 
     $page->click('@referral-source-option-google')
         ->click('@referral-source-submit');
-    waitForReferralSurveyTestIdGone($page, 'referral-source-survey');
+    waitForGone($page, '@referral-source-survey');
 
     expect($user->fresh()->referral_source)->toBe(ReferralSource::Google);
     $page->assertNoJavaScriptErrors();

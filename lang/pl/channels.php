@@ -7,6 +7,8 @@ return [
     'description' => 'Zarządzaj kanałami tego workspace\'u.',
     'connect' => 'Połącz kanał',
     'settings' => 'Ustawienia kanału',
+    'manage' => 'Zarządzaj kanałami',
+    'set_goal' => 'Ustaw cel publikacji',
     'publish' => 'Publikuj',
     'insights' => 'Insights',
     'new_post' => 'Nowy post w tym kanale',
@@ -168,6 +170,25 @@ return [
         'description' => 'Spowoduje to usunięcie wszystkich postów tego kanału w TryPost, w tym wersji roboczych, zaplanowanych postów i historii publikacji. Posty, które są już w sieci, pozostaną tam.',
         'keyword' => 'odłącz',
         'cancel' => 'Anuluj',
+    ],
+
+    'list' => [
+        'search' => 'Szukaj po nazwie, @nazwie użytkownika lub sieci',
+        'networks' => 'Sieci',
+        'networks_search' => 'Szukaj sieci',
+        'no_networks' => 'Nie znaleziono sieci',
+        'columns' => [
+            'channel' => 'Kanał',
+            'timezone' => 'Strefa czasowa',
+            'posting_times' => 'Godziny',
+            'this_week' => 'Ten tydzień',
+        ],
+        'posting_times_per_week' => ':count na tydzień',
+        'no_posting_times' => 'Brak godzin',
+        'no_results' => 'Żaden kanał nie pasuje do wyszukiwania.',
+        'connection_lost' => 'Ten kanał utracił połączenie',
+        'settings' => 'Ustawienia',
+        'more_actions' => 'Więcej działań',
     ],
 
     'settings_page' => [

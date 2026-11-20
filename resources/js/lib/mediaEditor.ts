@@ -1,8 +1,10 @@
+import { canvasToFile } from '@/lib/canvasFile';
 import {
     mediaRuleFor,
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
+import { filled } from '@/lib/helpers';
 import {
     fullSelection,
     resolveOutputFileName,
@@ -10,7 +12,7 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
-import type { MediaItem, MediaUserTag } from '@/types/media';
+import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =
     | 'freeform'
@@ -67,7 +69,12 @@ export type MediaEdit = {
     altText: string;
     userTags: MediaUserTag[];
     coverOffsetMs: number | null;
+    coverImage: CoverImage | null;
+    coverSource: CoverSource;
 };
+
+/** Instagram Reels and YouTube Shorts show a cover at 9:16 and crop anything else to its middle. */
+export const COVER_CROP_PRESET: CropPresetValue = '9:16';
 
 export const USER_TAGS_MAX = 20;
 
@@ -130,30 +137,55 @@ export const presetValuesFor = (
 
 export type EditorTab = 'edit' | 'thumbnail' | 'alt' | 'tags';
 
+/** A video gets a Thumbnail tab when its network takes a frame or an image as its cover. */
+const hasThumbnail = (rule: MediaRules): boolean => {
+    if (rule.supportsVideoCover) {
+        return true;
+    }
+
+    return rule.supportsCustomVideoCover;
+};
+
+/** A tab and the rule that offers it. */
+type OptionalTab = {
+    tab: EditorTab;
+    offeredBy: (rule: MediaRules) => boolean;
+};
+
+const VIDEO_TABS: OptionalTab[] = [
+    { tab: 'thumbnail', offeredBy: hasThumbnail },
+    { tab: 'alt', offeredBy: (rule) => rule.supportsVideoAltText },
+];
+
+const IMAGE_TABS: OptionalTab[] = [
+    { tab: 'alt', offeredBy: (rule) => rule.supportsImageAltText },
+    { tab: 'tags', offeredBy: (rule) => rule.supportsUserTags },
+];
+
+/** The tabs a network of the post offers, in order. */
+const offeredTabs = (tabs: OptionalTab[], rules: MediaRules[]): EditorTab[] =>
+    tabs
+        .filter(({ offeredBy }) => rules.some(offeredBy))
+        .map(({ tab }) => tab);
+
 /** Tabs the editor offers for an item; an empty list means no pencil. */
 export const editorTabsFor = (
     item: MediaItem,
     rules: MediaRules[],
 ): EditorTab[] => {
     if (isVideo(item)) {
-        return rules.some((rule) => rule.supportsVideoCover)
-            ? ['thumbnail']
-            : [];
+        return offeredTabs(VIDEO_TABS, rules);
     }
 
-    if (!isImage(item) || isGif(item)) {
+    if (!isImage(item)) {
         return [];
     }
 
-    return [
-        'edit',
-        ...(rules.some((rule) => rule.supportsAltText)
-            ? (['alt'] as const)
-            : []),
-        ...(rules.some((rule) => rule.supportsUserTags)
-            ? (['tags'] as const)
-            : []),
-    ];
+    if (isGif(item)) {
+        return [];
+    }
+
+    return ['edit', ...offeredTabs(IMAGE_TABS, rules)];
 };
 
 /** An untouched edit: no crop, turn, flip, filter or metadata. */
@@ -172,14 +204,141 @@ export const blankMediaEdit = (
     altText: '',
     userTags: [],
     coverOffsetMs: null,
+    coverImage: null,
+    coverSource: 'frame',
 });
+
+const storedCoverImage = (item: MediaItem): CoverImage | null => {
+    const cover = item.meta?.cover;
+
+    if (!filled(cover)) {
+        return null;
+    }
+
+    return newCoverImage(cover.url, cover, null);
+};
+
+/** A cover image as the editor opens it: framed at 9:16 in its middle. */
+export const newCoverImage = (
+    url: string,
+    item: MediaItem | null,
+    file: File | null,
+): CoverImage => ({
+    url,
+    item,
+    file,
+    crop: blankMediaEdit(COVER_CROP_PRESET),
+    natural: null,
+});
+
+/**
+ * Whether the user reframed the cover. Its 9:16 ratio is where it starts, so
+ * only a moved or resized frame, a turn, a flip or an adjustment counts.
+ */
+export const hasCoverCropChanges = (crop: MediaEdit): boolean =>
+    hasPixelChanges({ ...crop, preset: 'original' });
+
+/**
+ * Where the item's cover comes from. A cover sent without its source (the
+ * API or MCP) is an uploaded image.
+ */
+export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource => {
+    const source = item.meta?.cover_source;
+
+    if (filled(source)) {
+        return source;
+    }
+
+    if (filled(item.meta?.cover)) {
+        return 'image';
+    }
+
+    return 'frame';
+};
 
 export const createMediaEdit = (item: MediaItem): MediaEdit => ({
     ...blankMediaEdit(),
     altText: item.meta?.alt_text ?? '',
     userTags: [...(item.meta?.user_tags ?? [])],
     coverOffsetMs: item.meta?.cover_offset_ms ?? null,
+    coverImage: storedCoverImage(item),
+    coverSource: storedCoverSource(item),
 });
+
+
+/** The source the edit saves: an image picked but never uploaded leaves the cover as it was saved, a frame. */
+export const savedCoverSource = (edit: MediaEdit): CoverSource => {
+    if (!filled(edit.coverImage)) {
+        return 'frame';
+    }
+
+    return edit.coverSource;
+};
+
+/** Whether the edit picks another cover image than the item has. */
+export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
+    const stored = item.meta?.cover;
+
+    if (!filled(edit.coverImage)) {
+        return filled(stored);
+    }
+
+    if (filled(edit.coverImage.file)) {
+        return true;
+    }
+
+    if (hasCoverCropChanges(edit.coverImage.crop)) {
+        return true;
+    }
+
+    return edit.coverImage.item?.id !== stored?.id;
+};
+
+/**
+ * A network that takes a cover image but no frame time (YouTube) needs the
+ * picked frame as an image. One that takes the frame time (Instagram, TikTok,
+ * Pinterest) shows that exact frame from the time alone.
+ */
+const takesFrameAsImage = (rule: MediaRules): boolean => {
+    if (!rule.supportsCustomVideoCover) {
+        return false;
+    }
+
+    return !rule.supportsVideoCover;
+};
+
+/**
+ * Whether applying the edit takes a screenshot of the video as its cover: a
+ * network that takes no frame time (YouTube) gets the picked frame as an
+ * image, unless the stored cover is already that frame.
+ */
+export const needsFrameCapture = (
+    item: MediaItem,
+    edit: MediaEdit,
+    rules: MediaRules[],
+): boolean => {
+    if (!isVideo(item)) {
+        return false;
+    }
+
+    if (edit.coverSource !== 'frame') {
+        return false;
+    }
+
+    if (!rules.some(takesFrameAsImage)) {
+        return false;
+    }
+
+    if (!filled(edit.coverOffsetMs)) {
+        return false;
+    }
+
+    if (!filled(edit.coverImage)) {
+        return true;
+    }
+
+    return edit.coverOffsetMs !== item.meta?.cover_offset_ms;
+};
 
 export const hasPixelChanges = (edit: MediaEdit): boolean =>
     edit.selection !== null ||
@@ -191,11 +350,25 @@ export const hasPixelChanges = (edit: MediaEdit): boolean =>
     (edit.filter !== 'original' && edit.filterIntensity > 0) ||
     ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
 
-export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean =>
-    edit.altText.trim() !== (item.meta?.alt_text ?? '').trim() ||
-    JSON.stringify(edit.userTags) !==
-        JSON.stringify(item.meta?.user_tags ?? []) ||
-    (edit.coverOffsetMs ?? 0) !== (item.meta?.cover_offset_ms ?? 0);
+export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
+    if (edit.altText.trim() !== (item.meta?.alt_text ?? '').trim()) {
+        return true;
+    }
+
+    if (JSON.stringify(edit.userTags) !== JSON.stringify(item.meta?.user_tags ?? [])) {
+        return true;
+    }
+
+    if ((edit.coverOffsetMs ?? 0) !== (item.meta?.cover_offset_ms ?? 0)) {
+        return true;
+    }
+
+    if (savedCoverSource(edit) !== storedCoverSource(item)) {
+        return true;
+    }
+
+    return hasCoverImageChange(edit, item);
+};
 
 /** A cover offset in milliseconds as `m:ss.s`. */
 export const formatCoverOffset = (milliseconds: number): string => {
@@ -348,29 +521,12 @@ export const renderImageEdit = (
 
     const mime = resolveOutputMime(output.mimeType);
 
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) {
-                    reject(new Error('Image could not be encoded'));
-
-                    return;
-                }
-
-                resolve({
-                    file: new File(
-                        [blob],
-                        resolveOutputFileName(output.fileName, mime),
-                        { type: mime },
-                    ),
-                    width,
-                    height,
-                });
-            },
-            mime,
-            0.92,
-        );
-    });
+    return canvasToFile(
+        canvas,
+        resolveOutputFileName(output.fileName, mime),
+        mime,
+        0.92,
+    ).then((file) => ({ file, width, height }));
 };
 
 export const renderMediaEdit = (

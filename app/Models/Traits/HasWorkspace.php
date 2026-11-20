@@ -68,6 +68,22 @@ trait HasWorkspace
     }
 
     /**
+     * The workspace limit never applies self-hosted, nor to the first workspace.
+     */
+    public function workspaceLimitApplies(): bool
+    {
+        return ! config('trypost.self_hosted') && $this->ownedWorkspacesCount() > 0;
+    }
+
+    /**
+     * The account already holds as many workspaces as its plan allows.
+     */
+    public function atWorkspaceLimit(): bool
+    {
+        return $this->workspaceLimitApplies() && $this->account?->canCreateWorkspace() === false;
+    }
+
+    /**
      * The account owner always manages every workspace of the account.
      */
     public function ownsAccountOf(Workspace $workspace): bool

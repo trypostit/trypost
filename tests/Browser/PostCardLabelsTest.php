@@ -11,28 +11,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PostingSchedule;
 
-function waitForCardLabelsCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForCardLabelsTestId(mixed $page, string $testId): void
-{
-    waitForCardLabelsCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
-function waitForCardLabelsMissing(mixed $page, string $testId): void
-{
-    waitForCardLabelsCondition($page, "!document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
 /**
  * @param  list<string>  $expected
  */
@@ -40,13 +18,7 @@ function waitForCardLabelsStored(mixed $page, Post $post, array $expected): void
 {
     sort($expected);
 
-    for ($attempt = 0; $attempt < 50; $attempt++) {
-        if ($post->labels()->pluck('workspace_labels.id')->sort()->values()->all() === $expected) {
-            return;
-        }
-
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn () => $post->labels()->pluck('workspace_labels.id')->sort()->values()->all() === $expected);
 }
 
 /**
@@ -109,9 +81,9 @@ function cardLabelsPost(User $user, Workspace $workspace, SocialAccount $channel
 
 function openCardLabelsPicker(mixed $page, string $key): void
 {
-    waitForCardLabelsTestId($page, "post-labels-{$key}-trigger");
+    waitFor($page, "@post-labels-{$key}-trigger");
     $page->click("@post-labels-{$key}-trigger");
-    waitForCardLabelsTestId($page, "post-labels-{$key}-search");
+    waitFor($page, "@post-labels-{$key}-search");
 }
 
 test('a queued card assigns and unassigns a label from its picker', function () {
@@ -130,17 +102,17 @@ test('a queued card assigns and unassigns a label from its picker', function () 
         ->assertScript("document.querySelector('[data-testid=\"post-labels-{$post->id}-settings\"]').getAttribute('href')", route('app.labels.index', absolute: false));
 
     $page->type("@post-labels-{$post->id}-search", 'camp');
-    waitForCardLabelsMissing($page, "post-labels-{$post->id}-option-{$other->id}");
+    waitForGone($page, "@post-labels-{$post->id}-option-{$other->id}");
     $page->assertMissing("@post-labels-{$post->id}-option-{$other->id}")
         ->click("@post-labels-{$post->id}-checkbox-{$label->id}");
-    waitForCardLabelsTestId($page, "post-label-chip-{$post->id}-{$label->id}");
+    waitFor($page, "@post-label-chip-{$post->id}-{$label->id}");
     waitForCardLabelsStored($page, $post, [$label->id]);
 
     expect($post->labels()->pluck('workspace_labels.id')->all())->toBe([$label->id]);
     $page->assertVisible("@post-label-chip-{$post->id}-{$label->id}");
 
     $page->click("@post-labels-{$post->id}-checkbox-{$label->id}");
-    waitForCardLabelsMissing($page, "post-label-chip-{$post->id}-{$label->id}");
+    waitForGone($page, "@post-label-chip-{$post->id}-{$label->id}");
     waitForCardLabelsStored($page, $post, []);
 
     expect($post->labels()->count())->toBe(0);
@@ -161,14 +133,14 @@ test('a draft card clears every label with clear all', function () {
     $page->click("@post-labels-{$draft->id}-checkbox-{$first->id}");
     waitForCardLabelsStored($page, $draft, [$first->id]);
     $page->click("@post-labels-{$draft->id}-checkbox-{$second->id}");
-    waitForCardLabelsTestId($page, "post-label-chip-{$draft->id}-{$second->id}");
+    waitFor($page, "@post-label-chip-{$draft->id}-{$second->id}");
     waitForCardLabelsStored($page, $draft, [$first->id, $second->id]);
 
     expect($draft->labels()->count())->toBe(2);
     $page->assertVisible("@post-label-chip-{$draft->id}-{$first->id}")
         ->assertVisible("@post-label-chip-{$draft->id}-{$second->id}")
         ->click("@post-labels-{$draft->id}-clear");
-    waitForCardLabelsMissing($page, "post-label-chip-{$draft->id}-{$first->id}");
+    waitForGone($page, "@post-label-chip-{$draft->id}-{$first->id}");
     waitForCardLabelsStored($page, $draft, []);
 
     expect($draft->labels()->count())->toBe(0);
@@ -185,7 +157,7 @@ test('the label filter drops a card once its label is removed', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts', 'labels' => [$label->id]]));
-    waitForCardLabelsTestId($page, "post-label-chip-{$tagged->id}-{$label->id}");
+    waitFor($page, "@post-label-chip-{$tagged->id}-{$label->id}");
 
     $page->assertVisible("@post-card-{$tagged->id}")
         ->assertMissing("@post-card-{$untagged->id}")
@@ -193,7 +165,7 @@ test('the label filter drops a card once its label is removed', function () {
 
     openCardLabelsPicker($page, $tagged->id);
     $page->click("@post-labels-{$tagged->id}-checkbox-{$label->id}");
-    waitForCardLabelsMissing($page, "post-card-{$tagged->id}");
+    waitForGone($page, "@post-card-{$tagged->id}");
     waitForCardLabelsStored($page, $tagged, []);
 
     expect($tagged->labels()->count())->toBe(0);
@@ -214,10 +186,74 @@ test('a rejected change rolls the card back and shows an error', function () {
     $label->delete();
 
     $page->click("@post-labels-{$post->id}-checkbox-{$label->id}");
-    waitForCardLabelsTestId($page, 'post-labels-error-toast');
-    waitForCardLabelsMissing($page, "post-label-chip-{$post->id}-{$label->id}");
+    waitFor($page, '@post-labels-error-toast');
+    waitForGone($page, "@post-label-chip-{$post->id}-{$label->id}");
 
     expect($post->labels()->count())->toBe(0);
     $page->assertSeeIn('@post-labels-error-toast', __('posts.publish.actions.edit_labels_failed'))
         ->assertMissing("@post-label-chip-{$post->id}-{$label->id}");
+});
+
+test('the first label of the card picker sits apart from its search box', function () {
+    [$user, $workspace, $channel] = cardLabelsSetup();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign']);
+    $post = cardLabelsPost($user, $workspace, $channel);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    openCardLabelsPicker($page, $post->id);
+
+    $gap = $page->script(<<<JS
+        (() => {
+            const search = document.querySelector('[data-testid="post-labels-{$post->id}-search"]').getBoundingClientRect();
+            const option = document.querySelector('[data-testid="post-labels-{$post->id}-option-{$label->id}"]').getBoundingClientRect();
+
+            return Math.round(option.top - search.bottom);
+        })()
+    JS);
+
+    expect($gap)->toBe(8);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a card label shows its name as typed on its own color, in a chip as tall as the label button beside it', function () {
+    [$user, $workspace, $channel] = cardLabelsSetup();
+    $light = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Coca Cola', 'color' => '#d1d5db']);
+    $dark = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Green', 'color' => '#16a34a']);
+    $post = cardLabelsPost($user, $workspace, $channel);
+    $post->labels()->attach([$light->id, $dark->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitFor($page, "@post-label-chip-{$post->id}-{$dark->id}");
+
+    $chip = fn (WorkspaceLabel $label) => $page->script(<<<JS
+        (() => {
+            const chip = document.querySelector('[data-testid="post-label-chip-{$post->id}-{$label->id}"]');
+            const button = document.querySelector('[data-testid="post-labels-{$post->id}-edit"]');
+            const style = getComputedStyle(chip);
+
+            return {
+                text: chip.innerText.trim(),
+                transform: style.textTransform,
+                fontSize: style.fontSize,
+                background: style.backgroundColor,
+                color: style.color,
+                sameHeight: Math.round(chip.getBoundingClientRect().height) === Math.round(button.getBoundingClientRect().height),
+            };
+        })()
+    JS);
+
+    expect($chip($light))->toBe([
+        'text' => 'Coca Cola',
+        'transform' => 'none',
+        'fontSize' => '12px',
+        'background' => 'rgb(209, 213, 219)',
+        'color' => 'rgb(10, 10, 10)',
+        'sameHeight' => true,
+    ])->and($chip($dark))->toMatchArray([
+        'background' => 'rgb(22, 163, 74)',
+        'color' => 'rgb(255, 255, 255)',
+    ]);
+    $page->assertNoJavaScriptErrors();
 });

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Settings',
     'description' => 'Manage your profile and account settings',
@@ -39,7 +41,7 @@ return [
         'account_disconnected' => 'Account disconnected',
         'account_disconnected_description' => 'Receive an email when a social account is disconnected',
         'post_note_added' => 'New note on a post',
-        'post_note_added_description' => 'Receive an email when a team member adds a note to a post',
+        'post_note_added_description' => 'Receive an email when a teammate mentions you in a note, or adds one to a post you created or commented on',
         'collaboration' => 'Collaboration',
         'collaboration_description' => 'Get emails about approval requests and approved or rejected posts',
         'save_failed' => 'Could not save your notification preferences. Please try again.',

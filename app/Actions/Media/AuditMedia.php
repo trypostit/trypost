@@ -119,7 +119,8 @@ class AuditMedia
 
             foreach ($owners as $model) {
                 $ownedIds = $owned->get($model->id, []);
-                $jsonIds = collect($model->media ?? [])->pluck('id')->filter()->unique()->values()->all();
+                $items = collect($model->media ?? []);
+                $jsonIds = $items->pluck('id')->merge($items->pluck('meta.cover.id'))->filter()->unique()->values()->all();
 
                 foreach (array_diff($jsonIds, $ownedIds) as $mediaId) {
                     $findings[] = ['owner_type' => $type, 'owner_id' => $model->id, 'media_id' => (string) $mediaId, 'problem' => 'json_without_row'];

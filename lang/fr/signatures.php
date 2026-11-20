@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Signatures',
     'description' => 'Textes réutilisables pour vos publications.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Créée le',
     ],
 
-    'row_actions' => 'Actions de la signature',
     'actions' => [
         'edit' => 'Modifier la signature',
-        'delete' => 'Supprimer la signature',
+        'delete' => 'Supprimer',
+        'settings' => 'Paramètres',
     ],
 
     'create' => [

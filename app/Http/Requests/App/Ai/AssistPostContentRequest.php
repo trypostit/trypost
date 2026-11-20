@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\App\Ai;
 
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Rules\PostContentFitsMaxLength;
 use App\Rules\PromptHasMinimumWords;
@@ -43,6 +44,7 @@ class AssistPostContentRequest extends FormRequest
             ],
             'previous_content' => ['nullable', 'string', new PostContentFitsMaxLength],
             'platform' => ['nullable', Rule::enum(Platform::class)],
+            'content_type' => ['nullable', Rule::enum(ContentType::class)],
             'social_account_id' => [
                 'nullable',
                 'uuid',

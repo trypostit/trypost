@@ -76,6 +76,7 @@ const pageErrors = usePageErrors();
                         id="email"
                         type="email"
                         name="email"
+                        data-testid="login-email"
                         autofocus
                         :tabindex="1"
                         autocomplete="email"
@@ -103,6 +104,7 @@ const pageErrors = usePageErrors();
                             id="password"
                             :type="showPassword ? 'text' : 'password'"
                             name="password"
+                            data-testid="login-password"
                             :tabindex="2"
                             autocomplete="current-password"
                             :placeholder="$t('auth.login.password')"

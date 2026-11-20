@@ -210,7 +210,7 @@ test('a dead token during review is refreshed before the post is deferred', func
             return Http::response(['access_token' => 'rotated-token', 'expires_in' => 3600]);
         }
 
-        if (str_contains($url, (string) config('trypost.platforms.google_business.business_information_api'))) {
+        if (str_contains($url, config('trypost.platforms.google_business.business_information_api'))) {
             $info++;
 
             if ($info === 1) {

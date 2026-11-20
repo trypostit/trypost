@@ -90,6 +90,8 @@ return [
         'post_partially_published' => '一部公開',
         'post_failed' => '投稿に失敗',
         'post_deleted' => '投稿を削除',
+        'post_deleted_on_network' => 'ネットワークで投稿を削除',
+        'post_restored' => '投稿がネットワークに復帰',
     ],
     'event_descriptions' => [
         'post_created' => '新しい投稿が作成されたとき。',
@@ -98,6 +100,8 @@ return [
         'post_published' => '投稿がチャンネルで公開されたとき。',
         'post_failed' => '投稿の公開に失敗したとき。',
         'post_deleted' => '投稿が削除されたとき。',
+        'post_deleted_on_network' => '公開済みの投稿がネットワークで削除されたとき。',
+        'post_restored' => '削除された投稿がネットワークに再び表示されたとき。',
     ],
     'http_reasons' => [
         'unknown' => '不明',

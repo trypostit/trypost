@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'التوقيعات',
     'description' => 'نصوص جاهزة لإضافتها إلى منشوراتك.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'تاريخ الإنشاء',
     ],
 
-    'row_actions' => 'إجراءات التوقيع',
     'actions' => [
         'edit' => 'تعديل التوقيع',
-        'delete' => 'حذف التوقيع',
+        'delete' => 'حذف',
+        'settings' => 'الإعدادات',
     ],
 
     'create' => [

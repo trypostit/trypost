@@ -174,15 +174,21 @@ test('labels and post types combine', function () {
             ->etc());
 });
 
-test('a label of another workspace or a deleted label is refused', function () {
+test('a label of another workspace or a deleted label matches no post instead of failing', function () {
     $foreign = WorkspaceLabel::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
     $deleted = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    Post::query()->whereKey($this->reel->post_id)->sole()->labels()->attach($deleted);
     $deleted->delete();
 
     foreach ([$foreign, $deleted] as $label) {
         $this->actingAs($this->user)
             ->get(filteredInsightsUrl($this->instagram, ['labels' => [$label->id]]))
-            ->assertSessionHasErrors('labels.0');
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.labels', [$label->id])
+                ->where('report.summary.posts.value', 0)
+                ->has('publications.data', 0)
+                ->etc());
     }
 
     $this->actingAs($this->user)
@@ -229,3 +235,47 @@ test('the channel export is not available for another workspace channel', functi
         ->get(route('app.channels.insights.download', ['account' => $other, 'format' => 'csv']))
         ->assertNotFound();
 });
+
+test('the poll type counts polls made on the network that were never imported', function (string $platform, ContentType $postType, ContentType $pollType, string $filter, array $expected) {
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $this->workspace->id]);
+    $type = ['poll' => $pollType, 'post' => $postType][$filter]->value;
+    $publish = function (string $key, int $daysAgo, ?ContentType $contentType = null, PublicationContentType $publicationType = PublicationContentType::Text) use ($account): array {
+        $post = filled($contentType)
+            ? Post::factory()->forAccount($account, $contentType)->published()->create(['user_id' => $this->user->id])
+            : null;
+        $publication = AnalyticsPublication::factory()->create([
+            'workspace_id' => $this->workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'network' => $account->platform->network(),
+            'platform_user_id' => $account->platform_user_id,
+            'platform' => $account->platform,
+            'post_id' => $post?->id,
+            'content_type' => $publicationType,
+            'provider_published_at' => now('UTC')->subDays($daysAgo),
+        ]);
+
+        return [$key => $publication->id];
+    };
+    $ids = [
+        ...$publish('post', 2, $postType),
+        ...$publish('poll', 3, $pollType),
+        ...$publish('external_post', 4),
+        ...$publish('external_poll', 5, publicationType: PublicationContentType::Poll),
+    ];
+
+    $this->actingAs($this->user)
+        ->get(filteredInsightsUrl($account, ['types' => [$type]]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.summary.posts.value', count($expected))
+            ->where('publications.data', fn ($publications): bool => collect($publications)->pluck('id')->sort()->values()->all() === collect($expected)->map(fn (string $key): string => $ids[$key])->sort()->values()->all())
+            ->etc());
+})->with([
+    'x' => ['x', ContentType::XPost, ContentType::XPoll],
+    'mastodon' => ['mastodon', ContentType::MastodonPost, ContentType::MastodonPoll],
+    'threads' => ['threads', ContentType::ThreadsPost, ContentType::ThreadsPoll],
+])->with([
+    'poll' => ['poll', ['poll', 'external_poll']],
+    'post' => ['post', ['post', 'external_post']],
+]);

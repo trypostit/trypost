@@ -291,6 +291,25 @@ test('a content type from another network is rejected for a destination', functi
         ->assertJsonValidationErrors('destinations.0.content_type');
 });
 
+test('a poll is refused as the format a repurposed video publishes as', function (string $platform, ContentType $type) {
+    $account = SocialAccount::factory()->for($this->workspace)->{$platform}()->create();
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $account->id,
+                'content_type' => $type->value,
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['destinations.0.content_type' => __('repurposes.errors.destination_needs_video')]);
+})->with([
+    'x poll' => ['x', ContentType::XPoll],
+    'mastodon poll' => ['mastodon', ContentType::MastodonPoll],
+    'threads poll' => ['threads', ContentType::ThreadsPoll],
+]);
+
 test('the api refuses a transition the interface would never offer', function () {
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -406,4 +425,21 @@ test('google business is rejected as a destination', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['destinations.0.social_account_id' => __('repurposes.errors.destination_not_supported')]);
+});
+
+test('activating returns the same body when PostHog is enabled', function () {
+    enablePostHog();
+    Queue::fake();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationPayload($this->tiktok)],
+    ]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.activate', $repurpose))
+        ->assertOk()
+        ->assertJsonPath('status', Status::Active->value)
+        ->assertJsonMissingPath('source_account');
 });

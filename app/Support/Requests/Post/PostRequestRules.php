@@ -16,6 +16,7 @@ use App\Rules\ContentTypeMatchesPlatform;
 use App\Rules\ContentTypeMatchesPostChannel;
 use App\Rules\PostContentFitsMaxLength;
 use App\Support\PostMediaRules;
+use App\Support\PostMeta;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Support\Collection;
@@ -169,7 +170,7 @@ class PostRequestRules
         self::addMediaCompatibilityErrors($validator, $post, $input);
 
         if (array_key_exists('meta', $input)) {
-            PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $post->socialAccount ?? $post->platform, self::effectiveMeta($post, $input), contentType: data_get($input, 'content_type') ?? $post->content_type);
+            PostPlatformMetaRules::addRequiredOnPublishErrors($validator, $post->socialAccount ?? $post->platform, self::effectiveMeta($post, $input), contentType: ContentType::resolve(data_get($input, 'content_type')) ?? $post->content_type);
         }
     }
 
@@ -246,13 +247,14 @@ class PostRequestRules
     }
 
     /**
-     * The meta the update would store: the submitted keys over the stored ones.
+     * The meta the update would store: the submitted keys over the stored ones,
+     * merged as `UpdatePost` merges them (`PostMeta::merge()`).
      *
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
     private static function effectiveMeta(Post $post, array $input): array
     {
-        return [...($post->meta ?? []), ...(array) data_get($input, 'meta', [])];
+        return PostMeta::merge($post->meta ?? [], (array) data_get($input, 'meta', []));
     }
 }

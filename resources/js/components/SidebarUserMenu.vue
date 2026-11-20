@@ -14,6 +14,7 @@ import {
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { portal } from '@/routes/app/billing';
 import type { User } from '@/types';
 
@@ -36,11 +37,24 @@ const subscriptionPastDue = computed<boolean>(() =>
 );
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
+const { createOrUpgrade } = useWorkspaceLimit(
+    () => workspaces.value.length,
+);
 
 const workspaceUpgradeDialogOpen = ref(false);
 
+const isMenuOpen = ref(false);
+
+const closeMenu = (): void => {
+    isMenuOpen.value = false;
+};
+
 const openWorkspaceUpgradeDialog = (): void => {
     workspaceUpgradeDialogOpen.value = true;
+};
+
+const handleCreateWorkspace = (): void => {
+    createOrUpgrade(openWorkspaceUpgradeDialog);
 };
 </script>
 
@@ -72,7 +86,7 @@ const openWorkspaceUpgradeDialog = (): void => {
         <div
             class="flex items-center gap-2 border-t border-sidebar-border px-4 py-2.5 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-1 group-data-[collapsible=icon]:px-2.5"
         >
-            <DropdownMenu>
+            <DropdownMenu v-model:open="isMenuOpen">
                 <DropdownMenuTrigger as-child>
                     <button
                         type="button"
@@ -116,7 +130,8 @@ const openWorkspaceUpgradeDialog = (): void => {
                         :current-workspace="currentWorkspace"
                         :workspaces="workspaces"
                         :can-create-workspace="canCreateWorkspace"
-                        @upgrade-required="openWorkspaceUpgradeDialog"
+                        @create-workspace="handleCreateWorkspace"
+                        @close="closeMenu"
                     />
                 </DropdownMenuContent>
             </DropdownMenu>

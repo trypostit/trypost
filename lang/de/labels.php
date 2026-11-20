@@ -17,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Label bearbeiten',
         'delete' => 'Label löschen',
         'more' => 'Weitere Aktionen',
+        'settings' => 'Einstellungen',
         'view_posts' => 'Beiträge ansehen',
+        'view_insights' => 'Insights ansehen',
     ],
 
     'create' => [

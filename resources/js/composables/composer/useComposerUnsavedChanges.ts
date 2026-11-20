@@ -2,6 +2,7 @@ import { nextTick, ref, watch } from 'vue';
 
 import { useUnsavedChanges } from '@/composables/composer/useUnsavedChanges';
 import type { usePostComposition } from '@/composables/usePostComposition';
+import type { InstagramAudio } from '@/types/instagram';
 import { PostStatus } from '@/types/post';
 
 interface ComposerUnsavedChangesOptions {
@@ -18,28 +19,56 @@ interface ComposerUnsavedChangesOptions {
 }
 
 /**
+ * The meta as the guard compares it: an Instagram track counts by its id and
+ * volumes only. Its name, cover and preview come with the id, and the composer
+ * fills them in or renews them on its own, so they never count as a change.
+ */
+const withoutTrackDetails = (meta: Record<string, any>): Record<string, any> => {
+    const audio = meta.audio as InstagramAudio | null | undefined;
+
+    if (!audio) return meta;
+
+    return {
+        ...meta,
+        audio: {
+            id: audio.id,
+            audio_volume: audio.audio_volume,
+            video_volume: audio.video_volume,
+        },
+    };
+};
+
+/**
  * The composer's unsaved-changes guard: compares what saving would send with
  * what it would have sent when the post opened. A file still uploading counts
  * too: it joins the post only once the upload finishes.
  *
- * Settings fill some values in on their own once their data loads (a renewed
- * music cover, the TikTok creator's limits), so the opened state is taken
- * again at the person's first interaction and nothing counts before it.
+ * Settings fill some values in on their own once their data loads (the TikTok
+ * creator's limits), so the opened state is taken again at the person's first
+ * interaction and nothing counts before it. A music track's name, cover and
+ * preview can arrive after that interaction, so they are left out entirely.
  */
 export const useComposerUnsavedChanges = (
     options: ComposerUnsavedChangesOptions,
 ) => {
     const { composition, scheduleMode } = options;
 
-    /** What saving would send, so any change the person makes counts. */
+    /** What saving would send, a track's details aside, so any change the person makes counts. */
     const snapshot = (): string => {
         const mode = scheduleMode();
+        const submission = composition.materialize(
+            PostStatus.Scheduled,
+            mode === 'next' || mode === 'top' ? mode : null,
+        );
 
         return JSON.stringify({
-            submission: composition.materialize(
-                PostStatus.Scheduled,
-                mode === 'next' || mode === 'top' ? mode : null,
-            ),
+            submission: {
+                ...submission,
+                destinations: submission.destinations.map((destination) => ({
+                    ...destination,
+                    meta: withoutTrackDetails(destination.meta),
+                })),
+            },
             scheduleMode: mode,
         });
     };

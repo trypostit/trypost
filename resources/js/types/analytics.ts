@@ -1,10 +1,17 @@
 import type { MediaItem } from '@/types/media';
+import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface Comparison {
     value: number | null;
     previous: number | null;
     change: number | null;
+}
+
+/** A span of days, both ends included, as `Y-m-d` dates. */
+export interface DateRange {
+    start: string;
+    end: string;
 }
 
 export interface AccountIdentityData {
@@ -14,7 +21,23 @@ export interface AccountIdentityData {
     username: string | null;
     avatar_url: string | null;
     status?: SocialAccountStatusValue | null;
+    verified_badge?: VerifiedBadge | null;
 }
+
+/** A channel with one number of its own, as a bar chart's row. */
+export interface AccountMetricRow {
+    account: AccountIdentityData;
+    value: number | null;
+}
+
+/** How the Followers card is drawn: per channel, over time, or the change per channel. */
+export type FollowersChartMode = 'bar' | 'line' | 'growth';
+
+/** How the Posts card is drawn: per channel, or over time split by channel. */
+export type PostsChartMode = 'bar' | 'stacked';
+
+/** How long one bar of a chart over time covers. */
+export type BucketResolution = 'daily' | 'weekly' | 'monthly';
 
 export interface FollowerAccount extends AccountIdentityData {
     social_account_id: string | null;
@@ -22,22 +45,21 @@ export interface FollowerAccount extends AccountIdentityData {
     value: number | null;
     growth: number | null;
     net?: number | null;
-    provenance: string | null;
 }
 
 export interface PostAccount extends AccountIdentityData {
     count: number;
 }
 
-export interface PostBucket {
-    start: string;
-    end: string;
+export interface PostBucket extends DateRange {
     accounts: Record<string, number>;
     total: number;
 }
 
 export interface TopPost {
     id: string;
+    /** Its place in the Top 5, from 1. */
+    rank: number;
     post_id: string | null;
     social_account_key: string;
     platform: string;
@@ -45,6 +67,7 @@ export interface TopPost {
     username: string | null;
     avatar_url: string | null;
     status?: SocialAccountStatusValue | null;
+    verified_badge?: VerifiedBadge | null;
     origin: string;
     content_type: string;
     availability: string;
@@ -93,8 +116,8 @@ export interface CoverageRow {
 
 export interface AnalyticsReport {
     bounds: { min: string | null; max: string | null };
-    range: { start: string; end: string };
-    previous_range: { start: string; end: string };
+    range: DateRange;
+    previous_range: DateRange;
     summary: {
         posts: Comparison;
         followers: Comparison;
@@ -120,7 +143,9 @@ export interface AnalyticsReport {
         series: { date: string; accounts: Record<string, number | null> }[];
     };
     posts: {
-        resolution: string;
+        resolution: BucketResolution;
+        /** Every post the channels sent over the period. */
+        total: number;
         accounts: PostAccount[];
         buckets: PostBucket[];
     };
@@ -147,6 +172,8 @@ export interface AnalyticsFilters {
 
 export interface WorkspaceAnalyticsFilters extends AnalyticsFilters {
     channels: string[];
+    labels: string[];
+    untagged: boolean;
 }
 
 export interface AnalyticsChannelOption {
@@ -190,17 +217,17 @@ export interface FollowerGrowthMonth {
 }
 
 export interface FollowerGrowthRate {
-    range: { start: string; end: string };
+    range: DateRange;
     months: FollowerGrowthMonth[];
     latest: number | null;
     previous: number | null;
 }
 
 export interface ChannelMetricSeries {
-    resolution: 'daily' | 'weekly' | 'monthly';
+    resolution: BucketResolution;
     metrics: SeriesMetric[];
-    range: { start: string; end: string };
-    previous_range: { start: string; end: string };
+    range: DateRange;
+    previous_range: DateRange;
     current: MetricSeriesPoint[];
     previous: MetricSeriesPoint[];
     totals: { current: SeriesValues; previous: SeriesValues };
@@ -250,6 +277,37 @@ export interface PublicationMetricFact {
     provider_metric?: string | null;
 }
 
+export interface PublicationPoll {
+    options: { label: string; votes: number }[];
+    voting_status: 'open' | 'closed' | null;
+    end_datetime: string | null;
+    duration_minutes: number | null;
+    /** Mastodon, multiple choice: how many people voted, which each share is of. */
+    voters?: number | null;
+    /** Mastodon: the votes stay hidden until the poll ends. */
+    totals_hidden?: boolean;
+}
+
+/** The poll of one thread reply; `reply` is its position among the replies, from 0. */
+export interface PublicationThreadPoll extends PublicationPoll {
+    reply: number;
+}
+
+export const PublicationAvailability = {
+    Available: 'available',
+    Deleted: 'deleted',
+    Unavailable: 'unavailable',
+} as const;
+
+export type PublicationAvailabilityValue =
+    (typeof PublicationAvailability)[keyof typeof PublicationAvailability];
+
+export type MetricsUnavailableReason =
+    | 'not_published'
+    | 'deleted_on_network'
+    | 'platform_not_supported'
+    | 'not_collected';
+
 export interface PublicationAnalyticsDetail {
     available: true;
     reason: null;
@@ -260,11 +318,13 @@ export interface PublicationAnalyticsDetail {
         platform: string;
         origin: string;
         content_type: string;
-        availability: string;
+        availability: PublicationAvailabilityValue;
         provider_published_at: string | null;
         permalink: string | null;
         excerpt: string | null;
         preview_metadata: Record<string, unknown> | null;
+        poll: PublicationPoll | null;
+        thread_polls: PublicationThreadPoll[];
         account_display_name: string | null;
         account_username: string | null;
         account_avatar_url: string | null;

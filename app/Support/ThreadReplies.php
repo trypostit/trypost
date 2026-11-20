@@ -12,6 +12,8 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\Poll;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -20,7 +22,9 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post with the scopes we hold.
  * Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply.
+ * string is a text-only reply. On X and Mastodon a reply may carry a poll
+ * instead of media (`{text, media, poll}`), following that network's `Poll`
+ * rules with the reply text as its question.
  */
 class ThreadReplies
 {
@@ -36,6 +40,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
+            Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
     }
@@ -45,8 +50,17 @@ class ThreadReplies
         return self::replyContentType($platform) !== null;
     }
 
+    public static function maxReplies(?Platform $platform): int
+    {
+        return match ($platform) {
+            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
+            Platform::LinkedIn, Platform::LinkedInPage => 1,
+            default => 0,
+        };
+    }
+
     /**
-     * @return list<array{text: string, media: list<array<string, mixed>>}>
+     * @return list<array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}>
      */
     public static function of(mixed $meta): array
     {
@@ -57,7 +71,7 @@ class ThreadReplies
     }
 
     /**
-     * @return array{text: string, media: list<array<string, mixed>>}
+     * @return array{text: string, media: list<array<string, mixed>>, poll?: array{options: list<string>, duration_minutes?: int}}
      */
     public static function reply(mixed $reply): array
     {
@@ -66,11 +80,114 @@ class ThreadReplies
         }
 
         $text = data_get($reply, 'text');
+        $poll = data_get($reply, 'poll');
 
-        return [
+        $normalized = [
             'text' => is_string($text) ? $text : '',
             'media' => array_values(array_filter((array) data_get($reply, 'media', []), is_array(...))),
         ];
+
+        if (is_array($poll) && filled($poll)) {
+            $normalized['poll'] = Poll::normalize($poll);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * The poll rules a reply of this network follows, or null when its
+     * replies cannot be polls (a network without polls, or without threads).
+     *
+     * @return class-string<Poll>|null
+     */
+    public static function replyPoll(?Platform $platform): ?string
+    {
+        if (! self::supports($platform)) {
+            return null;
+        }
+
+        return Poll::for($platform);
+    }
+
+    /**
+     * Whether a reply is a poll (`of()` drops an empty one).
+     *
+     * @param  array<string, mixed>  $reply
+     */
+    public static function hasPoll(array $reply): bool
+    {
+        return filled(data_get($reply, 'poll'));
+    }
+
+    /**
+     * The replies as the network keeps them: each poll with only what that
+     * network's polls take, or no polls on a network whose replies cannot be
+     * polls.
+     *
+     * @param  array<string, mixed>  $meta
+     * @return array<string, mixed>
+     */
+    public static function forNetwork(?Platform $platform, array $meta): array
+    {
+        if (blank(data_get($meta, 'thread_replies'))) {
+            return $meta;
+        }
+
+        $poll = self::replyPoll($platform);
+
+        $meta['thread_replies'] = collect(self::of($meta))
+            ->map(function (array $reply) use ($poll): array {
+                if (! self::hasPoll($reply)) {
+                    return $reply;
+                }
+
+                if (blank($poll)) {
+                    return Arr::except($reply, 'poll');
+                }
+
+                return [...$reply, 'poll' => $poll::forNetwork(data_get($reply, 'poll'))];
+            })
+            ->all();
+
+        return $meta;
+    }
+
+    /**
+     * What no reply poll may store, even as a draft (repeated choices, a
+     * choice or a length beyond what the network takes), keyed by field.
+     *
+     * @return array<string, string>
+     */
+    public static function pollFormatErrors(?Platform $platform, ?array $meta): array
+    {
+        $poll = self::replyPoll($platform);
+
+        if (blank($poll)) {
+            return [];
+        }
+
+        return collect(self::of($meta))
+            ->filter(self::hasPoll(...))
+            ->flatMap(fn (array $reply, int $index): array => $poll::formatErrors($reply, "thread_replies.{$index}."))
+            ->all();
+    }
+
+    /**
+     * A reply poll carries no media, drafts included. A network whose replies
+     * cannot be polls drops them on save.
+     *
+     * @return array<string, string>
+     */
+    public static function pollMediaErrors(?Platform $platform, ?array $meta): array
+    {
+        if (blank(self::replyPoll($platform))) {
+            return [];
+        }
+
+        return collect(self::of($meta))
+            ->filter(fn (array $reply): bool => self::hasPoll($reply) && filled($reply['media']))
+            ->mapWithKeys(fn (array $reply, int $index): array => ["thread_replies.{$index}.media" => __('posts.errors.media_not_accepted')])
+            ->all();
     }
 
     /**
@@ -103,20 +220,20 @@ class ThreadReplies
             return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
+        if (count($replies) > self::maxReplies($platform)) {
+            return ['thread_replies', trans_choice('posts.form.thread.too_many', self::maxReplies($platform), ['max' => self::maxReplies($platform)])];
+        }
+
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
-        $limit = $target instanceof SocialAccount ? $target->maxContentLength() : $platform->maxContentLength();
+        $account = $target instanceof SocialAccount ? $target : null;
 
         foreach ($replies as $index => $reply) {
-            $blank = blank(Str::trim($reply['text']));
+            $violation = self::replyViolation($reply, $platform, $account, $reserved);
 
-            if ($blank && $reply['media'] === []) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_empty')];
-            }
+            if (filled($violation)) {
+                [$field, $message] = $violation;
 
-            $over = $blank ? 0 : max(0, mb_strlen(app(ContentSanitizer::class)->displayText($reply['text'], $platform)) + $reserved - $limit);
-
-            if ($over > 0) {
-                return ["thread_replies.{$index}", __('posts.form.thread.reply_too_long', ['limit' => $limit - $reserved, 'over' => $over])];
+                return [self::replyKey($index, $field), $message];
             }
         }
 
@@ -124,8 +241,96 @@ class ThreadReplies
     }
 
     /**
+     * The validation key of a reply (`thread_replies.0`), or of one of its
+     * fields (`thread_replies.0.poll.options`).
+     */
+    private static function replyKey(int $index, ?string $field): string
+    {
+        if (blank($field)) {
+            return "thread_replies.{$index}";
+        }
+
+        return "thread_replies.{$index}.{$field}";
+    }
+
+    /**
+     * Why one reply cannot go: a poll is checked as a poll, any other reply
+     * needs text or media and must fit the account's limit. The field is
+     * relative to the reply (null for the reply itself).
+     *
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function replyViolation(array $reply, Platform $platform, ?SocialAccount $account, int $reserved): ?array
+    {
+        $poll = self::replyPoll($platform);
+
+        if (filled($poll) && self::hasPoll($reply)) {
+            return self::pollReplyViolation($poll, $reply, $account, $reserved);
+        }
+
+        if (filled(Str::trim($reply['text']))) {
+            return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
+        }
+
+        if (filled($reply['media'])) {
+            return null;
+        }
+
+        if (self::replyContentType($platform) === ContentType::LinkedInComment) {
+            return [null, __('posts.form.thread.comment_empty')];
+        }
+
+        return [null, __('posts.form.thread.reply_empty')];
+    }
+
+    /**
+     * A reply poll needs its question (the reply's text) within the poll's cap,
+     * and choices and a length the network accepts.
+     *
+     * @param  class-string<Poll>  $poll
+     * @param  array{text: string, media: list<array<string, mixed>>, poll?: array<string, mixed>}  $reply
+     * @return array{0: string|null, 1: string}|null
+     */
+    private static function pollReplyViolation(string $poll, array $reply, ?SocialAccount $account, int $reserved): ?array
+    {
+        $questionViolation = $poll::questionViolation($reply['text']);
+
+        if (filled($questionViolation)) {
+            return [null, $questionViolation];
+        }
+
+        return self::lengthViolation($reply['text'], $poll::platform(), $account, $poll::contentType(), $reserved)
+            ?? $poll::firstViolation($reply);
+    }
+
+    /**
+     * A reply's text over its limit, measured as the network counts it.
+     *
+     * @return array{0: null, 1: string}|null
+     */
+    private static function lengthViolation(string $text, Platform $platform, ?SocialAccount $account, ?ContentType $type, int $reserved): ?array
+    {
+        $display = app(ContentSanitizer::class)->displayText($text, $platform);
+        $over = ContentType::overflowFor($account, $platform, $type, $display, $reserved);
+
+        if ($over === 0) {
+            return null;
+        }
+
+        $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
+
+        if ($type === ContentType::LinkedInComment) {
+            return [null, __('posts.form.thread.comment_too_long', ['limit' => $limit, 'over' => $over])];
+        }
+
+        return [null, __('posts.form.thread.reply_too_long', ['limit' => $limit, 'over' => $over])];
+    }
+
+    /**
      * Each reply's media against the reply content type, keyed
-     * `thread_replies.{n}.media`.
+     * `thread_replies.{n}.media`. A reply poll takes no media at all, which
+     * `pollMediaErrors()` reports, so it is left out here.
      *
      * @return array<string, string>
      */
@@ -138,9 +343,14 @@ class ThreadReplies
         }
 
         $errors = [];
+        $pollsTakeReplies = filled(self::replyPoll($platform));
 
         foreach (self::of($meta) as $index => $reply) {
             $key = "thread_replies.{$index}.media";
+
+            if ($pollsTakeReplies && self::hasPoll($reply)) {
+                continue;
+            }
             $count = count($reply['media']);
 
             if ($count > $contentType->maxMediaCount()) {

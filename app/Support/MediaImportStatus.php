@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Events\MediaImportSettled;
 use App\Models\Media;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * The state of one queued import, kept in the cache for an hour and bound
- * to the user and workspace that started it.
+ * to the user and workspace that started it. Settling it (imported or
+ * failed) tells the workspace's composers through MediaImportSettled.
  */
 final class MediaImportStatus
 {
@@ -35,12 +37,12 @@ final class MediaImportStatus
 
     public static function complete(string $importId, Media $media): void
     {
-        self::transition($importId, ['status' => self::DONE, 'media_id' => $media->id]);
+        self::settle($importId, ['status' => self::DONE, 'media_id' => $media->id]);
     }
 
     public static function fail(string $importId, string $reason): void
     {
-        self::transition($importId, ['status' => self::FAILED, 'reason' => $reason]);
+        self::settle($importId, ['status' => self::FAILED, 'reason' => $reason]);
     }
 
     /**
@@ -65,7 +67,7 @@ final class MediaImportStatus
     /**
      * @param  array<string, mixed>  $changes
      */
-    private static function transition(string $importId, array $changes): void
+    private static function settle(string $importId, array $changes): void
     {
         $entry = Cache::get(self::key($importId));
 
@@ -74,6 +76,8 @@ final class MediaImportStatus
         }
 
         self::put($importId, [...$entry, ...$changes]);
+
+        MediaImportSettled::dispatch($importId, (string) data_get($entry, 'workspace_id'));
     }
 
     /**

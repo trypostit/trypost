@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '标签',
     'description' => '用标签整理你的帖子。',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => '编辑标签',
         'delete' => '删除标签',
         'more' => '更多操作',
+        'settings' => '设置',
         'view_posts' => '查看帖子',
+        'view_insights' => '查看 Insights',
     ],
 
     'create' => [

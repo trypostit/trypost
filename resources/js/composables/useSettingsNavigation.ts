@@ -5,7 +5,7 @@ import {
     IconCoin,
     IconCode,
     IconSignature,
-    IconPlug,
+    IconMcp,
     IconBuilding,
     IconAdjustmentsHorizontal,
     IconTag,
@@ -154,7 +154,7 @@ export const useSettingsNavigation = () => {
                         IconCode,
                         workspace && canManageWorkspace.value,
                     ),
-                    ...item('mcp', mcp.url(), IconPlug, workspace),
+                    ...item('mcp', mcp.url(), IconMcp, workspace),
                     ...item(
                         'webhooks',
                         webhooks.url(),

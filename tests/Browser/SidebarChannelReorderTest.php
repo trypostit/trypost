@@ -7,23 +7,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Pest\Browser\Playwright\Client;
 
-function waitForSidebarReorderCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForSidebarReorderTestId(mixed $page, string $testId): void
-{
-    waitForSidebarReorderCondition($page, "(() => { const el = document.querySelector('[data-testid=\"{$testId}\"]'); return el && el.getBoundingClientRect().height > 0; })()");
-}
-
 function sidebarReorderMouse(mixed $page, string $method, array $params = []): void
 {
     $page->script('true');
@@ -129,11 +112,10 @@ function sidebarReorderSettle(mixed $page, User $user, array $expected): void
 {
     $ids = json_encode($expected);
 
-    for ($attempt = 0; $attempt < 50 && sidebarReorderDbOrder($user) !== $expected; $attempt++) {
-        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
-    }
+    waitForDatabase($page, fn (): bool => sidebarReorderDbOrder($user) === $expected);
 
-    waitForSidebarReorderCondition($page, "JSON.stringify([...document.querySelectorAll('[data-testid=\"sidebar-channels-list\"] > [data-testid^=\"sidebar-channel-row-\"]')].map((row) => row.dataset.testid.replace('sidebar-channel-row-', ''))) === JSON.stringify({$ids}) && !document.querySelector('[data-testid=\"sidebar-channel-placeholder\"]')");
+    waitForCondition($page, "JSON.stringify([...document.querySelectorAll('[data-testid=\"sidebar-channels-list\"] > [data-testid^=\"sidebar-channel-row-\"]')].map((row) => row.dataset.testid.replace('sidebar-channel-row-', ''))) === JSON.stringify({$ids})");
+    waitForGone($page, '@sidebar-channel-placeholder');
 }
 
 test('the second channel can be dragged to the top twice in a row', function () {
@@ -141,7 +123,7 @@ test('the second channel can be dragged to the top twice in a row', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$delta->id}");
+    waitFor($page, "@sidebar-channel-{$delta->id}");
 
     sidebarReorderDrag($page, $bravo, $alpha, 0.25);
     $expected = [$bravo->id, $alpha->id, $charlie->id, $delta->id];
@@ -165,7 +147,7 @@ test('a placeholder opens where the channel would land and the drop uses it', fu
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$delta->id}");
+    waitFor($page, "@sidebar-channel-{$delta->id}");
     $height = $page->script("document.querySelector('[data-testid=\"sidebar-channel-row-{$charlie->id}\"]').offsetHeight");
 
     $page->script(<<<'JS'
@@ -180,7 +162,7 @@ test('a placeholder opens where the channel would land and the drop uses it', fu
     JS);
 
     sidebarReorderPickUp($page, $charlie);
-    waitForSidebarReorderTestId($page, 'sidebar-channel-placeholder');
+    waitFor($page, '@sidebar-channel-placeholder');
 
     expect($page->script('window.__dragImages'))->toBe(['data:image']);
     expect($page->script("document.querySelector('[data-testid=\"sidebar-channel-placeholder-preview\"]')?.textContent"))->toEndWith($charlie->display_name ?: $charlie->username);
@@ -214,7 +196,7 @@ test('escape cancels a drag and restores the order', function () {
     $original = [$alpha->id, $bravo->id, $charlie->id, $delta->id];
 
     $page = visit(route('app.posts.index'));
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$delta->id}");
+    waitFor($page, "@sidebar-channel-{$delta->id}");
 
     sidebarReorderPickUp($page, $delta);
     sidebarReorderMoveTo($page, "sidebar-channel-row-{$alpha->id}", 0.25);
@@ -241,7 +223,7 @@ test('an expanded channel submenu does not shift the drop position', function ()
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $alpha));
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$alpha->id}-insights");
+    waitFor($page, "@sidebar-channel-{$alpha->id}-insights");
 
     sidebarReorderPickUp($page, $delta);
     sidebarReorderMoveTo($page, "sidebar-channel-row-{$alpha->id}", 0.75);
@@ -278,13 +260,13 @@ test('the list scrolls while a channel is dragged near its bottom edge', functio
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'))->resize(1280, 700);
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$alpha->id}");
+    waitFor($page, "@sidebar-channel-{$alpha->id}");
 
     expect($page->script("document.querySelector('[data-testid=\"sidebar-channels-list\"]').scrollTop"))->toBe(0);
 
     sidebarReorderPickUp($page, $alpha);
     sidebarReorderMoveTo($page, 'sidebar-channels-list', 0.97);
-    waitForSidebarReorderCondition($page, '(() => { const list = document.querySelector(\'[data-testid="sidebar-channels-list"]\'); return list.scrollTop + list.clientHeight >= list.scrollHeight - 1; })()');
+    waitForState($page, '@sidebar-channels-list', 'element.scrollTop + element.clientHeight >= element.scrollHeight - 1');
 
     $list = $page->script(<<<'JS'
         (() => {

@@ -19,4 +19,14 @@ class UpdatePostNoteRequest extends FormRequest
             'body' => ['required', 'string', 'max:2000'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'body.max' => __('notes.errors.too_long'),
+        ];
+    }
 }

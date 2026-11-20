@@ -6,6 +6,7 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Idea\CreateIdeaTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
+use App\Mcp\Tools\Platform\ListContentTypesTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostsTool;
@@ -21,10 +22,12 @@ use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
 use App\Mcp\Tools\Signature\CreateSignatureTool;
 use App\Mcp\Tools\Signature\ListSignaturesTool;
 use App\Mcp\Tools\SocialAccount\GeneratePostingScheduleTool;
+use App\Mcp\Tools\SocialAccount\GetInstagramAudioTool;
 use App\Mcp\Tools\SocialAccount\GetTikTokCreatorInfoTool;
 use App\Mcp\Tools\SocialAccount\ListFreeSlotsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ReorderQueueTool;
+use App\Mcp\Tools\SocialAccount\SearchInstagramAudioTool;
 use App\Mcp\Tools\SocialAccount\UpdatePostingScheduleTool;
 use App\Mcp\Tools\Webhook\CreateWebhookTool;
 use App\Support\PostPlatformMetaRules;
@@ -60,12 +63,27 @@ test('post writing tools say content is plain text', function (string $tool) {
 })->with('post writing tools');
 
 test('tools that schedule or publish list the required meta', function (string $tool) {
-    expect(mcpToolText($tool))->toContain('privacy_level')->toContain('board_id')->toContain('channel_id')->toContain('required_meta');
+    expect(mcpToolText($tool))->toContain('privacy_level')->toContain('board_id')->toContain('channel_id')->toContain('required_meta')
+        ->toContain('x_poll')->toContain('meta.poll');
 })->with([
     'create-post' => [CreatePostTool::class],
     'create-posts' => [CreatePostsTool::class],
     'update-post' => [UpdatePostTool::class],
     'publish-post' => [PublishPostTool::class],
+]);
+
+test('list-content-types says a poll is refused even as a draft and what it needs', function () {
+    expect(mcpToolDescription(ListContentTypesTool::class))
+        ->toContain('The exception is a poll')
+        ->toContain('drafts included')
+        ->toContain('x_poll, mastodon_poll, threads_poll) needs meta.poll');
+});
+
+test('the attach media tools say a poll takes no media', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('x_poll, mastodon_poll or threads_poll) takes no media');
+})->with([
+    'upload' => [AttachMediaFromUploadTool::class],
+    'url' => [AttachMediaFromUrlTool::class],
 ]);
 
 test('tools that change a post list the statuses that block it', function (string $tool) {
@@ -180,3 +198,21 @@ test('the account listing and post text explain the x long post limit', function
     'create-posts' => [CreatePostsTool::class],
     'update-post' => [UpdatePostTool::class],
 ]);
+
+test('the instagram audio tools name the platform that takes music', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('instagram-facebook');
+})->with([
+    'search' => [SearchInstagramAudioTool::class],
+    'get' => [GetInstagramAudioTool::class],
+]);
+
+test('the instagram audio search says which fields let the app show the track', function () {
+    expect(mcpToolDescription(SearchInstagramAudioTool::class))->toContain('title, artist, cover_url and preview_url into meta.audio');
+});
+
+test('the meta documentation explains how instagram music and collaborators behave', function () {
+    expect(PostPlatformMetaRules::documentation())
+        ->toContain('platform instagram-facebook')
+        ->toContain('only after they accept the invite in the Instagram app')
+        ->toContain('only refused when the post publishes');
+});

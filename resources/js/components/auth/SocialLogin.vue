@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import Github from '@thesvg/vue/github';
+import Google from '@thesvg/vue/google';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import { detectPreferences } from '@/lib/detectPreferences';
 import { redirect as githubRedirect } from '@/routes/auth/github';
 import { redirect as googleRedirect } from '@/routes/auth/google';
@@ -22,9 +25,11 @@ const githubEnabled = computed(() => Boolean(page.props.githubAuthEnabled));
 const hasSocial = computed(() => googleEnabled.value || githubEnabled.value);
 
 const detected = detectPreferences();
+const { signupLocale } = useGuestLocale();
 
 const query = computed(() => {
     const params: Record<string, string> = {
+        locale: signupLocale.value,
         timezone: detected.timezone,
         week_starts_on: detected.week_starts_on,
     };
@@ -48,11 +53,7 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="googleUrl"
             >
-                <img
-                    src="/images/social/google.svg"
-                    alt="Google"
-                    class="size-4"
-                />
+                <Google aria-hidden="true" class="size-4" />
                 {{
                     mode === 'login'
                         ? $t('auth.google_login')
@@ -68,10 +69,9 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                 as="a"
                 :href="githubUrl"
             >
-                <img
-                    src="/images/social/github.svg"
-                    alt="GitHub"
-                    class="size-4 dark:invert"
+                <Github
+                    aria-hidden="true"
+                    class="size-4 text-foreground [&_path]:fill-current"
                 />
                 {{
                     mode === 'login'

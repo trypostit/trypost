@@ -14,20 +14,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 
-function waitForChannelSettingsPageTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function channelSettingsPageSetup(?PostingSchedule $schedule = null): array
 {
     $user = User::factory()->create();
@@ -46,28 +32,23 @@ function channelSettingsPageSetup(?PostingSchedule $schedule = null): array
 function pickChannelSettingsOption(mixed $page, string $select, string $value): void
 {
     $page->click("@{$select}");
-    waitForChannelSettingsPageTestId($page, "{$select}-option-{$value}");
+    waitFor($page, "@{$select}-option-{$value}");
     $page->click("@{$select}-option-{$value}");
 }
 
 function chooseChannelSettingsTimezone(mixed $page, string $search, string $optionKey): void
 {
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-trigger');
+    waitFor($page, '@channel-timezone-trigger');
     $page->click('@channel-timezone-trigger');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-search');
+    waitFor($page, '@channel-timezone-search');
     $page->type('@channel-timezone-search', $search);
-    waitForChannelSettingsPageTestId($page, "channel-timezone-option-{$optionKey}");
+    waitFor($page, "@channel-timezone-option-{$optionKey}");
     $page->click("@channel-timezone-option-{$optionKey}");
 }
 
 function waitForChannelSaved(mixed $page, SocialAccount $channel, callable $predicate): void
 {
-    for ($i = 0; $i < 40; $i++) {
-        if ($predicate($channel->fresh())) {
-            return;
-        }
-        $page->script('new Promise((r) => setTimeout(r, 100))');
-    }
+    waitForDatabase($page, fn (): bool => $predicate($channel->fresh()));
 }
 
 test('adding a weekday time, removing one and toggling a day persist', function () {
@@ -75,13 +56,13 @@ test('adding a weekday time, removing one and toggling a day persist', function 
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
+    waitFor($page, '@schedule-day-1-time-0942');
 
     pickChannelSettingsOption($page, 'schedule-add-target', 'weekdays');
     pickChannelSettingsOption($page, 'schedule-add-hour', '18');
     pickChannelSettingsOption($page, 'schedule-add-minute', '30');
     $page->click('@schedule-add-submit');
-    waitForChannelSettingsPageTestId($page, 'schedule-day-5-time-1830');
+    waitFor($page, '@schedule-day-5-time-1830');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 6);
 
     $page->click('@schedule-day-1-time-0942-remove');
@@ -104,7 +85,7 @@ test('the time zone and goal save from the page', function () {
 
     $page = visit(route('app.channels.settings', $channel));
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-submit');
+    waitFor($page, '@channel-timezone-confirm-submit');
     $page->click('@channel-timezone-confirm-submit');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->timezone === 'Europe/Warsaw');
 
@@ -126,25 +107,25 @@ test('clear all, generate from goal and copy from another channel', function () 
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-clear');
+    waitFor($page, '@schedule-clear');
     $page->click('@schedule-clear');
-    waitForChannelSettingsPageTestId($page, 'schedule-clear-confirm');
+    waitFor($page, '@schedule-clear-confirm');
     $page->click('@schedule-clear-confirm');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 0);
 
     $page->click('@schedule-generate');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-goal');
+    waitFor($page, '@schedule-generate-goal');
     $page->click('@schedule-generate-goal');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-confirm');
+    waitFor($page, '@schedule-generate-confirm');
     $page->click('@schedule-generate-confirm');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 3);
 
     $page->click('@schedule-generate');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-copy');
+    waitFor($page, '@schedule-generate-copy');
     $page->click('@schedule-generate-copy');
-    waitForChannelSettingsPageTestId($page, "schedule-generate-copy-{$other->id}");
+    waitFor($page, "@schedule-generate-copy-{$other->id}");
     $page->click("@schedule-generate-copy-{$other->id}");
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-confirm');
+    waitFor($page, '@schedule-generate-confirm');
     $page->click('@schedule-generate-confirm');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->days()[6]['times'] === ['17:08']);
 
@@ -165,29 +146,22 @@ test('the copy from channel search filters the list and a pick asks to confirm',
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-generate');
+    waitFor($page, '@schedule-generate');
     $page->click('@schedule-generate');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-copy');
+    waitFor($page, '@schedule-generate-copy');
     $page->click('@schedule-generate-copy');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-copy-search');
+    waitFor($page, '@schedule-generate-copy-search');
     $page->assertVisible("@schedule-generate-copy-{$x->id}")
         ->assertVisible("@schedule-generate-copy-{$bluesky->id}");
 
     $page->type('@schedule-generate-copy-search', 'Bluesky');
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (!document.querySelector('[data-testid="schedule-generate-copy-{$x->id}"]')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForGone($page, "@schedule-generate-copy-{$x->id}");
 
     $page->assertMissing("@schedule-generate-copy-{$x->id}")
         ->assertVisible("@schedule-generate-copy-{$bluesky->id}");
 
     $page->click("@schedule-generate-copy-{$bluesky->id}");
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-confirm');
+    waitFor($page, '@schedule-generate-confirm');
     $page->assertVisible('@schedule-generate-confirm')
         ->assertNoJavaScriptErrors();
 });
@@ -199,9 +173,9 @@ test('a fifth time on a day is blocked', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-add-target');
+    waitFor($page, '@schedule-add-target');
     pickChannelSettingsOption($page, 'schedule-add-target', '2');
-    waitForChannelSettingsPageTestId($page, 'schedule-add-limit');
+    waitFor($page, '@schedule-add-limit');
 
     $page->assertVisible('@schedule-add-limit')->assertMissing('@schedule-add-submit');
     expect($channel->fresh()->posting_schedule->days()[2]['times'])->toHaveCount(4);
@@ -214,7 +188,7 @@ test('a channel without a schedule shows the empty state', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-empty');
+    waitFor($page, '@schedule-empty');
 
     $page->assertVisible('@schedule-empty')->assertVisible('@schedule-generate')->assertNoJavaScriptErrors();
 });
@@ -226,7 +200,7 @@ test('two rapid removes on different days both persist', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0900-remove');
+    waitFor($page, '@schedule-day-1-time-0900-remove');
     $page->click('@schedule-day-1-time-0900-remove')->click('@schedule-day-2-time-1000-remove');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 1);
     $page->script('new Promise((r) => setTimeout(r, 500))');
@@ -244,9 +218,9 @@ test('meet my posting goal is disabled with a hint once the goal is met', functi
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-generate');
+    waitFor($page, '@schedule-generate');
     $page->click('@schedule-generate');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-goal');
+    waitFor($page, '@schedule-generate-goal');
 
     $page->assertAttribute('@schedule-generate-goal', 'data-disabled', '')
         ->assertAttribute('@schedule-generate-copy', 'data-disabled', '')
@@ -256,7 +230,7 @@ test('meet my posting goal is disabled with a hint once the goal is met', functi
     $page->assertScript('(() => { const toggle = document.querySelector("[data-testid=schedule-day-1-toggle]"); const label = toggle.parentElement.querySelector("span").getBoundingClientRect(); const box = toggle.getBoundingClientRect(); return Math.abs((label.top + label.height / 2) - (box.top + box.height / 2)) <= 1 && label.height < 20; })()', true);
 
     $page->hover('@schedule-generate-goal-hint');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-goal-tooltip');
+    waitFor($page, '@schedule-generate-goal-tooltip');
 
     $page->assertVisible('@schedule-generate-goal-tooltip')
         ->assertMissing('@schedule-generate-confirm');
@@ -270,7 +244,7 @@ test('the schedule grid follows the week start and the 12-hour clock', function 
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-day-0-time-1430-meridiem');
+    waitFor($page, '@schedule-day-0-time-1430-meridiem');
 
     $page->assertScript("document.querySelector('[data-testid^=\"schedule-day-\"]').dataset.testid", 'schedule-day-0')
         ->assertSeeIn('@schedule-day-0-time-1430-hour', '2')
@@ -283,9 +257,9 @@ test('the channel time zone picker suggests the browser time zone first', functi
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-trigger');
+    waitFor($page, '@channel-timezone-trigger');
     $page->click('@channel-timezone-trigger');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-detected');
+    waitFor($page, '@channel-timezone-detected');
 
     $page->assertVisible('@channel-timezone-detected')->assertNoJavaScriptErrors();
 });
@@ -296,21 +270,21 @@ test('changing the time zone asks first and cancel and escape keep the old zone'
 
     $page = visit(route('app.channels.settings', $channel));
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-dialog');
+    waitFor($page, '@channel-timezone-confirm-dialog');
 
     $order = $page->script('[...document.querySelectorAll(\'[data-testid="channel-timezone-confirm-dialog"] button[data-testid]\')].map((button) => button.dataset.testid)');
     expect($order)->toBe(['channel-timezone-confirm-cancel', 'channel-timezone-confirm-submit']);
     $page->assertSeeIn('@channel-timezone-confirm-dialog', 'Europe/Warsaw')
         ->click('@channel-timezone-confirm-cancel');
-    $page->script('(async () => { for (let i = 0; i < 100; i++) { if (!document.querySelector(\'[data-testid="channel-timezone-confirm-dialog"]\')) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    waitForGone($page, '@channel-timezone-confirm-dialog');
 
     $page->assertSeeIn('@channel-timezone-trigger', 'UTC');
     expect($channel->fresh()->timezone)->toBe('UTC');
 
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-cancel');
+    waitFor($page, '@channel-timezone-confirm-cancel');
     $page->keys('@channel-timezone-confirm-cancel', 'Escape');
-    $page->script('(async () => { for (let i = 0; i < 100; i++) { if (!document.querySelector(\'[data-testid="channel-timezone-confirm-dialog"]\')) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    waitForGone($page, '@channel-timezone-confirm-dialog');
     $page->assertMissing('@channel-timezone-confirm-dialog');
     expect($channel->fresh()->timezone)->toBe('UTC');
 
@@ -330,13 +304,11 @@ test('confirming the time zone saves it and reflows the queue into the new zone 
 
     $page = visit(route('app.channels.settings', $channel));
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-submit');
+    waitFor($page, '@channel-timezone-confirm-submit');
     $page->click('@channel-timezone-confirm-submit');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->timezone === 'Europe/Warsaw');
 
-    for ($i = 0; $i < 40 && $post->fresh()->scheduled_at->setTimezone('Europe/Warsaw')->format('H:i') !== '09:42'; $i++) {
-        $page->script('new Promise((r) => setTimeout(r, 100))');
-    }
+    waitForDatabase($page, fn (): bool => $post->fresh()->scheduled_at->setTimezone('Europe/Warsaw')->format('H:i') === '09:42');
 
     $local = $post->fresh()->scheduled_at->setTimezone('Europe/Warsaw');
     expect($local->format('H:i'))->toBe('09:42')
@@ -350,7 +322,7 @@ test('on a phone the schedule stacks one day per row in week-start order without
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel))->resize(390, 844);
-    waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
+    waitFor($page, '@schedule-day-1-time-0942');
 
     $page->assertScript(<<<'JS'
         (() => {
@@ -373,13 +345,13 @@ test('on a phone toggling a day, adding and removing a time persist', function (
     $this->actingAs($user);
 
     $page = visit(route('app.channels.settings', $channel))->resize(390, 844);
-    waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
+    waitFor($page, '@schedule-day-1-time-0942');
 
     pickChannelSettingsOption($page, 'schedule-add-target', 'weekdays');
     pickChannelSettingsOption($page, 'schedule-add-hour', '18');
     pickChannelSettingsOption($page, 'schedule-add-minute', '30');
     $page->click('@schedule-add-submit');
-    waitForChannelSettingsPageTestId($page, 'schedule-day-5-time-1830');
+    waitFor($page, '@schedule-day-5-time-1830');
     waitForChannelSaved($page, $channel, fn (SocialAccount $c): bool => $c->posting_schedule->slotCount() === 6);
 
     $page->click('@schedule-day-1-time-0942-remove');

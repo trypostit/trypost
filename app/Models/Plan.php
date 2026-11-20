@@ -46,4 +46,15 @@ class Plan extends Model
     {
         return $query->where('is_archived', false);
     }
+
+    /**
+     * @param  array<int, string>  $priceIds
+     */
+    public function scopeForStripePrices(Builder $query, array $priceIds): Builder
+    {
+        return $query->where(function (Builder $query) use ($priceIds): void {
+            $query->whereIn('stripe_monthly_price_id', $priceIds)
+                ->orWhereIn('stripe_yearly_price_id', $priceIds);
+        });
+    }
 }

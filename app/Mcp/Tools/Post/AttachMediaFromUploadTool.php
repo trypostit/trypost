@@ -26,7 +26,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
 #[IsOpenWorld(false)]
-#[Description('Attach a file uploaded with request-media-upload-tool to a post. The upload_token is the value request-media-upload-tool returned; the file is resolved by that token within the current workspace, then appended after the post media (to reorder or remove media, call update-post-tool with the media ids in the new order). The file type must be one the post channel accepts (allowed_media_types in list-content-types-tool). Posts that are publishing, published or failed cannot change; a scheduled post edited by a member who needs approval goes back to pending_approval. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here. Media is added to the post itself; to give a thread reply its own media, pass the upload_token in meta.thread_replies with update-post-tool.')]
+#[Description('Attach a file uploaded with request-media-upload-tool to a post. The upload_token is the value request-media-upload-tool returned; the file is resolved by that token within the current workspace, then appended after the post media (to reorder or remove media, call update-post-tool with the media ids in the new order). The file type must be one the post channel accepts (allowed_media_types in list-content-types-tool). Posts that are publishing, published or failed cannot change; a scheduled post edited by a member who needs approval goes back to pending_approval. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here. A poll (content_type x_poll, mastodon_poll or threads_poll) takes no media, so attaching to one is refused whatever its status. Media is added to the post itself; to give a thread reply its own media, pass the upload_token in meta.thread_replies with update-post-tool.')]
 class AttachMediaFromUploadTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -81,7 +81,7 @@ class AttachMediaFromUploadTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to attach the uploaded media to.'),
             'upload_token' => $schema->string()->required()->description('upload_token returned by request-media-upload-tool, after the file was sent to its upload_url.'),
-            'alt' => $schema->string()->description('Optional accessibility alt text for the media (applies to images).'),
+            'alt' => $schema->string()->description('Optional accessibility alt text for an image or a video (ignored for PDF; sent for a video only where supports_video_alt_text).'),
             'meta' => $schema->object()->description('Optional per-item settings: user_tags (Instagram feed images only: up to 20 of {username, x, y}, x and y between 0 and 1 from the top-left corner), cover_offset_ms (video cover frame in milliseconds, for content types with supports_video_cover).'),
         ];
     }

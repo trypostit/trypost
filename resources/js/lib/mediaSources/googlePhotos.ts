@@ -1,9 +1,9 @@
 import { useHttp } from '@inertiajs/vue3';
 
 import dayjs from '@/dayjs';
+import { signInWithGoogle } from '@/lib/mediaSources/googleSignIn';
 import { destroy, show } from '@/routes/app/media/google-photos/sessions';
 
-import { signInWithGoogle } from './googleSignIn';
 
 export interface GooglePhotosPick {
     sessionId: string;
@@ -36,15 +36,16 @@ const discardSession = (sessionId: string): void => {
 };
 
 /**
- * Polls the session until the user picked, closed the window or Google's
- * timeout passed. `popup.closed` only means "closed" when the window was
- * still reachable once the session arrived: a popup cut off from this
- * window reads closed while the user is still picking.
+ * Polls the session until the user picked or Google's timeout passed.
+ * Whether the window was closed cannot be told: Google's picker cuts the
+ * popup off from this window (its opener policy), so `popup.closed` reads
+ * true while the user is still picking, and deleting the session then
+ * makes Google refuse their "Done". A picker closed without choosing is
+ * discarded when the session times out.
  */
 const waitForPick = async (
     popup: Window,
     session: ClaimedSession,
-    closeIsReliable: boolean,
 ): Promise<GooglePhotosPick | null> => {
     const http = useHttp<Record<string, never>, SessionStatus>({});
     const deadline = dayjs().add(session.polling.timeout_ms, 'millisecond');
@@ -53,7 +54,6 @@ const waitForPick = async (
     while (dayjs().isBefore(deadline)) {
         await wait(interval);
 
-        const closed = closeIsReliable && popup.closed;
         let status: SessionStatus;
 
         try {
@@ -69,11 +69,6 @@ const waitForPick = async (
             popup.close();
 
             return { sessionId: session.session_id };
-        }
-        if (closed) {
-            discardSession(session.session_id);
-
-            return null;
         }
 
         interval = status.polling.interval_ms;
@@ -91,8 +86,8 @@ const waitForPick = async (
  * server then creates the picker session with the token it keeps, and the
  * popup moves on to the picker. Resolves the session the server imports
  * every picked item from, or null when the popup was
- * blocked, sign-in failed (a toast says why) or the user closed the picker
- * without choosing.
+ * blocked, sign-in failed (a toast says why) or the session timed out
+ * without a choice.
  */
 export const pickFromGooglePhotos = async (
     signal?: AbortSignal,
@@ -107,5 +102,5 @@ export const pickFromGooglePhotos = async (
     const session = await signIn.result;
     if (!session?.session_id) return null;
 
-    return waitForPick(signIn.popup, session, !signIn.popup.closed);
+    return waitForPick(signIn.popup, session);
 };

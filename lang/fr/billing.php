@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Facturation',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Facturé mensuellement',
         'prices' => [
-            'first_month' => '1 $',
             'socials' => ['monthly' => '19 $', 'yearly_per_month' => '15,83 $', 'yearly' => '190 $'],
             'workspaces' => ['monthly' => '99 $', 'yearly_per_month' => '82,50 $', 'yearly' => '990 $'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Annuel',
         'save_two_months' => '2 mois offerts',
         'per_month' => '/mois',
+        'per_year' => '/an',
         'workspaces_one' => 'Un espace de travail',
         'workspaces_unlimited' => 'Espaces de travail illimités',
         'workspaces_tooltip' => 'Un espace de travail correspond à une marque ou un client, séparé des autres : ses propres réseaux sociaux, signatures, libellés, statistiques, permissions des membres et connexion MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Choisir :plan',
         'upgrade' => 'Passer à :plan',
         'downgrade' => 'Revenir à :plan',
-        'start_first_month' => 'Activer pour :price',
         'billed_yearly_total' => 'Facturé annuellement · :price (2 mois offerts)',
         'socials_tagline' => 'Idéal pour les créateurs et petites marques.',
         'workspaces_tagline' => 'Idéal pour les agences et grandes entreprises.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Active',
+            'trial' => 'Essai gratuit',
+            'cancelling' => 'Annulée',
+            'past_due' => 'En retard',
+        ],
         'change' => 'Changer d\'offre',
-        'price_monthly' => ':price/mois',
-        'price_yearly' => ':price/an',
+        'subscribe' => 'S\'abonner',
         'trial_until' => 'Essai jusqu\'au :date',
-        'renews' => 'Renouvellement automatique',
         'cancelled' => 'Annulé, se termine le :date',
-        'workspaces_usage' => 'Workspaces : :count sur :limit',
+        'discount_until' => ':discount de réduction jusqu\'au :date',
+        'discount_forever' => ':discount de réduction sur chaque paiement',
+        'discount_once' => ':discount de réduction sur votre prochain paiement',
     ],
 
     'subscription' => [
-        'title' => 'Moyen de paiement',
+        'title' => 'Moyens de paiement',
+        'default' => 'Par défaut',
         'description' => 'Mettez à jour votre carte ou vos informations de facturation sur Stripe.',
         'no_payment_method' => 'Aucun moyen de paiement enregistré pour le moment.',
         'expires_on' => 'Expire le :month/:year',
         'manage_stripe' => 'Gérer sur Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Offre',
+        'invoices' => 'Factures',
+    ],
+
     'invoices' => [
-        'title' => 'Factures',
-        'description' => 'Téléchargez vos factures passées.',
+        'columns' => [
+            'date' => 'Date',
+            'amount' => 'Montant',
+            'status' => 'Statut',
+        ],
+        'empty_title' => 'Aucune facture pour l\'instant',
+        'empty_description' => 'Vos factures apparaîtront ici après votre premier paiement.',
         'paid' => 'Payée',
         'download' => 'Télécharger la facture',
     ],

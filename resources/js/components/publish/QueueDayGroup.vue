@@ -130,6 +130,9 @@ const slotTarget = (item: QueueItem): QueueSlotTarget | null =>
                     :post="posts[item.post_id]"
                     tab="queue"
                     :display-timezone="displayTimezone"
+                    :can-move-to-top="
+                        positions[item.post_id]?.canMoveToTop ?? false
+                    "
                     :can-move-up="positions[item.post_id]?.canMoveUp ?? false"
                     :can-move-down="
                         positions[item.post_id]?.canMoveDown ?? false

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Media\StartMediaImport;
 use App\Enums\Media\Source;
+use App\Enums\Media\Type as MediaType;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Account;
 use App\Models\Media;
@@ -210,12 +211,12 @@ test('the stashed token is dropped when the job fails or the user lost access', 
     Queue::fake();
     $file = GoogleDriveFiles::toRemoteFile(GOOGLE_DRIVE_TEST_TOKEN, ['id' => 'abc', 'name' => 'a.png']);
 
-    [$failed] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, $file);
-    (new ImportRemoteMedia($failed, $this->workspace->id, $this->user->id, $file->withHeaders([])))->failed(new RuntimeException('worker died'));
+    [$failed] = StartMediaImport::execute($this->user, $this->workspace, $file, MediaType::cases());
+    (new ImportRemoteMedia($failed, $this->workspace->id, $this->user->id, $file->withHeaders([]), MediaType::cases()))->failed(new RuntimeException('worker died'));
 
-    [$revoked] = StartMediaImport::execute($this->user, $this->workspace, Source::GoogleDrive, $file);
+    [$revoked] = StartMediaImport::execute($this->user, $this->workspace, $file, MediaType::cases());
     $this->workspace->members()->detach($this->user->id);
-    app()->call([new ImportRemoteMedia($revoked, $this->workspace->id, $this->user->id, $file->withHeaders([])), 'handle']);
+    app()->call([new ImportRemoteMedia($revoked, $this->workspace->id, $this->user->id, $file->withHeaders([]), MediaType::cases()), 'handle']);
 
     expect(Cache::has(MediaImportHeaders::key($failed)))->toBeFalse()
         ->and(Cache::has(MediaImportHeaders::key($revoked)))->toBeFalse();
@@ -246,7 +247,7 @@ test('the bearer token is not forwarded on a redirect to googleusercontent', fun
 });
 
 test('telescope never records the access token', function () {
-    $job = new ImportRemoteMedia('import-id', $this->workspace->id, $this->user->id, GoogleDriveFiles::toRemoteFile(GOOGLE_DRIVE_TEST_TOKEN, ['id' => 'abc', 'name' => 'a.png']));
+    $job = new ImportRemoteMedia('import-id', $this->workspace->id, $this->user->id, GoogleDriveFiles::toRemoteFile(GOOGLE_DRIVE_TEST_TOKEN, ['id' => 'abc', 'name' => 'a.png']), MediaType::cases());
 
     expect(json_encode(ExtractProperties::from($job)))->not->toContain(GOOGLE_DRIVE_TEST_TOKEN)
         ->and(data_get(ExtractProperties::from($job), 'file.properties.headers.Authorization'))->toBe('********');
@@ -299,7 +300,10 @@ test('google drive is not importable or offered with only the login google clien
 });
 
 test('the drive url is built only from the configured host and a plain id', function () {
-    config()->set('trypost.media_sources.google_drive.api', 'https://drive.example.test/drive/v3/');
+    config()->set('trypost.media_sources.google_drive.api', data_get(
+        trypostConfigWith(['GOOGLE_DRIVE_API_URL' => 'https://drive.example.test/drive/v3/']),
+        'media_sources.google_drive.api',
+    ));
 
     $file = GoogleDriveFiles::toRemoteFile('token', ['id' => 'abc-1_2', 'name' => 'a.png']);
 

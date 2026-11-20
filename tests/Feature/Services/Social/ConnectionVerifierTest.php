@@ -1361,7 +1361,7 @@ test('bluesky verify throws TokenExpiredException when getProfile reports Expire
 
 test('mastodon verify treats a 5xx as platform unavailable, not a disconnect', function () {
     $account = SocialAccount::factory()->mastodon()->create();
-    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+    $instance = $account->mastodon_instance;
 
     Http::fake([
         "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'Internal Server Error'], 503),
@@ -1373,7 +1373,7 @@ test('mastodon verify treats a 5xx as platform unavailable, not a disconnect', f
 
 test('mastodon verify throws TokenExpiredException on a bare 401, with no refresh attempt (mastodon tokens do not expire)', function () {
     $account = SocialAccount::factory()->mastodon()->create();
-    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+    $instance = $account->mastodon_instance;
 
     Http::fake([
         "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'The access token was revoked'], 401),
@@ -1395,7 +1395,7 @@ test('mastodon verify throws TokenExpiredException on a bare 403 from verify_cre
     // revoked. MastodonPublishException::isConfirmedDeadToken() is 401-only
     // by design — this is ConnectionVerifier's own additional check.
     $account = SocialAccount::factory()->mastodon()->create();
-    $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+    $instance = $account->mastodon_instance;
 
     Http::fake([
         "{$instance}/api/v1/accounts/verify_credentials" => Http::response(['error' => 'This action is not allowed'], 403),

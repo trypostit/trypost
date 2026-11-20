@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '서명',
     'description' => '게시물에 추가할 재사용 텍스트입니다.',
@@ -16,10 +18,10 @@ return [
         'created_at' => '생성일',
     ],
 
-    'row_actions' => '서명 작업',
     'actions' => [
         'edit' => '서명 편집',
-        'delete' => '서명 삭제',
+        'delete' => '삭제',
+        'settings' => '설정',
     ],
 
     'create' => [

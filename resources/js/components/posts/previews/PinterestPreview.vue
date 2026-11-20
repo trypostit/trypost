@@ -4,8 +4,7 @@ import { computed } from 'vue';
 
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
-
-import type { PreviewProps } from './types';
+import type { PreviewProps } from '@/components/posts/previews/types';
 
 const props = defineProps<PreviewProps>();
 

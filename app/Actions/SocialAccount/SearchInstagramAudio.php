@@ -72,7 +72,7 @@ class SearchInstagramAudio
      */
     private static function search(SocialAccount $account, string $query, array $types): array
     {
-        $url = "{$account->platform->instagramGraphBaseUrl()}/ig_audio";
+        $url = "{$account->platform->graphApiUrl()}/ig_audio";
 
         $responses = Http::pool(fn (Pool $pool): array => collect($types)
             ->map(fn (string $type) => $pool->as($type)
@@ -135,7 +135,7 @@ class SearchInstagramAudio
                 ->map(fn (string $id) => $pool->as($id)
                     ->connectTimeout(3)
                     ->timeout(5)
-                    ->get("{$account->platform->instagramGraphBaseUrl()}/{$id}", [
+                    ->get("{$account->platform->graphApiUrl()}/{$id}", [
                         'user_id' => $account->platform_user_id,
                         'access_token' => $account->access_token,
                     ]))

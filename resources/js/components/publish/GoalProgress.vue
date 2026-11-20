@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { IconPencil } from '@tabler/icons-vue';
+import { createReusableTemplate } from '@vueuse/core';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,20 @@ import {
 } from '@/components/ui/popover';
 import { settings } from '@/routes/app/channels';
 
-const props = defineProps<{
-    channelId: string;
-    sent: number;
-    scheduled: number;
-    goal: number;
-}>();
+const props = withDefaults(
+    defineProps<{
+        channelId: string;
+        sent: number;
+        scheduled: number;
+        goal: number;
+        testId?: string;
+        /** Off where another control already opens the channel settings (the channels list): the progress shows, without its popover. */
+        interactive?: boolean;
+    }>(),
+    { testId: 'publish-goal', interactive: true },
+);
+
+const [DefineSummary, ReuseSummary] = createReusableTemplate();
 
 const percent = computed(() =>
     Math.min(100, Math.round((props.sent / Math.max(props.goal, 1)) * 100)),
@@ -28,18 +37,13 @@ const toDo = computed(() =>
 </script>
 
 <template>
-    <Popover>
-        <PopoverTrigger as-child>
-            <button
-                type="button"
-                class="flex max-w-full min-w-0 items-center gap-1 rounded-md text-sm text-muted-foreground transition-control hover:text-foreground data-[state=open]:text-foreground"
-                data-testid="publish-goal-progress"
-            >
+    <span class="contents">
+        <DefineSummary>
             <svg
                 viewBox="0 0 14 14"
                 class="size-3.5 shrink-0 -rotate-90"
                 aria-hidden="true"
-                data-testid="publish-goal-pie"
+                :data-testid="`${testId}-pie`"
                 :data-percent="percent"
             >
                 <circle
@@ -62,70 +66,88 @@ const toDo = computed(() =>
                     class="stroke-success"
                 />
             </svg>
-                <span class="truncate">{{
-                    $t('posts.publish.goal', {
-                        sent: String(sent),
-                        goal: String(goal),
-                    })
-                }}</span>
-            </button>
-        </PopoverTrigger>
-        <PopoverContent
-            align="start"
-            class="w-auto min-w-64 p-0"
-            data-testid="publish-goal-popover"
+            <span class="truncate">{{
+                $t('posts.publish.goal', {
+                    sent: String(sent),
+                    goal: String(goal),
+                })
+            }}</span>
+        </DefineSummary>
+
+        <span
+            v-if="!interactive"
+            class="flex max-w-full min-w-0 items-center gap-1 text-sm text-muted-foreground"
+            :data-testid="`${testId}-progress`"
         >
-            <div class="flex items-start justify-between gap-4 px-4 py-3">
-                <div class="min-w-0">
-                    <p class="text-xs text-muted-foreground">
-                        {{ $t('posts.publish.goal_popover.title') }}
-                    </p>
-                    <p class="text-sm font-emphasis text-foreground">
-                        {{
-                            $tChoice(
-                                'posts.publish.goal_popover.per_week',
-                                goal,
-                                { count: String(goal) },
-                            )
-                        }}
-                    </p>
-                </div>
-                <Button
-                    as-child
-                    variant="ghost"
-                    size="icon-sm"
-                    class="shrink-0"
+            <ReuseSummary />
+        </span>
+        <Popover v-else>
+            <PopoverTrigger as-child>
+                <button
+                    type="button"
+                    class="flex max-w-full min-w-0 items-center gap-1 rounded-md text-sm text-muted-foreground transition-control hover:text-foreground data-[state=open]:text-foreground"
+                    :data-testid="`${testId}-progress`"
                 >
-                    <Link
-                        :href="settings.url(channelId)"
-                        :aria-label="$t('posts.publish.goal_popover.edit')"
-                        data-testid="publish-goal-edit"
-                    >
-                        <IconPencil class="size-4" />
-                    </Link>
-                </Button>
-            </div>
-            <div
-                class="flex items-center gap-2 border-t border-border px-4 py-3 text-sm whitespace-nowrap text-muted-foreground"
-                data-testid="publish-goal-summary"
+                    <ReuseSummary />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent
+                align="start"
+                class="w-auto min-w-64 p-0"
+                :data-testid="`${testId}-popover`"
             >
-                <span
-                    ><span class="font-emphasis text-foreground">{{ sent }}</span>
-                    {{ $t('posts.publish.goal_popover.sent') }}</span
+                <div class="flex items-start justify-between gap-4 px-4 py-3">
+                    <div class="min-w-0">
+                        <p class="text-xs text-muted-foreground">
+                            {{ $t('posts.publish.goal_popover.title') }}
+                        </p>
+                        <p class="text-sm font-emphasis text-foreground">
+                            {{
+                                $tChoice(
+                                    'posts.publish.goal_popover.per_week',
+                                    goal,
+                                    { count: String(goal) },
+                                )
+                            }}
+                        </p>
+                    </div>
+                    <Button
+                        as-child
+                        variant="ghost"
+                        size="icon-sm"
+                        class="shrink-0"
+                    >
+                        <Link
+                            :href="settings.url(channelId)"
+                            :aria-label="$t('posts.publish.goal_popover.edit')"
+                            :data-testid="`${testId}-edit`"
+                        >
+                            <IconPencil class="size-4" />
+                        </Link>
+                    </Button>
+                </div>
+                <div
+                    class="flex items-center gap-2 border-t border-border px-4 py-3 text-sm whitespace-nowrap text-muted-foreground"
+                    :data-testid="`${testId}-summary`"
                 >
-                <span aria-hidden="true">·</span>
-                <span
-                    ><span class="font-emphasis text-foreground">{{
-                        scheduled
-                    }}</span>
-                    {{ $t('posts.publish.goal_popover.scheduled') }}</span
-                >
-                <span aria-hidden="true">·</span>
-                <span
-                    ><span class="font-emphasis text-foreground">{{ toDo }}</span>
-                    {{ $t('posts.publish.goal_popover.to_do') }}</span
-                >
-            </div>
-        </PopoverContent>
-    </Popover>
+                    <span
+                        ><span class="font-emphasis text-foreground">{{ sent }}</span>
+                        {{ $t('posts.publish.goal_popover.sent') }}</span
+                    >
+                    <span aria-hidden="true">·</span>
+                    <span
+                        ><span class="font-emphasis text-foreground">{{
+                            scheduled
+                        }}</span>
+                        {{ $t('posts.publish.goal_popover.scheduled') }}</span
+                    >
+                    <span aria-hidden="true">·</span>
+                    <span
+                        ><span class="font-emphasis text-foreground">{{ toDo }}</span>
+                        {{ $t('posts.publish.goal_popover.to_do') }}</span
+                    >
+                </div>
+            </PopoverContent>
+        </Popover>
+    </span>
 </template>

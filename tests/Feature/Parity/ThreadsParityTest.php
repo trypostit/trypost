@@ -13,6 +13,7 @@ use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\ThreadReplies;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -226,8 +227,8 @@ test('the batch path rejects 25 replies through api and mcp', function () {
 });
 
 test('scheduling replies on a network that cannot chain is rejected through api and mcp', function () {
-    $account = threadsParityPlatform(Platform::LinkedIn);
-    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::LinkedInPost->value, 'meta' => ['thread_replies' => ['Two']]];
+    $account = threadsParityPlatform(Platform::Threads);
+    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['thread_replies' => ['Two']]];
     $message = __('posts.form.thread.unsupported');
 
     $response = $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), [
@@ -245,6 +246,27 @@ test('scheduling replies on a network that cannot chain is rejected through api 
         'content' => 'Root',
         'destinations' => [$destination],
     ])->assertHasErrors([$message]);
+});
+
+test('a linkedin post takes one comment and a second one is refused the same way through api and mcp', function () {
+    $account = threadsParityPlatform(Platform::LinkedIn);
+    $payload = fn (array $replies): array => [
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'content' => 'Root',
+        'destinations' => [['social_account_id' => $account->id, 'content_type' => ContentType::LinkedInPost->value, 'meta' => ['thread_replies' => $replies]]],
+    ];
+    $message = trans_choice('posts.form.thread.too_many', 1, ['max' => 1]);
+
+    $response = $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), $payload(['Two', 'Three']))->assertUnprocessable();
+    expect(collect($response->json('errors'))->flatten()->implode(' '))->toContain($message);
+    $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), $payload(['Link below']))->assertCreated();
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, $payload(['Two', 'Three']))->assertHasErrors([$message]);
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, $payload(['Link below']))->assertOk();
+
+    expect(Post::query()->where('social_account_id', $account->id)->get()->map(fn (Post $post): array => ThreadReplies::of($post->meta))->all())
+        ->toBe([[['text' => 'Link below', 'media' => []]], [['text' => 'Link below', 'media' => []]]]);
 });
 
 function threadsParityDraft(SocialAccount $account, string $contentType): Post

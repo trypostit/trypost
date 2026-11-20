@@ -8,6 +8,9 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
 use App\Support\Hashtags;
+use App\Support\Social\MastodonPoll;
+use App\Support\Social\ThreadsPoll;
+use App\Support\Social\XPoll;
 use Illuminate\Support\Str;
 
 enum Platform: string
@@ -199,9 +202,20 @@ enum Platform: string
      * Whether the platform's API accepts image alt text (accessibility
      * description) on published media.
      */
-    public function supportsAltText(): bool
+    public function supportsImageAltText(): bool
     {
         return $this->altTextMaxLength() !== null;
+    }
+
+    /**
+     * Whether the platform's API also takes alt text on a video: Bluesky
+     * (`alt` on `app.bsky.embed.video`), Mastodon (`description` on the media
+     * upload), Threads (`alt_text` on a video container) and Discord
+     * (`description` on the attachment).
+     */
+    public function supportsVideoAltText(): bool
+    {
+        return in_array($this, [self::Bluesky, self::Mastodon, self::Threads, self::Discord], true);
     }
 
     /**
@@ -243,17 +257,6 @@ enum Platform: string
             self::Discord => 2000,
             self::GoogleBusiness => 1500,
         };
-    }
-
-    /**
-     * Number of characters by which the given content exceeds this platform's
-     * hard cap. Returns 0 when it fits. Single source of truth for content-
-     * length checks — used both at schedule-validation time and at publish
-     * time itself so the two paths can never drift apart.
-     */
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
     }
 
     /**
@@ -484,11 +487,16 @@ enum Platform: string
             ->all();
     }
 
-    public function instagramGraphBaseUrl(): string
+    /**
+     * The Graph API a Meta platform reads and publishes through.
+     */
+    public function graphApiUrl(): string
     {
         return match ($this) {
-            self::InstagramFacebook => (string) config('trypost.platforms.instagram-facebook.graph_api'),
-            default => (string) config('trypost.platforms.instagram.graph_api'),
+            self::Facebook => config('trypost.platforms.facebook.graph_api'),
+            self::Instagram => config('trypost.platforms.instagram.graph_api'),
+            self::InstagramFacebook => config('trypost.platforms.instagram-facebook.graph_api'),
+            self::Threads => config('trypost.platforms.threads.graph_api'),
         };
     }
 
@@ -593,6 +601,9 @@ enum Platform: string
                 'categoryOptions' => Category::options(),
                 'defaultCategoryId' => Category::DEFAULT->value,
             ],
+            self::X => ['poll' => XPoll::limits()],
+            self::Mastodon => ['poll' => MastodonPoll::limits()],
+            self::Threads => ['poll' => ThreadsPoll::limits()],
             default => [],
         };
     }

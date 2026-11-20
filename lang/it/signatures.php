@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Firme',
     'description' => 'Testi riutilizzabili per i tuoi post.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Creata',
     ],
 
-    'row_actions' => 'Azioni della firma',
     'actions' => [
         'edit' => 'Modifica firma',
-        'delete' => 'Elimina firma',
+        'delete' => 'Elimina',
+        'settings' => 'Impostazioni',
     ],
 
     'create' => [

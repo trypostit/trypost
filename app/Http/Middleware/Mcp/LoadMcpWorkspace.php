@@ -1,0 +1,62 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Middleware\Mcp;
+
+use App\Enums\Mcp\Method;
+use App\Http\Middleware\Api\LoadWorkspaceFromToken;
+use App\Jobs\PostHog\TrackMcpToolCalled;
+use App\Services\PostHogService;
+use App\Support\Mcp\ChatGptMcpClient;
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
+
+class LoadMcpWorkspace
+{
+    public function __construct(private readonly LoadWorkspaceFromToken $loadWorkspace) {}
+
+    /**
+     * ChatGPT connecting or listing tools before the user signs in has no
+     * token and so no workspace; every other MCP request loads the workspace
+     * its token was issued for, like the API does.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (blank($request->user()) && ChatGptMcpClient::allowsAnonymousDiscovery($request)) {
+            return $next($request);
+        }
+
+        return $this->loadWorkspace->handle($request, function (Request $request) use ($next): Response {
+            $this->trackToolCalled($request);
+
+            return $next($request);
+        }, 'mcp');
+    }
+
+    /**
+     * Once per user per UTC day, so a busy agent sends one event, not one per call.
+     */
+    private function trackToolCalled(Request $request): void
+    {
+        if ($request->json('method') !== Method::ToolsCall->value) {
+            return;
+        }
+
+        rescue(function () use ($request): void {
+            $user = $request->user();
+            $today = now()->utc();
+            $tool = $request->json('params.name');
+
+            TrackMcpToolCalled::dispatchIf(
+                PostHogService::isEnabled() && Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay()),
+                (string) $user->id,
+                (string) $user->current_workspace_id,
+                $user->token()?->oauth_access_token_id,
+                is_string($tool) ? $tool : null,
+            );
+        });
+    }
+}

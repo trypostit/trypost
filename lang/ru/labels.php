@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Метки',
     'description' => 'Упорядочивайте посты с помощью меток.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Изменить метку',
         'delete' => 'Удалить метку',
         'more' => 'Другие действия',
+        'settings' => 'Настройки',
         'view_posts' => 'Посмотреть посты',
+        'view_insights' => 'Посмотреть Insights',
     ],
 
     'create' => [

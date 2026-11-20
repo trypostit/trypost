@@ -48,16 +48,16 @@ In Tailwind v4, import Tailwind with a regular CSS `@import` statement instead o
 
 ### Replaced Utilities
 
-Tailwind v4 removed deprecated utilities. Use the replacements shown below. Opacity values remain numeric.
+Tailwind v4 removed deprecated utilities. Use the replacements shown below. For opacity, drop the `*-opacity-*` class and append the value as a modifier on the existing color: `bg-blue-500 bg-opacity-50` becomes `bg-blue-500/50`, `text-white text-opacity-75` becomes `text-white/75`.
 
 | Deprecated | Replacement |
 |------------|-------------|
-| bg-opacity-* | bg-black/* |
-| text-opacity-* | text-black/* |
-| border-opacity-* | border-black/* |
-| divide-opacity-* | divide-black/* |
-| ring-opacity-* | ring-black/* |
-| placeholder-opacity-* | placeholder-black/* |
+| bg-opacity-* | bg-{color}/* |
+| text-opacity-* | text-{color}/* |
+| border-opacity-* | border-{color}/* |
+| divide-opacity-* | divide-{color}/* |
+| ring-opacity-* | ring-{color}/* |
+| placeholder-opacity-* | placeholder-{color}/* |
 | flex-shrink-* | shrink-* |
 | flex-grow-* | grow-* |
 | overflow-ellipsis | text-ellipsis |
@@ -84,29 +84,6 @@ If existing pages and components support dark mode, new pages and components mus
 ```html
 <div class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
     Content adapts to color scheme
-</div>
-```
-
-## Common Patterns
-
-### Flexbox Layout
-
-<!-- Flexbox Layout -->
-```html
-<div class="flex items-center justify-between gap-4">
-    <div>Left content</div>
-    <div>Right content</div>
-</div>
-```
-
-### Grid Layout
-
-<!-- Grid Layout -->
-```html
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div>Card 1</div>
-    <div>Card 2</div>
-    <div>Card 3</div>
 </div>
 ```
 

@@ -11,30 +11,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 
-function waitForRecurrenceTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForRecurrenceCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function recurrenceText(mixed $page, string $testId): string
 {
     return $page->script("document.querySelector('[data-testid=\"{$testId}\"]')?.textContent.replace(/\\s+/g, ' ').trim() ?? ''");
@@ -73,19 +49,20 @@ function recurrenceSetup(string $channelZone = 'UTC', ?CarbonImmutable $at = nul
 
 function openRecurrenceDialog(mixed $page, string $key): void
 {
-    waitForRecurrenceTestId($page, "post-card-menu-{$key}");
+    waitFor($page, "@post-card-menu-{$key}");
     $page->click("@post-card-menu-{$key}");
-    waitForRecurrenceTestId($page, "post-recurrence-open-{$key}");
+    waitFor($page, "@post-recurrence-open-{$key}");
     $page->click("@post-recurrence-open-{$key}");
-    waitForRecurrenceTestId($page, "post-recurrence-dialog-{$key}");
+    waitFor($page, "@post-recurrence-dialog-{$key}");
 }
 
 function chooseRecurrenceFrequency(mixed $page, string $postId, string $frequency): void
 {
     $page->click("@post-recurrence-frequency-{$postId}");
-    waitForRecurrenceTestId($page, "post-recurrence-frequency-option-{$frequency}");
+    waitFor($page, "@post-recurrence-frequency-option-{$frequency}");
     $page->click("@post-recurrence-frequency-option-{$frequency}");
-    waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-frequency-{$postId}\"]')?.dataset.value === '{$frequency}' && !document.querySelector('[data-testid=\"post-recurrence-frequency-option-{$frequency}\"]')");
+    waitForState($page, "@post-recurrence-frequency-{$postId}", "element.dataset.value === '{$frequency}'");
+    waitForGone($page, "@post-recurrence-frequency-option-{$frequency}");
 }
 
 test('a scheduled post is made recurring from its card menu', function () {
@@ -93,7 +70,7 @@ test('a scheduled post is made recurring from its card menu', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForRecurrenceTestId($page, "post-card-{$post->id}");
+    waitFor($page, "@post-card-{$post->id}");
     $page->assertMissing("@post-recurrence-banner-{$post->id}")
         ->assertMissing("@post-recurring-{$post->id}");
 
@@ -108,13 +85,13 @@ test('a scheduled post is made recurring from its card menu', function () {
     chooseRecurrenceFrequency($page, $post->id, 'month');
     $page->fill("@post-recurrence-times-{$post->id}", '3');
     $monthly = "This post will be shared every month on the {$scheduledAt->format('jS')} at {$time}, until {$scheduledAt->addMonthsNoOverflow(3)->format('M j, Y')}.";
-    waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-summary-{$post->id}\"]')?.textContent.includes('month')");
+    waitForText($page, "@post-recurrence-summary-{$post->id}", 'month');
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))->toBe($monthly);
 
     $page->fill("@post-recurrence-interval-{$post->id}", '2');
     chooseRecurrenceFrequency($page, $post->id, 'day');
-    waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-summary-{$post->id}\"]')?.textContent.includes('days')");
+    waitForText($page, "@post-recurrence-summary-{$post->id}", 'days');
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))
         ->toBe("This post will be shared every 2 days at {$time}, until {$scheduledAt->addDays(6)->format('M j, Y')}.");
@@ -122,7 +99,7 @@ test('a scheduled post is made recurring from its card menu', function () {
     chooseRecurrenceFrequency($page, $post->id, 'week');
     $page->fill("@post-recurrence-interval-{$post->id}", '1');
     $page->click("@post-recurrence-save-{$post->id}");
-    waitForRecurrenceTestId($page, "post-recurrence-banner-{$post->id}");
+    waitFor($page, "@post-recurrence-banner-{$post->id}");
 
     expect($post->refresh()->recurrence_frequency)->toBe(RecurrenceFrequency::Week)
         ->and($post->recurrence_interval)->toBe(1)
@@ -142,14 +119,14 @@ test('a recurrence is edited and stopped', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForRecurrenceTestId($page, "post-recurrence-banner-{$post->id}");
+    waitFor($page, "@post-recurrence-banner-{$post->id}");
     $page->assertSeeIn("@post-recurrence-banner-{$post->id}", '(2 posts left)');
 
     $page->click("@post-card-menu-{$post->id}");
-    waitForRecurrenceTestId($page, "post-recurrence-open-{$post->id}");
+    waitFor($page, "@post-recurrence-open-{$post->id}");
     $page->assertSeeIn("@post-recurrence-open-{$post->id}", __('posts.recurrence.edit'));
     $page->click("@post-recurrence-open-{$post->id}");
-    waitForRecurrenceTestId($page, "post-recurrence-dialog-{$post->id}");
+    waitFor($page, "@post-recurrence-dialog-{$post->id}");
 
     expect($page->script("document.querySelector('[data-testid=\"post-recurrence-frequency-{$post->id}\"]').dataset.value"))->toBe('day')
         ->and($page->script("document.querySelector('[data-testid=\"post-recurrence-times-{$post->id}\"]').value"))->toBe('2');
@@ -162,13 +139,13 @@ test('a recurrence is edited and stopped', function () {
 
     $page->fill("@post-recurrence-times-{$post->id}", '5');
     $page->click("@post-recurrence-save-{$post->id}");
-    waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-banner-{$post->id}\"]')?.textContent.includes('5 posts left')");
+    waitForText($page, "@post-recurrence-banner-{$post->id}", '5 posts left');
 
     expect($post->refresh()->recurrence_remaining)->toBe(5);
 
     openRecurrenceDialog($page, $post->id);
     $page->click("@post-recurrence-stop-{$post->id}");
-    waitForRecurrenceCondition($page, "!document.querySelector('[data-testid=\"post-recurrence-banner-{$post->id}\"]')");
+    waitForGone($page, "@post-recurrence-banner-{$post->id}");
 
     expect($post->refresh()->isRecurring())->toBeFalse();
     $page->assertMissing("@post-recurrence-banner-{$post->id}")
@@ -189,7 +166,7 @@ test('the banner of a later occurrence counts from the series origin', function 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForRecurrenceTestId($page, "post-recurrence-banner-{$post->id}");
+    waitFor($page, "@post-recurrence-banner-{$post->id}");
 
     expect(recurrenceText($page, "post-recurrence-banner-{$post->id}"))
         ->toBe("This post will be shared every month on the 31st at 9:00 AM, until Apr 30, {$year} (2 posts left).");
@@ -203,7 +180,7 @@ test('the end date of a recurrence follows the channel time zone', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
-    waitForRecurrenceTestId($page, "post-card-{$post->id}");
+    waitFor($page, "@post-card-{$post->id}");
     openRecurrenceDialog($page, $post->id);
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))
@@ -211,7 +188,7 @@ test('the end date of a recurrence follows the channel time zone', function () {
 
     chooseRecurrenceFrequency($page, $post->id, 'month');
     $page->fill("@post-recurrence-times-{$post->id}", '6');
-    waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-summary-{$post->id}\"]')?.textContent.includes('month')");
+    waitForText($page, "@post-recurrence-summary-{$post->id}", 'month');
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))
         ->toBe("This post will be shared every month on the 31st at 10:00 PM, until {$localDay->addMonthsNoOverflow(6)->format('M j, Y')}.");

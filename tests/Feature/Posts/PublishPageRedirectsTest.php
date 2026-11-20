@@ -10,7 +10,9 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostingSchedule;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -31,6 +33,18 @@ function publishRedirectPost(SocialAccount $channel, PostStatus $status = PostSt
         'status' => $status,
         'content' => 'Caption',
     ]);
+}
+
+function publishRedirectOrigin(string $origin, SocialAccount $channel): string
+{
+    return match ($origin) {
+        'calendar week' => route('app.calendar', ['view' => 'week', 'week' => '2026-10-25', 'slots' => 1]),
+        'calendar month' => route('app.calendar', ['view' => 'month', 'month' => '2026-10-01', 'channels' => $channel->id]),
+        'channel calendar' => route('app.channels.calendar', ['account' => $channel, 'view' => 'days', 'day' => '2026-10-27']),
+        'channel grid' => route('app.channels.grid', ['account' => $channel]),
+        'insights' => route('app.insights', ['range' => '30d']),
+        'ideas' => route('app.create.ideas.index'),
+    };
 }
 
 /**
@@ -67,14 +81,16 @@ test('saving a draft from the all channels page keeps the tab and filters but dr
         ->assertRedirect(route('app.posts.index', ['tab' => 'drafts', 'channels' => [$this->channel->id]]));
 });
 
-test('scheduling an edit outside the publish page still lands on the post', function () {
+test('saving an edit from another page of the app returns to that page as it was', function (string $status, string $origin) {
     $post = publishRedirectPost($this->channel);
+    $from = publishRedirectOrigin($origin, $this->channel);
 
     $this->actingAs($this->user)
-        ->from(route('app.calendar'))
-        ->put(route('app.posts.update', $post), publishRedirectUpdatePayload($post, 'scheduled'))
-        ->assertRedirect(route('app.posts.index', ['post' => $post->id]));
-});
+        ->from($from)
+        ->put(route('app.posts.update', $post), publishRedirectUpdatePayload($post, $status))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect($from);
+})->with(['draft', 'scheduled'])->with(['calendar week', 'insights']);
 
 test('returning to the publish page drops the post details deep link', function () {
     $post = publishRedirectPost($this->channel);
@@ -102,21 +118,72 @@ test('creating from the channel page returns to that page', function () {
         ->assertSessionHas('created_post_ids');
 });
 
-test('a draft created from outside the publish page lands on the all channels drafts tab', function () {
+test('a post created from another page of the app returns to that page as it was', function (array $schedule, string $origin) {
+    $this->channel->update(['posting_schedule' => PostingSchedule::empty()->withTime(1, '10:00')]);
+    $from = publishRedirectOrigin($origin, $this->channel);
+
     $this->actingAs($this->user)
-        ->from(route('app.calendar'))
+        ->from($from)
         ->post(route('app.posts.store'), [
-            'status' => 'draft',
             'content' => 'New caption',
             'media' => [],
+            ...$schedule,
             'destinations' => [[
                 'social_account_id' => $this->channel->id,
                 'content_type' => ContentType::LinkedInPost->value,
                 'meta' => [],
             ]],
         ])
-        ->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
+        ->assertSessionHasNoErrors()
+        ->assertRedirect($from);
+})->with([
+    'a draft' => [['status' => 'draft']],
+    'a scheduled post' => [['status' => 'scheduled', 'scheduled_at' => '2037-01-01T10:00:00Z']],
+    'a queued post' => [['status' => 'scheduled', 'queue' => 'next']],
+])->with(['calendar week', 'calendar month', 'channel calendar', 'channel grid', 'insights', 'ideas']);
+
+test('a page named by a referer on another host is returned to on this app', function () {
+    $this->actingAs($this->user)
+        ->withHeader('referer', 'https://evil.example/schedule/calendar/week?week=2026-10-25')
+        ->post(route('app.posts.store'), [
+            'status' => 'draft',
+            'content' => 'New caption',
+            'destinations' => [['social_account_id' => $this->channel->id, 'content_type' => ContentType::LinkedInPost->value]],
+        ])
+        ->assertRedirect(route('app.calendar', ['view' => 'week', 'week' => '2026-10-25']));
 });
+
+test('a page with a dotted query key is returned to with that key as it was', function () {
+    $post = publishRedirectPost($this->channel);
+    $from = route('app.create.ideas.index', ['columns.unassigned_page' => 2]);
+
+    $this->actingAs($this->user)
+        ->from($from)
+        ->put(route('app.posts.update', $post), publishRedirectUpdatePayload($post, 'draft'))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect($from);
+});
+
+test('on an app served from a subfolder a page is returned to without doubling the base path', function (string $origin, array $originQuery, array $expectedQuery) {
+    $post = publishRedirectPost($this->channel);
+    $update = route('app.posts.update', $post);
+    $root = rtrim(config('app.url'), '/').'/trypost';
+    URL::forceRootUrl($root);
+    $origin = match ($origin) {
+        'calendar' => route('app.calendar', $originQuery),
+        'all channels' => route('app.posts.index', $originQuery),
+    };
+
+    $this->actingAs($this->user)
+        ->withServerVariables(['SCRIPT_NAME' => '/trypost/index.php', 'SCRIPT_FILENAME' => public_path('index.php')])
+        ->from($origin)
+        ->put($update, publishRedirectUpdatePayload($post, 'draft'))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(blank($expectedQuery) ? $origin : route('app.posts.index', $expectedQuery));
+})->with([
+    'calendar' => ['calendar', ['view' => 'week', 'week' => '2026-10-25'], []],
+    'all channels' => ['all channels', ['tab' => 'drafts', 'edit' => 'x'], ['tab' => 'drafts']],
+]);
 
 test('deleting from the channel page returns to that page', function () {
     $post = publishRedirectPost($this->channel);
@@ -130,13 +197,13 @@ test('deleting from the channel page returns to that page', function () {
     expect(Post::find($post->id))->toBeNull();
 });
 
-test('deleting from outside the publish page falls back to the all channels page', function () {
+test('deleting from another page of the app returns to that page', function () {
     $post = publishRedirectPost($this->channel);
 
     $this->actingAs($this->user)
         ->from(route('app.settings.preferences'))
         ->delete(route('app.posts.destroy', $post))
-        ->assertRedirect(route('app.posts.index'));
+        ->assertRedirect(route('app.settings.preferences'));
 });
 
 test('deleting from a calendar returns to that calendar as it was', function (string $route) {

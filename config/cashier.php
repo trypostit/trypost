@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Listeners\StripeBillingSignalListener;
 use Laravel\Cashier\Console\WebhookCommand;
 use Laravel\Cashier\Invoices\DompdfInvoiceRenderer;
 
@@ -49,7 +50,10 @@ return [
     'webhook' => [
         'secret' => env('STRIPE_WEBHOOK_SECRET'),
         'tolerance' => env('STRIPE_WEBHOOK_TOLERANCE', 300),
-        'events' => WebhookCommand::DEFAULT_EVENTS,
+        'events' => [
+            ...WebhookCommand::DEFAULT_EVENTS,
+            ...array_keys(StripeBillingSignalListener::JOBS),
+        ],
     ],
 
     /*
@@ -125,57 +129,5 @@ return [
     */
 
     'logger' => env('CASHIER_LOGGER'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Trial Period
-    |--------------------------------------------------------------------------
-    |
-    | Days of trial. With REQUIRE_CARD_FOR_TRIAL=true and no first-month coupon
-    | applied, first-time checkouts get Stripe trialDays (status trialing).
-    | Re-subscribers (any prior real subscription) skip trial. With
-    | REQUIRE_CARD_FOR_TRIAL=false, it is the generic signup trial length on
-    | accounts.trial_ends_at. Set to 0 to disable trials. Stripe Checkout
-    | rejects trials shorter than 48 hours — values of 1 are clamped to 2.
-    |
-    */
-
-    'trial_days' => env('CASHIER_TRIAL_DAYS', 8),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Paid First Month Coupons
-    |--------------------------------------------------------------------------
-    |
-    | Per-plan Stripe Coupon IDs (amount_off, duration=once) so the first
-    | monthly invoice is $1: Socials $19 − $18, Workspaces $99 − $88. When
-    | the matching coupon is set and the account qualifies (card required,
-    | first-time, monthly price), checkout applies withCoupon and skips
-    | trialDays. Empty for that plan = trial_days instead. Never reuse one
-    | coupon on the other plan — the amounts are different. Yearly prices
-    | never get a coupon. Cannot be combined with allow_promotion_codes on
-    | the same checkout.
-    |
-    */
-
-    'first_month_coupon_ids' => [
-        'socials' => env('STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID'),
-        'workspaces' => env('STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Allow Promotion Codes
-    |--------------------------------------------------------------------------
-    |
-    | When true and no first-month coupon is applied on the session, Stripe
-    | Checkout shows the redeemable promotion-code field. Defaults to false
-    | (SaaS recipe A). Stripe rejects a session that sets both discounts
-    | (coupon) and allow_promotion_codes — ConfigureSubscriptionCheckout
-    | throws if both would apply on the same checkout.
-    |
-    */
-
-    'allow_promotion_codes' => (bool) env('CASHIER_ALLOW_PROMOTION_CODES', false),
 
 ];

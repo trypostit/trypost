@@ -5,13 +5,12 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-
 import {
     allWebhookEvents,
     webhookEventDescriptionKey,
     webhookEventGroups,
     webhookEventLabelKey,
-} from './webhook-events';
+} from '@/components/webhook/webhook-events';
 
 const events = defineModel<string[]>({ required: true });
 

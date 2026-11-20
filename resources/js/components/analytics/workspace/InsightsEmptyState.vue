@@ -6,12 +6,12 @@ import {
     IconTrendingUp,
 } from '@tabler/icons-vue';
 
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Button } from '@/components/ui/button';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 
-import AnalyticsSection from './AnalyticsSection.vue';
 
 defineProps<{
     hasChannels: boolean;

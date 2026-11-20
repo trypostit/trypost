@@ -18,9 +18,11 @@ use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
 use App\Models\Traits\SyncsStripeCustomer;
+use App\Support\Timezone;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -77,6 +79,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
         'theme' => Theme::DEFAULT->value,
         'time_format' => TimeFormat::DEFAULT->value,
         'week_starts_on' => WeekStart::DEFAULT->value,
@@ -142,6 +145,17 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'week_starts_on' => WeekStart::class,
             'default_post_action' => DefaultPostAction::class,
         ];
+    }
+
+    /**
+     * The stored zone read as its canonical identifier, so an alias the tz
+     * database renamed after it was saved never reaches Carbon.
+     */
+    protected function timezone(): Attribute
+    {
+        return Attribute::make(
+            get: fn (string $value): string => Timezone::usable($value),
+        );
     }
 
     public function preferredLocale(): string

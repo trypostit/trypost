@@ -10,17 +10,7 @@ use Illuminate\Support\Facades\Http;
 
 function waitForPostingGoalTestId(mixed $page, string $testId): void
 {
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-
+    waitFor($page, "@{$testId}");
     waitForWebFonts($page);
 }
 
@@ -49,13 +39,6 @@ function postingGoalTestIdAppearsWithin(mixed $page, string $testId, int $attemp
     $selector = json_encode(postingGoalTestIdSelector($testId));
 
     return postingGoalPollFor($page, "document.querySelector({$selector}) !== null", $attempts);
-}
-
-function waitForPostingGoalTestIdGone(mixed $page, string $testId, int $attempts = 120): void
-{
-    $selector = json_encode(postingGoalTestIdSelector($testId));
-
-    postingGoalPollFor($page, "document.querySelector({$selector}) === null", $attempts);
 }
 
 function waitForPostingGoalViewportSettled(mixed $page, int $width, string $testId): bool
@@ -315,7 +298,7 @@ test('the recommended-time help opens above its trigger and links to the docs', 
         ->assertAttributeContains('@goal-help-learn-more', 'rel', 'noopener');
 
     $page->click('@goal-help-close');
-    waitForPostingGoalTestIdGone($page, 'goal-help-popover');
+    waitForGone($page, '@goal-help-popover');
 
     $page->assertNotPresent('@goal-help-popover');
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
@@ -355,7 +338,7 @@ test('connecting a channel fires a confetti burst that cleans up after itself', 
     waitForPostingGoalTestId($page, 'confetti-canvas');
     $page->assertPresent('@confetti-canvas');
 
-    waitForPostingGoalTestIdGone($page, 'confetti-canvas', 200);
+    waitForGone($page, '@confetti-canvas');
     $page->assertNotPresent('@confetti-canvas');
 
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();

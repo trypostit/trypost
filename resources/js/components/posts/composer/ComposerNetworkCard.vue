@@ -5,8 +5,11 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import ContentTypeRadioGroup from '@/components/posts/editor/ContentTypeRadioGroup.vue';
 import type { ContentTypeOption } from '@/composables/usePlatformLogo';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
+import { isShiftEnter } from '@/lib/keyboard';
 import {
     CAPTIONLESS_CONTENT_TYPES,
+    type ContentTypeValue,
+    isContentType,
     MEDIALESS_CONTENT_TYPES,
 } from '@/types/content-type';
 
@@ -45,7 +48,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
     'update:content': [value: string];
-    'update:contentType': [value: string];
+    'update:contentType': [value: ContentTypeValue];
     paste: [event: ClipboardEvent];
     drop: [event: DragEvent];
     'open-templates': [];
@@ -53,6 +56,13 @@ const emit = defineEmits<{
     'start-thread': [];
     'next-post': [];
 }>();
+
+/** A picked post type, read from the radio as text. */
+const selectContentType = (value: string): void => {
+    if (isContentType(value)) {
+        emit('update:contentType', value);
+    }
+};
 
 const caption = ref<HTMLTextAreaElement | null>(null);
 
@@ -97,12 +107,7 @@ const onCaptionKeydown = (event: KeyboardEvent): void => {
         return;
     }
 
-    if (
-        props.threadable &&
-        event.key === 'Enter' &&
-        event.shiftKey &&
-        !event.isComposing
-    ) {
+    if (props.threadable && isShiftEnter(event)) {
         event.preventDefault();
         emit('start-thread');
     }
@@ -169,7 +174,7 @@ const showsHeader = computed(
                     :model-value="contentType"
                     :test-id-prefix="typeTestIdPrefix"
                     :disabled="disabled"
-                    @update:model-value="emit('update:contentType', $event)"
+                    @update:model-value="selectContentType"
                 />
                 <slot name="header" />
             </div>
@@ -182,7 +187,8 @@ const showsHeader = computed(
                 <span
                     v-if="threaded && platform"
                     aria-hidden="true"
-                    class="pointer-events-none absolute -start-[25px] top-7 -bottom-3 w-0.5 rounded-full bg-border"
+                    class="pointer-events-none absolute -start-[25px] -bottom-[14px] w-0.5 rounded-full bg-border"
+                    :class="showsHeader ? '-top-3.5' : 'top-[26px]'"
                     :data-testid="`${testIdPrefix}-thread-connector`"
                 />
                 <button
@@ -239,6 +245,12 @@ const showsHeader = computed(
                         </button>
                     </p>
                 </div>
+                <div
+                    v-if="threaded && !captionCollapsed && $slots.attachment"
+                    class="pt-2"
+                >
+                    <slot name="attachment" />
+                </div>
                 <slot v-if="threaded" name="post-media" />
                 <div
                     v-if="threaded && !captionCollapsed"
@@ -248,6 +260,7 @@ const showsHeader = computed(
             </div>
             <slot name="replies" />
             <div>
+                <slot v-if="!threaded" name="attachment" />
                 <slot v-if="showsMedia" name="media" />
                 <Teleport
                     v-if="threaded"

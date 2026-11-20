@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Etichette',
     'description' => 'Organizza i tuoi post con le etichette.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Modifica etichetta',
         'delete' => 'Elimina etichetta',
         'more' => 'Altre azioni',
+        'settings' => 'Impostazioni',
         'view_posts' => 'Visualizza post',
+        'view_insights' => 'Visualizza insights',
     ],
 
     'create' => [

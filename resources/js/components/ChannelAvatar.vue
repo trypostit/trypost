@@ -48,7 +48,7 @@ const SIZES: Record<ChannelAvatarSize, SizeSpec> = {
         verified: '-top-1 -end-1 size-2.5',
     },
     24: {
-        avatar: 'size-6 rounded-full',
+        avatar: 'size-6 rounded-md',
         fallback: 'text-[9px]',
         badge: 12,
         offset: '-end-1 -bottom-0.5',
@@ -116,6 +116,8 @@ const props = withDefaults(
         badge?: boolean;
         avatarClass?: HTMLAttributes['class'];
         verified?: VerifiedBadgeType | null;
+        /** `square` keeps the system's rounded square; `round` makes a circle. */
+        shape?: 'square' | 'round';
     }>(),
     {
         src: null,
@@ -127,6 +129,7 @@ const props = withDefaults(
         badge: true,
         avatarClass: undefined,
         verified: null,
+        shape: 'square',
     },
 );
 
@@ -152,7 +155,7 @@ const disconnected = computed(() => isConnectionLost({ status: props.status }));
         <Avatar
             :src="src"
             :name="name"
-            :class="cn(spec.avatar, avatarClass)"
+            :class="cn(spec.avatar, shape === 'round' && 'rounded-full', avatarClass)"
             :fallback-class="['bg-secondary font-bold', spec.fallback]"
         />
         <PlatformLogo

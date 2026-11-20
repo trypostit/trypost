@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Facturatie',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Maandelijks gefactureerd',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Jaarlijks',
         'save_two_months' => '2 maanden gratis',
         'per_month' => '/maand',
+        'per_year' => '/jaar',
         'workspaces_one' => 'Eén workspace',
         'workspaces_unlimited' => 'Onbeperkte workspaces',
         'workspaces_tooltip' => 'Een workspace is één merk of klant, gescheiden van de rest: met eigen social-media-accounts, handtekeningen, labels, analytics, ledenrechten en MCP-verbinding.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Kies :plan',
         'upgrade' => 'Upgrade naar :plan',
         'downgrade' => 'Downgrade naar :plan',
-        'start_first_month' => 'Activeer voor :price',
         'billed_yearly_total' => 'Jaarlijks gefactureerd · :price (2 maanden gratis)',
         'socials_tagline' => 'Ideaal voor creators en kleine merken.',
         'workspaces_tagline' => 'Ideaal voor bureaus en grotere bedrijven.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Actief',
+            'trial' => 'Gratis proefperiode',
+            'cancelling' => 'Opgezegd',
+            'past_due' => 'Achterstallig',
+        ],
         'change' => 'Plan wijzigen',
-        'price_monthly' => ':price/maand',
-        'price_yearly' => ':price/jaar',
+        'subscribe' => 'Nu abonneren',
         'trial_until' => 'Proefperiode tot :date',
-        'renews' => 'Wordt automatisch verlengd',
         'cancelled' => 'Opgezegd, eindigt op :date',
-        'workspaces_usage' => 'Workspaces: :count van :limit',
+        'discount_until' => ':discount korting tot :date',
+        'discount_forever' => ':discount korting op elke betaling',
+        'discount_once' => ':discount korting op je volgende betaling',
     ],
 
     'subscription' => [
-        'title' => 'Betaalmethode',
+        'title' => 'Betaalmethoden',
+        'default' => 'Standaard',
         'description' => 'Werk je kaart of factuurgegevens bij in Stripe.',
         'no_payment_method' => 'Nog geen betaalmethode geregistreerd.',
         'expires_on' => 'Verloopt :month/:year',
         'manage_stripe' => 'Beheren op Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Facturen',
+    ],
+
     'invoices' => [
-        'title' => 'Facturen',
-        'description' => 'Download je eerdere facturen.',
+        'columns' => [
+            'date' => 'Datum',
+            'amount' => 'Bedrag',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Nog geen facturen',
+        'empty_description' => 'Je facturen verschijnen hier na je eerste betaling.',
         'paid' => 'Betaald',
         'download' => 'Factuur downloaden',
     ],

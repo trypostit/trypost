@@ -2,11 +2,11 @@
 import { InfiniteScroll } from '@inertiajs/vue3';
 
 import { Spinner } from '@/components/ui/spinner';
+import { webhookEventLabel } from '@/components/webhook/webhook-events';
+import WebhookDeliveryBadge from '@/components/webhook/WebhookDeliveryBadge.vue';
 import date from '@/date';
 import type { WebhookLog } from '@/types/webhook';
 
-import { webhookEventLabel } from './webhook-events';
-import WebhookDeliveryBadge from './WebhookDeliveryBadge.vue';
 
 defineProps<{
     logs: WebhookLog[];

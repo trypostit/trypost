@@ -1,6 +1,11 @@
 import type { RecurrenceFrequency } from '@/lib/recurrence';
-import type { PublicationAnalyticsDetail } from '@/types/analytics';
+import type {
+    MetricsUnavailableReason,
+    PublicationAnalyticsDetail,
+} from '@/types/analytics';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import type { PlatformValue } from '@/types/platform';
 import type {
     PostOriginValue,
     PostStatusValue,
@@ -15,11 +20,16 @@ export type PublishTab = 'queue' | 'approvals' | 'drafts' | 'sent';
 
 export type PublishScope = 'all' | 'channel';
 
+/** The ways the Publish page shows posts; the Instagram grid is not one of them. */
+export const PUBLISH_VIEWS = ['list', 'calendar', 'board'] as const;
+
+export type PublishView = (typeof PUBLISH_VIEWS)[number];
+
 export type PublishCounts = Record<PublishTab, number>;
 
 export interface PublishSocialAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
     display_name: string | null;
     username: string;
     display_label: string;
@@ -47,10 +57,13 @@ export interface PostCardLabel {
 
 export interface UnavailablePostMetrics {
     available: false;
-    reason: string | null;
+    reason: MetricsUnavailableReason;
 }
 
 export type PostCardMetrics = PublicationAnalyticsDetail | UnavailablePostMetrics;
+
+/** Why YouTube did not set the cover image of a live video as its thumbnail (`App\Enums\YouTube\ThumbnailWarning`). */
+export type YouTubeThumbnailWarning = 'forbidden' | 'daily_limit' | 'invalid_image' | 'failed';
 
 export interface PostCardFailure {
     category?: string | null;
@@ -64,12 +77,13 @@ export interface PostCard {
     publish_status: PublishStatusValue;
     social_account_id: string | null;
     social_account: PublishSocialAccount | null;
-    platform: string | null;
-    content_type?: string | null;
+    platform: PlatformValue | null;
+    content_type?: ContentTypeValue | null;
     meta?: Record<string, any> | null;
     platform_url?: string | null;
     error_message?: string | null;
     failure?: PostCardFailure | null;
+    youtube_thumbnail_warning?: YouTubeThumbnailWarning | null;
     retry_at?: string | null;
     origin: PostOriginValue;
     created_at: string;
@@ -107,6 +121,7 @@ export interface QueueDay {
 }
 
 export interface QueuePostPosition {
+    canMoveToTop: boolean;
     canMoveUp: boolean;
     canMoveDown: boolean;
 }
@@ -126,6 +141,7 @@ export interface QueueView {
 
 export interface ScrollPostCards {
     data: PostCard[];
+    total: number;
 }
 
 export type PostCardMove = 'top' | 'up' | 'down';
@@ -163,6 +179,7 @@ export const CALENDAR_STATUSES: readonly CalendarStatus[] = [
 export interface CalendarSlot {
     at: string;
     channel_id: string;
+    queueable: boolean;
 }
 
 export interface UndatedDraft extends Omit<PostCard, 'scheduled_at'> {

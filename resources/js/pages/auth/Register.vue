@@ -31,7 +31,7 @@ defineProps<{
     passwordRequirements: PasswordRequirement[];
 }>();
 
-const { locale } = useGuestLocale();
+const { signupLocale } = useGuestLocale();
 const detected = detectPreferences();
 
 const showPassword = ref(false);
@@ -68,7 +68,7 @@ const hasSocial = computed(
                 class="flex flex-col gap-6"
             >
                 <input v-if="invite" type="hidden" name="invite" :value="invite" />
-                <input type="hidden" name="locale" :value="locale" />
+                <input type="hidden" name="locale" :value="signupLocale" data-testid="register-locale" />
                 <input type="hidden" name="timezone" :value="detected.timezone" data-testid="register-timezone" />
                 <input type="hidden" name="week_starts_on" :value="detected.week_starts_on" data-testid="register-week-start" />
                 <input type="hidden" name="time_format" :value="detected.time_format ?? ''" data-testid="register-time-format" />
@@ -163,7 +163,7 @@ const hasSocial = computed(
                             class="w-full"
                             :tabindex="4"
                             :disabled="processing"
-                            data-test="register-user-button"
+                            data-testid="register-user-button"
                         >
                             <Spinner v-if="processing" />
                             {{ $t('auth.register.submit') }}

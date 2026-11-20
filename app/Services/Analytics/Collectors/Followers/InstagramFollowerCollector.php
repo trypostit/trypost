@@ -20,7 +20,7 @@ class InstagramFollowerCollector extends AbstractFollowerCollector
 
         $response = $this->get(
             $account,
-            "{$account->platform->instagramGraphBaseUrl()}/{$account->platform_user_id}",
+            "{$account->platform->graphApiUrl()}/{$account->platform_user_id}",
             ['fields' => 'followers_count'],
             meta: true,
         );

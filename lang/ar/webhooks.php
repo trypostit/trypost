@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'نُشر المنشور جزئيًا',
         'post_failed' => 'فشل المنشور',
         'post_deleted' => 'تم حذف المنشور',
+        'post_deleted_on_network' => 'حُذف المنشور على الشبكة',
+        'post_restored' => 'عاد المنشور إلى الشبكة',
     ],
     'event_descriptions' => [
         'post_created' => 'عند إنشاء منشور جديد.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'عند نشر منشور على قناة.',
         'post_failed' => 'عند فشل نشر منشور.',
         'post_deleted' => 'عند حذف منشور.',
+        'post_deleted_on_network' => 'عند حذف منشور على شبكته بعد نشره.',
+        'post_restored' => 'عند عودة منشور محذوف إلى شبكته.',
     ],
     'http_reasons' => [
         'unknown' => 'غير معروف',

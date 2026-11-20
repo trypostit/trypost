@@ -23,9 +23,11 @@ export type MediaRules = {
     videoAspectRatioMax?: number;
     autoFitsImage?: boolean;
     cropPresets: CropPresetValue[];
-    supportsAltText: boolean;
+    supportsImageAltText: boolean;
+    supportsVideoAltText: boolean;
     supportsUserTags: boolean;
     supportsVideoCover: boolean;
+    supportsCustomVideoCover: boolean;
     platformLabel?: string;
     imageMinWidth?: number;
     imageMinHeight?: number;
@@ -57,8 +59,10 @@ export type ContentTypeMediaRule = {
     auto_fits_image: boolean;
     crop_presets: CropPresetValue[];
     supports_alt_text: boolean;
+    supports_video_alt_text: boolean;
     supports_user_tags: boolean;
     supports_video_cover: boolean;
+    supports_custom_video_cover: boolean;
     platform_label: string;
     image_min_width: number | null;
     image_min_height: number | null;
@@ -112,9 +116,11 @@ export const toMediaRules = (rule: ContentTypeMediaRule): MediaRules => ({
     videoAspectRatioMax: rule.video_aspect_ratio_max ?? undefined,
     autoFitsImage: rule.auto_fits_image,
     cropPresets: rule.crop_presets,
-    supportsAltText: rule.supports_alt_text,
+    supportsImageAltText: rule.supports_alt_text,
+    supportsVideoAltText: rule.supports_video_alt_text,
     supportsUserTags: rule.supports_user_tags,
     supportsVideoCover: rule.supports_video_cover,
+    supportsCustomVideoCover: rule.supports_custom_video_cover,
     platformLabel: rule.platform_label,
     imageMinWidth: rule.image_min_width ?? undefined,
     imageMinHeight: rule.image_min_height ?? undefined,

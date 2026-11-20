@@ -5,17 +5,23 @@ declare(strict_types=1);
 use App\Ai\Agents\PostContentShortener;
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostHog\AiEvent;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ContentSanitizer;
 use App\Support\AiPromptRules;
+use App\Support\Social\XPoll;
 use Illuminate\Auth\Access\Response as AuthResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -71,6 +77,7 @@ test('assistant validates the prompt, content and platform', function (array $pa
     'generate without prompt' => [['mode' => 'generate'], 'prompt'],
     'rephrase without content' => [['mode' => 'rephrase'], 'current_content'],
     'unknown platform' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'platform' => 'myspace'], 'platform'],
+    'unknown content type' => [['mode' => 'generate', 'prompt' => 'announce our summer launch today', 'content_type' => 'x_story'], 'content_type'],
     'prompt under four words' => [['mode' => 'generate', 'prompt' => 'make it pop'], 'prompt'],
     'prompt over the length limit' => [['mode' => 'generate', 'prompt' => str_repeat('word ', 2000).'x'], 'prompt'],
 ]);
@@ -146,7 +153,7 @@ test('a suggestion for X is shortened to fit what X counts', function () {
         ->json('content');
 
     expect($content)->toBe('Great news, short and sweet.')
-        ->and(Platform::X->contentOverflow(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBe(0);
+        ->and(mb_strlen(app(ContentSanitizer::class)->displayText($content, Platform::X)))->toBeLessThanOrEqual(Platform::X->maxContentLength());
 
     PostContentShortener::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Great news for everyone.'));
 });
@@ -173,6 +180,79 @@ test('the assistant writes for the account limit of the card it serves', functio
     'premium account' => [['x_subscription_type' => 'Premium'], 25000, false],
     'free account' => [[], 280, true],
 ]);
+
+test('the assistant keeps the long post limit for a regular post on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPost->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.SocialAccount::X_LONG_POST_LENGTH.' characters'));
+});
+
+test('the assistant writes a poll question within 280 characters even on an account with long posts', function () {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'meta' => ['x_subscription_type' => 'Premium']]);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'ask our followers about tabs or spaces',
+            'platform' => Platform::X->value,
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.XPoll::QUESTION_MAX_LENGTH.' characters'));
+});
+
+test('the assistant writes a mastodon or threads poll question within the account limit, not 280', function (string $platform, ContentType $type) {
+    config()->set('trypost.self_hosted', true);
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $this->workspace->id]);
+    PostWritingAssistant::fake(['Tabs or spaces?']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'ask our followers about tabs or spaces',
+            'platform' => $account->platform->value,
+            'social_account_id' => $account->id,
+            'content_type' => $type->value,
+        ])
+        ->assertOk();
+
+    expect($account->maxContentLength())->toBe(500);
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), "Hard limit: {$account->maxContentLength()} characters"));
+})->with([
+    'mastodon' => ['mastodon', ContentType::MastodonPoll],
+    'threads' => ['threads', ContentType::ThreadsPoll],
+]);
+
+test('the assistant ignores a post type of another network when picking the limit', function () {
+    PostWritingAssistant::fake(['Big news.']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => 'generate',
+            'prompt' => 'announce our summer launch today',
+            'platform' => Platform::LinkedIn->value,
+            'content_type' => ContentType::XPoll->value,
+        ])
+        ->assertOk();
+
+    PostWritingAssistant::assertPrompted(fn (AgentPrompt $prompt): bool => Str::contains($prompt->agent->instructions(), 'Hard limit: '.Platform::LinkedIn->maxContentLength().' characters'));
+});
 
 test('the assistant rewrites a post as long as the longest post', function () {
     PostWritingAssistant::fake(['Shorter']);
@@ -242,7 +322,7 @@ test('an unsubscribed account is stopped before the model is called', function (
             'mode' => 'generate',
             'prompt' => 'announce our summer launch today',
         ])
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     PostWritingAssistant::assertNeverPrompted();
 });
@@ -287,4 +367,54 @@ test('a failing provider returns a translated bad gateway', function () {
         ->postJson(route('app.posts.ai.assist'), ['mode' => PostAssistantMode::Generate->value, 'current_content' => '', 'prompt' => 'Write a short post please'])
         ->assertStatus(Response::HTTP_BAD_GATEWAY)
         ->assertJsonPath('message', __('posts.composer.assistant_error'));
+});
+
+test('ai assist tracks the mode', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+    PostWritingAssistant::fake(['A fresh caption']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertOk();
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === AiEvent::AssistUsed
+        && $job->distinctId === (string) $this->user->id
+        && $job->accountId === (string) $this->workspace->account_id
+        && $job->properties === [
+            'mode' => PostAssistantMode::Generate->value,
+            'workspace_id' => (string) $this->workspace->id,
+        ]);
+});
+
+test('a failed ai assist is not tracked', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+    PostWritingAssistant::fake([fn () => throw new ConnectionException('timeout')]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertStatus(Response::HTTP_BAD_GATEWAY);
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('ai assist still returns the content when tracking it fails', function () {
+    enablePostHog();
+    PostWritingAssistant::fake(['A fresh caption']);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertOk()
+        ->assertJsonPath('content', 'A fresh caption');
 });

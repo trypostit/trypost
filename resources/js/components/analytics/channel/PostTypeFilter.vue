@@ -33,6 +33,7 @@ const clear = (): void => {
         :empty-message="$t('analytics.channel.filters.no_post_types')"
         :select-all-label="$t('posts.composer.select_all')"
         :deselect-all-label="$t('posts.composer.deselect_all')"
+        sheet-below-sm
         :test-id="testId"
         :show-header="false"
         compact
@@ -42,9 +43,6 @@ const clear = (): void => {
     >
         <template #icon>
             <IconLayoutGrid class="size-4" />
-        </template>
-        <template #before-options>
-            <div class="pt-2" />
         </template>
         <template #footer>
             <div

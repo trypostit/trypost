@@ -13,10 +13,12 @@ import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { Switch } from '@/components/ui/switch';
 import { isDocumentMedia } from '@/composables/useMedia';
 import {
+    type ContentTypeOption,
     getContentTypeOptions,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
 import type { Channel } from '@/types/channel';
+import { POLL_CONTENT_TYPES } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
 
@@ -60,8 +62,17 @@ const hasDocument = computed(() =>
     props.media.some((item) => isDocumentMedia(item)),
 );
 
+/** A repurpose publishes the source's media, so it never offers a poll, which takes none. */
+const repurposeContentTypes = (platform: string): ContentTypeOption[] =>
+    getContentTypeOptions(platform).filter(
+        (option) => !POLL_CONTENT_TYPES.has(option.value),
+    );
+
+const offersContentTypeChoice = (channel: Channel): boolean =>
+    repurposeContentTypes(channel.platform).length > 1;
+
 const hasSettingsCard = (channel: Channel): boolean =>
-    getContentTypeOptions(channel.platform).length > 1 ||
+    offersContentTypeChoice(channel) ||
     channel.platform === Platform.Instagram ||
     channel.platform === Platform.InstagramFacebook ||
     SETTINGS_PLATFORMS.includes(channel.platform) ||
@@ -152,8 +163,8 @@ const settingsIndex = (channel: Channel): number =>
                     :data-testid="`channel-settings-${channel.id}`"
                 >
                     <ContentTypeRadioGroup
-                        v-if="getContentTypeOptions(channel.platform).length > 1"
-                        :options="getContentTypeOptions(channel.platform)"
+                        v-if="offersContentTypeChoice(channel)"
+                        :options="repurposeContentTypes(channel.platform)"
                         :model-value="channel.contentType"
                         :test-id-prefix="`channel-type-${channel.id}`"
                         :disabled="disabled"

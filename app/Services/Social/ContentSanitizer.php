@@ -26,8 +26,6 @@ class ContentSanitizer
 
     private const TAG_BODY = '/?[a-z][^<>]*>';
 
-    private const TAG_PATTERN = '~<'.self::TAG_BODY.'~i';
-
     private const TYPED_BRACKET_PATTERN = '~<(?!'.self::TAG_BODY.')~i';
 
     /**
@@ -44,7 +42,6 @@ class ContentSanitizer
 
         return match ($platform) {
             Platform::LinkedIn, Platform::LinkedInPage => $this->convertBoldAndStrip($content),
-            Platform::Mastodon => $this->stripUnsafeHtml($content),
             Platform::Telegram => $this->toTelegramHtml($content),
             Platform::X => $this->defuseLinks($this->stripHtml($content)),
             default => $this->stripHtml($content),
@@ -53,16 +50,13 @@ class ContentSanitizer
 
     /**
      * The content as a reader will see it, which is what a character limit applies
-     * to. Mirrors {@see self::sanitize()} arm for arm, because only two of them
-     * leave markup behind:
+     * to. Mirrors {@see self::sanitize()} arm for arm, because only one of them
+     * leaves markup behind:
      *
      * - Telegram is handed HTML with entities escaped for `parse_mode=HTML`, so its
      *   tags and entities both resolve away — `&amp;` renders as one character.
-     * - Mastodon keeps an HTML subset but its sanitizer already decoded entities, so
-     *   only the tags come off. Decoding again would eat a literal `&amp;` the user
-     *   typed and undercount the post.
-     * - Everything else, X included, is already plain text: the defused form is
-     *   literally what gets posted, so it counts as-is.
+     * - Everything else, X and Mastodon included, is already plain text: the
+     *   defused form is literally what gets posted, so it counts as-is.
      */
     public function displayText(string $content, Platform $platform): string
     {
@@ -70,7 +64,6 @@ class ContentSanitizer
 
         return match ($platform) {
             Platform::Telegram => html_entity_decode(strip_tags($sanitized), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-            Platform::Mastodon => preg_replace(self::TAG_PATTERN, '', $sanitized) ?? $sanitized,
             default => $sanitized,
         };
     }
@@ -178,17 +171,6 @@ class ContentSanitizer
             ['', '- ', "\n"],
             $content,
         );
-    }
-
-    private function stripUnsafeHtml(string $content): string
-    {
-        // Mastodon accepts a subset of HTML: p, strong, em, a, br, span
-        $content = strip_tags($content, ['p', 'strong', 'em', 'b', 'i', 'a', 'br', 'span']);
-
-        // Decode HTML entities that aren't part of allowed tags
-        $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim($content);
     }
 
     private function convertBoldAndStrip(string $content): string

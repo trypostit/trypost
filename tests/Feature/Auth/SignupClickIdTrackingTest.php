@@ -150,7 +150,7 @@ test('existing google user login consumes the click id session so it does not le
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.home'));
+        ->assertRedirect(route('app.calendar'));
 
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
@@ -179,7 +179,7 @@ test('existing github user login consumes the click id session so it does not le
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.home'));
+        ->assertRedirect(route('app.calendar'));
 
     expect(session()->get('attribution_parameters'))->toBeNull();
 });

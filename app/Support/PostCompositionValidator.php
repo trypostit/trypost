@@ -15,6 +15,7 @@ use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\PostContentFitsMaxLength;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -117,7 +118,7 @@ class PostCompositionValidator
                 }
 
                 $canonical = MediaItem::fromMedia($asset)->toArray();
-                $edits = array_intersect_key((array) data_get($media, 'meta', []), array_flip(SyncOwnedMedia::EDITABLE_META));
+                $edits = Arr::only((array) data_get($media, 'meta', []), SyncOwnedMedia::OWNER_META);
                 if ($edits !== []) {
                     $canonical['meta'] = [...($asset->meta ?? []), ...$edits];
                 }
@@ -173,8 +174,8 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.social_account_id", __('posts.errors.queue_requires_schedule'));
                 }
 
-                $contentType = ContentType::tryFrom((string) $destination['content_type']);
-                if ($contentType && ! in_array($account->platform, $contentType->compatiblePlatforms(), true)) {
+                $contentType = ContentType::resolve($destination['content_type']);
+                if (filled($contentType) && ! $contentType->isCompatibleWith($account->platform)) {
                     $validator->errors()->add("{$key}.content_type", trans('validation.in', ['attribute' => 'content type']));
                 }
 
@@ -197,9 +198,17 @@ class PostCompositionValidator
                     }
                 }
 
-                $formatViolation = PostPlatformMetaRules::formatViolation($account->platform, $destination['meta'] ?? []);
-                if ($formatViolation !== null) {
-                    [$field, $message] = $formatViolation;
+                foreach (PostPlatformMetaRules::formatErrors($account->platform, data_get($destination, 'meta', []), $contentType) as $field => $message) {
+                    $validator->errors()->add("{$key}.meta.{$field}", $message);
+                }
+
+                $pollWithMedia = $contentType?->isPoll() === true && filled(data_get($destination, 'media'));
+
+                if ($pollWithMedia) {
+                    $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
+                }
+
+                foreach (ThreadReplies::pollMediaErrors($account->platform, data_get($destination, 'meta', [])) as $field => $message) {
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
@@ -215,22 +224,27 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                if (blank($destination['content']) && $destination['media'] === []) {
+                $questionViolation = transform($contentType?->poll(), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
+                if (filled($questionViolation)) {
+                    $validator->errors()->add("{$key}.content", $questionViolation);
+                } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $destination['content_type'] ?? null)
+                $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $contentType)
                     ?? PostPlatformMetaRules::contentMetaViolation($account->platform, $destination['meta'] ?? [], (string) $destination['content']);
-                if ($metaViolation !== null && $metaViolation !== $formatViolation) {
+                if (filled($metaViolation) && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
                     [$field, $message] = $metaViolation;
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                foreach (ContentTypeCompatibleWithMedia::errorsFor([[
-                    'key' => "{$key}.content_type",
-                    'content_type' => $destination['content_type'],
-                ]], $destination['media'], $workspace) as $field => $message) {
-                    $validator->errors()->add($field, $message);
+                if (! $pollWithMedia) {
+                    foreach (ContentTypeCompatibleWithMedia::errorsFor([[
+                        'key' => "{$key}.content_type",
+                        'content_type' => $destination['content_type'],
+                    ]], $destination['media'], $workspace) as $field => $message) {
+                        $validator->errors()->add($field, $message);
+                    }
                 }
 
                 foreach (ThreadReplies::mediaErrors($account->platform, $destination['meta'] ?? [], $workspace) as $field => $message) {
@@ -276,8 +290,8 @@ class PostCompositionValidator
     }
 
     /**
-     * Alt text, people tags and the video cover offset (`SyncOwnedMedia::EDITABLE_META`)
-     * are the per-post edits the composer may make to a media item it did not
+     * Alt text, people tags, the video cover offset and the cover image
+     * (`SyncOwnedMedia::OWNER_META`) are the per-post edits the composer may make to a media item it did not
      * upload, so they are ignored when matching it to the post's stored media.
      * Keys are sorted because neither the browser nor MySQL's JSON column keeps
      * the stored key order.
@@ -288,7 +302,7 @@ class PostCompositionValidator
     private static function comparableMedia(array $media): array
     {
         if (is_array(data_get($media, 'meta'))) {
-            $media['meta'] = array_diff_key($media['meta'], array_flip(SyncOwnedMedia::EDITABLE_META));
+            $media['meta'] = Arr::except($media['meta'], SyncOwnedMedia::OWNER_META);
         }
 
         $media = array_filter($media, fn (mixed $value): bool => $value !== null && $value !== []);

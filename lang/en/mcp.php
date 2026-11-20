@@ -65,8 +65,7 @@ return [
                 'login' => 'Log in to TryPost and pick your workspace',
             ],
             'chatgpt' => [
-                'developer' => 'Turn on Developer mode in ChatGPT\'s settings',
-                'create' => 'Create an app named TryPost and paste the URL',
+                'open' => 'Open TryPost in ChatGPT and click Connect',
                 'login' => 'Log in to TryPost and pick your workspace',
             ],
             'other' => [
@@ -77,5 +76,4 @@ return [
         ],
         'waiting' => 'Waiting for your AI to connect…',
     ],
-
 ];

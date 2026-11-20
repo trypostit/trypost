@@ -16,49 +16,23 @@ use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * The composer opens as an animated dialog; a click that lands before the
- * animation settles is swallowed. Poll from the page (never sleep()) until the
- * dialog is open and still.
- */
-function waitForComposerCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function waitForComposerReady(mixed $page, string $testId = 'composer-add-account'): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, "@{$testId}");
 }
 
 function clickComposerDialogNewPost(mixed $page): void
 {
     $item = "document.querySelector('[data-testid=\"sidebar-new-post\"]')?.getBoundingClientRect().height > 0";
-    $settled = "{$item} && document.querySelector('[data-testid=\"sidebar-new-menu\"]').getAnimations().every((animation) => animation.playState !== 'running')";
 
     for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
         clickComposerDialogControl($page, '[data-testid="sidebar-new"]');
-        waitForComposerCondition($page, $item);
+        waitFor($page, '@sidebar-new-post');
     }
 
-    waitForComposerCondition($page, $settled);
+    waitFor($page, '@sidebar-new-post');
+    waitForState($page, '@sidebar-new-menu', "element.getAnimations().every((animation) => animation.playState !== 'running')");
     clickComposerDialogControl($page, '[data-testid="sidebar-new-post"]');
 }
 
@@ -150,11 +124,11 @@ test('posts channel filter keeps accounts distinct and persists across tabs', fu
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
-    waitForComposerCondition($page, "document.querySelector('[data-testid=\"post-card-{$firstPost->id}\"]')?.getBoundingClientRect().height > 0");
+    waitFor($page, "@post-card-{$firstPost->id}");
 
     for ($attempt = 0; $attempt < 3 && ! $page->script("document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0"); $attempt++) {
         $page->click('@posts-channel-filter');
-        waitForComposerCondition($page, "document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0");
+        waitFor($page, '@posts-channel-search');
     }
 
     $page->fill('@posts-channel-search', 'SECOND instagram')
@@ -510,9 +484,9 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->assertAttribute("@composer-label-checkbox-{$secondLabel->id}", 'data-state', 'checked');
 
     $page->click('@composer-tags-trigger');
-    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-label-search\"]')");
+    waitForGone($page, '@composer-label-search');
     $page->click('@composer-base-emoji');
-    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face\"]')?.getBoundingClientRect().height > 0");
+    waitFor($page, 'button[aria-label="grinning face"]');
     clickComposerDialogControl($page, 'button[aria-label="grinning face"]');
     $page->assertValue('@composer-base-content', '😀')
         ->click('@composer-base-signature')
@@ -521,21 +495,14 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$account->id}")
         ->assertVisible("@composer-{$account->id}-toolbar");
-    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]')");
+    waitForGone($page, "@composer-account-option-{$account->id}");
     $page->click("@composer-{$account->id}-emoji");
-    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face with big eyes\"]')?.getBoundingClientRect().height > 0");
+    waitFor($page, 'button[aria-label="grinning face with big eyes"]');
     clickComposerDialogControl($page, 'button[aria-label="grinning face with big eyes"]');
     $page->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
         ->click('@composer-save-draft');
 
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::where('workspace_id', $workspace->id)->sole()->labels()->pluck('workspace_labels.id')->all())
         ->toHaveCount(2)
@@ -610,14 +577,17 @@ test('a label created from the empty label picker of the global composer is list
         ->click('@composer-label-empty-create');
     waitForComposerReady($page, 'composer-label-new-name');
     $page->fill('@composer-label-new-name', 'Launch')
-        ->click('@submit-composer-label-new')
-        ->assertSeeIn('@composer-tags-trigger', 'Launch')
+        ->click('@submit-composer-label-new');
+    waitForText($page, '@composer-tags-trigger', 'Launch');
+    $page->assertSeeIn('@composer-tags-trigger', 'Launch')
         ->assertValue("@composer-caption-{$account->id}", 'Draft text');
 
     $label = $workspace->labels()->sole();
 
-    $page->click('@composer-tags-trigger')
-        ->assertAttribute("@composer-label-checkbox-{$label->id}", 'data-state', 'checked')
+    waitForGone($page, '@composer-label-new-name');
+    $page->click('@composer-tags-trigger');
+    waitFor($page, "@composer-label-checkbox-{$label->id}");
+    $page->assertAttribute("@composer-label-checkbox-{$label->id}", 'data-state', 'checked')
         ->assertNoJavaScriptErrors();
 });
 
@@ -641,8 +611,9 @@ test('a label created while editing a post on the publish page is listed and sel
         ->click('@composer-label-empty-create');
     waitForComposerReady($page, 'composer-label-new-name');
     $page->fill('@composer-label-new-name', 'Launch')
-        ->click('@submit-composer-label-new')
-        ->assertSeeIn('@composer-tags-trigger', 'Launch')
+        ->click('@submit-composer-label-new');
+    waitForText($page, '@composer-tags-trigger', 'Launch');
+    $page->assertSeeIn('@composer-tags-trigger', 'Launch')
         ->assertValue("@composer-caption-{$account->id}", 'Edited text')
         ->assertNoJavaScriptErrors();
 });
@@ -716,14 +687,7 @@ test('creating a four account draft keeps composition in the browser until save'
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(0);
 
     $page->click('@composer-save-draft');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::where('workspace_id', $workspace->id)->count())->toBe(4);
     expect(Post::where('workspace_id', $workspace->id)->pluck('content')->all())
@@ -780,15 +744,7 @@ test('create another reopens a fresh composer after saving a draft', function ()
         ->click('@composer-create-another')
         ->click('@composer-save-draft');
 
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const composer = document.querySelector('[data-testid="composer-base-content"]');
-                if (composer && composer.value === '') return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForState($page, '@composer-base-content', "element.value === ''");
 
     $page->assertVisible('@post-composer-dialog')
         ->assertValue('@composer-base-content', '');
@@ -843,14 +799,7 @@ test('recovering an empty-target draft retains its caption media and labels', fu
         ->click('@composer-add-account')->click("@composer-account-option-{$account->id}")
         ->assertValue("@composer-caption-{$account->id}", 'Keep this draft')
         ->click('@composer-save-draft');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForGone($page, '@post-composer-dialog');
 
     $recovered = Post::where('workspace_id', $workspace->id)->sole();
     $owned = $recovered->ownedMedia()->sole();
@@ -896,7 +845,7 @@ test('post notes open after creation while the edit dialog still has its AI assi
     $page = visit(route('app.posts.index', ['notes' => $post->id, 'note' => $note->id]));
     $page->assertVisible("@post-notes-trigger-{$post->id}")
         ->assertSee('Please review the opening line');
-    waitForComposerCondition($page, "document.querySelector('[data-note-id=\"{$note->id}\"]')?.classList.contains('bg-primary-subtle')");
+    waitForState($page, "[data-note-id=\"{$note->id}\"]", "element.classList.contains('bg-primary-subtle')");
     $page->assertScript("document.querySelector('[data-note-id=\"{$note->id}\"]').classList.contains('bg-primary-subtle')", true);
     expect($page->script("document.querySelector('[data-testid=\"post-notes-trigger-{$post->id}\"]').textContent.replace(/\\s+/g, ' ').trim()"))->toBe(__('notes.title').' 1');
 
@@ -1009,19 +958,16 @@ test('selecting a new image uploads an asset before any post is saved', function
 
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page->script(<<<JS
-        (async () => {
+        (() => {
             const input = document.querySelector('[data-testid="composer-{$account->id}-file-input"]');
             const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
             const transfer = new DataTransfer();
             transfer.items.add(new File([bytes], 'new-composer-image.png', { type: 'image/png' }));
             input.files = transfer.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelector('[data-testid="composer-{$account->id}-media-item"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
         })();
     JS);
+    waitForState($page, "@composer-{$account->id}-media-item", 'true');
 
     $page->assertVisible("@composer-{$account->id}-media-item");
     expect(Media::where('workspace_id', $workspace->id)->where('collection', Media::COLLECTION_UPLOADS)->count())->toBe(1)
@@ -1046,19 +992,16 @@ test('dropping an image into the composer uploads it without saving a post', fun
 
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page->script(<<<JS
-        (async () => {
+        (() => {
             const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
             const transfer = new DataTransfer();
             transfer.items.add(new File([bytes], 'dropped-image.png', { type: 'image/png' }));
             document.querySelector('[data-testid="composer-customization"]').dispatchEvent(
                 new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }),
             );
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelectorAll('[data-testid="composer-{$account->id}-media-item"]').length === 1) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
         })();
     JS);
+    waitForCount($page, "@composer-{$account->id}-media-item", 1);
 
     $page->assertVisible("@composer-{$account->id}-media-item");
     expect(Media::where('workspace_id', $workspace->id)->where('collection', Media::COLLECTION_UPLOADS)->count())->toBe(1)
@@ -1083,19 +1026,16 @@ test('cropping in one network card creates a separate asset and leaves the other
 
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $page->script(<<<JS
-        (async () => {
+        (() => {
             const input = document.querySelector('[data-testid="composer-file-input"]');
             const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
             const transfer = new DataTransfer();
             transfer.items.add(new File([bytes], 'crop-for-channel.png', { type: 'image/png' }));
             input.files = transfer.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelector('[data-testid="composer-media-item"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
         })();
     JS);
+    waitForState($page, '@composer-media-item', 'true');
 
     $page->click('@composer-add-account');
     foreach ($accounts as $account) {
@@ -1124,15 +1064,8 @@ test('cropping in one network card creates a separate asset and leaves the other
         ->click('@crop-aspect-1-1')
         ->click('@media-editor-apply');
 
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                const save = document.querySelector('[data-testid="composer-save-draft"]');
-                if (save && !save.disabled && !document.querySelector('[data-testid="media-editor-apply"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForGone($page, '@media-editor-apply');
+    waitForState($page, '@composer-save-draft', '!element.disabled');
     $page->click('@composer-save-draft');
 
     $posts = Post::where('workspace_id', $workspace->id)->get()->keyBy('social_account_id');
@@ -1182,19 +1115,16 @@ test('video thumbnails appear in shared and channel media', function () {
     waitForComposerReady($page);
     $video = base64_encode((string) file_get_contents(base_path('tests/fixtures/sample.mp4')));
     $page->script(<<<JS
-        (async () => {
+        (() => {
             const input = document.querySelector('[data-testid="composer-file-input"]');
             const bytes = Uint8Array.from(atob('{$video}'), (character) => character.charCodeAt(0));
             const transfer = new DataTransfer();
             transfer.items.add(new File([bytes], 'sample.mp4', { type: 'video/mp4' }));
             input.files = transfer.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelector('[data-testid="composer-media-item"] video')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
         })();
     JS);
+    waitForState($page, '@composer-media-item video', 'true');
     $source = $page->script('document.querySelector("[data-testid=composer-media-item] video")?.getAttribute("src")');
     expect($source)->toBeString()->not->toBeEmpty();
 
@@ -1249,14 +1179,8 @@ test('failed crop upload keeps the original asset selected', function () {
     $page->click("@composer-{$account->id}-edit-0")
         ->click('@crop-aspect-1-1')
         ->click('@media-editor-apply');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (window.__cropUploadFailed && document.querySelector('[data-testid="composer-save-draft"]')?.disabled === false) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForCondition($page, 'window.__cropUploadFailed');
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
     expect($page->script('Boolean(window.__cropUploadFailed)'))->toBeTrue();
     $page->click('@composer-save-draft');
 
@@ -1433,13 +1357,46 @@ test('select all picks only the channels the search shows, and the last used sho
         ->keys('@composer-account-search', 'Escape')
         ->fill("@composer-caption-{$instagram->id}", 'First post')
         ->click('@composer-save-draft');
-    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 
-    waitForComposerReady($page, 'posts-new-post');
+    waitFor($page, '@posts-new-post');
     $page->click('@posts-new-post');
     waitForComposerReady($page, 'composer-last-used');
     $page->click('@composer-last-used')
         ->assertVisible("@composer-account-{$instagram->id}")
         ->assertMissing("@composer-account-{$x->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('the composer label button keeps its tag icon, shows the first two labels as colored chips and counts the rest', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $labels = collect(['Alpha' => '#16a34a', 'Beta' => '#7c3aed', 'Gamma' => '#dc2626'])
+        ->map(fn (string $color, string $name) => WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => $name, 'color' => $color]));
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id]);
+    $post->labels()->attach($labels->pluck('id'));
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post));
+    waitForComposerReady($page, 'composer-tags-trigger');
+    waitForText($page, '@composer-tags-chip-more', '+1');
+
+    $chips = $page->script(<<<'JS'
+        Array.from(document.querySelectorAll('[data-testid^="composer-tags-chip-"]:not([data-testid$="-more"])'), (chip) => ({
+            text: chip.innerText.trim(),
+            background: getComputedStyle(chip).backgroundColor,
+        }))
+    JS);
+
+    expect($chips)->toBe([
+        ['text' => 'Alpha', 'background' => 'rgb(22, 163, 74)'],
+        ['text' => 'Beta', 'background' => 'rgb(124, 58, 237)'],
+    ]);
+    $page->assertDontSeeIn('@composer-tags-trigger', 'Gamma')
+        ->assertVisible('@composer-tags-icon')
         ->assertNoJavaScriptErrors();
 });

@@ -15,11 +15,13 @@ import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
 import TopPosts from '@/components/analytics/workspace/TopPosts.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
+import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
+import TourStep from '@/components/tours/TourStep.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
-import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
+import { filled } from '@/lib/helpers';
 import { insights as insightsRoute } from '@/routes/app';
 import type {
     AnalyticsChannelOption,
@@ -27,29 +29,71 @@ import type {
     SummaryMetric,
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
+import type { PostCardLabel } from '@/types/publish';
 
 const props = defineProps<{
     report: WorkspaceAnalyticsReport;
     channelOptions: AnalyticsChannelOption[];
+    labels: PostCardLabel[];
     availableMetrics: SummaryMetric[] | null;
     sync: InsightsSyncCadence;
 }>();
 
 const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
+const selectedLabelIds = ref<string[]>([...props.report.filters.labels]);
+const selectedUntagged = ref<boolean>(props.report.filters.untagged);
 
-const filterQuery = computed((): Record<string, string | string[]> => ({
-    ...(selectedChannelIds.value.length
-        ? { channels: selectedChannelIds.value }
-        : {}),
-}));
+/** The channels and labels picked, as the page's query (an empty pick is left out). */
+const filterQuery = computed((): Record<string, string | string[]> => {
+    const query: Record<string, string | string[]> = {};
 
-const filtered = computed(() => props.report.filters.channels.length > 0);
+    if (filled(selectedChannelIds.value)) {
+        query.channels = selectedChannelIds.value;
+    }
+
+    if (filled(selectedLabelIds.value)) {
+        query.labels = selectedLabelIds.value;
+    }
+
+    if (selectedUntagged.value) {
+        query.untagged = '1';
+    }
+
+    return query;
+});
+
+/** Followers follow the channels only: labels narrow the post metrics. */
+const channelFiltered = computed(() => filled(props.report.filters.channels));
+
+/** Whether the post metrics are narrowed, by channel or by label. */
+const filtered = computed((): boolean => {
+    if (channelFiltered.value) {
+        return true;
+    }
+
+    if (props.report.filters.untagged) {
+        return true;
+    }
+
+    return filled(props.report.filters.labels);
+});
 
 const sameIds = (left: string[], right: string[]): boolean =>
     left.length === right.length && left.every((id) => right.includes(id));
 
-const selectionMatchesServer = (): boolean =>
-    sameIds(selectedChannelIds.value, props.report.filters.channels);
+const selectionMatchesServer = (): boolean => {
+    const { channels, labels, untagged } = props.report.filters;
+
+    if (!sameIds(selectedChannelIds.value, channels)) {
+        return false;
+    }
+
+    if (!sameIds(selectedLabelIds.value, labels)) {
+        return false;
+    }
+
+    return selectedUntagged.value === untagged;
+};
 
 watch(
     () => props.report.filters,
@@ -57,20 +101,29 @@ watch(
         if (!sameIds(selectedChannelIds.value, filters.channels)) {
             selectedChannelIds.value = [...filters.channels];
         }
+
+        if (!sameIds(selectedLabelIds.value, filters.labels)) {
+            selectedLabelIds.value = [...filters.labels];
+        }
+
+        if (selectedUntagged.value !== filters.untagged) {
+            selectedUntagged.value = filters.untagged;
+        }
     },
 );
 
-const rangeQuery = (): Record<string, string> =>
-    props.report.filters.range === 'custom'
-        ? {
-              range: 'custom',
-              start: props.report.filters.start,
-              end: props.report.filters.end,
-          }
-        : { range: props.report.filters.range };
+const rangeQuery = (): Record<string, string> => {
+    const { range, start, end } = props.report.filters;
+
+    if (range === 'custom') {
+        return { range, start, end };
+    }
+
+    return { range };
+};
 
 watch(
-    [selectedChannelIds],
+    [selectedChannelIds, selectedLabelIds, selectedUntagged],
     () => {
         if (selectionMatchesServer()) {
             return;
@@ -86,9 +139,6 @@ watch(
 );
 
 useAnalyticsCoveragePoll(() => props.report.coverage);
-
-const span = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [
@@ -136,22 +186,40 @@ const accountColors = computed<Record<string, string>>(() => {
                     class="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border-strong pt-2 pb-3"
                     data-testid="analytics-toolbar"
                 >
-                    <AnalyticsRangePresets
-                        :filters="report.filters"
-                        :bounds="report.bounds"
-                        :url="insightsRoute.url()"
-                        :range="report.range"
-                        :keep="filterQuery"
-                    />
+                    <TourStep
+                        tour="insights.filters"
+                        step="range"
+                        align="start"
+                    >
+                        <AnalyticsRangePresets
+                            :filters="report.filters"
+                            :bounds="report.bounds"
+                            :url="insightsRoute.url()"
+                            :range="report.range"
+                            :keep="filterQuery"
+                        />
+                    </TourStep>
                     <div
                         class="flex min-w-0 flex-wrap items-center gap-2"
                         data-testid="analytics-filters"
                     >
-                        <PostChannelFilter
-                            v-model="selectedChannelIds"
-                            :channels="channelOptions"
-                            test-id="analytics-channel"
-                        />
+                        <TourStep tour="insights.filters" step="channels">
+                            <PostChannelFilter
+                                v-model="selectedChannelIds"
+                                :channels="channelOptions"
+                                test-id="analytics-channel"
+                                sheet-below-sm
+                            />
+                        </TourStep>
+                        <TourStep tour="insights.filters" step="labels">
+                            <LabelFilter
+                                v-model="selectedLabelIds"
+                                v-model:untagged="selectedUntagged"
+                                :labels="labels"
+                                test-id="analytics-label"
+                                sheet-below-sm
+                            />
+                        </TourStep>
                     </div>
                 </div>
             </header>
@@ -159,7 +227,7 @@ const accountColors = computed<Record<string, string>>(() => {
             <ImportCoverage :coverage="report.coverage" />
 
             <EmptyState
-                v-if="!report.bounds.min && report.filters.channels.length"
+                v-if="!report.bounds.min && channelFiltered"
                 data-testid="analytics-filtered-empty-state"
                 :icon="IconTrendingUp"
                 :title="$t('analytics.dashboard.filtered_no_data_title')"
@@ -174,12 +242,6 @@ const accountColors = computed<Record<string, string>>(() => {
                 <SummaryCards
                     :report="report"
                     :available-metrics="availableMetrics ?? undefined"
-                    :subtitle="
-                        $t('analytics.ranges.compared_to', {
-                            current: span(report.range),
-                            previous: span(report.previous_range),
-                        })
-                    "
                     subtitle-testid="insights-range-caption"
                 />
                 <TopPosts
@@ -197,8 +259,8 @@ const accountColors = computed<Record<string, string>>(() => {
                     :followers="report.followers"
                     :range="report.range"
                     :colors="accountColors"
-                    :filtered="report.filters.channels.length > 0"
-                    :channel-filtered="report.filters.channels.length > 0"
+                    :filtered="channelFiltered"
+                    :channel-filtered="channelFiltered"
                     :total-channels="channelOptions.length"
                 />
                 <PostsChart
@@ -206,7 +268,7 @@ const accountColors = computed<Record<string, string>>(() => {
                     :range="report.range"
                     :colors="accountColors"
                     :filtered="filtered"
-                    :channel-filtered="report.filters.channels.length > 0"
+                    :channel-filtered="channelFiltered"
                     :total-channels="channelOptions.length"
                 />
             </template>

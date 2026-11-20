@@ -172,6 +172,15 @@ final class PendingConnection
         ));
     }
 
+    /**
+     * The route name of the page the flow started from, which is also where
+     * close, Back and the error states return.
+     */
+    public function returnRouteName(): string
+    {
+        return (string) data_get($this->data, 'return.name', self::DEFAULT_RETURN_ROUTE);
+    }
+
     public function returnUrl(): string
     {
         return self::urlFor(data_get($this->data, 'return'));

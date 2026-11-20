@@ -8,4 +8,5 @@ enum CheckoutEvent: string
 {
     case Started = 'checkout.started';
     case Completed = 'checkout.completed';
+    case Expired = 'checkout.expired';
 }

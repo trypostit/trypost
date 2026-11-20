@@ -25,31 +25,6 @@ const COMPOSER_GOOGLE_PHOTOS_PICKER_URI = 'https://127.0.0.1:9/picker/'.COMPOSER
 
 const COMPOSER_GOOGLE_PHOTOS_NONCE_PATTERN = '/^[A-Za-z0-9_-]{16,64}$/';
 
-/**
- * Poll from the page until `$condition` holds (never sleep(): the test server
- * only ticks while Pest awaits Playwright).
- */
-function waitForComposerGooglePhotosCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerGooglePhotosTestId(mixed $page, string $testId, int $rounds = 1): void
-{
-    $visible = "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0";
-
-    for ($round = 0; $round < $rounds && ! $page->script("Boolean({$visible})"); $round++) {
-        waitForComposerGooglePhotosCondition($page, $visible);
-    }
-}
-
 function openComposerForGooglePhotos(mixed $test): mixed
 {
     $user = User::factory()->create();
@@ -61,7 +36,7 @@ function openComposerForGooglePhotos(mixed $test): mixed
     $test->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerGooglePhotosTestId($page, 'composer-base-media-source-menu', rounds: 4);
+    waitFor($page, '@composer-base-media-source-menu', seconds: 40);
 
     return $page;
 }
@@ -69,14 +44,20 @@ function openComposerForGooglePhotos(mixed $test): mixed
 function chooseComposerGooglePhotos(mixed $page): void
 {
     $page->click('@composer-base-media-source-menu');
-    waitForComposerGooglePhotosTestId($page, 'media-source-google_photos');
+    waitFor($page, '@media-source-google_photos');
     $page->click('@media-source-google_photos');
 }
 
-function enableOnlyGooglePhotosForComposer(bool $mediaItemsSet = true): string
+/**
+ * Google Photos alone in the media menu, with Google faked. The session
+ * answers "not picked yet" to its first `$readsBeforePicked` reads, then
+ * picked.
+ */
+function enableOnlyGooglePhotosForComposer(int $readsBeforePicked = 0): string
 {
     config()->set([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => 'media-client-id',
         'services.google_media.client_secret' => 'media-client-secret',
         'services.google_media.redirect' => 'https://trypost.example/integrations/google/callback',
@@ -92,7 +73,8 @@ function enableOnlyGooglePhotosForComposer(bool $mediaItemsSet = true): string
 
     test()->mock(HostResolver::class)->shouldReceive('addresses')->andReturn(['142.250.0.10']);
 
-    $api = rtrim((string) config('trypost.media_sources.google_photos.api'), '/').'/v1';
+    $api = config('trypost.media_sources.google_photos.api').'/v1';
+    $sessionReads = 0;
 
     Http::fake([
         'https://oauth2.google.test/token' => Http::response([
@@ -100,13 +82,19 @@ function enableOnlyGooglePhotosForComposer(bool $mediaItemsSet = true): string
             'expires_in' => 3599,
             'scope' => COMPOSER_GOOGLE_PHOTOS_SCOPE,
         ]),
-        "{$api}/sessions/*" => fn (Request $request) => $request->method() === 'DELETE'
-            ? Http::response([], 200)
-            : Http::response([
+        "{$api}/sessions/*" => function (Request $request) use (&$sessionReads, $readsBeforePicked) {
+            if ($request->method() === 'DELETE') {
+                return Http::response([], 200);
+            }
+
+            $sessionReads++;
+
+            return Http::response([
                 'id' => COMPOSER_GOOGLE_PHOTOS_SESSION,
-                'mediaItemsSet' => $mediaItemsSet,
+                'mediaItemsSet' => $sessionReads > $readsBeforePicked,
                 'pollingConfig' => ['pollInterval' => '1s', 'timeoutIn' => '60s'],
-            ]),
+            ]);
+        },
         "{$api}/sessions" => Http::response([
             'id' => COMPOSER_GOOGLE_PHOTOS_SESSION,
             'pickerUri' => COMPOSER_GOOGLE_PHOTOS_PICKER_URI,
@@ -202,7 +190,7 @@ test('the real sign-in popup opens the picker and every picked photo becomes its
     expect((string) rescue(fn (): string => $popup->content(), '', report: false))->not->toContain('server-photos-token');
 
     foreach (range(1, 4) as $round) {
-        waitForComposerGooglePhotosCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 2");
+        waitForCount($page, '@composer-media-item', 2);
     }
     $page->assertNoJavaScriptErrors();
 
@@ -231,14 +219,13 @@ test('the real sign-in popup opens the picker and every picked photo becomes its
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://lh3.googleusercontent.com/composer-logo=d');
 });
 
-test('closing the google photos window without picking adds nothing and discards the session', function () {
-    $api = enableOnlyGooglePhotosForComposer(mediaItemsSet: false);
-
-    $page = openComposerForGooglePhotos($this);
-    stubGooglePhotosPopupForComposer($page);
+/**
+ * Hands the composer the picker session as the sign-in popup does, with
+ * `$timeoutMs` as Google's timeout.
+ */
+function deliverGooglePhotosSessionToComposer(mixed $page, int $timeoutMs): void
+{
     $user = User::query()->sole();
-
-    chooseComposerGooglePhotos($page);
     parse_str((string) parse_url(googlePhotosSignInUrl($page), PHP_URL_QUERY), $query);
     $nonce = (string) data_get($query, 'nonce');
 
@@ -248,7 +235,7 @@ test('closing the google photos window without picking adds nothing and discards
         'workspace_id' => $user->current_workspace_id,
         'source' => 'google_photos',
         'session_id' => COMPOSER_GOOGLE_PHOTOS_SESSION,
-        'polling' => ['interval_ms' => 1000, 'timeout_ms' => 60000],
+        'polling' => ['interval_ms' => 1000, 'timeout_ms' => $timeoutMs],
     ], 600);
 
     $page->script(<<<JS
@@ -258,9 +245,36 @@ test('closing the google photos window without picking adds nothing and discards
         }));
         true;
     JS);
-    waitForComposerGooglePhotosCondition($page, "window.__photos.finished.some((request) => request.includes('/integrations/google/returns/'))");
+    waitForCondition($page, "window.__photos.finished.some((request) => request.includes('/integrations/google/returns/'))");
+}
+
+test('the picker window reading closed once it reaches google keeps the session until the user picks', function () {
+    enableOnlyGooglePhotosForComposer(readsBeforePicked: 3);
+
+    $page = openComposerForGooglePhotos($this);
+    stubGooglePhotosPopupForComposer($page);
+
+    chooseComposerGooglePhotos($page);
+    deliverGooglePhotosSessionToComposer($page, timeoutMs: 60000);
     $page->script('window.__photos.popup.closed = true; true;');
-    waitForComposerGooglePhotosCondition($page, "window.__photos.finished.some((request) => request.startsWith('DELETE ') && request.includes('/media/google-photos/sessions/'))");
+
+    waitForCount($page, '@composer-media-item', 2);
+
+    $page->assertNoJavaScriptErrors();
+    expect($page->script("window.__photos.finished.some((request) => request.startsWith('DELETE '))"))->toBeFalse()
+        ->and(Media::query()->count())->toBe(2);
+});
+
+test('a google photos session nobody picks in time adds nothing and is discarded', function () {
+    $api = enableOnlyGooglePhotosForComposer(readsBeforePicked: PHP_INT_MAX);
+
+    $page = openComposerForGooglePhotos($this);
+    stubGooglePhotosPopupForComposer($page);
+    $user = User::query()->sole();
+
+    chooseComposerGooglePhotos($page);
+    deliverGooglePhotosSessionToComposer($page, timeoutMs: 3000);
+    waitForCondition($page, "window.__photos.finished.some((request) => request.startsWith('DELETE ') && request.includes('/media/google-photos/sessions/'))");
 
     $page->assertNotPresent('@composer-media-item')
         ->assertNoJavaScriptErrors();
@@ -281,7 +295,7 @@ test('a refused google photos sign-in opens no picker and says why', function ()
     config()->set('trypost.media_sources.google_oauth.authorize_url', route('app.integrations.google.callback').'?error=access_denied&ignored');
 
     $popup = visit(googlePhotosSignInUrl($page));
-    waitForComposerGooglePhotosTestId($popup, 'media-source-popup');
+    waitFor($popup, '@media-source-popup');
     $popup->assertAttribute('@media-source-popup', 'data-success', 'false')
         ->assertSee(__('posts.composer.media_sources.errors.scope_not_granted'));
 
@@ -295,7 +309,7 @@ test('a refused google photos sign-in opens no picker and says why', function ()
         }));
         true;
     JS);
-    waitForComposerGooglePhotosCondition($page, "document.body.innerText.includes('Try again and allow it')");
+    waitForCondition($page, "document.body.innerText.includes('Try again and allow it')");
 
     $page->assertSee(__('posts.composer.media_sources.errors.scope_not_granted'))
         ->assertNotPresent('@composer-media-item')
@@ -312,7 +326,7 @@ test('a blocked google photos popup says so and asks the server for nothing', fu
     $page->script('window.open = () => null; true;');
 
     chooseComposerGooglePhotos($page);
-    waitForComposerGooglePhotosCondition($page, "document.body.innerText.includes('Your browser blocked the window')");
+    waitForCondition($page, "document.body.innerText.includes('Your browser blocked the window')");
 
     $page->assertSee(__('posts.composer.media_sources.errors.popup_blocked'))
         ->assertNotPresent('@composer-media-item')

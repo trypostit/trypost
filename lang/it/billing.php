@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Fatturazione',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Fatturazione mensile',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Annuale',
         'save_two_months' => '2 mesi gratis',
         'per_month' => '/mese',
+        'per_year' => '/anno',
         'workspaces_one' => 'Un workspace',
         'workspaces_unlimited' => 'Workspace illimitati',
         'workspaces_tooltip' => 'Un workspace è un brand o un cliente, separato dagli altri: con i propri account social, firme, etichette, analytics, permessi dei membri e connessione MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Scegli :plan',
         'upgrade' => 'Fai upgrade a :plan',
         'downgrade' => 'Fai downgrade a :plan',
-        'start_first_month' => 'Attiva a :price',
         'billed_yearly_total' => 'Fatturato annualmente · :price (2 mesi gratis)',
         'socials_tagline' => 'Ideale per creator e piccole marche.',
         'workspaces_tagline' => 'Ideale per agenzie e grandi attività.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Attivo',
+            'trial' => 'Prova gratuita',
+            'cancelling' => 'Annullato',
+            'past_due' => 'Scaduto',
+        ],
         'change' => 'Cambia piano',
-        'price_monthly' => ':price/mese',
-        'price_yearly' => ':price/anno',
+        'subscribe' => 'Abbonati ora',
         'trial_until' => 'Prova fino al :date',
-        'renews' => 'Si rinnova automaticamente',
         'cancelled' => 'Annullato, termina il :date',
-        'workspaces_usage' => 'Workspace: :count di :limit',
+        'discount_until' => ':discount di sconto fino al :date',
+        'discount_forever' => ':discount di sconto su ogni pagamento',
+        'discount_once' => ':discount di sconto sul prossimo pagamento',
     ],
 
     'subscription' => [
-        'title' => 'Metodo di pagamento',
+        'title' => 'Metodi di pagamento',
+        'default' => 'Predefinito',
         'description' => 'Aggiorna la carta o i dati di fatturazione su Stripe.',
         'no_payment_method' => 'Nessun metodo di pagamento ancora registrato.',
         'expires_on' => 'Scade il :month/:year',
         'manage_stripe' => 'Gestisci su Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Piano',
+        'invoices' => 'Fatture',
+    ],
+
     'invoices' => [
-        'title' => 'Fatture',
-        'description' => 'Scarica le tue fatture passate.',
+        'columns' => [
+            'date' => 'Data',
+            'amount' => 'Importo',
+            'status' => 'Stato',
+        ],
+        'empty_title' => 'Ancora nessuna fattura',
+        'empty_description' => 'Le tue fatture appariranno qui dopo il primo pagamento.',
         'paid' => 'Pagata',
         'download' => 'Scarica fattura',
     ],

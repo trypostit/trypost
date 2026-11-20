@@ -55,7 +55,7 @@ test('attaches an uploaded Media with alt text stored in meta', function () {
     expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('A scenic mountain view');
 });
 
-test('does not store alt text on a non-image upload', function () {
+test('stores alt text on a video upload', function () {
     $video = Media::factory()->stored()->video()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
@@ -67,13 +67,13 @@ test('does not store alt text on a non-image upload', function () {
         ->tool(AttachMediaFromUploadTool::class, [
             'post_id' => $this->post->id,
             'upload_token' => $video->upload_token,
-            'alt' => 'alt is meaningless for a video',
+            'alt' => 'a cyclist crossing a bridge',
         ]);
 
     $response->assertOk();
 
     expect(data_get($this->post->fresh()->media, '0.type'))->toBe('video')
-        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBeNull();
+        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('a cyclist crossing a bridge');
 });
 
 test('rejects alt text over the max length', function () {

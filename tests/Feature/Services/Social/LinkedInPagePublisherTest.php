@@ -477,3 +477,22 @@ test('linkedin page publisher sends the article card under the organization', fu
         && $request['content']['article']['source'] === 'https://example.com/article'
         && $request['content']['article']['title'] === 'The Article');
 });
+
+test('a linkedin page thread posts its reply as a comment from the organization', function () {
+    Http::fake([
+        config('trypost.platforms.linkedin-page.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin-page.api').'/v2/socialActions/*' => Http::response([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->update(['meta' => ['thread_replies' => ['Sign up at example.com']]]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    $request = Http::recorded(fn ($request) => str_contains($request->url(), '/v2/socialActions/'))->sole()[0];
+    expect($result['thread_reply_ids'])->toBe(['999'])
+        ->and($request->url())->toBe(config('trypost.platforms.linkedin-page.api').'/v2/socialActions/urn%3Ali%3Ashare%3A123/comments')
+        ->and($request->data())->toBe([
+            'actor' => 'urn:li:organization:123456',
+            'object' => 'urn:li:share:123',
+            'message' => ['text' => 'Sign up at example.com'],
+        ]);
+});

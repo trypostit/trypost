@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'quick_win' => [
         'title' => 'Рішення за п\'ять хвилин',

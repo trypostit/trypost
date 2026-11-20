@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
 import {
-    IconDotsVertical,
-    IconPencil,
     IconPlus,
+    IconSettings,
     IconSignature,
     IconTrash,
 } from '@tabler/icons-vue';
@@ -17,14 +16,12 @@ import CreateDialog from '@/components/signatures/CreateDialog.vue';
 import EditDialog from '@/components/signatures/EditDialog.vue';
 import SignaturesEmptyIllustration from '@/components/signatures/SignaturesEmptyIllustration.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { TableLoadMore } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import debounce from '@/debounce';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import {
@@ -157,9 +154,7 @@ const handleDelete = (signature: Signature) => {
                         <SettingsListRow
                             v-for="signature in signatures.data"
                             :key="signature.id"
-                            class="cursor-pointer"
                             :data-testid="`signature-row-${signature.id}`"
-                            @click="openEditDialog(signature)"
                         >
                             <template #media>
                                 <span
@@ -181,38 +176,46 @@ const handleDelete = (signature: Signature) => {
                                 {{ signature.content }}
                             </p>
                             <template #actions>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger as-child>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
-                                            :aria-label="$t('signatures.row_actions')"
-                                            :data-testid="`signature-menu-${signature.id}`"
-                                            @click.stop
+                                <div class="flex shrink-0 items-center gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                class="shrink-0 text-muted-foreground"
+                                                :aria-label="$t('signatures.actions.settings')"
+                                                :data-testid="`signature-settings-${signature.id}`"
+                                                @click="openEditDialog(signature)"
+                                            >
+                                                <IconSettings class="size-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            :data-testid="`signature-settings-tooltip-${signature.id}`"
                                         >
-                                            <IconDotsVertical class="size-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" @click.stop>
-                                        <DropdownMenuItem
-                                            :data-testid="`edit-signature-${signature.id}`"
-                                            @click="openEditDialog(signature)"
+                                            {{ $t('signatures.actions.settings') }}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                class="shrink-0 text-destructive-text hover:bg-critical-subtle hover:text-destructive-text"
+                                                :aria-label="$t('signatures.actions.delete')"
+                                                :data-testid="`signature-delete-${signature.id}`"
+                                                @click="handleDelete(signature)"
+                                            >
+                                                <IconTrash class="size-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            :data-testid="`signature-delete-tooltip-${signature.id}`"
                                         >
-                                            <IconPencil class="size-4" />
-                                            {{ $t('signatures.actions.edit') }}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            variant="destructive"
-                                            :data-testid="`delete-signature-${signature.id}`"
-                                            @click="handleDelete(signature)"
-                                        >
-                                            <IconTrash class="size-4" />
                                             {{ $t('signatures.actions.delete') }}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                             </template>
                         </SettingsListRow>
                     </ul>

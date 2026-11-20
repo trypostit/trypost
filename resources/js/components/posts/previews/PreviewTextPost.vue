@@ -6,15 +6,15 @@ import LinkCard from '@/components/posts/previews/LinkCard.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
 import PreviewMedia from '@/components/posts/previews/PreviewMedia.vue';
 import PreviewText from '@/components/posts/previews/PreviewText.vue';
-import VerifiedBadge from '@/components/VerifiedBadge.vue';
-import { useLinkCard } from '@/composables/useLinkCard';
-import type { MediaItem } from '@/types/media';
-
 import type {
     PreviewAccount,
     PreviewAction,
     PreviewMediaLayout,
-} from './types';
+} from '@/components/posts/previews/types';
+import VerifiedBadge from '@/components/VerifiedBadge.vue';
+import { firstHttpUrl, useLinkCard } from '@/composables/useLinkCard';
+import type { MediaItem } from '@/types/media';
+
 
 const props = withDefaults(
     defineProps<{
@@ -80,10 +80,23 @@ const props = withDefaults(
     },
 );
 
+/** The link whose card the preview draws: none when it shows no card, so nothing is fetched. */
+const cardUrl = (text: string): string | null => {
+    if (!props.linkCard) {
+        return null;
+    }
+
+    if (props.linkUrl !== undefined) {
+        return props.linkUrl(text);
+    }
+
+    return firstHttpUrl(text);
+};
+
 const { card, loading } = useLinkCard(
     toRef(props, 'content'),
     toRef(props, 'media'),
-    props.linkUrl,
+    cardUrl,
 );
 
 const isStacked = computed((): boolean => props.variant === 'stacked');
@@ -238,8 +251,9 @@ const hasActions = computed(
             <PreviewMedia
                 v-if="!concealed"
                 :media="media"
+                :class="{ 'px-4': isStacked && threadPosition }"
                 :layout="mediaLayout"
-                :bleed="isStacked"
+                :bleed="isStacked && !threadPosition"
                 :mute-badge="muteBadge"
             />
             <div
@@ -317,6 +331,9 @@ const hasActions = computed(
                         stroke-width="1.75"
                     />
                 </span>
+            </div>
+            <div v-if="$slots['after-actions']" :class="{ 'px-4': isStacked }">
+                <slot name="after-actions" />
             </div>
         </div>
     </article>

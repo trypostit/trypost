@@ -71,9 +71,9 @@ test('reorder persists the new order and both the sidebar and settings list foll
             ->where('channels.0.id', $c->id)
             ->where('channels.1.id', $a->id)
             ->where('channels.2.id', $b->id)
-            ->where('connectedChannels.0.id', $c->id)
-            ->where('connectedChannels.1.id', $a->id)
-            ->where('connectedChannels.2.id', $b->id)
+            ->where('connectedChannels.data.0.id', $c->id)
+            ->where('connectedChannels.data.1.id', $a->id)
+            ->where('connectedChannels.data.2.id', $b->id)
         );
 });
 

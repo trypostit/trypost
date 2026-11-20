@@ -10,9 +10,11 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\TrackSocialAccountConnectionLost;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
+use Illuminate\Support\Facades\DB;
 
 class SocialAccountObserver
 {
@@ -64,6 +66,16 @@ class SocialAccountObserver
 
         if ($connectionChanged && $isConnected) {
             app(DispatchAccountAnalytics::class)->handle($socialAccount);
+        }
+
+        if ($connectionChanged && $wasConnected) {
+            $status = $socialAccount->status;
+
+            DB::afterCommit(function () use ($socialAccount, $status): void {
+                rescue(function () use ($socialAccount, $status): void {
+                    TrackSocialAccountConnectionLost::dispatchIf(PostHogService::isEnabled(), (string) $socialAccount->id, $status);
+                });
+            });
         }
     }
 

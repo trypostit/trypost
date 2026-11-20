@@ -62,15 +62,10 @@ Sampling determines which entry points (requests, commands, scheduled tasks) tri
 Configure via environment variables:
 
 ```bash
-
 # Default: 100% sampling (all requests/commands captured)
-
 NIGHTWATCH_REQUEST_SAMPLE_RATE=0.1      # Recommended: 10% of requests
-
 NIGHTWATCH_COMMAND_SAMPLE_RATE=1.0      # Capture all commands
-
 NIGHTWATCH_EXCEPTION_SAMPLE_RATE=1.0    # Always capture exceptions
-
 ```
 
 **Recommendation**: Start with `0.1` (10%) for requests in production, adjust based on volume and needs.
@@ -312,22 +307,17 @@ Redaction modifies captured data to remove or obfuscate sensitive information. U
 **Redact sensitive headers** (automatically redacts: Authorization, Cookie, X-XSRF-TOKEN):
 
 ```bash
-
 # Customize redacted headers
-
 NIGHTWATCH_REDACT_HEADERS=Authorization,Cookie,Proxy-Authorization,X-API-Key
 ```
 
 **Redact request payloads** (disabled by default):
 
 ```bash
-
 # Enable payload capture
-
 NIGHTWATCH_CAPTURE_REQUEST_PAYLOAD=true
 
 # Customize redacted fields
-
 NIGHTWATCH_REDACT_PAYLOAD_FIELDS=password,password_confirmation,ssn,credit_card
 ```
 

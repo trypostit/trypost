@@ -24,6 +24,7 @@ import { computed, ref } from 'vue';
 
 import PreferencesController from '@/actions/App/Http/Controllers/App/Settings/PreferencesController';
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { buttonVariants } from '@/components/ui/button';
 import {
@@ -39,7 +40,6 @@ import {
 import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { openSupportChat } from '@/lib/supportChat';
 import { cn } from '@/lib/utils';
 import posthog from '@/posthog';
@@ -67,13 +67,13 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    upgradeRequired: [];
+    createWorkspace: [];
+    close: [];
 }>();
 
 const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
-const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(
     () => canManageBilling.value && !selfHosted.value,
@@ -92,7 +92,21 @@ const currentLanguage = computed(() =>
     languages.value?.find((language) => language.code === page.props.locale),
 );
 
+const currentLanguageCode = computed(() => {
+    if (!currentLanguage.value) {
+        return '';
+    }
+
+    return currentLanguage.value.code;
+});
+
 const switchLanguage = (code: string): void => {
+    emit('close');
+
+    if (code === currentLanguageCode.value) {
+        return;
+    }
+
     router.put(updateLanguage.url(), { locale: code });
 };
 
@@ -137,12 +151,12 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    createOrUpgrade(() => emit('upgradeRequired'));
+    emit('createWorkspace');
 };
 
 const handleLogout = (): void => {
     posthog.reset();
-    clearAllComposerAutosaves();
+    clearAllComposerAutosaves(page.props.auth.user.id);
     router.flushAll();
 };
 
@@ -354,30 +368,13 @@ const supportLinks = [
                 }}
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                    <DropdownMenuItem
-                        v-for="language in languages"
-                        :key="language.code"
-                        :class="
-                            language.code === currentLanguage?.code
-                                ? 'bg-accent'
-                                : ''
-                        "
-                        :data-testid="`sidebar-language-${language.code}`"
-                        @click="switchLanguage(language.code)"
-                    >
-                        <img
-                            :src="language.flag"
-                            :alt="language.name"
-                            class="h-3.5 w-5 shrink-0 rounded-xs object-cover"
-                        />
-                        {{ language.name }}
-                        <IconCheck
-                            v-if="language.code === currentLanguage?.code"
-                            class="ms-auto size-4 shrink-0 text-foreground"
-                            stroke-width="2.5"
-                        />
-                    </DropdownMenuItem>
+                <DropdownMenuSubContent class="w-[306px] max-w-[calc(100vw-2rem)] p-3">
+                    <LanguagePicker
+                        :languages="languages"
+                        :selected="currentLanguageCode"
+                        testid="sidebar-language"
+                        @select="switchLanguage"
+                    />
                 </DropdownMenuSubContent>
             </DropdownMenuPortal>
         </DropdownMenuSub>

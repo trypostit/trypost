@@ -89,6 +89,21 @@ class TikTokPublishException extends SocialPublishException
         ))->withNetworkReset($response)->asNetworkRejectionIf(in_array($errorCode, self::USER_REJECTION_CODES, true));
     }
 
+    /**
+     * TikTok kept refusing the status of a publish it had accepted. It has
+     * published such posts anyway, so the user checks the profile before
+     * sending the post again.
+     */
+    public static function unconfirmed(self $refusal): static
+    {
+        return new static(
+            userMessage: 'TikTok did not confirm this post. Check your TikTok profile before publishing it again.',
+            category: ErrorCategory::Unknown,
+            platformErrorCode: $refusal->platformErrorCode,
+            rawResponse: $refusal->rawResponse,
+        );
+    }
+
     public static function fromFailReason(string $failReason, ?string $rawResponse = null): static
     {
         [$message, $category] = match ($failReason) {

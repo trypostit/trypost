@@ -6,30 +6,6 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForBillingProcessingTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForBillingProcessingPath(mixed $page, string $path): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if (window.location.pathname === '{$path}') return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function billingProcessingSubscriber(): User
 {
     $user = User::factory()->create();
@@ -45,29 +21,45 @@ function billingProcessingSubscriber(): User
     return $user;
 }
 
-test('once the subscription and plan are ready the processing page sends the user to the MCP step', function () {
+test('once the subscription and plan are ready the processing page opens the schedule', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $mcpPath = parse_url(route('app.welcome.mcp'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'));
-    waitForBillingProcessingPath($page, $mcpPath);
+    waitForPath($page, $schedulePath);
 
-    $page->assertPathIs($mcpPath)
+    $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
 });
 
-test('on a phone the processing page skips the MCP step and opens the schedule', function () {
+test('a subscription started from billing returns to billing, not the onboarding', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = billingProcessingSubscriber();
+    Plan::query()->whereKey($user->account->plan_id)->update(['stripe_monthly_price_id' => 'price_123']);
+    $this->actingAs($user->fresh());
+
+    $billingPath = route('app.billing.index', absolute: false);
+
+    $page = visit(route('app.billing.processing', ['from' => 'billing']));
+    waitForPath($page, $billingPath);
+
+    $page->assertPathIs($billingPath)
+        ->assertNoJavaScriptErrors();
+});
+
+test('on a phone the processing page opens the schedule too', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(billingProcessingSubscriber());
 
-    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
+    $schedulePath = route('app.posts.index', absolute: false);
 
     $page = visit(route('app.billing.processing'))->on()->mobile();
-    waitForBillingProcessingPath($page, $schedulePath);
+    waitForPath($page, $schedulePath);
 
     $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
@@ -87,7 +79,7 @@ test('while checkout settles the processing page uses the neutral auth layout, n
     $this->actingAs($user);
 
     $page = visit(route('app.billing.processing'));
-    waitForBillingProcessingTestId($page, 'billing-processing');
+    waitFor($page, '@billing-processing');
 
     $page->assertSee('Processing your subscription')
         ->assertVisible('@billing-processing')

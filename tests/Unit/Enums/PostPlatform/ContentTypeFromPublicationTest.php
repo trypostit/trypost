@@ -22,6 +22,9 @@ function specializedPublicationTypes(): array
         'tiktok carousel' => [Platform::TikTok, PublicationContentType::Carousel, ContentType::TikTokPhoto],
         'pinterest video' => [Platform::Pinterest, PublicationContentType::Video, ContentType::PinterestVideoPin],
         'pinterest carousel' => [Platform::Pinterest, PublicationContentType::Carousel, ContentType::PinterestCarousel],
+        'x poll' => [Platform::X, PublicationContentType::Poll, ContentType::XPoll],
+        'mastodon poll' => [Platform::Mastodon, PublicationContentType::Poll, ContentType::MastodonPoll],
+        'threads poll' => [Platform::Threads, PublicationContentType::Poll, ContentType::ThreadsPoll],
     ];
 }
 

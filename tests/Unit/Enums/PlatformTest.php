@@ -379,7 +379,7 @@ test('google business has correct label and color', function () {
 test('google business has correct media rules', function () {
     expect(Platform::GoogleBusiness->allowedMediaTypes())->toBe([MediaType::Image]);
     expect(Platform::GoogleBusiness->maxImages())->toBe(1);
-    expect(Platform::GoogleBusiness->supportsAltText())->toBeFalse();
+    expect(Platform::GoogleBusiness->supportsImageAltText())->toBeFalse();
     expect(Platform::GoogleBusiness->maxContentLength())->toBe(1500);
 });
 
@@ -416,6 +416,48 @@ test('google business can be disabled via config', function () {
 
 test('tiktok publish config privacy options come from the privacy level enum', function () {
     expect(Platform::TikTok->publishConfig()['privacyLevelOptions'])->toBe(PrivacyLevel::values());
+});
+
+test('x publish config serves the poll limits', function () {
+    expect(Platform::X->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 25,
+        'minDuration' => 5,
+        'maxDuration' => 10080,
+        'defaultDuration' => 1440,
+        'questionMaxLength' => 280,
+        'multipleChoice' => false,
+        'hideTotals' => false,
+    ]]);
+});
+
+test('mastodon publish config serves the poll limits, with multiple choice and hidden totals', function () {
+    expect(Platform::Mastodon->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 50,
+        'minDuration' => 5,
+        'maxDuration' => 43200,
+        'defaultDuration' => 1440,
+        'questionMaxLength' => null,
+        'multipleChoice' => true,
+        'hideTotals' => true,
+    ]]);
+});
+
+test('threads publish config serves the poll limits, without a length to pick', function () {
+    expect(Platform::Threads->publishConfig())->toBe(['poll' => [
+        'minOptions' => 2,
+        'maxOptions' => 4,
+        'optionMaxLength' => 25,
+        'minDuration' => null,
+        'maxDuration' => null,
+        'defaultDuration' => null,
+        'questionMaxLength' => null,
+        'multipleChoice' => false,
+        'hideTotals' => false,
+    ]]);
 });
 
 test('youtube publish config exposes only the fixed categories and the default', function () {

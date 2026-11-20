@@ -815,7 +815,7 @@ test('threads publisher omits alt_text from single image container when no alt t
     });
 });
 
-test('threads publisher sends alt text on image carousel children but never on video children', function () {
+test('threads publisher sends alt text on image and video carousel children', function () {
     $imageAlt = str_repeat('x', 1500);
 
     $this->post->update([
@@ -834,7 +834,7 @@ test('threads publisher sends alt text on image carousel children but never on v
                 'url' => 'https://example.com/media/2026-01/test-video.mp4',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'test.mp4',
-                'meta' => ['alt_text' => 'video alt text must never be sent'],
+                'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
             ],
         ],
     ]);
@@ -871,7 +871,47 @@ test('threads publisher sends alt text on image carousel children but never on v
 
         return str_ends_with($request->url(), '/123456789/threads')
             && data_get($data, 'video_url') !== null
-            && ! array_key_exists('alt_text', $data);
+            && data_get($data, 'alt_text') === 'a cyclist crossing a bridge';
+    });
+});
+
+test('threads publisher sends alt text on a single video container', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test.mp4',
+                'meta' => ['alt_text' => 'a cyclist crossing a bridge'],
+            ],
+        ],
+    ]);
+
+    Http::fake([
+        'https://graph.threads.net/v1.0/123456789/threads' => Http::response([
+            'id' => 'container-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/container-123*' => Http::response([
+            'status' => 'FINISHED',
+        ], 200),
+        'https://graph.threads.net/v1.0/123456789/threads_publish' => Http::response([
+            'id' => 'post-video-alt-123',
+        ], 200),
+        'https://graph.threads.net/v1.0/post-video-alt-123*' => Http::response([
+            'permalink' => 'https://www.threads.net/@testuser/post/VIDEOALT123',
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        $data = $request->data();
+
+        return str_ends_with($request->url(), '/123456789/threads')
+            && data_get($data, 'media_type') === 'VIDEO'
+            && data_get($data, 'alt_text') === 'a cyclist crossing a bridge';
     });
 });
 
@@ -1076,4 +1116,57 @@ test('a text post waits for its container before publishing and recreates it whe
         ->and($containerCreations)->toBe(2)
         ->and($publicationAttempts)->toBe(2)
         ->and(array_slice($requestOrder, 0, 3))->toBe(['create', 'status', 'publish']);
+});
+
+test('a threads poll is a text container carrying its choices as option_a to option_d', function () {
+    $this->post->update([
+        'content' => 'Tabs or spaces?',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces', 'Both']], 'topic_tag' => 'laravel'],
+    ]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/123456789/threads')
+        && data_get($request->data(), 'media_type') === 'TEXT'
+        && data_get($request->data(), 'text') === 'Tabs or spaces?'
+        && data_get($request->data(), 'topic_tag') === 'laravel'
+        && json_decode((string) data_get($request->data(), 'poll_attachment'), true) === ['option_a' => 'Tabs', 'option_b' => 'Spaces', 'option_c' => 'Both']);
+});
+
+test('a threads poll that cannot go fails before calling threads', function (array $changes, string $message) {
+    $this->post->update([
+        'content' => 'Tabs or spaces?',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces']]],
+        ...$changes,
+    ]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(ThreadsPublishException::class, __($message, ['min' => 2]));
+    Http::assertNothingSent();
+})->with([
+    'media' => [['media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]], 'posts.errors.media_not_accepted'],
+    'one choice' => [['meta' => ['poll' => ['options' => ['Tabs']]]], 'posts.form.poll.options_required'],
+    'repeated choices' => [['meta' => ['poll' => ['options' => ['Tabs', ' tabs']]]], 'posts.form.poll.options_distinct'],
+    'no question' => [['content' => ''], 'posts.form.poll.question_required'],
+]);
+
+test('a threads poll with four choices sends option_a to option_d', function () {
+    $this->post->update([
+        'content' => 'Pick a color',
+        'content_type' => ContentType::ThreadsPoll,
+        'meta' => ['poll' => ['options' => ['Red', 'Green', 'Blue', 'Gold']]],
+    ]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn ($request): bool => json_decode((string) data_get($request->data(), 'poll_attachment'), true) === [
+        'option_a' => 'Red',
+        'option_b' => 'Green',
+        'option_c' => 'Blue',
+        'option_d' => 'Gold',
+    ]);
 });

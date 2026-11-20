@@ -7,6 +7,8 @@ return [
     'description' => 'Beheer de kanalen van deze workspace.',
     'connect' => 'Kanaal koppelen',
     'settings' => 'Kanaalinstellingen',
+    'manage' => 'Kanalen beheren',
+    'set_goal' => 'Publicatiedoel instellen',
     'publish' => 'Publiceren',
     'insights' => 'Insights',
     'new_post' => 'Nieuw bericht in dit kanaal',
@@ -168,6 +170,25 @@ return [
         'description' => 'Hiermee worden alle berichten van dit kanaal in TryPost verwijderd, inclusief concepten, ingeplande berichten en de publicatiegeschiedenis. Berichten die al op het netwerk staan, blijven daar.',
         'keyword' => 'ontkoppelen',
         'cancel' => 'Annuleren',
+    ],
+
+    'list' => [
+        'search' => 'Zoeken op naam, @gebruikersnaam of netwerk',
+        'networks' => 'Netwerken',
+        'networks_search' => 'Netwerken zoeken',
+        'no_networks' => 'Geen netwerken gevonden',
+        'columns' => [
+            'channel' => 'Kanaal',
+            'timezone' => 'Tijdzone',
+            'posting_times' => 'Tijden',
+            'this_week' => 'Deze week',
+        ],
+        'posting_times_per_week' => ':count per week',
+        'no_posting_times' => 'Geen tijden',
+        'no_results' => 'Geen kanalen gevonden voor je zoekopdracht.',
+        'connection_lost' => 'Dit kanaal heeft de verbinding verloren',
+        'settings' => 'Instellingen',
+        'more_actions' => 'Meer acties',
     ],
 
     'settings_page' => [

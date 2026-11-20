@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Publications;
 
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
+use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -72,8 +73,8 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector
                 excerpt: data_get($row, 'message'),
                 previewMetadata: $this->preview($previewUrl),
                 providerMetadata: match (true) {
-                    filled($videoId) => ['video_id' => (string) $videoId],
-                    filled($photoId) => ['photo_id' => (string) $photoId],
+                    filled($videoId) => [FacebookMediaKey::Video->value => (string) $videoId],
+                    filled($photoId) => [FacebookMediaKey::Photo->value => (string) $photoId],
                     default => null,
                 },
             );

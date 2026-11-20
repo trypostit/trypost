@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
+use App\Jobs\PostHog\SyncUser;
+use App\Models\Account;
+use App\Models\Invite;
 use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -100,6 +106,21 @@ test('github signup with unusable detection values falls back instead of failing
         ->and($user->time_format)->toBe(TimeFormat::TwelveHour);
 });
 
+test('social signup maps a legacy time zone alias to its canonical identifier', function (string $network, string $driver, string $alias, string $canonical) {
+    $this->get(route("auth.{$network}.redirect", ['timezone' => $alias]));
+    signupPreferencesSocialite($driver, "{$network}-alias", "{$network}-alias@example.com");
+
+    $this->get(route("auth.{$network}.callback"))->assertRedirect(route('app.welcome', absolute: false));
+
+    expect(User::query()->where('email', "{$network}-alias@example.com")->sole()->timezone)->toBe($canonical);
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+])->with([
+    'Calcutta' => ['Asia/Calcutta', 'Asia/Kolkata'],
+    'missing from PHP\'s list' => ['Canada/East-Saskatchewan', 'America/Regina'],
+]);
+
 test('an existing user logging in with google does not leave the detection in the session', function () {
     User::factory()->create(['email' => 'returning@example.com', 'google_id' => 'g-returning', 'timezone' => 'Europe/Lisbon']);
 
@@ -110,3 +131,110 @@ test('an existing user logging in with google does not leave the detection in th
 
     expect(User::query()->where('email', 'returning@example.com')->sole()->timezone)->toBe('Europe/Lisbon');
 });
+
+test('email registration stores the language the register form sent and pushes it to PostHog', function () {
+    enablePostHog();
+    Queue::fake();
+
+    $this->post(route('register.store'), [
+        'name' => 'Bia',
+        'email' => 'bia-locale@example.com',
+        'password' => strongPassword(),
+        'locale' => 'pt-BR',
+    ])->assertSessionHasNoErrors();
+
+    $user = User::query()->where('email', 'bia-locale@example.com')->sole();
+
+    expect($user->locale)->toBe(Locale::PortugueseBrazil);
+    Queue::assertPushed(SyncUser::class, fn (SyncUser $job): bool => $job->userId === (string) $user->id);
+});
+
+test('social signup stores the language sent to the OAuth start and pushes it to PostHog', function (string $network, string $driver) {
+    enablePostHog();
+    Queue::fake();
+
+    $this->get(route("auth.{$network}.redirect", ['locale' => 'pt-BR']));
+    signupPreferencesSocialite($driver, "{$network}-locale", "{$network}-locale@example.com");
+
+    $this->get(route("auth.{$network}.callback"))->assertRedirect(route('app.welcome', absolute: false));
+
+    $user = User::query()->where('email', "{$network}-locale@example.com")->sole();
+
+    expect($user->locale)->toBe(Locale::PortugueseBrazil);
+    Queue::assertPushed(SyncUser::class, fn (SyncUser $job): bool => $job->userId === (string) $user->id);
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+]);
+
+test('social signup with an unsupported or missing language falls back to the default', function (string $network, string $driver, array $query) {
+    $this->get(route("auth.{$network}.redirect", $query));
+    signupPreferencesSocialite($driver, "{$network}-fallback", "{$network}-fallback@example.com");
+
+    $this->get(route("auth.{$network}.callback"))->assertRedirect(route('app.welcome', absolute: false));
+
+    expect(User::query()->where('email', "{$network}-fallback@example.com")->sole()->locale)->toBe(Locale::DEFAULT);
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+])->with([
+    'unsupported' => [['locale' => 'sv']],
+    'missing' => [[]],
+]);
+
+test('an existing user logging in with google or github keeps the language they already have', function (string $network, string $driver, string $idColumn) {
+    User::factory()->create(['email' => "{$network}-returning-locale@example.com", $idColumn => "{$network}-returning-locale", 'locale' => Locale::Japanese]);
+
+    $this->get(route("auth.{$network}.redirect", ['locale' => 'pt-BR']));
+    signupPreferencesSocialite($driver, "{$network}-returning-locale", "{$network}-returning-locale@example.com");
+
+    $this->get(route("auth.{$network}.callback"));
+
+    expect(User::query()->where('email', "{$network}-returning-locale@example.com")->sole()->locale)->toBe(Locale::Japanese);
+})->with([
+    'google' => ['google', 'google-auth', 'google_id'],
+    'github' => ['github', 'github', 'github_id'],
+]);
+
+function signupPreferencesInvite(string $email): Invite
+{
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id]);
+    $account->update(['owner_id' => $owner->id]);
+    $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $owner->id]);
+
+    return Invite::factory()->create([
+        'account_id' => $account->id,
+        'invited_by' => $owner->id,
+        'email' => $email,
+        'workspaces' => [$workspace->id],
+    ]);
+}
+
+test('an invited email registration stores the language the register form sent', function () {
+    $invite = signupPreferencesInvite('invited-locale@example.com');
+
+    $this->post(route('register.store'), [
+        'name' => 'Invitee',
+        'email' => 'invited-locale@example.com',
+        'password' => strongPassword(),
+        'invite' => $invite->id,
+        'locale' => 'pt-BR',
+    ])->assertRedirect(route('app.invites.show', $invite, absolute: false));
+
+    expect(User::query()->where('email', 'invited-locale@example.com')->sole()->locale)->toBe(Locale::PortugueseBrazil);
+});
+
+test('an invited social signup stores the language sent to the OAuth start', function (string $network, string $driver) {
+    $invite = signupPreferencesInvite("{$network}-invited-locale@example.com");
+
+    $this->get(route("auth.{$network}.redirect", ['invite' => $invite->id, 'locale' => 'pt-BR']));
+    signupPreferencesSocialite($driver, "{$network}-invited-locale", "{$network}-invited-locale@example.com");
+
+    $this->get(route("auth.{$network}.callback"))->assertRedirect(route('app.invites.show', $invite, absolute: false));
+
+    expect(User::query()->where('email', "{$network}-invited-locale@example.com")->sole()->locale)->toBe(Locale::PortugueseBrazil);
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+]);

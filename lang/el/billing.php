@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Χρέωση',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Μηνιαία χρέωση',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Ετήσια',
         'save_two_months' => '2 μήνες δωρεάν',
         'per_month' => '/μήνα',
+        'per_year' => '/έτος',
         'workspaces_one' => 'Ένα workspace',
         'workspaces_unlimited' => 'Απεριόριστα workspaces',
         'workspaces_tooltip' => 'Ένα workspace είναι ένα brand ή ένας πελάτης, ξεχωριστά από τα υπόλοιπα: με δικούς του λογαριασμούς social, υπογραφές, ετικέτες, analytics, δικαιώματα μελών και σύνδεση MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Επιλέξτε :plan',
         'upgrade' => 'Αναβάθμιση σε :plan',
         'downgrade' => 'Υποβάθμιση σε :plan',
-        'start_first_month' => 'Ενεργοποίηση με :price',
         'billed_yearly_total' => 'Ετήσια χρέωση · :price (2 μήνες δωρεάν)',
         'socials_tagline' => 'Ιδανικό για creators και μικρά brands.',
         'workspaces_tagline' => 'Ιδανικό για agencies και μεγαλύτερες επιχειρήσεις.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Ενεργό',
+            'trial' => 'Δωρεάν δοκιμή',
+            'cancelling' => 'Ακυρώθηκε',
+            'past_due' => 'Ληξιπρόθεσμο',
+        ],
         'change' => 'Αλλαγή πλάνου',
-        'price_monthly' => ':price/μήνα',
-        'price_yearly' => ':price/έτος',
+        'subscribe' => 'Εγγραφή τώρα',
         'trial_until' => 'Δοκιμαστική περίοδος έως :date',
-        'renews' => 'Ανανεώνεται αυτόματα',
         'cancelled' => 'Ακυρώθηκε, λήγει στις :date',
-        'workspaces_usage' => 'Workspaces: :count από :limit',
+        'discount_until' => 'Έκπτωση :discount έως :date',
+        'discount_forever' => 'Έκπτωση :discount σε κάθε πληρωμή',
+        'discount_once' => 'Έκπτωση :discount στην επόμενη πληρωμή',
     ],
 
     'subscription' => [
-        'title' => 'Μέθοδος πληρωμής',
+        'title' => 'Μέθοδοι πληρωμής',
+        'default' => 'Προεπιλογή',
         'description' => 'Ενημερώστε την κάρτα ή τα στοιχεία χρέωσης στο Stripe.',
         'no_payment_method' => 'Δεν υπάρχει καταχωρημένη μέθοδος πληρωμής ακόμη.',
         'expires_on' => 'Λήγει :month/:year',
         'manage_stripe' => 'Διαχείριση στο Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Πλάνο',
+        'invoices' => 'Τιμολόγια',
+    ],
+
     'invoices' => [
-        'title' => 'Τιμολόγια',
-        'description' => 'Κατεβάστε τα προηγούμενα τιμολόγιά σας.',
+        'columns' => [
+            'date' => 'Ημερομηνία',
+            'amount' => 'Ποσό',
+            'status' => 'Κατάσταση',
+        ],
+        'empty_title' => 'Δεν υπάρχουν ακόμη τιμολόγια',
+        'empty_description' => 'Τα τιμολόγιά σας θα εμφανίζονται εδώ μετά την πρώτη σας πληρωμή.',
         'paid' => 'Πληρωμένο',
         'download' => 'Λήψη τιμολογίου',
     ],

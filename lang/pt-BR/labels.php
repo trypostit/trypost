@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Etiquetas',
     'description' => 'Organize e filtre seus posts com etiquetas.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Editar etiqueta',
         'delete' => 'Excluir etiqueta',
         'more' => 'Mais ações',
+        'settings' => 'Configurações',
         'view_posts' => 'Ver posts',
+        'view_insights' => 'Ver insights',
     ],
 
     'create' => [

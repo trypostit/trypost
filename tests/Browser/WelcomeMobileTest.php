@@ -9,20 +9,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForWelcomeMobileTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @param  array<string, mixed>  $attributes
  */
@@ -119,8 +105,8 @@ test('the welcome header fits a phone and the continue button stays on screen', 
     $this->actingAs(welcomeMobileOwner($attributes));
 
     $page = visit(route($route))->resize(390, 844);
-    waitForWelcomeMobileTestId($page, 'theme-toggle');
-    waitForWelcomeMobileTestId($page, $hasBack ? 'welcome-back' : 'welcome-step-persona');
+    waitFor($page, '@theme-toggle');
+    waitFor($page, $hasBack ? '@welcome-back' : '@welcome-step-persona');
 
     $result = welcomeMobileHeaderProblems($page);
 

@@ -10,6 +10,7 @@ import { ref } from 'vue';
 import AppHeaderActions from '@/components/AppHeaderActions.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import MediaLightbox from '@/components/media/MediaLightbox.vue';
+import VideoStill from '@/components/media/VideoStill.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
 import NewPostButton from '@/components/publish/NewPostButton.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
@@ -23,8 +24,8 @@ import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { isVideo } from '@/lib/mediaType';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import {
+    board as channelBoard,
     calendar as channelCalendar,
     grid,
     publish,
@@ -84,6 +85,7 @@ const openLightbox = (tile: GridTile): void => {
                                 })
                             "
                             :grid-href="grid.url(channel.id)"
+                            :board-href="channelBoard.url(channel.id)"
                         />
                         <NewPostButton :social-account-ids="[channel.id]" />
                     </div>
@@ -125,15 +127,11 @@ const openLightbox = (tile: GridTile): void => {
                                             @click="openLightbox(tile)"
                                         >
                                             <template v-if="tile.items[0]">
-                                                <video
+                                                <VideoStill
                                                     v-if="isVideo(tile.items[0])"
-                                                    :src="
-                                                        videoFrameUrl(tile.items[0])
-                                                    "
+                                                    :item="tile.items[0]"
                                                     class="size-full object-cover"
-                                                    muted
-                                                    playsinline
-                                                    preload="metadata"
+                                                    :data-testid="`grid-tile-video-${tile.id}`"
                                                 />
                                                 <img
                                                     v-else

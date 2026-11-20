@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'التسميات',
     'description' => 'نظّم منشوراتك باستخدام التسميات.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'تعديل التسمية',
         'delete' => 'حذف التسمية',
         'more' => 'مزيد من الإجراءات',
+        'settings' => 'الإعدادات',
         'view_posts' => 'عرض المنشورات',
+        'view_insights' => 'عرض Insights',
     ],
 
     'create' => [

@@ -10,7 +10,6 @@ use Database\Seeders\PlanSeeder;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
-    config(['trypost.billing.require_card_for_trial' => true]);
     $this->seed(PlanSeeder::class);
 });
 
@@ -31,7 +30,7 @@ test('user without subscription is redirected to subscribe', function () {
 
     $response = $this->actingAs($user->fresh())->get(route('app.workspace.channels'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome.plan'));
 });
 
 test('user with active subscription can access the app', function () {
@@ -117,15 +116,14 @@ test('user with past_due subscription can access the app instead of being forced
     $response->assertSessionMissing('errors');
 });
 
-test('user on generic trial can access the app when card is not required', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
+test('a trial without a card can use the app until it ends', function () {
     $user = CreateUser::execute([
         'name' => 'Alice',
         'email' => 'alice-generic@example.com',
         'password' => 'password123',
         'registration_ip' => '127.0.0.1',
     ]);
+    $user->account->update(['trial_ends_at' => now()->addDays(7)]);
 
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -134,7 +132,9 @@ test('user on generic trial can access the app when card is not required', funct
     $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $response = $this->actingAs($user->fresh())->get(route('app.workspace.channels'));
+    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertOk();
 
-    $response->assertOk();
+    $this->travel(8)->days();
+
+    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertRedirect(route('app.welcome.plan'));
 });

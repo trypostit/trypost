@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'media_source_popup' => [
         'title_success' => 'تم استلام التصميم',

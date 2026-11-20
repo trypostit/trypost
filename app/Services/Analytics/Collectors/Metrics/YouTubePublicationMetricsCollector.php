@@ -58,27 +58,31 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     /**
      * Reads `statistics` for this video together with up to 49 other videos of the channel
      * still due on the same day, so the daily pass spends one quota unit per 50 videos.
+     * Only a cached statistics array is reused. A `false` left by an older batch is read
+     * again, so a video is reported deleted by its own `videos.list` only.
      *
      * @return array<string, mixed>
      */
     private function statistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array
     {
         $key = $this->statisticsCacheKey($account, $date, $publication->remote_id);
+        $cached = Cache::get($key);
 
-        if (! Cache::has($key)) {
-            $this->prefetchStatistics($account, $publication, $date);
-        }
-
-        $statistics = Cache::get($key);
+        $statistics = is_array($cached)
+            ? $cached
+            : $this->prefetchStatistics($account, $publication, $date);
 
         if (! is_array($statistics)) {
-            throw AnalyticsCollectionException::gone('YouTube no longer returns this video.');
+            throw AnalyticsCollectionException::deletedOnNetwork('YouTube no longer returns this video.');
         }
 
         return $statistics;
     }
 
-    private function prefetchStatistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): void
+    /**
+     * @return array<string, mixed>|false this video's statistics, false when YouTube no longer returns it
+     */
+    private function prefetchStatistics(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array|false
     {
         $ids = AnalyticsPublication::query()
             ->available()
@@ -97,19 +101,19 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             ->values();
 
         $videos = collect((array) $this->get($account,
-            rtrim((string) config('trypost.platforms.youtube.data_api'), '/').'/videos',
+            config('trypost.platforms.youtube.data_api').'/videos',
             ['part' => 'statistics', 'id' => $ids->implode(',')],
         )->json('items', []))->filter(fn (mixed $video): bool => is_array($video))->keyBy('id');
 
-        foreach ($ids as $id) {
-            $video = $videos->get($id);
+        $statistics = $ids->mapWithKeys(fn (string $id): array => [
+            $id => transform($videos->get($id), fn (array $video): array => (array) data_get($video, 'statistics', []), false),
+        ]);
 
-            Cache::put(
-                $this->statisticsCacheKey($account, $date, $id),
-                is_array($video) ? (array) data_get($video, 'statistics', []) : false,
-                now()->addHours(self::STATISTICS_CACHE_HOURS),
-            );
+        foreach ($statistics->filter(fn (array|false $videoStatistics): bool => is_array($videoStatistics)) as $id => $videoStatistics) {
+            Cache::put($this->statisticsCacheKey($account, $date, (string) $id), $videoStatistics, now()->addHours(self::STATISTICS_CACHE_HOURS));
         }
+
+        return $statistics->get($publication->remote_id, false);
     }
 
     private function statisticsCacheKey(SocialAccount $account, CarbonImmutable $date, string $videoId): string
@@ -131,7 +135,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
 
         try {
             $response = $this->get($account,
-                rtrim((string) config('trypost.platforms.youtube.analytics_api'), '/').'/reports',
+                config('trypost.platforms.youtube.analytics_api').'/reports',
                 [
                     'ids' => 'channel==MINE',
                     'startDate' => $publication->provider_published_at->toDateString(),

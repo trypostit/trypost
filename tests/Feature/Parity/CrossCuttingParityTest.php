@@ -13,10 +13,13 @@ use App\Models\AccessToken;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 beforeEach(function () {
@@ -71,7 +74,7 @@ test('the bare lists paginate with the app default on the api and mcp, ignore a 
     'labels' => ['api.labels.index', ListLabelsTool::class, 'labels', fn (TestCase $t) => WorkspaceLabel::factory()->count(3)->sequence(fn (Sequence $sequence) => ['created_at' => now()->subMinutes($sequence->index)])->create(['workspace_id' => $t->workspace->id]), null],
     'signatures' => ['api.signatures.index', ListSignaturesTool::class, 'signatures', fn (TestCase $t) => WorkspaceSignature::factory()->count(3)->sequence(fn (Sequence $sequence) => ['created_at' => now()->subMinutes($sequence->index)])->create(['workspace_id' => $t->workspace->id]), null],
     'webhooks' => ['api.webhooks.index', ListWebhooksTool::class, 'webhooks', fn (TestCase $t) => Webhook::factory()->count(3)->sequence(fn (Sequence $sequence) => ['created_at' => now()->subMinutes($sequence->index)])->create(['workspace_id' => $t->workspace->id]), fn (TestCase $t) => $t->get(route('app.webhooks.index'))->assertOk()->viewData('page')['props']['webhooks']],
-    'social accounts' => ['api.social-accounts.index', ListSocialAccountsTool::class, 'social_accounts', fn (TestCase $t) => SocialAccount::factory()->count(3)->sequence(fn (Sequence $sequence) => ['position' => 2 - $sequence->index])->create(['workspace_id' => $t->workspace->id]), fn (TestCase $t) => $t->get(route('app.workspace.channels'))->assertOk()->viewData('page')['props']['connectedChannels']],
+    'social accounts' => ['api.social-accounts.index', ListSocialAccountsTool::class, 'social_accounts', fn (TestCase $t) => SocialAccount::factory()->count(3)->sequence(fn (Sequence $sequence) => ['position' => 2 - $sequence->index])->create(['workspace_id' => $t->workspace->id]), fn (TestCase $t) => collect([1, 2])->flatMap(fn (int $page) => $t->get(route('app.workspace.channels', ['page' => $page]))->assertOk()->viewData('page')['props']['connectedChannels']['data'])->all()],
     'api keys' => ['api.api-keys.index', ListApiKeysTool::class, 'api_keys', fn (TestCase $t) => collect(range(1, 3))->each(fn (int $index) => AccessToken::query()->findOrFail($t->user->createToken("Key {$index}")->token->id)->forceFill(['workspace_id' => $t->workspace->id, 'created_at' => now()->addMinutes($index)])->saveQuietly()), fn (TestCase $t) => $t->get(route('app.api-keys.index'))->assertOk()->viewData('page')['props']['apiTokens']],
 ]);
 
@@ -87,4 +90,12 @@ test('a bad label color is rejected by the api, the web and mcp with the same me
 
     TryPostServer::actingAs($this->user)->tool(CreateLabelTool::class, $payload)
         ->assertHasErrors([$api->json('errors.color.0')]);
+});
+
+test('an mcp connection may send at least what the api allows a workspace per minute', function () {
+    $request = Request::create(route('api.posts.index'));
+    $request->setUserResolver(fn (): User => $this->user);
+
+    expect(config()->integer('trypost.mcp_requests_per_minute'))
+        ->toBeGreaterThanOrEqual(RateLimiter::limiter('api')($request)->maxAttempts);
 });

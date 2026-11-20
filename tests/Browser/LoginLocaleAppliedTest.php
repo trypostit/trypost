@@ -21,7 +21,7 @@ test('the app renders in the user locale right after logging in', function () {
     $page->fill('password', 'password');
     $page->click('@login-submit');
 
-    $page->script('(async () => { for (let i = 0; i < 150; i++) { if (location.pathname !== "/login") return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    waitForCondition($page, "location.pathname !== '/login'");
 
     $page->assertSee(__('sidebar.groups.posts', [], 'ja'))
         ->assertDontSee(__('sidebar.groups.posts', [], 'en'));

@@ -4,29 +4,27 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\AccessToken\ListConnectedMcpClients;
+use App\Actions\Billing\StartGenericTrial;
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
-use App\Http\Requests\App\Welcome\StoreWelcomeMcpConnectClickRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
+use App\Http\Resources\App\OfferResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
-use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class WelcomeController extends Controller
 {
@@ -154,17 +152,17 @@ class WelcomeController extends Controller
         }
 
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+        $offer = $request->user()->account->currentOffer();
 
         return Inertia::render('welcome/Plan', [
             'plan' => PlanResource::make($plan)->resolve(),
-            'firstMonthOffer' => ConfigureSubscriptionCheckout::offersFirstMonthCoupon($request->user()->account, $plan),
+            'offer' => filled($offer) ? OfferResource::make($offer)->resolve() : null,
         ]);
     }
 
     public function storePlan(
         Request $request,
         StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
     ): Response|RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
             return $redirect;
@@ -174,81 +172,17 @@ class WelcomeController extends Controller
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
         $priceId = Interval::Monthly->priceIdFor($plan);
 
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
+        abort_if(blank($priceId), Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $firstMonthOffer = ConfigureSubscriptionCheckout::offersFirstMonthCoupon($user->account, $plan);
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
+        $offer = $user->account->currentOffer();
 
-        try {
-            $postHog->capture(
-                $user->id,
-                CheckoutEvent::Started->value,
-                [
-                    'plan_name' => $plan->name,
-                    'interval' => Interval::Monthly->value,
-                    'is_first_month_offer' => $firstMonthOffer,
-                ],
-                $user->account,
-            );
-        } catch (Throwable $e) {
-            report($e);
+        if ($offer?->startsWithoutCard()) {
+            StartGenericTrial::execute($user, $plan, $offer);
+
+            return redirect()->route('app.billing.processing', ['from' => CheckoutOrigin::Welcome->value]);
         }
 
-        return $response;
-    }
-
-    public function mcp(Request $request): InertiaResponse|RedirectResponse
-    {
-        $user = $request->user();
-
-        if (! $user->account?->hasAppAccess()) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        $workspace = $user->currentWorkspace;
-
-        if (blank($workspace)) {
-            return redirect()->route('app.workspaces.create');
-        }
-
-        $this->authorize('view', $workspace);
-
-        return Inertia::render('welcome/Mcp', [
-            'mcpUrl' => route('mcp.trypost'),
-            'connectedClients' => ListConnectedMcpClients::forUser($user, $workspace),
-        ]);
-    }
-
-    public function storeMcpConnectClick(StoreWelcomeMcpConnectClickRequest $request, PostHogService $postHog): Response
-    {
-        $user = $request->user();
-
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::McpConnectClicked->value,
-            ['client' => (string) $request->validated('client')],
-            $user->account,
-        );
-
-        return response()->noContent();
-    }
-
-    public function skipMcp(Request $request, PostHogService $postHog): RedirectResponse
-    {
-        $user = $request->user();
-
-        if (! $user->account?->hasAppAccess()) {
-            return redirect()->route('app.welcome.persona');
-        }
-
-        $postHog->capture(
-            $user->id,
-            WelcomeEvent::McpSkipped->value,
-            [],
-            $user->account,
-        );
-
-        return redirect()->route('app.posts.index');
+        return $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan, $offer);
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse
@@ -260,7 +194,7 @@ class WelcomeController extends Controller
         }
 
         if ($user->isAccountOwner()) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome.plan');
         }
 
         return Inertia::render('welcome/SubscriptionRequired', [

@@ -12,18 +12,6 @@ use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
-function waitForDetailsGroupTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return array{0: User, 1: Collection<int, Post>}
  */
@@ -58,11 +46,11 @@ function detailsGroupSetup(int $channels): array
 
 function openDetailsFromCard(mixed $page, string $key): void
 {
-    waitForDetailsGroupTestId($page, "post-card-menu-{$key}");
+    waitFor($page, "@post-card-menu-{$key}");
     $page->click("@post-card-menu-{$key}");
-    waitForDetailsGroupTestId($page, "post-details-open-{$key}");
+    waitFor($page, "@post-details-open-{$key}");
     $page->click("@post-details-open-{$key}");
-    waitForDetailsGroupTestId($page, "post-details-{$key}");
+    waitFor($page, "@post-details-{$key}");
 }
 
 test('post details lists the posts created together and switches between them', function () {
@@ -74,7 +62,7 @@ test('post details lists the posts created together and switches between them', 
 
     $page = visit(route('app.posts.index'));
     openDetailsFromCard($page, $first->id);
-    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
+    waitFor($page, "@post-details-rail-{$first->id}");
 
     $page->assertSeeIn("@post-details-rail-{$first->id}", __('posts.group.channels', ['count' => 3]));
 
@@ -88,7 +76,7 @@ test('post details lists the posts created together and switches between them', 
         ->and($page->script("document.querySelector('[data-testid=\"post-details-rail-item-{$first->id}\"]').getAttribute('aria-current')"))->toBe('true');
 
     $page->click("@post-details-rail-item-{$second->id}");
-    waitForDetailsGroupTestId($page, "post-details-target-{$second->id}");
+    waitFor($page, "@post-details-target-{$second->id}");
 
     $page->assertSeeIn("@post-details-text-{$second->id}", 'Grouped details post')
         ->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.scheduled'));
@@ -96,7 +84,7 @@ test('post details lists the posts created together and switches between them', 
         ->and($page->script("document.querySelector('[data-testid=\"post-details-time-{$first->id}\"]').textContent"))->toContain('10:00');
 
     $page->click("@post-details-rail-item-{$draft->id}");
-    waitForDetailsGroupTestId($page, "post-details-edit-{$draft->id}");
+    waitFor($page, "@post-details-edit-{$draft->id}");
     $page->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.draft'))
         ->assertMissing("@post-details-publish-now-{$draft->id}");
 
@@ -127,9 +115,9 @@ test('the channels rail stays in place while only the post details scroll', func
     $page = visit(route('app.posts.index'));
     $page->resize(1440, 900);
     openDetailsFromCard($page, $first->id);
-    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
+    waitFor($page, "@post-details-rail-{$first->id}");
 
-    waitForDetailsGroupTestId($page, "post-details-see-more-{$first->id}");
+    waitFor($page, "@post-details-see-more-{$first->id}");
     $page->click("@post-details-see-more-{$first->id}");
     $railTop = $page->script("document.querySelector('[data-testid=\"post-details-rail-{$first->id}\"]').getBoundingClientRect().top");
     $page->script("document.querySelector('[data-testid=\"post-details-body-{$first->id}\"]').scrollTop = 100000");
