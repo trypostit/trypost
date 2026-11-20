@@ -42,6 +42,15 @@ const nudgeKey = (): string => {
     return 'analytics.posting_streak.post_this_week';
 };
 
+/** Three digits shrink so the number stays inside its 80px circle. */
+const numberSize = (): string => {
+    if (props.streak.weeks >= 100) {
+        return 'text-[30px]';
+    }
+
+    return 'text-[40px]';
+};
+
 const hasRank = (): boolean => filled(props.streak.top_percent);
 
 const percent = (): string => String(props.streak.top_percent);
@@ -141,7 +150,8 @@ const sharePost = async (): Promise<void> => {
                         />
                     </div>
                     <div
-                        class="absolute top-4 left-17.25 size-20 rounded-full bg-primary text-center font-heading text-[40px] leading-20 font-normal text-primary-foreground tabular-nums"
+                        class="absolute top-4 left-17.25 size-20 rounded-full bg-primary text-center font-heading leading-20 font-normal text-primary-foreground tabular-nums"
+                        :class="numberSize()"
                     >
                         {{ weeks() }}
                     </div>
