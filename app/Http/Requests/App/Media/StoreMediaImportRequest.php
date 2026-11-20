@@ -177,6 +177,9 @@ class StoreMediaImportRequest extends FormRequest
                     ],
                 ],
                 'payload' => fn (): RemoteFile => WebdavFiles::toRemoteFile((string) $this->validated('file.path')),
+                // The browser only lists images and videos; a document on the
+                // share is refused even when its path is posted by hand.
+                'types' => [MediaType::Image, MediaType::Video],
             ],
         ];
     }

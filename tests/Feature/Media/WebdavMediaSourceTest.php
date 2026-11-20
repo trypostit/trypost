@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Dto\ImportedFile;
 use App\Enums\Media\Source;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Account;
@@ -235,6 +236,22 @@ test('a picked file is downloaded from the share with the credentials into a tem
         ->getJson(route('app.media.imports.show', $importId))
         ->assertOk()
         ->assertJsonPath('status', MediaImportStatus::DONE);
+});
+
+test('a document on the share is refused, since the source only offers images and videos', function () {
+    Http::fake([WEBDAV_TEST_URL.'/*' => Http::response("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n", 200, ['Content-Type' => 'application/pdf'])]);
+
+    $importId = $this->actingAs($this->user)
+        ->postJson(route('app.media.imports.store'), ['source' => 'webdav', 'file' => ['path' => 'notes.pdf']])
+        ->assertAccepted()
+        ->json('import_id');
+
+    $this->getJson(route('app.media.imports.show', $importId))
+        ->assertOk()
+        ->assertJsonPath('status', MediaImportStatus::FAILED)
+        ->assertJsonPath('reason', ImportedFile::TYPE_NOT_ALLOWED);
+
+    $this->assertDatabaseEmpty(Media::class);
 });
 
 test('the share password stays out of the response, the queued job, every table and the cache', function () {
