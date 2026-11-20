@@ -2,21 +2,25 @@
 
 declare(strict_types=1);
 
+use App\Actions\Account\ResolveLifecycleStage;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Cashier\Events\WebhookHandled;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     // Use the seeded Workspace plan; set deterministic price ids so the
     // assertions don't depend on `.env.testing`.
@@ -59,26 +63,6 @@ test('subscription created handles event without error', function () {
 
     expect(true)->toBeTrue();
 });
-
-test('subscription created clears the generic trial_ends_at on the account', function () {
-    $this->account->update(['trial_ends_at' => now()->addDays(3)]);
-
-    $this->listener->handle(new WebhookHandled([
-        'type' => 'customer.subscription.created',
-        'data' => ['object' => [
-            'customer' => 'cus_test123',
-            'id' => 'sub_123',
-            'status' => 'active',
-            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
-        ]],
-    ]));
-
-    expect($this->account->fresh()->trial_ends_at)->toBeNull();
-});
-
-// ========================================
-// customer.subscription.updated
-// ========================================
 
 test('subscription updated handles event without error', function () {
     $this->listener->handle(new WebhookHandled([
@@ -507,6 +491,37 @@ test('subscription updated forwards the previous plan name to TrackBilling', fun
     );
 });
 
+test('a paid subscription deleted after dunning cleared its plan still sends subscription.cancelled once', function () {
+    $this->account->forceFill(['plan_id' => null, 'first_paid_at' => now()->subMonth()])->save();
+
+    Bus::fake([TrackBilling::class]);
+
+    foreach (['evt_deleted_after_unpaid', 'evt_deleted_redelivered'] as $eventId) {
+        $this->listener->handle(new WebhookHandled([
+            'id' => $eventId,
+            'type' => 'customer.subscription.deleted',
+            'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_unpaid', 'status' => 'canceled']],
+        ]));
+    }
+
+    Bus::assertDispatchedOnce(TrackBilling::class);
+    Bus::assertDispatched(TrackBilling::class, fn (TrackBilling $job): bool => $job->event === BillingEvent::Cancelled);
+});
+
+test('an abandoned checkout deleted without a plan or a payment sends nothing', function () {
+    $this->account->forceFill(['plan_id' => null, 'first_paid_at' => null])->save();
+
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_deleted_abandoned',
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_abandoned', 'status' => 'incomplete_expired']],
+    ]));
+
+    Bus::assertNotDispatched(TrackBilling::class);
+});
+
 test('subscription deleted forwards the previous plan name to TrackBilling', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
 
@@ -555,7 +570,7 @@ test('subscription created dispatches TrackCheckoutCompleted when status is acti
             'customer' => 'cus_test123',
             'id' => 'sub_123',
             'status' => 'active',
-            'metadata' => ['trypost_first_month_coupon_id' => 'WORKSPACES_88USD'],
+            'metadata' => ['trypost_offer_slug' => 'bf26'],
             'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
         ]],
     ]));
@@ -563,7 +578,7 @@ test('subscription created dispatches TrackCheckoutCompleted when status is acti
     Bus::assertDispatched(
         TrackCheckoutCompleted::class,
         fn ($job) => $job->accountId === (string) $this->account->id
-            && data_get($job->payload, 'data.object.metadata.trypost_first_month_coupon_id') === 'WORKSPACES_88USD',
+            && data_get($job->payload, 'data.object.metadata.trypost_offer_slug') === 'bf26',
     );
     Bus::assertNotDispatched(TrackTrialStarted::class);
 });
@@ -889,4 +904,395 @@ test('an event without an id is still processed (no idempotency key available)',
     ]));
 
     Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+// ========================================
+// plan.upgraded / plan.downgraded dispatch
+// ========================================
+
+test('subscription updated with previous items dispatches TrackPlanChanged even when the local plan is already the new one', function () {
+    Bus::fake([TrackPlanChanged::class]);
+    $this->account->update(['plan_id' => $this->workspaces->id]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    Bus::assertDispatched(TrackPlanChanged::class, fn ($job) => $job->accountId === (string) $this->account->id);
+});
+
+test('subscription updated without previous items does not dispatch TrackPlanChanged', function () {
+    Bus::fake([TrackPlanChanged::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackPlanChanged::class);
+});
+
+test('a renewal whose previous items keep the same price does not dispatch TrackPlanChanged', function () {
+    Bus::fake([TrackPlanChanged::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly'], 'current_period_start' => 1792000000]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly'], 'current_period_start' => 1789000000]]]],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackPlanChanged::class);
+});
+
+// ========================================
+// A failing tracking dispatch never undoes the plan sync
+// ========================================
+
+test('subscription updated still syncs plan_id when TrackBilling dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+    failDispatchOf(TrackBilling::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription updated still syncs plan_id when TrackPlanChanged dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+    failDispatchOf(TrackPlanChanged::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription created still syncs plan_id when the start tracking dispatch fails', function (string $status, string $job) {
+    $this->account->update(['plan_id' => null]);
+    failDispatchOf($job);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => $status,
+            'trial_end' => now()->addDays(8)->timestamp,
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+})->with([
+    'trialing' => ['trialing', TrackTrialStarted::class],
+    'active' => ['active', TrackCheckoutCompleted::class],
+]);
+
+test('subscription deleted still clears plan_id when TrackBilling dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->plan->id]);
+    failDispatchOf(TrackBilling::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'status' => 'canceled']],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBeNull();
+});
+
+// ========================================
+// first payment
+// ========================================
+
+test('a subscription born active records the first payment on the account', function () {
+    $this->freezeTime();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_created',
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at?->toIso8601String())->toBe(now()->toIso8601String());
+});
+
+test('a trial records no payment until it converts, and a later activation keeps the first one', function () {
+    $this->freezeTime();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_trial',
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'trialing',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at)->toBeNull();
+
+    $convertedAt = now();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_converted',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    $this->travel(1)->month();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_renewed',
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at?->toIso8601String())->toBe($convertedAt->toIso8601String());
+});
+
+test('a trial cancelled through the real Cashier webhook is signed up, a paid subscription cancelled the same way is churned', function (bool $paid, LifecycleStage $expected) {
+    config(['cashier.webhook.secret' => null, 'trypost.self_hosted' => false]);
+    $this->account->forceFill(['trial_ends_at' => null, 'first_paid_at' => $paid ? now()->subMonth() : null])->save();
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_cancelled',
+        'stripe_status' => $paid ? 'active' : 'trialing',
+        'stripe_price' => 'price_socials_monthly',
+        'trial_ends_at' => $paid ? null : now()->addDays(5),
+    ]);
+
+    $this->postJson(route('cashier.webhook'), [
+        'id' => "evt_cancelled_{$expected->value}",
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['id' => 'sub_cancelled', 'customer' => 'cus_test123', 'status' => 'canceled']],
+    ])->assertOk();
+
+    $account = $this->account->fresh()->load('subscriptions');
+
+    expect($account->subscriptions->first()->trial_ends_at)->toBeNull()
+        ->and(ResolveLifecycleStage::execute($account, null, true))->toBe($expected);
+})->with([
+    'trial' => [false, LifecycleStage::SignedUp],
+    'paid' => [true, LifecycleStage::Churned],
+]);
+
+test('an old subscription ending during a trial without a card keeps the trial plan', function () {
+    $this->account->update(['plan_id' => $this->socials->id, 'trial_ends_at' => now()->addDays(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_old', 'status' => 'canceled']],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+});
+
+test('a trial without a card that subscribes counts as a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(5), 'redeemed_at' => now()->subDays(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->accountId === (string) $this->account->id && ! $job->withRevenue);
+    Bus::assertDispatchedTimes(TrackCheckoutCompleted::class, 1);
+});
+
+test('a first paid subscription without a trial is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('a trial without a card converts when an incomplete subscription becomes active', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(2), 'redeemed_at' => now()->subDays(2)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'incomplete'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->withRevenue);
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
+});
+
+test('subscribing long after a trial without a card ended is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subMonths(5), 'redeemed_at' => now()->subMonths(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
+
+test('a subscription created during a trial without a card still converts when its webhook arrives after the trial', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $redeemedAt = now()->subDays(9);
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => $redeemedAt, 'redeemed_at' => $redeemedAt]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'created' => $redeemedAt->copy()->addDays(6)->timestamp,
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'incomplete'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('a trial without a card converts once when its created and updated webhooks both report it active', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(2), 'redeemed_at' => now()->subDays(2)]);
+    $object = [
+        'customer' => 'cus_test123',
+        'id' => 'sub_123',
+        'status' => 'active',
+        'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+    ];
+    $stale = Account::query()->find($this->account->id);
+
+    $this->listener->handle(new WebhookHandled(['id' => 'evt_created', 'type' => 'customer.subscription.created', 'data' => ['object' => $object]]));
+    $stale->forceFill(['first_paid_at' => null])->save();
+    $this->listener->handle(new WebhookHandled(['id' => 'evt_updated', 'type' => 'customer.subscription.updated', 'data' => ['object' => $object, 'previous_attributes' => ['status' => 'incomplete']]]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('a former customer who subscribes during a trial without a card counts as a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => now()->subYear()])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('a later update of a subscription that was already active is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_yearly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
 });

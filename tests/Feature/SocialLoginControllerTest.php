@@ -46,9 +46,34 @@ test('google callback logs in existing user by email', function () {
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
+
+test('an existing user signing in with google or github returns to the page that asked for the login', function (string $driver, string $callback, bool $deepLink) {
+    $user = User::factory()->create(['email' => 'deep-link@example.com']);
+    $intended = route('app.insights', ['range' => '30d']);
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->map(['id' => 'deep-link', 'name' => 'Deep Link', 'email' => 'deep-link@example.com']);
+
+    Socialite::shouldReceive('driver')
+        ->with($driver)
+        ->andReturn($socialiteDriver = Mockery::mock());
+    $socialiteDriver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->withSession($deepLink ? ['url.intended' => $intended] : [])
+        ->get(route($callback))
+        ->assertRedirect($deepLink ? $intended : route('app.calendar'));
+
+    $this->assertAuthenticatedAs($user);
+})->with([
+    'google' => ['google-auth', 'auth.google.callback'],
+    'github' => ['github', 'auth.github.callback'],
+])->with([
+    'with a deep link' => true,
+    'without one' => false,
+]);
 
 test('google callback creates new user when email does not exist', function () {
     $socialiteUser = new SocialiteUser;
@@ -151,7 +176,7 @@ test('google registration with an invite param completes it instead of creating 
     expect($user->workspaces()->count())->toBe(0);
 });
 
-test('google login with a pending invite sends an existing user there instead of app.home', function () {
+test('google login with a pending invite sends an existing user there instead of the calendar', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -230,7 +255,7 @@ test('github registration with an invite param completes it instead of creating 
     expect($user->workspaces()->count())->toBe(0);
 });
 
-test('github login with a pending invite sends an existing user there instead of app.home', function () {
+test('github login with a pending invite sends an existing user there instead of the calendar', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -467,7 +492,7 @@ test('google login for an existing user is never blocked by the self-hosted gate
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
 
@@ -547,7 +572,7 @@ test('github login for an existing user is never blocked by the self-hosted gate
 
     $response = $this->get(route('auth.github.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
 

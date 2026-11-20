@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount } from 'vue';
 
+import VideoStill from '@/components/media/VideoStill.vue';
 import {
     Tooltip,
     TooltipContent,
@@ -118,14 +119,7 @@ const uploadActionClass =
                 class="size-full object-cover"
             />
             <template v-else-if="isVideo(item)">
-                <video
-                    :src="item.url"
-                    class="size-full object-cover"
-                    muted
-                    playsinline
-                    preload="metadata"
-                    draggable="false"
-                />
+                <VideoStill :item="item" class="size-full object-cover" />
                 <IconPlayerPlayFilled
                     aria-hidden="true"
                     class="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white"

@@ -27,71 +27,40 @@ function composerMobileWorkspace(): array
     return [$user, $workspace];
 }
 
-function waitForComposerMobileCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerMobileTestId(mixed $page, string $testId): void
-{
-    waitForComposerMobileCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
-function waitForComposerMobileSettled(mixed $page, string $testId): void
-{
-    waitForComposerMobileCondition($page, "(() => {
-        const element = document.querySelector('[data-testid=\"{$testId}\"]');
-        return element?.getAttribute('data-state') === 'open'
-            && element.getAnimations().every((animation) => animation.playState !== 'running');
-    })()");
-}
-
-function waitForComposerMobileGone(mixed $page, string $testId): void
-{
-    waitForComposerMobileCondition($page, "!document.querySelector('[data-testid=\"{$testId}\"]')");
-}
-
 function openComposerMobile(mixed $test, User $user, int $width, int $height): mixed
 {
     $test->actingAs($user);
     $page = visit(route('app.posts.create'))->resize($width, $height);
-    waitForComposerMobileSettled($page, 'post-composer-dialog');
-    waitForComposerMobileTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
 
     return $page;
 }
 
 function openComposerMobileNetworkCard(mixed $page, SocialAccount $account): void
 {
-    waitForComposerMobileCondition($page, "document.querySelector('[data-testid=\"composer-caption-{$account->id}\"]') || document.querySelector('[data-testid=\"composer-expand-{$account->id}\"]')");
+    waitForState($page, "@composer-caption-{$account->id}, @composer-expand-{$account->id}", 'true');
     if (! $page->script("!!document.querySelector('[data-testid=\"composer-caption-{$account->id}\"]')")) {
         $page->click("@composer-expand-{$account->id}");
     }
-    waitForComposerMobileTestId($page, "composer-caption-{$account->id}");
+    waitFor($page, "@composer-caption-{$account->id}");
 }
 
 function selectComposerMobileChannel(mixed $page, SocialAccount $account): void
 {
     $page->click('@composer-add-account');
-    waitForComposerMobileTestId($page, "composer-account-option-{$account->id}");
+    waitFor($page, "@composer-account-option-{$account->id}");
     $page->click("@composer-account-option-{$account->id}")->click('@composer-add-account');
-    waitForComposerMobileGone($page, "composer-account-option-{$account->id}");
-    waitForComposerMobileTestId($page, "composer-account-{$account->id}");
+    waitForGone($page, "@composer-account-option-{$account->id}");
+    waitFor($page, "@composer-account-{$account->id}");
 }
 
 function selectAllComposerMobileChannels(mixed $page): void
 {
     $page->click('@composer-add-account');
-    waitForComposerMobileTestId($page, 'composer-select-all');
+    waitFor($page, '@composer-select-all');
     $page->click('@composer-select-all')->click('@composer-add-account');
-    waitForComposerMobileGone($page, 'composer-select-all');
+    waitForGone($page, '@composer-select-all');
 }
 
 /**
@@ -192,16 +161,16 @@ test('below lg the edit and preview control switches between the editor and the 
 
     $page = openComposerMobile($this, $user, 390, 844);
     selectComposerMobileChannel($page, $account);
-    waitForComposerMobileTestId($page, "composer-caption-{$account->id}");
+    waitFor($page, "@composer-caption-{$account->id}");
     $page->fill("@composer-caption-{$account->id}", 'Seen in the preview')
         ->click('@composer-view-preview');
-    waitForComposerMobileTestId($page, 'composer-preview-frame');
+    waitFor($page, '@composer-preview-frame');
 
     $page->assertVisible('@composer-preview-frame')
         ->assertMissing("@composer-caption-{$account->id}")
         ->assertAttribute('@composer-view-preview', 'aria-pressed', 'true')
         ->click('@composer-view-edit');
-    waitForComposerMobileTestId($page, "composer-caption-{$account->id}");
+    waitFor($page, "@composer-caption-{$account->id}");
 
     $page->assertValue("@composer-caption-{$account->id}", 'Seen in the preview')
         ->assertMissing('@composer-preview-frame')
@@ -217,7 +186,7 @@ test('below lg templates and the assistant open as a bottom sheet and closing ke
 
     foreach (['templates' => 'composer-templates-toggle', 'assistant' => 'composer-ai-assistant'] as $panel => $toggle) {
         $page->click("@{$toggle}");
-        waitForComposerMobileSettled($page, "composer-{$panel}-sheet");
+        waitForOpen($page, "@composer-{$panel}-sheet");
 
         $sheet = composerMobileRect($page, "composer-{$panel}-sheet");
         expect(abs($sheet['bottom'] - $sheet['viewportHeight']))->toBeLessThan(2)
@@ -226,7 +195,7 @@ test('below lg templates and the assistant open as a bottom sheet and closing ke
             ->and($page->script("!!document.querySelector('[data-testid=\"composer-{$panel}-sheet\"] [data-testid=\"composer-{$panel}-panel\"]')"))->toBeTrue();
         $page->assertAttribute("@{$toggle}", 'aria-pressed', 'true')
             ->click("@composer-{$panel}-sheet-close");
-        waitForComposerMobileGone($page, "composer-{$panel}-sheet");
+        waitForGone($page, "@composer-{$panel}-sheet");
 
         $page->assertValue('@composer-base-content', 'Keep this draft')
             ->assertAttribute("@{$toggle}", 'aria-pressed', 'false');
@@ -242,7 +211,7 @@ test('at 390px the schedule menu, date picker and labels open as bottom sheets i
 
     $page = openComposerMobile($this, $user, 390, 844);
     $page->click('@composer-schedule-trigger');
-    waitForComposerMobileSettled($page, 'composer-schedule-sheet');
+    waitForOpen($page, '@composer-schedule-sheet');
 
     $sheet = composerMobileRect($page, 'composer-schedule-sheet');
     expect($sheet['top'])->toBeGreaterThanOrEqual(0)
@@ -253,7 +222,7 @@ test('at 390px the schedule menu, date picker and labels open as bottom sheets i
         ->and($page->script("document.querySelectorAll('[data-reka-popper-content-wrapper]').length"))->toBe(0);
 
     $page->click('@composer-schedule-custom');
-    waitForComposerMobileTestId($page, 'composer-schedule-picker');
+    waitFor($page, '@composer-schedule-picker');
 
     $picker = $page->script(<<<'JS'
         (() => {
@@ -274,11 +243,11 @@ test('at 390px the schedule menu, date picker and labels open as bottom sheets i
         ->and($picker['sheetTop'])->toBeGreaterThanOrEqual(0);
 
     $page->click('@composer-schedule-done');
-    waitForComposerMobileGone($page, 'composer-schedule-sheet');
+    waitForGone($page, '@composer-schedule-sheet');
     $page->assertAttribute('@composer-submit', 'data-schedule-mode', 'custom');
 
     $page->click('@composer-tags-trigger');
-    waitForComposerMobileSettled($page, 'composer-label-sheet');
+    waitForOpen($page, '@composer-label-sheet');
 
     $labels = composerMobileRect($page, 'composer-label-sheet');
     expect($labels['top'])->toBeGreaterThanOrEqual(0)
@@ -286,7 +255,7 @@ test('at 390px the schedule menu, date picker and labels open as bottom sheets i
         ->and($page->script("!!document.querySelector('[data-testid=\"composer-label-sheet\"] [data-testid=\"composer-label-search\"]')"))->toBeTrue();
 
     $page->click('@composer-label-close');
-    waitForComposerMobileGone($page, 'composer-label-sheet');
+    waitForGone($page, '@composer-label-sheet');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -296,8 +265,8 @@ test('touch devices get no tooltips in the composer', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'))->on()->mobile()->resize(390, 844);
-    waitForComposerMobileSettled($page, 'post-composer-dialog');
-    waitForComposerMobileTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
 
     expect($page->script("matchMedia('(hover: hover)').matches"))->toBeFalse();
 
@@ -306,7 +275,7 @@ test('touch devices get no tooltips in the composer', function () {
     expect(composerMobileTooltipCount($page))->toBe(0);
 
     $page->click('@composer-schedule-trigger');
-    waitForComposerMobileSettled($page, 'composer-schedule-sheet');
+    waitForOpen($page, '@composer-schedule-sheet');
     $page->hover('@composer-schedule-default-next');
     expect(composerMobileTooltipCount($page))->toBe(0)
         ->and($page->script('getComputedStyle(document.querySelector(\'[data-testid="composer-schedule-default-now"]\')).opacity'))->toBe('1');
@@ -323,7 +292,7 @@ test('the open network card keeps its header pinned while its card scrolls', fun
     selectAllComposerMobileChannels($page);
     $page->fill('@composer-base-content', 'Sticky header')->click('@composer-next');
     openComposerMobileNetworkCard($page, $instagram);
-    waitForComposerMobileTestId($page, "composer-{$instagram->id}-header");
+    waitFor($page, "@composer-{$instagram->id}-header");
 
     $pinned = $page->script(<<<JS
         (async () => {
@@ -358,14 +327,14 @@ test('at 390px the footer is compact and the channel strip hints at hidden chips
 
     $page = openComposerMobile($this, $user, 390, 844);
     selectAllComposerMobileChannels($page);
-    waitForComposerMobileCondition($page, "document.querySelector('[data-testid=\"composer-accounts\"]')?.hasAttribute('data-overflowing')");
+    waitForState($page, '@composer-accounts', "element.hasAttribute('data-overflowing')");
 
     $footer = composerMobileRect($page, 'composer-footer');
     expect($footer['height'])->toBeLessThanOrEqual(104)
         ->and($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-accounts\"]')).maskImage"))->toContain('linear-gradient');
 
     $page->script("(() => { const strip = document.querySelector('[data-testid=\"composer-accounts\"]'); strip.scrollLeft = strip.scrollWidth; })()");
-    waitForComposerMobileCondition($page, "!document.querySelector('[data-testid=\"composer-accounts\"]').hasAttribute('data-overflowing')");
+    waitForState($page, '@composer-accounts', "!element.hasAttribute('data-overflowing')");
 
     expect($page->script("document.querySelector('[data-testid=\"composer-accounts\"]').hasAttribute('data-overflowing')"))->toBeFalse();
     $page->assertNoJavaScriptErrors();

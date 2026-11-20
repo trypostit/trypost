@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -22,10 +24,12 @@ $onPlan = function (Slug $slug): User {
     $user = User::factory()->create();
     $user->account->update(['plan_id' => Plan::where('slug', $slug)->value('id')]);
 
-    Workspace::factory()->create([
+    $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
 
     // The controller guard checks hasActiveSubscription() *before* the cap.
     // Without this, GET at the Socials cap still renders, but store flashes
@@ -61,20 +65,19 @@ test('a subscribed account without a plan is still capped at one workspace', fun
     $user = User::factory()->create();
     $user->account->update(['plan_id' => null]);
 
-    Workspace::factory()->create([
+    $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
 
     subscribeAccount($user->account);
 
     $this->actingAs($user->fresh())
         ->get(route('app.workspaces.create'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('workspaces/Create', false)
-            ->where('features.workspaceLimit', 1)
-        );
+        ->assertRedirect(route('app.workspaces.index'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 });
 
 test('the socials plan blocks a second workspace', function () use ($onPlan) {
@@ -109,14 +112,25 @@ test('self-hosted ignores the cap', function () use ($onPlan) {
     expect($user->account->canCreateWorkspace())->toBeTrue();
 });
 
-test('the create form is available when the plan is at its cap', function () use ($onPlan) {
+test('the create page sends the user to the workspaces list when the plan is at its cap', function () use ($onPlan) {
     $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->from(route('app.posts.index'))
+        ->get(route('app.workspaces.create'))
+        ->assertRedirect(route('app.workspaces.index'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
+});
+
+test('the create page renders below the cap', function () use ($onPlan) {
+    $user = $onPlan(Slug::Workspaces);
 
     $this->actingAs($user)
         ->get(route('app.workspaces.create'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('workspaces/Create', false)
+            ->missing('upgradeRequired')
         );
 });
 
@@ -132,8 +146,9 @@ test('a subscribed account without a plan cannot store a second workspace', func
     subscribeAccount($user->account);
 
     $this->actingAs($user->fresh())
+        ->from(route('app.posts.index'))
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.workspaces.create'))
+        ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
     expect($user->account->workspaces()->count())->toBe(1);
@@ -143,8 +158,9 @@ test('a direct store POST cannot exceed the cap', function () use ($onPlan) {
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
+        ->from(route('app.workspaces.create'))
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.workspaces.create'))
+        ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
     expect($user->account->workspaces()->count())->toBe(1);
@@ -177,4 +193,193 @@ test('storing a workspace checks the cap under a lock on the account row', funct
     expect($lock)->toBeInt()
         ->and($insert)->toBeInt()
         ->and($lock)->toBeLessThan($insert);
+});
+
+$enablePostHog = function (): void {
+    enablePostHog();
+    Queue::fake([TrackWorkspaceLimitHit::class]);
+};
+
+$limitHitPushed = fn (User $user) => fn (TrackWorkspaceLimitHit $job): bool => $job->userId === (string) $user->id
+    && $job->planSlug === $user->account->plan?->slug->value
+    && $job->workspaceLimit === $user->account->workspaceLimit();
+
+test('the creation check at the limit refuses and tracks limit_hit', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertOk()
+        ->assertExactJson(['allowed' => false]);
+
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
+});
+
+test('the creation check below the limit allows and does not track', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Workspaces);
+
+    $this->actingAs($user)
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertOk()
+        ->assertExactJson(['allowed' => true]);
+
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+});
+
+test('the creation check allows self-hosted at any count and does not track', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+    config(['trypost.self_hosted' => true]);
+
+    $this->actingAs($user)
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertExactJson(['allowed' => true]);
+
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+});
+
+test('the creation check allows the first workspace and does not track', function () use ($enablePostHog) {
+    $enablePostHog();
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh())
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertExactJson(['allowed' => true]);
+
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+});
+
+test('the creation check refuses an account without a plan at one workspace, as the props did on main', function () use ($enablePostHog) {
+    $enablePostHog();
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => null]);
+    Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $this->actingAs($user->fresh())
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertExactJson(['allowed' => false]);
+});
+
+test('the creation check counts the account workspaces, not the ones the owner created, as the props did on main', function () use ($enablePostHog, $limitHitPushed) {
+    $enablePostHog();
+    $owner = User::factory()->create();
+    $owner->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    subscribeAccount($owner->account);
+    $creator = User::factory()->create(['account_id' => $owner->account_id]);
+    Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $creator->id]);
+
+    expect($owner->fresh()->ownedWorkspacesCount())->toBe(0);
+
+    $this->actingAs($owner->fresh())
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertOk()
+        ->assertExactJson(['allowed' => false]);
+
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($owner));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
+});
+
+test('the creation check is for the account owner only', function () use ($onPlan) {
+    $owner = $onPlan(Slug::Socials);
+    $member = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace = $owner->account->workspaces()->first();
+    $workspace->members()->attach($member->id, membershipPivot('admin'));
+    $member->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($member->fresh())
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertForbidden();
+});
+
+test('a failed limit_hit dispatch still refuses the creation check', function () use ($onPlan) {
+    enablePostHog();
+    failDispatchOf(TrackWorkspaceLimitHit::class);
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertOk()
+        ->assertExactJson(['allowed' => false]);
+});
+
+test('opening the create page at the limit sends the user to the workspaces list and tracks limit_hit once', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->from(route('app.posts.index'))
+        ->get(route('app.workspaces.create'))
+        ->assertRedirect(route('app.workspaces.index'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
+
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
+});
+
+test('the create page at the limit still renders for a user without a current workspace, so it never loops with the workspace guard', function () use ($onPlan) {
+    $user = $onPlan(Slug::Socials);
+    $user->update(['current_workspace_id' => null]);
+
+    $this->actingAs($user->fresh())
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('workspaces/Create', false));
+});
+
+test('opening the create page below the limit renders it and does not track', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Workspaces);
+
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('workspaces/Create', false));
+
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+});
+
+test('a store refused at the limit creates nothing and is tracked once', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->from(route('app.workspaces.create'))
+        ->followingRedirects()
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('workspaces/Index', false));
+
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
+    expect($user->account->workspaces()->count())->toBe(1)
+        ->and(Workspace::where('name', 'Second')->exists())->toBeFalse();
+});
+
+test('a store refused for a missing subscription does not track limit_hit', function () use ($enablePostHog) {
+    $enablePostHog();
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertRedirect(route('app.billing.index'));
+
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+});
+
+test('a failed limit_hit dispatch still sends the user away from the create page', function () use ($onPlan) {
+    enablePostHog();
+    failDispatchOf(TrackWorkspaceLimitHit::class);
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertRedirect(route('app.workspaces.index'))
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 });

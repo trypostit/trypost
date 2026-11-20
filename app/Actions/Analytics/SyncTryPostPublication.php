@@ -62,6 +62,10 @@ class SyncTryPostPublication
             default => null,
         };
 
+        if ($post->content_type?->isPoll() === true) {
+            return PublicationContentType::Poll;
+        }
+
         if ($specializedType) {
             return $specializedType;
         }

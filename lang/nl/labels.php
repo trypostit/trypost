@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Labels',
     'description' => 'Organiseer je posts met labels.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Label bewerken',
         'delete' => 'Label verwijderen',
         'more' => 'Meer acties',
+        'settings' => 'Instellingen',
         'view_posts' => 'Berichten bekijken',
+        'view_insights' => 'Insights bekijken',
     ],
 
     'create' => [

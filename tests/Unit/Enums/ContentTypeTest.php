@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Support\Social\MastodonPoll;
+use App\Support\Social\ThreadsPoll;
+use App\Support\Social\XPoll;
 
 test('content type has correct labels', function () {
     expect(ContentType::InstagramFeed->label())->toBe('Feed Post');
@@ -13,6 +16,7 @@ test('content type has correct labels', function () {
     expect(ContentType::LinkedInPost->label())->toBe('Post');
     expect(ContentType::YouTubeShort->label())->toBe('Short');
     expect(ContentType::XPost->label())->toBe('Post');
+    expect(ContentType::XPoll->label())->toBe('Poll');
     expect(ContentType::TikTokVideo->label())->toBe('Video');
     expect(ContentType::PinterestPin->label())->toBe('Pin');
     expect(ContentType::PinterestVideoPin->label())->toBe('Video Pin');
@@ -104,6 +108,7 @@ test('content type maps to correct platform', function () {
     expect(ContentType::TikTokVideo->platform())->toBe(Platform::TikTok);
     expect(ContentType::YouTubeShort->platform())->toBe(Platform::YouTube);
     expect(ContentType::XPost->platform())->toBe(Platform::X);
+    expect(ContentType::XPoll->platform())->toBe(Platform::X);
     expect(ContentType::ThreadsPost->platform())->toBe(Platform::Threads);
     expect(ContentType::PinterestPin->platform())->toBe(Platform::Pinterest);
     expect(ContentType::BlueskyPost->platform())->toBe(Platform::Bluesky);
@@ -130,6 +135,7 @@ test('content type has correct max media count', function () {
     expect(ContentType::InstagramReel->maxMediaCount())->toBe(1);
     expect(ContentType::LinkedInPost->maxMediaCount())->toBe(10);
     expect(ContentType::XPost->maxMediaCount())->toBe(4);
+    expect(ContentType::XPoll->maxMediaCount())->toBe(0);
     expect(ContentType::PinterestCarousel->maxMediaCount())->toBe(5);
     expect(ContentType::BlueskyPost->maxMediaCount())->toBe(4);
 });
@@ -141,6 +147,7 @@ test('content type supports video correctly', function () {
     expect(ContentType::YouTubeShort->supportsVideo())->toBeTrue();
     expect(ContentType::LinkedInPost->supportsVideo())->toBeTrue();
     expect(ContentType::PinterestPin->supportsVideo())->toBeFalse();
+    expect(ContentType::XPoll->supportsVideo())->toBeFalse();
 });
 
 test('content type supports image correctly', function () {
@@ -153,6 +160,7 @@ test('content type supports image correctly', function () {
     expect(ContentType::FacebookStory->autoFitsImage())->toBeTrue();
     expect(ContentType::TikTokVideo->supportsImage())->toBeFalse();
     expect(ContentType::YouTubeShort->supportsImage())->toBeFalse();
+    expect(ContentType::XPoll->supportsImage())->toBeFalse();
 });
 
 test('content type supports mixed media correctly', function () {
@@ -179,6 +187,8 @@ test('content type requires media correctly', function () {
 test('media rules keep editor parity for gif and requires_media flags', function () {
     expect(ContentType::DiscordMessage->acceptsGif())->toBeTrue();
     expect(ContentType::TelegramPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPagePost->acceptsGif())->toBeTrue();
     expect(ContentType::InstagramFeed->mediaRules()['requires_media'])->toBeTrue();
     expect(ContentType::DiscordMessage->mediaRules()['accepts_gif'])->toBeTrue();
 });
@@ -235,7 +245,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         ],
         'linkedin_post' => [
             'requires_media' => false,
-            'accepts_gif' => false,
+            'accepts_gif' => true,
             'max_files' => 10,
             'max_document_bytes' => min(100 * $mb, $hardDocument),
             'max_video_bytes' => $hardVideo,
@@ -504,3 +514,83 @@ test('video aspect ratio bounds are the ranges each network documents as accepte
     'x' => [ContentType::XPost, null],
     'bluesky' => [ContentType::BlueskyPost, null],
 ]);
+
+test('a post type that takes no media advertises no media capability', function (ContentType $type) {
+    expect($type->maxMediaCount())->toBe(0)
+        ->and($type->acceptsGif())->toBeFalse()
+        ->and($type->maxImageBytes())->toBeNull()
+        ->and($type->maxVideoBytes())->toBeNull()
+        ->and($type->maxDocumentBytes())->toBeNull()
+        ->and($type->maxVideoDurationSec())->toBeNull()
+        ->and($type->preferredImageDimensions())->toBe(ContentType::ThreadsGhostPost->preferredImageDimensions());
+})->with([
+    'x poll' => [ContentType::XPoll],
+    'mastodon poll' => [ContentType::MastodonPoll],
+    'threads poll' => [ContentType::ThreadsPoll],
+    'threads ghost post' => [ContentType::ThreadsGhostPost],
+]);
+
+test('a poll type names its network\'s poll rules', function (ContentType $type, string $poll) {
+    expect($type->poll())->toBe($poll)
+        ->and($type->isPoll())->toBeTrue();
+})->with([
+    'x poll' => [ContentType::XPoll, XPoll::class],
+    'mastodon poll' => [ContentType::MastodonPoll, MastodonPoll::class],
+    'threads poll' => [ContentType::ThreadsPoll, ThreadsPoll::class],
+]);
+
+test('every other type has no poll rules', function () {
+    $withPoll = collect(ContentType::cases())->filter(fn (ContentType $type): bool => filled($type->poll()))->values()->all();
+
+    expect($withPoll)->toEqualCanonicalizing([ContentType::XPoll, ContentType::MastodonPoll, ContentType::ThreadsPoll])
+        ->and(ContentType::MastodonPost->isPoll())->toBeFalse()
+        ->and(ContentType::ThreadsPost->isPoll())->toBeFalse();
+});
+
+test('a post type is compatible with the platforms it can go to', function () {
+    expect(ContentType::InstagramReel->isCompatibleWith(Platform::Instagram))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::InstagramFacebook))->toBeTrue()
+        ->and(ContentType::InstagramReel->isCompatibleWith(Platform::Facebook))->toBeFalse()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::X))->toBeTrue()
+        ->and(ContentType::XPoll->isCompatibleWith(Platform::Bluesky))->toBeFalse();
+});
+
+test('a linkedin comment is a reply type no post can take', function () {
+    expect(ContentType::forPlatform(Platform::LinkedIn))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::forPlatform(Platform::LinkedInPage))->not->toContain(ContentType::LinkedInComment)
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedIn))->toBeFalse()
+        ->and(ContentType::LinkedInComment->isCompatibleWith(Platform::LinkedInPage))->toBeFalse()
+        ->and(ContentType::LinkedInComment->maxMediaCount())->toBe(0)
+        ->and(ContentType::LinkedInComment->supportsImage())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::LinkedInComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
+});
+
+test('an instagram account connected through facebook gets the same post types as instagram', function () {
+    expect(ContentType::forPlatform(Platform::InstagramFacebook))->toBe(ContentType::forPlatform(Platform::Instagram))
+        ->and(array_values(ContentType::forPlatform(Platform::Instagram)))->toBe([ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::InstagramStory]);
+});
+
+test('a type without images lists no alt text and a type without video accepts no mov', function (ContentType $type) {
+    if (! $type->supportsImage()) {
+        expect($type->supportsImageAltText())->toBeFalse();
+    }
+
+    if (! $type->supportsVideo()) {
+        expect($type->acceptsMov())->toBeFalse();
+    }
+
+    expect($type->toListingArray())->toMatchArray([
+        'accepts_mov' => $type->acceptsMov(),
+        'supports_alt_text' => $type->supportsImageAltText(),
+        'supports_video_alt_text' => $type->supportsVideoAltText(),
+    ]);
+})->with(ContentType::cases());
+
+test('only bluesky, mastodon, threads and discord take alt text on a video', function (ContentType $type) {
+    $expected = in_array($type, [ContentType::BlueskyPost, ContentType::MastodonPost, ContentType::ThreadsPost, ContentType::DiscordMessage], true);
+
+    expect($type->supportsVideoAltText())->toBe($expected)
+        ->and($type->mediaRules()['supports_video_alt_text'])->toBe($expected);
+})->with(ContentType::cases());

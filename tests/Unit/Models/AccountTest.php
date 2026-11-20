@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use Carbon\Carbon;
 use Database\Seeders\PlanSeeder;
 
 beforeEach(function () {
-    config(['trypost.billing.require_card_for_trial' => true]);
     $this->seed(PlanSeeder::class);
     Carbon::setTestNow('2026-05-14 12:00:00');
 });
@@ -117,15 +117,7 @@ test('isPastDue returns false when self-hosted', function () {
     expect($account->isPastDue())->toBeFalse();
 });
 
-test('isOnTrial ignores generic trial when there is no subscription', function () {
-    $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
-
-    expect($account->isOnTrial())->toBeFalse();
-});
-
-test('isOnTrial includes generic trial when card is not required', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
+test('isOnTrial includes a generic trial without a subscription', function () {
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
 
     expect($account->isOnTrial())->toBeTrue();
@@ -163,17 +155,7 @@ test('activeTrialEndsAt returns generic trial date when only generic is active',
     $endsAt = now()->addDays(7);
     $account = Account::factory()->create(['trial_ends_at' => $endsAt]);
 
-    expect($account->activeTrialEndsAt())->toBeNull();
-});
-
-test('activeTrialEndsAt returns generic trial date when card is not required', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
-    $endsAt = now()->addDays(7);
-    $account = Account::factory()->create(['trial_ends_at' => $endsAt]);
-
-    expect($account->activeTrialEndsAt()?->toDateTimeString())
-        ->toBe($endsAt->toDateTimeString());
+    expect($account->activeTrialEndsAt()?->toDateTimeString())->toBe($endsAt->toDateTimeString());
 });
 
 test('activeTrialEndsAt returns subscription date when only subscription trial is active', function () {
@@ -300,39 +282,37 @@ test('hasAppAccess is true for a past_due subscription', function () {
     expect($account->fresh()->hasAppAccess())->toBeTrue();
 });
 
-test('hasAppAccess ignores generic trial when card is required', function () {
-    config([
-        'trypost.self_hosted' => false,
-        'trypost.billing.require_card_for_trial' => true,
-    ]);
+test('hasAppAccess lasts as long as a generic trial', function () {
+    config(['trypost.self_hosted' => false]);
 
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
 
-    expect($account->hasAppAccess())->toBeFalse()
-        ->and($account->isOnTrial())->toBeFalse();
+    expect($account->hasAppAccess())->toBeTrue();
+
+    Carbon::setTestNow(now()->addDays(8));
+
+    expect($account->fresh()->hasAppAccess())->toBeFalse()
+        ->and($account->fresh()->isOnTrial())->toBeFalse();
 });
 
-test('hasAppAccess allows generic trial when card is not required', function () {
-    config([
-        'trypost.self_hosted' => false,
-        'trypost.billing.require_card_for_trial' => false,
-    ]);
+test('a subscription created during a redeemed trial without a card was subscribed during that trial', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
 
-    $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
-
-    expect($account->hasAppAccess())->toBeTrue()
-        ->and($account->isOnTrial())->toBeTrue()
-        ->and($account->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeTrue()
+        ->and($account->subscribedDuringTrialWithoutCard(now()->addDays(5)))->toBeFalse();
 });
 
-test('hasAppAccess denies expired generic trial when card is not required', function () {
-    config([
-        'trypost.self_hosted' => false,
-        'trypost.billing.require_card_for_trial' => false,
-    ]);
+test('a trial that asked for a card is not a trial without a card', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->create(), ['claimed_at' => now()->subDay(), 'redeemed_at' => now()->subDay()]);
 
-    $account = Account::factory()->create(['trial_ends_at' => now()->subDay()]);
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeFalse();
+});
 
-    expect($account->hasAppAccess())->toBeFalse()
-        ->and($account->isOnTrial())->toBeFalse();
+test('a claimed trial without a card that was never redeemed is not a trial', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDay()]);
+
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeFalse();
 });

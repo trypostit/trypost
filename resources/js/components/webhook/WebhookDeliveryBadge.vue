@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
+import { deliveryBadgeVariant, deliveryState } from '@/components/webhook/webhook-delivery';
 import type { WebhookLog } from '@/types/webhook';
 
-import { deliveryBadgeVariant, deliveryState } from './webhook-delivery';
 
 defineProps<{
     log: WebhookLog;

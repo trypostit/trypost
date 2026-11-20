@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'الفوترة',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'فوترة شهرية',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'سنوي',
         'save_two_months' => 'شهران مجانًا',
         'per_month' => '/شهر',
+        'per_year' => '/سنة',
         'workspaces_one' => 'مساحة عمل واحدة',
         'workspaces_unlimited' => 'مساحات عمل غير محدودة',
         'workspaces_tooltip' => 'مساحة العمل هي علامة تجارية أو عميل واحد، منفصلة عن البقية: بحساباتها الاجتماعية وتوقيعاتها وتصنيفاتها وتحليلاتها وصلاحيات أعضائها واتصال MCP الخاص بها.',
@@ -33,7 +35,6 @@ return [
         'select' => 'اختر :plan',
         'upgrade' => 'الترقية إلى :plan',
         'downgrade' => 'الرجوع إلى :plan',
-        'start_first_month' => 'فعّل مقابل :price',
         'billed_yearly_total' => 'فوترة سنوية · :price (شهران مجانًا)',
         'socials_tagline' => 'مناسب لمنشئي المحتوى والعلامات الصغيرة.',
         'workspaces_tagline' => 'مناسب للوكالات والأعمال الكبيرة.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'نشطة',
+            'trial' => 'تجربة مجانية',
+            'cancelling' => 'ملغاة',
+            'past_due' => 'متأخرة',
+        ],
         'change' => 'تغيير الخطة',
-        'price_monthly' => ':price/شهر',
-        'price_yearly' => ':price/سنة',
+        'subscribe' => 'اشترك الآن',
         'trial_until' => 'فترة تجريبية حتى :date',
-        'renews' => 'يتجدد تلقائيًا',
         'cancelled' => 'تم الإلغاء، ينتهي في :date',
-        'workspaces_usage' => 'مساحات العمل: :count من :limit',
+        'discount_until' => 'خصم :discount حتى :date',
+        'discount_forever' => 'خصم :discount على كل دفعة',
+        'discount_once' => 'خصم :discount على دفعتك القادمة',
     ],
 
     'subscription' => [
-        'title' => 'طريقة الدفع',
+        'title' => 'طرق الدفع',
+        'default' => 'افتراضية',
         'description' => 'حدّث بطاقتك أو بيانات الفوترة على Stripe.',
         'no_payment_method' => 'لا توجد طريقة دفع مسجّلة بعد.',
         'expires_on' => 'تنتهي في :month/:year',
         'manage_stripe' => 'الإدارة عبر Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'الخطة',
+        'invoices' => 'الفواتير',
+    ],
+
     'invoices' => [
-        'title' => 'الفواتير',
-        'description' => 'نزّل فواتيرك السابقة.',
+        'columns' => [
+            'date' => 'التاريخ',
+            'amount' => 'المبلغ',
+            'status' => 'الحالة',
+        ],
+        'empty_title' => 'لا توجد فواتير بعد',
+        'empty_description' => 'ستظهر فواتيرك هنا بعد أول دفعة.',
         'paid' => 'مدفوعة',
         'download' => 'تنزيل الفاتورة',
     ],

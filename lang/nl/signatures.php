@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Handtekeningen',
     'description' => 'Herbruikbare teksten voor je posts.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Aangemaakt',
     ],
 
-    'row_actions' => 'Acties voor handtekening',
     'actions' => [
         'edit' => 'Handtekening bewerken',
-        'delete' => 'Handtekening verwijderen',
+        'delete' => 'Verwijderen',
+        'settings' => 'Instellingen',
     ],
 
     'create' => [

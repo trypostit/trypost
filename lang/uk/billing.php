@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Оплата',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Щомісячна оплата',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Щороку',
         'save_two_months' => '2 місяці безкоштовно',
         'per_month' => '/місяць',
+        'per_year' => '/рік',
         'workspaces_one' => 'Один workspace',
         'workspaces_unlimited' => 'Необмежена кількість workspace',
         'workspaces_tooltip' => 'Workspace — це один бренд або клієнт, відокремлений від інших: власні соцмережі, підписи, мітки, аналітика, права учасників і підключення MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Обрати :plan',
         'upgrade' => 'Перейти на :plan',
         'downgrade' => 'Понизити до :plan',
-        'start_first_month' => 'Активувати за :price',
         'billed_yearly_total' => 'Оплата раз на рік · :price (2 місяці безкоштовно)',
         'socials_tagline' => 'Для авторів і невеликих брендів.',
         'workspaces_tagline' => 'Для агентств і великого бізнесу.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Активний',
+            'trial' => 'Пробний період',
+            'cancelling' => 'Скасовано',
+            'past_due' => 'Прострочено',
+        ],
         'change' => 'Змінити план',
-        'price_monthly' => ':price/місяць',
-        'price_yearly' => ':price/рік',
+        'subscribe' => 'Оформити підписку',
         'trial_until' => 'Пробний період до :date',
-        'renews' => 'Поновлюється автоматично',
         'cancelled' => 'Скасовано, діє до :date',
-        'workspaces_usage' => 'Робочі простори: :count з :limit',
+        'discount_until' => 'Знижка :discount до :date',
+        'discount_forever' => 'Знижка :discount на кожен платіж',
+        'discount_once' => 'Знижка :discount на наступний платіж',
     ],
 
     'subscription' => [
-        'title' => 'Спосіб оплати',
+        'title' => 'Способи оплати',
+        'default' => 'Основна',
         'description' => 'Оновіть картку або платіжні дані в Stripe.',
         'no_payment_method' => 'Спосіб оплати ще не додано.',
         'expires_on' => 'Діє до :month/:year',
         'manage_stripe' => 'Керувати в Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'План',
+        'invoices' => 'Рахунки',
+    ],
+
     'invoices' => [
-        'title' => 'Рахунки',
-        'description' => 'Завантажуйте минулі рахунки.',
+        'columns' => [
+            'date' => 'Дата',
+            'amount' => 'Сума',
+            'status' => 'Статус',
+        ],
+        'empty_title' => 'Рахунків поки немає',
+        'empty_description' => 'Рахунки з’являться тут після першої оплати.',
         'paid' => 'Оплачено',
         'download' => 'Завантажити рахунок',
     ],

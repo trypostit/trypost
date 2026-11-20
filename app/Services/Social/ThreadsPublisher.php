@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -12,6 +13,7 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\ThreadsPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +34,7 @@ class ThreadsPublisher
     /**
      * Extra parameters for the post's own container (never carousel children).
      *
-     * @var array<string, string>
+     * @var array<string, mixed>
      */
     private array $containerOptions = [];
 
@@ -65,9 +67,7 @@ class ThreadsPublisher
             );
         }
 
-        $this->containerOptions = $post->content_type === ContentType::ThreadsGhostPost
-            ? ['is_ghost_post' => 'true']
-            : $this->postOptions($post);
+        $this->containerOptions = $this->containerOptions($post, $content);
 
         // Text only post
         if ($media->isEmpty()) {
@@ -83,19 +83,9 @@ class ThreadsPublisher
             );
         }
 
-        $firstMedia = $media->first();
-        $isVideo = $firstMedia->isVideo();
-
-        // Single media
         if ($media->count() === 1) {
-            if ($isVideo) {
-                return $this->publishMediaWithRetry(
-                    fn (): array => $this->publishVideoPost($userId, $accessToken, $content, $firstMedia),
-                );
-            }
-
             return $this->publishMediaWithRetry(
-                fn (): array => $this->publishImagePost($userId, $accessToken, $content, $firstMedia),
+                fn (): array => $this->publishSingleMedia($userId, $accessToken, $content, $media->first()),
             );
         }
 
@@ -137,62 +127,19 @@ class ThreadsPublisher
         return $this->publishContainer($userId, $accessToken, $containerId);
     }
 
-    private function publishImagePost(string $userId, string $accessToken, ?string $content, $media): array
+    private function publishSingleMedia(string $userId, string $accessToken, ?string $content, MediaItem $media): array
     {
-        // Step 1: Create container
-        $params = [
-            'media_type' => 'IMAGE',
-            'image_url' => $media->url,
-            'text' => $content,
-            ...$this->containerOptions,
-            'access_token' => $accessToken,
-        ];
+        $kind = $media->isVideo() ? 'video' : 'image';
 
-        $alt = $media->altTextFor(Platform::Threads);
-
-        if ($alt !== null) {
-            $params['alt_text'] = $alt;
-        }
-
-        $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
-
-        if ($containerResponse->failed()) {
-            Log::error('Threads image container creation failed', [
-                'status' => $containerResponse->status(),
-                'body' => $this->redactResponseBody($containerResponse->body()),
-            ]);
-            $this->handleApiError($containerResponse);
-        }
-
-        $containerId = $containerResponse->json()['id'] ?? null;
-
-        if (! $containerId) {
-            throw new ThreadsPublishException(
-                userMessage: 'Threads did not accept the image. Please try again.',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
-        // Step 2: Wait for image processing
-        $this->waitForMediaProcessing($containerId, $accessToken);
-
-        // Step 3: Publish
-        return $this->publishContainer($userId, $accessToken, $containerId);
-    }
-
-    private function publishVideoPost(string $userId, string $accessToken, ?string $content, $media): array
-    {
-        // Step 1: Create container
         $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
-            'media_type' => 'VIDEO',
-            'video_url' => $media->url,
+            ...$this->mediaParams($media),
             'text' => $content,
             ...$this->containerOptions,
             'access_token' => $accessToken,
         ]);
 
         if ($containerResponse->failed()) {
-            Log::error('Threads video container creation failed', [
+            Log::error("Threads {$kind} container creation failed", [
                 'status' => $containerResponse->status(),
                 'body' => $this->redactResponseBody($containerResponse->body()),
             ]);
@@ -203,16 +150,44 @@ class ThreadsPublisher
 
         if (! $containerId) {
             throw new ThreadsPublishException(
-                userMessage: 'Threads did not accept the video. Please try again.',
+                userMessage: "Threads did not accept the {$kind}. Please try again.",
                 category: ErrorCategory::ServerError,
             );
         }
 
-        // Wait for video processing
         $this->waitForMediaProcessing($containerId, $accessToken);
 
-        // Step 2: Publish
         return $this->publishContainer($userId, $accessToken, $containerId);
+    }
+
+    /**
+     * The container fields of one image or video: its type, its URL and its
+     * alt text, which Threads takes on both.
+     *
+     * @return array<string, string>
+     */
+    private function mediaParams(MediaItem $media): array
+    {
+        $params = $this->mediaSource($media);
+        $alt = $media->altTextFor(Platform::Threads);
+
+        if (blank($alt)) {
+            return $params;
+        }
+
+        return [...$params, 'alt_text' => $alt];
+    }
+
+    /**
+     * @return array{media_type: string, video_url?: string, image_url?: string}
+     */
+    private function mediaSource(MediaItem $media): array
+    {
+        if ($media->isVideo()) {
+            return ['media_type' => 'VIDEO', 'video_url' => $media->url];
+        }
+
+        return ['media_type' => 'IMAGE', 'image_url' => $media->url];
     }
 
     private function publishCarousel(string $userId, string $accessToken, ?string $content, $mediaCollection): array
@@ -221,28 +196,11 @@ class ThreadsPublisher
         $childContainers = [];
 
         foreach ($mediaCollection as $media) {
-            $isVideo = $media->isVideo();
-
-            $params = [
+            $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
+                ...$this->mediaParams($media),
                 'is_carousel_item' => 'true',
                 'access_token' => $accessToken,
-            ];
-
-            if ($isVideo) {
-                $params['media_type'] = 'VIDEO';
-                $params['video_url'] = $media->url;
-            } else {
-                $params['media_type'] = 'IMAGE';
-                $params['image_url'] = $media->url;
-
-                $alt = $media->altTextFor(Platform::Threads);
-
-                if ($alt !== null) {
-                    $params['alt_text'] = $alt;
-                }
-            }
-
-            $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", $params);
+            ]);
 
             if ($containerResponse->failed()) {
                 Log::error('Threads carousel item creation failed', [
@@ -425,6 +383,41 @@ class ThreadsPublisher
             userMessage: 'Threads took too long to process the media. Please try again.',
             category: ErrorCategory::ServerError,
         );
+    }
+
+    /**
+     * What the container takes besides the text and media: a ghost post is
+     * marked as one, a poll carries its choices, and a post its topic.
+     *
+     * @return array<string, mixed>
+     */
+    private function containerOptions(Post $post, ?string $content): array
+    {
+        if ($post->content_type === ContentType::ThreadsGhostPost) {
+            return ['is_ghost_post' => 'true'];
+        }
+
+        if ($post->content_type === ContentType::ThreadsPoll) {
+            return [...$this->postOptions($post), 'poll_attachment' => $this->pollAttachment($post, $content)];
+        }
+
+        return $this->postOptions($post);
+    }
+
+    /**
+     * A poll goes on a text post only, with its question and choices, sent as
+     * a JSON string as the Threads docs show it (like Instagram's nested
+     * parameters).
+     */
+    private function pollAttachment(Post $post, ?string $content): string
+    {
+        $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
+
+        if (filled($violation)) {
+            throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+
+        return (string) json_encode(ThreadsPoll::payload($post->meta));
     }
 
     /**

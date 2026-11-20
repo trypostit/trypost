@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '账单',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => '按月计费',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => '按年',
         'save_two_months' => '免两个月',
         'per_month' => '/月',
+        'per_year' => '/年',
         'workspaces_one' => '一个工作区',
         'workspaces_unlimited' => '无限工作区',
         'workspaces_tooltip' => '一个工作区对应一个品牌或客户，与其他工作区相互隔离：拥有自己的社交账号、签名、标签、数据分析、成员权限和 MCP 连接。',
@@ -33,7 +35,6 @@ return [
         'select' => '选择 :plan',
         'upgrade' => '升级到 :plan',
         'downgrade' => '降级到 :plan',
-        'start_first_month' => '以 :price 激活',
         'billed_yearly_total' => '按年计费 · :price（免两个月）',
         'socials_tagline' => '适合创作者和小品牌。',
         'workspaces_tagline' => '适合代理商和大型业务。',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => '生效中',
+            'trial' => '免费试用',
+            'cancelling' => '已取消',
+            'past_due' => '已逾期',
+        ],
         'change' => '更改套餐',
-        'price_monthly' => ':price/月',
-        'price_yearly' => ':price/年',
+        'subscribe' => '立即订阅',
         'trial_until' => '试用至 :date',
-        'renews' => '自动续订',
         'cancelled' => '已取消，将于 :date 结束',
-        'workspaces_usage' => '工作区：:count / :limit',
+        'discount_until' => '优惠 :discount，截至 :date',
+        'discount_forever' => '每次付款优惠 :discount',
+        'discount_once' => '下次付款优惠 :discount',
     ],
 
     'subscription' => [
         'title' => '付款方式',
+        'default' => '默认',
         'description' => '在 Stripe 更新你的卡片或账单信息。',
         'no_payment_method' => '尚未添加付款方式。',
         'expires_on' => '有效期至 :month/:year',
         'manage_stripe' => '在 Stripe 上管理',
     ],
 
+    'tabs' => [
+        'plan' => '套餐',
+        'invoices' => '发票',
+    ],
+
     'invoices' => [
-        'title' => '发票',
-        'description' => '下载你过往的发票。',
+        'columns' => [
+            'date' => '日期',
+            'amount' => '金额',
+            'status' => '状态',
+        ],
+        'empty_title' => '暂无发票',
+        'empty_description' => '首次付款后，你的发票会显示在这里。',
         'paid' => '已支付',
         'download' => '下载发票',
     ],

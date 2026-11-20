@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Services\Http\SafeHttpFetcher;
+use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -68,7 +69,7 @@ class MastodonController extends SocialController
 
         try {
             // Register app on the instance
-            $appResponse = Http::post("{$instance}/api/v1/apps", [
+            $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [
                 'client_name' => config('app.name'),
                 'redirect_uris' => route('app.social.mastodon.callback'),
                 'scopes' => self::SCOPES,
@@ -170,7 +171,7 @@ class MastodonController extends SocialController
             $accessToken = data_get($tokenData, 'access_token');
 
             $profileResponse = Http::withToken($accessToken)
-                ->get("{$instance}/api/v1/accounts/verify_credentials");
+                ->get(MastodonApi::url($instance, 'accounts/verify_credentials'));
 
             if ($profileResponse->failed()) {
                 return $this->failConnection('failed_to_get_profile');

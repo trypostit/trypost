@@ -104,6 +104,20 @@ test('the tz query re-buckets the calendar and moves the range boundaries', func
             ->has('posts.2026-10-07', 1));
 });
 
+test('a legacy tz alias shows its canonical zone', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month', 'tz' => 'Canada/East-Saskatchewan']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+});
+
+test('a user stored with a legacy alias sees the calendar in its canonical zone', function () {
+    $this->user->update(['timezone' => 'Canada/East-Saskatchewan']);
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month']))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('displayTimezone', 'America/Regina'));
+});
+
 test('an unknown tz falls back to the user time zone', function () {
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'month', 'tz' => 'Mars/Olympus']))
@@ -300,6 +314,23 @@ test('undated drafts are paginated with the default page size', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page->has('undatedDrafts.data', 1));
 });
 
+test('posting slots past the queue window still show, marked as not taking a queued post', function () {
+    $schedule = PostingSchedule::empty();
+
+    foreach (range(0, 6) as $weekday) {
+        $schedule = $schedule->withTime($weekday, '09:00');
+    }
+
+    $this->linkedin->update(['timezone' => 'UTC', 'posting_schedule' => $schedule]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month', 'month' => '2027-01-01', 'slots' => 1, 'tz' => 'UTC']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('slots.2027-01-03.0.queueable', true)
+            ->where('slots.2027-01-04.0.queueable', false)
+            ->where('slots.2027-01-31.0.queueable', false));
+});
+
 test('posting slots load only when enabled, cover the visible range and follow the display time zone', function () {
     $this->linkedin->update([
         'timezone' => 'America/Sao_Paulo',
@@ -313,14 +344,17 @@ test('posting slots load only when enabled, cover the visible range and follow t
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'week']))
-        ->assertInertia(fn (AssertableInertia $page) => $page->missing('slots'));
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('slots')
+            ->reloadOnly('slots', fn (AssertableInertia $reload) => $reload
+                ->where('slots.2026-10-05.0.at', '2026-10-05T12:00:00+00:00')));
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'week', 'slots' => 1]))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('slots', [
-                '2026-10-05' => [['at' => '2026-10-05T12:00:00+00:00', 'channel_id' => $this->linkedin->id]],
-                '2026-10-07' => [['at' => '2026-10-08T02:30:00+00:00', 'channel_id' => $this->linkedin->id]],
+                '2026-10-05' => [['at' => '2026-10-05T12:00:00+00:00', 'channel_id' => $this->linkedin->id, 'queueable' => true]],
+                '2026-10-07' => [['at' => '2026-10-08T02:30:00+00:00', 'channel_id' => $this->linkedin->id, 'queueable' => true]],
             ]));
 
     $this->actingAs($this->user)

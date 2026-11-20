@@ -8,31 +8,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-/**
- * Poll from the page until `$condition` holds (never sleep(): the test server
- * only ticks while Pest awaits Playwright).
- */
-function waitForComposerMediaTrayCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-/**
- * Wait for a data-testid element to mount and lay out. Pest browser `@`
- * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
- */
-function waitForComposerMediaTrayTestId(mixed $page, string $testId): void
-{
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
 function composerMediaTrayCount(mixed $page, string $testId): int
 {
     return (int) $page->script("document.querySelectorAll('[data-testid=\"{$testId}\"]').length");
@@ -64,19 +39,13 @@ function openComposerMediaTray(mixed $test, string $mode = 'pass', int $channels
     $test->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerMediaTrayCondition($page, <<<'JS'
-        (() => {
-            const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-            return sheet?.getAttribute('data-state') === 'open'
-                && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                && document.querySelector('[data-testid="composer-add-account"]')?.getBoundingClientRect().height > 0;
-        })()
-    JS);
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     if ($select) {
         selectComposerMediaTrayChannels($page, $accounts);
     }
     $networks = collect($accounts)->pluck('platform')->unique()->count();
-    waitForComposerMediaTrayTestId($page, $select && $networks === 1 ? "composer-{$accounts[0]->id}-dropzone" : 'composer-dropzone');
+    waitFor($page, $select && $networks === 1 ? "@composer-{$accounts[0]->id}-dropzone" : '@composer-dropzone');
 
     $uploadUrl = route('app.media.store-chunked', absolute: false);
     $page->script(<<<JS
@@ -173,7 +142,7 @@ test('the toolbar has no plus button and the channel dropzone opens its own file
         ->assertNotPresent('@composer-base-add-media');
 
     selectComposerMediaTrayChannels($page, [$account]);
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-dropzone");
+    waitFor($page, "@composer-{$account->id}-dropzone");
     $page->script(<<<JS
         (() => {
             window.__fileDialogOpened = 0;
@@ -192,17 +161,17 @@ test('each file gets an uploading tile and becomes a ready tile in the order it 
     [$page] = openComposerMediaTray($this, 'hold');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('first.png').', '.composerMediaTrayPng('second.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 2');
+    waitForCondition($page, 'window.__uploads.held.length === 2');
     expect(composerMediaTrayCount($page, 'composer-upload-item'))->toBe(2)
         ->and(composerMediaTrayCount($page, 'composer-media-item'))->toBe(0);
 
     $page->script("window.__releaseUpload('second.png')");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-upload-item\"]')[1]?.querySelector('[role=\"progressbar\"]')?.getAttribute('aria-valuenow') === '100'");
+    waitForCondition($page, "document.querySelectorAll('[data-testid=\"composer-upload-item\"]')[1]?.querySelector('[role=\"progressbar\"]')?.getAttribute('aria-valuenow') === '100'");
     expect(composerMediaTrayCount($page, 'composer-media-item'))->toBe(0)
         ->and(composerMediaTrayCount($page, 'composer-upload-item'))->toBe(2);
 
     $page->script("window.__releaseUpload('first.png')");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 2");
+    waitForCount($page, '@composer-media-item', 2);
 
     $sources = $page->script("[...document.querySelectorAll('[data-testid=\"composer-media-item\"] img')].map((image) => image.getAttribute('src'))");
     $uploads = Media::where('collection', Media::COLLECTION_UPLOADS)->get()->keyBy('original_filename');
@@ -215,12 +184,12 @@ test('no more than three files upload at once', function () {
     [$page] = openComposerMediaTray($this, 'hold');
 
     selectComposerMediaTrayFiles($page, '['.implode(', ', array_map(composerMediaTrayPng(...), ['a.png', 'b.png', 'c.png', 'd.png'])).']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 3');
+    waitForCondition($page, 'window.__uploads.held.length === 3');
     expect($page->script('window.__uploads.held.map((held) => held.name)'))->toBe(['a.png', 'b.png', 'c.png'])
         ->and(composerMediaTrayCount($page, 'composer-upload-item'))->toBe(4);
 
     $page->script("window.__releaseUpload('a.png')");
-    waitForComposerMediaTrayCondition($page, "window.__uploads.held.some((held) => held.name === 'd.png')");
+    waitForCondition($page, "window.__uploads.held.some((held) => held.name === 'd.png')");
     expect($page->script('window.__uploads.held.map((held) => held.name)'))->toBe(['b.png', 'c.png', 'd.png']);
     $page->assertNoJavaScriptErrors();
 });
@@ -229,7 +198,7 @@ test('an unsupported file type becomes an error tile and is never sent', functio
     [$page] = openComposerMediaTray($this);
 
     selectComposerMediaTrayFiles($page, "[new File(['hello'], 'notes.txt', { type: 'text/plain' })]");
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
+    waitFor($page, '@composer-upload-error');
 
     expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('unsupported_type')
         ->and($page->script('window.__uploads.count'))->toBe(0);
@@ -243,18 +212,18 @@ test('saving is blocked while an upload is in flight and the finished upload is 
     $page->fill('@composer-base-content', 'Post with an upload');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('in-flight.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
     expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
     selectComposerMediaTrayChannels($page, [$account]);
-    waitForComposerMediaTrayTestId($page, 'composer-submit');
+    waitFor($page, '@composer-submit');
     expect(composerMediaTrayDisabled($page, 'composer-submit'))->toBeTrue()
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->script("window.__releaseUpload('in-flight.png')");
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
     expect(composerMediaTrayDisabled($page, 'composer-submit'))->toBeFalse();
     $page->click('@composer-save-draft');
-    waitForComposerMediaTrayCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
     $owned = $post->ownedMedia()->sole();
@@ -269,7 +238,7 @@ test('cancel removes an uploading tile and retry recovers a network failure', fu
     [$page] = openComposerMediaTray($this, 'hold', platform: ['instagram', 'threads'], select: true);
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('cancel-me.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
     $page->click('@composer-upload-cancel-0')
         ->assertMissing('@composer-upload-item')
         ->assertMissing('@composer-media-item');
@@ -277,11 +246,11 @@ test('cancel removes an uploading tile and retry recovers a network failure', fu
 
     $page->script("window.__uploads.mode = 'pass'; window.__uploads.failNext = true;");
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('retry-me.png').']');
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
+    waitFor($page, '@composer-upload-error');
     expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('network');
 
     $page->click('@composer-upload-retry-0');
-    waitForComposerMediaTrayTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-media-item');
     $page->assertMissing('@composer-upload-error')
         ->assertNoJavaScriptErrors();
     expect(Media::where('collection', Media::COLLECTION_UPLOADS)->pluck('original_filename')->all())->toBe(['retry-me.png']);
@@ -292,7 +261,7 @@ test('a rejected upload shows the server message without Retry', function () {
 
     $page->script("window.__uploads.rejectNext = 'This HEIC file could not be read.'");
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('rejected.png').']');
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
+    waitFor($page, '@composer-upload-error');
 
     expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('rejected');
     $page->assertSeeIn('@composer-upload-error', 'This HEIC file could not be read.')
@@ -305,31 +274,31 @@ test('three uploads run at once across the shared and channel trays, and uploads
     $second = $accounts[1];
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('shared-a.png').', '.composerMediaTrayPng('shared-b.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 2');
+    waitForCondition($page, 'window.__uploads.held.length === 2');
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-dropzone");
+    waitFor($page, "@composer-{$first->id}-dropzone");
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('channel-c.png').', '.composerMediaTrayPng('channel-d.png').']', "composer-{$first->id}");
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 3');
+    waitForCondition($page, 'window.__uploads.held.length === 3');
     expect($page->script('window.__uploads.held.map((held) => held.name)'))->toBe(['shared-a.png', 'shared-b.png', 'channel-c.png'])
         ->and(composerMediaTrayCount($page, "composer-{$first->id}-upload-item"))->toBe(4);
 
     $page->click("@composer-account-{$second->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$second->id}-dropzone");
+    waitFor($page, "@composer-{$second->id}-dropzone");
     $page->script("window.__releaseUpload('shared-a.png'); window.__releaseUpload('shared-b.png');");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$second->id}-media-item\"]').length === 2 && window.__uploads.held.length === 2");
+    waitForCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$second->id}-media-item\"]').length === 2 && window.__uploads.held.length === 2");
     $page->script("window.__releaseUpload('channel-c.png'); window.__releaseUpload('channel-d.png');");
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 0');
+    waitForCondition($page, 'window.__uploads.held.length === 0');
 
     $page->click("@composer-account-{$first->id}");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$first->id}-media-item\"]').length === 4");
+    waitForCount($page, "@composer-{$first->id}-media-item", 4);
     expect(composerMediaTrayCount($page, "composer-{$first->id}-media-item"))->toBe(4)
         ->and(composerMediaTrayCount($page, "composer-{$second->id}-media-item"))->toBe(0);
 
     $page->click('@composer-back');
-    waitForComposerMediaTrayTestId($page, 'composer-back-confirm-go');
+    waitFor($page, '@composer-back-confirm-go');
     $page->click('@composer-back-confirm-go');
-    waitForComposerMediaTrayTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-media-item');
     expect(composerMediaTrayCount($page, 'composer-media-item'))->toBe(2)
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
@@ -339,9 +308,9 @@ test('closing the composer aborts uploads still in flight', function () {
     [$page] = openComposerMediaTray($this, 'hold');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('left-behind.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
     $page->click('@composer-close');
-    waitForComposerMediaTrayCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
+    waitForGone($page, '@post-composer-dialog');
 
     expect($page->script('window.__uploads.aborted'))->toBe(1)
         ->and(Media::count())->toBe(0);
@@ -353,21 +322,21 @@ test('an expired upload is reported on its tile in the shared tray and in a chan
     $page->fill('@composer-base-content', 'Expired upload');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('shared-expired.png').']');
-    waitForComposerMediaTrayTestId($page, 'composer-media-item');
+    waitFor($page, '@composer-media-item');
     Media::where('original_filename', 'shared-expired.png')->delete();
     $page->click('@composer-save-draft');
-    waitForComposerMediaTrayTestId($page, 'composer-media-error-0');
+    waitFor($page, '@composer-media-error-0');
     $page->assertSeeIn('@composer-media-error-0', 'This upload expired. Add the file again.')
         ->click('@composer-remove-0')
         ->assertMissing('@composer-media-error-0');
 
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-dropzone");
+    waitFor($page, "@composer-{$account->id}-dropzone");
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('channel-expired.png').']', "composer-{$account->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-media-item");
+    waitFor($page, "@composer-{$account->id}-media-item");
     Media::where('original_filename', 'channel-expired.png')->delete();
     $page->click('@composer-save-draft');
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-media-error-0");
+    waitFor($page, "@composer-{$account->id}-media-error-0");
     $page->assertSeeIn("@composer-{$account->id}-media-error-0", 'This upload expired. Add the file again.')
         ->assertNoJavaScriptErrors();
     expect(Post::count())->toBe(0);
@@ -382,7 +351,7 @@ function uploadComposerMediaTrayTiles(mixed $page, array $names): void
 {
     selectComposerMediaTrayFiles($page, '['.implode(', ', array_map(composerMediaTrayPng(...), $names)).']');
     $count = count($names);
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === {$count}");
+    waitForCount($page, '@composer-media-item', $count);
 }
 
 /**
@@ -400,17 +369,17 @@ test('dragging a tile before another reorders the tray and the save keeps the or
     [$page, $workspace, $account] = openComposerMediaTray($this);
     $page->fill('@composer-base-content', 'Reordered media');
     uploadComposerMediaTrayTiles($page, ['first.png', 'second.png']);
-    waitForComposerMediaTrayTestId($page, 'composer-media-item-1');
+    waitFor($page, '@composer-media-item-1');
 
     $second = $page->script("document.querySelectorAll('[data-testid=\"composer-media-item\"] img')[1].getAttribute('src')");
 
     $page->drag('@composer-drag-handle-1', '@composer-media-item-0');
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-media-item\"] img')?.getAttribute('src') === '{$second}'");
+    waitForState($page, '@composer-media-item img', "element.getAttribute('src') === '{$second}'");
     expect(composerMediaTrayOrder($page))->toBe(['second.png', 'first.png']);
 
     selectComposerMediaTrayChannels($page, [$account]);
     $page->click('@composer-save-draft');
-    waitForComposerMediaTrayCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
     $owned = $post->ownedMedia()->get()->keyBy('id');
@@ -423,7 +392,7 @@ test('arrow keys on the drag handle move the tile, keep focus on its handle and 
     uploadComposerMediaTrayTiles($page, ['first.png', 'second.png']);
 
     $page->keys('@composer-drag-handle-0', 'ArrowRight');
-    waitForComposerMediaTrayCondition($page, "document.activeElement?.dataset.testid === 'composer-drag-handle-1'");
+    waitForState($page, '@composer-drag-handle-1', 'element === document.activeElement');
 
     expect(composerMediaTrayOrder($page))->toBe(['second.png', 'first.png'])
         ->and($page->script('document.activeElement?.dataset.testid'))->toBe('composer-drag-handle-1')
@@ -435,7 +404,7 @@ test('arrow keys on the drag handle move the tile, keep focus on its handle and 
         ->and($page->script('document.activeElement?.dataset.testid'))->toBe('composer-drag-handle-1');
 
     $page->keys('@composer-drag-handle-1', 'ArrowLeft');
-    waitForComposerMediaTrayCondition($page, "document.activeElement?.dataset.testid === 'composer-drag-handle-0'");
+    waitForState($page, '@composer-drag-handle-0', 'element === document.activeElement');
     expect(composerMediaTrayOrder($page))->toBe(['first.png', 'second.png']);
     $page->assertNoJavaScriptErrors();
 });
@@ -447,7 +416,7 @@ test('a tile is dragged only by its handle and a single tile has no handle', fun
     expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-drag-handle-0\"]')).display"))->toBe('none');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('second.png').']');
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 2");
+    waitForCount($page, '@composer-media-item', 2);
     $page->script(<<<'JS'
         (() => {
             const source = document.querySelector('[data-testid="composer-media-item-1"]');
@@ -484,7 +453,7 @@ test('pasting an image into the post content adds an upload and leaves text past
     [$page] = openComposerMediaTray($this);
 
     expect(pasteIntoComposerMediaTray($page, 'composer-base-content', '['.composerMediaTrayPng('pasted.png').']'))->toBeTrue();
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 1");
+    waitForCount($page, '@composer-media-item', 1);
 
     expect(pasteIntoComposerMediaTray($page, 'composer-base-content', '[]', 'hello'))->toBeFalse()
         ->and(composerMediaTrayCount($page, 'composer-media-item'))->toBe(1)
@@ -496,16 +465,16 @@ test('pasting an image into a channel caption adds it to that channel tray only'
     [$page, , $account] = openComposerMediaTray($this, platform: ['instagram', 'threads'], select: true);
     $page->fill('@composer-base-content', 'Shared text');
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-caption-{$account->id}");
+    waitFor($page, "@composer-caption-{$account->id}");
 
     expect(pasteIntoComposerMediaTray($page, "composer-caption-{$account->id}", '['.composerMediaTrayPng('channel.png').']'))->toBeTrue();
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$account->id}-media-item\"]').length === 1");
+    waitForCount($page, "@composer-{$account->id}-media-item", 1);
 
     expect(composerMediaTrayCount($page, "composer-{$account->id}-media-item"))->toBe(1);
     $page->click('@composer-back');
-    waitForComposerMediaTrayTestId($page, 'composer-back-confirm-go');
+    waitFor($page, '@composer-back-confirm-go');
     $page->click('@composer-back-confirm-go');
-    waitForComposerMediaTrayTestId($page, 'composer-dropzone');
+    waitFor($page, '@composer-dropzone');
     expect(composerMediaTrayCount($page, 'composer-media-item'))->toBe(0);
     $page->assertNoJavaScriptErrors();
 });
@@ -515,15 +484,15 @@ test('deselecting a channel aborts its uploads, unblocks saving and leaves nothi
     $second = $accounts[1];
     $page->fill('@composer-base-content', 'Deselect mid-upload');
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-dropzone");
+    waitFor($page, "@composer-{$first->id}-dropzone");
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('held-channel.png').", new File(['x'], 'notes.txt', { type: 'text/plain' })]", "composer-{$first->id}");
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
     expect(composerMediaTrayCount($page, "composer-{$first->id}-upload-error"))->toBe(1)
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->click("@composer-remove-account-{$first->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$second->id}-dropzone");
+    waitFor($page, "@composer-{$second->id}-dropzone");
     expect($page->script('window.__uploads.aborted'))->toBe(1)
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
     $page->assertMissing('@composer-upload-blocked');
@@ -531,7 +500,7 @@ test('deselecting a channel aborts its uploads, unblocks saving and leaves nothi
     $page->click('@composer-add-account')->click("@composer-account-option-{$first->id}");
     $page->click('@composer-next');
     $page->click("@composer-account-{$first->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-dropzone");
+    waitFor($page, "@composer-{$first->id}-dropzone");
     expect(composerMediaTrayCount($page, "composer-{$first->id}-upload-error"))->toBe(0)
         ->and(composerMediaTrayCount($page, "composer-{$first->id}-upload-item"))->toBe(0)
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse()
@@ -544,18 +513,18 @@ test('a server error follows the expired item when an earlier item is removed', 
     $page->fill('@composer-base-content', 'Two uploads, one expired');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('kept.png').', '.composerMediaTrayPng('expired.png').']');
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 2");
+    waitForCount($page, '@composer-media-item', 2);
     $expired = Media::where('original_filename', 'expired.png')->sole();
     $expiredUrl = $expired->url;
     $expired->delete();
 
     $page->click('@composer-save-draft');
-    waitForComposerMediaTrayTestId($page, 'composer-media-error-1');
+    waitFor($page, '@composer-media-error-1');
     $page->assertMissing('@composer-media-error-0');
 
     $page->click('@composer-remove-0');
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 1");
-    waitForComposerMediaTrayTestId($page, 'composer-media-error-0');
+    waitForCount($page, '@composer-media-item', 1);
+    waitFor($page, '@composer-media-error-0');
     expect($page->script("document.querySelector('[data-testid=\"composer-media-item\"] img').getAttribute('src')"))->toBe($expiredUrl);
     $page->assertSeeIn('@composer-media-error-0', 'This upload expired. Add the file again.')
         ->assertMissing('@composer-media-error-1')
@@ -571,14 +540,14 @@ test('a server error follows the expired item when an earlier item is removed', 
 function removeComposerMediaTrayInstagramImage(mixed $test): array
 {
     [$page, , $account] = openComposerMediaTray($test, platform: 'instagram', select: true);
-    waitForComposerMediaTrayTestId($page, "composer-media-warning-{$account->id}");
+    waitFor($page, "@composer-media-warning-{$account->id}");
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('beach.png').']', "composer-{$account->id}");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$account->id}-media-item\"]').length === 1");
+    waitForCount($page, "@composer-{$account->id}-media-item", 1);
     $page->assertMissing("@composer-media-warning-{$account->id}")
         ->assertMissing("@composer-{$account->id}-suggested-media")
         ->click("@composer-{$account->id}-remove-0");
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-suggested-0");
+    waitFor($page, "@composer-{$account->id}-suggested-0");
 
     return [$page, $account];
 }
@@ -592,9 +561,9 @@ test('dismissing suggested media hides the panel until the next removal', functi
         ->assertVisible("@composer-media-warning-{$account->id}");
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('pier.png').']', "composer-{$account->id}");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$account->id}-media-item\"]').length === 1");
+    waitForCount($page, "@composer-{$account->id}-media-item", 1);
     $page->click("@composer-{$account->id}-remove-0");
-    waitForComposerMediaTrayTestId($page, "composer-{$account->id}-suggested-0");
+    waitFor($page, "@composer-{$account->id}-suggested-0");
 
     expect(composerMediaTrayCount($page, "composer-{$account->id}-suggested-1"))->toBe(0);
     $page->assertNoJavaScriptErrors();
@@ -610,7 +579,7 @@ function openComposerMediaTrayBlockedSubmit(mixed $test): array
 {
     [$page, , $account] = openComposerMediaTray($test, platform: 'instagram', select: true);
 
-    waitForComposerMediaTrayTestId($page, "composer-media-warning-{$account->id}");
+    waitFor($page, "@composer-media-warning-{$account->id}");
     expect($page->script("document.querySelector('[data-testid=\"composer-submit\"]').getAttribute('aria-disabled')"))->toBe('true');
     $page->assertDisabled('@composer-submit');
 
@@ -621,7 +590,7 @@ test('hovering the blocked primary button names the first issue and the channel'
     [$page, $account] = openComposerMediaTrayBlockedSubmit($this);
 
     $page->hover('@composer-submit');
-    waitForComposerMediaTrayTestId($page, 'composer-blocked-tooltip');
+    waitFor($page, '@composer-blocked-tooltip');
 
     $page->assertSeeIn('@composer-blocked-tooltip', "Please include an image or video. ({$account->display_name})")
         ->assertNoJavaScriptErrors();
@@ -631,26 +600,26 @@ test('an upload still running when customizing shows in every card and lands in 
     [$page, , $first, $accounts] = openComposerMediaTray($this, 'hold', platform: ['instagram', 'threads', 'linkedin']);
     [, $second, $linkedin] = $accounts;
     selectComposerMediaTrayChannels($page, [$first, $second]);
-    waitForComposerMediaTrayTestId($page, 'composer-next');
+    waitFor($page, '@composer-next');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('in-flight.png').']');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-upload-item");
+    waitFor($page, "@composer-{$first->id}-upload-item");
     expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->click("@composer-account-{$second->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$second->id}-upload-item");
+    waitFor($page, "@composer-{$second->id}-upload-item");
 
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$linkedin->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$linkedin->id}-upload-item");
+    waitFor($page, "@composer-{$linkedin->id}-upload-item");
     $page->script("window.__releaseUpload('in-flight.png');");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$linkedin->id}-media-item\"]').length === 1");
+    waitForCount($page, "@composer-{$linkedin->id}-media-item", 1);
 
     $page->assertMissing("@composer-{$linkedin->id}-upload-item")
         ->click("@composer-account-{$first->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-media-item");
+    waitFor($page, "@composer-{$first->id}-media-item");
     expect(composerMediaTrayCount($page, "composer-{$first->id}-media-item"))->toBe(1)
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
@@ -660,13 +629,13 @@ test('an upload that failed before customizing shows in the cards and removing i
     [$page, , $first] = openComposerMediaTray($this, 'fail-first', platform: ['instagram', 'threads'], select: true);
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('failed-early.png').']');
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
+    waitFor($page, '@composer-upload-error');
     $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-upload-error");
+    waitFor($page, "@composer-{$first->id}-upload-error");
     expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->click("@composer-{$first->id}-upload-remove-0");
-    waitForComposerMediaTrayCondition($page, "!document.querySelector('[data-testid=\"composer-{$first->id}-upload-error\"]')");
+    waitForGone($page, "@composer-{$first->id}-upload-error");
 
     expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
@@ -677,36 +646,36 @@ test('in a single-network thread the toolbar upload and the reply tray add to th
     $id = $account->id;
     $page->fill("@composer-caption-{$id}", 'First tweet');
     $page->click('@thread-start');
-    waitForComposerMediaTrayTestId($page, 'thread-reply-0');
+    waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second tweet')
         ->keys('@thread-reply-0', 'Shift+Enter');
-    waitForComposerMediaTrayTestId($page, 'thread-reply-1');
+    waitFor($page, '@thread-reply-1');
     $page->fill('@thread-reply-1', 'Third tweet');
 
     $page->script("HTMLInputElement.prototype.click = function () { if (this.type === 'file') { window.__filePicker = (window.__filePicker ?? 0) + 1; } }; true;");
     $page->click("@composer-{$id}-media-source-menu");
-    waitForComposerMediaTrayTestId($page, 'media-source-upload');
+    waitFor($page, '@media-source-upload');
     $page->click('@media-source-upload');
-    waitForComposerMediaTrayCondition($page, 'window.__filePicker === 1');
+    waitForCondition($page, 'window.__filePicker === 1');
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('toolbar.png').']', 'composer-media-menu');
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
 
     expect(composerMediaTrayDisabled($page, 'composer-submit'))->toBeTrue()
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->script("window.__releaseUpload('toolbar.png')");
-    waitForComposerMediaTrayTestId($page, "composer-{$id}-reply-1-media-item-0");
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitFor($page, "@composer-{$id}-reply-1-media-item-0");
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
 
     selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('reply-tray.png').']', "composer-{$id}-reply-1");
-    waitForComposerMediaTrayCondition($page, 'window.__uploads.held.length === 1');
+    waitForCondition($page, 'window.__uploads.held.length === 1');
 
     expect(composerMediaTrayDisabled($page, 'composer-submit'))->toBeTrue()
         ->and(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
 
     $page->script("window.__releaseUpload('reply-tray.png')");
-    waitForComposerMediaTrayTestId($page, "composer-{$id}-reply-1-media-item-1");
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-save-draft\"]')?.disabled === false");
+    waitFor($page, "@composer-{$id}-reply-1-media-item-1");
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
 
     expect(composerMediaTrayCount($page, "composer-{$id}-media-item"))->toBe(0)
         ->and(composerMediaTrayCount($page, "composer-{$id}-reply-1-media-item"))->toBe(2);

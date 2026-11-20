@@ -380,7 +380,7 @@ test('a failing item deletes the urls the request already downloaded', function 
         ->and(Post::query()->count())->toBe(0);
 });
 
-test('the alt shorthand is kept for images and ignored for other types', function () {
+test('the alt shorthand is kept for images and videos', function () {
     $video = Media::factory()->video()->temporaryUpload($this->workspace)->stored()->create();
     Storage::put($video->path, 'bytes');
     $image = inlineMediaUpload($this);
@@ -394,7 +394,20 @@ test('the alt shorthand is kept for images and ignored for other types', functio
     $media = Post::query()->sole()->media;
 
     expect(data_get($media, '0.meta.alt_text'))->toBe('A photo')
-        ->and(data_get($media, '1.meta'))->not->toHaveKey('alt_text');
+        ->and(data_get($media, '1.meta.alt_text'))->toBe('A clip');
+});
+
+test('the alt shorthand is ignored for a PDF', function () {
+    $document = Media::factory()->document()->temporaryUpload($this->workspace)->stored()->create();
+    Storage::put($document->path, 'bytes');
+
+    $this->withHeaders($this->headers)->postJson(route('api.posts.batch.store'), [
+        'status' => 'draft',
+        'media' => [['upload_token' => $document->upload_token, 'alt' => 'A deck']],
+        'destinations' => [inlineMediaDestinations($this)[0]],
+    ]);
+
+    expect(data_get(Post::query()->sole()->media, '0.meta'))->not->toHaveKey('alt_text');
 });
 
 test('an upload from a role that cannot create posts is forbidden before the file is checked', function () {

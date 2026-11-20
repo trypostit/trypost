@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Faturamento',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Cobrança mensal',
         'prices' => [
-            'first_month' => 'R$ 1',
             'socials' => ['monthly' => 'R$ 99', 'yearly_per_month' => 'R$ 82,50', 'yearly' => 'R$ 990'],
             'workspaces' => ['monthly' => 'R$ 499', 'yearly_per_month' => 'R$ 415,83', 'yearly' => 'R$ 4.990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Anual',
         'save_two_months' => '2 meses grátis',
         'per_month' => '/mês',
+        'per_year' => '/ano',
         'workspaces_one' => 'Um workspace',
         'workspaces_unlimited' => 'Workspaces ilimitados',
         'workspaces_tooltip' => 'Um workspace é uma marca ou cliente, separado dos demais: com suas próprias redes sociais, assinaturas, labels, analytics, permissões de membros e conexão MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Escolher :plan',
         'upgrade' => 'Fazer upgrade para :plan',
         'downgrade' => 'Fazer downgrade para :plan',
-        'start_first_month' => 'Ativar por :price',
         'billed_yearly_total' => 'Cobrança anual · :price (2 meses grátis)',
         'socials_tagline' => 'Indicado para criadores e pequenas marcas.',
         'workspaces_tagline' => 'Indicado para agências e grandes negócios.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Ativo',
+            'trial' => 'Teste grátis',
+            'cancelling' => 'Cancelado',
+            'past_due' => 'Em atraso',
+        ],
         'change' => 'Mudar plano',
-        'price_monthly' => ':price/mês',
-        'price_yearly' => ':price/ano',
-        'trial_until' => 'Trial até :date',
-        'renews' => 'Renova automaticamente',
+        'subscribe' => 'Assinar agora',
+        'trial_until' => 'Seu período de teste vai até :date',
         'cancelled' => 'Cancelado, termina em :date',
-        'workspaces_usage' => 'Workspaces: :count de :limit',
+        'discount_until' => ':discount de desconto até :date',
+        'discount_forever' => ':discount de desconto em todos os pagamentos',
+        'discount_once' => ':discount de desconto no próximo pagamento',
     ],
 
     'subscription' => [
-        'title' => 'Método de pagamento',
+        'title' => 'Métodos de pagamento',
+        'default' => 'Padrão',
         'description' => 'Atualize seu cartão ou dados de cobrança no Stripe.',
         'no_payment_method' => 'Nenhum método de pagamento cadastrado.',
         'expires_on' => 'Expira em :month/:year',
         'manage_stripe' => 'Gerenciar no Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plano',
+        'invoices' => 'Faturas',
+    ],
+
     'invoices' => [
-        'title' => 'Faturas',
-        'description' => 'Baixe suas faturas anteriores.',
+        'columns' => [
+            'date' => 'Data',
+            'amount' => 'Valor',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Nenhuma fatura ainda',
+        'empty_description' => 'Suas faturas aparecem aqui depois do primeiro pagamento.',
         'paid' => 'Pago',
         'download' => 'Baixar fatura',
     ],

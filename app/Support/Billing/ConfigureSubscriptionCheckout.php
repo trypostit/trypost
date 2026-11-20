@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Support\Billing;
 
-use App\Models\Account;
-use App\Models\Plan;
+use App\Models\Offer;
 use Laravel\Cashier\SubscriptionBuilder;
-use RuntimeException;
-use Stripe\Subscription as StripeSubscription;
 
 final class ConfigureSubscriptionCheckout
 {
-    public const FIRST_MONTH_COUPON_METADATA_KEY = 'trypost_first_month_coupon_id';
+    public const PLAN_METADATA_KEY = 'trypost_plan_slug';
+
+    public const INTERVAL_METADATA_KEY = 'trypost_interval';
+
+    public const OFFER_METADATA_KEY = 'trypost_offer_id';
+
+    public const OFFER_SLUG_METADATA_KEY = 'trypost_offer_slug';
 
     /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
@@ -20,73 +23,27 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
-     * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
+     * The offer decides the discount, the trial and the promotion code field;
+     * without one the account pays the full price and may enter a promotion
+     * code. A coupon wins over the field: Stripe rejects both on one session,
+     * never a trial with it.
+     * The caller resolves the offer once with the account's current offer, so the coupon, the
+     * checkout metadata and the tracked events agree.
      */
-    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null): SubscriptionBuilder
+    public static function apply(SubscriptionBuilder $subscription, ?Offer $offer = null): SubscriptionBuilder
     {
-        $couponId = self::firstMonthCouponId($account, $plan);
-
-        if ($couponId !== null) {
-            if ((bool) config('cashier.allow_promotion_codes', false)) {
-                throw new RuntimeException(
-                    'Cannot apply a first-month coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
-                    .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
-                );
-            }
-
-            return $subscription->withCoupon($couponId);
+        if ($offer?->hasTrial()) {
+            $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $offer->trial_days));
         }
 
-        if (
-            (bool) config('trypost.billing.require_card_for_trial', true)
-            && self::isFirstTimeSubscriber($account)
-        ) {
-            $trialDays = (int) config('cashier.trial_days');
-
-            if ($trialDays > 0) {
-                $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays));
-            }
+        if (filled($offer?->stripe_coupon_id)) {
+            return $subscription->withCoupon($offer->stripe_coupon_id);
         }
 
-        if ((bool) config('cashier.allow_promotion_codes', false)) {
+        if (blank($offer) || $offer->allow_promotion_codes) {
             $subscription->allowPromotionCodes();
         }
 
         return $subscription;
-    }
-
-    public static function offersFirstMonthCoupon(Account $account, Plan $plan): bool
-    {
-        return self::firstMonthCouponId($account, $plan) !== null;
-    }
-
-    private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string
-    {
-        if ($plan === null || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
-            return null;
-        }
-
-        if (! self::isFirstTimeSubscriber($account)) {
-            return null;
-        }
-
-        $couponId = config("cashier.first_month_coupon_ids.{$plan->slug->value}");
-
-        if (! is_string($couponId) || $couponId === '') {
-            return null;
-        }
-
-        return $couponId;
-    }
-
-    /** Incomplete / incomplete_expired never became billable, so retries still count as first-time. */
-    private static function isFirstTimeSubscriber(Account $account): bool
-    {
-        return ! $account->subscriptions()
-            ->whereNotIn('stripe_status', [
-                StripeSubscription::STATUS_INCOMPLETE,
-                StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
-            ])
-            ->exists();
     }
 }

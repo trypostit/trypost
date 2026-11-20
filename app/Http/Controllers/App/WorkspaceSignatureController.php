@@ -20,13 +20,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class WorkspaceSignatureController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -47,10 +43,6 @@ class WorkspaceSignatureController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('createPost', $workspace);
 
         $signature = CreateSignature::execute($workspace, $request->validated());
@@ -65,10 +57,6 @@ class WorkspaceSignatureController extends Controller
     public function update(UpdateSignatureRequest $request, WorkspaceSignature $signature): RedirectResponse|JsonResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -88,10 +76,6 @@ class WorkspaceSignatureController extends Controller
     public function destroy(Request $request, WorkspaceSignature $signature): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 

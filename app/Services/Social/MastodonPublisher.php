@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
@@ -15,6 +16,8 @@ use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
+use App\Services\Social\Mastodon\MastodonApi;
+use App\Support\Social\MastodonPoll;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -36,22 +39,23 @@ class MastodonPublisher
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
-        $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
+        $instance = $account->mastodon_instance;
 
-        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
+        $isPoll = $post->content_type === ContentType::MastodonPoll;
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all(), $this->rootPoll($post, $isPoll));
 
         return $this->publishThread(
             $post,
             $rootHash,
-            fn (): array => $this->publishRoot($post, $account, $instance, $content, "{$post->id}:{$rootHash}"),
-            fn (string $text, Collection $media, array $parent): array => $this->createStatus(
+            fn (): array => $this->publishRoot($post, $account, $instance, $content, $isPoll, "{$post->id}:{$rootHash}"),
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->createStatus(
                 $account,
                 $instance,
                 [
                     ...$this->replyPayload($post, $text, (string) $parent['id']),
-                    ...$this->mediaPayload($account, $instance, $media),
+                    ...$this->attachments($account, $instance, $text, $media, filled($poll), ['poll' => $poll]),
                 ],
-                "{$post->id}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all()),
+                "{$post->id}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all(), $poll),
             ),
         );
     }
@@ -59,15 +63,56 @@ class MastodonPublisher
     /**
      * @return array{id: string, url: ?string}
      */
-    private function publishRoot(Post $post, SocialAccount $account, string $instance, ?string $content, string $idempotencyKey): array
+    private function publishRoot(Post $post, SocialAccount $account, string $instance, ?string $content, bool $isPoll, string $idempotencyKey): array
     {
         $payload = [
             'status' => $content ?? '',
             'visibility' => 'public',
-            ...$this->mediaPayload($account, $instance, $post->mediaItems),
+            ...$this->attachments($account, $instance, $content, $post->mediaItems, $isPoll, $post->meta),
         ];
 
         return $this->createStatus($account, $instance, [...$payload, ...$this->contentWarning($post)], $idempotencyKey);
+    }
+
+    /**
+     * The post's own poll, part of the root's identity: it is the
+     * Idempotency-Key, so a poll changed before a retry is a new status, never
+     * the one Mastodon kept from the attempt before. Null off a poll, which
+     * keeps the hash every other status had.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function rootPoll(Post $post, bool $isPoll): ?array
+    {
+        if (! $isPoll) {
+            return null;
+        }
+
+        return MastodonPoll::payload($post->meta);
+    }
+
+    /**
+     * What a status of the thread attaches: its poll, or its media. A poll
+     * needs its question (that status's text), distinct choices and a length,
+     * and cannot carry media. `$meta` holds the poll under `poll`: the post's
+     * meta, or the reply itself.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @return array<string, mixed>
+     */
+    private function attachments(SocialAccount $account, string $instance, ?string $text, Collection $media, bool $isPoll, ?array $meta): array
+    {
+        if (! $isPoll) {
+            return $this->mediaPayload($account, $instance, $media);
+        }
+
+        $violation = MastodonPoll::publishViolation($text, $media->isNotEmpty(), $meta);
+
+        if (filled($violation)) {
+            throw new MastodonPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+
+        return ['poll' => MastodonPoll::payload($meta)];
     }
 
     /**
@@ -82,7 +127,7 @@ class MastodonPublisher
         $mediaIds = [];
 
         foreach ($media->take(4) as $item) {
-            $mediaIds[] = $this->uploadMedia($account, $instance, $item->url, $item->original_filename, $item->isImage() ? $item->altTextFor(Platform::Mastodon) : null);
+            $mediaIds[] = $this->uploadMedia($account, $instance, $item->url, $item->original_filename, $item->altTextFor(Platform::Mastodon));
         }
 
         return $mediaIds === [] ? [] : ['media_ids' => $mediaIds];
@@ -124,7 +169,7 @@ class MastodonPublisher
     {
         $response = $this->socialHttp()->withToken($account->access_token)
             ->withHeaders(['Idempotency-Key' => $idempotencyKey])
-            ->post("{$instance}/api/v1/statuses", $payload);
+            ->post(MastodonApi::url($instance, 'statuses'), $payload);
 
         if ($response->failed()) {
             Log::error('Mastodon post failed', [
@@ -188,7 +233,7 @@ class MastodonPublisher
             }
 
             try {
-                $response = $request->post("{$instance}/api/v1/media");
+                $response = $request->post(MastodonApi::url($instance, 'media'));
             } catch (ConnectionException $e) {
                 throw new PlatformUnavailableException("Mastodon media upload failed to connect: {$e->getMessage()}");
             } finally {

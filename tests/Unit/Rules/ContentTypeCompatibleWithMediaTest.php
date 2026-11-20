@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Rules\ContentTypeCompatibleWithMedia;
+use Illuminate\Support\Number;
 
 function runMediaRule(string $contentType, array $media): array
 {
@@ -162,7 +163,7 @@ test('x still accepts a mov video', function () {
 test('a gif is rejected on content types that do not accept gifs', function () {
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif']];
 
-    foreach ([ContentType::InstagramFeed, ContentType::LinkedInPost, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
+    foreach ([ContentType::InstagramFeed, ContentType::PinterestPin, ContentType::FacebookPost, ContentType::GoogleBusinessPost] as $type) {
         $errors = runMediaRule($type->value, $media);
 
         expect($errors)->toHaveCount(1, $type->value);
@@ -189,14 +190,39 @@ test('an image over the content type cap is rejected by size', function () {
 });
 
 test('a kind violation is reported alone and is not overwritten by a size violation on the same item', function () {
-    // A 6 MB GIF on LinkedIn breaks two rules; the root cause ("does not accept GIF") must be the one message.
+    // A 6 MB GIF on a Facebook post breaks two rules; the root cause ("does not accept GIF") must be the one message.
     $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 6 * 1024 * 1024]];
 
-    $errors = runMediaRule(ContentType::LinkedInPost->value, $media);
+    $errors = runMediaRule(ContentType::FacebookPost->value, $media);
 
     expect($errors)->toHaveCount(1);
     expect($errors[0])->toContain('GIF');
 });
+
+dataset('linkedin content types', [
+    'profile' => [ContentType::LinkedInPost],
+    'page' => [ContentType::LinkedInPagePost],
+]);
+
+test('linkedin accepts an animated gif within its image cap', function (ContentType $type) {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 2 * 1024 * 1024]];
+
+    expect(runMediaRule($type->value, $media))->toBe([]);
+})->with('linkedin content types');
+
+test('a linkedin gif over the 5 MB image cap is refused for its size, not for being a gif', function (ContentType $type) {
+    $media = [['type' => MediaType::Image->value, 'mime_type' => 'image/gif', 'size' => 6 * 1024 * 1024]];
+
+    expect(runMediaRule($type->value, $media))
+        ->toBe([__('posts.form.warnings.image_too_large', ['max' => Number::fileSize(5 * 1024 * 1024), 'current' => Number::fileSize(6 * 1024 * 1024, 1)])]);
+})->with('linkedin content types');
+
+test('linkedin takes a gif next to other images, but never next to a video', function (ContentType $type) {
+    $gif = ['type' => MediaType::Image->value, 'mime_type' => 'image/gif'];
+
+    expect(runMediaRule($type->value, [$gif, ['type' => MediaType::Image->value, 'mime_type' => 'image/jpeg']]))->toBe([])
+        ->and(runMediaRule($type->value, [$gif, ['type' => MediaType::Video->value, 'mime_type' => 'video/mp4']]))->toBe([__('posts.form.warnings.no_mixed_media')]);
+})->with('linkedin content types');
 
 test('an item that cannot be classified is not measured against any cap', function () {
     // An API `url`-only entry before download: no type, mime or filename, but a stray size.

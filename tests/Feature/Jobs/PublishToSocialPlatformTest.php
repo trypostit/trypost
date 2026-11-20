@@ -24,6 +24,7 @@ use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
+use App\Jobs\SetYouTubeCover;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -39,10 +40,12 @@ use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokPublisher;
+use App\Services\Social\YouTubePublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Http\Client\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
@@ -1399,6 +1402,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
     Event::fake();
     Mail::fake();
     Storage::fake();
+    Sleep::fake();
 
     $account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
@@ -1466,6 +1470,96 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
         ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty()
         ->and(Http::recorded(fn ($request) => str_contains($request->url(), '/post/publish/content/init/')))
         ->toHaveCount(1);
+});
+
+test('a tiktok publish whose status TikTok refuses right after accepting it waits for the next check instead of failing', function () {
+    Event::fake();
+    Queue::fake();
+    $this->freezeSecond();
+    Sleep::fake(syncWithCarbon: true);
+    $acceptedAt = now();
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $platform = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::TikTokVideo,
+        'publish_status' => PlatformStatus::Pending,
+        'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
+    ]);
+
+    $api = config('trypost.platforms.tiktok.api');
+
+    Http::fake([
+        $api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_not_known_yet']]),
+        $api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    $platform->refresh();
+
+    expect($platform->publish_status)->toBe(PlatformStatus::Retrying)
+        ->and($platform->status)->not->toBe(PostStatus::Failed)
+        ->and(data_get($platform->error_context, 'tiktok_publish_id'))->toBe('pub_not_known_yet')
+        ->and(data_get($platform->error_context, 'tiktok_init_at'))->not->toBeNull();
+
+    Mail::assertNothingQueued();
+    Mail::assertNothingSent();
+    Queue::assertPushed(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $acceptedAt->addSeconds(30)->equalTo($job->delay));
+});
+
+test('a tiktok publish TikTok still refuses to report five minutes after accepting it fails without being sent again', function () {
+    Event::fake();
+    Queue::fake();
+    $this->freezeSecond();
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $platform = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::TikTokVideo,
+        'publish_status' => PlatformStatus::Retrying,
+        'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_never_confirmed',
+            'tiktok_init_at' => now()->subMinutes(5)->toIso8601String(),
+        ],
+    ]);
+
+    $api = config('trypost.platforms.tiktok.api');
+
+    Http::fake([
+        $api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    (new PublishToSocialPlatform($platform))->handle();
+
+    $platform->refresh();
+
+    expect($platform->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($platform->error_message)->toBe('TikTok did not confirm this post. Check your TikTok profile before publishing it again.')
+        ->and(data_get($platform->error_context, 'platform_error_code'))->toBe('invalid_params');
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/init/'));
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
 });
 
 test('pinterest media status 401 marks the account token expired and notifies to reconnect', function () {
@@ -2350,6 +2444,47 @@ test('a thread that stops on any error says how much of it is live', function ()
         ]));
 });
 
+test('a youtube video published with a cover image sets it once youtube processes the video', function (bool $hasCover) {
+    Event::fake();
+    Mail::fake();
+    Queue::fake([SetYouTubeCover::class]);
+    $this->freezeTime();
+
+    $account = SocialAccount::factory()->youtube()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $cover = ['id' => 'cover', 'path' => 'media/cover.jpg', 'url' => 'https://example.com/media/cover.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+    $this->post->update([
+        'media' => [[
+            'id' => 'video',
+            'path' => 'media/video.mp4',
+            'url' => 'https://example.com/media/video.mp4',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'meta' => $hasCover ? ['cover' => $cover] : [],
+        ]],
+    ]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::YouTubeShort,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(YouTubePublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'short-id', 'url' => 'https://www.youtube.com/shorts/short-id']);
+    $this->app->instance(YouTubePublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    $hasCover
+        ? Queue::assertPushedOn(Platform::YouTube->queue(), SetYouTubeCover::class, fn (SetYouTubeCover $job): bool => $job->post->is($post)
+            && $job->delay->equalTo(now()->addSeconds(SetYouTubeCover::CHECK_EVERY_SECONDS)))
+        : Queue::assertNotPushed(SetYouTubeCover::class);
+})->with([
+    'with a cover image' => [true],
+    'without one' => [false],
+]);
+
 test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {
     Event::fake();
     Mail::fake();
@@ -2411,4 +2546,93 @@ test('a post on another network never asks TikTok for a video id', function () {
 
     expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
+});
+
+test('a linkedin post whose comment fails is marked failed with the thread progress and a retry only comments', function () {
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence()
+            ->push(['message' => 'Internal error'], 500)
+            ->push([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['thread_replies' => ['Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.linkedin.server_error'),
+        ]));
+
+    $failed->forceFill(['status' => PostStatus::Publishing, 'publish_status' => PlatformStatus::Pending])->save();
+    (new PublishToSocialPlatform($failed->fresh()))->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('urn:li:share:123')
+        ->and($published->thread_reply_ids)->toBe(['999'])
+        ->and(Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts')))->toHaveCount(1);
+});
+
+test('a linkedin comment refused because the post is not ready yet is retried from the queue and only comments', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    $now = now()->startOfSecond();
+    Carbon::setTestNow($now);
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:123']),
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::sequence()
+            ->push(['message' => 'Unable to obtain activity', 'status' => 404], 404)
+            ->push([], 201, ['x-restli-id' => '999']),
+    ]);
+    $this->post->forceFill(['meta' => ['thread_replies' => ['Link below']]])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $waiting = $this->post->fresh();
+    expect($waiting->publish_status)->toBe(PlatformStatus::Retrying)
+        ->and(data_get($waiting->error_context, 'thread_progress.0.id'))->toBe('urn:li:share:123')
+        ->and($waiting->error_context['next_attempt_at'])->toBe($now->copy()->addSeconds(30)->toIso8601String());
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn ($job) => Carbon::instance($job->delay)->equalTo($now->copy()->addSeconds(30)));
+
+    (new PublishToSocialPlatform($waiting))->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->thread_reply_ids)->toBe(['999'])
+        ->and(Http::recorded(fn ($request) => str_ends_with($request->url(), '/rest/posts')))->toHaveCount(1);
+
+    Carbon::setTestNow();
+});
+
+test('a linkedin comment still refused after five minutes fails the publish with the thread progress', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/v2/socialActions/*' => Http::response(['message' => 'Unable to obtain activity', 'status' => 404], 404),
+    ]);
+    $this->post->forceFill([
+        'meta' => ['thread_replies' => ['Link below']],
+        'error_context' => [
+            'thread_progress' => [['hash' => 'stored-root', 'id' => 'urn:li:share:123', 'url' => 'https://www.linkedin.com/feed/update/urn:li:share:123']],
+            'processing_retry_count' => 10,
+            'max_retries' => 10,
+            'retry_delay_seconds' => 30,
+        ],
+    ])->save();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.platform_unavailable_exhausted'),
+        ]));
+    Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });

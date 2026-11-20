@@ -152,6 +152,8 @@ class PostController extends Controller
     {
         $file = $request->file('media');
 
+        AppendPostMedia::ensureAcceptsMedia($post);
+
         if ($violation = PostMediaRequestRules::typeViolation($post, MediaType::fromMime((string) $file->getMimeType()))) {
             throw ValidationException::withMessages(['media' => $violation]);
         }

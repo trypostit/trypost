@@ -8,7 +8,8 @@ import {
 import { IconCalendar } from "@tabler/icons-vue"
 import { trans } from "laravel-vue-i18n"
 import { computed, nextTick, ref, watch } from "vue"
-import { useWindowSize } from "@vueuse/core"
+import { createReusableTemplate, useWindowSize } from "@vueuse/core"
+import BottomSheet from "@/components/BottomSheet.vue"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -16,18 +17,44 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { RangeCalendar } from "@/components/ui/range-calendar"
+import { useBelowBreakpoint } from "@/composables/useBreakpoint"
 import { useCalendarLocale } from "@/composables/useCalendarLocale"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
 import date from "@/date"
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: { start: Date, end: Date }
   triggerClass?: string
   minDate?: Date
   maxDate?: Date
   disabled?: boolean
-}>()
+  align?: "start" | "center" | "end"
+  sheetBelowSm?: boolean
+  /** Opened only through `v-model:open`, as from a menu item, with no button of its own. */
+  withoutTrigger?: boolean
+}>(), {
+  align: "end",
+  sheetBelowSm: false,
+  withoutTrigger: false,
+})
+
+const [DefinePanel, ReusePanel] = createReusableTemplate()
+const [DefineMonth, ReuseMonth] = createReusableTemplate<{ fill?: boolean }>()
+
+/** The phone sheet's month: every day stretched over the card, like the calendar's period sheet. */
+const FILLED_MONTH = [
+  "w-full p-0",
+  "[&_[data-slot=range-calendar-header]]:justify-start [&_[data-slot=range-calendar-header]]:gap-2",
+  "[&_[data-slot=range-calendar-heading]]:order-first [&_[data-slot=range-calendar-heading]]:me-auto [&_[data-slot=range-calendar-heading]]:text-base",
+  "[&_[data-slot=range-calendar-grid]]:w-full",
+  "[&_[data-slot=range-calendar-head-cell]]:flex-1 [&_[data-slot=range-calendar-head-cell]]:text-xs",
+  "[&_[data-slot=range-calendar-grid-row]]:mt-1",
+  "[&_[data-slot=range-calendar-cell]]:flex [&_[data-slot=range-calendar-cell]]:flex-1 [&_[data-slot=range-calendar-cell]]:justify-center",
+  "[&_[data-slot=range-calendar-trigger]]:size-10 [&_[data-slot=range-calendar-trigger]]:text-base",
+].join(" ")
+const belowSm = useBelowBreakpoint("sm")
+const asSheet = computed(() => props.sheetBelowSm && belowSm.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: { start: Date, end: Date }]
@@ -139,8 +166,47 @@ watch(
 </script>
 
 <template>
+  <DefineMonth v-slot="{ fill }">
+    <RangeCalendar
+      v-model="value"
+      initial-focus
+      :class="{ [FILLED_MONTH]: fill }"
+      :locale="calendarLocale"
+      :number-of-months="numberOfMonths"
+      :min-value="minimum"
+      :max-value="maximum"
+    />
+  </DefineMonth>
+
+  <DefinePanel>
+      <div class="flex flex-col sm:flex-row">
+        <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
+          <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
+            <div v-if="groupIndex > 0" class="my-1 border-t border-border" />
+            <div class="space-y-0.5 px-2">
+              <Button
+                v-for="preset in group"
+                :key="preset.key"
+                :data-testid="`date-range-preset-${preset.key}`"
+                variant="ghost"
+                size="sm"
+                class="h-7 w-full justify-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                @click="applyPreset(preset)"
+              >
+                {{ preset.label }}
+              </Button>
+            </div>
+          </template>
+        </div>
+
+        <div class="flex shrink-0 justify-center">
+          <ReuseMonth />
+        </div>
+      </div>
+  </DefinePanel>
+
   <Popover v-model:open="isOpen">
-    <PopoverTrigger as-child>
+    <PopoverTrigger v-if="!withoutTrigger" as-child>
       <slot name="trigger">
         <Button
           variant="outline"
@@ -168,38 +234,24 @@ watch(
         </Button>
       </slot>
     </PopoverTrigger>
-    <PopoverContent class="w-auto p-0" align="end">
-      <div class="flex flex-col sm:flex-row">
-        <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
-          <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
-            <div v-if="groupIndex > 0" class="my-1 border-t border-border" />
-            <div class="space-y-0.5 px-2">
-              <Button
-                v-for="preset in group"
-                :key="preset.key"
-                :data-testid="`date-range-preset-${preset.key}`"
-                variant="ghost"
-                size="sm"
-                class="h-7 w-full justify-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                @click="applyPreset(preset)"
-              >
-                {{ preset.label }}
-              </Button>
-            </div>
-          </template>
-        </div>
-
-        <div class="shrink-0">
-          <RangeCalendar
-            v-model="value"
-            initial-focus
-            :locale="calendarLocale"
-            :number-of-months="numberOfMonths"
-            :min-value="minimum"
-            :max-value="maximum"
-          />
-        </div>
-      </div>
+    <PopoverContent v-if="!asSheet" class="w-auto p-0" :align="align">
+      <ReusePanel />
     </PopoverContent>
   </Popover>
+  <BottomSheet
+    v-if="asSheet"
+    v-model:open="isOpen"
+    :title="$t('common.date_range_picker.placeholder')"
+    :show-header="false"
+    handle
+    test-id="date-range-picker-sheet"
+    content-class="bg-muted px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+  >
+    <p class="mb-4 text-center text-base font-emphasis text-foreground">
+      {{ $t('common.date_range_picker.placeholder') }}
+    </p>
+    <div class="rounded-xl bg-card p-4" data-testid="date-range-picker-month">
+      <ReuseMonth :fill="true" />
+    </div>
+  </BottomSheet>
 </template>

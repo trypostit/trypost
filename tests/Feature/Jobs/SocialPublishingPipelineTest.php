@@ -40,6 +40,7 @@ use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -168,7 +169,7 @@ test('instagram does not duplicate a captionless publication after losing its me
     ]);
     $account = $target->socialAccount;
     $account->update(['scopes' => [...$account->scopes, 'instagram_basic', 'instagram_business_basic']]);
-    $base = $platform->instagramGraphBaseUrl();
+    $base = $platform->graphApiUrl();
     $story = $contentType === ContentType::InstagramStory;
     $discovered = [[
         'id' => 'media-123',
@@ -284,6 +285,8 @@ test('each network queue consumes scheduled posts and delayed retries through th
 ]);
 
 test('the TikTok worker publishes through the real publisher and token refresh flow', function (string $scenario) {
+    Sleep::fake();
+
     $affected = scheduledPipelineTarget(Platform::TikTok);
     $affected->socialAccount->update(['token_expires_at' => now()->subMinute(), 'refresh_token' => 'affected-refresh']);
     $refreshCalls = 0;

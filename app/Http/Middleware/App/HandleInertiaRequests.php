@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
+use App\Actions\AccessToken\HasConnectedMcpClient;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
@@ -70,6 +71,7 @@ class HandleInertiaRequests extends Middleware
             'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
+            'mcpPrompt' => fn (): ?array => $this->mcpPrompt($user),
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
@@ -104,8 +106,8 @@ class HandleInertiaRequests extends Middleware
                 )->resolve();
             },
             'legal' => fn (): array => [
-                'terms' => (string) config('trypost.legal.terms_url'),
-                'privacy' => (string) config('trypost.legal.privacy_url'),
+                'terms' => config('trypost.legal.terms_url'),
+                'privacy' => config('trypost.legal.privacy_url'),
             ],
             'languages' => fn (): array => Locale::options(),
             'aiEnabled' => fn (): bool => filled(config('ai.providers.'.config('ai.default').'.key')),
@@ -114,6 +116,7 @@ class HandleInertiaRequests extends Middleware
             'oidcAuthEnabled' => fn (): bool => SocialAuthProvider::Oidc->isEnabled(),
             'oidcDisplayName' => fn (): string => SocialAuthProvider::Oidc->label(),
             'passwordLoginEnabled' => fn (): bool => LoginMethods::passwordEnabled(),
+            'toursEnabled' => fn (): bool => (bool) config('trypost.tours.enabled'),
             ...(filled($user) ? [
                 'mediaSources' => fn (): array => ['menu' => MediaSource::menu()],
                 'mediaUploadLimits' => fn (): array => [
@@ -141,19 +144,52 @@ class HandleInertiaRequests extends Middleware
         return "referral-sources.{$user->id}";
     }
 
+    public static function mcpPromptCacheKey(User $user, Workspace $workspace): string
+    {
+        return "mcp-connected.{$user->id}.{$workspace->id}";
+    }
+
+    /**
+     * The card inviting the user to connect an AI, with the MCP URL its steps
+     * show, while their workspace can use the app and has no AI of theirs
+     * connected; null otherwise. Only the connection is cached, so the card shows
+     * as soon as the account gets app access, and a connection made from the card
+     * forgets the cache. Dismissing the card is kept in the browser.
+     *
+     * @return array{mcp_url: string}|null
+     */
+    private function mcpPrompt(?User $user): ?array
+    {
+        $workspace = $user?->currentWorkspace;
+
+        if (blank($workspace) || $workspace->account?->hasAppAccess() !== true) {
+            return null;
+        }
+
+        $connected = Cache::remember(
+            self::mcpPromptCacheKey($user, $workspace),
+            now()->addMinutes(5),
+            fn (): bool => HasConnectedMcpClient::execute($user, $workspace),
+        );
+
+        if ($connected) {
+            return null;
+        }
+
+        return ['mcp_url' => route('mcp.trypost')];
+    }
+
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool
     {
-        if (blank($user)) {
+        if (blank($user) || $isSelfHosted || $account?->hasAppAccess() !== true) {
             return false;
         }
 
         return Cache::remember(
             self::referralSourcesCacheKey($user),
             now()->addMinutes(5),
-            fn (): bool => ! $isSelfHosted
-                && blank($user->getRawOriginal('referral_source'))
-                && $user->created_at?->lte(now()->subHour()) === true
-                && $account?->hasAppAccess() === true,
+            fn (): bool => blank($user->getRawOriginal('referral_source'))
+                && $user->created_at?->lte(now()->subHour()) === true,
         );
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Rozliczenia',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Rozliczane miesięcznie',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Rocznie',
         'save_two_months' => '2 miesiące gratis',
         'per_month' => '/miesiąc',
+        'per_year' => '/rok',
         'workspaces_one' => 'Jeden workspace',
         'workspaces_unlimited' => 'Nielimitowane workspace’y',
         'workspaces_tooltip' => 'Workspace to jedna marka lub klient, oddzielony od pozostałych: własne konta społecznościowe, podpisy, etykiety, analityka, uprawnienia członków i połączenie MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Wybierz :plan',
         'upgrade' => 'Przejdź na :plan',
         'downgrade' => 'Zmień na :plan',
-        'start_first_month' => 'Aktywuj za :price',
         'billed_yearly_total' => 'Rozliczane rocznie · :price (2 miesiące gratis)',
         'socials_tagline' => 'Dla twórców i małych marek.',
         'workspaces_tagline' => 'Dla agencji i większych firm.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktywny',
+            'trial' => 'Okres próbny',
+            'cancelling' => 'Anulowany',
+            'past_due' => 'Zaległy',
+        ],
         'change' => 'Zmień plan',
-        'price_monthly' => ':price/miesiąc',
-        'price_yearly' => ':price/rok',
+        'subscribe' => 'Subskrybuj teraz',
         'trial_until' => 'Okres próbny do :date',
-        'renews' => 'Odnawia się automatycznie',
         'cancelled' => 'Anulowano, kończy się :date',
-        'workspaces_usage' => 'Workspace’y: :count z :limit',
+        'discount_until' => 'Rabat :discount do :date',
+        'discount_forever' => 'Rabat :discount na każdą płatność',
+        'discount_once' => 'Rabat :discount na następną płatność',
     ],
 
     'subscription' => [
-        'title' => 'Metoda płatności',
+        'title' => 'Metody płatności',
+        'default' => 'Domyślna',
         'description' => 'Zaktualizuj kartę lub dane rozliczeniowe w Stripe.',
         'no_payment_method' => 'Brak zapisanej metody płatności.',
         'expires_on' => 'Wygasa :month/:year',
         'manage_stripe' => 'Zarządzaj w Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Faktury',
+    ],
+
     'invoices' => [
-        'title' => 'Faktury',
-        'description' => 'Pobierz swoje wcześniejsze faktury.',
+        'columns' => [
+            'date' => 'Data',
+            'amount' => 'Kwota',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Brak faktur',
+        'empty_description' => 'Faktury pojawią się tutaj po pierwszej płatności.',
         'paid' => 'Opłacona',
         'download' => 'Pobierz fakturę',
     ],

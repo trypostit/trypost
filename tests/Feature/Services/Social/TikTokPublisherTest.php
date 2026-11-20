@@ -15,10 +15,14 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\TikTokPublisher;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 beforeEach(function () {
+    Sleep::fake(syncWithCarbon: true);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
@@ -166,8 +170,8 @@ test('tiktok publisher does not report success before processing completes', fun
                 'tiktok_publish_id' => 'pub_processing',
                 'tiktok_status' => 'PROCESSING_DOWNLOAD',
             ])
-                ->and($exception->retryDelaySeconds)->toBe(30)
-                ->and($exception->maxRetries)->toBe(120);
+                ->and($exception->retryDelaySeconds)->toBe(25)
+                ->and($exception->maxRetries)->toBe(61);
         });
 
     expect($this->post->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_processing');
@@ -449,6 +453,210 @@ test('tiktok publisher retries a rate-limited status fetch without creating a du
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
 
+test('tiktok publisher checks the status five seconds after TikTok accepts the publish', function () {
+    $this->freezeSecond();
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+    $acceptedAt = now()->toIso8601String();
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_checked_later']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE']]),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Sleep::assertSequence([Sleep::for(5)->seconds()]);
+    expect($this->post->fresh()->error_context)->toMatchArray([
+        'tiktok_publish_id' => 'pub_checked_later',
+        'tiktok_init_at' => $acceptedAt,
+    ]);
+});
+
+test('tiktok publisher waits for a publish TikTok refuses to report right after accepting it', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/test-video.mp4',
+            'url' => 'https://example.com/media/2026-01/test-video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'test-video.mp4',
+        ]],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'pub_not_known_yet']]),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->httpStatus)->toBe(400)
+                ->and($exception->context['tiktok_publish_id'] ?? null)->toBe('pub_not_known_yet')
+                ->and($exception->retryDelaySeconds)->toBe(25);
+        });
+
+    expect(Http::recorded(fn (Request $request): bool => str_contains($request->url(), '/init/')))->toHaveCount(1);
+});
+
+test('tiktok publisher checks the status at 5 s, 30 s, 1 min and then every minute after TikTok accepted the publish', function (int $secondsSinceAccepted, int $secondsUntilNextCheck) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds($secondsSinceAccepted)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_UPLOAD']]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->retryDelaySeconds)->toBe($secondsUntilNextCheck));
+})->with([
+    'just accepted' => [0, 5],
+    'at 5 s' => [5, 25],
+    'at 30 s' => [30, 30],
+    'at 1 min' => [60, 60],
+    'past 1 min' => [75, 45],
+    'at 2 min' => [120, 60],
+    'at 10 min' => [600, 60],
+]);
+
+test('tiktok publisher keeps checking a refused status until five minutes after TikTok accepted the publish', function (int $secondsSinceAccepted, int $secondsUntilNextCheck) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds($secondsSinceAccepted)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->retryDelaySeconds)->toBe($secondsUntilNextCheck));
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/init/'));
+})->with([
+    'at 30 s' => [30, 30],
+    'at 1 min' => [60, 60],
+    'at 4 min' => [240, 60],
+    'just before 5 min' => [299, 1],
+]);
+
+test('tiktok publisher fails a publish TikTok still refuses to report five minutes after accepting it, without sending it again', function () {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subMinutes(5)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(function (TikTokPublishException $exception): void {
+            expect($exception->userMessage)->toBe('TikTok did not confirm this post. Check your TikTok profile before publishing it again.')
+                ->and($exception->platformErrorCode)->toBe('invalid_params');
+        });
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher fails at once when TikTok refuses the status for a reason only the user can fix', function (string $code, string $message) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds(30)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => $code, 'message' => $code],
+        ], 403),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (TikTokPublishException $exception) => expect($exception->userMessage)->toBe($message));
+})->with([
+    'missing permissions' => ['scope_not_authorized', 'Missing required permissions. Please reconnect with all scopes.'],
+    'account barred from posting' => ['spam_risk_user_banned_from_posting', 'Account is banned from posting.'],
+]);
+
+test('tiktok publisher keeps checking a status refused with a code that only names the request', function (string $code) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds(30)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => $code, 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(PlatformUnavailableException::class);
+})->with(['invalid_params', 'invalid_param', 'invalid_publish_id', 'rate_limit_exceeded']);
+
+test('tiktok publisher times a publish checkpointed without its start from the resume', function () {
+    $this->post->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_from_before'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->retryDelaySeconds)->toBe(5));
+});
+
+test('tiktok publisher keeps timing a resumed publish from its first resume when the checkpoint had no start', function () {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => ['tiktok_publish_id' => 'pub_from_before'],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_UPLOAD']]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(PlatformUnavailableException::class);
+    expect($this->post->fresh()->error_context['tiktok_init_at'] ?? null)->toBe(now()->toIso8601String());
+
+    $this->travel(30)->seconds();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->retryDelaySeconds)->toBe(30));
+});
+
 test('tiktok publisher keeps photo derivatives while pending and prunes them on completion', function () {
     Storage::fake();
     $derivativePath = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
@@ -479,6 +687,34 @@ test('tiktok publisher keeps photo derivatives while pending and prunes them on 
     expect($result['id'])->toBe('7000000000000000123');
     Storage::assertMissing($derivativePath);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
+});
+
+test('tiktok publisher keeps photo derivatives while TikTok refuses the status, since it may still pull them', function () {
+    $this->freezeSecond();
+    Storage::fake();
+    $derivativePath = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
+    Storage::put($derivativePath, 'image');
+
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subMinute()->toIso8601String(),
+            'tiktok_derivative_paths' => [$derivativePath],
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => 'invalid_params', 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(function (PlatformUnavailableException $exception) use ($derivativePath): void {
+            expect($exception->context['tiktok_derivative_paths'] ?? null)->toBe([$derivativePath]);
+        });
+
+    Storage::assertExists($derivativePath);
 });
 
 test('tiktok publisher can publish photos', function () {

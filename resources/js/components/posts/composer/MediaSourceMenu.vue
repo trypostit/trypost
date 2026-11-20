@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import {
-    IconBrandGoogleDrive,
-    IconBrandGooglePhotos,
-    IconBrandUnsplash,
-    IconCircleLetterCFilled,
-    IconPhotoPlus,
-    IconUpload,
-} from '@tabler/icons-vue';
+import { IconPhotoPlus, IconUpload } from '@tabler/icons-vue';
+import Canva from '@thesvg/vue/canva';
+import Giphy from '@thesvg/vue/giphy';
+import GoogleDrive from '@thesvg/vue/google-drive-2026';
+import GooglePhotos from '@thesvg/vue/google-photos';
+import Unsplash from '@thesvg/vue/unsplash';
 import { getActiveLanguage, trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 import { toast } from 'vue-sonner';
@@ -30,8 +28,9 @@ import {
 } from '@/components/ui/tooltip';
 import {
     type MediaImportPayload,
-    useMediaImport,
+    startMediaImport,
 } from '@/composables/useMediaImport';
+import { filled } from '@/lib/helpers';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
 import {
     type GoogleDrivePick,
@@ -57,25 +56,31 @@ withDefaults(
 
 const emit = defineEmits<{
     (event: 'import-started', payload: { importId: string; label: string }): void;
+    (event: 'open-giphy'): void;
     (event: 'open-unsplash'): void;
     (event: 'upload'): void;
 }>();
 
 const ICONS: Record<SourceKey, Component> = {
-    canva: IconCircleLetterCFilled,
-    google_drive: IconBrandGoogleDrive,
-    google_photos: IconBrandGooglePhotos,
-    unsplash: IconBrandUnsplash,
+    canva: Canva,
+    giphy: Giphy,
+    google_drive: GoogleDrive,
+    google_photos: GooglePhotos,
+    unsplash: Unsplash,
+};
+
+/** Unsplash's one-color mark is drawn in the text color, so it follows the theme. */
+const ICON_CLASSES: Partial<Record<SourceKey, string>> = {
+    unsplash: 'fill-current',
 };
 
 const page = usePage();
-const mediaImport = useMediaImport();
 
 const startImport = async (
     option: MediaSourceOption,
     payload: MediaImportPayload,
 ): Promise<void> => {
-    const importIds = await mediaImport.run(payload);
+    const importIds = await startMediaImport(payload);
     importIds.forEach((importId) =>
         emit('import-started', { importId, label: option.label }),
     );
@@ -167,6 +172,7 @@ const handlers: Partial<
             session_id: picked.sessionId,
         });
     },
+    giphy: () => emit('open-giphy'),
     unsplash: () => emit('open-unsplash'),
 };
 
@@ -208,8 +214,8 @@ const pickCanvaPreset = (
 </script>
 
 <template>
-    <TooltipProvider v-if="disabled" :delay-duration="200">
-        <Tooltip>
+    <TooltipProvider :delay-duration="200">
+        <Tooltip v-if="disabled">
             <TooltipTrigger as-child>
                 <span
                     class="flex size-8 cursor-not-allowed items-center justify-center text-subtle-foreground"
@@ -221,98 +227,106 @@ const pickCanvaPreset = (
             </TooltipTrigger>
             <TooltipContent>{{ disabledReason }}</TooltipContent>
         </Tooltip>
-    </TooltipProvider>
-    <DropdownMenu
-        v-else
-        v-model:open="menuOpen"
-        @update:open="onMenuOpenChange"
-    >
-        <DropdownMenuTrigger as-child>
-            <button
-                type="button"
-                :data-testid="`${testIdPrefix}-media-source-menu`"
-                :aria-label="$t('posts.edit.add_media')"
-                :title="$t('posts.edit.add_media')"
-                class="flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-accent"
-                @pointerenter="preloadSources"
-                @focus="preloadSources"
-            >
-                <IconPhotoPlus class="size-4" />
-            </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-            side="top"
-            align="start"
-            :side-offset="8"
-            class="min-w-48"
-            :data-testid="`${testIdPrefix}-media-source-list`"
-        >
-            <DropdownMenuItem
-                data-testid="media-source-upload"
-                @select="requestUpload"
-            >
-                <IconUpload class="text-foreground" />
-                {{ $t('posts.composer.media_sources.upload') }}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator v-if="sources.length" />
-                <template v-for="option in sources" :key="option.source">
-                    <DropdownMenuSub v-if="option.source === 'canva'">
-                        <DropdownMenuSubTrigger
-                            :data-testid="`media-source-${option.source}`"
-                        >
-                            <component
-                                :is="ICONS[option.source]"
-                                class="text-foreground"
-                            />
-                            {{ option.label }}
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                            <DropdownMenuItem
-                                v-for="preset in option.presets ?? []"
-                                :key="preset.value"
-                                :data-testid="`canva-preset-${preset.value}`"
-                                @select="pickCanvaPreset(option, preset.value)"
-                            >
-                                <span class="flex flex-col">
-                                    <span class="flex items-center gap-1.5">
-                                        {{
-                                            $t(
-                                                `posts.composer.media_sources.canva_presets.${preset.value}`,
-                                            )
-                                        }}
-                                        <span
-                                            v-if="preset.is_default"
-                                            class="text-xs text-muted-foreground"
-                                            :data-testid="`canva-preset-${preset.value}-default`"
-                                        >
-                                            ({{
-                                                $t(
-                                                    'posts.composer.media_sources.canva_default',
-                                                )
-                                            }})
-                                        </span>
-                                    </span>
-                                    <span
-                                        class="text-xs text-muted-foreground tabular-nums"
-                                    >
-                                        {{ preset.width }} × {{ preset.height }}
-                                    </span>
-                                </span>
-                            </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuItem
-                        v-else
-                        :data-testid="`media-source-${option.source}`"
-                        @select="pick(option)"
+        <Tooltip v-else>
+            <TooltipTrigger as-child>
+                <span class="inline-flex">
+                    <DropdownMenu
+                        v-model:open="menuOpen"
+                        @update:open="onMenuOpenChange"
                     >
-                        <component
-                            :is="ICONS[option.source]"
-                            class="text-foreground"
-                        />
-                        {{ option.label }}
-                    </DropdownMenuItem>
-                </template>
-        </DropdownMenuContent>
-    </DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <button
+                                type="button"
+                                :data-testid="`${testIdPrefix}-media-source-menu`"
+                                :aria-label="$t('posts.edit.add_media')"
+                                class="flex size-8 items-center justify-center rounded-lg text-foreground transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-accent"
+                                @pointerenter="preloadSources"
+                                @focus="preloadSources"
+                            >
+                                <IconPhotoPlus class="size-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            side="top"
+                            align="start"
+                            :side-offset="8"
+                            class="min-w-48"
+                            :data-testid="`${testIdPrefix}-media-source-list`"
+                        >
+                            <DropdownMenuItem
+                                data-testid="media-source-upload"
+                                @select="requestUpload"
+                            >
+                                <IconUpload class="text-foreground" />
+                                {{ $t('posts.composer.media_sources.upload') }}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator v-if="filled(sources)" />
+                                <template v-for="option in sources" :key="option.source">
+                                    <DropdownMenuSub v-if="option.source === 'canva'">
+                                        <DropdownMenuSubTrigger
+                                            :data-testid="`media-source-${option.source}`"
+                                        >
+                                            <component
+                                                :is="ICONS[option.source]"
+                                                :class="['text-foreground', ICON_CLASSES[option.source]]"
+                                            />
+                                            {{ option.label }}
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent>
+                                            <DropdownMenuItem
+                                                v-for="preset in option.presets ?? []"
+                                                :key="preset.value"
+                                                :data-testid="`canva-preset-${preset.value}`"
+                                                @select="pickCanvaPreset(option, preset.value)"
+                                            >
+                                                <span
+                                                    class="flex items-baseline gap-1.5 whitespace-nowrap"
+                                                >
+                                                    {{
+                                                        $t(
+                                                            `posts.composer.media_sources.canva_presets.${preset.value}`,
+                                                        )
+                                                    }}
+                                                    <span
+                                                        class="text-xs text-muted-foreground tabular-nums"
+                                                    >
+                                                        ({{ preset.width }}×{{ preset.height }})
+                                                        <template v-if="preset.is_default">
+                                                            ·
+                                                            <span
+                                                                :data-testid="`canva-preset-${preset.value}-default`"
+                                                            >
+                                                                {{
+                                                                    $t(
+                                                                        'posts.composer.media_sources.canva_default',
+                                                                    )
+                                                                }}
+                                                            </span>
+                                                        </template>
+                                                    </span>
+                                                </span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                    <DropdownMenuItem
+                                        v-else
+                                        :data-testid="`media-source-${option.source}`"
+                                        @select="pick(option)"
+                                    >
+                                        <component
+                                            :is="ICONS[option.source]"
+                                            :class="['text-foreground', ICON_CLASSES[option.source]]"
+                                        />
+                                        {{ option.label }}
+                                    </DropdownMenuItem>
+                                </template>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </span>
+            </TooltipTrigger>
+            <TooltipContent :data-testid="`${testIdPrefix}-media-source-tooltip`">
+                {{ $t('posts.edit.add_media') }}
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
 </template>

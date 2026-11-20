@@ -7,19 +7,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForPostCardFooterTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('a post card footer sits in a rounded muted panel and a draft drops its status on the drafts tab', function () {
     $user = User::factory()->create(['timezone' => 'UTC']);
     $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
@@ -31,7 +18,7 @@ test('a post card footer sits in a rounded muted panel and a draft drops its sta
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1440, 900);
-    waitForPostCardFooterTestId($page, "post-footer-{$draft->id}");
+    waitFor($page, "@post-footer-{$draft->id}");
 
     expect($page->script(<<<JS
         (() => {

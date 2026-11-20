@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/vue3';
 import { computed, getCurrentScope, onScopeDispose, ref } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 
@@ -7,10 +8,47 @@ import type {
     DestinationOverride,
 } from '@/composables/usePostComposition';
 import dayjs from '@/dayjs';
+import {
+    readWorkspaceItem,
+    updateBrowserStorage,
+    writeWorkspaceItem,
+} from '@/lib/browserStorage';
+import { filled } from '@/lib/helpers';
+import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
 import { classify, MediaType } from '@/lib/mediaType';
+import type { SharedData } from '@/types';
+import type { SidebarChannel } from '@/types/channel';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
+
+/**
+ * Bumped each time this tab writes or drops a draft, and when another tab
+ * changes the browser storage, so `useHasUnfinishedPost` reads it again: the
+ * drafts are written through the storage lib, which tells no ref of this tab.
+ */
+const draftChanges = ref(0);
+
+const draftChanged = (): void => {
+    draftChanges.value += 1;
+};
+
+/** Read inside a computed, it makes the computed read the draft again on every change. */
+const trackDraftChanges = (): void => {
+    void draftChanges.value;
+};
+
+let followsOtherTabs = false;
+
+/** Listens once per tab for a draft written or dropped in another tab. */
+const followOtherTabs = (): void => {
+    if (followsOtherTabs) {
+        return;
+    }
+
+    followsOtherTabs = true;
+    window.addEventListener('storage', draftChanged);
+};
 
 export interface AutosaveMediaRef {
     id: string;
@@ -30,8 +68,11 @@ export type AutosaveOverride = Omit<DestinationOverride, 'media'> & {
     media?: AutosaveMediaRef[];
 };
 
+/** The shape of a saved draft; a draft of another version is not offered back. */
+export const AUTOSAVE_VERSION = 1;
+
 export interface AutosaveSnapshot {
-    version: 1;
+    version: typeof AUTOSAVE_VERSION;
     savedAt: string;
     content: string;
     overrides: Record<string, AutosaveOverride>;
@@ -43,12 +84,6 @@ export interface AutosaveSnapshot {
     scheduledAt: string | null;
 }
 
-const AUTOSAVE_PREFIX = 'trypost:composer:autosave:';
-
-export const composerAutosaveKey = (
-    userId: string | number | null | undefined,
-    workspaceId: string | number | null | undefined,
-): string => `${AUTOSAVE_PREFIX}${userId ?? ''}:${workspaceId ?? ''}`;
 
 export const toAutosaveMedia = (item: MediaItem): AutosaveMediaRef => ({
     id: item.id,
@@ -89,65 +124,88 @@ export const isExpiredUpload = (
     retentionHours > 0 &&
     dayjs(media.created_at).add(retentionHours, 'hour').isBefore(dayjs());
 
+/** Drops the draft of one workspace, once its post is saved. */
 export const clearComposerAutosave = (
-    userId: string | number | null | undefined,
-    workspaceId: string | number | null | undefined,
+    userId: string | undefined,
+    workspaceId: string | undefined,
 ): void => {
-    try {
-        localStorage.removeItem(composerAutosaveKey(userId, workspaceId));
-    } catch {
+    if (!userId || !workspaceId) {
         return;
     }
+
+    writeWorkspaceItem(userId, workspaceId, 'composer.autosave', undefined);
+    draftChanged();
 };
 
-export const clearAllComposerAutosaves = (): void => {
-    try {
-        Object.keys(localStorage)
-            .filter((key) => key.startsWith(AUTOSAVE_PREFIX))
-            .forEach((key) => localStorage.removeItem(key));
-    } catch {
-        return;
+/** Drops the user's drafts in every workspace, on logout; their other items stay. */
+export const clearAllComposerAutosaves = (userId: string): void => {
+    updateBrowserStorage(userId, (storage) => ({
+        ...storage,
+        workspaces: Object.fromEntries(
+            Object.entries(storage.workspaces).map(([workspaceId, items]) => [
+                workspaceId,
+                { ...items, 'composer.autosave': undefined },
+            ]),
+        ),
+    }));
+    draftChanged();
+};
+
+const isSnapshot = (value: unknown): value is AutosaveSnapshot => {
+    if (typeof value !== 'object' || value === null) {
+        return false;
     }
+
+    const snapshot = value as Partial<AutosaveSnapshot>;
+
+    return (
+        snapshot.version === AUTOSAVE_VERSION &&
+        typeof snapshot.content === 'string' &&
+        Array.isArray(snapshot.accountIds) &&
+        Array.isArray(snapshot.media) &&
+        Array.isArray(snapshot.labelIds) &&
+        typeof snapshot.overrides === 'object' &&
+        snapshot.overrides !== null
+    );
 };
 
-const isSnapshot = (value: unknown): value is AutosaveSnapshot =>
-    typeof value === 'object' &&
-    value !== null &&
-    (value as AutosaveSnapshot).version === 1 &&
-    typeof (value as AutosaveSnapshot).content === 'string' &&
-    Array.isArray((value as AutosaveSnapshot).accountIds) &&
-    Array.isArray((value as AutosaveSnapshot).media) &&
-    Array.isArray((value as AutosaveSnapshot).labelIds) &&
-    typeof (value as AutosaveSnapshot).overrides === 'object' &&
-    (value as AutosaveSnapshot).overrides !== null;
-
-const read = (key: string): AutosaveSnapshot | null => {
-    try {
-        const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
-
-        return isSnapshot(parsed) ? parsed : null;
-    } catch {
+const read = (
+    userId: string,
+    workspaceId: string | undefined,
+): AutosaveSnapshot | null => {
+    if (!workspaceId) {
         return null;
     }
+
+    const stored = readWorkspaceItem(userId, workspaceId, 'composer.autosave');
+
+    if (isSnapshot(stored)) {
+        return stored;
+    }
+
+    return null;
 };
 
-export const useComposerAutosave = (
-    key: ComputedRef<string>,
-): {
+/** The unfinished new post of the current workspace, saved in this browser as it is written. */
+export const useComposerAutosave = (): {
     saved: Ref<AutosaveSnapshot | null>;
     save: (snapshot: AutosaveSnapshot) => void;
     flush: () => void;
     clear: () => void;
 } => {
-    const saved = ref<AutosaveSnapshot | null>(read(key.value));
+    const { auth } = usePage<SharedData>().props;
+    moveLegacyBrowserStorage(auth);
+
+    const userId = auth.user.id;
+    const workspaceId = auth.currentWorkspace?.id;
+    const saved = ref<AutosaveSnapshot | null>(read(userId, workspaceId));
     let pending: AutosaveSnapshot | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const write = (snapshot: AutosaveSnapshot): void => {
-        try {
-            localStorage.setItem(key.value, JSON.stringify(snapshot));
-        } catch {
-            return;
+        if (workspaceId) {
+            writeWorkspaceItem(userId, workspaceId, 'composer.autosave', snapshot);
+            draftChanged();
         }
     };
 
@@ -172,11 +230,7 @@ export const useComposerAutosave = (
     const clear = (): void => {
         cancel();
         saved.value = null;
-        try {
-            localStorage.removeItem(key.value);
-        } catch {
-            return;
-        }
+        clearComposerAutosave(userId, workspaceId);
     };
 
     if (getCurrentScope()) {
@@ -194,7 +248,11 @@ export const useComposerAutosave = (
 export const useAutosavePreview = (
     saved: Ref<AutosaveSnapshot | null>,
     accounts: () => ComposerAccount[],
-) => ({
+): {
+    accounts: ComputedRef<ComposerAccount[]>;
+    mediaCount: ComputedRef<number>;
+    preview: ComputedRef<string>;
+} => ({
     accounts: computed(() =>
         (saved.value?.accountIds ?? []).flatMap((id) => {
             const account = accounts().find((candidate) => candidate.id === id);
@@ -220,3 +278,50 @@ export const useAutosavePreview = (
                 .find(Boolean) ?? '',
     ),
 });
+
+/**
+ * Whether a saved draft holds what the resume dialog offers back
+ * (`useAutosavePreview`): text, a channel that still exists, or media still
+ * within the upload retention.
+ */
+const isUnfinished = (
+    snapshot: AutosaveSnapshot | null,
+    channelIds: string[],
+): boolean => {
+    if (!filled(snapshot)) {
+        return false;
+    }
+
+    if (filled(snapshot.content.trim())) {
+        return true;
+    }
+
+    if (snapshot.accountIds.some((id) => channelIds.includes(id))) {
+        return true;
+    }
+
+    const retentionHours = mediaUploadLimits().upload_retention_hours;
+
+    return snapshot.media.some((item) => !isExpiredUpload(item, retentionHours));
+};
+
+/**
+ * Whether the current workspace has a new post left unfinished in this
+ * browser, the one the composer offers to resume: the sidebar's New button
+ * marks it. It follows the drafts written and dropped in this tab and others.
+ */
+export const useHasUnfinishedPost = (): ComputedRef<boolean> => {
+    const page = usePage<SharedData>();
+    followOtherTabs();
+
+    return computed((): boolean => {
+        const { auth } = page.props;
+        const channels = (page.props.channels ?? []) as SidebarChannel[];
+        trackDraftChanges();
+
+        return isUnfinished(
+            read(auth.user.id, auth.currentWorkspace?.id),
+            channels.map((channel) => channel.id),
+        );
+    });
+};

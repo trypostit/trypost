@@ -13,7 +13,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import type { McpClient, McpClientId } from '@/lib/mcpClients';
+import type { McpClient, McpClientId } from '@/types/mcp';
 
 const props = defineProps<{
     client: McpClient;
@@ -23,12 +23,12 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { default: false });
 
 /**
- * What to do in each client once its connector page is open. ChatGPT needs
- * developer mode before it accepts a custom MCP app.
+ * What to do in each client once its connector page is open. ChatGPT lists
+ * TryPost in its app store, so there is nothing to paste there.
  */
 const STEPS: Record<McpClientId, string[]> = {
     claude: ['paste', 'add', 'login'],
-    chatgpt: ['developer', 'create', 'login'],
+    chatgpt: ['open', 'login'],
     other: ['add', 'paste', 'login'],
 };
 
@@ -59,10 +59,9 @@ const focusDialogFrame = (event: Event): void => {
                     class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card"
                     aria-hidden="true"
                 >
-                    <img
-                        :src="client.logo"
-                        alt=""
-                        :class="['size-6', client.logoClass]"
+                    <component
+                        :is="client.logo"
+                        class="size-6 text-foreground"
                     />
                 </span>
                 <div class="flex min-w-0 flex-col gap-1">
@@ -99,6 +98,7 @@ const focusDialogFrame = (event: Event): void => {
             </ol>
 
             <div
+                v-if="!client.listed"
                 class="overflow-hidden rounded-xl border border-border-strong bg-card"
             >
                 <div
@@ -111,10 +111,10 @@ const focusDialogFrame = (event: Event): void => {
                     <span
                         class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                        <img
-                            :src="client.logo"
-                            alt=""
-                            :class="['size-3.5', client.logoClass]"
+                        <component
+                            :is="client.logo"
+                            aria-hidden="true"
+                            class="size-3.5 text-foreground"
                         />
                         {{ client.labelKey ? $t(client.label) : client.label }}
                     </span>

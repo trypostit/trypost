@@ -18,7 +18,9 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  * `maxContentLength()` is exceeded by the submitted text. Pre-resolve the social
  * accounts (or bare platforms) the post is bound to and pass them in; an account
  * is measured against its own limit (an X account with long posts), a platform
- * against the platform's. Keeps the rule decoupled from the FormRequest payload.
+ * against the platform's, each capped by the post type
+ * (`ContentType::maxContentLengthFor()`). Keeps the rule decoupled from the
+ * FormRequest payload.
  *
  * Each platform is measured against its own sanitized content, matching what the
  * publisher will actually send: the editor stores HTML, and per-platform rules
@@ -44,9 +46,11 @@ class ContentFitsPlatformLimits implements ValidationRule
         $reported = [];
 
         foreach ($this->targets as $targetKey => $target) {
-            $platform = $target instanceof SocialAccount ? $target->platform : $target;
+            $account = $target instanceof SocialAccount ? $target : null;
+            $platform = $account?->platform ?? $target;
+            $contentType = ContentType::resolve(data_get($this->contentTypes, $targetKey));
 
-            if (! $platform instanceof Platform || ContentType::tryFrom((string) data_get($this->contentTypes, $targetKey))?->isCaptionless()) {
+            if (! $platform instanceof Platform || $contentType?->isCaptionless()) {
                 continue;
             }
 
@@ -60,8 +64,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 ]));
             }
 
-            $measure = $target instanceof SocialAccount ? $target : $platform;
-            $limit = $measure->maxContentLength();
+            $limit = ContentType::maxContentLengthFor($account, $platform, $contentType);
             $reserved = $platform->reservedLength(data_get($this->meta, $targetKey));
             $key = "{$platform->value}:{$limit}:{$reserved}";
 
@@ -69,7 +72,7 @@ class ContentFitsPlatformLimits implements ValidationRule
                 continue;
             }
 
-            $over = $measure->contentOverflow($display, $reserved);
+            $over = ContentType::overflowFor($account, $platform, $contentType, $display, $reserved);
 
             if ($over === 0) {
                 continue;

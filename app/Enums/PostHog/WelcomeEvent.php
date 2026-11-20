@@ -10,8 +10,6 @@ enum WelcomeEvent: string
     case Goals = 'welcome.goals';
     case Software = 'welcome.software';
     case Referral = 'welcome.referral';
-    case McpConnectClicked = 'welcome.mcp.connect_clicked';
-    case McpSkipped = 'welcome.mcp.skipped';
 
     /**
      * Welcome capture order through Stripe Checkout.

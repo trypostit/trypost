@@ -1,7 +1,7 @@
 import type { Page } from '@inertiajs/core';
 import posthog from 'posthog-js';
 
-import type { Auth, Usage } from './types';
+import type { Auth, Usage } from '@/types';
 
 const apiKey = import.meta.env.VITE_POSTHOG_API_KEY as string | undefined;
 const host = import.meta.env.VITE_POSTHOG_HOST as string | undefined;

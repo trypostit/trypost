@@ -41,7 +41,7 @@ return [
         'account_disconnected' => 'Konto getrennt',
         'account_disconnected_description' => 'Erhalte eine E-Mail, wenn ein Social-Media-Konto getrennt wird',
         'post_note_added' => 'Neue Notiz zu einem Beitrag',
-        'post_note_added_description' => 'Erhalte eine E-Mail, wenn ein Teammitglied eine Notiz zu einem Beitrag hinzufügt',
+        'post_note_added_description' => 'Erhalte eine E-Mail, wenn dich ein Teammitglied in einer Notiz erwähnt oder eine Notiz zu einem Beitrag hinzufügt, den du erstellt oder kommentiert hast',
         'collaboration' => 'Zusammenarbeit',
         'collaboration_description' => 'Erhalte E-Mails zu Freigabeanfragen und freigegebenen oder abgelehnten Beiträgen',
         'save_failed' => 'Die Benachrichtigungseinstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Подписи',
     'description' => 'Готовые тексты для ваших постов.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Создана',
     ],
 
-    'row_actions' => 'Действия с подписью',
     'actions' => [
         'edit' => 'Изменить подпись',
-        'delete' => 'Удалить подпись',
+        'delete' => 'Удалить',
+        'settings' => 'Настройки',
     ],
 
     'create' => [

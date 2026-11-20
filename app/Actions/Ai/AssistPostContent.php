@@ -6,6 +6,7 @@ namespace App\Actions\Ai;
 
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -24,9 +25,10 @@ final class AssistPostContent
         ?string $previousContent,
         ?Platform $platform,
         ?SocialAccount $account = null,
+        ?ContentType $contentType = null,
     ): string {
         $platform = $account->platform ?? $platform;
-        $limit = $account?->maxContentLength() ?? $platform?->maxContentLength();
+        $limit = transform($platform, fn (Platform $platform): int => ContentType::maxContentLengthFor($account, $platform, $contentType));
 
         $response = (new PostWritingAssistant($mode, $currentContent, $user->locale, $platform, $previousContent, $limit))
             ->prompt($mode->requiresPrompt() ? trim((string) $prompt) : 'Revise the existing caption as instructed.');

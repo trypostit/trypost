@@ -20,6 +20,7 @@ use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
 use App\Support\GoogleBusinessResourceName;
+use App\Support\Timezone;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -52,6 +53,13 @@ class SocialAccount extends Model
 
     /** The X verification types that show a badge: blue (paid), business (gold) and government (gray). */
     public const array X_VERIFIED_BADGES = ['blue', 'business', 'government'];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'timezone' => Timezone::DEFAULT,
+    ];
 
     protected $fillable = [
         'workspace_id',
@@ -129,11 +137,6 @@ class SocialAccount extends Model
     public function maxContentLength(): int
     {
         return $this->hasXLongPosts() ? self::X_LONG_POST_LENGTH : $this->platform->maxContentLength();
-    }
-
-    public function contentOverflow(string $content, int $reserved = 0): int
-    {
-        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
     }
 
     /**
@@ -365,6 +368,17 @@ class SocialAccount extends Model
             || ($this->platform->extendsAccessTokenOnRefresh() && $this->is_token_expiring_soon);
     }
 
+    /**
+     * The stored zone read as its canonical identifier, so an alias the tz
+     * database renamed after it was saved never reaches Carbon.
+     */
+    protected function timezone(): Attribute
+    {
+        return Attribute::make(
+            get: fn (string $value): string => Timezone::usable($value),
+        );
+    }
+
     protected function avatarUrl(): Attribute
     {
         return Attribute::make(
@@ -434,12 +448,19 @@ class SocialAccount extends Model
     }
 
     /**
-     * Base URL of the Mastodon instance this account lives on, without a
-     * trailing slash.
+     * The Bluesky server (PDS) this account signed in through.
      */
-    public function mastodonInstance(): string
+    protected function blueskyService(): Attribute
     {
-        return rtrim((string) data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')), '/');
+        return Attribute::get(fn (): string => data_get($this->meta, 'service') ?? config('trypost.platforms.bluesky.default_service'));
+    }
+
+    /**
+     * The Mastodon instance this account lives on.
+     */
+    protected function mastodonInstance(): Attribute
+    {
+        return Attribute::get(fn (): string => data_get($this->meta, 'instance') ?? config('trypost.platforms.mastodon.default_instance'));
     }
 
     /**

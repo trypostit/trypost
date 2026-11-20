@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Labels',
     'description' => 'Organize and filter your posts with labels.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Edit label',
         'delete' => 'Delete label',
         'more' => 'More actions',
+        'settings' => 'Settings',
         'view_posts' => 'View posts',
+        'view_insights' => 'View insights',
     ],
 
     'create' => [

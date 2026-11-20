@@ -14,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Aylık faturalandırılır',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -26,6 +25,7 @@ return [
         'yearly' => 'Yıllık',
         'save_two_months' => '2 ay ücretsiz',
         'per_month' => '/ay',
+        'per_year' => '/yıl',
         'workspaces_one' => 'Bir workspace',
         'workspaces_unlimited' => 'Sınırsız workspace',
         'workspaces_tooltip' => 'Workspace, diğerlerinden ayrı tutulan tek bir marka veya müşteridir: kendi sosyal medya hesapları, imzaları, etiketleri, analizleri, üye izinleri ve MCP bağlantısı vardır.',
@@ -35,7 +35,6 @@ return [
         'select' => ':plan seç',
         'upgrade' => ':plan’e yükselt',
         'downgrade' => ':plan’e düşür',
-        'start_first_month' => ':price ile etkinleştir',
         'billed_yearly_total' => 'Yıllık faturalandırılır · :price (2 ay bedava)',
         'socials_tagline' => 'İçerik üreticileri ve küçük markalar için.',
         'workspaces_tagline' => 'Ajanslar ve büyük işletmeler için.',
@@ -63,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktif',
+            'trial' => 'Ücretsiz deneme',
+            'cancelling' => 'İptal edildi',
+            'past_due' => 'Gecikmiş',
+        ],
         'change' => 'Planı değiştir',
-        'price_monthly' => ':price/ay',
-        'price_yearly' => ':price/yıl',
+        'subscribe' => 'Şimdi abone ol',
         'trial_until' => ':date tarihine kadar deneme',
-        'renews' => 'Otomatik olarak yenilenir',
         'cancelled' => 'İptal edildi, :date tarihinde sona erer',
-        'workspaces_usage' => 'Çalışma alanları: :count / :limit',
+        'discount_until' => ':date tarihine kadar :discount indirim',
+        'discount_forever' => 'Her ödemede :discount indirim',
+        'discount_once' => 'Sonraki ödemenizde :discount indirim',
     ],
 
     'subscription' => [
-        'title' => 'Ödeme yöntemi',
+        'title' => 'Ödeme yöntemleri',
+        'default' => 'Varsayılan',
         'description' => 'Kartınızı veya fatura bilgilerinizi Stripe’da güncelleyin.',
         'no_payment_method' => 'Henüz kayıtlı ödeme yöntemi yok.',
         'expires_on' => 'Son kullanma: :month/:year',
         'manage_stripe' => 'Stripe\'ta yönet',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Faturalar',
+    ],
+
     'invoices' => [
-        'title' => 'Faturalar',
-        'description' => 'Geçmiş faturalarınızı indirin.',
+        'columns' => [
+            'date' => 'Tarih',
+            'amount' => 'Tutar',
+            'status' => 'Durum',
+        ],
+        'empty_title' => 'Henüz fatura yok',
+        'empty_description' => 'Faturalarınız ilk ödemenizden sonra burada görünür.',
         'paid' => 'Ödendi',
         'download' => 'Faturayı indir',
     ],

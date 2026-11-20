@@ -75,3 +75,54 @@ test('insights rows carry the live connection status and the top post avatar of 
             ->where('report.bounds.min', null)
             ->etc());
 });
+
+test('insights rows carry the verified badge of each channel like the sidebar', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $verified = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id, 'meta' => ['x_verified_type' => 'blue']]);
+
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $verified->id,
+        'social_account_key' => $verified->id,
+        'platform' => Platform::X,
+        'network' => Platform::X->network(),
+        'platform_user_id' => $verified->platform_user_id,
+        'date' => '2026-09-15',
+        'followers_count' => 500,
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $verified->id,
+        'social_account_key' => $verified->id,
+        'platform' => Platform::X,
+        'provider_published_at' => CarbonImmutable::parse('2026-09-15 12:00:00', 'UTC'),
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $publication->id,
+        'date' => '2026-09-15',
+        'reactions_count' => 10,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('app.insights', ['start' => '2026-09-01', 'end' => '2026-09-30']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.performance.0.verified_badge', 'blue')
+            ->where('report.posts.accounts.0.verified_badge', 'blue')
+            ->where('report.followers.accounts.0.verified_badge', 'blue')
+            ->where('report.top_posts.reactions.0.verified_badge', 'blue')
+            ->etc());
+
+    $verified->update(['meta' => []]);
+
+    $this->actingAs($user)
+        ->get(route('app.insights', ['start' => '2026-09-01', 'end' => '2026-09-30']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.performance.0.verified_badge', null)
+            ->etc());
+});

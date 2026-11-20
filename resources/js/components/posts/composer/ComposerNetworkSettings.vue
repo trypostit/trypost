@@ -88,6 +88,7 @@ const AI_GENERATED_ROWS: Partial<
     },
     [ContentType.TikTokVideo]: { metaKey: 'is_aigc', testId: 'tiktok-ai-generated' },
     [ContentType.XPost]: { metaKey: 'is_ai_generated', testId: 'x-ai-generated' },
+    [ContentType.XPoll]: { metaKey: 'is_ai_generated', testId: 'x-ai-generated' },
 };
 
 const aiRow = computed(

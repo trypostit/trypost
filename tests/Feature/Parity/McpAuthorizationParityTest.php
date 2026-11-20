@@ -32,6 +32,7 @@ use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Mcp\Tools\Post\AddPostNoteReactionTool;
 use App\Mcp\Tools\Post\ApprovePostTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
@@ -43,11 +44,13 @@ use App\Mcp\Tools\Post\DeletePostNoteTool;
 use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
+use App\Mcp\Tools\Post\ListPostNoteMentionablesTool;
 use App\Mcp\Tools\Post\ListPostNotesTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\RejectPostTool;
+use App\Mcp\Tools\Post\RemovePostNoteReactionTool;
 use App\Mcp\Tools\Post\RequestMediaUploadTool;
 use App\Mcp\Tools\Post\SetPostRecurrenceTool;
 use App\Mcp\Tools\Post\UpdatePostNoteTool;
@@ -269,10 +272,13 @@ function mcpAuthParityTools(): array
         'delete-post-tool' => [DeletePostTool::class, $publishers, fn (TestCase $t, array $f) => $t->delete(route('app.posts.destroy', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'get-post-metrics-tool' => [GetPostMetricsTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'get-post-tool' => [GetPostTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
-        'list-post-notes-tool' => [ListPostNotesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.notes.index', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
+        'list-post-notes-tool' => [ListPostNotesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.posts.index', ['notes' => $f['post']->id])), fn (array $f) => ['post_id' => $f['post']->id]],
         'create-post-note-tool' => [CreatePostNoteTool::class, $everyMember, fn (TestCase $t, array $f) => $t->postJson(route('app.posts.notes.store', $f['post']), ['body' => 'Looks good']), fn (array $f) => ['post_id' => $f['post']->id, 'body' => 'Looks good']],
         'update-post-note-tool' => [UpdatePostNoteTool::class, ['admin', 'member', 'approval', 'outsider'], fn (TestCase $t, array $f) => $t->putJson(route('app.posts.notes.update', [$f['post'], $f['note']]), ['body' => 'Edited']), fn (array $f) => ['post_id' => $f['post']->id, 'note_id' => $f['note']->id, 'body' => 'Edited']],
         'delete-post-note-tool' => [DeletePostNoteTool::class, ['admin', 'member', 'approval', 'outsider'], fn (TestCase $t, array $f) => $t->deleteJson(route('app.posts.notes.destroy', [$f['post'], $f['note']])), fn (array $f) => ['post_id' => $f['post']->id, 'note_id' => $f['note']->id]],
+        'list-post-note-mentionables-tool' => [ListPostNoteMentionablesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.notes.mentionables.index', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
+        'add-post-note-reaction-tool' => [AddPostNoteReactionTool::class, $everyMember, fn (TestCase $t, array $f) => $t->putJson(route('app.posts.notes.reactions.update', [$f['post'], $f['note']]), ['emoji' => '👍']), fn (array $f) => ['post_id' => $f['post']->id, 'note_id' => $f['note']->id, 'emoji' => '👍']],
+        'remove-post-note-reaction-tool' => [RemovePostNoteReactionTool::class, $everyMember, fn (TestCase $t, array $f) => $t->deleteJson(route('app.posts.notes.reactions.destroy', [$f['post'], $f['note']]), ['emoji' => '👍']), fn (array $f) => ['post_id' => $f['post']->id, 'note_id' => $f['note']->id, 'emoji' => '👍']],
         'get-tiktok-creator-info-tool' => [GetTikTokCreatorInfoTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.composer.account', $f['tiktok'])), fn (array $f) => ['account_id' => $f['tiktok']->id]],
         'list-posts-tool' => [ListPostsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.posts.index')), fn (array $f) => []],
         'preview-post-tool' => [PreviewPostTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],

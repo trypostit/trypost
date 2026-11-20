@@ -57,6 +57,16 @@ test('custom returns the given dates', function () {
         ->toBe(['start' => '2026-01-05', 'end' => '2026-02-10']);
 });
 
+test('a viewer stored with an alias missing from PHP\'s list still opens insights', function () {
+    $user = analyticsPresetUserWithSnapshot(now('UTC')->subDay()->toDateString());
+    $user->update(['timezone' => 'Canada/East-Saskatchewan']);
+
+    $this->actingAs($user)
+        ->get(route('app.insights', ['range' => '7d']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('insights/Index'));
+});
+
 test('an unknown preset is rejected', function () {
     $user = analyticsPresetUserWithSnapshot('2026-09-20');
 

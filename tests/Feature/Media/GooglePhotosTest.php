@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Dto\RemoteFile;
 use App\Enums\Media\Source;
+use App\Enums\Media\Type as MediaType;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\Account;
 use App\Models\Media;
@@ -56,7 +57,7 @@ beforeEach(function () {
 
 function googlePhotosApi(): string
 {
-    return rtrim((string) config('trypost.media_sources.google_photos.api'), '/').'/v1';
+    return config('trypost.media_sources.google_photos.api').'/v1';
 }
 
 /**
@@ -244,7 +245,7 @@ test('the token is in no response, queued job or database table', function () {
 
     expect($rows)->not->toContain(GOOGLE_PHOTOS_TEST_TOKEN);
 
-    $job = new ImportRemoteMedia('import-id', $this->workspace->id, $this->user->id, new RemoteFile('https://lh3.googleusercontent.com/photo-one=d', 'beach.png'), GOOGLE_PHOTOS_TEST_SESSION);
+    $job = new ImportRemoteMedia('import-id', $this->workspace->id, $this->user->id, new RemoteFile('https://lh3.googleusercontent.com/photo-one=d', 'beach.png'), MediaType::cases(), GOOGLE_PHOTOS_TEST_SESSION);
 
     expect(serialize($job))->not->toContain(GOOGLE_PHOTOS_TEST_TOKEN);
 });

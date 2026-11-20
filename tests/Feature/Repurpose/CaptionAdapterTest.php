@@ -22,11 +22,11 @@ test('a caption that does not fit is truncated at a word boundary when ai is una
     $workspace = Workspace::factory()->create();
     $caption = str_repeat('palavra ', 2000);
 
-    expect(Platform::TikTok->contentOverflow($caption))->toBeGreaterThan(0);
+    expect(mb_strlen($caption))->toBeGreaterThan(Platform::TikTok->maxContentLength());
 
     $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
 
-    expect(Platform::TikTok->contentOverflow($result))->toBe(0)
+    expect(mb_strlen($result))->toBeLessThanOrEqual(Platform::TikTok->maxContentLength())
         ->and($result)->not->toEndWith('palavr')
         ->and($result)->toEndWith('palavra');
 });
@@ -37,7 +37,7 @@ test('truncation respects the tightest limit we support', function () {
 
     $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::YouTube);
 
-    expect(Platform::YouTube->contentOverflow($result))->toBe(0)
+    expect(mb_strlen($result))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength())
         ->and($result)->toStartWith('A really long YouTube Short caption');
 });
 
@@ -63,7 +63,7 @@ test('a shortened caption that still overflows falls back to truncation', functi
 
     $result = app(CaptionAdapter::class)->adapt($workspace, $user, str_repeat('palavra ', 2000), Platform::YouTube);
 
-    expect(Platform::YouTube->contentOverflow($result))->toBe(0)
+    expect(mb_strlen($result))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength())
         ->and($result)->toStartWith('palavra');
 });
 
@@ -76,7 +76,7 @@ test('truncation targets the text the publisher sends, not the raw caption', fun
     $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::X);
     $sent = app(ContentSanitizer::class)->displayText($result, Platform::X);
 
-    expect(Platform::X->contentOverflow($sent))->toBe(0)
+    expect(mb_strlen($sent))->toBeLessThanOrEqual(Platform::X->maxContentLength())
         ->and(mb_strlen($sent))->toBeGreaterThan(200);
 });
 
@@ -86,7 +86,7 @@ test('a caption keeps almost the whole allowance when nothing rewrites it', func
 
     $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
 
-    expect(Platform::TikTok->contentOverflow($result))->toBe(0)
+    expect(mb_strlen($result))->toBeLessThanOrEqual(Platform::TikTok->maxContentLength())
         ->and(mb_strlen($result))->toBeGreaterThan(Platform::TikTok->maxContentLength() - 10);
 });
 
@@ -96,7 +96,7 @@ test('truncation keeps the line breaks the caption was written with', function (
 
     $result = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::TikTok);
 
-    expect(Platform::TikTok->contentOverflow($result))->toBe(0)
+    expect(mb_strlen($result))->toBeLessThanOrEqual(Platform::TikTok->maxContentLength())
         ->and($result)->toStartWith("Linha um\nLinha dois\n\n");
 });
 
@@ -106,7 +106,7 @@ test('a caption with no word boundary is cut hard rather than emptied', function
     $result = app(CaptionAdapter::class)->adapt($workspace, null, str_repeat('a', 500), Platform::YouTube);
 
     expect($result)->not->toBe('')
-        ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
+        ->and(mb_strlen($result))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength());
 });
 
 test('the shortener prompt carries no brand context', function () {
@@ -130,7 +130,7 @@ test('a self-hosted install with no ai configured still gets a caption that fits
     $result = app(CaptionAdapter::class)->adapt($workspace, $user, str_repeat('palavra ', 300), Platform::YouTube);
 
     expect($result)->not->toBe('')
-        ->and(Platform::YouTube->contentOverflow($result))->toBe(0);
+        ->and(mb_strlen($result))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength());
 });
 
 test('a single word longer than the limit is cut mid-word rather than emptied', function () {
@@ -141,7 +141,7 @@ test('a single word longer than the limit is cut mid-word rather than emptied', 
 
     expect($adapted)->not->toBe('')
         ->and(mb_strlen($adapted))->toBeLessThan(6000)
-        ->and(Platform::YouTube->contentOverflow($adapted))->toBe(0);
+        ->and(mb_strlen($adapted))->toBeLessThanOrEqual(Platform::YouTube->maxContentLength());
 });
 
 test('a caption of one long word without spaces terminates instead of looping', function () {
@@ -149,7 +149,7 @@ test('a caption of one long word without spaces terminates instead of looping', 
 
     $adapted = app(CaptionAdapter::class)->adapt($workspace, null, str_repeat('x', 500), Platform::X);
 
-    expect(Platform::X->contentOverflow($adapted))->toBe(0)
+    expect(mb_strlen($adapted))->toBeLessThanOrEqual(Platform::X->maxContentLength())
         ->and($adapted)->not->toBe('');
 });
 
@@ -160,7 +160,7 @@ test('newlines and repeated spaces survive truncation', function () {
     $adapted = app(CaptionAdapter::class)->adapt($workspace, null, $caption, Platform::X);
 
     expect($adapted)->toStartWith("First line\n\nSecond  line with  gaps")
-        ->and(Platform::X->contentOverflow($adapted))->toBe(0);
+        ->and(mb_strlen($adapted))->toBeLessThanOrEqual(Platform::X->maxContentLength());
 });
 
 test('two networks sharing a character limit ask the shortener once, not twice', function () {

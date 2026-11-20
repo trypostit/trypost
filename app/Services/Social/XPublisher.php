@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\X\MediaProcessingState;
 use App\Exceptions\PlatformUnavailableException;
@@ -17,6 +18,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
+use App\Support\Social\XPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -78,11 +80,7 @@ class XPublisher
             $post,
             $rootHash,
             fn (): array => $this->publishRoot($post, $content),
-            fn (string $text, Collection $media, array $parent): array => $this->createTweet([
-                ...($text !== '' ? ['text' => $text] : []),
-                ...$this->mediaPayload($media),
-                'reply' => ['in_reply_to_tweet_id' => (string) $parent['id']],
-            ], $account->username),
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->publishReply($text, $media, $parent, $poll, $account->username),
         );
     }
 
@@ -91,19 +89,14 @@ class XPublisher
      */
     private function publishRoot(Post $post, ?string $content): array
     {
-        $data = [];
-
-        if (! empty($content)) {
-            $data['text'] = $content;
-        }
-
-        $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
+        $isPoll = $post->content_type === ContentType::XPoll;
+        $data = $this->withText($content, $this->attachments($content, $post->mediaItems, $isPoll, $post->meta));
 
         if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
         }
 
-        if (empty($content) && ! isset($data['media'])) {
+        if (blank($content) && ! isset($data['media'])) {
             throw new XPublishException(
                 userMessage: 'X posts require either text or media. Please add content to your post.',
                 category: ErrorCategory::MediaFormat,
@@ -111,6 +104,73 @@ class XPublisher
         }
 
         return $this->createTweet($data, $post->socialAccount->username);
+    }
+
+    /**
+     * A reply of the thread, under the post before it.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $parent
+     * @param  array<string, mixed>|null  $poll
+     * @return array{id: string, url: ?string}
+     */
+    private function publishReply(string $text, Collection $media, array $parent, ?array $poll, string $username): array
+    {
+        $data = $this->withText($text, [
+            ...$this->attachments($text, $media, filled($poll), ['poll' => $poll]),
+            'reply' => ['in_reply_to_tweet_id' => (string) data_get($parent, 'id')],
+        ]);
+
+        return $this->createTweet($data, $username);
+    }
+
+    /**
+     * The tweet's fields, led by its text when it has any.
+     *
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function withText(?string $text, array $fields): array
+    {
+        if (blank($text)) {
+            return $fields;
+        }
+
+        return ['text' => $text, ...$fields];
+    }
+
+    /**
+     * What a post of the thread attaches: its poll, or its media.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @return array<string, mixed>
+     */
+    private function attachments(?string $text, Collection $media, bool $isPoll, ?array $meta): array
+    {
+        if ($isPoll) {
+            return ['poll' => $this->pollPayload($text, $media, $meta)];
+        }
+
+        return $this->mediaPayload($media);
+    }
+
+    /**
+     * A poll, on the post or on a reply, needs its question (that post's text),
+     * distinct choices and a length, and cannot carry media. `$meta` holds the
+     * poll under `poll`: the post's meta, or the reply itself.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @return array{options: list<string>, duration_minutes: int}
+     */
+    private function pollPayload(?string $question, Collection $media, ?array $meta): array
+    {
+        $violation = XPoll::publishViolation($question, $media->isNotEmpty(), $meta);
+
+        if (filled($violation)) {
+            throw new XPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
+        }
+
+        return XPoll::payload($meta);
     }
 
     /**
@@ -400,7 +460,7 @@ class XPublisher
 
         // Videos/GIFs (and any finalize that reports processing_info) must finish
         // before we attach the media_id to a tweet — otherwise X returns
-        // invalid-request / invalid media IDs.
+        // ProblemType::InvalidRequest / invalid media IDs.
         $processingInfo = data_get($finalizeData, 'data.processing_info')
             ?? data_get($finalizeData, 'processing_info');
 

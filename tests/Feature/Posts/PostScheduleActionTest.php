@@ -247,13 +247,21 @@ test('moving a post to drafts stays on the tab it was moved from', function () {
         ->assertRedirect($queue);
 });
 
-test('adding a draft to the queue from its card goes to the queue tab', function (string $action) {
+test('adding a draft to the queue from its card stays on the tab it was added from', function (string $action, bool $onChannelPage) {
     $this->channel->update(['posting_schedule' => PostingSchedule::empty()->withTime(1, '10:00')]);
     $draft = scheduleActionPost($this->channel, $this->user);
+    $drafts = $onChannelPage
+        ? route('app.channels.publish', ['account' => $this->channel, 'tab' => 'drafts'])
+        : route('app.posts.index', ['tab' => 'drafts']);
 
     $this->actingAs($this->user)
-        ->from(route('app.posts.index', ['tab' => 'drafts']))
+        ->from($drafts)
         ->put(route('app.posts.schedule.update', $draft), ['action' => $action])
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.posts.index', ['tab' => 'queue']));
-})->with(['queue_next', 'queue_top']);
+        ->assertRedirect($drafts);
+
+    expect($draft->fresh()->status)->toBe(PostStatus::Scheduled);
+})->with(['queue_next', 'queue_top'])->with([
+    'the drafts tab' => false,
+    'a channel drafts tab' => true,
+]);

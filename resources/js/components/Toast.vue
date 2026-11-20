@@ -26,17 +26,17 @@ watch(
         if (flash.banner) {
             switch (flash.bannerStyle) {
                 case 'danger':
-                    toast.error(flash.banner, { id: 'flash-banner' });
+                    toast.error(flash.banner, { id: 'flash-banner', testId: 'flash-banner-toast' });
                     break;
                 case 'warning':
-                    toast.warning(flash.banner, { id: 'flash-banner' });
+                    toast.warning(flash.banner, { id: 'flash-banner', testId: 'flash-banner-toast' });
                     break;
                 case 'info':
-                    toast.info(flash.banner, { id: 'flash-banner' });
+                    toast.info(flash.banner, { id: 'flash-banner', testId: 'flash-banner-toast' });
                     break;
                 case 'success':
                 default:
-                    toast.success(flash.banner, { id: 'flash-banner' });
+                    toast.success(flash.banner, { id: 'flash-banner', testId: 'flash-banner-toast' });
             }
         }
 

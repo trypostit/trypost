@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Beitrag teilweise veröffentlicht',
         'post_failed' => 'Beitrag fehlgeschlagen',
         'post_deleted' => 'Beitrag gelöscht',
+        'post_deleted_on_network' => 'Beitrag im Netzwerk gelöscht',
+        'post_restored' => 'Beitrag wieder im Netzwerk',
     ],
     'event_descriptions' => [
         'post_created' => 'Wenn ein neuer Beitrag erstellt wird.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Wenn ein Beitrag auf einem Kanal live geht.',
         'post_failed' => 'Wenn ein Beitrag nicht veröffentlicht werden kann.',
         'post_deleted' => 'Wenn ein Beitrag gelöscht wird.',
+        'post_deleted_on_network' => 'Wenn ein Beitrag in seinem Netzwerk gelöscht wird.',
+        'post_restored' => 'Wenn ein gelöschter Beitrag wieder im Netzwerk ist.',
     ],
     'http_reasons' => [
         'unknown' => 'Unbekannt',

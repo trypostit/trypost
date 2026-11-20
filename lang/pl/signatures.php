@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Sygnatury',
     'description' => 'Teksty wielokrotnego użytku do postów.',
@@ -16,10 +18,10 @@ return [
         'created_at' => 'Utworzono',
     ],
 
-    'row_actions' => 'Akcje podpisu',
     'actions' => [
         'edit' => 'Edytuj sygnaturę',
-        'delete' => 'Usuń sygnaturę',
+        'delete' => 'Usuń',
+        'settings' => 'Ustawienia',
     ],
 
     'create' => [

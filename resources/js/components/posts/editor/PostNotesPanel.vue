@@ -1,35 +1,55 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
+import type { InfiniteScrollRef } from '@inertiajs/core';
+import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowUp, IconLoader2 } from '@tabler/icons-vue';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { trans } from 'laravel-vue-i18n';
+import {
+    computed,
+    nextTick,
+    onMounted,
+    ref,
+    watch,
+    type ComponentPublicInstance,
+} from 'vue';
+import { toast } from 'vue-sonner';
 
+import PostNoteEditor from '@/components/posts/editor/PostNoteEditor.vue';
 import PostNoteItem from '@/components/posts/editor/PostNoteItem.vue';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import {
     InputGroup,
     InputGroupAddon,
     InputGroupButton,
-    InputGroupTextarea,
 } from '@/components/ui/input-group';
 import { usePostEcho } from '@/composables/echo/usePostEcho';
+import { blank, filled } from '@/lib/helpers';
+import { afterPaint } from '@/lib/utils';
 import {
     destroy as destroyNote,
-    index as fetchNotes,
+    show as showNote,
     store as storeNote,
     update as updateNote,
 } from '@/routes/app/posts/notes';
-import type { PostNote } from '@/types/post-note';
+import { index as fetchMentionables } from '@/routes/app/posts/notes/mentionables';
+import {
+    destroy as removeReaction,
+    update as addReaction,
+} from '@/routes/app/posts/notes/reactions';
+import type { SharedData } from '@/types';
+import type {
+    PostNote,
+    PostNoteMentionable,
+    PostNotesPage,
+} from '@/types/post-note';
 
-interface PaginatedResponse {
-    data: PostNote[];
-    meta: {
-        current_page: number;
-        last_page: number;
-        total: number;
-    };
-}
-
+/**
+ * The notes thread of the post whose notes the page has open: the notes come
+ * from the page's `postNotes` scroll prop (newest first, shown oldest first),
+ * and scrolling up loads older pages through `<InfiniteScroll reverse>`. A
+ * change touches only its note, from the request's answer or from the
+ * `post.note.changed` broadcast (which names the note), so older pages and
+ * the scroll stay where they are.
+ */
 const props = defineProps<{
     postId: string;
     currentUserId: string;
@@ -40,42 +60,70 @@ const emit = defineEmits<{
     count: [total: number];
 }>();
 
-const page = usePage();
+const page = usePage<
+    SharedData & {
+        openPostNotesId?: string | null;
+        postNotes?: PostNotesPage | null;
+    }
+>();
 const currentUser = computed(() => page.props.auth.user);
 
-const csrfToken =
-    document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        ?.content ?? '';
+const sendHttp = useHttp<{ body: string }, PostNote>({ body: '' });
+const noteHttp = useHttp<{ body: string }, PostNote>({ body: '' });
+const fetchHttp = useHttp<Record<string, never>, PostNote>({});
+const deleteHttp = useHttp({});
+const reactionHttp = useHttp<{ emoji: string }, PostNote>({ emoji: '' });
+const mentionablesHttp = useHttp<
+    Record<string, never>,
+    PostNoteMentionable[]
+>({});
 
-const notes = ref<PostNote[]>([]);
-const total = ref(0);
-const currentPage = ref(1);
-const lastPage = ref(1);
-const loading = ref(false);
-const sending = ref(false);
+/** This post's notes as the page holds them (newest first), once loaded. */
+const thread = computed(() =>
+    page.props.openPostNotesId === props.postId ? page.props.postNotes : null,
+);
+
+/** Oldest first, each note once: a page loaded after a new note can repeat the last one. */
+const notes = computed(() => [
+    ...new Map(
+        [...(thread.value?.data ?? [])].reverse().map((note) => [note.id, note]),
+    ).values(),
+]);
 
 const newBody = ref('');
 const highlightedId = ref<string | null>(null);
 
 const scrollContainer = ref<HTMLDivElement | null>(null);
-const composerInput = ref<{ $el: HTMLTextAreaElement } | null>(null);
+const notesList = ref<HTMLOListElement | null>(null);
+const noteElements = new Map<string, Element>();
 
-watch(total, (count) => emit('count', count));
+/** Keeps each rendered note's element by id, for scrolling to a linked note. */
+const trackNote = (
+    noteId: string,
+    element: Element | ComponentPublicInstance | null,
+): void => {
+    if (element instanceof Element) {
+        noteElements.set(noteId, element);
+    } else {
+        noteElements.delete(noteId);
+    }
+};
+const infiniteScroll = ref<InfiniteScrollRef | null>(null);
+const composerInput = ref<InstanceType<typeof PostNoteEditor> | null>(
+    null,
+);
+const mentionables = ref<PostNoteMentionable[] | null>(null);
 
-const hasOlderNotes = computed(() => currentPage.value < lastPage.value);
-const canSend = computed(() => newBody.value.trim() !== '' && !sending.value);
+watch(
+    () => thread.value?.meta.total,
+    (total) => {
+        if (filled(total)) {
+            emit('count', total);
+        }
+    },
+);
 
-const request = (url: string, method = 'GET', body?: object) =>
-    fetch(url, {
-        method,
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-    });
+const canSend = computed(() => filled(newBody.value) && !sendHttp.processing);
 
 const scrollToBottom = () => {
     if (scrollContainer.value) {
@@ -83,139 +131,239 @@ const scrollToBottom = () => {
     }
 };
 
-const loadNotes = async (page = 1) => {
-    loading.value = true;
+/** Whether the list shows its last note, so a new one should keep it in view. */
+const isAtBottom = (): boolean => {
+    const container = scrollContainer.value;
 
-    try {
-        const response = await request(
-            fetchNotes.url(props.postId, { query: { page } }),
+    return (
+        !container ||
+        container.scrollHeight - container.scrollTop - container.clientHeight < 48
+    );
+};
+
+/**
+ * Puts a note in the thread: replaces it wherever it shows (a page loaded after
+ * a new note can repeat one), or, for a new note, adds it as the newest.
+ */
+const putNote = async (note: PostNote, isNew = false): Promise<void> => {
+    const loaded = thread.value;
+
+    if (!loaded) {
+        return;
+    }
+
+    if (loaded.data.some((item) => item.id === note.id)) {
+        loaded.data = loaded.data.map((item) =>
+            item.id === note.id ? note : item,
         );
 
-        if (!response.ok) {
+        return;
+    }
+
+    if (!isNew) {
+        return;
+    }
+
+    const follow = isAtBottom();
+
+    loaded.data.unshift(note);
+    loaded.meta.total++;
+
+    if (follow) {
+        await nextTick();
+        scrollToBottom();
+    }
+};
+
+/** Takes a note out of the thread, every copy of it. */
+const dropNote = (noteId: string): void => {
+    const loaded = thread.value;
+
+    if (!loaded?.data.some((item) => item.id === noteId)) {
+        return;
+    }
+
+    loaded.data = loaded.data.filter((item) => item.id !== noteId);
+    loaded.meta.total--;
+};
+
+const failed = (message: string): void => {
+    toast.error(message, { testId: 'note-error-toast' });
+};
+
+/** Another member (or this page) changed a note: refresh that note alone. */
+usePostEcho<{ note_id: string | null; change: string }>(
+    props.postId,
+    '.post.note.changed',
+    async ({ note_id: noteId, change }) => {
+        if (!filled(noteId)) {
             return;
         }
 
-        const data: PaginatedResponse = await response.json();
-        const chronological = [...data.data].reverse();
-        currentPage.value = data.meta.current_page;
-        lastPage.value = data.meta.last_page;
-        total.value = data.meta.total;
+        if (change === 'deleted') {
+            dropNote(noteId);
 
-        if (page === 1) {
-            notes.value = chronological;
-            await nextTick();
-            scrollToBottom();
-        } else {
-            notes.value = [...chronological, ...notes.value];
+            return;
         }
-    } finally {
-        loading.value = false;
-    }
-};
 
-usePostEcho(props.postId, '.post.note.changed', () => {
-    void loadNotes(1);
-});
+        const note = await fetchHttp
+            .get(showNote.url({ post: props.postId, note: noteId }))
+            .catch(() => null);
 
-const loadOlderNotes = () => {
-    if (hasOlderNotes.value && !loading.value) {
-        void loadNotes(currentPage.value + 1);
-    }
-};
+        if (filled(note)) {
+            await putNote(note, change === 'created');
+        }
+    },
+);
 
 const focusComposer = () => {
-    composerInput.value?.$el.focus();
+    composerInput.value?.focus();
+};
+
+/** The people a note can mention, loaded once when the first `@` is typed. */
+const loadMentionables = async () => {
+    if (mentionables.value !== null || mentionablesHttp.processing) {
+        return;
+    }
+
+    const people = await mentionablesHttp
+        .get(fetchMentionables.url(props.postId))
+        .catch(() => null);
+
+    if (people) {
+        mentionables.value = people;
+    }
+};
+
+const toggleReaction = async (
+    note: PostNote,
+    emoji: string,
+    reacted: boolean,
+) => {
+    reactionHttp.emoji = emoji;
+
+    const updated = await reactionHttp
+        .submit((reacted ? removeReaction : addReaction)({
+            post: props.postId,
+            note: note.id,
+        }))
+        .catch(() => null);
+
+    if (filled(updated)) {
+        await putNote(updated);
+    } else {
+        failed(reactionHttp.errors.emoji ?? trans('notes.errors.not_reacted'));
+    }
 };
 
 const sendNote = async () => {
     const body = newBody.value.trim();
 
-    if (!body || sending.value) {
+    if (blank(body) || sendHttp.processing) {
         return;
     }
 
-    sending.value = true;
+    sendHttp.body = body;
+    composerInput.value?.markSent();
 
-    try {
-        const response = await request(storeNote.url(props.postId), 'POST', {
-            body,
-        });
+    const created = await sendHttp
+        .post(storeNote.url(props.postId))
+        .catch(() => null);
 
-        if (!response.ok) {
-            return;
-        }
+    if (!filled(created)) {
+        failed(sendHttp.errors.body ?? trans('notes.errors.not_saved'));
 
-        const created: PostNote = await response.json();
-        notes.value.push(created);
-
-        total.value++;
-        newBody.value = '';
-        await nextTick();
-        scrollToBottom();
-        focusComposer();
-    } finally {
-        sending.value = false;
+        return;
     }
+
+    composerInput.value?.dropSent();
+    await putNote(created, true);
+    scrollToBottom();
+    focusComposer();
 };
 
-const saveNote = async (note: PostNote, body: string) => {
-    const response = await request(
-        updateNote.url({ post: props.postId, note: note.id }),
-        'PUT',
-        { body },
-    );
+/** Saves an edit; `done(false)` keeps the editor open with the text. */
+const saveNote = async (
+    note: PostNote,
+    body: string,
+    done: (saved: boolean) => void,
+) => {
+    noteHttp.body = body;
 
-    if (!response.ok) {
-        return;
+    const updated = await noteHttp
+        .put(updateNote.url({ post: props.postId, note: note.id }))
+        .catch(() => null);
+
+    if (filled(updated)) {
+        await putNote(updated);
+    } else {
+        failed(noteHttp.errors.body ?? trans('notes.errors.not_saved'));
     }
 
-    const updated: PostNote = await response.json();
-    note.body = updated.body;
-    note.updated_at = updated.updated_at;
+    done(filled(updated));
 };
 
 const deleteNote = async (note: PostNote) => {
-    const response = await request(
-        destroyNote.url({ post: props.postId, note: note.id }),
-        'DELETE',
-    );
+    const deleted = await deleteHttp
+        .delete(destroyNote.url({ post: props.postId, note: note.id }))
+        .then(() => true)
+        .catch(() => false);
 
-    if (!response.ok) {
-        return;
-    }
-
-    notes.value = notes.value.filter((item) => item.id !== note.id);
-    total.value = Math.max(0, total.value - 1);
-};
-
-const handleComposerKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-        event.preventDefault();
-        void sendNote();
+    if (deleted) {
+        dropNote(note.id);
+    } else {
+        failed(trans('notes.errors.not_deleted'));
     }
 };
 
-const focusNote = async (noteId: string) => {
-    await nextTick();
-    const selector = `[data-note-id="${noteId}"]`;
-    let element = scrollContainer.value?.querySelector<HTMLElement>(selector);
+/**
+ * Loads the next older page; false when there is none or it fails. It settles
+ * when the next visit finishes, which also covers a load the scroll started.
+ */
+const loadOlderNotes = (): Promise<boolean> =>
+    new Promise((resolve) => {
+        const scroll = infiniteScroll.value;
 
-    while (!element && hasOlderNotes.value) {
-        const previousPage = currentPage.value;
-        await loadNotes(currentPage.value + 1);
+        if (!scroll?.hasNext()) {
+            resolve(false);
 
-        if (currentPage.value === previousPage) {
-            break;
+            return;
         }
 
-        await nextTick();
-        element = scrollContainer.value?.querySelector<HTMLElement>(selector);
+        const stop = router.on('finish', (event) => {
+            stop();
+            resolve(event.detail.visit.completed);
+        });
+
+        scroll.fetchNext();
+    });
+
+/** The note's element, loading older pages until it shows up or none are left. */
+const findNote = async (noteId: string): Promise<Element | null> => {
+    await nextTick();
+
+    const element = noteElements.get(noteId);
+
+    if (element) {
+        return element;
     }
+
+    return (await loadOlderNotes()) ? findNote(noteId) : null;
+};
+
+/**
+ * Scrolls to a note and highlights it. The scroll waits for the page to settle:
+ * `<InfiniteScroll reverse>` keeps the reader's place after loading an older
+ * page, which would otherwise scroll the note back out of view.
+ */
+const focusNote = async (noteId: string) => {
+    const element = await findNote(noteId);
 
     if (!element) {
         return;
     }
 
+    await afterPaint();
     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     highlightedId.value = noteId;
     setTimeout(() => {
@@ -225,31 +373,16 @@ const focusNote = async (noteId: string) => {
     }, 4000);
 };
 
-onMounted(async () => {
-    await loadNotes(1);
-
-    if (props.highlightNoteId) {
-        await focusNote(props.highlightNoteId);
+/** Opens on the linked note once the thread has loaded, and again when the link changes. */
+const focusLinkedNote = () => {
+    if (filled(thread.value) && filled(props.highlightNoteId)) {
+        void focusNote(props.highlightNoteId);
     }
-});
+};
 
-watch(
-    () => props.highlightNoteId,
-    (noteId) => {
-        if (noteId) {
-            void focusNote(noteId);
-        }
-    },
-);
-
-watch(
-    () => props.postId,
-    () => {
-        notes.value = [];
-        currentPage.value = 1;
-        void loadNotes(1);
-    },
-);
+watch(() => filled(thread.value), focusLinkedNote);
+watch(() => props.highlightNoteId, focusLinkedNote);
+onMounted(focusLinkedNote);
 </script>
 
 <template>
@@ -259,55 +392,63 @@ watch(
             class="-mx-2 max-h-80 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-2"
             data-testid="notes-list"
         >
-            <div v-if="hasOlderNotes" class="flex justify-start pb-2">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="-ms-2 text-muted-foreground"
-                    :disabled="loading"
-                    @click="loadOlderNotes"
-                >
-                    <IconLoader2
-                        v-if="loading"
-                        class="size-3.5 animate-spin"
-                    />
-                    {{ $t('notes.load_more') }}
-                </Button>
-            </div>
-
-            <div
-                v-if="loading && notes.length === 0"
-                class="flex items-center gap-3 py-1"
-            >
+            <div v-if="blank(thread)" class="flex items-center gap-3 py-1">
                 <IconLoader2
                     class="size-4 animate-spin text-muted-foreground"
                 />
             </div>
 
             <p
-                v-else-if="notes.length === 0"
+                v-else-if="blank(notes)"
                 class="py-1 text-sm text-muted-foreground"
                 data-testid="notes-empty"
             >
                 {{ $t('notes.empty') }}
             </p>
 
-            <ol v-else class="flex flex-col">
-                <li
-                    v-for="note in notes"
-                    :key="note.id"
-                    class="relative pb-3 last:pb-0 [&:not(:last-child)]:before:absolute [&:not(:last-child)]:before:start-[13.5px] [&:not(:last-child)]:before:top-9 [&:not(:last-child)]:before:bottom-1 [&:not(:last-child)]:before:w-px [&:not(:last-child)]:before:bg-border-strong"
-                >
-                    <PostNoteItem
-                        :note="note"
-                        :current-user-id="currentUserId"
-                        :highlighted="highlightedId === note.id"
-                        @save="saveNote(note, $event)"
-                        @delete="deleteNote(note)"
-                    />
-                </li>
-            </ol>
+            <InfiniteScroll
+                v-else
+                ref="infiniteScroll"
+                data="postNotes"
+                reverse
+                preserve-url
+                :items-element="() => notesList"
+            >
+                <template #next="{ loading }">
+                    <div
+                        v-if="loading"
+                        class="flex justify-center pb-2"
+                        data-testid="notes-loading-older"
+                    >
+                        <IconLoader2
+                            class="size-4 animate-spin text-muted-foreground"
+                        />
+                    </div>
+                </template>
+
+                <ol ref="notesList" class="flex flex-col">
+                    <li
+                        v-for="note in notes"
+                        :key="note.id"
+                        :ref="(element) => trackNote(note.id, element)"
+                        class="relative pb-3 last:pb-0 [&:not(:last-child)]:before:absolute [&:not(:last-child)]:before:start-[13.5px] [&:not(:last-child)]:before:top-9 [&:not(:last-child)]:before:bottom-1 [&:not(:last-child)]:before:w-px [&:not(:last-child)]:before:bg-border-strong"
+                    >
+                        <PostNoteItem
+                            :note="note"
+                            :current-user-id="currentUserId"
+                            :mentionables="mentionables"
+                            :highlighted="highlightedId === note.id"
+                            @save="(body, done) => saveNote(note, body, done)"
+                            @delete="deleteNote(note)"
+                            @react="
+                                (emoji, reacted) =>
+                                    toggleReaction(note, emoji, reacted)
+                            "
+                            @need-people="loadMentionables"
+                        />
+                    </li>
+                </ol>
+            </InfiniteScroll>
         </div>
 
         <div class="flex shrink-0 items-end gap-3">
@@ -319,18 +460,21 @@ watch(
                 fallback-class="bg-sidebar-accent text-sidebar-accent-foreground"
             />
             <InputGroup
-                class="min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
+                class="h-auto min-h-9 min-w-0 flex-1 items-end rounded-[18px] border-transparent bg-muted shadow-none transition-colors hover:border-border-strong has-[[data-slot=input-group-control]:focus-visible]:bg-card"
                 data-testid="note-composer"
             >
-                <InputGroupTextarea
+                <PostNoteEditor
                     ref="composerInput"
                     v-model="newBody"
-                    rows="1"
+                    :people="mentionables"
+                    :current-user-id="currentUserId"
                     :placeholder="$t('notes.placeholder')"
                     :aria-label="$t('notes.placeholder')"
-                    class="max-h-28 min-h-0 py-[7px] ps-4 leading-5"
+                    data-slot="input-group-control"
+                    class="max-h-28 min-h-0 w-full overflow-y-auto bg-transparent py-[7px] ps-4 pe-2 text-sm leading-5"
                     data-testid="note-input"
-                    @keydown="handleComposerKeydown"
+                    @submit="sendNote"
+                    @need-people="loadMentionables"
                 />
                 <InputGroupAddon align="inline-end" class="pb-1.5">
                     <InputGroupButton
@@ -343,7 +487,7 @@ watch(
                         @click="sendNote"
                     >
                         <IconLoader2
-                            v-if="sending"
+                            v-if="sendHttp.processing"
                             class="size-3.5 animate-spin"
                         />
                         <IconArrowUp v-else class="size-3.5" />

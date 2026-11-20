@@ -28,37 +28,6 @@ function singleChannelComposerWorkspace(): array
     return [$user, $workspace];
 }
 
-/**
- * The composer opens as an animated dialog and swaps editors when the channel
- * count changes. Poll from the page (never sleep()) until the element is laid out.
- */
-function waitForSingleChannelComposerTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForSingleChannelComposerClosed(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 80; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
 test('one channel opens its own editor directly and a second channel returns to the shared step', function () {
     [$user, $workspace] = singleChannelComposerWorkspace();
     $youtube = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
@@ -66,7 +35,8 @@ test('one channel opens its own editor directly and a second channel returns to 
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForSingleChannelComposerTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->fill('@composer-base-content', 'Typed before choosing')
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$youtube->id}")
@@ -113,13 +83,14 @@ test('saving a single channel draft keeps its network fields on the post', funct
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForSingleChannelComposerTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$youtube->id}")
         ->fill("@composer-caption-{$youtube->id}", 'A short about the launch')
         ->fill('@youtube-title', 'Launch title')
         ->click('@composer-save-draft');
-    waitForSingleChannelComposerClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
     expect($post->status)->toBe(PostStatus::Draft)
@@ -135,7 +106,8 @@ test('the youtube title follows the caption until the title is edited', function
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForSingleChannelComposerTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->fill('@composer-base-content', "Typed first\nMore details below")
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$youtube->id}")
@@ -153,7 +125,7 @@ test('the youtube title follows the caption until the title is edited', function
         ->assertValue('@youtube-title', 'My own title')
         ->assertNoJavaScriptErrors()
         ->click('@composer-save-draft');
-    waitForSingleChannelComposerClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
     expect(data_get($post->meta, 'title'))->toBe('My own title');
@@ -165,14 +137,16 @@ test('scheduling a single channel saves its post with the chosen format', functi
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForSingleChannelComposerTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$facebook->id}")
         ->assertVisible("@composer-type-{$facebook->id}")
         ->fill("@composer-caption-{$facebook->id}", 'Scheduled for one page')
         ->click('@composer-schedule-trigger')
         ->click('@composer-schedule-custom');
-    waitForSingleChannelComposerTestId($page, 'composer-schedule-picker');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-schedule-picker');
 
     $query = '[...document.querySelectorAll("[data-testid^=composer-schedule-day-]")].find((day) => !day.hasAttribute("data-disabled") && !day.hasAttribute("data-outside-view") && !day.hasAttribute("data-zone-today"))?.dataset.testid.replace("composer-schedule-day-", "") ?? null';
     $day = $page->script($query);
@@ -184,7 +158,7 @@ test('scheduling a single channel saves its post with the chosen format', functi
         ->fill('@composer-schedule-time-input', '1715')
         ->click('@composer-schedule-done')
         ->click('@composer-submit');
-    waitForSingleChannelComposerClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
     expect($post->status)->toBe(PostStatus::Scheduled)
@@ -207,7 +181,8 @@ test('editing a single channel post opens its own editor', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post));
-    waitForSingleChannelComposerTestId($page, 'composer-customization');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-customization');
     $page->assertValue("@composer-caption-{$account->id}", 'Already written')
         ->assertVisible('@composer-submit')
         ->assertMissing('@composer-next')
@@ -223,7 +198,8 @@ test('a channel that needs media keeps the shared step and shows the requirement
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));
-    waitForSingleChannelComposerTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$x->id}")
         ->fill("@composer-caption-{$x->id}", 'Text only')

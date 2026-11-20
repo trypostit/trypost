@@ -1,5 +1,6 @@
-import { ref, type Ref } from 'vue';
+import { computed, type ComputedRef } from 'vue';
 
+import { useUserStorage } from '@/composables/useBrowserStorage';
 import type { PerformanceMetric } from '@/types/analytics';
 
 export type { PerformanceMetric };
@@ -28,52 +29,37 @@ export const DEFAULT_PERFORMANCE_COLUMNS: readonly PerformanceMetric[] = [
     'engagement_rate',
 ];
 
-const STORAGE_KEY = 'insights.performanceColumns';
-
 const ordered = (selected: PerformanceMetric[]): PerformanceMetric[] =>
     PERFORMANCE_METRICS.filter((metric) => selected.includes(metric));
 
-const readColumns = (): PerformanceMetric[] => {
-    try {
-        const stored: unknown = JSON.parse(
-            window.localStorage.getItem(STORAGE_KEY) ?? 'null',
-        );
-
-        if (Array.isArray(stored)) {
-            const columns = ordered(stored as PerformanceMetric[]);
-
-            if (columns.length > 0) {
-                return columns;
-            }
-        }
-    } catch {
-        return [...DEFAULT_PERFORMANCE_COLUMNS];
-    }
-
-    return [...DEFAULT_PERFORMANCE_COLUMNS];
-};
-
-const columns = ref<PerformanceMetric[]>(readColumns());
-
+/** The Performance table's columns: the ones the user picked, in the table's order, else the defaults. */
 export const usePerformanceColumns = (): {
-    columns: Ref<PerformanceMetric[]>;
+    columns: ComputedRef<PerformanceMetric[]>;
     toggleColumn: (metric: PerformanceMetric) => void;
 } => {
-    const toggleColumn = (metric: PerformanceMetric): void => {
-        const next = columns.value.includes(metric)
-            ? columns.value.filter((column) => column !== metric)
-            : ordered([...columns.value, metric]);
+    const stored = useUserStorage('insights.performanceColumns', [
+        ...DEFAULT_PERFORMANCE_COLUMNS,
+    ]);
 
-        if (next.length === 0) {
+    const columns = computed((): PerformanceMetric[] => {
+        const picked = ordered(stored.value);
+
+        if (picked.length === 0) {
+            return [...DEFAULT_PERFORMANCE_COLUMNS];
+        }
+
+        return picked;
+    });
+
+    const toggleColumn = (metric: PerformanceMetric): void => {
+        if (!columns.value.includes(metric)) {
+            stored.value = ordered([...columns.value, metric]);
+
             return;
         }
 
-        columns.value = next;
-
-        try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-            return;
+        if (columns.value.length > 1) {
+            stored.value = columns.value.filter((column) => column !== metric);
         }
     };
 

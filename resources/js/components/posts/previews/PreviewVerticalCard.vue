@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { IconPlayerPlayFilled } from '@tabler/icons-vue';
 
+import type { PreviewAction } from '@/components/posts/previews/types';
 import VerticalMediaCanvas from '@/components/posts/previews/VerticalMediaCanvas.vue';
 import type { MediaItem } from '@/types/media';
 
-import type { PreviewAction } from './types';
 
 withDefaults(
     defineProps<{

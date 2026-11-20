@@ -1,8 +1,8 @@
 import { getActiveLanguage, loadLanguageAsync } from 'laravel-vue-i18n';
 import { ref } from 'vue';
 
-import dayjs from './dayjs';
-import type { Auth, Language } from './types';
+import dayjs from '@/dayjs';
+import type { Auth, Language } from '@/types';
 
 interface LocaleProps {
     locale?: string;
@@ -98,7 +98,9 @@ export const syncLocale = (props: LocaleProps): void => {
 export const i18nConfig = (lang: string) => ({
     lang,
     resolve: async (locale: string) => {
-        const langs = import.meta.glob('../../lang/*.json');
+        const langs = import.meta.glob<{ default: Record<string, string> }>(
+            '../../lang/*.json',
+        );
 
         return await langs[`../../lang/php_${locale}.json`]();
     },

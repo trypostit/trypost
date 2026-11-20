@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '签名',
     'description' => '可重复添加到帖子的文本。',
@@ -16,10 +18,10 @@ return [
         'created_at' => '创建时间',
     ],
 
-    'row_actions' => '签名操作',
     'actions' => [
         'edit' => '编辑签名',
-        'delete' => '删除签名',
+        'delete' => '删除',
+        'settings' => '设置',
     ],
 
     'create' => [

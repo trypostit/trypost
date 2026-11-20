@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\ApiKeyEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
@@ -9,6 +11,7 @@ use App\Mcp\Tools\ApiKey\ListApiKeysTool;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
@@ -227,4 +230,29 @@ test('delete api key validates api_key_id required', function () {
         ->tool(DeleteApiKeyTool::class, []);
 
     $response->assertHasErrors();
+});
+
+test('creating an api key through mcp tracks api_key.created', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
+        ->assertOk();
+
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
+        && $job->distinctId === (string) $this->user->id
+        && $job->properties === ['workspace_id' => (string) $this->workspace->id]);
+});
+
+test('creating an api key through mcp still returns the plain token when tracking it fails', function () {
+    enablePostHog();
+    failDispatchOf(CaptureAccountEvent::class);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('plain_token')->etc());
+
+    expect(AccessToken::where('workspace_id', $this->workspace->id)->where('name', 'My Key')->exists())->toBeTrue();
 });

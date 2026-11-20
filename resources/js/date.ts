@@ -1,6 +1,7 @@
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import { timeFormat, userTimezone } from '@/preferences';
+import type { DateRange } from '@/types/analytics';
 
 /**
  * A dayjs instance bound to the current language. `dayjs.locale()` is global and
@@ -26,6 +27,55 @@ const getUserTimezone = (): string => userTimezone.value;
  */
 const userNow = () =>
     localized(dayjs().tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'));
+
+/** A period's first day with only what its last day does not already say. */
+const rangeStart = (range: DateRange): string => {
+    const start = localized(range.start);
+    const end = localized(range.end);
+
+    if (start.year() !== end.year()) {
+        return start.format('D MMM YYYY');
+    }
+
+    if (start.month() !== end.month()) {
+        return start.format('D MMM');
+    }
+
+    return start.format('D');
+};
+
+/** A period with its last day in full: "25 – 31 Oct 2026", or the day alone when it is one day. */
+const dayMonthYearRange = (range: DateRange): string => spanOf(range, 'D MMM YYYY');
+
+/** A period ending on its last day in `endFormat`, the day alone when the period is one day. */
+const spanOf = (range: DateRange, endFormat: string): string => {
+    const end = localized(range.end).format(endFormat);
+
+    if (range.start === range.end) {
+        return end;
+    }
+
+    return `${rangeStart(range)} – ${end}`;
+};
+
+/** Whether a period starts and ends in the year `other` ends in. */
+const withinYearOf = (range: DateRange, other: DateRange): boolean => {
+    const year = localized(other.end).year();
+
+    return localized(range.start).year() === year && localized(range.end).year() === year;
+};
+
+/**
+ * `{ year: 'numeric' }` when the instant falls in another year than now, in
+ * that zone, so an `Intl` date shows the year only when it is not obvious.
+ */
+const yearUnlessCurrent = (
+    instant: dayjs.Dayjs,
+    timezone: string,
+): Intl.DateTimeFormatOptions =>
+    instant.tz(timezone).year() === dayjs().tz(timezone).year()
+        ? {}
+        : { year: 'numeric' };
 
 /** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
@@ -143,6 +193,23 @@ export default {
     },
 
     /**
+     * Weekday + month + day of a UTC instant in an explicit time zone, in the
+     * active locale's order ("Thursday, October 29"), with the year only when
+     * it is not the current one.
+     */
+    formatWeekdayMonthDay(date: string, timezone: string): string {
+        const instant = dayjs.utc(date);
+
+        return new Intl.DateTimeFormat(activeLocale.value, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            ...yearUnlessCurrent(instant, timezone),
+            timeZone: timezone,
+        }).format(instant.toDate());
+    },
+
+    /**
      * Format a local date-only value (YYYY-MM-DD or Date) with the active locale.
      */
     formatLocalDate(date: string | Date | null | undefined) {
@@ -162,6 +229,30 @@ export default {
 
     formatDayMonthYear(date: string | Date) {
         return localized(date).format('D MMM YYYY');
+    },
+
+    /**
+     * A period as Insights prints it, naming its month and year once when both
+     * ends share them: "25 – 31 Oct 2026", "28 Sep – 4 Oct 2026",
+     * "28 Dec 2025 – 3 Jan 2026".
+     */
+    formatDayMonthYearRange(range: DateRange): string {
+        return dayMonthYearRange(range);
+    },
+
+    /**
+     * The period compared with `current`, without the year when it falls in
+     * the same one: "18 – 24 Oct" next to "25 – 31 Oct 2026".
+     */
+    formatComparedRange(
+        range: DateRange,
+        current: DateRange,
+    ): string {
+        if (!withinYearOf(range, current)) {
+            return dayMonthYearRange(range);
+        }
+
+        return spanOf(range, 'D MMM');
     },
 
     /**
@@ -218,6 +309,23 @@ export default {
     },
 
     /**
+     * Short month and day in the active locale's order, then the time ("Oct 1,
+     * 4:21 PM", "1 de out., 16:21") of a UTC instant in an explicit time zone,
+     * with the year only when it is not the current one.
+     */
+    formatMonthDayTimeInTimezone(date: string, timezone: string): string {
+        const instant = dayjs.utc(date);
+        const day = new Intl.DateTimeFormat(activeLocale.value, {
+            month: 'short',
+            day: 'numeric',
+            ...yearUnlessCurrent(instant, timezone),
+            timeZone: timezone,
+        }).format(instant.toDate());
+
+        return `${day}, ${this.formatTimeInTimezone(date, timezone)}`;
+    },
+
+    /**
      * Date and time (e.g. "October 1, 2026 4:21 PM") of a UTC instant in an
      * explicit time zone.
      */
@@ -241,6 +349,11 @@ export default {
         // Convert from UTC to user timezone for display
         if (!date) return dayjs().tz(getUserTimezone());
         return dayjs.utc(date).tz(getUserTimezone());
+    },
+
+    /** Whether a UTC instant is behind now, compared as instants (the zone does not matter). */
+    hasPassed(date: string) {
+        return dayjs.utc(date).isBefore(dayjs());
     },
 
     diffForHumans(date: string) {

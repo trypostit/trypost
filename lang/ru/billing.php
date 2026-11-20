@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Оплата',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Ежемесячная оплата',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => 'Ежегодно',
         'save_two_months' => '2 месяца бесплатно',
         'per_month' => '/месяц',
+        'per_year' => '/год',
         'workspaces_one' => 'Один workspace',
         'workspaces_unlimited' => 'Неограниченное число workspace',
         'workspaces_tooltip' => 'Workspace — это один бренд или клиент, отделённый от остальных: свои соцсети, подписи, метки, аналитика, права участников и подключение MCP.',
@@ -33,7 +35,6 @@ return [
         'select' => 'Выбрать :plan',
         'upgrade' => 'Перейти на :plan',
         'downgrade' => 'Понизить до :plan',
-        'start_first_month' => 'Активировать за :price',
         'billed_yearly_total' => 'Оплата раз в год · :price (2 месяца бесплатно)',
         'socials_tagline' => 'Для авторов и небольших брендов.',
         'workspaces_tagline' => 'Для агентств и крупного бизнеса.',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Активен',
+            'trial' => 'Пробный период',
+            'cancelling' => 'Отменён',
+            'past_due' => 'Просрочен',
+        ],
         'change' => 'Сменить план',
-        'price_monthly' => ':price/месяц',
-        'price_yearly' => ':price/год',
+        'subscribe' => 'Оформить подписку',
         'trial_until' => 'Пробный период до :date',
-        'renews' => 'Продлевается автоматически',
         'cancelled' => 'Отменён, действует до :date',
-        'workspaces_usage' => 'Рабочие пространства: :count из :limit',
+        'discount_until' => 'Скидка :discount до :date',
+        'discount_forever' => 'Скидка :discount на каждый платёж',
+        'discount_once' => 'Скидка :discount на следующий платёж',
     ],
 
     'subscription' => [
-        'title' => 'Способ оплаты',
+        'title' => 'Способы оплаты',
+        'default' => 'Основная',
         'description' => 'Обновите карту или платёжные данные в Stripe.',
         'no_payment_method' => 'Способ оплаты пока не добавлен.',
         'expires_on' => 'Истекает :month/:year',
         'manage_stripe' => 'Управлять в Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'План',
+        'invoices' => 'Счета',
+    ],
+
     'invoices' => [
-        'title' => 'Счета',
-        'description' => 'Скачивайте прошлые счета.',
+        'columns' => [
+            'date' => 'Дата',
+            'amount' => 'Сумма',
+            'status' => 'Статус',
+        ],
+        'empty_title' => 'Счетов пока нет',
+        'empty_description' => 'Счета появятся здесь после первой оплаты.',
         'paid' => 'Оплачено',
         'download' => 'Скачать счёт',
     ],

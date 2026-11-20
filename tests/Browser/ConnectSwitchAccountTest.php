@@ -10,16 +10,7 @@ use Laravel\Socialite\Two\User as SocialiteUser;
 
 function waitForSwitchAccountTestId(mixed $page, string $testId): void
 {
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 160; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitFor($page, "@{$testId}");
 
     waitForWebFonts($page);
 }

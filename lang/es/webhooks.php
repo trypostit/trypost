@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Post parcialmente publicado',
         'post_failed' => 'Post fallido',
         'post_deleted' => 'Post eliminado',
+        'post_deleted_on_network' => 'Post eliminado en la red',
+        'post_restored' => 'Post de vuelta en la red',
     ],
     'event_descriptions' => [
         'post_created' => 'Cuando se crea un nuevo post.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Cuando un post se publica en un canal.',
         'post_failed' => 'Cuando un post no se puede publicar.',
         'post_deleted' => 'Cuando se elimina un post.',
+        'post_deleted_on_network' => 'Cuando un post publicado se elimina en su red.',
+        'post_restored' => 'Cuando un post marcado como eliminado vuelve a su red.',
     ],
     'http_reasons' => [
         'unknown' => 'Desconocido',

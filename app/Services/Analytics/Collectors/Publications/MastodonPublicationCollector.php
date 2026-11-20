@@ -8,6 +8,8 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
+use App\Services\Social\Mastodon\MastodonApi;
+use App\Support\Social\MastodonPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
@@ -20,10 +22,10 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
         $hasPrivateHistoryScope = $account->canReadMastodonStatuses();
-        $instance = $account->mastodonInstance();
+        $instance = $account->mastodon_instance;
         $response = $this->get(
             $account,
-            "{$instance}/api/v1/accounts/{$account->platform_user_id}/statuses",
+            MastodonApi::url($instance, "accounts/{$account->platform_user_id}/statuses"),
             [
                 'limit' => self::PAGE_SIZE,
                 'exclude_reblogs' => true,
@@ -71,6 +73,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
                     'replies_count' => (int) data_get($row, 'replies_count', 0),
                     'history_visibility' => $hasPrivateHistoryScope ? 'authorized' : 'public_only',
                     'reconnect_required' => ! $hasPrivateHistoryScope,
+                    ...MastodonPoll::metadataFrom(data_get($row, 'poll')),
                 ],
             );
         }

@@ -12,7 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 beforeEach(function () {
     config([
         'trypost.self_hosted' => false,
-        'trypost.billing.require_card_for_trial' => true,
     ]);
 
     $result = createApiTestToken();
@@ -50,21 +49,6 @@ test('rejects a personal access token after its stored expiration', function () 
         ->getJson(route('api.workspace.show'))
         ->assertUnauthorized()
         ->assertJson(['message' => 'Token expired.']);
-});
-
-test('allows api requests for generic-trial accounts with app access', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
-    $this->user->account->update([
-        'trial_ends_at' => now()->addDays(8),
-    ]);
-
-    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
-        ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->getJson(route('api.workspace.show'))
-        ->assertOk();
 });
 
 test('allows personal access tokens without a subscription in self-hosted mode', function () {
@@ -511,5 +495,18 @@ test('a workspace query parameter does not break the api rate limiter', function
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.workspace.show', ['workspace' => 'foo']))
+        ->assertOk();
+});
+
+test('allows api requests during a trial without a card', function () {
+    $this->user->account->update([
+        'trial_ends_at' => now()->addDays(7),
+    ]);
+
+    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
+        ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
         ->assertOk();
 });

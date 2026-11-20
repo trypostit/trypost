@@ -167,7 +167,7 @@ const workspaceLabel = (plan: PlanOption): string =>
                 <div class="flex flex-col gap-1">
                     <p class="flex items-baseline gap-2">
                         <span
-                            class="text-2xl leading-9 font-strong tabular-nums"
+                            class="text-2xl leading-9 font-strong tracking-tight tabular-nums [word-spacing:-0.15em]"
                             :data-testid="`plan-price-${plan.slug}`"
                             >{{ price(plan) }}</span
                         >

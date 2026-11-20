@@ -5,19 +5,6 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForDialogFooterTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('a dialog footer sits in a rounded muted panel inset from the dialog edges', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
@@ -27,9 +14,9 @@ test('a dialog footer sits in a rounded muted panel inset from the dialog edges'
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.labels.index'))->resize(1280, 900);
-    waitForDialogFooterTestId($page, 'labels-empty-create');
+    waitFor($page, '@labels-empty-create');
     $page->click('@labels-empty-create');
-    waitForDialogFooterTestId($page, 'create-label-sheet');
+    waitFor($page, '@create-label-sheet');
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
 
     $footer = $page->script(<<<'JS'

@@ -7,6 +7,8 @@ return [
     'description' => 'Verwalte die Kanäle dieses Workspace.',
     'connect' => 'Kanal verbinden',
     'settings' => 'Kanaleinstellungen',
+    'manage' => 'Kanäle verwalten',
+    'set_goal' => 'Veröffentlichungsziel festlegen',
     'publish' => 'Veröffentlichen',
     'insights' => 'Insights',
     'new_post' => 'Neuer Beitrag in diesem Kanal',
@@ -168,6 +170,25 @@ return [
         'description' => 'Dadurch werden alle Beiträge dieses Kanals in TryPost gelöscht, einschließlich Entwürfen, geplanten Beiträgen und dem Veröffentlichungsverlauf. Beiträge, die bereits im Netzwerk sind, bleiben dort.',
         'keyword' => 'trennen',
         'cancel' => 'Abbrechen',
+    ],
+
+    'list' => [
+        'search' => 'Nach Name, @Benutzername oder Netzwerk suchen',
+        'networks' => 'Netzwerke',
+        'networks_search' => 'Netzwerke suchen',
+        'no_networks' => 'Keine Netzwerke gefunden',
+        'columns' => [
+            'channel' => 'Kanal',
+            'timezone' => 'Zeitzone',
+            'posting_times' => 'Zeiten',
+            'this_week' => 'Diese Woche',
+        ],
+        'posting_times_per_week' => ':count pro Woche',
+        'no_posting_times' => 'Keine Zeiten',
+        'no_results' => 'Kein Kanal passt zu deiner Suche.',
+        'connection_lost' => 'Dieser Kanal hat die Verbindung verloren',
+        'settings' => 'Einstellungen',
+        'more_actions' => 'Weitere Aktionen',
     ],
 
     'settings_page' => [

@@ -13,33 +13,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 
-function waitForComposerApprovalTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                const sheet = document.querySelector('[data-testid="post-composer-dialog"]');
-                if (sheet?.getAttribute('data-state') === 'open'
-                    && sheet.getAnimations().every((animation) => animation.playState !== 'running')
-                    && document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerApprovalClosed(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
 /**
  * @return array{0: Workspace, 1: SocialAccount, 2: User}
  */
@@ -79,11 +52,13 @@ test('a requester never sees publish now and requests approval for the queue', f
     $this->actingAs($requester);
 
     $page = visit(route('app.posts.create'));
-    waitForComposerApprovalTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$channel->id}")
         ->fill("@composer-caption-{$channel->id}", 'Please approve me');
-    waitForComposerApprovalTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     expect(composerApprovalSubmitText($page))->toBe('Save and request approval');
 
@@ -96,7 +71,7 @@ test('a requester never sees publish now and requests approval for the queue', f
         ->assertMissing('@composer-schedule-now')
         ->click('@composer-schedule-top')
         ->click('@composer-submit');
-    waitForComposerApprovalClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     $post = Post::query()->where('workspace_id', $workspace->id)->sole();
 
@@ -122,7 +97,8 @@ test('editing a pending queue request starts on its stored position', function (
     $this->actingAs($requester);
 
     $page = visit(route('app.posts.edit', $post));
-    waitForComposerApprovalTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('top')
         ->and(composerApprovalSubmitText($page))->toBe('Save and request approval');
@@ -138,11 +114,13 @@ test('owners and admins keep publish now and their default action', function (st
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.posts.create'));
-    waitForComposerApprovalTestId($page, 'composer-add-account');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$channel->id}")
         ->fill("@composer-caption-{$channel->id}", 'Straight out');
-    waitForComposerApprovalTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('now')
         ->and(composerApprovalSubmitText($page))->not->toBe('Save and request approval');
@@ -173,7 +151,8 @@ test('editing a pending custom time request starts on custom with its date', fun
     expect($post->status)->toBe(PostStatus::PendingApproval);
 
     $page = visit(route('app.posts.edit', $post));
-    waitForComposerApprovalTestId($page, 'composer-submit');
+    waitForOpen($page, '@post-composer-dialog');
+    waitFor($page, '@composer-submit');
 
     $day = $at->year === now()->year ? $at->format('M j') : $at->format('M j, Y');
 

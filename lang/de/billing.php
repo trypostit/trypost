@@ -14,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Monatlich abgerechnet',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -26,6 +25,7 @@ return [
         'yearly' => 'Jährlich',
         'save_two_months' => '2 Monate gratis',
         'per_month' => '/Monat',
+        'per_year' => '/Jahr',
         'workspaces_one' => 'Ein Workspace',
         'workspaces_unlimited' => 'Unbegrenzte Workspaces',
         'workspaces_tooltip' => 'Ein Workspace ist eine Marke oder ein Kunde, getrennt von allen anderen: mit eigenen Social-Media-Konten, Signaturen, Labels, Analytics, Mitgliederrechten und MCP-Verbindung.',
@@ -35,7 +35,6 @@ return [
         'select' => ':plan wählen',
         'upgrade' => 'Auf :plan upgraden',
         'downgrade' => 'Auf :plan downgraden',
-        'start_first_month' => 'Für :price aktivieren',
         'billed_yearly_total' => 'Jährlich abgerechnet · :price (2 Monate gratis)',
         'socials_tagline' => 'Ideal für Creator und kleine Marken.',
         'workspaces_tagline' => 'Ideal für Agenturen und größere Unternehmen.',
@@ -63,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktiv',
+            'trial' => 'Kostenloser Test',
+            'cancelling' => 'Gekündigt',
+            'past_due' => 'Überfällig',
+        ],
         'change' => 'Tarif ändern',
-        'price_monthly' => ':price/Monat',
-        'price_yearly' => ':price/Jahr',
+        'subscribe' => 'Jetzt abonnieren',
         'trial_until' => 'Testphase bis :date',
-        'renews' => 'Verlängert sich automatisch',
         'cancelled' => 'Gekündigt, endet am :date',
-        'workspaces_usage' => 'Workspaces: :count von :limit',
+        'discount_until' => ':discount Rabatt bis :date',
+        'discount_forever' => ':discount Rabatt auf jede Zahlung',
+        'discount_once' => ':discount Rabatt auf deine nächste Zahlung',
     ],
 
     'subscription' => [
-        'title' => 'Zahlungsmethode',
+        'title' => 'Zahlungsmethoden',
+        'default' => 'Standard',
         'description' => 'Aktualisiere deine Karte oder Rechnungsdaten bei Stripe.',
         'no_payment_method' => 'Noch keine Zahlungsmethode hinterlegt.',
         'expires_on' => 'Läuft ab :month/:year',
         'manage_stripe' => 'Bei Stripe verwalten',
     ],
 
+    'tabs' => [
+        'plan' => 'Tarif',
+        'invoices' => 'Rechnungen',
+    ],
+
     'invoices' => [
-        'title' => 'Rechnungen',
-        'description' => 'Lade deine bisherigen Rechnungen herunter.',
+        'columns' => [
+            'date' => 'Datum',
+            'amount' => 'Betrag',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Noch keine Rechnungen',
+        'empty_description' => 'Deine Rechnungen erscheinen hier nach deiner ersten Zahlung.',
         'paid' => 'Bezahlt',
         'download' => 'Rechnung herunterladen',
     ],

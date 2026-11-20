@@ -6,20 +6,6 @@ use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForApiKeyCreateTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 test('the expiry date picker matches the dialog inputs and opens a calendar', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -32,9 +18,9 @@ test('the expiry date picker matches the dialog inputs and opens a calendar', fu
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.api-keys.index'));
-    waitForApiKeyCreateTestId($page, 'api-keys-empty-create');
+    waitFor($page, '@api-keys-empty-create');
     $page->click('@api-keys-empty-create');
-    waitForApiKeyCreateTestId($page, 'token-expires-trigger');
+    waitFor($page, '@token-expires-trigger');
 
     $page->assertScript(
         "(() => { const a = document.getElementById('token-name').getBoundingClientRect(); const b = document.getElementById('token-expires').getBoundingClientRect(); return Math.round(a.height) === Math.round(b.height) && getComputedStyle(document.getElementById('token-expires')).fontWeight === '400'; })()",
@@ -42,7 +28,7 @@ test('the expiry date picker matches the dialog inputs and opens a calendar', fu
     )->assertSeeIn('@token-expires-trigger', __('settings.api_keys.create_dialog.expires_placeholder'));
 
     $page->click('@token-expires-trigger');
-    waitForApiKeyCreateTestId($page, 'token-expires-calendar');
+    waitFor($page, '@token-expires-calendar');
 
     $page->assertVisible('@token-expires-calendar')->assertNoJavaScriptErrors();
 });
@@ -59,12 +45,12 @@ test('a generated key shows only its last four characters and copies without a t
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.api-keys.index'));
-    waitForApiKeyCreateTestId($page, 'api-keys-empty-create');
+    waitFor($page, '@api-keys-empty-create');
     $page->click('@api-keys-empty-create');
-    waitForApiKeyCreateTestId($page, 'token-name');
+    waitFor($page, '@token-name');
     $page->fill('@token-name', 'Generated key');
     $page->click('@create-api-key-submit');
-    waitForApiKeyCreateTestId($page, 'api-key-generated-dialog');
+    waitFor($page, '@api-key-generated-dialog');
 
     $page->assertVisible('@api-key-generated-input')
         ->assertScript("(() => { const dialog = document.querySelector('[data-testid=\"api-key-generated-dialog\"]'); const field = document.querySelector('[data-testid=\"api-key-generated-input\"]'); return dialog.scrollWidth <= dialog.clientWidth && field.getBoundingClientRect().right <= dialog.getBoundingClientRect().right; })()", true)
@@ -72,7 +58,7 @@ test('a generated key shows only its last four characters and copies without a t
 
     $page->script('navigator.clipboard.writeText = async () => {};');
     $page->click('@api-key-generated-copy');
-    waitForApiKeyCreateTestId($page, 'api-key-generated-copied');
+    waitFor($page, '@api-key-generated-copied');
 
     $page->assertVisible('@api-key-generated-copied')
         ->assertScript("document.querySelector('[data-sonner-toast]') === null", true)
@@ -96,7 +82,7 @@ test('a workspace without api keys shows only the centered illustration with a c
     $this->actingAs(apiKeysPageAdmin());
 
     $page = visit(route('app.api-keys.index'));
-    waitForApiKeyCreateTestId($page, 'api-keys-empty');
+    waitFor($page, '@api-keys-empty');
 
     $page->assertVisible('@api-keys-empty-illustration')
         ->assertSeeIn('@api-keys-empty', __('settings.api_keys.empty.title'))
@@ -122,7 +108,7 @@ test('a workspace with api keys keeps the header and the list at the top', funct
     $this->actingAs($user);
 
     $page = visit(route('app.api-keys.index'));
-    waitForApiKeyCreateTestId($page, 'header-title');
+    waitFor($page, '@header-title');
 
     $page->assertVisible('@create-api-key-button')
         ->assertMissing('@api-keys-empty')
@@ -145,7 +131,7 @@ test('api key rows show whether each key is active, expiring soon or expired', f
     $this->actingAs($user);
 
     $page = visit(route('app.api-keys.index'));
-    waitForApiKeyCreateTestId($page, "api-key-row-{$expired->id}");
+    waitFor($page, "@api-key-row-{$expired->id}");
 
     $page->assertSeeIn("@api-key-expiry-{$active->id}", __('settings.api_keys.meta.never_expires'));
 

@@ -5,23 +5,31 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
-
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-    componentToString,
-} from '@/components/ui/chart';
-import date from '@/date';
-import dayjs from '@/dayjs';
-import { accountColor } from '@/lib/analyticsColors';
-import type { PostAccount, PostBucket } from '@/types/analytics';
 
 import {
     formatCountTick,
     socialAccountChartConfig,
-} from './socialAccountChart';
+} from '@/components/analytics/workspace/charts/socialAccountChart';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    type ChartTooltipDetail,
+    componentToString,
+    numericTick,
+} from '@/components/ui/chart';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
+import { accountColor } from '@/lib/analyticsColors';
+import { bucketRangeLabel } from '@/lib/channelMetrics';
+import { formatFullNumber } from '@/lib/utils';
+import type {
+    BucketResolution,
+    PostAccount,
+    PostBucket,
+} from '@/types/analytics';
+
 
 type ChartPoint = {
     index: number;
@@ -32,24 +40,13 @@ type ChartPoint = {
 const props = defineProps<{
     accounts: PostAccount[];
     buckets: PostBucket[];
-    resolution: string;
+    resolution: BucketResolution;
     colors: Record<string, string>;
-    valueLabel?: string;
 }>();
-
-const bucketLabel = (bucket: PostBucket): string => {
-    const start = dayjs(bucket.start);
-
-    if (props.resolution === 'monthly')
-        return date.formatMonthYear(start.month() + 1, start.year());
-    if (bucket.start === bucket.end) return date.formatMonthDay(bucket.start);
-
-    return `${date.formatMonthDay(bucket.start)} – ${date.formatMonthDay(bucket.end)}`;
-};
 
 const chartData = computed<ChartPoint[]>(() =>
     props.buckets.map((bucket, index) => {
-        const point: ChartPoint = { index, label: bucketLabel(bucket) };
+        const point: ChartPoint = { index, label: bucketRangeLabel(bucket, props.resolution) };
 
         props.accounts.forEach((account, accountIndex) => {
             point[`account_${accountIndex}`] =
@@ -76,15 +73,31 @@ const barColors = computed(() =>
             props.colors[account.social_account_key] ?? accountColor(index),
     ),
 );
-const formatBucket = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    return chartData.value[index]?.label ?? '';
-};
+const formatBucket = numericTick(
+    (tick): string => chartData.value[Math.round(tick)]?.label ?? '',
+);
+/** The posts of a column across every channel, as the report counts them. */
+const bucketTotal = numericTick((tick): ChartTooltipDetail | null => {
+    const bucket = props.buckets[Math.round(tick)];
+
+    if (!bucket) {
+        return null;
+    }
+
+    return {
+        label: trans('analytics.dashboard.total_posts'),
+        value: formatFullNumber(bucket.total),
+    };
+});
 const ticks = computed(() => props.buckets.map((_, index) => index));
+const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
-    componentToString(chartConfig.value, ChartTooltipContent, {
-        labelFormatter: formatBucket,
-    }),
+    componentToString(
+        chartConfig.value,
+        ChartTooltipContent,
+        { labelFormatter: formatBucket, totalFormatter: bucketTotal },
+        appContext,
+    ),
 );
 const tooltipTriggers = computed(() => ({
     [VisStackedBarSelectors.bar]: (bar: {
@@ -103,19 +116,20 @@ const barAttributes = {
     <ChartContainer
         :config="chartConfig"
         cursor
-        class="h-72 w-full sm:h-80"
+        class="h-72 w-full sm:h-80 [--vis-stacked-bar-stroke-color:var(--card)] [--vis-stacked-bar-stroke-width:1.5px]"
         data-testid="posts-unovis-chart"
     >
         <VisXYContainer
             :data="chartData"
-            :padding="{ top: 14, right: 8, bottom: 0, left: 0 }"
+            :padding="{ top: 14, right: 8, bottom: 8, left: 0 }"
         >
             <VisStackedBar
                 :x="xAccessor"
                 :y="yAccessors"
                 :color="barColors"
-                :rounded-corners="2"
+                :rounded-corners="4"
                 :bar-padding="0.35"
+                :bar-max-width="28"
                 :attributes="barAttributes"
             />
             <VisAxis
@@ -130,9 +144,6 @@ const barAttributes = {
                 type="y"
                 :tick-format="formatCountTick"
                 :num-ticks="5"
-                :label="valueLabel"
-                label-font-size="12px"
-                label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"

@@ -12,40 +12,9 @@ use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
 
-function waitForComposerTimezoneTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForComposerTimezoneClosed(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="post-composer-dialog"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
 function waitForComposerTimezoneTrigger(mixed $page, string $label): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="composer-schedule-trigger"]')?.textContent.trim() === '{$label}') return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForState($page, '@composer-schedule-trigger', "element.textContent.trim() === '{$label}'");
 }
 
 /**
@@ -73,11 +42,11 @@ function composerTimezoneChannel(Workspace $workspace, string $timezone, ?Postin
 
 function composerTimezoneSelect(mixed $page, SocialAccount ...$channels): void
 {
-    waitForComposerTimezoneTestId($page, 'composer-add-account');
+    waitFor($page, '@composer-add-account');
     $page->click('@composer-add-account');
 
     foreach ($channels as $channel) {
-        waitForComposerTimezoneTestId($page, "composer-account-option-{$channel->id}");
+        waitFor($page, "@composer-account-option-{$channel->id}");
         $page->click("@composer-account-option-{$channel->id}");
     }
 }
@@ -88,22 +57,15 @@ function composerTimezoneSelect(mixed $page, SocialAccount ...$channels): void
  */
 function composerTimezoneOpenPicker(mixed $page): void
 {
-    waitForComposerTimezoneTestId($page, 'composer-schedule-trigger');
+    waitFor($page, '@composer-schedule-trigger');
     $page->click('@composer-schedule-trigger');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="composer-schedule-picker"]') || document.querySelector('[data-testid="composer-schedule-custom"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForState($page, '@composer-schedule-picker, @composer-schedule-custom', 'true');
 
     if (! $page->script('Boolean(document.querySelector(\'[data-testid="composer-schedule-picker"]\'))')) {
         $page->click('@composer-schedule-custom');
     }
 
-    waitForComposerTimezoneTestId($page, 'composer-schedule-picker');
+    waitFor($page, '@composer-schedule-picker');
 }
 
 function composerTimezonePickFutureDay(mixed $page): string
@@ -155,7 +117,7 @@ test('one channel shows and takes times in its own zone', function () {
     expect(composerTimezoneTrigger($page))->toBe(composerTimezoneLabel($instant));
 
     $page->click('@composer-submit');
-    waitForComposerTimezoneClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($instant->utc()->toIso8601String());
@@ -185,7 +147,7 @@ test('changing the channels keeps the picked instant and shows it in the new zon
     expect(composerTimezoneTrigger($page))->toBe(composerTimezoneLabel($instant));
 
     $page->click('@composer-submit');
-    waitForComposerTimezoneClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($instant->utc()->toIso8601String());
@@ -220,7 +182,7 @@ test('editing a scheduled post shows its time in the channel zone', function () 
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-time-input]").value'))->toBe('10:00');
 
     $page->click('@composer-schedule-done')->click('@composer-submit');
-    waitForComposerTimezoneClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     expect($post->fresh()->scheduled_at->toIso8601String())->toBe($instant->utc()->toIso8601String());
     $page->assertNoJavaScriptErrors();
@@ -275,7 +237,7 @@ test('one channel offers its posting slots for the picked day', function () {
     $weekday = CarbonImmutable::parse($day)->dayOfWeek;
     $evening = composerTimezoneEveningSlot($weekday);
     $testId = fn (string $time): string => 'composer-schedule-slot-'.str_replace(':', '', $time);
-    waitForComposerTimezoneTestId($page, $testId($evening));
+    waitFor($page, '@'.$testId($evening));
 
     $page->assertVisible('@'.$testId(composerTimezoneMorningSlot($weekday)))
         ->assertMissing('@'.$testId(composerTimezoneEveningSlot(($weekday + 1) % 7)))
@@ -287,7 +249,7 @@ test('one channel offers its posting slots for the picked day', function () {
     expect(composerTimezoneTrigger($page))->toBe(composerTimezoneLabel($instant));
 
     $page->click('@composer-submit');
-    waitForComposerTimezoneClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($instant->utc()->toIso8601String());
@@ -309,15 +271,8 @@ test('posting slots already taken by a scheduled post are disabled', function ()
     $page = visit(route('app.posts.create'));
     composerTimezoneSelect($page, $channel);
     composerTimezoneOpenPicker($page);
-    waitForComposerTimezoneTestId($page, 'composer-schedule-slot-1600');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 80; attempt++) {
-                if (document.querySelector('[data-testid="composer-schedule-slot-1500"]')?.disabled) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitFor($page, '@composer-schedule-slot-1600');
+    waitForState($page, '@composer-schedule-slot-1500', 'element.disabled');
 
     expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeTrue()
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-slot-1600]").disabled'))->toBeFalse();
@@ -350,16 +305,16 @@ test('a calendar hour opens the composer at the same moment, shown in the channe
     $this->actingAs($user);
 
     $page = visit(route('app.channels.calendar', ['account' => $warsaw->id, 'view' => 'week', 'week' => $day, 'tz' => 'America/Sao_Paulo']));
-    waitForComposerTimezoneTestId($page, "calendar-add-{$day}-10");
+    waitFor($page, "@calendar-add-{$day}-10");
     $page->click("@calendar-add-{$day}-10");
-    waitForComposerTimezoneTestId($page, "composer-caption-{$warsaw->id}");
+    waitFor($page, "@composer-caption-{$warsaw->id}");
 
     $instant = CarbonImmutable::parse("{$day} 10:00", 'America/Sao_Paulo');
     waitForComposerTimezoneTrigger($page, composerTimezoneLabel($instant->setTimezone('Europe/Warsaw')));
     expect(composerTimezoneTrigger($page))->toBe(composerTimezoneLabel($instant->setTimezone('Europe/Warsaw')));
 
     $page->fill("@composer-caption-{$warsaw->id}", 'From the calendar')->click('@composer-submit');
-    waitForComposerTimezoneClosed($page);
+    waitForGone($page, '@post-composer-dialog');
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($instant->utc()->toIso8601String());

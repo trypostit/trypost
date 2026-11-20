@@ -8,7 +8,6 @@ use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Dto\Analytics\PublicationFilter;
 use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Models\SocialAccount;
-use App\Models\WorkspaceLabel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -36,9 +35,7 @@ class DownloadChannelInsightsRequest extends FormRequest
             'start' => [$exclude, 'required_if:range,custom', 'date_format:Y-m-d'],
             'end' => [$exclude, 'required_if:range,custom', 'date_format:Y-m-d', 'after_or_equal:start'],
             'labels' => ['sometimes', 'array'],
-            'labels.*' => ['bail', 'uuid', Rule::exists(WorkspaceLabel::class, 'id')
-                ->where('workspace_id', $this->user()->current_workspace_id)
-                ->withoutTrashed()],
+            'labels.*' => ['uuid'],
             'untagged' => ['sometimes', 'boolean'],
             'types' => ['sometimes', 'array'],
             'types.*' => [Rule::in(PublicationFilter::typesFor($this->channel()->platform))],

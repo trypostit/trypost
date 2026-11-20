@@ -33,6 +33,7 @@ beforeEach(function () {
 
 afterEach(function () {
     RecordingSwapSubscription::$swappedPrices = [];
+    RecordingSwapSubscription::$swapOptions = [];
     Cashier::useSubscriptionModel(Subscription::class);
 });
 
@@ -258,6 +259,58 @@ test('change-plan swaps to the yearly price', function () use ($withWorkspace) {
         ->and(RecordingSwapSubscription::$swappedPrices)->toBe(['price_workspaces_yearly']);
 });
 
+test('a swap to a yearly price removes the discount, so an offer never discounts a whole year', function () use ($withWorkspace) {
+    Cashier::useSubscriptionModel(RecordingSwapSubscription::class);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => $this->socials->id]);
+    $withWorkspace($user);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_socials_monthly',
+    ]);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $this->socials->id,
+            'interval' => 'yearly',
+        ])
+        ->assertRedirect(route('app.billing.index'));
+
+    expect(RecordingSwapSubscription::$swappedPrices)->toBe(['price_socials_yearly'])
+        ->and(RecordingSwapSubscription::$swapOptions)->toBe([['discounts' => '']]);
+});
+
+test('a swap to a monthly price keeps the discount the owner still has', function () use ($withWorkspace) {
+    Cashier::useSubscriptionModel(RecordingSwapSubscription::class);
+
+    $user = User::factory()->create();
+    $account = $user->account;
+    $account->update(['plan_id' => $this->socials->id]);
+    $withWorkspace($user);
+
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_socials_monthly',
+    ]);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.billing.change-plan'), [
+            'plan_id' => $this->workspaces->id,
+            'interval' => 'monthly',
+        ])
+        ->assertRedirect(route('app.billing.index'));
+
+    expect(RecordingSwapSubscription::$swappedPrices)->toBe(['price_workspaces_monthly'])
+        ->and(RecordingSwapSubscription::$swapOptions)->toBe([[]]);
+});
+
 test('change-plan downgrades workspaces to socials', function () use ($withWorkspace) {
     Cashier::useSubscriptionModel(RecordingSwapSubscription::class);
 
@@ -431,6 +484,11 @@ class RecordingSwapSubscription extends Subscription
      */
     public static array $swappedPrices = [];
 
+    /**
+     * @var list<array<string, mixed>>
+     */
+    public static array $swapOptions = [];
+
     public function getForeignKey(): string
     {
         return 'subscription_id';
@@ -439,6 +497,7 @@ class RecordingSwapSubscription extends Subscription
     public function swap(string|array $prices, array $options = []): static
     {
         self::$swappedPrices[] = $prices;
+        self::$swapOptions[] = $options;
 
         return $this;
     }

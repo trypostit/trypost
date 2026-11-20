@@ -90,6 +90,8 @@ return [
         'post_partially_published' => 'Gönderi kısmen yayınlandı',
         'post_failed' => 'Gönderi başarısız',
         'post_deleted' => 'Gönderi silindi',
+        'post_deleted_on_network' => 'Gönderi ağda silindi',
+        'post_restored' => 'Gönderi ağa geri döndü',
     ],
     'event_descriptions' => [
         'post_created' => 'Yeni bir gönderi oluşturulduğunda.',
@@ -98,6 +100,8 @@ return [
         'post_published' => 'Bir gönderi bir kanalda yayınlandığında.',
         'post_failed' => 'Bir gönderi yayınlanamadığında.',
         'post_deleted' => 'Bir gönderi silindiğinde.',
+        'post_deleted_on_network' => 'Yayınlanmış bir gönderi ağında silindiğinde.',
+        'post_restored' => 'Silinen bir gönderi ağına geri döndüğünde.',
     ],
     'http_reasons' => [
         'unknown' => 'Bilinmiyor',

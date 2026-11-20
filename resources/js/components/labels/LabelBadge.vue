@@ -1,50 +1,25 @@
 <script setup lang="ts">
-interface Label {
-    id: string;
-    name: string;
-    color: string;
-}
+import { computed } from 'vue';
 
-withDefaults(
-    defineProps<{
-        label: Label;
-        interactive?: boolean;
-        selected?: boolean;
-        disabled?: boolean;
-    }>(),
-    {
-        interactive: false,
-        selected: false,
-        disabled: false,
-    },
-);
+import { labelTextColor } from '@/lib/labelColor';
+import type { PostCardLabel } from '@/types/publish';
 
-defineEmits<{ click: [] }>();
+const props = defineProps<{
+    label: PostCardLabel;
+}>();
+
+/** The label's own color as the background, with the text color that reads on it. */
+const colors = computed(() => ({
+    backgroundColor: props.label.color,
+    color: labelTextColor(props.label.color),
+}));
 </script>
 
 <template>
-    <component
-        :is="interactive ? 'button' : 'span'"
-        :type="interactive ? 'button' : undefined"
-        :disabled="interactive && disabled"
-        class="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[10px] font-bold tracking-widest text-foreground uppercase shadow-2xs"
-        :class="[
-            selected
-                ? 'border-primary-strong bg-primary-subtle text-foreground shadow-sm'
-                : 'bg-card',
-            interactive
-                ? 'cursor-pointer transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed'
-                : '',
-            interactive && !selected && !disabled
-                ? 'opacity-80 hover:opacity-100'
-                : '',
-        ]"
-        @click="interactive && !disabled ? $emit('click') : undefined"
+    <span
+        class="inline-flex h-6 max-w-full min-w-0 items-center rounded-full px-2.5 text-xs font-medium text-foreground"
+        :style="colors"
     >
-        <span
-            class="size-2 shrink-0 rounded-full"
-            :style="{ backgroundColor: label.color }"
-        />
         <span class="truncate">{{ label.name }}</span>
-    </component>
+    </span>
 </template>

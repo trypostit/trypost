@@ -26,12 +26,12 @@ class EnsureAccountReady
 
             if (! $account?->hasAppAccess()) {
                 // Members can't finish Welcome checkout — send them straight to
-                // the hold screen instead of hopping through persona first.
+                // the hold screen instead of the Welcome steps.
                 if (! $user->isAccountOwner()) {
                     return redirect()->route('app.welcome.subscription-required');
                 }
 
-                return redirect()->route('app.welcome.persona');
+                return redirect()->route('app.welcome.plan');
             }
         }
 

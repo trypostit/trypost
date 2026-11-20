@@ -18,10 +18,10 @@ return [
         'created_at' => 'Oluşturuldu',
     ],
 
-    'row_actions' => 'İmza işlemleri',
     'actions' => [
         'edit' => 'İmzayı düzenle',
-        'delete' => 'İmzayı sil',
+        'delete' => 'Sil',
+        'settings' => 'Ayarlar',
     ],
 
     'create' => [

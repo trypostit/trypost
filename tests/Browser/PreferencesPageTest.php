@@ -9,20 +9,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForPreferencesTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 150; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}
-
 function preferencesUser(array $attributes = []): User
 {
     $user = User::factory()->create($attributes);
@@ -38,20 +24,20 @@ function preferencesUser(array $attributes = []): User
 
 function choosePreference(mixed $page, string $testid, string $value, string $savedField): void
 {
-    waitForPreferencesTestId($page, "{$testid}-trigger");
+    waitFor($page, "@{$testid}-trigger");
     $page->click("@{$testid}-trigger");
-    waitForPreferencesTestId($page, "{$testid}-option-{$value}");
+    waitFor($page, "@{$testid}-option-{$value}");
     $page->click("@{$testid}-option-{$value}");
-    waitForPreferencesTestId($page, "preferences-saved-{$savedField}");
+    waitFor($page, "@preferences-saved-{$savedField}");
 }
 
 test('the preferences page lists every preference and is linked from the settings sidebar', function () {
     $this->actingAs(preferencesUser());
 
     $page = visit(route('app.profile.edit'));
-    waitForPreferencesTestId($page, 'settings-nav-preferences');
+    waitFor($page, '@settings-nav-preferences');
     $page->click('@settings-nav-preferences');
-    waitForPreferencesTestId($page, 'preferences-page');
+    waitFor($page, '@preferences-page');
 
     $page->assertVisible('@preferences-theme-trigger')
         ->assertVisible('@preferences-language-trigger')
@@ -73,7 +59,7 @@ test('choosing dark applies it at once and the server renders it on the next loa
     expect($user->fresh()->theme)->toBe(Theme::Dark);
 
     $page = visit(route('app.settings.preferences'))->inLightMode();
-    waitForPreferencesTestId($page, 'preferences-page');
+    waitFor($page, '@preferences-page');
     $page->assertScript("document.documentElement.classList.contains('dark')", true)
         ->assertNoJavaScriptErrors();
 });
@@ -82,11 +68,11 @@ test('the system theme follows the operating system', function () {
     $this->actingAs(preferencesUser(['theme' => Theme::System]));
 
     $dark = visit(route('app.settings.preferences'))->inDarkMode();
-    waitForPreferencesTestId($dark, 'preferences-page');
+    waitFor($dark, '@preferences-page');
     $dark->assertScript("document.documentElement.classList.contains('dark')", true);
 
     $light = visit(route('app.settings.preferences'))->inLightMode();
-    waitForPreferencesTestId($light, 'preferences-page');
+    waitFor($light, '@preferences-page');
     $light->assertScript("document.documentElement.classList.contains('dark')", false)
         ->assertNoJavaScriptErrors();
 });
@@ -97,10 +83,10 @@ test('the language picker suggests the browser language, filters as you type and
     $toastAppears = "(async () => { for (let i = 0; i < 20; i++) { if (document.querySelector('[data-sonner-toast]')) return true; await new Promise((r) => setTimeout(r, 50)); } return false; })();";
 
     $page = visit(route('app.settings.preferences'))->withLocale('pt-PT');
-    waitForPreferencesTestId($page, 'preferences-language-trigger');
+    waitFor($page, '@preferences-language-trigger');
 
     $page->click('@preferences-language-trigger');
-    waitForPreferencesTestId($page, 'preferences-language-suggestions');
+    waitFor($page, '@preferences-language-suggestions');
 
     $page->assertVisible('[data-testid="preferences-language-suggestions"] [data-testid="preferences-language-option-pt-BR"]')
         ->assertVisible('@preferences-language-detected')
@@ -113,19 +99,19 @@ test('the language picker suggests the browser language, filters as you type and
         ->assertVisible('@preferences-language-option-de');
 
     $page->fill('@preferences-language-search', 'francais');
-    waitForPreferencesTestId($page, 'preferences-language-option-fr');
+    waitFor($page, '@preferences-language-option-fr');
     $page->assertVisible('@preferences-language-option-fr')
         ->assertMissing('@preferences-language-option-de');
 
     $page->fill('@preferences-language-search', 'Portug');
-    waitForPreferencesTestId($page, 'preferences-language-option-pt-BR');
+    waitFor($page, '@preferences-language-option-pt-BR');
     $page->assertVisible('@preferences-language-option-pt-BR')
         ->assertMissing('@preferences-language-option-de')
         ->click('@preferences-language-option-pt-BR');
-    waitForPreferencesTestId($page, 'preferences-saved-locale');
+    waitFor($page, '@preferences-saved-locale');
 
     $title = __('settings.preferences.title', [], 'pt-BR');
-    $page->script("(async () => { for (let i = 0; i < 150; i++) { if (document.body.innerText.includes('{$title}')) return; await new Promise((r) => setTimeout(r, 50)); } })();");
+    waitForState($page, 'body', "element.innerText.includes('{$title}')");
 
     expect($page->script($toastAppears))->toBeFalse();
     $page->assertSeeIn('@header-title', $title)->assertNoJavaScriptErrors();
@@ -148,9 +134,9 @@ test('a zone that is the user, browser and channel zone is suggested once with e
     $this->actingAs($user);
 
     $page = visit(route('app.settings.preferences'))->withTimezone('Europe/Warsaw');
-    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    waitFor($page, '@preferences-timezone-trigger');
     $page->click('@preferences-timezone-trigger');
-    waitForPreferencesTestId($page, 'preferences-timezone-suggestion-reasons-Europe-Warsaw');
+    waitFor($page, '@preferences-timezone-suggestion-reasons-Europe-Warsaw');
 
     $reasons = 'document.querySelector(\'[data-testid="preferences-timezone-suggestion-reasons-Europe-Warsaw"]\')';
 
@@ -181,7 +167,7 @@ test('a zone that is the user, browser and channel zone is suggested once with e
         JS, true);
 
     $page->hover('@preferences-timezone-option-Europe-Warsaw');
-    waitForPreferencesTestId($page, 'preferences-timezone-suggestion-tooltip');
+    waitFor($page, '@preferences-timezone-suggestion-tooltip');
 
     $page->assertScript('document.querySelector(\'[data-testid="preferences-timezone-suggestion-tooltip"]\').getBoundingClientRect().right <= document.querySelector(\'[data-testid="preferences-timezone-search"]\').closest(\'[data-slot="popover-content"]\').getBoundingClientRect().left', true);
 
@@ -197,20 +183,20 @@ test('without channels the picker shows no empty group, search filters both grou
     $this->actingAs($user);
 
     $page = visit(route('app.settings.preferences'))->withTimezone('UTC');
-    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    waitFor($page, '@preferences-timezone-trigger');
     $page->click('@preferences-timezone-trigger');
-    waitForPreferencesTestId($page, 'preferences-timezone-suggestions');
+    waitFor($page, '@preferences-timezone-suggestions');
 
     $page->assertScript('document.querySelectorAll(\'[data-testid="preferences-timezone-suggestions"] [data-testid^="preferences-timezone-option-"]\').length', 1)
         ->assertScript('document.querySelectorAll(\'[data-testid^="preferences-timezone-suggestion-channel-"]\').length', 0);
 
     $page->type('@preferences-timezone-search', 'Auckland');
-    waitForPreferencesTestId($page, 'preferences-timezone-option-Pacific-Auckland');
+    waitFor($page, '@preferences-timezone-option-Pacific-Auckland');
 
     $page->assertMissing('@preferences-timezone-suggestions')
         ->assertMissing('@preferences-timezone-option-UTC')
         ->click('@preferences-timezone-option-Pacific-Auckland');
-    waitForPreferencesTestId($page, 'preferences-saved-timezone');
+    waitFor($page, '@preferences-saved-timezone');
 
     $page->assertNoJavaScriptErrors();
     expect($user->fresh()->timezone)->toBe('Pacific/Auckland');
@@ -222,26 +208,26 @@ test('the time format offers two clocks, keeps its value after a language change
     $toastAppears = "(async () => { for (let i = 0; i < 20; i++) { if (document.querySelector('[data-sonner-toast]')) return true; await new Promise((r) => setTimeout(r, 50)); } return false; })();";
 
     $page = visit(route('app.settings.preferences'));
-    waitForPreferencesTestId($page, 'preferences-time-format-trigger');
+    waitFor($page, '@preferences-time-format-trigger');
     $page->click('@preferences-time-format-trigger');
-    waitForPreferencesTestId($page, 'preferences-time-format-option-12h');
+    waitFor($page, '@preferences-time-format-option-12h');
 
     expect($page->script('document.querySelectorAll(\'[data-testid^="preferences-time-format-option-"]\').length'))->toBe(2);
     $page->click('@preferences-time-format-option-12h');
-    waitForPreferencesTestId($page, 'preferences-saved-time_format');
+    waitFor($page, '@preferences-saved-time_format');
 
     expect($page->script($toastAppears))->toBeFalse()
         ->and($user->fresh()->time_format)->toBe(TimeFormat::TwelveHour);
 
     choosePreference($page, 'preferences-language', 'de', 'locale');
     $label = __('settings.preferences.time_format.twelve_hour', [], 'de');
-    $page->script("(async () => { for (let i = 0; i < 150; i++) { if (document.querySelector('[data-testid=\"preferences-time-format-value\"]')?.textContent.includes('{$label}')) return; await new Promise((r) => setTimeout(r, 50)); } })();");
+    waitForState($page, '@preferences-time-format-value', "element.textContent.includes('{$label}')");
 
     $page->assertSeeIn('@preferences-time-format-value', $label)->assertNoJavaScriptErrors();
     expect($user->fresh()->time_format)->toBe(TimeFormat::TwelveHour);
 
     $page = visit(route('app.calendar', ['view' => 'week']));
-    waitForPreferencesTestId($page, 'calendar-slot-'.now()->startOfWeek()->format('Y-m-d').'-14');
+    waitFor($page, '@calendar-slot-'.now()->startOfWeek()->format('Y-m-d').'-14');
 
     $page->assertScript("document.body.innerText.includes('2 PM')", true)
         ->assertNoJavaScriptErrors();
@@ -252,18 +238,12 @@ test('the time zone search ignores accents and matches each word typed', functio
     $this->actingAs($user);
 
     $page = visit(route('app.settings.preferences'))->withTimezone('UTC');
-    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    waitFor($page, '@preferences-timezone-trigger');
     $page->click('@preferences-timezone-trigger');
-    waitForPreferencesTestId($page, 'preferences-timezone-search');
+    waitFor($page, '@preferences-timezone-search');
 
     $page->type('@preferences-timezone-search', 'sao paulo');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100 && !document.querySelector('[data-testid^="preferences-timezone-option-America-Sao"]'); i++) {
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })()
-    JS);
+    waitForState($page, '[data-testid^="preferences-timezone-option-America-Sao"]', 'true');
 
     $page->assertScript('Boolean(document.querySelector(\'[data-testid^="preferences-timezone-option-America-Sao"]\'))', true)
         ->assertMissing('@preferences-timezone-option-UTC')
@@ -275,18 +255,12 @@ test('the time zone search matches the offset shown next to each zone', function
     $this->actingAs($user);
 
     $page = visit(route('app.settings.preferences'))->withTimezone('UTC');
-    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    waitFor($page, '@preferences-timezone-trigger');
     $page->click('@preferences-timezone-trigger');
-    waitForPreferencesTestId($page, 'preferences-timezone-search');
+    waitFor($page, '@preferences-timezone-search');
 
     $page->type('@preferences-timezone-search', 'gmt-3 paulo');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100 && document.querySelector('[data-testid="preferences-timezone-option-UTC"]'); i++) {
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })()
-    JS);
+    waitForGone($page, '@preferences-timezone-option-UTC');
 
     $page->assertScript('Array.from(document.querySelectorAll(\'[data-testid^="preferences-timezone-option-"]\')).map((option) => option.dataset.testid.replace("preferences-timezone-option-", "")).join(",")', 'America-Sao_Paulo')
         ->assertNoJavaScriptErrors();

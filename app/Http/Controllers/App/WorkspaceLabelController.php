@@ -18,13 +18,9 @@ use Inertia\Response;
 
 class WorkspaceLabelController extends Controller
 {
-    public function index(Request $request): Response|RedirectResponse
+    public function index(Request $request): Response
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -46,10 +42,6 @@ class WorkspaceLabelController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
-
         $this->authorize('createPost', $workspace);
 
         $label = CreateLabel::execute($workspace, $request->validated());
@@ -60,10 +52,6 @@ class WorkspaceLabelController extends Controller
     public function update(UpdateLabelRequest $request, WorkspaceLabel $label): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 
@@ -79,10 +67,6 @@ class WorkspaceLabelController extends Controller
     public function destroy(Request $request, WorkspaceLabel $label): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
-
-        if (! $workspace) {
-            return redirect()->route('app.workspaces.create');
-        }
 
         $this->authorize('createPost', $workspace);
 

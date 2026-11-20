@@ -17,6 +17,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PostHog\TrackRepurposeActivated;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -48,6 +49,12 @@ function tiktokDestination(Workspace $workspace): array
         'content_type' => ContentType::TikTokVideo->value,
         'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
     ];
+}
+
+function enableRepurposeTracking(): void
+{
+    enablePostHog();
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, TrackRepurposeActivated::class]);
 }
 
 test('a repurpose is created as a draft with its source account', function () {
@@ -446,4 +453,57 @@ test('an update that repeats the current source and format leaves the watermark 
 
     expect($fresh->activated_at->equalTo($watermark))->toBeTrue()
         ->and($fresh->publish_mode)->toBe(PublishMode::Draft);
+});
+
+test('activating a repurpose tracks it', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace), tiktokDestination($workspace)],
+    ]);
+
+    enableRepurposeTracking();
+
+    $this->actingAs($user);
+
+    ActivateRepurpose::execute($repurpose);
+
+    Queue::assertPushedOn('posthog', TrackRepurposeActivated::class, fn (TrackRepurposeActivated $job) => $job->repurposeId === (string) $repurpose->id
+        && $job->userId === (string) $user->id);
+});
+
+test('a rejected activation is not tracked', function () {
+    $repurpose = Repurpose::factory()->create();
+
+    enableRepurposeTracking();
+
+    expect(fn () => ActivateRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    Queue::assertNotPushed(TrackRepurposeActivated::class);
+});
+
+test('a repurpose still activates when tracking it fails', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
+
+    enableRepurposeTracking();
+    failDispatchOf(TrackRepurposeActivated::class);
+
+    $activated = ActivateRepurpose::execute($repurpose);
+
+    $fresh = $repurpose->fresh();
+
+    expect($activated->status)->toBe(Status::Active)
+        ->and($fresh->status)->toBe(Status::Active)
+        ->and($fresh->activated_at)->not->toBeNull();
+    Queue::assertNotPushed(TrackRepurposeActivated::class);
 });

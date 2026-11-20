@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Мітки',
     'description' => 'Упорядковуйте дописи за допомогою міток.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => 'Редагувати мітку',
         'delete' => 'Видалити мітку',
         'more' => 'Інші дії',
+        'settings' => 'Налаштування',
         'view_posts' => 'Переглянути дописи',
+        'view_insights' => 'Переглянути Insights',
     ],
 
     'create' => [

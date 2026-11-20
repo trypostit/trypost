@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'お支払い',
 
@@ -12,7 +14,6 @@ return [
     'subscribe' => [
         'billed_monthly' => '月払い',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -24,6 +25,7 @@ return [
         'yearly' => '年額',
         'save_two_months' => '2か月分無料',
         'per_month' => '/月',
+        'per_year' => '/年',
         'workspaces_one' => 'ワークスペース 1 つ',
         'workspaces_unlimited' => '無制限のワークスペース',
         'workspaces_tooltip' => 'ワークスペースは 1 つのブランドや顧客ごとの独立した領域です。SNS アカウント、署名、ラベル、アナリティクス、メンバー権限、MCP 接続をそれぞれ個別に持ちます。',
@@ -33,7 +35,6 @@ return [
         'select' => ':plan を選ぶ',
         'upgrade' => ':plan にアップグレード',
         'downgrade' => ':plan にダウングレード',
-        'start_first_month' => ':priceで有効にする',
         'billed_yearly_total' => '年払い · :price（2か月分無料）',
         'socials_tagline' => 'クリエイターや小規模ブランド向け。',
         'workspaces_tagline' => '代理店や大規模ビジネス向け。',
@@ -61,26 +62,43 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => '有効',
+            'trial' => '無料トライアル',
+            'cancelling' => '解約済み',
+            'past_due' => '延滞',
+        ],
         'change' => 'プランを変更',
-        'price_monthly' => ':price/月',
-        'price_yearly' => ':price/年',
+        'subscribe' => '今すぐ申し込む',
         'trial_until' => ':dateまでトライアル',
-        'renews' => '自動更新',
         'cancelled' => '解約済み、:dateに終了',
-        'workspaces_usage' => 'ワークスペース: :count / :limit',
+        'discount_until' => ':dateまで:discount割引',
+        'discount_forever' => '毎回の支払いで:discount割引',
+        'discount_once' => '次回の支払いで:discount割引',
     ],
 
     'subscription' => [
         'title' => 'お支払い方法',
+        'default' => 'デフォルト',
         'description' => 'カードや請求情報は Stripe で更新できます。',
         'no_payment_method' => 'まだ登録されたお支払い方法がありません。',
         'expires_on' => '有効期限 :month/:year',
         'manage_stripe' => 'Stripe で管理',
     ],
 
+    'tabs' => [
+        'plan' => 'プラン',
+        'invoices' => '請求書',
+    ],
+
     'invoices' => [
-        'title' => '請求書',
-        'description' => '過去の請求書をダウンロードできます。',
+        'columns' => [
+            'date' => '日付',
+            'amount' => '金額',
+            'status' => 'ステータス',
+        ],
+        'empty_title' => '請求書はまだありません',
+        'empty_description' => '初回のお支払い後、請求書がここに表示されます。',
         'paid' => '支払い済み',
         'download' => '請求書をダウンロード',
     ],

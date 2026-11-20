@@ -58,7 +58,7 @@ const goToSlide = (index: number) => {
         <template v-for="(item, index) in media" :key="item.id">
             <VideoPreview
                 v-if="isVideoMedia(item) && index === currentIndex"
-                :src="item.url"
+                :media="item"
                 :video-class="mediaClass"
             />
             <img

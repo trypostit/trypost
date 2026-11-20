@@ -78,7 +78,7 @@ class AuthenticatedSessionController extends Controller
         // browser never navigates and the provider session survives.
         // Inertia::location makes the client do a full page visit, and still
         // answers a non-Inertia request with a plain redirect.
-        return $endSessionUrl ? Inertia::location($endSessionUrl) : redirect('/');
+        return $endSessionUrl ? Inertia::location($endSessionUrl) : redirect()->route('app.home');
     }
 
     /**

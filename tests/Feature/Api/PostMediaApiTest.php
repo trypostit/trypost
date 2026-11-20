@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\MetricsUnavailableReason;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
@@ -172,7 +173,7 @@ it('returns metrics shape including unsupported reason for an unpublished post',
             'metrics',
         ])
         ->assertJsonPath('metrics.unsupported', true)
-        ->assertJsonPath('metrics.reason', 'not_published');
+        ->assertJsonPath('metrics.reason', MetricsUnavailableReason::NotPublished->value);
 });
 
 it('returns platform_not_supported for a published google business target', function () {
@@ -189,7 +190,7 @@ it('returns platform_not_supported for a published google business target', func
         ->assertOk()
         ->assertJsonPath('platform', Platform::GoogleBusiness->value)
         ->assertJsonPath('metrics.unsupported', true)
-        ->assertJsonPath('metrics.reason', 'platform_not_supported');
+        ->assertJsonPath('metrics.reason', MetricsUnavailableReason::PlatformNotSupported->value);
 });
 
 it('cannot get metrics from another workspace post', function () {

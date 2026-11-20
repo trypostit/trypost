@@ -7,7 +7,7 @@
 #   docker build --target production -t trypost:prod -f docker/Dockerfile .
 # ----------------------------------------------------------------------------
 
-ARG PHP_VERSION=8.4
+ARG PHP_VERSION=8.5.12
 ARG NODE_VERSION=22
 
 # ----------------------------------------------------------------------------
@@ -47,7 +47,6 @@ RUN apk add --no-cache \
         pdo_mysql \
         gd \
         zip \
-        opcache \
         bcmath \
         exif \
         pcntl \

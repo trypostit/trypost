@@ -11,8 +11,7 @@ class ExternalMediaResolverFactory
     public function for(Platform $platform): ExternalMediaResolver
     {
         return match ($platform) {
-            Platform::Instagram, Platform::InstagramFacebook => app(InstagramMediaResolver::class),
-            Platform::Threads => app(ThreadsMediaResolver::class),
+            Platform::Instagram, Platform::InstagramFacebook, Platform::Threads => app(MetaCarouselResolver::class),
             Platform::Facebook => app(FacebookMediaResolver::class),
             Platform::X => app(XMediaResolver::class),
             Platform::Mastodon => app(MastodonMediaResolver::class),

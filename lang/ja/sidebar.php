@@ -7,6 +7,7 @@ return [
     'select_workspace' => 'ワークスペースを選択',
     'create_workspace' => 'ワークスペースを作成',
     'new' => '新規',
+    'unfinished_post' => '完成していない投稿があります',
     'create' => '作成',
     'new_menu' => [
         'post' => '投稿',

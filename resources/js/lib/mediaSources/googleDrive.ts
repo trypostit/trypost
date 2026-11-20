@@ -1,9 +1,9 @@
 import { ref } from 'vue';
 
-import { ALLOWED_MIME_TYPES, HEIC_MIME_TYPES } from '@/lib/mediaType';
 
-import { signInWithGoogle } from './googleSignIn';
-import { loadScript } from './loadScript';
+import { signInWithGoogle } from '@/lib/mediaSources/googleSignIn';
+import { loadScript } from '@/lib/mediaSources/loadScript';
+import { ALLOWED_MIME_TYPES, HEIC_MIME_TYPES } from '@/lib/mediaType';
 
 /** True while the Picker is on screen, so modal dialogs let it be used. */
 export const isGooglePickerOpen = ref(false);

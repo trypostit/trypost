@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
 import { IconKey } from '@tabler/icons-vue';
+import Github from '@thesvg/vue/github';
+import Google from '@thesvg/vue/google';
 import { ref } from 'vue';
 
 import ConnectedAccountController from '@/actions/App/Http/Controllers/App/Settings/ConnectedAccountController';
@@ -14,8 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { connect } from '@/routes/app/profile/connected-accounts';
+import type { SocialProvider } from '@/types';
 
-export type SocialProvider = 'google' | 'github' | 'oidc';
 
 export type ConnectedAccount = {
     provider: SocialProvider;
@@ -148,18 +150,21 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     <template #media>
                         <IconKey
                             v-if="account.provider === 'oidc'"
+                            aria-hidden="true"
                             class="size-7 shrink-0 text-foreground"
-                            :data-testid="`connected-account-icon-${account.provider}`"
+                            data-testid="connected-account-icon-oidc"
                         />
-                        <img
+                        <Google
+                            v-else-if="account.provider === 'google'"
+                            aria-hidden="true"
+                            class="size-7 shrink-0"
+                            data-testid="connected-account-icon-google"
+                        />
+                        <Github
                             v-else
-                            :src="`/images/social/${account.provider}.svg`"
-                            :alt="account.label"
-                            class="size-7 shrink-0 object-contain"
-                            :class="{
-                                'dark:invert': account.provider === 'github',
-                            }"
-                            :data-testid="`connected-account-icon-${account.provider}`"
+                            aria-hidden="true"
+                            class="size-7 shrink-0 text-foreground [&_path]:fill-current"
+                            data-testid="connected-account-icon-github"
                         />
                     </template>
                     <p

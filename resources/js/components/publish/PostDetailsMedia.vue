@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { IconFileTypePdf, IconPlayerPlayFilled } from '@tabler/icons-vue';
 
+import VideoStill from '@/components/media/VideoStill.vue';
 import { isDocument, isVideo } from '@/lib/mediaType';
-import { videoFrameUrl } from '@/lib/videoFrame';
 import type { MediaItem } from '@/types/media';
 
 withDefaults(
@@ -52,13 +52,7 @@ const open = (index: number): void => {
             @click="isDocument(item) || open(index)"
         >
             <template v-if="isVideo(item)">
-                <video
-                    :src="videoFrameUrl(item)"
-                    class="size-full object-cover"
-                    muted
-                    playsinline
-                    preload="metadata"
-                />
+                <VideoStill :item="item" class="size-full object-cover" />
                 <IconPlayerPlayFilled
                     aria-hidden="true"
                     class="absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white"

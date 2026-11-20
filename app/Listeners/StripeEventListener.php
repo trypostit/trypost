@@ -4,18 +4,26 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Actions\Offer\RedeemOffer;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
+use App\Support\Billing\StripeValue;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
+use Stripe\Event as StripeEvent;
+use Stripe\Subscription as StripeSubscription;
+use Throwable;
 
 class StripeEventListener
 {
@@ -33,20 +41,21 @@ class StripeEventListener
                 return;
             }
 
-            $account = Account::where('stripe_id', $stripeCustomerId)->first();
+            /** @var Account|null $account */
+            $account = Cashier::findBillable($stripeCustomerId);
 
             if (! $account) {
                 return;
             }
 
             match ($type) {
-                'customer.subscription.created' => $this->handleSubscriptionCreated($account, $event->payload),
-                'customer.subscription.updated' => $this->handleSubscriptionUpdated($account, $event->payload),
-                'customer.subscription.deleted' => $this->handleSubscriptionDeleted($account, $event->payload),
+                StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_CREATED => $this->handleSubscriptionCreated($account, $event->payload),
+                StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_UPDATED => $this->handleSubscriptionUpdated($account, $event->payload),
+                StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_DELETED => $this->handleSubscriptionDeleted($account, $event->payload),
                 default => null,
             };
-        } catch (\Exception $e) {
-            Log::error('Stripe webhook error: '.$e->getMessage(), [
+        } catch (Throwable $e) {
+            Log::error("Stripe webhook error: {$e->getMessage()}", [
                 'exception' => $e,
                 'payload' => $event->payload,
             ]);
@@ -54,16 +63,25 @@ class StripeEventListener
     }
 
     /**
+     * A subscription is born either `trialing` (card-required trial, no charge
+     * yet) or `active` (an offer without a trial, or no offer, charged at once): two
+     * business events, see App\Support\StripeSubscriptionConversion.
+     *
      * @param  array<string, mixed>  $payload
      */
     protected function handleSubscriptionCreated(Account $account, array $payload): void
     {
         $previousPlan = $account->plan?->name;
+        $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
-        $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
+        $this->syncPlanFromSubscription($account, $payload);
+        $this->recordFirstPayment($account, $payload);
+        $this->redeemOffer($account, $payload);
 
-        $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
-        $this->trackSubscriptionStart($account, $payload);
+        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard, (string) $account->id, $payload, withRevenue: false);
+        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
+        TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }
 
     /**
@@ -72,11 +90,15 @@ class StripeEventListener
     protected function handleSubscriptionUpdated(Account $account, array $payload): void
     {
         $previousPlan = $account->plan?->name;
+        $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
         $this->syncPlanFromSubscription($account, $payload);
+        $this->recordFirstPayment($account, $payload);
+        $this->redeemOffer($account, $payload);
 
-        $this->trackPlanChange($account, BillingEvent::Updated, $previousPlan, $payload);
-        $this->trackTrialConversion($account, $payload);
+        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Updated, $payload, $previousPlan);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && (($this->convertedFromTrial($payload) && $this->isNowActive($payload)) || $convertsTrialWithoutCard), (string) $account->id, $payload);
+        TrackPlanChanged::dispatchIf(PostHogService::shouldTrack() && $this->priceChanged($payload), (string) $account->id, $payload);
     }
 
     /**
@@ -84,15 +106,37 @@ class StripeEventListener
      */
     protected function handleSubscriptionDeleted(Account $account, array $payload): void
     {
-        if ($account->plan_id === null) {
+        if (blank($account->plan_id) && ! $account->hasPaidSubscription()) {
             return;
         }
 
         $previousPlan = $account->plan?->name;
 
-        $account->update(['plan_id' => null]);
+        if (filled($account->plan_id) && ! $account->onGenericTrial()) {
+            $account->update(['plan_id' => null]);
+        }
 
-        $this->trackPlanChange($account, BillingEvent::Cancelled, $previousPlan, $payload);
+        TrackBilling::dispatchIf(
+            PostHogService::shouldTrack() && $this->claimCancellation($payload),
+            (string) $account->id,
+            BillingEvent::Cancelled,
+            $payload,
+            $previousPlan,
+        );
+    }
+
+    /**
+     * One subscription.cancelled per subscription. A dunning that ends in
+     * `unpaid` clears plan_id before the delete arrives, so plan_id can no
+     * longer tell a first delivery from one Stripe redelivers days later.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function claimCancellation(array $payload): bool
+    {
+        $subscriptionId = data_get($payload, 'data.object.id');
+
+        return blank($subscriptionId) || Cache::add("posthog:subscription_cancelled:{$subscriptionId}", true, now()->addDays(30));
     }
 
     /**
@@ -112,9 +156,60 @@ class StripeEventListener
     }
 
     /**
+     * A subscription created during a trial without a card the account took
+     * from an offer (`Account::subscribedDuringTrialWithoutCard()`) turns
+     * active: on created, or when an incomplete one is paid. The conversion is
+     * claimed atomically per subscription, so its created and updated webhooks
+     * handled at the same time count it once.
+     *
      * @param  array<string, mixed>  $payload
      */
-    private function syncPlanFromSubscription(Account $account, array $payload, bool $clearGenericTrial = false): void
+    private function convertsTrialWithoutCard(Account $account, array $payload): bool
+    {
+        if (! $this->startsActive($payload)) {
+            return false;
+        }
+
+        $subscriptionId = data_get($payload, 'data.object.id', $account->id);
+        $subscribedAt = StripeValue::timestamp(data_get($payload, 'data.object.created')) ?? now();
+
+        return $account->subscribedDuringTrialWithoutCard($subscribedAt)
+            && Cache::add("posthog:trial_converted:{$subscriptionId}", true, now()->addDay());
+    }
+
+    /**
+     * The subscription turns active now: created active, or paid after it was
+     * created incomplete. A renewal or a plan change of an active one is not.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function startsActive(array $payload): bool
+    {
+        return $this->isNowActive($payload) && (
+            data_get($payload, 'type') === StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_CREATED
+            || data_get($payload, 'data.previous_attributes.status') === StripeSubscription::STATUS_INCOMPLETE
+        );
+    }
+
+    /**
+     * The first time a subscription is active the account has been charged:
+     * kept on the account because Cashier clears `trial_ends_at` on delete.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function recordFirstPayment(Account $account, array $payload): void
+    {
+        if (! $this->isNowActive($payload) || filled($account->first_paid_at)) {
+            return;
+        }
+
+        Account::withoutTimestamps(fn (): bool => $account->forceFill(['first_paid_at' => now()])->saveQuietly());
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function syncPlanFromSubscription(Account $account, array $payload): void
     {
         $status = $this->currentStatus($payload);
 
@@ -125,18 +220,12 @@ class StripeEventListener
                 return;
             }
 
-            $attributes = ['plan_id' => $plan->id];
-
-            if ($clearGenericTrial) {
-                $attributes['trial_ends_at'] = null;
-            }
-
-            $account->update($attributes);
+            $account->update(['plan_id' => $plan->id]);
 
             return;
         }
 
-        if (SubscriptionPlanSync::clears($status) && $account->plan_id !== null) {
+        if (SubscriptionPlanSync::clears($status) && filled($account->plan_id) && ! $account->onGenericTrial()) {
             $account->update(['plan_id' => null]);
         }
     }
@@ -155,12 +244,7 @@ class StripeEventListener
             return null;
         }
 
-        $plan = Plan::query()
-            ->where(function ($query) use ($priceIds): void {
-                $query->whereIn('stripe_monthly_price_id', $priceIds)
-                    ->orWhereIn('stripe_yearly_price_id', $priceIds);
-            })
-            ->first();
+        $plan = Plan::forStripePrices($priceIds)->first();
 
         if (! $plan) {
             Log::warning('Stripe webhook: no matching plan found in subscription items', [
@@ -173,55 +257,18 @@ class StripeEventListener
     }
 
     /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function trackPlanChange(Account $account, BillingEvent $event, ?string $previousPlan, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        TrackBilling::dispatch((string) $account->id, $event, $payload, $previousPlan);
-    }
-
-    /**
-     * A subscription is born either `trialing` (card-required trial, no
-     * charge yet) or `active` (first-month coupon or no trial — charged
-     * immediately). These are different business events, not the same
-     * "checkout completed" moment — see App\Support\StripeSubscriptionConversion.
+     * An offer is used once its subscription is active or trialing: an
+     * incomplete one may never be paid, and would use up a place for nothing.
      *
      * @param  array<string, mixed>  $payload
      */
-    private function trackSubscriptionStart(Account $account, array $payload): void
+    private function redeemOffer(Account $account, array $payload): void
     {
-        if (! PostHogService::shouldTrack()) {
+        if (! SubscriptionPlanSync::allows($this->currentStatus($payload))) {
             return;
         }
 
-        match ($this->currentStatus($payload)) {
-            'trialing' => TrackTrialStarted::dispatch((string) $account->id, $payload),
-            'active' => TrackCheckoutCompleted::dispatch((string) $account->id, $payload),
-            default => null,
-        };
-    }
-
-    /**
-     * Fires on the trial's first successful charge, using Stripe's own
-     * `previous_attributes` rather than trusting local DB state. This also
-     * covers a `past_due` recovery without mistaking a later billing-cycle
-     * recovery for the trial conversion.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function trackTrialConversion(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
-            TrackTrialConverted::dispatch((string) $account->id, $payload);
-        }
+        RedeemOffer::execute($account, data_get($payload, ['data', 'object', 'metadata', ConfigureSubscriptionCheckout::OFFER_METADATA_KEY]));
     }
 
     /**
@@ -249,11 +296,11 @@ class StripeEventListener
     {
         $previousStatus = data_get($payload, 'data.previous_attributes.status');
 
-        if ($previousStatus === 'trialing') {
+        if ($previousStatus === StripeSubscription::STATUS_TRIALING) {
             return true;
         }
 
-        if ($previousStatus !== 'past_due') {
+        if ($previousStatus !== StripeSubscription::STATUS_PAST_DUE) {
             return false;
         }
 
@@ -266,8 +313,18 @@ class StripeEventListener
     /**
      * @param  array<string, mixed>  $payload
      */
+    private function priceChanged(array $payload): bool
+    {
+        $previousPriceId = data_get($payload, 'data.previous_attributes.items.data.0.price.id');
+
+        return filled($previousPriceId) && $previousPriceId !== data_get($payload, 'data.object.items.data.0.price.id');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function isNowActive(array $payload): bool
     {
-        return $this->currentStatus($payload) === 'active';
+        return $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE;
     }
 }

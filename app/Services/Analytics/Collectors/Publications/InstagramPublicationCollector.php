@@ -36,7 +36,7 @@ class InstagramPublicationCollector extends AbstractMetaPublicationCollector
 
         $response = $this->get(
             $account,
-            "{$account->platform->instagramGraphBaseUrl()}/{$account->platform_user_id}/media",
+            "{$account->platform->graphApiUrl()}/{$account->platform_user_id}/media",
             ['fields' => $this->fields($account), 'limit' => self::PAGE_SIZE, 'after' => $cursor],
         );
         $publications = $cursor === null ? $this->liveStories($account) : [];
@@ -76,7 +76,7 @@ class InstagramPublicationCollector extends AbstractMetaPublicationCollector
         try {
             $response = $this->get(
                 $account,
-                "{$account->platform->instagramGraphBaseUrl()}/{$account->platform_user_id}/stories",
+                "{$account->platform->graphApiUrl()}/{$account->platform_user_id}/stories",
                 ['fields' => $this->fields($account), 'limit' => self::STORIES_LIMIT],
             );
         } catch (AnalyticsCollectionException $exception) {

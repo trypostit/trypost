@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Servers;
 
+use App\Enums\Mcp\Method;
+use App\Mcp\Methods\ListToolsWithSecuritySchemes;
 use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
 use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
 use App\Mcp\Tools\Analytics\GetChannelInsightsTool;
@@ -28,6 +30,7 @@ use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Mcp\Tools\Post\AddPostNoteReactionTool;
 use App\Mcp\Tools\Post\ApprovePostTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
@@ -39,11 +42,13 @@ use App\Mcp\Tools\Post\DeletePostNoteTool;
 use App\Mcp\Tools\Post\DeletePostTool;
 use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Mcp\Tools\Post\GetPostTool;
+use App\Mcp\Tools\Post\ListPostNoteMentionablesTool;
 use App\Mcp\Tools\Post\ListPostNotesTool;
 use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\RejectPostTool;
+use App\Mcp\Tools\Post\RemovePostNoteReactionTool;
 use App\Mcp\Tools\Post\RequestMediaUploadTool;
 use App\Mcp\Tools\Post\SetPostRecurrenceTool;
 use App\Mcp\Tools\Post\UpdatePostNoteTool;
@@ -96,10 +101,12 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Name('TryPost')]
 #[Version('1.0.0')]
 #[Icon('images/trypost/icon.png', mimeType: 'image/png')]
-#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, threads on X, Bluesky and Mastodon through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, social accounts and their posting times, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies.')]
+#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, a thread (X, Bluesky, Mastodon) or one comment (LinkedIn) through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, social accounts and their posting times, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies.')]
 class TryPostServer extends Server
 {
-    public int $defaultPaginationLength = 100;
+    public int $defaultPaginationLength = 200;
+
+    public int $maxPaginationLength = 200;
 
     protected array $tools = [
         ListPostsTool::class,
@@ -120,6 +127,9 @@ class TryPostServer extends Server
         CreatePostNoteTool::class,
         UpdatePostNoteTool::class,
         DeletePostNoteTool::class,
+        ListPostNoteMentionablesTool::class,
+        AddPostNoteReactionTool::class,
+        RemovePostNoteReactionTool::class,
 
         GetAnalyticsReportTool::class,
         GetAnalyticsPublicationTool::class,
@@ -200,4 +210,9 @@ class TryPostServer extends Server
     protected array $resources = [];
 
     protected array $prompts = [];
+
+    protected function boot(): void
+    {
+        $this->addMethod(Method::ToolsList->value, ListToolsWithSecuritySchemes::class);
+    }
 }

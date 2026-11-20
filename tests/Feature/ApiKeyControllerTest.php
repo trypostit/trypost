@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\ApiKeyEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
 use Database\Seeders\PassportSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Passport\ClientRepository;
 
 beforeEach(function () {
@@ -308,4 +311,53 @@ it('marks each api key as active, expiring soon or expired', function () {
         ->and($tokens[$later->id])->toBe('active')
         ->and($tokens[$soon->id])->toBe('expiring_soon')
         ->and($tokens[$expired->id])->toBe('expired');
+});
+
+it('creating an api key tracks api_key.created', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
+        ->assertRedirect();
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
+        && $job->distinctId === (string) $this->user->id
+        && $job->accountId === (string) $this->workspace->account_id
+        && $job->properties === ['workspace_id' => (string) $this->workspace->id]);
+});
+
+it('regenerating an api key does not track api_key.created', function () {
+    enablePostHog();
+    Queue::fake([CaptureAccountEvent::class]);
+    $token = makeWorkspaceToken($this->user, $this->workspace);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertRedirect();
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+it('creating an api key does not track when posthog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Queue::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
+        ->assertRedirect();
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+it('creating an api key still returns the plain token when tracking it fails', function () {
+    enablePostHog();
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
+        ->assertRedirect()
+        ->assertSessionHas('flash.plainToken');
+
+    expect(AccessToken::where('user_id', $this->user->id)->where('workspace_id', $this->workspace->id)->where('name', 'My API Key')->exists())->toBeTrue();
 });

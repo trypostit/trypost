@@ -162,6 +162,97 @@ test('the web, api and mcp filter the workspace report by channel alike', functi
             ->etc());
 });
 
+test('the web, api and mcp filter the workspace report by label alike, leaving followers account-wide', function (Closure $query, int $posts) {
+    [, $tagged] = ($this->seedInsightsParityChannel)(Platform::Instagram, 120, 7, 'alpha');
+    ($this->seedInsightsParityChannel)(Platform::Facebook, 30, 5, 'bravo');
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount(SocialAccount::find($tagged->social_account_id))->published()->create(['user_id' => $this->user->id]);
+    $post->labels()->attach($label);
+    $tagged->update(['post_id' => $post->id]);
+    $filtered = [...$this->range, ...$query($label)];
+
+    $web = null;
+    $this->actingAs($this->user)
+        ->get(route('app.insights', $filtered))
+        ->assertInertia(function (Assert $page) use (&$web, $posts) {
+            $page->where('report.summary.posts.value', $posts)
+                ->where('report.summary.followers.value', 150)
+                ->etc();
+            $web = data_get($page->toArray(), 'props.report.summary');
+        });
+
+    auth()->forgetGuards();
+    $api = $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.analytics.index', $filtered))
+        ->assertOk()
+        ->assertJsonPath('summary.posts.value', $posts)
+        ->json('summary');
+
+    expect($api)->toEqual($web);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAnalyticsReportTool::class, $filtered)
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('summary', $web)
+            ->etc());
+})->with([
+    'one label' => [fn (WorkspaceLabel $label): array => ['labels' => [$label->id]], 1],
+    'untagged' => [fn (WorkspaceLabel $label): array => ['untagged' => true], 1],
+]);
+
+test('a label of another workspace or a deleted one matches no post alike on web, api and mcp', function (Closure $label) {
+    ($this->seedInsightsParityChannel)(Platform::Instagram, 120, 7, 'alpha');
+    $query = [...$this->range, 'labels' => [$label($this->workspace)]];
+
+    $web = null;
+    $this->actingAs($this->user)
+        ->get(route('app.insights', $query))
+        ->assertOk()
+        ->assertInertia(function (Assert $page) use (&$web) {
+            $page->where('report.summary.posts.value', 0)->etc();
+            $web = data_get($page->toArray(), 'props.report.summary');
+        });
+    auth()->forgetGuards();
+
+    $api = $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.analytics.index', $query))
+        ->assertOk()
+        ->json('summary');
+
+    expect($api)->toEqual($web);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAnalyticsReportTool::class, $query)
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('summary', $web)->etc());
+})->with([
+    'of another workspace' => [fn (Workspace $workspace): string => WorkspaceLabel::factory()->create()->id],
+    'deleted' => [function (Workspace $workspace): string {
+        $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+        $label->delete();
+
+        return $label->id;
+    }],
+]);
+
+test('the workspace report refuses a malformed label alike on web, api and mcp', function () {
+    $query = [...$this->range, 'labels' => ['not-a-uuid']];
+
+    $web = $this->actingAs($this->user)
+        ->getJson(route('app.insights', $query))
+        ->assertUnprocessable()
+        ->json('errors')['labels.0'][0];
+    auth()->forgetGuards();
+
+    $this->withHeaders(parityApi($this->token))
+        ->getJson(route('api.analytics.index', $query))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['labels.0' => $web]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(GetAnalyticsReportTool::class, $query)
+        ->assertHasErrors([$web]);
+});
+
 test('range presets are accepted and custom without dates is refused alike by web, api and mcp', function () {
     ($this->seedInsightsParityChannel)(Platform::Instagram, 120, 7, 'alpha');
 
@@ -459,6 +550,12 @@ test('channel insights show the same summary, metrics, series and ranking on web
     'untagged' => [fn (WorkspaceLabel $label): array => ['untagged' => '1']],
     'types' => [fn (WorkspaceLabel $label): array => ['types' => [ContentType::InstagramReel->value]]],
     'previous period' => [fn (WorkspaceLabel $label): array => ['period' => 'previous', 'range' => '30d']],
+    'a label of another workspace' => [fn (WorkspaceLabel $label): array => ['labels' => [WorkspaceLabel::factory()->create()->id]]],
+    'the posts label, deleted' => [function (WorkspaceLabel $label): array {
+        $label->delete();
+
+        return ['labels' => [$label->id]];
+    }],
 ]);
 
 test('channel insights series: reach is the total of the posts published each day and net followers is cumulative', function () {
@@ -478,7 +575,7 @@ test('channel insights series: reach is the total of the posts published each da
         ->and(data_get($byDay, '2026-09-25.values.net_followers'))->toBe(30);
 });
 
-test('channel insights refuse a foreign label and a post type of another platform with the web message', function (Closure $input, string $key) {
+test('channel insights refuse a malformed label and a post type of another platform with the web message', function (Closure $input, string $key) {
     ['account' => $account] = seedChannelInsightsParity($this->workspace, $this->user);
     $query = $input();
 
@@ -501,7 +598,7 @@ test('channel insights refuse a foreign label and a post type of another platfor
             ->assertHasErrors([$web]);
     }
 })->with([
-    'foreign label' => [fn (): array => ['labels' => [WorkspaceLabel::factory()->create()->id]], 'labels.0'],
+    'malformed label' => [fn (): array => ['labels' => ['not-a-uuid']], 'labels.0'],
     'type of another platform' => [fn (): array => ['types' => [ContentType::LinkedInPost->value]], 'types.0'],
     'custom range without dates' => [fn (): array => ['range' => 'custom'], 'start'],
 ]);

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -294,4 +295,14 @@ test('the export lists posts by the viewer local day', function () {
     expect($content)->toContain('| 2026-09-17 22:00 | alpha |')
         ->not->toContain('early-post')
         ->not->toContain('alpha-reel');
+});
+
+test('the export keeps a post the network deleted without its link', function () {
+    AnalyticsPublication::query()->where('excerpt', 'alpha-reel')->update(['availability' => PublicationAvailability::Deleted]);
+
+    $rows = collect(insightsCsvRows($this->actingAs($this->user)->get(insightsExportRoute('csv'))->streamedContent()))
+        ->keyBy(fn (array $row): string => (string) data_get($row, 4));
+
+    expect(data_get($rows->get('alpha-reel'), 5))->toBe('')
+        ->and(data_get($rows->get('bravo-post'), 5))->toBe('https://example.com/bravo-post');
 });

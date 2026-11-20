@@ -86,7 +86,7 @@ test('the composer picks the same type as forMedia for every network and media m
     try {
         $process = (new Process([
             $node,
-            base_path('tests/fixtures/derived-content-type-harness.js'),
+            base_path('tests/fixtures/derived-content-type-harness.ts'),
             resource_path('js'),
             $input,
         ]))->mustRun();

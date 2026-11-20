@@ -23,9 +23,13 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         'SWIPE_FORWARD' => 'swipes_forward',
     ];
 
-    public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    protected function postsEdge(): string
     {
-        $this->refusals = [];
+        return 'media';
+    }
+
+    protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
+    {
         $account = $this->account($publication);
         AnalyticsCollectionException::unlessGranted($account, ...$account->platform === Platform::InstagramFacebook
             ? ['instagram_basic', 'instagram_manage_insights', 'pages_read_engagement']
@@ -35,7 +39,7 @@ class InstagramPublicationMetricsCollector extends AbstractMetaPublicationMetric
         $fields = $isStory
             ? ['reach', 'views', 'replies']
             : ['reach', 'views', 'likes', 'comments', 'shares', 'saved'];
-        $url = $account->platform->instagramGraphBaseUrl()."/{$publication->remote_id}/insights";
+        $url = "{$account->platform->graphApiUrl()}/{$publication->remote_id}/insights";
         $response = $this->get($account, $url, ['metric' => implode(',', $fields)]);
         $items = $response->json('data');
 

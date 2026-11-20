@@ -54,9 +54,14 @@ services:
       # REQUIRED for any durable deploy (and always for multi-node / load
       # balancers). File keys under storage/ are NOT persisted by the volumes
       # below — without these env vars a container recreate issues new keys and
-      # invalidates every API/MCP token. Generate once:
-      #   docker compose -f compose.prod.yaml run --rm app php artisan passport:keys --show
-      # then paste the PEM contents here (use \n for newlines).
+      # invalidates every API/MCP token. Generate a pair once — the command
+      # writes files under storage/, so generate and print in the same
+      # container, otherwise --rm takes them away:
+      #   docker compose -f compose.prod.yaml run --rm --no-deps app sh -c \
+      #     'php artisan passport:keys --force >/dev/null && cat storage/oauth-private.key storage/oauth-public.key'
+      # PASSPORT_PRIVATE_KEY prints first, PASSPORT_PUBLIC_KEY second. Paste
+      # each as a YAML block scalar, or as one line with literal \n newlines.
+      # (passport:keys has no --show flag; it only writes the two files.)
       PASSPORT_PRIVATE_KEY: ""
       PASSPORT_PUBLIC_KEY: ""
 
@@ -77,6 +82,21 @@ services:
       # AWS_DEFAULT_REGION: us-east-1
       # AWS_BUCKET: ""
       # AWS_URL: ""
+      #
+      # --- Database backups (paulocastellano/laravel-database-backup): gzipped
+      # pg_dump every N hours (UTC) to a PRIVATE S3-compatible bucket (R2, S3,
+      # Spaces...); BACKUP_ENDPOINT picks the provider ---
+      # BACKUP_ENABLED: "true"
+      # BACKUP_INTERVAL_HOURS: "6"
+      # BACKUP_KEEP_DAYS: "30"           # 0 keeps every backup
+      # BACKUP_BUCKET: ""                # required
+      # BACKUP_DIRECTORY: trypost        # required: folder of the bucket
+      # BACKUP_ENDPOINT: ""
+      # BACKUP_REGION: auto
+      # BACKUP_ACCESS_KEY_ID: ""
+      # BACKUP_SECRET_ACCESS_KEY: ""
+      # BACKUP_NOTIFY_EMAIL: ""          # every success and failure
+      # BACKUP_NOTIFY_DISCORD_WEBHOOK_URL: ""
 
       # ===== Mail =====
       # Defaults to "log" (emails written to the container log). Configure SMTP

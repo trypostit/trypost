@@ -8,16 +8,7 @@ use App\Models\WorkspaceLabel;
 
 function waitForDialogFullScreenTestId(mixed $page, string $testId): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector('[data-testid="{$testId}"]');
-                if (element && element.getBoundingClientRect().height > 0
-                    && element.getAnimations().every((animation) => animation.playState !== 'running')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForState($page, "@{$testId}", "element.getBoundingClientRect().height > 0 && element.getAnimations().every((animation) => animation.playState !== 'running')");
 }
 
 function dialogFullScreenAdmin(): User

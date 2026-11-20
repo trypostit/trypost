@@ -8,6 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\User\WeekStart;
 use App\Models\Post;
 use App\Models\Workspace;
@@ -105,7 +106,7 @@ class BuildPublicationAnalyticsReport
                 $bucket['accounts'][$key] = $count;
             }
 
-            $bucket['total'] = array_sum(data_get($bucket, 'accounts'));
+            $bucket['total'] = collect(data_get($bucket, 'accounts'))->sum();
         }
         unset($bucket);
 
@@ -116,6 +117,7 @@ class BuildPublicationAnalyticsReport
             'previous_totals' => $this->finalizeTotals($previousTotals),
             'posts' => [
                 'resolution' => $this->buckets->resolution($current),
+                'total' => data_get($currentTotals, 'posts'),
                 'accounts' => $postAccounts,
                 'buckets' => $buckets,
             ],
@@ -315,8 +317,9 @@ class BuildPublicationAnalyticsReport
      */
     private function top(array $rows, Collection $postMedia): array
     {
-        return collect($rows)->map(fn (object $row): array => [
+        return collect($rows)->values()->map(fn (object $row, int $index): array => [
             'id' => $row->id,
+            'rank' => $index + 1,
             'post_id' => $row->post_id,
             'social_account_key' => $row->social_account_key,
             'platform' => $row->platform,
@@ -327,7 +330,7 @@ class BuildPublicationAnalyticsReport
             'content_type' => $row->content_type,
             'availability' => $row->availability,
             'published_at' => $row->provider_published_at,
-            'permalink' => $row->permalink,
+            'permalink' => PublicationAvailability::from($row->availability)->visiblePermalink($row->permalink),
             'excerpt' => $row->excerpt,
             'preview_metadata' => $row->preview_metadata ? json_decode((string) $row->preview_metadata, true) : null,
             'media' => $postMedia->get((string) $row->post_id),

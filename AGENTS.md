@@ -3,11 +3,9 @@
 
 # Laravel Boost Guidelines
 
-The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
-
 ## Foundational Context
 
-This application is a Laravel application running on PHP 8.5. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
+This application is a Laravel application running on PHP 8.5. Always use the APIs that match the installed major version of each package — do not assume a version.
 
 Before relying on a package's API, confirm its installed version:
 - PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
@@ -34,15 +32,11 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Frontend Bundling
 
-- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+- If a frontend change doesn't show in the UI or you get a "Unable to locate file in Vite manifest" error, run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 ## Documentation Files
 
 - You must only create documentation files if explicitly requested by the user.
-
-## Replies
-
-- Be concise in your explanations - focus on what's important rather than explaining obvious details.
 
 === boost rules ===
 
@@ -58,7 +52,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Searching Documentation (IMPORTANT)
 
-- Always use `search-docs` before making code changes. Do not skip this step. It returns version-specific docs based on installed packages automatically.
+- Use `search-docs` before changes that depend on Laravel ecosystem APIs, behavior, configuration, or version-specific syntax. Skip it for copy-only edits and other changes where package documentation is irrelevant. Reuse sufficient results already in context instead of searching again.
 - Pass a `packages` array to scope results when you know which packages are relevant.
 - Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
 - Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.
@@ -72,8 +66,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Project Rules
 
-- This project keeps committed, area-grouped rules in `.ai/rules` (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule.
-- Record durable rules with `record-rule` so the next agent or teammate inherits them instead of working them out again. Pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Always use `record-rule`, never your native memory or notes tool — native memory is personal and session-scoped; only `.ai/rules` is shared with the team and persists in the repo.
+- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists, including path-scoped framework guidelines under `.ai/rules/boost`. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
 
 ## Artisan
 
@@ -115,8 +108,11 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Test Enforcement
 
-- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
-- Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
+- Add or update tests for behavior and logic changes when a test provides meaningful regression coverage.
+- Pure copy, styling, and layout-only changes do not require new or updated tests.
+- When test coverage applies, run the affected tests and ensure they pass.
+- Test the changed behavior and its important failure modes, but do not add tests beyond them.
+- Read the `testing-best-practices` skill before writing tests.
 
 === inertia-laravel/core rules ===
 
@@ -167,10 +163,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
 - When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
 
-## Vite Error
-
-- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
-
 === wayfinder/core rules ===
 
 # Laravel Wayfinder
@@ -186,12 +178,19 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 
 === pest/core rules ===
 
-## Pest
+# Pest
 
-- This project uses Pest for testing. Create tests: `php artisan make:test --pest {name}`.
-- The `{name}` argument should not include the test suite directory. Use `php artisan make:test --pest SomeFeatureTest` instead of `php artisan make:test --pest Feature/SomeFeatureTest`.
-- Run tests: `php artisan test --compact` or filter: `php artisan test --compact --filter=testName`.
-- Do NOT delete tests without approval.
+- This project uses Pest. Create tests with `php artisan make:test --pest {name}`.
+- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
+- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
+- Do not delete tests or test files without approval. They are part of the application.
+
+## Running Tests
+
+- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
+- Rerun a test after each change to it.
+- Run `vendor/bin/pest` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+- After the feature tests pass, ask the user to run the complete suite with `php artisan test --compact`.
 
 === inertia-vue/core rules ===
 
@@ -204,18 +203,58 @@ Vue components must have a single root element.
 
 # Project-Specific Rules
 
+## One type per parameter (PHP and TypeScript)
+
+A parameter takes one type, nullable at most (`?ContentType`, `string | null`) (owner decision November 2026). A union of types (`array|string`, `ContentType|string|null`, `string | number`) or a `mixed` for a value the caller could settle means a step before it handed over something it should have resolved: fix that step instead of widening the parameter.
+
+- Resolve where the value comes in: a content type sent as a string becomes `ContentType::resolve()` once, at the entry point, and every method after it takes `?ContentType` (`ContentType::poll()`, `PostPlatformMetaRules::formatErrors()`).
+- Shape a value where it is built, not where it is used: a Mastodon query that repeats a key (`id[]=`) is built by `MastodonApi::url($instance, $path, $query)` from an array, so the HTTP helper keeps `array $query` instead of also taking a prebuilt string.
+- A union is a strict exception, for a value whose shape genuinely varies at its source (a decoded JSON payload, a framework callback), never a convenience; its docblock says why. Code written before this rule moves to it when touched, not in a sweep.
+
+## Branching reads top to bottom (PHP and TypeScript)
+
+A function that decides between several outcomes is a list of early returns, one case per `if`, read from top to bottom (owner decision November 2026). Never a ternary inside a ternary, a ternary inside an `if`, or a ternary whose condition joins several checks with `||` / `&&`.
+
+- One ternary with a single plain condition is fine (`filled($channel) ? 'channel' : 'all'`). Anything more becomes `if` blocks with braces.
+- A ternary that picks between two arrays, or that does not fit on one line, is an `if` too, even with a single plain condition (owner decision November 2026). Put the choice in a small method with an early return, so each case reads on its own (`ThreadsPublisher::mediaSource()` is the reference):
+
+    ```php
+    if ($media->isVideo()) {
+        return ['media_type' => 'VIDEO', 'video_url' => $media->url];
+    }
+
+    return ['media_type' => 'IMAGE', 'image_url' => $media->url];
+    ```
+- Name a check used twice (`const imported = post.origin === PostOrigin.Network`) instead of repeating it in each branch.
+- When the outcome follows from what the user clicked, let each action say it (`publishNow()` toasts "publishing") instead of guessing it back from the payload.
+- A `match` lists every case it accepts and has no `default` that hides an unknown value; an unknown value should fail, not read as another case.
+- Code written before this rule moves to it when touched, not in a sweep. `PostTimelineCard`'s `scheduleMode` is the reference.
+
+### On the frontend, never inline a decision (owner decision November 2026)
+
+- **A function or computed that decides is a block with `if`s, never a one-expression body.** No `(x) => a ? b : c`, no `a || b ? … : …`, no `x === A || x === B` returned as a boolean, no `?.` / `??` chain that picks between several sources. Write each case as its own `if` with braces and an early return, as `postAttemptAt()`, `postChannelLabel()` and `accountTypeKey()` (`lib/postCard.ts`, `types/social-account.ts`) do.
+- **A set of values checked together is a named constant**, read with `.includes()` inside an `if` (`CONNECTION_LOST_STATUSES`, `PLATFORMS_WITH_ACCOUNT_TYPE`), not a chain of `===` joined by `||`.
+- **Templates hold no logic.** No ternary, `||` / `??` fallback, `.join()`, arithmetic or comparison inside `{{ }}`, `:class`, `:title`, `:aria-label` or a `v-if`: the template calls a named computed (`hasPostingTimes`, `textColor`) or a named function (`openLabel($t)`, `networkLine($t)`). A fallback that needs a translation is a function that takes the template's `$t` (see `.ai/rules/js.md`: never `trans()` in a script-level computed).
+- **A simple value is not a decision:** a plain read (`post.id`), a single `filled(x)` / `!isPending` in a `v-if`, and a `v-if` / `v-else` pair that swaps two elements stay as they are. Everything else gets a name.
+- `ChannelListItem.vue`, `PostBoardCard.vue` and `ApprovePostButton.vue` are the references.
+
 ## Frontend (Vue/TypeScript)
 
+- **TypeScript only, never JavaScript** (owner decision November 2026). Every script, config and test harness is a `.ts` file: `eslint.config.ts`, `vite.config.ts`, the Node harnesses in `tests/fixtures/*-harness.ts` (Node strips the types when it runs them, so they need no build step). Never add a `.js` or `.mjs` file. The one exception is the Maizzle email project (`maizzle/*.js`), which keeps its own JavaScript config.
+- **Imports go through the `@/` alias** (`import { formatNumberCompact } from '@/lib/utils'`), never a relative path (`./`, `../`), even for a sibling file. ESLint refuses relative imports (`no-restricted-imports`), with no exception: the stylesheet is loaded by `@vite` in `app.blade.php`, not imported from `app.ts`. CI runs Prettier (`prettier-plugin-organize-imports` reorders imports) before ESLint, so never rely on an `eslint-disable-next-line` above an import.
 - Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
 - Template event handlers call a named function (`@click="openCreateDialog"`), never an inline statement that mutates state (`@click="isCreateDialogOpen = true"`). Opening something usually grows a second step later (reset a form, focus, track an event), and a named function is where that goes. Passing an argument through is fine: `@click="openEditDialog(label)"`.
 - **A button that waits on a request shows it through the `Button` component's own `loading` prop whenever possible** (`<Button :loading="form.processing">`): it disables the button and swaps its label for the spinner, so every button waits the same way. Do not hand-roll a `<Spinner v-if>` inside the label or a separate disabled flag for this. When `loading` cannot fit (the label must stay visible next to the spinner, an `as-child` link, a control that is not our `Button`), keep the label and add the spinner next to it. Many existing buttons predate this rule; move them to `loading` when touching them, not in a sweep.
 - **Unsaved changes in the composer** go through `composables/composer/useUnsavedChanges.ts` (the history guard) and `useComposerUnsavedChanges.ts` (what counts as a change). The owner treats this guard as critical. How the guard works is written in the composable's docblock; three rules hold around it:
     - The composer's save visits (`router.put` / `router.post` in `pages/publish/Index.vue`) send `replace: true`, so the saved page takes the place of the edit's history entry instead of stacking on it.
-    - A composer opened from a page of the app (`lib/inAppHistory.ts`, `cameFromAppPage()`) leaves through history: closing goes back, and saving goes back once the saved page lands and reloads that page. So after a save or close, one browser Back reaches the page before the list, calendar or tab it was opened from. A composer reached by its link or a reload has nothing behind it and still replaces its entry with the list.
+    - A composer opened from a page of the app (`lib/inAppHistory.ts`, `cameFromAppPage()`) leaves through history: closing goes back, and saving goes back once the saved page lands and reloads that page. So after a save or close, one browser Back reaches the page before the list, calendar or tab it was opened from. A composer reached by its link or a reload has nothing behind it and still replaces its entry with the list. Duplicating a post (a POST that lands on the copy's composer) counts as opened from the page it was duplicated from (`rememberInAppPush()`), so closing the copy goes back to that List, Calendar or Board.
     - "Is there unsaved work" is decided by the snapshot comparison alone, never by `isSubmitting` or another request flag.
     - Every change to the guard ships with a browser test in `tests/Browser/ComposerUnsavedChangesTest.php` that fails without it, checked by removing the change and running the test. History bugs here showed up only in a real browser (Inertia's own popstate handler is part of every flow).
+- **A post's status badge is always `PostStatusBadge`** (`components/publish/PostStatusBadge.vue`, owner decision November 2026). Never build one by hand from `<Badge>`, an icon and `posts.status.*`. It takes two props only: `status`, the status to show (a `PostDisplayStatus`: the post's status, or `pending_review` / `deleted_on_network`; read a post's with `postDisplayStatus(post)` from `composables/usePostStatus.ts`), and `compact`, the smaller badge of a dense card (the board), which changes the size only, never the text. Color and icon come from `getPostStatusConfig()` in `usePostStatus.ts`, the label from `posts.status.<status>`: one short label per status, the same at both sizes and in every place it shows (no long and short variants, no per-screen override). A new status adds its row there and its key in the 16 locales and in `tests/fixtures/single-line-copy.php`. The calendar chip's icon-only marker (`CalendarPostChip`, `calendar.post_status.*` in its tooltip) is a separate thing and stays as it is.
 - **Composables are scoped by area.** A composable used by one area only lives in that area's folder, `resources/js/composables/<area>/` (e.g. `composables/composer/useComposerUnsavedChanges.ts`, `composables/echo/usePostEcho.ts`). Only composables shared across areas stay at the root of `resources/js/composables/`. When a scoped composable gains a consumer in another area, move it to the root in the same change.
 - Searching a list in the UI goes through `matchesSearch` / `filterBySearch` (`resources/js/lib/search.ts`): word by word, ignoring case and accents. Never hand-roll `.toLowerCase().includes(...)` for a search box.
+- **Value checks go through `@/lib/helpers`** (owner decision November 2026), the front-end mirror of Laravel's helpers, so a check reads the same on both sides: `blank()` / `filled()` for emptiness, `isEmpty()` (Laravel's `isEmpty()` on a string or a collection) when spaces count, instead of `=== ''` or `.length === 0`, `isString()` / `isNumber()` instead of `typeof x === 'string'`, `transform(value, callback, fallback)` instead of `value ? callback(value) : fallback`, and `clamp()` (Laravel's `Number::clamp`) instead of `Math.min(Math.max(...))`. Emptiness reads `filled(reply.media)`, not `reply.media.length > 0`; `filled(limits)`, not `limits !== null`. Every helper follows its PHP twin, kept equal by `tests/Unit/HelpersParityTest.php`: null, undefined, a whitespace-only string and an empty array or plain object are blank; numbers and booleans (zero and false included) never are. `filled()` narrows the type, so after `if (filled(reply))` the value is no longer null or undefined. Keep an exact `=== undefined` where an empty object is a real value (a poll or meta that may be `{}`), since `blank({})` is true. A new helper (Laravel's `transform`, `value`, …) goes in the same file with a case in the parity test. Existing hand-written checks move to the helpers when touched, not in a sweep.
+- **A translated sentence with markup (bold, italic, a link) goes through `TransSlots`** (`resources/js/components/TransSlots.vue`, owner decision October 2026), our take on vue-i18n's `<i18n-t>` component interpolation for laravel-vue-i18n's `:placeholder` syntax. The lang string holds plain text and `:placeholders` only, in all 16 locales; each placeholder is filled by a named slot, so the markup lives in the template and every value is escaped by Vue: `<TransSlots :message="$t('calendar.reschedule.custom_time.description')"><template #from><strong>{{ fromTime }}</strong></template></TransSlots>`. Never put HTML in a lang string rendered with `v-html`, never escape replacement values by hand, and never split one sentence across several keys to style part of it. The `v-html` translations that predate this rule (`LegalLinks`, `BlueskyConnect`) move to `TransSlots` when touched.
 
 ## Inertia SSR
 
@@ -246,6 +285,37 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 - Regenerating an API key uses its own keyword, `settings.api_keys.regenerate_modal.keyword` (`REGENERATE`, `REGENERAR`, …), under the same rules.
 - **Exception — disconnecting a channel** (`DisconnectChannelDialog`, user decision October 2026): its keyword, `channels.disconnect_modal.keyword`, is translated and **lowercase** (`disconnect`, `desconectar`, …), shown as the input placeholder and in the copyable keyword line `Type [disconnect ⧉] to confirm.` (same markup as `ConfirmDeleteModal`), and still compared case-sensitively after trimming (`DISCONNECT` must not confirm). The dialog ends its description with a bold `This cannot be undone.` and offers **Refresh connection** before disconnecting. Do not carry either into the other dialogs.
 - **Disconnecting an MCP app** (`settings/workspace/Mcp.vue`, owner decision October 2026) asks for the same `channels.disconnect_modal.keyword`, not the app's name, so the word matches the channel dialog in every locale (compared case-sensitively after trimming). It keeps the plain `ConfirmDeleteModal` without the refresh option or the bold line.
+
+## Browser storage (`localStorage`)
+
+Everything the app keeps in the browser for a user lives in one key per user, `trypost:<user id>`, through `resources/js/lib/browserStorage.ts` (owner decision November 2026): `{ "version": 1, "user": { … }, "workspaces": { "<workspace id>": { … } } }`. `user` holds what applies in every workspace, `workspaces` what only makes sense in one (a channel id, a draft). Never add a `localStorage` key of your own.
+
+- Add a new item to the typed `UserStorage` (every workspace) or `WorkspaceStorage` (one workspace) interface in `types/browser-storage.ts` (named `area.thing`, like lang keys; `BrowserStorage` there is the whole stored value) and use it through `useUserStorage(key, default)` or `useWorkspaceStorage(key, default)` (`composables/useBrowserStorage.ts`): a writable ref read once per tab and shared by every component that uses the item, saved on set, following the user's other tabs, and following the page's current user and workspace (a component that stays mounted while the workspace switches, like the layout's command palette, moves to the new one). Code outside a component's setup (a cleanup on logout) or that validates its item itself (the composer draft) uses `readUserItem` / `writeUserItem` / `readWorkspaceItem` / `writeWorkspaceItem` from the lib; writing `undefined` removes an item. A read returns `unknown`: the browser may hold anything, so its reader checks the shape (the composables fall back to the default, the draft goes through `isSnapshot`).
+- The store does the safe read and write: a missing, unreadable or other-version key (`BROWSER_STORAGE_VERSION`) reads as empty, a block that is not an object reads as empty, a browser without storage works on the defaults, and every write reads the key again first so two tabs never write back a stale copy.
+- The one exception is `trypost.media-source-popup`: not storage but a message the Canva / Google picker popup writes and removes at once, heard through the `storage` event on that key.
+- Browser tests read and seed it through `browserStorageItem($page, $user, $item, $workspaceId = null)` and `setBrowserStorageItem(...)` in `tests/Pest.php`, never the raw key: `browserStorage()` reads the whole value, `localStorageKeys()` lists the keys, `setRawBrowserStorage()` writes a value the app must read past (not JSON, another version), `announceBrowserStorageFromAnotherTab()` plays a change made in another tab, and `refuseBrowserStorage()` turns storage off. The earlier keys (#461) are moved in once by `lib/legacyBrowserStorage.ts` (owner decision November 2026): before the first read of the storage on a page with a current workspace (`useBrowserStorage.ts` and the composer draft call it, so the values a page shows right after sign-in are already moved), it copies the signed-in user's earlier values into their storage (a value already there wins) and removes those keys. Each earlier key is named exactly in a typed table (the user's own, the networks that had columns, the user's workspaces' drafts), never matched by prefix, so no other key is touched; another user's earlier keys stay until they sign in on this browser. Remove that file a release or two after it ships; never read an earlier key anywhere else.
+
+## In-app tours
+
+A tour walks the user through a page the first time they see it, one step per control (owner decision November 2026). Use it to point at something new or easy to miss; never to explain a page that explains itself.
+
+- **One definition, three mirrors.** `TOURS` in `resources/js/lib/tours.ts` lists every tour and its steps in order; `App\Enums\Tour\Tour` mirrors the names, and each step's copy is `tours.<tour>.steps.<step>.title` and `.description` in `lang/<locale>/tours.php`, in all 16 locales. `tests/Unit/ToursTest.php` fails when the three drift. Tour names read like lang keys (`publish.views`); their components live in `components/tours` and are named after the tour (`McpPromptTour.vue`).
+- **A step wraps its control**: `<TourStep tour="publish.views" step="views">` around it, wherever it is rendered; the step type only accepts that tour's steps. The page goes dark around the control and the step opens next to it, above the backdrop. The backdrop and the card are one for every tour (`TourOverlay`, mounted in `AppSidebarLayout`; a `TourStep` only publishes its step and control), and the card is anchored to the backdrop's cut-out, so moving to the next step slides both to the next control together. One step says "Got it"; several show "2 of 3", Skip tour, Back and Next / Done, and the arrow keys move between the steps without ever ending the tour (on the last step the forward arrow does nothing; only Done closes it). Using the highlighted control moves the tour on (it completes a one-step tour), and the control still works. A step whose control is not on the page is left out, and a `disabled` step (a page where its copy does not fit, like the Instagram grid's switch) never opens. An optional `tag` (translated text) with `tag-color` is drawn like a label; `align` places the card along the control (`end` by default, `start` for a control on the left). `insights.filters` (period, channels, labels) is the reference multi-step tour.
+- **When it opens:** on its first step on the page, once per user in a browser, one tour at a time (the next one waiting on the page opens when it closes), never on a phone (below `sm`; narrowing the window to a phone's width hides the open tour without a record, and widening it again opens it at the same step), and never over something already open: it waits while the composer, any dialog, alert dialog or sheet of `components/ui`, or the "How did you find us?" survey is on screen, and opens once the page is free. The dialogs report to the tours through `composables/tours/useTourWaitsForDialogs.ts` (`trackDialogForTours()` in each dialog's content); it lives with the tours although `components/ui` calls it, since only the tours read it (owner decision November 2026). A tour put away without ending (a visit that remounts the page, like picking a period on Insights; a dialog opened over it, like the command palette; a window narrowed to a phone's width) opens again at the step it was on, kept per user and tour while the app stays open. Closing it (Got it, Done, Skip tour or Escape), here or in another tab, ends it; a click elsewhere on the page does nothing (owner decision November 2026); leaving the page midway does not, so it opens again. Everyone sees it once, new and existing users alike. The state lives in `composables/tours/useTour.ts`.
+- **Where it is kept:** the browser storage item `tours` (see "Browser storage"; the one item not named `area.thing`, owner decision November 2026: it holds every tour, keyed by tour name), one entry per tour, `{ "status": "completed" | "skipped", "step": <reached, from 1> }`, read and written through `useTourProgress()`. Never a database column.
+- **Tracking:** `POST app.tours.store` sends `tour.completed` or `tour.skipped` with `tour`, `step`, `steps` and `workspace_id` (`TourController`, queued on `posthog`).
+- **The MCP card is the `mcp.prompt` tour**: it records its "Not now" in `tours`, keeps its own tracking, and waits while a `TourStep` tour is open (`useTourOnScreen()`).
+- **`TOURS_ENABLED`** (on by default) turns `TourStep` tours off. Browser tests run with them off (`tests/Pest.php`) so a tour never covers the page they drive; a tour's own test turns them on (`config(['trypost.tours.enabled' => true])`). Tour browser tests live in `tests/Browser/Tours`.
+
+## Inviting a user to connect an AI (MCP)
+
+There is no MCP step in Welcome (owner decision November 2026): it was friction before the user ever saw the app, and phones could rarely finish it. Processing always opens the schedule. Instead, `components/tours/McpPromptTour.vue` (mounted in `AppSidebarLayout`) invites the user from inside the app:
+
+- **Shown** while the shared `mcpPrompt` prop is set (`HandleInertiaRequests::mcpPrompt()`, with the MCP URL the steps show: a current workspace whose account has app access, or self-hosted, and no AI of the user connected to that workspace (`HasConnectedMcpClient`, the rule the MCP settings list follows); the connection is cached five minutes per user and workspace, while app access is read on every page, so the card and the referral survey show on the first page after an account gets app access), on `sm` and up, never on the MCP settings page, and never while the "How did you find us?" survey shows (the survey goes first).
+- **Closing it** (the X, labeled "Not now") is kept in the browser storage as the `mcp.prompt` entry of `tours` (`useTourProgress('mcp.prompt')`, see "Browser storage"): no database column. Another browser shows it once more. Connecting an AI hides it everywhere, because that comes from the server.
+- **Browser tests** see the card on almost every page (a test user has app access and no AI). A test whose page should not carry it calls `connectAiTo($user)` (`tests/Pest.php`), which connects an AI to the user's current workspace; never hide it through the browser storage.
+- **The card** shows the best-known apps as overlapping avatars (ChatGPT first, on top), and two buttons in the brand colors of Claude and ChatGPT; the close button is the way out. Each opens that app's connect steps (`McpConnectDialog`) on the page the user is on. While the card or its steps are on screen, the card asks `app.mcp.prompt.show` every two seconds, so an AI connected from anywhere (the card, the MCP settings, another tab) hides it; only `connected: true` hides it with confetti (as the MCP settings do) and forgets the cache, never `mcpPrompt` turning null, which losing access or switching workspace also does.
+- **Tracking:** each answer posts to `app.mcp.prompt.store`, which dispatches `mcp.prompt_clicked` (with the `client` picked: `claude`, `chatgpt` or `other`) or `mcp.prompt_dismissed` (`App\Enums\Mcp\PromptAnswer`). The connection itself is `mcp.connected` (`TrackMcpConnection`), whatever led to it.
 
 ## Writing in-app copy
 
@@ -286,25 +356,20 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 - A rewrite of existing text (shorten, rephrase, tone) keeps the text's own language; only new text is written in `{{ $language }}`.
 - AI is web only: no REST API endpoint and no MCP tool calls an AI agent.
 
-## Stripe Checkout (env knobs)
+## Stripe Checkout (offers)
 
-Checkout options are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
+Everything that is not the full price is an offer (owner decision October 2026): the discount, the trial and the promotion code field live on the `offers` row (see "Offers"), never in env or in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
-| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
-| `STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.socials` | empty | Optional. `$18` off Socials monthly (`$19` → `$1`). When set for a qualifying first-time **monthly** checkout of that plan, applies `withCoupon` and **skips** trial. Empty = trial mode |
-| `STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.workspaces` | empty | Optional. `$88` off Workspaces monthly (`$99` → `$1`). Same qualification as the Socials coupon. Never reuse one coupon on the other plan |
-| `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
+There is no checkout env (owner decision October 2026; `REQUIRE_CARD_FOR_TRIAL` and `CASHIER_TRIAL_DAYS` were removed, so a forgotten env value can never override an offer). An account has app access with a subscription, or during a generic trial an offer started (see below). Signup alone never grants a trial.
 
 Standing constraints:
-- Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
-- A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
-- Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
-- Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
-- First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
-- Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, with the first-month offer, and always opens Stripe Checkout on the **Socials monthly** price. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
+- Without an offer the checkout charges the full price at once, with no coupon and no trial, and shows the promotion code field (owner decision October 2026), so a code from support or a partner still works. With an offer, the field shows only when its row has `allow_promotion_codes`.
+- An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum), `allow_promotion_codes` and `requires_card`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
+- There are no fm1 coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`ft7d`, `trial_days` 8 because Stripe Checkout counts the trial one day short and shows 8 as 7 days, `first_subscription_only`), the 7-day trial without a card (`ft7dnc`, `first_subscription_only`, so a former customer can never take free days again, `trial_days` 7: it never opens Stripe, so the generic trial lasts exactly what the row says), the `$1` first month (`fm1`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
+- First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
+- An owner without app access is always sent to the plan step (`EnsureAccountReady`, the old subscribe route): it sends them back to the first unanswered step, so a new owner still starts at persona while a former customer lands on the plan directly.
+- Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply there and, coupons only, at **Subscribe now** on billing. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
+- An offer with `requires_card = false` and `trial_days` (`Offer::startsWithoutCard()`) never opens Stripe: the Welcome plan step starts Cashier's generic trial (`StartGenericTrial`: `accounts.trial_ends_at`, the Socials `plan_id`, the redemption, `trial.started`) and goes on to Processing (owner decision October 2026). The account has app access while it lasts (`Account::hasAppAccess()` = subscribed or `onGenericTrial()`), billing shows the trial and **Subscribe now** (`app.billing.checkout`), a Checkout on the plan's monthly price charged at once, without carrying the days left of the trial (owner decision October 2026), applies a coupon offer claimed meanwhile (never a trial) and returns to billing after paying (`app.billing.processing?from=billing`, read through `CheckoutOrigin`). Changing plan during the trial (the workspace upgrade picker; billing shows only Subscribe now) opens the same Checkout on the picked plan and interval, under the same `swapPlan` rules, which allow a generic trial. Only Socials monthly gets an offer (`StartSubscriptionCheckout::qualifiesForOffer()`). An old subscription ending during the trial leaves its plan alone, and a second submit of the no-card trial starts nothing. The Welcome no-card trial goes through Processing too (`from=welcome`, ready at once), which opens the schedule like a paid checkout. Cashier's `customer.subscription.created` handler clears `trial_ends_at`. When the trial ends without a subscription, access stops and the owner is back at Welcome. Every other offer goes through Stripe Checkout and asks for a card.
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
@@ -323,23 +388,34 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
   an account may do. A **missing** `plan_id` is not unlimited: it may create
   only the signup workspace (`count === 0`).
-- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
-  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
-  submit). POST is redirected back to create with `workspaces.limit_reached`,
-  not 403'd.
-- First-month coupon qualification is card required + first-time subscriber +
-  that plan's monthly price. Workspace count is not part of it.
-  (`incomplete` / `incomplete_expired` still qualify; coupon +
-  `allow_promotion_codes` still throws.) Each plan has its own coupon.
-- Welcome checks out Socials monthly only so the `$1` first month can exist.
-  Billing keeps yearly and Workspaces for subscribers changing plan.
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission and the
+  server decides it, never the browser's shared props (owner decision October
+  2026), through `User::atWorkspaceLimit()` (`workspaceLimitApplies()`: never
+  self-hosted, never the first workspace).
+  - Every "new workspace" entry point (sidebar workspace menu, workspaces list)
+    asks first with a non-navigating `useHttp` POST to
+    `app.workspaces.creation-check.store` (`useWorkspaceLimit().createOrUpgrade`).
+    `{ allowed: false }` opens the `WorkspaceUpgradeDialog` in place, on the page
+    the user is on; `allowed: true` (or a failed check) visits
+    `app.workspaces.create`. A refused check tracks `workspace.limit_hit`.
+  - GET `/workspaces/create` is never shown at the cap: it tracks
+    `workspace.limit_hit` and redirects to `app.workspaces.index` with
+    `workspaces.limit_reached`. Without a subscription it still goes to billing.
+  - POST at the cap is refused the same way (to the list, not 403'd, never to create),
+    tracked once by `store` itself after its transaction.
+- Welcome checks out Socials monthly only, so an offer's price is always about
+  Socials monthly. Billing keeps yearly and Workspaces for subscribers changing
+  plan.
 - The legacy plan is archived: it never appears in the picker, so nobody can move
   back to it. Its `workspace_limit` is 1 because it costs less than Socials.
 - Welcome's plan step (`app.welcome.plan`, after the current-tool step) shows
   only Socials (owner decision October 2026): new owners always start on
   Socials. The same `PlanPicker` drives upgrade/downgrade on the billing page
   (`app.billing.change-plan`).
-  A change is a `swap()` to another price id. `accounts.plan_id` is written by
+  A change is a `swap()` to another price id. A swap to a yearly price drops the
+  subscription's discount (`ChangePlan`, `discounts: ''`; owner decision October
+  2026): an offer's coupon would otherwise take its percentage off a whole year.
+  A monthly swap keeps it, so an owner who upgrades mid-offer keeps what is left. `accounts.plan_id` is written by
   `changePlan` after a successful `swap()` only when the subscription is
   `active` or `trialing` (so create works before the webhook). Welcome checkout
   never writes it — `StartSubscriptionCheckout` **clears** a leftover `plan_id`
@@ -351,6 +427,87 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   (`workspace_ai_usages` was dropped in September 2026) and no ceiling.
   `AccountPolicy::useAi` checks app access and nothing else. Do not
   reintroduce per-call usage recording.
+
+## Offers (`?offer=` links)
+
+An offer is anything the Welcome checkout gives instead of the full price
+(owner decision October 2026): a Stripe coupon, a trial, the promotion code
+field, or a mix. The 7-day trial (`ft7d`), the `$1` first month
+(`fm1`) and campaigns such as Black Friday (`bf26`) are all offers. It
+lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
+`trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
+end, no limit; `allow_promotion_codes`, `first_subscription_only` and
+`show_banner` false by default; `requires_card` true by default) and reaches an account through the pivot
+`account_offer` (`claimed_at`, `redeemed_at`).
+
+- **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.
+  A signed-in owner claims it at once (`ClaimOffer`). A guest's slug waits in the
+  session, only when it names an available offer, and the first authenticated
+  request claims it, so email signup, Google, GitHub and login need no code of
+  their own; moving between register and login keeps it. Slugs match exactly on
+  both engines through `Offer::findAvailable()` (MySQL compares without case). Ads and landing pages link to `/register?offer=<slug>`, win-back emails to
+  `/login?offer=<slug>`. There is no offer page or route.
+- **Who gets it.** Only an account owner whose account has no active
+  subscription: new signups and former customers alike, unless the offer is
+  `first_subscription_only`, which skips an account that was ever billed or
+  already redeemed an offer, a no-card trial included
+  (`Account::isFirstTimeSubscriber()`; Cashier clears `trial_ends_at` on any new
+  subscription, so the redemption is the lasting record), so trials and
+  the `$1` month never stack. `Offer::scopeAvailableTo()` holds both rules
+  and drops offers the account redeemed. An unknown, not yet started, ended or
+  full offer is ignored silently and nothing is kept for later. A redeemed offer
+  is never offered to that account again.
+- **The `offers` row is the only source of truth for dates and places.** The
+  Stripe coupon has no `redeem_by` and no `max_redemptions`. Only redemptions use
+  up a place (`Offer::scopeAvailable`), never a claim; two checkouts racing for the
+  last place may both get it (accepted).
+- A trial means `trial_days > 0` (`Offer::hasTrial()`); `0` is no trial.
+- **Checkout.** `Account::currentOffer()` picks the latest claim the account may
+  still use, else none (full price).
+  `ConfigureSubscriptionCheckout::apply()` applies it. Validity is checked again
+  when checkout starts. The controller resolves the offer once (`Account::currentOffer()`) and
+  hands the same one to `StartSubscriptionCheckout` and `apply()`, so the coupon,
+  the metadata and the tracked events agree. The offer id and slug go in the
+  subscription metadata (`trypost_offer_id`, `trypost_offer_slug`) and the slug in
+  the session metadata; the `customer.subscription.created` / `updated` webhook
+  writes `redeemed_at` (`RedeemOffer`) only once the subscription is `active` or
+  `trialing`, so an incomplete checkout never uses up a place. Offers apply at the
+  Welcome checkout (Socials monthly) and, coupons only, at Subscribe now on
+  billing (`currentOffer(withTrial: false)`).
+- **Revenue is counted once.** `conversion_*` goes on the event of the charge: `checkout.completed` for a Checkout charged at once, `trial.converted` for a trial charged when it ends. A trial without a card that subscribes active sends both events, and its `trial.converted` carries no `conversion_*` (`TrackTrialConverted` `withRevenue: false`).
+- **Tracking.** `checkout.started` is sent by `StartSubscriptionCheckout` itself, on the owner, for every Checkout (Welcome, Subscribe now, plan change), never by a controller. The offer goes to PostHog only with the checkout, as the property
+  `offer` holding its slug (`bf26`, `ft7d`, null without one) on
+  `checkout.started`, `checkout.completed`, `checkout.expired` and the account
+  group (set on subscription creation). There is no offer event of its own. The old `is_first_month_offer`,
+  `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
+- **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
+  slug with dashes as underscores (`free-trial-14-days` → `free_trial_14_days`; the short slugs `ft7d`, `fm1`, `ft7dnc` and `bf26` keep theirs): `name` (the
+  banner's tag), `headline` (the banner's sentence), `price`, `period` and an
+  optional `unit` shown next to the price (`/month` for Black Friday; a trial or
+  the `$1` first month has none, so their copy decides it, never the code), in all
+  16 locales, plus an optional `terms` for the line under the button (a trial
+  without a card says no card is needed; without it the line is
+  `welcome.plan_terms`, "Then :price/month"); the price is display text per locale, like
+  `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
+  stored in the database, and the banner (`name`, `headline`) is optional: an
+  offer has both or neither, while `price`, `period` and `checkout_button` are required
+  (`OfferCopyTest`). Each trial length is its own offer with its own copy
+  (`ft7d`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
+  checks each key in the current locale only. The Welcome plan step shows the
+  banner (a `bg-foreground` pill, the name in a `bg-background` uppercase tag) only when the row has `show_banner` and `name` and `headline` exist, and the offer price only when `price` and `period` exist; it never
+  prints a raw key. The button that opens Stripe Checkout is
+  the offer's `checkout_button` (required, like `price` and `period`), or
+  `welcome.plan_checkout_button` without an offer; without an offer the step
+  shows the full price.
+  `tests/Feature/Offer/OfferCopyTest.php` fails when an offer misses its copy in
+  any locale.
+- **Adding an offer.** Create its coupon in Stripe when it has one (no dates, no
+  limit), add its
+  copy to all 16 locales and deploy, then insert the `offers` row in each
+  environment's database by hand (owner decision October 2026: no data
+  migration, since the coupon id differs between Stripe test and live). Locally,
+  `php artisan db:seed --class=OfferSeeder` adds the test-mode offers; it is not
+  part of `DatabaseSeeder`, so tests never start with them.
 
 ## Multiple social accounts per network
 
@@ -552,13 +709,22 @@ enforces that).
   from the picked language — for a guest that is the *only* source of direction,
   since the middleware renders `htmlDir` from the default on every request.
 - **Register submits `locale` as a required hidden field** and creates the user
-  with it. **Login submits it only once the visitor picks a language** — the
-  field goes out empty otherwise, and an empty value leaves `users.locale`
+  with it: the language the visitor picked, else the browser's language
+  (`detectBrowserLanguage` over the supported codes, so `pt-PT` becomes `pt-BR`),
+  else `Locale::DEFAULT` (`signupLocale` in `useGuestLocale`). The page still
+  renders in the default until the visitor picks; only the account gets the
+  browser language. Lifecycle emails pick their language from it, so a signup
+  must not start in English and switch minutes later.
+  **Login submits it only once the visitor picks a language** — the field goes
+  out empty otherwise, and an empty value leaves `users.locale`
   untouched. This asymmetry is load-bearing: the login screen always renders in
   `Locale::DEFAULT`, so an always-sent field would reset every non-English user
   to English on each login. Forgot and reset password do not send it at all.
-- Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
-  OAuth callback tells you nothing reliable about the person.
+- Google and GitHub signups send the same `signupLocale` as a query param on the
+  start route, kept by `PreservesSignupPreferences` with the zone and clock (the
+  OAuth callback itself tells you nothing reliable about the person). `CreateUser`
+  falls back to `Locale::DEFAULT` for a missing or unsupported value. A returning
+  user logging in through OAuth keeps their stored locale.
 
 ## User preferences (`/settings/preferences`)
 
@@ -590,7 +756,7 @@ rolls the switch back and toasts.
   today's snapshot dated by the next UTC day still count).
 - **Frontend zone.** `@/date`'s `getUserTimezone()` returns `auth.user.timezone`
   (the `userTimezone` ref in `resources/js/preferences.ts`); "now" comes from
-  `userNow()`, never the browser clock. Times shown next to display-zone cards go
+  `userNow()`, never the browser clock. `userNow()` is a wall clock in the user's zone, not an instant: to ask whether a UTC instant has passed (`date.hasPassed()`), compare instants with `dayjs()`, or a browser in another zone than the user's is off by the difference. Times shown next to display-zone cards go
   through `useViewTimezone()`: the page's display zone where a picker exists
   (publish list and calendar call `provideViewTimezone()`), the user zone
   elsewhere.
@@ -621,8 +787,9 @@ rolls the switch back and toasts.
   `WeekStart::firstDay()/lastDay()` to Carbon. The weekly posting goal
   (`CountPostsSentThisWeek`) and the Insights weekly buckets (`PeriodBuckets`)
   follow the **viewing** user's `week_starts_on`, never Monday or the UI language.
-- **Signup detection:** email, Google and GitHub signups store the browser zone,
-  the week start (`Intl.Locale` week info, else the Sunday-first zone list in
+- **Signup detection:** email, Google and GitHub signups store the browser
+  language (see "UI locale"), the browser zone, the week start (`Intl.Locale`
+  week info, else the Sunday-first zone list in
   `resources/js/lib/detectPreferences.ts`) and the hour cycle. OAuth sends them as
   query params on the start route and `PreservesSignupPreferences` keeps them in
   the session; `CreateUser` validates each one. Fallbacks: UTC, Monday, the
@@ -641,14 +808,19 @@ rolls the switch back and toasts.
 
 ## PostHog person properties
 
-`App\Jobs\PostHog\SyncUser` is the only place that writes person properties, and
-the distinction between its two buckets is load-bearing:
+`App\Jobs\PostHog\SyncUser` writes the user's person properties (two narrower
+jobs below add one each), and the distinction between its two buckets is
+load-bearing:
 
 - **`$set_once`** — first-touch facts that must never be rewritten: `signed_up_at`
   and the attribution keys (`utm_*`, `gclid`, `fbclid`, …). A later sync must not
   overwrite where a user originally came from.
 - **Top level** — current state, overwritten on every sync: `$email`, `$name`, and
   `locale`.
+
+The only other jobs that write person properties are `IdentifyConnectedPlatforms`
+(`connected_platforms`) and `TrackLifecycleChange` (`lifecycle_stage`), both
+current state at the top level.
 
 `locale` mirrors `users.locale` and is what the PostHog email automations (the
 onboarding cadence and friends) read to decide which translation to send, so it
@@ -723,9 +895,13 @@ with `Mail::to($user)`, run the Maizzle build, and cover it with a render test �
 `tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
 view turns a forgotten variable into a runtime-only failure.
 
-## Icons (@tabler/icons-vue)
+## Icons (@tabler/icons-vue and @thesvg/vue)
 
+- **Icons and logos are always imported straight from their package into the component that draws them** (owner decision November 2026): `import { IconCheck } from '@tabler/icons-vue'`, `import Canva from '@thesvg/vue/canva'`. Never copy an icon's SVG or path into the code, never save it as a file under `public/`, and never wrap the packages in a helper of our own (`lib/brandLogos.ts` was removed for this). When a list needs a logo per item, a module may map items to the imported components (`lib/mcpClients.ts`).
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
+- Brand logos come from `@thesvg/vue`, one import per logo. A one-color logo that must follow the theme gets `fill-current` (or `[&_path]:fill-current` when its paths carry their own fill) next to a text color class. A canvas, which cannot draw a component, reads the paths from the imported Tabler component (`lib/shareCard/icons.ts`), never from a copy.
+- **Exception — card brand logos on billing** (owner decision October 2026): the full-color card artwork lives in `public/images/card-brands/*.svg`, mapped by Stripe's `card.brand` in `resources/js/lib/cardBrands.ts` (a brand without its own art uses `generic.svg`).
+- **Exception — competitor logos on the Welcome software step** (owner decision October 2026): each tool's symbol is a static SVG in `public/images/competitors/<PreviousSoftware value>.svg`, drawn by `logo()` in `resources/js/lib/welcomeOptions.ts`. Logos and the Tabler icons of "none" and "other" (`icon()`) sit on a white tile, selected or not, so dark logos stay readable in dark mode. A new `PreviousSoftware` brand needs its file (`PreviousSoftwareTest` fails without it).
 - All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.
 - Import icons from `@tabler/icons-vue`: `import { IconCheck, IconX } from '@tabler/icons-vue'`.
 - Browse available icons at https://tabler.io/icons
@@ -735,6 +911,10 @@ view turns a forgotten variable into a runtime-only failure.
 - For date manipulation, always use `@/dayjs` (pre-configured dayjs instance with utc, timezone, relativeTime plugins).
 - For formatting dates for display (formatDate, formatDateTime, formatTime, diffForHumans), always use `@/date` which centralizes all formatting logic with proper timezone handling.
 - Never use raw `new Date()` for date calculations — use dayjs.
+- **Never hard-code a date, in tests or in code** (owner decision November 2026). Derive it from the clock: Carbon (`now()`, `CarbonImmutable`) on the backend and in Pest tests, `@/dayjs` on the frontend. A test that needs a known day computes it (`now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(14)`) or freezes the clock on a computed one (`$this->travelTo(...)`); a literal like `'2026-09-01'` breaks the day the calendar moves past it. The one exception is the `2037-12-31` far-future sentinel (see "Database engines").
+    - Write the year out in a relative date: `"first sunday of november {$year}"`. PHP reads `"first sunday of november next year"` as November 1 on any weekday, which broke the calendar's daylight saving tests on the day the clocks changed (November 2026). The calendar tests share `calendarDragNextDstSunday()` for this.
+    - Never assume where a computed day falls: that next week is in this month, that tomorrow is in this year. When a test depends on it, pick a day that guarantees it (the middle of next month is never in this month's grid) and assert it, instead of hoping the run day cooperates.
+    - Existing tests with literal dates move to computed ones when touched, not in a sweep.
 
 ## Routing (Wayfinder)
 
@@ -742,6 +922,7 @@ view turns a forgotten variable into a runtime-only failure.
 - ALWAYS use Wayfinder-generated route helpers in Vue pages (e.g. `register()`, `login()`, `dashboard()`). NEVER hardcode URL strings like `href="/register"`.
 - After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
 - Import routes from `@/routes/...` (e.g. `import { store } from '@/routes/login'`).
+- On the backend, every URL of the app comes from Laravel's helpers (owner decision October 2026): `route()` / `redirect()->route()` for pages, `Illuminate\Support\Uri` to read or change a query. Never `url('/...')`, `redirect('/...')`, a path or query string built by hand, or `parse_url()` on our own URLs. A page rebuilt from the Referer goes through the route it matches (`RendersPublishPage::previousUrl()`), so it can never point at another host.
 
 ## Pagination
 
@@ -751,6 +932,8 @@ view turns a forgotten variable into a runtime-only failure.
     - **Exception — the per-post table on the channel insights page** (owner decision 2026-10-05): it is page-based with numbered pages, 10 posts per page (`ListChannelPublicationPerformance::INSIGHTS_PAGE_SIZE`, through `insightsPage()`), and keeps `?page=` in the URL; a sort, period or filter change goes back to page 1. The API endpoint and the MCP tool for the same list keep the config page size through `handle()`.
     - **Exception — the ideas board columns** (owner decision 2026-10-06): each stage column (and Unassigned) is its own scroll prop, `columns.<stage id|unassigned>`, with its own page name, and loads 10 ideas per page (`ListIdeas::BOARD_PAGE_SIZE`) as the column scrolls. A label filter change resets every column to page 1. Column counts come from the database (`stages.*.ideas_count`, `unassigned_count`), never from the loaded cards. The web board moves a card with `after_idea_id` (`MoveIdea::after()`), since a partly loaded column cannot send the full order; the API and MCP keep the full `idea_ids` contract. The gallery keeps the config page size.
     - **Exception — the "What's New" modal** (owner decision 2026-10-14): it loads 5 entries per page, enough to fill the modal (capped at 640px) and the next one loads only when the user scrolls (`ListChangelogEntries::PAGE_SIZE`) under the page name `changelog_page`, as the shared optional scroll prop `changelogEntries` (built with the `changelog` card prop by `BuildChangelogProps`, which `HandleInertiaRequests` only spreads), requested by a partial reload when the modal opens.
+    - **Exception — the invoices tab on the billing page** (October 2026): invoices live in Stripe, which only pages by cursor, so `BillingController@index` sends `Inertia::scroll()` over Cashier's `cursorPaginateInvoices()` (paid invoices only, config page size). Database lists keep `paginate()`, except the notes thread below.
+    - **Exception — the notes thread on the publish page** (owner decision 2026-11-12): `BuildPostNotesProps` sends `Inertia::scroll()` over `ListPostNotes::thread()`, a `cursorPaginate()` (cursor name `notes_cursor`, config page size, newest first with the id as tiebreaker) with `meta.total` added. Notes are created and deleted while a thread is open (by the user and, live, by teammates), and an offset page would then skip or repeat a note. The API and MCP note lists keep `paginate()` and their `page` / `meta.total` contract.
     - **This includes the public REST API** (`app/Http/Controllers/Api`). It used to pin its own page size of 15 as a stable contract; that exception is gone, so a list endpoint reads the same config as everything else. Changing `app.pagination.default` therefore changes the API's page size too — deliberate, and the reason a list response always carries `meta.per_page` for clients to read rather than assume.
 
 ## Changelog ("What's New")
@@ -848,6 +1031,45 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
 - Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
 
+## The current workspace is guaranteed by middleware
+
+Every app route that works on the current workspace sits behind `EnsureHasWorkspace` (`routes/app.php`), which redirects a user without one to `app.workspaces.create` before the controller runs (owner decision November 2026). A controller reads `$request->user()->currentWorkspace` and uses it; it never checks it again.
+
+- Never write `if (! $workspace) { return redirect()->route('app.workspaces.create'); }`, `abort_unless($workspace, ...)` or any other "no workspace" guard in a controller, a FormRequest or an action reached from those routes. The guard was copied into 27 controller actions and never ran; all of it was removed.
+- A new route that needs the current workspace goes inside the `EnsureHasWorkspace` group, never outside it with its own check. Its return type does not carry `|RedirectResponse` for that redirect.
+- A route that must work without a workspace (creating the first one, Welcome) stays outside the group and handles that case itself.
+- The redirect is covered once, for the middleware, by the tests that hit an app page without a workspace; a controller test does not repeat it.
+
+## MCP tools list in one page
+
+`tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). The same page size applies to `resources/list`, `resources/templates/list` and `prompts/list`. Raise both before the server reaches 200 tools. A client may still ask for a smaller page (`per_page`, a laravel/mcp extension; the MCP spec only defines `cursor`) and follow `nextCursor`; a bigger request is capped at 200. `tests/Feature/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.
+
+## MCP sign-in inside ChatGPT
+
+ChatGPT offers sign-in inside the conversation when a user who never connected (or whose token expired) asks for something (owner decision October 2026). Every other MCP client, Claude included, keeps the plain flow: a 401 on any request without a token, so it signs in when it connects. Claude stays there on purpose: it shows "Connect to Claude" on the connector page, and its own Connect card already appears in the chat when a token expires, because a tool call gets a 401. Giving Claude the anonymous discovery below would stop it from asking to sign in when the connector is added.
+
+- **Recognising ChatGPT** goes through `App\Support\Mcp\ChatGptMcpClient::matches()`, by the egress ranges OpenAI publishes, the identification OpenAI documents: `chatgpt-connectors.json` (`trypost.mcp_chatgpt_ip_ranges_url`), read by `ListChatGptEgressRanges` on the first request that needs it and cached for an hour (a failed read for a minute); only valid IPv4 ranges of /8 or narrower are kept. Never by user agent: it is undocumented, and a local client sending the same one would lose its sign-in on connect. The IP is a hint, not a security boundary: behind `trustProxies(at: '*')` a client can fake it with `X-Forwarded-For`, which only lets it read the public tool list.
+- **Without a token, ChatGPT may only connect and list tools** (`initialize`, `notifications/initialized`, `ping`, `tools/list`), through `AuthenticateMcp` and `LoadMcpWorkspace` (the MCP route's own workspace middleware: it lets that discovery through and hands every other request to the shared `LoadWorkspaceFromToken` with `mcp`, which the MCP change leaves untouched). A tool call always needs a token, so no tool ever runs without a user. A request that carries a token, valid or not, is always authenticated; Passport blanks the `Authorization` header when it refuses a token, so `AuthenticateMcp` records `ChatGptMcpClient::TOKEN_SENT` before it runs.
+- **A refused tool call from ChatGPT** gets `ChallengeChatGptToolCalls`'s 200 tool result with `isError` and `_meta["mcp/www_authenticate"]`: ChatGPT never shows its sign-in prompt for a 401. 402 and 403 are unchanged.
+- **Every tool declares `securitySchemes`** (`oauth2`, `mcp:use`) through `ListToolsWithSecuritySchemes`; ChatGPT offers sign-in only for tools that declare it, other clients ignore it.
+- `tests/Feature/Mcp/ChatGptSignInTest.php` covers ChatGPT, Claude and other clients with no token, an invalid token and a valid one, and the cached ranges; every guard there fails its test when removed.
+
+## MCP OAuth rate limit
+
+All of `Mcp::oauthRoutes()` sits in one `throttle:mcp-oauth` group in `routes/ai.php`, and the `mcp-oauth` limiter (`AppServiceProvider`) limits only what can be abused: `POST /oauth/register` (public dynamic client registration, which writes an `oauth_clients` row), 30 a minute per IP. It never limits ChatGPT and Claude (the egress ranges OpenAI and Anthropic publish: `chatgpt-connectors.json` through `ListChatGptEgressRanges`, and `trypost.mcp_claude_ip_ranges`): each registers for all of its users from a few shared addresses, so a per-IP limit would hold every user to one budget (owner decision October 2026: we trust their ranges).
+
+- The `/.well-known/oauth-protected-resource*` and `/.well-known/oauth-authorization-server*` GETs (and HEADs, `isMethodCacheable()`) are public static JSON and are never limited. Clients fetch them before every connection, even with a stored token (Codex desktop does it for each thread, from the user's own IP), and a 429 there makes the client drop the server, so its tools never appear.
+- The exemption reads `$request->ip()`, so it holds as long as only real proxies are trusted (see "Trusted proxies"). With `TRUSTED_PROXIES=*` a client can fake an OpenAI or Anthropic address with `X-Forwarded-For`.
+- `tests/Feature/Mcp/OAuthRegistrationTest.php` covers the limit, the exemption and the metadata.
+
+## Trusted proxies (`config/trustedproxy.php`)
+
+The client IP (`$request->ip()`, used by every per-IP rate limit and by the ChatGPT/Claude ranges) is only as good as the proxies Laravel trusts. There is one setting, `trustedproxy.proxies`, the key Laravel's `TrustProxies` reads; `bootstrap/app.php` does not call `trustProxies()` (owner decision October 2026).
+
+- It defaults to the ranges Cloudflare publishes (https://www.cloudflare.com/ips-v4 and https://www.cloudflare.com/ips-v6), written in the config file. TryPost Cloud runs on one machine behind Cloudflare, so the IP is the one Cloudflare appended and a client cannot fake it. When Cloudflare changes its lists (rarely), update the config.
+- Another install sets `TRUSTED_PROXIES` to its proxy's IPs or ranges (comma-separated), or `*` to trust any proxy, which lets a client fake its IP with `X-Forwarded-For`. Never `trustProxies(at: '*')` in code: that was the bug.
+- `tests/Feature/TrustedProxiesTest.php` covers Cloudflare (IPv4 and IPv6), a direct request, a listed proxy and `*`.
+
 ## MCP tool annotations
 
 **Every MCP tool declares all three annotations explicitly, `false` included** (owner decision October 2026): `#[IsReadOnly(bool)]`, `#[IsDestructive(bool)]` and `#[IsOpenWorld(bool)]`, above its `#[Description]`. The OpenAI plugin directory refuses ("Not live") any tool without three explicit booleans, and the Claude directory requires `readOnlyHint` or `destructiveHint`. Annotations only describe the tool to the AI client (when to ask the user for confirmation); they never change what it does and are not rate limits.
@@ -886,10 +1108,60 @@ an `enabled` flag or posts with several channels. Posts created together share
 - **Two status columns.** `posts.status` is the lifecycle (draft,
   pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
   (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
-  retrying, pending_review, published, failed, rejected). Publishers write
+  retrying, pending_review, published, failed, rejected, deleted). Publishers write
   `publish_status` through the `markPublication*()` methods; only
   `FinalizePostPublication` moves `status` to published or failed. There is no
   `partially_published`.
+- **Deleted on the network.** `publish_status = deleted` means the network
+  deleted a post it published; `status` stays published. Only a deletion the
+  collector confirms moves the post
+  (`AnalyticsCollectionException::deletedOnNetwork()`), always from the metrics
+  read it already makes. Where the network's "does not exist" answer could also
+  mean lost access, an account-level read (the list its discovery reads) must
+  still work (`readUnlessDeleted()`, `readsMissing()` and `stillReads()` on
+  `AbstractPublicationMetricsCollector`; a read that fails only for now is
+  rethrown so the job retries):
+    - YouTube: its own `videos.list` read no longer returns the video.
+    - Facebook, Instagram, Threads (`AbstractMetaPublicationMetricsCollector`):
+      code 100 / subcode 33 for the post, and the posts edge still reads; a
+      story is never checked (it expires). A Facebook Page post is checked on
+      its insights edge (`readPost()`): Graph answers its own node with #10,
+      which also means a missing permission.
+    - X: the documented `resource-not-found` problem naming the post, in the
+      `errors` of the lookup's 200 (single and batch alike, checked against a
+      real deleted post); no extra request (X bills each one).
+    - Bluesky: `getPosts` leaves it out, its repository answers
+      `RecordNotFound`, and `listRecords` still reads.
+    - Mastodon: 404 or 410 on an owner read only (without `read`, 404 also
+      means private), and the account's statuses still read.
+    - Pinterest: 404 or 410 on the Pin analytics and on the Pin, and the Pins
+      list still reads.
+
+  Any other 404 or 410 only marks the analytics publication. TikTok cannot tell
+  deleted from private; LinkedIn, Google Business, Telegram and Discord have no
+  read after publishing (#481).
+  `CollectPublicationMetrics` marks the post (`markPublicationDeleted()`) under
+  the publication's row lock, unless a sync saw the post since the second the
+  read started (`last_seen_at` at or after it; a sync earlier in that second
+  only delays the deletion to the next read);
+  a sync that sees it again restores it (`markPublicationRestored()`, which
+  does not rerun the "just published" side effects) and queues a fresh metrics
+  read so a stale discovery page cannot leave it published until the next day.
+  Marking it deleted sends `post.deleted_on_network`, and restoring it sends
+  `post.restored`, never for a post imported from the network, which sends no
+  webhook at all (`ImportExternalPosts`); both also broadcast
+  `post.platform.status.updated` so an open schedule reloads, imported or not. `Post::isDeletedOnNetwork()` is the rule:
+  `PostStatusRules::blocksDeletion()` lets such a post be deleted in TryPost, it
+  finalizes as published, and it still counts as published for the posting
+  goal, the lifecycle and PostHog (`PublishStatus::wentOut()`,
+  `Post::scopeWentOut()`), while live-only reads (Instagram grid, analytics
+  sync, the importer's matching, TikTok video ids) keep
+  `scopePublicationPublished()`.   On the post cards, the calendar chip and the details
+  dialog, `isDeletedOnNetwork()` and `postPermalink()`
+  (`lib/postNetwork.ts`) decide the badge and the link, and
+  `postDisplayStatus()` (`usePostStatus.ts`, shown by `PostStatusBadge`) the status shown; the repurpose
+  activity list labels `publish_status` directly. Insights keep the historical
+  numbers and drop the network link (`PublicationAvailability::visiblePermalink()`).
 - **Publication writes have their own clock.** `writePublication()` (and every
   `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
   alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)
@@ -917,14 +1189,14 @@ an `enabled` flag or posts with several channels. Posts created together share
     - Why: `FormRequest::validated()` (and MCP `$request->validate()`) STRIPS any key without a rule. A meta field defined in only one entry point is silently dropped everywhere else — which is exactly how Discord/Pinterest/TikTok meta was lost via API/MCP before this was centralized.
 - Required-on-publish (meta a platform needs to publish, e.g. Discord `channel_id`) also lives there: `addRequiredOnPublishErrors()` for request-driven flows (web/API update `withValidator`), `assertStoredPostPublishable()` for flows that publish stored state without resubmitting platforms (MCP `PublishPostTool`). Add new required-meta rules to `requiredMetaViolation()`, not inline.
 - When adding a new platform's meta field, add it (and any publish requirement) to `PostPlatformMetaRules` ONLY, and cover it in `tests/Feature/Api/PostApiPlatformMetaTest.php` + `tests/Feature/Mcp/PostPlatformMetaToolTest.php`.
-- `PostPlatformMetaRules::formatViolation()` holds meta no post may store, even as a draft (a YouTube title with `<` or `>`). Every create and update path (web, API, MCP, repurpose) goes through `App\Support\PostCompositionValidator`, which runs it and, once the post is scheduled or published, the content limits below.
+- `PostPlatformMetaRules::formatErrors()` holds meta no post may store, even as a draft (a YouTube title with `<` or `>`). Every create and update path (web, API, MCP, repurpose) goes through `App\Support\PostCompositionValidator`, which runs it and, once the post is scheduled or published, the content limits below.
 - **What a post stores in `meta` goes through `App\Support\PostMeta::forChannel($account, $meta, $stored)`, on create (`CreateChannelPost`) and on update (`UpdatePost`, passing the post's current meta as `$stored`).** It normalizes the meta, keeps the system keys the post already had (`PostPlatformMetaRules::SYSTEM_KEYS`, today Telegram `reactions`) and has one `match` arm per network that derives something. Never write `posts.meta` from a request without it, and never add a second helper next to it.
 - **A derived value is never taken from the request.** Only the id comes in; the server resolves what it names. The Discord `channel_name` has no validation rule: `PostMeta` drops any sent value and reads the name of `channel_id` from the guild's channel list in the cache (`DiscordClient::cachedChannels()`, warmed by the composer, the API, MCP and publishing). Without a cached list the post stores no name; that is accepted (owner decision October 2026). The composer may keep the name in its local meta for the live preview; the server ignores it.
 - **Saving never calls a network.** `PostMeta` runs inside the post's transaction and the channel queue lock, so a lookup there reads a cache only, never HTTP. A save never fails over a display name.
 
 ## Content limits
 
-- **Per account, not per platform.** Read the cap through `SocialAccount::maxContentLength()`. It is the platform's `Platform::maxContentLength()`, except an X account with long posts (`hasXLongPosts()`: a `Basic`, `Premium` or `PremiumPlus` subscription, or `verified_type=business`), which gets 25000. The tier lives in the account meta and is written by `SyncXSubscription`, called from `ConnectionVerifier` on connect and on the daily `social:check-connections`.
+- **Per account, not per platform.** Read the cap through `SocialAccount::maxContentLength()`. It is the platform's `Platform::maxContentLength()`, except an X account with long posts (`hasXLongPosts()`: a `Basic`, `Premium` or `PremiumPlus` subscription, or `verified_type=business`), which gets 25000. A post type may cap it lower: `ContentType::maxContentLengthFor($account, $platform, $type)` is the one cap save, publish, the preview and the writing assistant read (an X poll's question stays at 280, and so does a reply poll's through `ThreadReplies`). The tier lives in the account meta and is written by `SyncXSubscription`, called from `ConnectionVerifier` on connect and on the daily `social:check-connections`.
 - `Post::CONTENT_MAX_LENGTH` (25000 characters of plain text) is the ceiling of any post, enforced by `PostContentFitsMaxLength`.
 - `Platform::reservedLength()` counts what the network adds to the text: the Mastodon content warning (trimmed like `Str::trim`) counts toward the 500.
 - `Platform::maxHashtags()` is 5 on Instagram (both platforms). It is a **save-time** rule (web, API, MCP), never a publish-time failure: a post stored with more still publishes. Repurpose captions are trimmed to the first 5 by `CaptionAdapter` through `Hashtags::keepFirst()`. Hashtags are counted by `App\Support\Hashtags`, mirrored by `resources/js/lib/hashtags.ts` and kept identical by `HashtagParityTest`.
@@ -933,13 +1205,46 @@ an `enabled` flag or posts with several channels. Posts created together share
 
 ## Thread replies
 
-- Bluesky, Mastodon and X (`App\Support\ThreadReplies`), up to 24 replies in `meta.thread_replies`. Each reply is measured against the **account's** limit (`SocialAccount::maxContentLength()`), so an X account with long posts gets 25000 per reply; pass the account to `ThreadReplies::violation()` / `PostPlatformMetaRules::requiredMetaViolation()` whenever it is known.
-- Each reply is `{text, media}` (a stored plain string is a text-only reply; `ThreadReplies::of()` normalizes both, `PostPlatformMetaRules::normalize()` stores objects). Its media belongs to that reply only, never to the root: it publishes as `ThreadReplies::replyContentType()` (X → `XPost`, Bluesky → `BlueskyPost`, Mastodon → `MastodonPost`), so it follows that type's media rules (`ThreadReplies::mediaErrors()`, at save and at publish), and a reply needs text or media. The frontend mirror is `THREAD_REPLY_CONTENT_TYPES`. Adding a network means one entry in each map plus a reply callback in its publisher.
+- Bluesky, Mastodon, X and LinkedIn (`App\Support\ThreadReplies`), in `meta.thread_replies`: up to 24 replies, one on LinkedIn (`ThreadReplies::maxReplies()`, mirrored by `threadMaxReplies()`; see "LinkedIn comment"). Each reply is measured against the **account's** limit (`SocialAccount::maxContentLength()`), so an X account with long posts gets 25000 per reply; pass the account to `ThreadReplies::violation()` / `PostPlatformMetaRules::requiredMetaViolation()` whenever it is known.
+- Each reply is `{text, media}`, plus `poll` on an X or Mastodon reply that is a poll (see "Polls (X, Mastodon, Threads)") (a stored plain string is a text-only reply; `ThreadReplies::of()` normalizes both, `PostPlatformMetaRules::normalize()` stores objects). Its media belongs to that reply only, never to the root: it publishes as `ThreadReplies::replyContentType()` (X → `XPost`, Bluesky → `BlueskyPost`, Mastodon → `MastodonPost`, LinkedIn profile and page → `LinkedInComment`), so it follows that type's media rules (`ThreadReplies::mediaErrors()`, at save and at publish), and a reply needs text or media. The frontend mirror is `THREAD_REPLY_CONTENT_TYPES`. Adding a network means one entry in each map plus a reply callback in its publisher.
 - Reply media rows are owned by the post like its root media. `SyncOwnedMedia` resolves them from the post's stored `meta.thread_replies` and writes the canonical items back, so write the target's meta **before** calling it; it never deletes a row a reply still uses. Every segment's checkpoint hash covers its media ids.
 - In the composer each post of a thread shows its own media under it; the toolbar, paste, drop and the toolbar upload button add to the active post.
 - X replies go through `POST /2/tweets` with `reply.in_reply_to_tweet_id` on the previous segment. X restricts API replies (February 2026) to posts whose author summoned the replier; replying to your own post is the case that stays allowed. Each reply is billed as a post.
 - Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
 - `posts.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
+
+## LinkedIn comment
+
+A LinkedIn post (profile or page) takes one thread reply, published as a comment from the same profile or page right after the post (#465, owner decision November 2026). There is no "first comment" endpoint or concept of its own: it is the LinkedIn thread, through `ThreadReplies`, `PublishesThreads` and `ThreadProgress` like X, Bluesky and Mastodon. One comment only, so it stays first however the comments are sorted.
+
+- **Reply type:** `ContentType::LinkedInComment` (`linkedin_comment`) is a thread reply's type only: compatible with no platform (`compatiblePlatforms()` is empty), so it is left out of `forPlatform()` and the post type listings and no post is ever stored with it. A comment is **text only** (`maxMediaCount()` 0; the composer turns the media button off with `posts.form.thread.comment_attachments`). The text takes the account's limit (3000), its length error names the comment (`posts.form.thread.comment_too_long`), and it is sent as plain text (a comment's message is not `little`).
+- **Endpoint:** `POST /v2/socialActions/{post URN}/comments` through the publisher's usual client (its `LinkedIn-Version` header is accepted there too). The versioned `/rest/socialActions` needs the Community Management API (403 `partnerApiSocialActions.CREATE`); `/v2/` takes the publish scopes we already hold. Tested on a real page (November 2026): text up to 20000 characters is accepted, a link stays a plain link (LinkedIn draws no card in a comment), and a comment takes one media object at most.
+- **No media (owner decision November 2026):** the API takes an image by URL (`content: [{type: IMAGE, url}]`) and LinkedIn loads it from that URL without copying it, but when LinkedIn cannot fetch the URL it drops the whole comment after answering 201, text included (seen with the `r2.dev` storage URL, while Wikimedia, Giphy and Unsplash URLs stayed). An image uploaded through the Images API (`digitalmediaAsset`), a video and a PDF are accepted but show broken or not at all. Bringing images back needs a URL LinkedIn reliably fetches, tested against the production storage domain.
+- **Failure:** like every thread. The post is checkpointed once it is live, a refused comment fails the publish with `posts.errors.thread_incomplete`, and a retry only comments. A dead token is refreshed once and the thread resumes, never creating the post again.
+- **A post not ready yet:** LinkedIn can answer 404 to a comment sent right after its post (seen on a profile post with an image: "Unable to obtain activity"). A 404 on the comment throws `PlatformUnavailableException` with its own policy (30 seconds, 10 tries), so the job waits in Retrying and resumes from the checkpoint for up to five minutes before failing like any thread.
+- **Composer:** "Add comment" (`posts.form.thread.add_comment`) replaces "Start thread" where replies are comments (`repliesAreComments()`), and the preview shows the comment under the post (`LinkedInPreviewComment`) instead of as a post of its own.
+
+## Polls (X, Mastodon, Threads)
+
+- A poll is its own content type per network, `x_poll`, `mastodon_poll` and `threads_poll` (`ContentType::isPoll()`), with `meta.poll` (owner decision November 2026). `App\Support\Social\Poll` holds the rules every network shares (`options()` / `choices()`, `normalize()`, `forNetwork()`, `optionsCountViolation()`, `formatErrors()`, `requiredViolation()`, `firstViolation()`, `questionViolation()`, `publishViolation()`, `preview()`, `limits()`; the checks `formatErrors()` runs, duplicates, choice length and length range, are protected); each network's subclass (`XPoll`, `MastodonPoll`, `ThreadsPoll`) sets its constants and its `payload()`, `result()` and `fromPublication()`. `Poll::for($platform)` and `ContentType::poll()` pick one. `PostPlatformMetaRules`, `PostMeta::forChannel()` / `PostMeta::merge()`, `PostCompositionValidator`, `ContentType::maxContentLengthFor()`, `ThreadReplies` and the publishers call them, never a copy of the numbers or messages. The stored `voting_status` values are `App\Enums\Analytics\PollVotingStatus`.
+- Every network: 2–4 choices, blank ones dropped and duplicates refused, the post text as the question. Each choice is counted in UTF-16 units (`Poll::choiceLength()`, mirrored by `pollChoiceLength()`), as X counts it (X refused a choice of 25 code points holding a 🐧): the strictest reading, used on every network.
+    - X: choices of up to 25 characters, `duration_minutes` 5–10080 (default 1440), the question at most 280 characters even on an account with long posts.
+    - Mastodon: choices of up to 50 characters, `duration_minutes` 5–43200 (30 days, default 1440), and `multiple` and `hide_totals` (default false). These are Mastodon's own limits, which every instance accepts; an instance's higher limits are not read. Published as `poll[options]`, `poll[expires_in]` (seconds), `poll[multiple]` and `poll[hide_totals]`. The root poll is part of the root hash, which is the status's `Idempotency-Key`, so a poll edited before a retry is never answered with the status Mastodon kept from the attempt before.
+    - Threads: choices of up to 25 characters and no length (Threads sets it), on a text post only, published as `poll_attachment` (`option_a` to `option_d`).
+- `rules()` cannot know the network, so it checks only the shape (four choices at most, text, an integer length); the length of each choice and of the poll is checked per network by `PostPlatformMetaRules::formatErrors()` at every save, drafts included. `Poll::normalize()` keeps every choice at the position it was sent, blank ones included, so a choice's error lands on its own field (an update normalizes the meta before validating it); `PostMeta::forChannel()` then stores only what the network takes (`Poll::forNetwork()`: blank choices dropped, no length on Threads, no switches off Mastodon) and drops `poll` on any other type.
+- A poll carries no media. A poll with fewer than two choices, without a question, or (X, Mastodon) without a length, is a draft that cannot be scheduled (the question error replaces the generic "content or media" one); each publisher refuses it through `publishViolation()`, and refuses stored media with `posts.errors.media_not_accepted`.
+- **Any post of a thread can be a poll on X and Mastodon, several in one thread** (owner decision November 2026). The root is a poll through its content type; a reply stays the network's post type and carries its poll in the reply itself: `meta.thread_replies.*` is `{text, media, poll}`, `poll` under that network's rules, the reply text as its question, no media (refused at every save by `ThreadReplies::pollMediaErrors()`). `ThreadReplies::replyPoll($platform)` says which rules a reply follows (null on Bluesky and LinkedIn, whose replies drop their polls through `ThreadReplies::forNetwork()`; Threads has no thread replies). `ThreadReplies` holds the reply rules (`pollFormatErrors()` and `pollMediaErrors()` at every save, `violation()` before scheduling; `mediaErrors()` leaves reply polls to `pollMediaErrors()`, so media on one gives one error). Before publishing, `HasSocialHttpClient::validateContentLength()` refuses a reply poll with media through `pollMediaErrors()`, so nothing goes out. `PublishesThreads` passes each reply's poll to the publisher and into its checkpoint hash (a reply without one keeps its old hash). In the composer the root keeps the Post | Poll picker; an active X or Mastodon reply turns into a poll with the toolbar's poll button (`ComposerEditorToolbar`, off with the media reason while the reply has media), and its poll editor (`PollField` with `field-prefix` `thread_replies.{n}.` and its own test ids) shows while that reply is edited. A reply poll's preview type is `THREAD_REPLY_POLL_CONTENT_TYPES`.
+- Attaching media through the API or MCP to a poll is refused by one guard, `AppendPostMedia::ensureAcceptsMedia()`: `execute()` always runs it, and the entry points that store or download a file first (`PostController::storeMedia`, `MediaAttacher::attachFromUrls`) call it before doing so.
+- **Results are read like X's (owner decision November 2026):** on each network's usual metrics read, never with a job or schedule of their own. On X and Mastodon they ride on the read the collector already makes; Threads needs one more read, and only for a poll (below).
+    - X: results are read by `XPublicationMetricsCollector` in the existing X metrics read (`GET /2/tweets/{id}`), on its usual schedule (about an hour after publishing, then at the ages in `SyncCadence::X_METRICS_DAYS`), into `analytics_publications.provider_metadata.poll`, without moving `updated_at`. A read without a poll leaves the stored one alone. When TryPost published reply polls, the same read becomes one `GET /2/tweets?ids={post},{replies with a poll}` (owner decision November 2026: still one request, though X bills each extra post it returns), and their results go to `provider_metadata.thread_polls`, a list of `{reply, ...result}` where `reply` is the reply's position from 0 (matched through `posts.thread_reply_ids`). Discovery excludes replies, so it never sees them; `UpsertAnalyticsPublication` merges `provider_metadata` key by key so a rediscovery keeps them.
+    - Mastodon: the root poll's result comes with the status `MastodonPublicationMetricsCollector` already reads (`GET statuses/{id}`) and with discovery (`MastodonPublicationCollector`), both through `MastodonPoll::metadataFrom()`, with `voters` (the base of a multiple-choice poll's shares) and `totals_hidden` (votes Mastodon hides until the end, read as 0 and shown as hidden). A Mastodon post is read for 31 days instead of 30 (`SyncCadence::MASTODON_METRICS_WINDOW_DAYS`), so a 30-day poll gets a read after it ends. When TryPost published reply polls, the same read becomes `GET /api/v1/statuses?id[]={status}&id[]={replies with a poll}` (Mastodon 4.3, owner decision November 2026: as on X), 20 statuses per request with the status in the first, and their results go to `provider_metadata.thread_polls`. The repeated `id[]=` is built by `MastodonApi::url($instance, 'statuses', ['id[]' => [...]])`, since the HTTP client sends an array query as `id[0]=`; `AbstractApiPublicationCollector::get()` sends no query of its own when it has no parameters, so the URL's is kept. A server before 4.3, or a read that leaves the status out (deleted or private), falls back to the status read alone, where a deletion is confirmed as before; there the reply polls keep their choices with no votes. The reply ids are found by `AbstractPublicationMetricsCollector::replyPollIds()`, shared with X.
+    - Threads: the insights edge the metrics read uses carries no poll, so `ThreadsPublicationMetricsCollector` reads a publication typed `Poll` once more for its `poll_attachment` (`ThreadsPoll::LOOKUP_FIELDS`, through the shared optional Meta read), on the same daily cadence as its metrics, until its stored result is closed (it can no longer change); no other post makes that read, and a refused one keeps the metrics measured. Threads documents each choice's share as a decimal (`0.10` for 10%), which is the only shape read. Discovery (`ThreadsPublicationCollector`) asks for the same fields in its existing list read. Threads gives each choice a share of `total_votes`, so the votes are worked out from it, and the poll is closed once its `expiration_timestamp` has passed.
+    - A poll made on the network is found by that network's discovery, which writes the same `provider_metadata.poll` and types it `PublicationContentType::Poll`, which `ContentType::fromPublication()` maps to the network's poll type for the importer and the insights type filter (a poll TryPost published is stored as `Poll` by `SyncTryPostPublication`). `provider_metadata.poll` is the one home of a poll's result; there is no column of its own.
+- Results are exposed as `publication.poll` and `publication.thread_polls` (read from `provider_metadata`) by `ReadPublicationAnalytics` (web, API, MCP) and shown by `PostPollResults.vue` in the Sent tab and post details, a reply's poll captioned with its post number (`posts.poll_results.thread_post`). The API and MCP post preview (`PostPreviewer`) shows the post's poll and each reply's (`Poll::preview()`). Because results are not read daily, it says "Final results" only when the stored `voting_status` is `closed`; an open poll whose end has passed says "Voting ended", and one still running says when it ends.
+- The limits reach the composer through `Platform::publishConfig()` (`publishConfig.poll`, from `Poll::limits()`: a null length on Threads, `multipleChoice` and `hideTotals` on Mastodon), read from `platformConfigs[account.id]` by `PollField.vue`, the network previews (`XPreviewPoll`, `MastodonPreviewPoll`, `ThreadsPreviewPoll`) and the question cap; do not copy them into TypeScript. `resources/js/lib/poll.ts` keeps only pure helpers that take the limits as arguments; the poll types (`Poll`, `PollLimits`, `PollDuration`) are in `resources/js/types/poll.ts`. The composer's poll state, its limits, the type switch (`setGroupContentType`), Remove poll (back to the network's post type, `POLL_POST_CONTENT_TYPES`) and the reply text limit live in `composables/composer/useComposerPoll.ts`; the media button's reason stays in `PostComposerDialog.vue`, and the medialess types (polls, Threads ghost post) with their reasons in `MEDIALESS_CONTENT_TYPE_REASONS` (`types/content-type.ts`, next to `CAPTIONLESS_CONTENT_TYPES` and `POLL_CONTENT_TYPES`; `maxMediaCount()` is 0 for them on the server). The poll field's test ids start with the network (`x-poll`, `mastodon-poll`, `threads-poll`).
+- **The poll's media rules are for polls only** (owner decision November 2026): refusing media on a draft (`PostCompositionValidator`), refusing an attach (`AppendPostMedia::ensureAcceptsMedia()`), turning a card back into a post when the shared step opens (`watch(sharedStep)` in `PostComposerDialog.vue`) and leaving the type out of the repurpose picker all test `ContentType::isPoll()` / `POLL_CONTENT_TYPES`, never "a type that takes no media": a Threads ghost post keeps the behaviour it had before polls (its media is refused when it is scheduled or published).
+- A poll is never a repurpose destination: the repurpose requests refuse every poll type (`RepurposeRules`, `supportsVideo()`), and the repurpose picker (`ChannelConfigurator.vue`) leaves them out.
+- LinkedIn polls are tracked in #468 (create only, no results); Bluesky has no poll in the AT Protocol.
 
 ## Composer steps
 
@@ -994,8 +1299,21 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - ALWAYS target elements by `data-testid`. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
     - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
     - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
-- Assertions do NOT auto-wait on SPA paint. Wait for the element to mount and lay out first — see the `waitFor*TestId()` helper at the top of `tests/Browser/WelcomeConnectTest.php` and copy the pattern under a file-unique name (these helpers are global functions; a duplicated name collides across test files).
-- **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
+- Assertions do NOT auto-wait on SPA paint (`assertMissing`/`assertVisible` check once; only actions like `click()` wait). **Every wait goes through the shared helpers in `tests/Pest.php`** (owner decision October 2026), never through a helper of your own:
+    - Every helper takes a CSS selector where `@name` stands for `[data-testid="name"]`, as in `$page->click('@name')`, anywhere in it: `'@channel-settings-rows [role="combobox"]'`, `'@channel-settings-row:has(@instagram-collaborators)'`. Prefer `@` test ids; reach for a `role` or `data-slot` only when the element has no test id, and never a CSS class.
+    - `waitFor($page, '@id')`: an element is mounted and laid out.
+    - `waitForGone($page, '@id')`: no element matches.
+    - `waitForState($page, '@id', "element.getAttribute('aria-checked') === 'true'")`: an element exists and the expression about `element` is true (attributes, `dataset`, `disabled`, position).
+    - `waitForOpen($page, '@post-composer-dialog')`: a dialog, sheet or popover is open (`data-state`, `open` by default) and done animating in.
+    - `waitForText($page, '[role="option"]', 'general')`: any matching element contains the text.
+    - `waitForCount($page, '@composer-media-item', 2)`: that many elements match (`===`, or pass `'>='` / `'>'`).
+    - `waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog')`: whichever happens first, so the assertion after it fails at once instead of waiting out the timeout.
+    - `waitForPath($page, $path)`: the page is at that path.
+    - Beside the waits: `rememberElement($page, '@id', 'name')` keeps an element so a later wait can check it is the same one (`element === window.__remembered.name`), `elementsMap($page, '@list [data-testid]', $expression)` reads a value from every matching element, `pointerDownOn($page, '@id')` presses outside an open modal layer, `clickWithoutPointer($page, '@id')` clicks an element such a layer keeps out of the pointer's reach, and `letPageRun($page, $milliseconds)` lets the page run to show that something stays as it is.
+    - `waitForCondition($page, $js)`: only for what is not about an element (`location.search`, a `window.__` spy).
+    - Each wait gives up after 30 seconds; a slower one (an import that polls the server) passes `seconds:` to `waitFor`, `waitForGone`, `waitForState` or `waitForCondition`.
+    - Never write `document.querySelector(...)` inside a wait, and never define a per-file `waitFor*` helper. Pest's `Webpage` is `final readonly` and not macroable, which is why these are global functions. A helper with a domain name (`waitForComposerReady`) may wrap one condition, built on the shared helpers, never a polling loop of its own. If a wait needs something the helpers cannot express, add a helper to `tests/Pest.php` instead of inlining it.
+- **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. The helpers above poll from the page with `$page->script(...)`, which keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
 - Each `visit()` opens a new browser context: `localStorage`, cookies and history are not shared with the previous visit.
@@ -1003,6 +1321,16 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - `assertQueryStringMissing()` checks only the query string: on a route whose id is in the path (`app.posts.edit`) it passes whatever happens. Assert the path instead.
 - A new test for a fix must fail without the fix. Check it by removing the change, running the test, and restoring it.
 - CI runs them in three shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/3`), leaving a CPU of the 4-vCPU runner to the database and the app server, against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
+
+## Laravel helpers over native PHP
+
+Whenever Laravel has a helper for something, use it instead of a native PHP function or a hand-written equivalent (owner decision October 2026). The helper already handles the edge cases (encoding, base paths, nulls, empty strings) that a hand-written version gets wrong.
+
+- **URLs and routes:** `route()`, `redirect()->route()`, `url()->previous()`, `Illuminate\Support\Uri` and `Request`. Never `parse_url()`, `http_build_query()`, `explode('&', ...)` or string concatenation to build or read a URL of the app (see "Routing (Wayfinder)").
+- **Values:** `blank()`, `filled()`, `transform()`, `data_get()` / `data_set()`, `Arr::*` and collections, instead of `=== null` / `empty()` / `isset()` checks and `array_*` loops.
+- **Dates:** `now()`, Carbon and `CarbonImmutable`, never `time()`, `date()` or `strtotime()`.
+- **Strings are not a parser.** `Str` is for text (slugs, case, limits). Taking a URL, path or query apart with `Str::after`, `Str::before` or `Str::startsWith` is the same hand-written parsing in another form: reach for the helper that understands the structure (`Uri`, `Request`, `route()`) instead.
+- A native function is fine when Laravel has no equivalent; say so in the code review, not in a comment.
 
 ## Array Data Access
 
@@ -1041,6 +1369,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - Production code: `config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'`, never the literal URL.
     - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
     - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
+    - Every such URL in `config/trypost.php` goes through its `$url(...)` closure, which drops a trailing slash, so a reader appends the path to `config(...)` and never trims or casts it (`ThirdPartyUrlConfigTest`). A new URL key uses `$url('ENV_NAME', 'https://…')`, not `env()`. A server stored on an account (`SocialAccount::bluesky_service`, `mastodon_instance`) is never trimmed either: Bluesky stores the config value and Mastodon trims the instance when it connects.
 
 ## Social Platform API Documentation (official sources)
 

@@ -8,6 +8,7 @@ function mediaSourceConfigure(array $overrides = []): void
 {
     config()->set(array_merge([
         'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
         'services.google_media.client_id' => null,
         'services.google_media.client_secret' => null,
         'services.google_media.redirect' => null,
@@ -18,6 +19,7 @@ function mediaSourceConfigure(array $overrides = []): void
         'trypost.media_sources.google_drive.enabled' => true,
         'trypost.media_sources.google_photos.enabled' => true,
         'trypost.media_sources.canva.enabled' => true,
+        'trypost.media_sources.giphy.enabled' => true,
     ], $overrides));
 }
 
@@ -27,7 +29,7 @@ function mediaSourceEnabled(): array
 }
 
 test('the picker sources are listed in menu order', function () {
-    expect(Source::pickerSources())->toBe([Source::Canva, Source::GoogleDrive, Source::GooglePhotos, Source::Unsplash]);
+    expect(Source::pickerSources())->toBe([Source::Canva, Source::Giphy, Source::GoogleDrive, Source::GooglePhotos, Source::Unsplash]);
 });
 
 test('no picker source is enabled when every key is empty', function () {
@@ -48,6 +50,12 @@ test('the login and business google credentials enable nothing', function () {
 test('each source needs its flag and every one of its keys', function () {
     mediaSourceConfigure(['services.unsplash.access_key' => 'u']);
     expect(mediaSourceEnabled())->toBe(['unsplash']);
+
+    mediaSourceConfigure(['services.giphy.api_key' => 'g']);
+    expect(mediaSourceEnabled())->toBe(['giphy']);
+
+    mediaSourceConfigure(['services.giphy.api_key' => 'g', 'trypost.media_sources.giphy.enabled' => false]);
+    expect(mediaSourceEnabled())->toBe([]);
 
     mediaSourceConfigure(['services.google_media.client_id' => 'c']);
     expect(mediaSourceEnabled())->toBe([]);
@@ -89,7 +97,7 @@ test('labels, download hosts and public config', function () {
 
     expect(Source::GoogleDrive->label())->toBe('Google Drive')
         ->and(Source::Canva->downloadHosts())->toBe(['*.canva.com', 'export.example.com'])
-        ->and(Source::GoogleDrive->publicConfig())->toBe(['api_key' => 'key', 'app_id' => 'app', 'picker_sdk' => (string) config('trypost.media_sources.google_drive.picker_sdk')])
+        ->and(Source::GoogleDrive->publicConfig())->toBe(['api_key' => 'key', 'app_id' => 'app', 'picker_sdk' => config('trypost.media_sources.google_drive.picker_sdk')])
         ->and(Source::GooglePhotos->publicConfig())->toBe([])
         ->and(Source::Canva->publicConfig())->toBe([])
         ->and(Source::Unsplash->publicConfig())->toBe([]);

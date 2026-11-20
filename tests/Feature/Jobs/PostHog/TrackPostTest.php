@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Origin;
 use App\Enums\PostHog\PostEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackPost;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create();
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
@@ -54,24 +55,6 @@ test('handle captures post.created with created_via and account group', function
     });
 });
 
-test('handle falls back to account owner when post has no user', function () {
-    Queue::fake();
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => null,
-        'created_via' => CreatedVia::Mcp,
-    ]);
-
-    (new TrackPost((string) $post->id))->handle(app(PostHogService::class));
-
-    Queue::assertPushed(
-        SendEvent::class,
-        fn ($job) => $job->payload['distinctId'] === (string) $this->user->id
-            && $job->payload['properties']['created_via'] === CreatedVia::Mcp->value,
-    );
-});
-
 test('handle returns silently when post does not exist', function () {
     Queue::fake();
 
@@ -94,3 +77,20 @@ test('handle does not push when PostHog is disabled', function () {
 
     Queue::assertNotPushed(SendEvent::class);
 });
+
+test('handle tracks nothing for an imported network post or a post without an author', function (array $attributes) {
+    Queue::fake();
+
+    $post = Post::factory()->imported()->create([
+        'workspace_id' => $this->workspace->id,
+        ...$attributes,
+    ]);
+
+    (new TrackPost((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+})->with([
+    'imported without an author' => fn () => [],
+    'imported with an author' => fn () => ['user_id' => $this->user->id],
+    'TryPost post without an author' => fn () => ['origin' => Origin::TryPost, 'user_id' => null],
+]);

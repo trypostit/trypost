@@ -1,0 +1,146 @@
+<script setup lang="ts">
+import { AlertDialogCancel } from 'reka-ui';
+import { ref } from 'vue';
+
+import TransSlots from '@/components/TransSlots.vue';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { useUserStorage } from '@/composables/useBrowserStorage';
+import date from '@/date';
+
+const skipConfirm = useUserStorage('calendar.skipCustomTimeConfirm', false);
+
+const isOpen = ref(false);
+const skipNextTime = ref(false);
+const fromTime = ref('');
+const toTime = ref('');
+const zone = ref('');
+
+let resolveChoice: ((confirmed: boolean) => void) | null = null;
+
+const settle = (confirmed: boolean): void => {
+    isOpen.value = false;
+    resolveChoice?.(confirmed);
+    resolveChoice = null;
+};
+
+const confirm = (
+    from: string,
+    to: string,
+    timezone: string,
+): Promise<boolean> => {
+    if (skipConfirm.value) {
+        return Promise.resolve(true);
+    }
+
+    resolveChoice?.(false);
+    fromTime.value = date.formatMonthDayTimeInTimezone(from, timezone);
+    toTime.value = date.formatMonthDayTimeInTimezone(to, timezone);
+    zone.value = timezone;
+    skipNextTime.value = false;
+    isOpen.value = true;
+
+    return new Promise((resolve) => {
+        resolveChoice = resolve;
+    });
+};
+
+const onOpenChange = (value: boolean): void => {
+    if (!value) {
+        settle(false);
+    }
+};
+
+const accept = (): void => {
+    if (skipNextTime.value) {
+        skipConfirm.value = true;
+    }
+
+    settle(true);
+};
+
+const setSkipNextTime = (value: boolean | 'indeterminate'): void => {
+    skipNextTime.value = value === true;
+};
+
+defineExpose({ confirm });
+</script>
+
+<template>
+    <AlertDialog :open="isOpen" @update:open="onOpenChange">
+        <AlertDialogContent
+            disable-outside-pointer-events
+            class="gap-4 px-0 pt-6 pb-4 sm:max-w-[480px]"
+            data-testid="calendar-custom-time-dialog"
+        >
+            <AlertDialogTitle class="px-6 text-base leading-5 font-[550]">
+                {{ $t('calendar.reschedule.custom_time.title') }}
+            </AlertDialogTitle>
+            <AlertDialogDescription
+                as="div"
+                class="flex flex-col gap-4 px-6 text-sm leading-[21px] text-foreground"
+            >
+                <p data-testid="calendar-custom-time-description">
+                    <TransSlots
+                        :message="
+                            $t('calendar.reschedule.custom_time.description')
+                        "
+                    >
+                        <template #from>
+                            <strong
+                                class="font-[650]"
+                                data-testid="calendar-custom-time-from"
+                                >{{ fromTime }}
+                                <i data-testid="calendar-custom-time-from-zone"
+                                    >({{ zone }})</i
+                                ></strong
+                            >
+                        </template>
+                        <template #to>
+                            <strong
+                                class="font-[650]"
+                                data-testid="calendar-custom-time-to"
+                                >{{ toTime }} <i>({{ zone }})</i></strong
+                            >
+                        </template>
+                    </TransSlots>
+                </p>
+                <p>{{ $t('calendar.reschedule.custom_time.unqueued') }}</p>
+            </AlertDialogDescription>
+            <Separator class="max-sm:mt-auto" />
+            <div
+                class="flex items-center justify-end gap-2 px-6 max-sm:flex-wrap"
+                data-testid="calendar-custom-time-footer"
+            >
+                <label
+                    class="me-auto flex shrink-0 items-center gap-2 text-sm leading-[21px] whitespace-nowrap text-foreground max-sm:me-0 max-sm:w-full"
+                >
+                    <Checkbox
+                        :model-value="skipNextTime"
+                        data-testid="calendar-custom-time-skip"
+                        @update:model-value="setSkipNextTime"
+                    />
+                    {{ $t('calendar.reschedule.custom_time.dont_show_again') }}
+                </label>
+                <AlertDialogCancel as-child>
+                    <Button
+                        variant="ghost"
+                        data-testid="calendar-custom-time-cancel"
+                    >
+                        {{ $t('calendar.reschedule.custom_time.cancel') }}
+                    </Button>
+                </AlertDialogCancel>
+                <Button data-testid="calendar-custom-time-confirm" @click="accept">
+                    {{ $t('calendar.reschedule.custom_time.confirm') }}
+                </Button>
+            </div>
+        </AlertDialogContent>
+    </AlertDialog>
+</template>

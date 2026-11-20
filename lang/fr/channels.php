@@ -7,6 +7,8 @@ return [
     'description' => 'Gérez les canaux de cet espace.',
     'connect' => 'Connecter un canal',
     'settings' => 'Paramètres du canal',
+    'manage' => 'Gérer les canaux',
+    'set_goal' => 'Définir un objectif de publication',
     'publish' => 'Publier',
     'insights' => 'Insights',
     'new_post' => 'Nouvelle publication dans ce canal',
@@ -168,6 +170,25 @@ return [
         'description' => 'Cela supprime toutes les publications de ce canal dans TryPost, y compris les brouillons, les publications programmées et l’historique des publications. Les publications déjà en ligne sur le réseau y restent.',
         'keyword' => 'déconnecter',
         'cancel' => 'Annuler',
+    ],
+
+    'list' => [
+        'search' => 'Rechercher par nom, @identifiant ou réseau',
+        'networks' => 'Réseaux',
+        'networks_search' => 'Rechercher des réseaux',
+        'no_networks' => 'Aucun réseau trouvé',
+        'columns' => [
+            'channel' => 'Canal',
+            'timezone' => 'Fuseau horaire',
+            'posting_times' => 'Horaires',
+            'this_week' => 'Cette semaine',
+        ],
+        'posting_times_per_week' => ':count par semaine',
+        'no_posting_times' => 'Aucun horaire',
+        'no_results' => 'Aucun canal ne correspond à votre recherche.',
+        'connection_lost' => 'Ce canal a perdu sa connexion',
+        'settings' => 'Paramètres',
+        'more_actions' => 'Plus d\'actions',
     ],
 
     'settings_page' => [

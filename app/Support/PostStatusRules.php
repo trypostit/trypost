@@ -50,9 +50,14 @@ class PostStatusRules
         return in_array($post->status, self::EDIT_BLOCKED_STATUSES, true);
     }
 
+    /**
+     * A published post the network deleted has nothing left to protect, so it may
+     * be removed from TryPost too.
+     */
     public static function blocksDeletion(Post $post): bool
     {
-        return in_array($post->status, self::DELETE_BLOCKED_STATUSES, true);
+        return in_array($post->status, self::DELETE_BLOCKED_STATUSES, true)
+            && ! $post->isDeletedOnNetwork();
     }
 
     public static function editBlockedMessage(): string

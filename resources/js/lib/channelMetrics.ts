@@ -1,10 +1,19 @@
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
-import { formatNumberCompact, formatPercent } from '@/lib/utils';
+import {
+    distinctCountLabels,
+    formatCountChange,
+    formatNumberCompact,
+    formatPercent,
+    formatPercentChange,
+} from '@/lib/utils';
 import type {
+    BucketResolution,
     ChannelMetricSeries,
+    DateRange,
     FollowerGrowthRate,
     MetricSeriesPoint,
+    PublicationPeriod,
     SeriesMetric,
 } from '@/types/analytics';
 
@@ -125,11 +134,68 @@ export const PRESETS: Preset[] = [
     },
 ];
 
-export const isLevelMetric = (metric: SeriesMetric): boolean =>
+const isLevelMetric = (metric: SeriesMetric): boolean =>
     LEVEL_METRICS.includes(metric);
 
 export const isPercentMetric = (metric: SeriesMetric): boolean =>
     PERCENT_METRICS.includes(metric);
+
+/** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
+const COUNTED_METRICS: readonly SeriesMetric[] = ['net_followers'];
+
+/** How a number moved: the signed value, which picks its tone, and how the page labels it. */
+export type MetricDelta = { value: number; label: string };
+
+/** A count's change as the page labels it: "+7", "-3". */
+export const countDelta = (change: number): MetricDelta => ({ value: change, label: formatCountChange(change) });
+
+/** A change as a percentage of the previous value, as the page labels it: "+8.5%". */
+export const percentDelta = (change: number): MetricDelta => ({ value: change, label: formatPercentChange(change) });
+
+/**
+ * The followers gained or lost over the period: the net new followers the
+ * report already counts (the last reading against where the period started),
+ * the same number as the Summary's; null without a reading to start from.
+ */
+const followersDelta = (series: ChannelMetricSeries): MetricDelta | null => {
+    const net = series.totals.current.net_followers;
+
+    if (net == null) {
+        return null;
+    }
+
+    return countDelta(net);
+};
+
+/**
+ * How a channel metric moved: followers by what the period gained or lost,
+ * net new followers by the difference with the previous period ("+7"), the
+ * rest by a percentage of the previous period ("+8.5%"), kept positive so a
+ * loss shrinking reads as a rise. Null for a rate, which has no previous
+ * period, or when there is nothing to compare.
+ */
+export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): MetricDelta | null => {
+    if (metric === 'followers') {
+        return followersDelta(series);
+    }
+
+    const current = series.totals.current[metric];
+    const previous = series.totals.previous[metric];
+
+    if (isPercentMetric(metric) || current == null || previous == null) {
+        return null;
+    }
+
+    if (COUNTED_METRICS.includes(metric)) {
+        return countDelta(current - previous);
+    }
+
+    if (previous === 0) {
+        return null;
+    }
+
+    return percentDelta(((current - previous) / Math.abs(previous)) * 100);
+};
 
 /**
  * The metrics the menu offers, in menu order: followers, the network's audience metric (reach where it is
@@ -224,7 +290,7 @@ export const AXIS_STEPS = 4;
 /**
  * A domain split into four round steps, so every axis shares the same gridlines.
  */
-export const niceDomain = (
+const niceDomain = (
     values: number[],
     fromZero: boolean,
     fractional = false,
@@ -258,36 +324,93 @@ export const definedValues = (
         .map((point) => point.values[metric])
         .filter((value): value is number => typeof value === 'number');
 
+/** The period a chart mode reads its one figure from: the previous one in Comparison, else the current. */
+export const shownPeriod = (mode: ChartMode): PublicationPeriod => {
+    if (mode === 'previous') {
+        return 'previous';
+    }
+
+    return 'current';
+};
+
+/** The periods a chart mode draws: both in Both, else the one it shows. */
+export const chartPeriods = (mode: ChartMode): PublicationPeriod[] => {
+    if (mode === 'both') {
+        return ['current', 'previous'];
+    }
+
+    return [shownPeriod(mode)];
+};
+
+/**
+ * An axis' domain for the metrics drawn on it: from zero unless it only holds
+ * followers, in hundredths for a rate; none when no metric uses the axis.
+ */
+export const axisDomain = (
+    metrics: SeriesMetric[],
+    values: number[],
+): { min: number; max: number } | null => {
+    if (metrics.length === 0) {
+        return null;
+    }
+
+    return niceDomain(
+        values,
+        metrics.some((metric) => metric !== 'followers'),
+        metrics.some(isPercentMetric),
+    );
+};
+
+/** An axis' tick labels, bottom up: in percent for a rate, else compact but never two alike. */
+export const axisTickLabels = (
+    domain: { min: number; max: number },
+    metrics: SeriesMetric[],
+): string[] => {
+    const values = Array.from(
+        { length: AXIS_STEPS + 1 },
+        (_, step) => domain.min + (step / AXIS_STEPS) * (domain.max - domain.min),
+    );
+    const rate = metrics.find(isPercentMetric);
+
+    if (rate) {
+        return values.map((value) => formatSeriesValue(value, rate));
+    }
+
+    return distinctCountLabels(values);
+};
+
+/** How many readings a metric needs to draw anything: two for a level, which only shows as a line between them, one otherwise. */
+const readingsToDraw = (metric: SeriesMetric): number => {
+    if (isLevelMetric(metric)) {
+        return 2;
+    }
+
+    return 1;
+};
+
+/** Whether the chart has something to draw for the metrics shown, over the periods the mode shows. */
 export const hasEnoughHistory = (
     series: ChannelMetricSeries,
     specs: SeriesSpec[],
     mode: ChartMode,
-): boolean => {
-    const periods =
-        mode === 'both'
-            ? [series.current, series.previous]
-            : [mode === 'previous' ? series.previous : series.current];
-
-    return specs.some((spec) =>
-        periods.some(
-            (points) =>
-                definedValues(points, spec.metric).length >=
-                (isLevelMetric(spec.metric) ? 2 : 1),
+): boolean =>
+    specs.some((spec) =>
+        chartPeriods(mode).some(
+            (period) =>
+                definedValues(series[period], spec.metric).length >=
+                readingsToDraw(spec.metric),
         ),
     );
-};
 
 export const formatSeriesValue = (
     value: number | null | undefined,
     metric?: SeriesMetric,
 ): string => {
-    if (value === null || value === undefined) {
-        return '—';
+    if (metric && isPercentMetric(metric)) {
+        return formatPercent(value);
     }
 
-    return metric && isPercentMetric(metric)
-        ? formatPercent(value)
-        : formatNumberCompact(value);
+    return formatNumberCompact(value);
 };
 
 export const bucketLabel = (
@@ -302,15 +425,45 @@ export const bucketLabel = (
         return monthLabel(point.start);
     }
 
-    return resolution === 'weekly' && point.start !== point.end
-        ? `${date.formatMonthDay(point.start)} – ${date.formatMonthDay(point.end)}`
-        : date.formatDayMonthYear(point.start);
+    if (resolution === 'weekly' && point.start !== point.end) {
+        return weekLabel(point);
+    }
+
+    return date.formatDayMonthYear(point.start);
 };
+
+/** The days a week covers: "5 Oct – 11 Oct". */
+const weekLabel = (week: DateRange): string =>
+    `${date.formatMonthDay(week.start)} – ${date.formatMonthDay(week.end)}`;
 
 export const monthLabel = (day: string): string => {
     const [year, month] = day.split('-').map(Number);
 
     return date.formatMonthYear(month, year);
+};
+
+/** A bucket on the chart's time axis: the month for monthly buckets, else the day it starts. */
+export const axisBucketLabel = (
+    bucket: { start: string },
+    resolution: BucketResolution,
+): string => {
+    if (resolution === 'monthly') {
+        return monthLabel(bucket.start);
+    }
+
+    return date.formatMonthDay(bucket.start);
+};
+
+/** A bucket as its column's label: the month, the day, or the days a week covers. */
+export const bucketRangeLabel = (
+    bucket: DateRange,
+    resolution: BucketResolution,
+): string => {
+    if (resolution === 'monthly' || bucket.start === bucket.end) {
+        return axisBucketLabel(bucket, resolution);
+    }
+
+    return weekLabel(bucket);
 };
 
 const direction = (

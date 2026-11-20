@@ -20,14 +20,9 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
-        $pds = rtrim((string) data_get(
-            $account->meta,
-            'service',
-            config('trypost.platforms.bluesky.default_service'),
-        ), '/');
         $response = $this->get(
             $account,
-            "{$pds}/xrpc/".BlueskyLexicon::LIST_RECORDS,
+            BlueskyLexicon::xrpc($account->bluesky_service, BlueskyLexicon::LIST_RECORDS),
             [
                 'repo' => $account->platform_user_id,
                 'collection' => BlueskyLexicon::FEED_POST,
@@ -89,13 +84,13 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
      */
     private function hydrate(SocialAccount $account, Collection $uris): Collection
     {
-        $appView = rtrim((string) config('trypost.platforms.bluesky.public_appview'), '/');
+        $appView = config('trypost.platforms.bluesky.public_appview');
         $posts = collect();
 
         foreach ($uris->chunk(self::HYDRATION_BATCH_SIZE) as $batch) {
             $response = $this->get(
                 $account,
-                "{$appView}/xrpc/".BlueskyLexicon::GET_POSTS,
+                BlueskyLexicon::xrpc($appView, BlueskyLexicon::GET_POSTS),
                 ['uris' => $batch->values()->all()],
                 authenticated: false,
             );

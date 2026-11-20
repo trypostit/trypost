@@ -3,24 +3,34 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
 use App\Support\Social\PendingConnection;
+use App\Support\Social\Poll;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Laravel\Mcp\Server\Testing\TestResponse as McpTestResponse;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -40,13 +50,17 @@ pest()->extend(TestCase::class)
     ->beforeEach(function (): void {
         Http::preventStrayRequests();
         fakePwnedPasswords();
+        fakeChatGptEgressRanges();
         Queue::fake([BootstrapAccountAnalytics::class]);
     })
     ->in('Feature', 'Unit');
 
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(fn () => fakePwnedPasswords())
+    ->beforeEach(function (): void {
+        fakePwnedPasswords();
+        config(['trypost.tours.enabled' => false]);
+    })
     ->in('Browser');
 
 pest()->in('Feature/Social')
@@ -77,6 +91,22 @@ pest()->tia()->locally();
 */
 
 pest()->browser()->timeout(15000);
+
+/*
+|--------------------------------------------------------------------------
+| Browser Traces
+|--------------------------------------------------------------------------
+|
+| On CI each browser test records a Playwright trace, kept only when the test
+| fails, in tests/Browser/Traces (uploaded with the screenshots). Open one
+| with `npx playwright show-trace <file>.zip`. Set here and not with --trace,
+| which does not reach the parallel workers.
+|
+*/
+
+if (filled(getenv('CI'))) {
+    pest()->browser()->trace(open: false);
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -127,6 +157,26 @@ function fakePwnedPasswords(): void
         'api.pwnedpasswords.com/range/*' => fn (HttpClientRequest $request) => Http::response(
             str_ends_with($request->url(), substr($hash, 0, 5)) ? substr($hash, 5).':42' : '',
         ),
+    ]);
+}
+
+/**
+ * OpenAI's published ChatGPT egress ranges, answered from the
+ * testing.chatgpt_egress_ranges config so a test can change them after the
+ * global fake is registered. null answers a failed read.
+ *
+ * @param  list<mixed>|null  $ranges
+ */
+function fakeChatGptEgressRanges(?array $ranges = []): void
+{
+    config(['testing.chatgpt_egress_ranges' => $ranges]);
+
+    Http::fake([
+        config('trypost.mcp_chatgpt_ip_ranges_url') => fn () => config('testing.chatgpt_egress_ranges') === null
+            ? Http::response('', 500)
+            : Http::response([
+                'prefixes' => collect(config('testing.chatgpt_egress_ranges'))->map(fn (mixed $range): array => ['ipv4Prefix' => $range])->all(),
+            ]),
     ]);
 }
 
@@ -329,6 +379,140 @@ function subscribeAccount(Account $account): void
 }
 
 /**
+ * Answers Stripe from memory for an account billed as `cus_fake` on
+ * `sub_fake`: the subscription with an optional coupon, the customer with an
+ * optional card, and no invoices. Reset with ApiRequestor::setHttpClient(null).
+ *
+ * @param  array<string, mixed>|null  $coupon
+ */
+function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0, ?string $secondCardBrand = null, bool $customerHasDefault = true, ?string $subscriptionCard = null, bool $customerDefaultIsLink = false): void
+{
+    config(['cashier.secret' => 'sk_test_fake']);
+    $account->forceFill(['stripe_id' => 'cus_fake'])->save();
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_fake',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices, $secondCardBrand, $customerHasDefault, $subscriptionCard, $customerDefaultIsLink) implements ClientInterface
+    {
+        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices, private ?string $secondCardBrand, private bool $customerHasDefault, private ?string $subscriptionCard, private bool $customerDefaultIsLink) {}
+
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $card = blank($this->cardBrand) ? null : [
+                'id' => 'pm_fake',
+                'object' => 'payment_method',
+                'customer' => 'cus_fake',
+                'type' => 'card',
+                'card' => ['brand' => $this->cardBrand, 'last4' => '4242', 'exp_month' => 4, 'exp_year' => 2044],
+            ];
+            $secondCard = blank($this->secondCardBrand) ? null : [
+                'id' => 'pm_fake_second',
+                'object' => 'payment_method',
+                'customer' => 'cus_fake',
+                'type' => 'card',
+                'card' => ['brand' => $this->secondCardBrand, 'last4' => '5454', 'exp_month' => 5, 'exp_year' => 2055],
+            ];
+
+            $body = match (true) {
+                str_contains($absUrl, '/v1/subscriptions/') => [
+                    'id' => 'sub_fake',
+                    'object' => 'subscription',
+                    'default_payment_method' => $this->subscriptionCard,
+                    'discounts' => blank($this->coupon) ? [] : [[
+                        'id' => 'di_fake',
+                        'object' => 'discount',
+                        'coupon' => ['object' => 'coupon', 'id' => 'FAKE', ...$this->coupon],
+                        'start' => now()->subDay()->timestamp,
+                        'end' => $this->discountEndsAt,
+                    ]],
+                ],
+                str_contains($absUrl, '/v1/customers/cus_fake/payment_methods'), str_contains($absUrl, '/v1/payment_methods') => ['object' => 'list', 'data' => array_values(array_filter([$secondCard, $card])), 'has_more' => false, 'url' => '/v1/payment_methods'],
+                str_contains($absUrl, '/v1/customers/') => [
+                    'id' => 'cus_fake',
+                    'object' => 'customer',
+                    'invoice_settings' => ['default_payment_method' => match (true) {
+                        $this->customerDefaultIsLink => ['id' => 'pm_link', 'object' => 'payment_method', 'customer' => 'cus_fake', 'type' => 'link'],
+                        $this->customerHasDefault => $card,
+                        default => null,
+                    }],
+                ],
+                str_contains($absUrl, '/v1/invoices') => $this->invoices($params),
+                default => ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => '/v1/invoices'],
+            };
+
+            return [json_encode($body), 200, []];
+        }
+
+        /**
+         * The paid invoices, newest first, paged the way Stripe pages them:
+         * `limit` and `starting_after`, and only when `status` is `paid`.
+         *
+         * @param  array<string, mixed>  $params
+         * @return array<string, mixed>
+         */
+        private function invoices(array $params): array
+        {
+            $invoices = collect($this->paidInvoices > 0 ? range($this->paidInvoices, 1) : [])
+                ->filter(fn (): bool => data_get($params, 'status') === 'paid')
+                ->map(fn (int $number): array => [
+                    'id' => sprintf('in_fake_%03d', $number),
+                    'object' => 'invoice',
+                    'customer' => 'cus_fake',
+                    'status' => 'paid',
+                    'currency' => 'usd',
+                    'total' => 1900,
+                    'created' => now()->subMonths($this->paidInvoices - $number)->timestamp,
+                    'invoice_pdf' => "https://pay.stripe.com/invoice/in_fake_{$number}/pdf",
+                ])
+                ->values();
+
+            $after = data_get($params, 'starting_after');
+            $start = blank($after) ? 0 : $invoices->search(fn (array $invoice): bool => $invoice['id'] === $after) + 1;
+            $limit = (int) data_get($params, 'limit', 10);
+
+            return [
+                'object' => 'list',
+                'data' => $invoices->slice($start, $limit)->values()->all(),
+                'has_more' => $invoices->count() > $start + $limit,
+                'url' => '/v1/invoices',
+            ];
+        }
+    });
+}
+
+/**
+ * Turns PostHog on for the test, as on an install with an API key.
+ */
+function enablePostHog(): void
+{
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+}
+
+/**
+ * Make dispatching the given job throw, as when the queue is down, while every
+ * other job dispatches as usual. `$when` narrows the failure to the jobs it
+ * accepts.
+ *
+ * @param  class-string  $jobClass
+ * @param  (Closure(object): bool)|null  $when
+ */
+function failDispatchOf(string $jobClass, ?Closure $when = null): void
+{
+    $dispatcher = Bus::getFacadeRoot();
+    $bus = Mockery::mock($dispatcher);
+    $bus->shouldReceive('dispatch')
+        ->with(Mockery::on(fn (mixed $job): bool => $job instanceof $jobClass && ($when === null || $when($job))))
+        ->andThrow(new RuntimeException('Queue is down.'));
+    $bus->shouldReceive('dispatch')->andReturnUsing(fn (mixed $job, mixed $handler = null): mixed => $dispatcher->dispatch($job, $handler));
+
+    Bus::swap($bus);
+}
+
+/**
  * Insert an OAuth client suitable for MCP connection tests.
  */
 function mcpOauthClient(string $name = 'My Agent'): string
@@ -400,13 +584,23 @@ function mcpAccessToken(
 }
 
 /**
+ * Connects an AI to the user's current workspace, as connecting one through
+ * MCP does, so the in-app invitation to connect one (`McpPromptTour`) is not
+ * shown. A browser test whose page should not carry the card calls it.
+ */
+function connectAiTo(User $user): void
+{
+    mcpAccessToken($user, mcpOauthClient('Claude'), $user->currentWorkspace);
+}
+
+/**
  * Issue a Passport token, attach it to a dedicated MCP OAuth client, and bind
  * it to a workspace — the post-#222 shape used by middleware / MCP endpoint tests.
  *
  * @param  list<string>  $scopes
  * @return array{token: AccessToken, plain_token: string}
  */
-function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use']): array
+function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use'], string $clientName = 'My Agent'): array
 {
     $result = $user->createToken('MCP', $scopes);
     $token = AccessToken::query()->findOrFail($result->token->id);
@@ -414,7 +608,7 @@ function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:
     // Reassign to a dedicated MCP client so we never mutate Passport's shared
     // personal-access client (which would poison PAT fixtures in the same run).
     $token->forceFill([
-        'client_id' => mcpOauthClient(),
+        'client_id' => mcpOauthClient($clientName),
         'workspace_id' => $workspace->id,
     ])->saveQuietly();
 
@@ -501,6 +695,98 @@ function parityContext(): array
 }
 
 /**
+ * A post on a channel of a poll's network (X, Mastodon or Threads), owned by a
+ * signed-in member, for the composer's browser tests. Every request to a
+ * network answers empty.
+ *
+ * @param  array<string, mixed>  $attributes
+ * @param  array<string, mixed>  $accountAttributes
+ * @param  array<string, mixed>  $userAttributes
+ */
+function seedPollComposerPost(ContentType $type, array $attributes = [], array $accountAttributes = [], array $userAttributes = []): Post
+{
+    Http::fake(['*' => Http::response([], 200)]);
+
+    $user = User::factory()->create($userAttributes);
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    connectAiTo($user);
+
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create([
+        'workspace_id' => $workspace->id,
+        'username' => 'trypostit',
+        'token_expires_at' => now()->addDays(20),
+        ...$accountAttributes,
+    ]);
+
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'user_id' => $user->id,
+        'content' => 'Which network brings you the most customers?',
+        ...$attributes,
+    ]);
+
+    test()->actingAs($user);
+
+    return $post;
+}
+
+/**
+ * Opens a post in the composer, once its network's Poll type can be picked.
+ */
+function openPollComposer(Post $post): mixed
+{
+    $pollType = Poll::for($post->platform)::contentType()->value;
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-type-{$post->social_account_id}-{$pollType}");
+
+    return $page;
+}
+
+/**
+ * A draft of a poll's network (X, Mastodon or Threads) in the parity
+ * context's workspace, asking 'Tabs or spaces?'.
+ *
+ * @param  array<string, mixed>  $meta
+ * @param  array<string, mixed>  $accountMeta
+ */
+function pollParityPost(ContentType $type, array $meta = [], array $accountMeta = []): Post
+{
+    $account = SocialAccount::factory()->{$type->platform()->value}()->create(['workspace_id' => test()->workspace->id, 'meta' => $accountMeta]);
+
+    return Post::factory()->forAccount($account, $type)->create([
+        'user_id' => test()->user->id,
+        'content' => 'Tabs or spaces?',
+        'status' => PostStatus::Draft,
+        'media' => [],
+        'meta' => $meta,
+    ]);
+}
+
+/**
+ * Sends the same post update through one surface: the web composer, the REST
+ * API or the MCP tool, and returns that surface's own response, which is why
+ * the return type is a union.
+ *
+ * @param  array<string, mixed>  $changes
+ */
+function pollParityUpdate(string $surface, Post $post, array $changes): TestResponse|McpTestResponse
+{
+    $payload = [
+        'content' => $post->content,
+        'content_type' => $post->content_type->value,
+        'status' => PostStatus::Draft->value,
+        ...$changes,
+    ];
+
+    return match ($surface) {
+        'web' => test()->actingAs(test()->user)->putJson(route('app.posts.update', $post), ['media' => [], ...$payload]),
+        'api' => test()->withHeaders(parityApi(test()->token))->putJson(route('api.posts.update', $post), $payload),
+        'mcp' => TryPostServer::actingAs(test()->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, ...$payload]),
+    };
+}
+
+/**
  * @return array<string, string>
  */
 function parityApi(string $token): array
@@ -540,4 +826,478 @@ function waitForWebFonts(mixed $page): void
             await document.fonts.ready;
         })();
     JS);
+}
+
+/**
+ * Wait until a JavaScript expression is true in the page, for up to 30
+ * seconds (longer for a slow import or a fallback that polls the server),
+ * and fail the test when it never is: every wait is also an assertion.
+ * Assertions do not wait for the SPA to paint, and a blocking sleep() would
+ * starve the server that serves the page, so the page polls.
+ */
+function waitForCondition(mixed $page, string $condition, int $seconds = 30): void
+{
+    $attempts = $seconds * 20;
+
+    $met = $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < {$attempts}; i++) {
+                if ({$condition}) return true;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            return false;
+        })();
+    JS);
+
+    expect($met)->toBeTrue("Waited {$seconds}s for: {$condition}");
+}
+
+/**
+ * Wait until a condition the test reads on the server (a row in the database)
+ * holds, letting the page's own requests land between tries, and fail the
+ * test when it never does.
+ */
+function waitForDatabase(mixed $page, Closure $condition): void
+{
+    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
+
+    expect($condition())->toBeTrue('Waited 5s for a condition on the server.');
+}
+
+/**
+ * Wait until the page's URL carries this query parameter value.
+ */
+function waitForQueryParameter(mixed $page, string $name, string $value): void
+{
+    $name = json_encode($name);
+    $value = json_encode($value);
+
+    waitForCondition($page, "new URLSearchParams(location.search).get({$name}) === {$value}");
+}
+
+/**
+ * The selector as a JavaScript string, with `@name` standing for
+ * `[data-testid="name"]` as in `$page->click('@name')`, anywhere in it:
+ * `@channel-settings-rows [role="combobox"]`.
+ */
+function jsSelector(string $selector): string
+{
+    return json_encode(preg_replace('/@([\w-]+)/', '[data-testid="$1"]', $selector));
+}
+
+/**
+ * Wait until the note editor matching the selector shows that text, trimmed.
+ * The editor is a contenteditable, so it has no value to assert. When it never
+ * does, the failure says what the editor shows instead and where the focus is.
+ */
+function waitForEditorText(mixed $page, string $selector, string $text): void
+{
+    $expected = json_encode($text, JSON_THROW_ON_ERROR);
+    $element = 'document.querySelector('.jsSelector($selector).')';
+
+    $result = $page->script(<<<JS
+        (async () => {
+            const read = () => {$element}?.innerText.trim() ?? null;
+
+            for (let i = 0; i < 600; i++) {
+                if (read() === {$expected}) return { met: true };
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const focused = document.activeElement;
+
+            return { met: false, shown: read(), focus: focused?.dataset?.testid ?? focused?.tagName ?? null };
+        })();
+    JS);
+
+    $shown = json_encode(data_get($result, 'shown'), JSON_UNESCAPED_UNICODE);
+    $focus = json_encode(data_get($result, 'focus'));
+
+    expect(data_get($result, 'met'))->toBeTrue("Waited 30s for {$selector} to show {$expected}; it shows {$shown}, with the focus on {$focus}.");
+}
+
+/**
+ * Wait until an element matching the selector exists and the expression,
+ * written about `element`, is true: "element.getAttribute('aria-checked') === 'true'".
+ */
+function waitForState(mixed $page, string $selector, string $expression, int $seconds = 30): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))", $seconds);
+}
+
+/**
+ * Keeps the element matching the selector as `window.__remembered[$name]`, so
+ * a later wait can tell whether the page still shows that same element
+ * (`element === window.__remembered.<name>`) or replaced it.
+ */
+function rememberElement(mixed $page, string $selector, string $name): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+    $name = json_encode($name);
+
+    $page->script("(() => { window.__remembered = { ...window.__remembered, [{$name}]: document.querySelector({$selector}) }; })()");
+}
+
+/**
+ * Presses the pointer down on the element matching the selector, the start of
+ * a click: an open modal layer takes the pointer events of the page around
+ * it, so a real click cannot reach that element, while the layer still hears
+ * the press as one outside it.
+ */
+function pointerDownOn(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))");
+}
+
+/**
+ * Wait until an element matching the selector is mounted and laid out.
+ */
+function waitFor(mixed $page, string $selector, int $seconds = 30): void
+{
+    waitForState($page, $selector, 'element.getBoundingClientRect().height > 0', $seconds);
+}
+
+/**
+ * Wait until the element matching the selector is open (its `data-state`,
+ * `open` by default) and has finished animating in, so a click or a
+ * measurement lands where the user would see it.
+ */
+function waitForOpen(mixed $page, string $selector, string $state = 'open'): void
+{
+    $state = json_encode($state);
+
+    waitForState($page, $selector, "element.getAttribute('data-state') === {$state} && element.getAnimations().every((animation) => animation.playState !== 'running')");
+}
+
+/**
+ * Wait until no element matches the selector.
+ */
+function waitForGone(mixed $page, string $selector, int $seconds = 30): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "!document.querySelector({$selector})", $seconds);
+}
+
+/**
+ * Wait until any element matching the selector contains the text.
+ */
+function waitForText(mixed $page, string $selector, string $text): void
+{
+    $selector = jsSelector($selector);
+    $text = json_encode($text);
+
+    waitForCondition($page, "[...document.querySelectorAll({$selector})].some((element) => element.textContent.includes({$text}))");
+}
+
+/**
+ * Wait until the number of elements matching the selector compares to the
+ * count: exactly (`===`, the default) or with another operator (`>=`, `>`).
+ */
+function waitForCount(mixed $page, string $selector, int $count, string $operator = '==='): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "document.querySelectorAll({$selector}).length {$operator} {$count}");
+}
+
+/**
+ * Wait until one element is gone or another is shown, whichever happens
+ * first, so the assertion after it fails at once on the other outcome
+ * instead of waiting out the timeout.
+ */
+function waitForGoneOrShown(mixed $page, string $gone, string $shown): void
+{
+    $gone = jsSelector($gone);
+    $shown = jsSelector($shown);
+
+    waitForCondition($page, "!document.querySelector({$gone}) || document.querySelector({$shown})");
+}
+
+/**
+ * Wait until the page is at this path.
+ */
+function waitForPath(mixed $page, string $path): void
+{
+    $path = json_encode($path);
+
+    waitForCondition($page, "location.pathname === {$path}");
+}
+
+/**
+ * The JS expression that reads one item of a user's browser storage
+ * (`trypost:<user id>`, see `resources/js/lib/browserStorage.ts`): from `user`,
+ * or from one workspace's block when `$workspaceId` is given.
+ */
+function browserStorageItemJs(User $user, string $item, ?string $workspaceId = null): string
+{
+    $scope = filled($workspaceId) ? "workspaces?.['{$workspaceId}']" : 'user';
+
+    return "JSON.parse(localStorage.getItem('trypost:{$user->id}') ?? 'null')?.{$scope}?.['{$item}'] ?? null";
+}
+
+function browserStorageItem(mixed $page, User $user, string $item, ?string $workspaceId = null): mixed
+{
+    return $page->script(browserStorageItemJs($user, $item, $workspaceId));
+}
+
+/**
+ * The whole value of a user's browser storage key (`trypost:<user id>`), as
+ * the page keeps it, or null when it holds none or no JSON.
+ */
+function browserStorage(mixed $page, User $user): mixed
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    return $page->script("(() => { try { return JSON.parse(localStorage.getItem({$key})); } catch { return null; } })()");
+}
+
+/**
+ * Every key the page keeps in its localStorage.
+ *
+ * @return list<string>
+ */
+function localStorageKeys(mixed $page): array
+{
+    return $page->script('Object.keys(localStorage)');
+}
+
+/**
+ * Writes a raw text as a user's browser storage value, for the values the app
+ * must read past (not JSON, another version, a wrong shape); a well-formed
+ * item goes through `setBrowserStorageItem()`.
+ */
+function setRawBrowserStorage(mixed $page, User $user, string $raw): void
+{
+    $key = json_encode("trypost:{$user->id}");
+    $raw = json_encode($raw);
+
+    $page->script("localStorage.setItem({$key}, {$raw})");
+}
+
+/**
+ * Makes the page's browser refuse its storage from now on, as a private
+ * window or blocked site data does, and fails when it still allows it.
+ */
+function refuseBrowserStorage(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const refuse = () => { throw new DOMException('denied', 'SecurityError'); };
+            Storage.prototype.getItem = refuse;
+            Storage.prototype.setItem = refuse;
+        })()
+    JS);
+
+    expect($page->script("(() => { try { localStorage.getItem('x'); return 'allowed'; } catch { return 'refused'; } })()"))->toBe('refused');
+}
+
+/**
+ * The value of an expression about `element` for every element matching the
+ * selector, in page order.
+ *
+ * @return list<mixed>
+ */
+function elementsMap(mixed $page, string $selector, string $expression): array
+{
+    $selector = jsSelector($selector);
+
+    return $page->script("[...document.querySelectorAll({$selector})].map((element) => ({$expression}))");
+}
+
+/**
+ * Lets the page run for a while without waiting on anything, to show that
+ * something stays as it is (a dialog left open across polls). Never a
+ * PHP `sleep()`, which would stop the page's own requests.
+ */
+function letPageRun(mixed $page, int $milliseconds): void
+{
+    $page->script("new Promise((resolve) => setTimeout(resolve, {$milliseconds}))");
+}
+
+/**
+ * Fires a click on the element matching the selector without moving the
+ * pointer there, for an element an open modal layer keeps out of the
+ * pointer's reach (a click through `$page->click()` would never land).
+ */
+function clickWithoutPointer(mixed $page, string $selector): void
+{
+    waitFor($page, $selector);
+
+    $selector = jsSelector($selector);
+
+    $page->script("document.querySelector({$selector}).click()");
+}
+
+/**
+ * Plays a broadcast on the page as if Reverb delivered it: the event reaches
+ * the `useEcho` listeners of that private channel through the Pusher client
+ * Echo connects with (pusher-js keeps every client in `Pusher.instances`).
+ * Browser tests broadcast with the null driver, so a server event never
+ * arrives on its own. `$channel` is the name the app listens on
+ * (`workspace.{id}`), `$event` the event's `broadcastAs()` name.
+ *
+ * @param  array<string, mixed>  $payload
+ */
+function broadcastToPage(mixed $page, string $channel, string $event, array $payload): void
+{
+    $name = json_encode("private-{$channel}");
+    $eventName = json_encode($event);
+    $data = json_encode($payload);
+
+    waitForCondition($page, "Boolean(window.Pusher.instances[0]?.channel({$name}))");
+    $page->script("window.Pusher.instances[0].channel({$name}).emit({$eventName}, {$data})");
+}
+
+/**
+ * Plays the page's socket dropping and connecting again on the Pusher client
+ * Echo connects with, which Echo reports to `useConnectionStatus()`
+ * listeners. Each change is its own script, so the page sees the drop
+ * before the reconnection.
+ */
+function reconnectPageSocket(mixed $page): void
+{
+    foreach (['disconnected', 'connected'] as $state) {
+        $page->script("const connection = window.Pusher.instances[0].connection; connection.state = '{$state}'; connection.emit('state_change', { current: '{$state}' });");
+        waitForCondition($page, "window.Pusher.instances[0].connection.state === '{$state}'");
+    }
+}
+
+/**
+ * Tells the page that the user's browser storage changed in another tab, as
+ * the browser does with a `storage` event: seed the change with
+ * `setBrowserStorageItem()` first.
+ */
+function announceBrowserStorageFromAnotherTab(mixed $page, User $user): void
+{
+    $key = json_encode("trypost:{$user->id}");
+
+    $page->script("window.dispatchEvent(new StorageEvent('storage', { key: {$key}, newValue: localStorage.getItem({$key}) }))");
+}
+
+/**
+ * Saves one item of a user's browser storage the way the app does, keeping
+ * every other item.
+ */
+function setBrowserStorageItem(mixed $page, User $user, string $item, mixed $value, ?string $workspaceId = null): void
+{
+    $key = json_encode("trypost:{$user->id}");
+    $name = json_encode($item);
+    $json = json_encode($value);
+    $workspace = json_encode(filled($workspaceId) ? $workspaceId : null);
+
+    $page->script(<<<JS
+        (() => {
+            const storage = JSON.parse(localStorage.getItem({$key}) ?? 'null') ?? { version: 1, user: {}, workspaces: {} };
+            const workspaceId = {$workspace};
+
+            if (workspaceId === null) {
+                storage.user[{$name}] = {$json};
+            } else {
+                storage.workspaces[workspaceId] = { ...storage.workspaces[workspaceId], [{$name}]: {$json} };
+            }
+
+            localStorage.setItem({$key}, JSON.stringify(storage));
+        })()
+    JS);
+}
+
+/**
+ * Records what every canvas on the page draws from now on: each text with
+ * its direction, place, width, alignment and font (`window.__drawn`), each image's address
+ * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
+ * the share card's hatch for a previous period). A canvas cannot be read back
+ * as text, so a test of a painted card reads these instead.
+ */
+function recordCanvasDrawing(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            if (window.__drawn) {
+                return;
+            }
+
+            window.__drawn = [];
+            window.__images = [];
+            window.__patterns = 0;
+            window.__paths = [];
+            const NativePath2D = window.Path2D;
+            window.Path2D = class extends NativePath2D {
+                constructor(path) {
+                    super(path);
+
+                    if (typeof path === 'string') {
+                        window.__paths.push(path);
+                    }
+                }
+            };
+            const createPattern = CanvasRenderingContext2D.prototype.createPattern;
+            const fillText = CanvasRenderingContext2D.prototype.fillText;
+            const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
+                window.__drawn.push({ text: String(text), direction: this.direction, x: rest[0], y: rest[1], width: this.measureText(String(text)).width, align: this.textAlign, font: this.font });
+
+                return fillText.call(this, text, ...rest);
+            };
+            CanvasRenderingContext2D.prototype.createPattern = function (...args) {
+                window.__patterns += 1;
+
+                return createPattern.apply(this, args);
+            };
+            CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) {
+                window.__images.push(image.src ?? '');
+
+                return drawImage.call(this, image, ...rest);
+            };
+        })();
+    JS);
+}
+
+/**
+ * Loads config/trypost.php again with the given environment, the way the
+ * framework reads it at boot and when it builds the config cache, then puts
+ * every variable back as it was.
+ *
+ * @param  array<string, string>  $environment
+ * @return array<string, mixed>
+ */
+function trypostConfigWith(array $environment): array
+{
+    $previous = collect($environment)->map(fn (string $value, string $key): array => [getenv($key), $_ENV[$key] ?? null, $_SERVER[$key] ?? null]);
+
+    foreach ($environment as $key => $value) {
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
+
+    try {
+        return require config_path('trypost.php');
+    } finally {
+        foreach ($previous as $key => [$env, $envArray, $server]) {
+            putenv($env === false ? $key : "{$key}={$env}");
+
+            if ($envArray === null) {
+                unset($_ENV[$key]);
+            } else {
+                $_ENV[$key] = $envArray;
+            }
+
+            if ($server === null) {
+                unset($_SERVER[$key]);
+            } else {
+                $_SERVER[$key] = $server;
+            }
+        }
+    }
 }

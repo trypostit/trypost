@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '라벨',
     'description' => '라벨로 게시물을 정리하세요.',
@@ -15,10 +17,11 @@ return [
     ],
 
     'actions' => [
-        'edit' => '라벨 편집',
         'delete' => '라벨 삭제',
         'more' => '추가 작업',
+        'settings' => '설정',
         'view_posts' => '게시물 보기',
+        'view_insights' => 'Insights 보기',
     ],
 
     'create' => [

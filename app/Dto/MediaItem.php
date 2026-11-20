@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Enums\Media\CoverSource;
 use App\Enums\Media\Source;
 use App\Enums\Media\Type;
 use App\Enums\SocialAccount\Platform;
@@ -87,6 +88,18 @@ class MediaItem
         return $this->kind() === Type::Image;
     }
 
+    /**
+     * An image that is not animated: what a video cover can be.
+     */
+    public function isStillImage(): bool
+    {
+        if (! $this->isImage()) {
+            return false;
+        }
+
+        return ! Type::isGif($this->mime_type);
+    }
+
     public function isDocument(): bool
     {
         return $this->kind() === Type::Document;
@@ -123,7 +136,7 @@ class MediaItem
     }
 
     /**
-     * User-provided accessibility description for this image, when set.
+     * User-provided accessibility description for this image or video, when set.
      */
     public function altText(): ?string
     {
@@ -146,6 +159,41 @@ class MediaItem
         $offset = data_get($this->meta, 'cover_offset_ms');
 
         return is_numeric($offset) && $offset >= 0 ? (int) $offset : null;
+    }
+
+    /**
+     * Where this video's cover comes from. A cover stored without its source
+     * (sent by the API or MCP) is an uploaded image.
+     */
+    public function coverSource(): CoverSource
+    {
+        $source = CoverSource::tryFrom((string) data_get($this->meta, 'cover_source'));
+
+        if (filled($source)) {
+            return $source;
+        }
+
+        if (filled($this->cover())) {
+            return CoverSource::Image;
+        }
+
+        return CoverSource::Frame;
+    }
+
+    /**
+     * The image stored as this video's cover in `meta.cover`: one the user
+     * uploaded, or the screenshot of the picked frame (`coverSource()` says
+     * which).
+     */
+    public function cover(): ?self
+    {
+        $cover = data_get($this->meta, 'cover');
+
+        if (! is_array($cover) || blank(data_get($cover, 'url'))) {
+            return null;
+        }
+
+        return self::fromArray($cover);
     }
 
     /**
@@ -185,6 +233,21 @@ class MediaItem
         }
 
         return mb_substr($alt, 0, $max);
+    }
+
+    /**
+     * The covers (`meta.cover`) of a list of stored or submitted media items.
+     *
+     * @param  array<int, mixed>  $items
+     * @return list<array<string, mixed>>
+     */
+    public static function covers(array $items): array
+    {
+        return collect($items)
+            ->map(fn (mixed $item): mixed => data_get($item, 'meta.cover'))
+            ->filter(fn (mixed $cover): bool => is_array($cover))
+            ->values()
+            ->all();
     }
 
     /**

@@ -3,6 +3,7 @@ import { IconDotsVertical, IconShare } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
+import type { PreviewProps } from '@/components/posts/previews/types';
 import date from '@/date';
 import {
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
@@ -13,7 +14,6 @@ import {
 import { isGif, isImage } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
-import type { PreviewProps } from './types';
 
 const props = defineProps<PreviewProps>();
 

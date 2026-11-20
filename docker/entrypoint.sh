@@ -95,7 +95,8 @@ if [ -n "${PASSPORT_PRIVATE_KEY:-}" ] && [ -n "${PASSPORT_PUBLIC_KEY:-}" ]; then
     echo "[entrypoint] using Passport keys from environment"
 elif [ "${TRYPOST_TARGET:-}" = "production" ] || [ "${APP_ENV:-}" = "production" ]; then
     echo "[entrypoint] ERROR: PASSPORT_PRIVATE_KEY and PASSPORT_PUBLIC_KEY must be set in production." >&2
-    echo "[entrypoint] Generate once with: php artisan passport:keys --show" >&2
+    echo "[entrypoint] Generate once with: php artisan passport:keys --force" >&2
+    echo "[entrypoint] then read storage/oauth-private.key and storage/oauth-public.key. passport:keys has no --show flag." >&2
     exit 1
 elif [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
     echo "[entrypoint] generating Passport keys (dev fallback)"

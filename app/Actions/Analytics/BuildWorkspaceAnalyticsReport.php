@@ -27,13 +27,14 @@ class BuildWorkspaceAnalyticsReport
     /**
      * @param  array{start?: string, end?: string, observed_through?: string, timezone?: string}  $selected
      * @param  array<string, string>|null  $channelKeys  Analytics key of each selected social account (already resolved for tenancy), keyed by account id; null means every channel.
+     * @param  PublicationFilter|null  $filter  Narrows post metrics only; followers stay account-wide.
      * @return array<string, mixed>
      */
-    public function forSelection(Workspace $workspace, array $selected = [], ?array $channelKeys = null, bool $clampToBounds = true, WeekStart $weekStart = WeekStart::DEFAULT): array
+    public function forSelection(Workspace $workspace, array $selected = [], ?array $channelKeys = null, bool $clampToBounds = true, WeekStart $weekStart = WeekStart::DEFAULT, ?PublicationFilter $filter = null): array
     {
         ['bounds' => $bounds, 'range' => $range] = $this->resolveRange($workspace, $selected, $this->keys($channelKeys), $clampToBounds);
 
-        return $this->forRange($workspace, $range, $bounds, $channelKeys, $weekStart);
+        return $this->forRange($workspace, $range, $bounds, $channelKeys, $weekStart, $filter);
     }
 
     /**
@@ -138,13 +139,13 @@ class BuildWorkspaceAnalyticsReport
     }
 
     /**
-     * The live connection status and current avatar of each key that is still a
-     * social account of the workspace. A key whose account is gone is absent, so
-     * its row keeps no status, and a row without a live avatar keeps the one its
-     * analytics rows stored.
+     * The live connection status, current avatar and verified badge of each key
+     * that is still a social account of the workspace. A key whose account is
+     * gone is absent, so its row keeps no status and no badge, and a row without
+     * a live avatar keeps the one its analytics rows stored.
      *
      * @param  list<string>  $keys
-     * @return array<string, array{status: string, avatar_url: string|null}>
+     * @return array<string, array{status: string, avatar_url: string|null, verified_badge: string|null}>
      */
     private function liveAccountsByKey(Workspace $workspace, array $keys): array
     {
@@ -153,17 +154,18 @@ class BuildWorkspaceAnalyticsReport
         return SocialAccount::query()
             ->whereBelongsTo($workspace)
             ->whereIn('id', $ids)
-            ->get(['id', 'status', 'avatar_url'])
+            ->get(['id', 'platform', 'status', 'avatar_url', 'meta'])
             ->mapWithKeys(fn (SocialAccount $account): array => [$account->id => [
                 'status' => $account->status->value,
                 'avatar_url' => $account->avatar_url,
+                'verified_badge' => $account->verified_badge,
             ]])
             ->all();
     }
 
     /**
      * @param  list<array<string, mixed>>  $rows
-     * @param  array<string, array{status: string, avatar_url: string|null}>  $liveAccounts
+     * @param  array<string, array{status: string, avatar_url: string|null, verified_badge: string|null}>  $liveAccounts
      * @return list<array<string, mixed>>
      */
     private function withLiveAccount(array $rows, array $liveAccounts): array
@@ -175,6 +177,7 @@ class BuildWorkspaceAnalyticsReport
                 ...$row,
                 'avatar_url' => data_get($live, 'avatar_url') ?? data_get($row, 'avatar_url'),
                 'status' => data_get($live, 'status'),
+                'verified_badge' => data_get($live, 'verified_badge'),
             ];
         }, $rows);
     }

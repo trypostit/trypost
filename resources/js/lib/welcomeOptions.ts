@@ -1,6 +1,15 @@
-/** A welcome option is drawn as an emoji on a soft tint in a 36px tile. */
+import { IconCircleOff, IconDots } from '@tabler/icons-vue';
+import type { Component } from 'vue';
+
+/**
+ * A welcome option is drawn in a 36px tile: an emoji on a soft tint, or a
+ * brand logo or a muted icon on a white tile that keeps its colors readable
+ * in dark mode.
+ */
 export interface WelcomeOptionArt {
-    emoji: string;
+    emoji?: string;
+    logo?: string;
+    icon?: Component;
     tint: string;
 }
 
@@ -21,6 +30,18 @@ type Tint = keyof typeof TINTS;
 const emoji = (character: string, tint: Tint): WelcomeOptionArt => ({
     emoji: character,
     tint: TINTS[tint],
+});
+
+const WHITE_TILE = 'bg-white ring-1 ring-border';
+
+const logo = (name: string): WelcomeOptionArt => ({
+    logo: `/images/competitors/${name}.svg`,
+    tint: WHITE_TILE,
+});
+
+const icon = (component: Component): WelcomeOptionArt => ({
+    icon: component,
+    tint: WHITE_TILE,
 });
 
 const FALLBACK = emoji('✨', 'slate');
@@ -49,18 +70,18 @@ export const goalArt: Record<string, WelcomeOptionArt> = {
 };
 
 export const softwareArt: Record<string, WelcomeOptionArt> = {
-    buffer: emoji('B', 'slate'),
-    hootsuite: emoji('H', 'amber'),
-    later: emoji('L', 'violet'),
-    metricool: emoji('M', 'sky'),
-    typefully: emoji('T', 'teal'),
-    hypefury: emoji('H', 'orange'),
-    publer: emoji('P', 'sky'),
-    postiz: emoji('P', 'violet'),
-    sprout_social: emoji('S', 'emerald'),
-    socialbee: emoji('S', 'amber'),
-    none: emoji('🌱', 'emerald'),
-    other: FALLBACK,
+    buffer: logo('buffer'),
+    hootsuite: logo('hootsuite'),
+    later: logo('later'),
+    metricool: logo('metricool'),
+    typefully: logo('typefully'),
+    hypefury: logo('hypefury'),
+    publer: logo('publer'),
+    postiz: logo('postiz'),
+    sprout_social: logo('sprout_social'),
+    socialbee: logo('socialbee'),
+    none: icon(IconCircleOff),
+    other: icon(IconDots),
 };
 
 export const welcomeOptionArt = (

@@ -6,11 +6,13 @@ namespace App\Actions\Post\Queue;
 
 use App\Actions\Post\BuildPublishPageProps;
 use App\Actions\Post\UpdatePost;
+use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Validation\ValidationException;
 
 class MoveChannelPostToQueueSlot
@@ -18,10 +20,12 @@ class MoveChannelPostToQueueSlot
     /**
      * Moves a scheduled post of the channel onto one of its free posting slots, as a queue post.
      * The write goes through UpdatePost with the acting user, so PostApproval still decides.
+     *
+     * @return array{post: Post, action: PostAction|null}
      */
-    public static function handle(SocialAccount $channel, string $postId, CarbonImmutable $slotAt, User $actor): void
+    public static function handle(SocialAccount $channel, string $postId, CarbonImmutable $slotAt, User $actor): array
     {
-        ReflowChannelQueue::withLock([$channel->id], function () use ($channel, $postId, $slotAt, $actor): void {
+        return ReflowChannelQueue::withLock([$channel->id], function () use ($channel, $postId, $slotAt, $actor): array {
             $channel->refresh();
 
             $post = Post::query()
@@ -33,16 +37,23 @@ class MoveChannelPostToQueueSlot
                 throw ValidationException::withMessages(['slot_at' => __('posts.errors.queue_order_stale')]);
             }
 
-            UpdatePost::execute($channel->workspace, $post, [
+            return UpdatePost::execute($channel->workspace, $post, [
                 'status' => PostStatus::Scheduled->value,
                 'queue_slot' => $slotAt->utc()->toIso8601String(),
             ], $actor);
         });
     }
 
+    /**
+     * Whether a posting slot is close enough to take a queued post (BuildPublishPageProps::MAX_QUEUE_DAYS).
+     */
+    public static function withinQueueWindow(CarbonInterface $slotAt): bool
+    {
+        return $slotAt->lessThanOrEqualTo(now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS));
+    }
+
     private static function isFreeSlot(SocialAccount $channel, Post $post, CarbonImmutable $slotAt): bool
     {
-        return $slotAt->lessThanOrEqualTo(now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS))
-            && ReflowChannelQueue::isFreeSlot($channel, $slotAt, $post->id);
+        return self::withinQueueWindow($slotAt) && ReflowChannelQueue::isFreeSlot($channel, $slotAt, $post->id);
     }
 }

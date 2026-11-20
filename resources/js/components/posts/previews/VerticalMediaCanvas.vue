@@ -21,7 +21,7 @@ const item = computed<MediaItem | null>(() => props.media[0] ?? null);
 <template>
     <div class="absolute inset-0 overflow-hidden bg-black">
         <template v-if="item">
-            <VideoPreview v-if="isVideoMedia(item)" :src="item.url" video-class="h-full w-full object-cover" />
+            <VideoPreview v-if="isVideoMedia(item)" :media="item" video-class="h-full w-full object-cover" />
             <template v-else>
                 <template v-if="backdrop === 'blur'">
                 <div class="absolute inset-x-0 top-0 h-1/2 overflow-hidden">

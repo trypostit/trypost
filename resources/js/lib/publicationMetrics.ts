@@ -25,9 +25,8 @@ export const formatPublicationMetric = (
     key: string,
     fact: PublicationMetricFact,
 ): string => {
-    if (fact.value === null) return '—';
     if (fact.unit === 'percent') return formatPercent(fact.value);
-    if (fact.unit === 'milliseconds') {
+    if (fact.unit === 'milliseconds' && fact.value !== null) {
         const average = key.includes('average');
         return `${formatNumberCompact(fact.value / (average ? 1000 : 60000))} ${average ? 's' : 'min'}`;
     }

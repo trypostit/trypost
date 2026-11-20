@@ -46,23 +46,10 @@ function seedYouTubeDescriptionEditor(): array
     return [$posts[0], $posts];
 }
 
-function waitForYouTubeElement(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector('[data-testid="{$testId}"]');
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 test('youtube description editor counts UTF-8 bytes and saves only its independent post', function (int $width, int $height) {
     [$post, $posts] = seedYouTubeDescriptionEditor();
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
-    waitForYouTubeElement($page, 'youtube-description-0');
+    waitFor($page, '@youtube-description-0');
     $page->assertValue('@youtube-description-0', 'Channel 1');
 
     $page->fill('@youtube-description-0', str_repeat('é', 2500))
@@ -93,7 +80,7 @@ test('youtube description editor counts UTF-8 bytes and saves only its independe
 test('youtube description clearing restores content fallback without changing another post', function (string $description) {
     [$post, $posts] = seedYouTubeDescriptionEditor();
     $page = visit(route('app.posts.edit', $post))->resize(375, 812);
-    waitForYouTubeElement($page, 'youtube-description-0');
+    waitFor($page, '@youtube-description-0');
     $page->fill('@youtube-description-0', $description)
         ->click('@composer-save-draft')
         ->assertMissing('@post-composer-dialog');

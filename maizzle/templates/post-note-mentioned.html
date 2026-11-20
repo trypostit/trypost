@@ -1,0 +1,31 @@
+<x-main>
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.post_note_mentioned.heading') }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.post_note_mentioned.body', ['author' => $authorName, 'workspace' => $workspaceName]) }}
+    </p>
+
+    <div class="email-context">
+      <p class="m-0 leading-6 text-foreground" style="white-space: pre-line;">@{{ $noteBody }}</p>
+    </div>
+
+    <div class="email-context">
+      <p class="m-0 text-sm font-semibold text-foreground">
+        @{{ __('mail.post_note_mentioned.post_title') }}
+      </p>
+      <p class="m-0 mt-2 leading-6 text-sm" style="white-space: pre-line;">@{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_note_mentioned.post_without_text') }}</p>
+      @if($channel)
+        <x-channel-card />
+      @endif
+    </div>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.post_note_mentioned.button') }}
+    </x-button>
+  </x-message>
+</x-main>

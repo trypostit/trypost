@@ -1,34 +1,69 @@
 import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
+import { filled } from '@/lib/helpers';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
-import type { MediaItem } from '@/types/media';
+import type { CoverImage, MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
 
 const editedMeta = (
     meta: MediaItem['meta'],
     change: MediaEditChange,
+    cover: MediaItem | null,
 ): MediaItem['meta'] => {
     const next = { ...(meta ?? {}) };
     delete next.alt_text;
     delete next.user_tags;
     delete next.cover_offset_ms;
+    delete next.cover;
+    delete next.cover_source;
 
-    return {
-        ...next,
-        ...(change.width && change.height
-            ? { width: change.width, height: change.height }
-            : {}),
-        ...(change.altText ? { alt_text: change.altText } : {}),
-        ...(change.userTags.length ? { user_tags: change.userTags } : {}),
-        ...(change.coverOffsetMs !== null
-            ? { cover_offset_ms: change.coverOffsetMs }
-            : {}),
-    };
+    if (filled(change.width) && filled(change.height)) {
+        next.width = change.width;
+        next.height = change.height;
+    }
+
+    if (filled(change.altText)) {
+        next.alt_text = change.altText;
+    }
+
+    if (filled(change.userTags)) {
+        next.user_tags = change.userTags;
+    }
+
+    if (filled(change.coverOffsetMs)) {
+        next.cover_offset_ms = change.coverOffsetMs;
+    }
+
+    if (filled(cover)) {
+        next.cover = cover;
+        next.cover_source = change.coverSource;
+    }
+
+    return next;
+};
+
+/** The cover image to store: the picked file uploaded, or the item it already was. */
+const coverItem = async (cover: CoverImage | null): Promise<MediaItem | null> => {
+    if (!filled(cover)) {
+        return null;
+    }
+
+    if (!filled(cover.file)) {
+        return cover.item;
+    }
+
+    const uploaded = await uploadChunked({
+        file: cover.file,
+        url: mediaStoreChunked.url(),
+    });
+    URL.revokeObjectURL(cover.url);
+
+    return uploaded;
 };
 
 const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
-    const meta = editedMeta(change.media.meta, change);
+    const meta = editedMeta(change.media.meta, change, await coverItem(change.coverImage));
     if (!change.file) {
         return { ...change.media, meta };
     }
@@ -37,22 +72,8 @@ const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
         file: change.file,
         url: mediaStoreChunked.url(),
     });
-    if (!uploaded.id || !uploaded.path || !uploaded.url) {
-        throw new Error('Incomplete asset upload');
-    }
 
-    return {
-        id: uploaded.id,
-        path: uploaded.path,
-        url: uploaded.url,
-        type: uploaded.type,
-        mime_type: uploaded.mime_type ?? change.file.type,
-        original_filename: uploaded.original_filename,
-        size: uploaded.size,
-        meta,
-        upload_token: uploaded.upload_token ?? null,
-        created_at: uploaded.created_at,
-    } as MediaItem;
+    return { ...uploaded, meta };
 };
 
 /**

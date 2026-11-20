@@ -24,11 +24,15 @@ const open = defineModel<boolean>('open', { default: false });
 
 const [DefineContent, ReuseContent] = createReusableTemplate();
 const asSheet = useBelowBreakpoint('sm');
+
+const close = (): void => {
+    open.value = false;
+};
 </script>
 
 <template>
     <DefineContent>
-        <slot :sheet="asSheet" />
+        <slot :sheet="asSheet" :close="close" />
     </DefineContent>
 
     <Popover v-model:open="open">
@@ -50,13 +54,10 @@ const asSheet = useBelowBreakpoint('sm');
         v-model:open="open"
         :title="title"
         :show-header="false"
+        handle
         :test-id="testId"
         :content-class="sheetClass"
     >
-        <div
-            class="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-border-strong"
-            aria-hidden="true"
-        />
         <ReuseContent />
     </BottomSheet>
 </template>

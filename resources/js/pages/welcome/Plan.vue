@@ -6,22 +6,52 @@ import { computed } from 'vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
+import WelcomeOfferBanner from '@/components/welcome/WelcomeOfferBanner.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { REVIEWS } from '@/lib/reviews';
 import { store } from '@/routes/app/welcome/plan';
+import type { Offer } from '@/types/offer';
 import type { PlanOption } from '@/types/plan';
 
 const props = defineProps<{
     plan: PlanOption;
-    firstMonthOffer: boolean;
+    offer: Offer | null;
 }>();
 
-const checkoutPriceKey = computed((): string =>
-    props.firstMonthOffer
-        ? 'billing.subscribe.prices.first_month'
-        : 'billing.subscribe.prices.socials.monthly',
-);
+interface PriceCopy {
+    price: string;
+    unit: string | null;
+    period: string | null;
+    checkoutButton: string;
+    terms: string;
+}
+
+const FULL_PRICE_COPY: PriceCopy = {
+    price: 'billing.subscribe.prices.socials.monthly',
+    unit: 'billing.plans.per_month',
+    period: null,
+    checkoutButton: 'welcome.plan_checkout_button',
+    terms: 'welcome.plan_cancel_anytime',
+};
+
+const priceCopy = computed((): PriceCopy => {
+    if (!props.offer?.has_checkout_copy) {
+        return FULL_PRICE_COPY;
+    }
+
+    const offerCopy = `offers.${props.offer.key}`;
+
+    return {
+        price: `${offerCopy}.price`,
+        unit: props.offer.has_unit ? `${offerCopy}.unit` : null,
+        period: `${offerCopy}.period`,
+        checkoutButton: `${offerCopy}.checkout_button`,
+        terms: props.offer.has_terms
+            ? `${offerCopy}.terms`
+            : 'welcome.plan_terms',
+    };
+});
 
 const form = useForm({});
 
@@ -55,6 +85,8 @@ const submit = (): void => {
         :description="$t('welcome.plan_description')"
         step="plan"
     >
+        <WelcomeOfferBanner v-if="offer?.has_banner" :offer-key="offer.key" />
+
         <article
             class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
             :data-testid="`plan-card-${plan.slug}`"
@@ -133,22 +165,34 @@ const submit = (): void => {
                     </div>
                 </div>
 
-                <p class="flex flex-col gap-1">
-                    <span
-                        class="text-5xl leading-none font-strong tabular-nums"
-                        :data-testid="`plan-price-${plan.slug}`"
-                        >{{ $t(checkoutPriceKey) }}</span
+                <div class="flex flex-col gap-1">
+                    <s
+                        v-if="priceCopy.period"
+                        class="text-sm text-muted-foreground"
+                        :data-testid="`plan-price-original-${plan.slug}`"
+                        >{{ $t('billing.subscribe.prices.socials.monthly')
+                        }}{{ $t('billing.plans.per_month') }}</s
                     >
+                    <p class="flex items-baseline gap-1 whitespace-nowrap">
+                        <span
+                            class="text-4xl leading-none font-strong tracking-tight tabular-nums [word-spacing:-0.15em] sm:text-5xl"
+                            :data-testid="`plan-price-${plan.slug}`"
+                            >{{ $t(priceCopy.price) }}</span
+                        >
+                        <span
+                            v-if="priceCopy.unit"
+                            class="text-base text-foreground"
+                            :data-testid="`plan-price-unit-${plan.slug}`"
+                            >{{ $t(priceCopy.unit) }}</span
+                        >
+                    </p>
                     <span
+                        v-if="priceCopy.period"
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{
-                            firstMonthOffer
-                                ? $t('welcome.plan_first_month')
-                                : $t('welcome.plan_per_month')
-                        }}</span
+                        >{{ $t(priceCopy.period) }}</span
                     >
-                </p>
+                </div>
             </div>
 
             <PlanFeatureList
@@ -163,9 +207,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    $t('billing.plans.start_first_month', {
-                        price: $t(checkoutPriceKey),
-                    })
+                    $t(priceCopy.checkoutButton)
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"
@@ -175,11 +217,9 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    firstMonthOffer
-                        ? $t('welcome.plan_terms', {
-                              price: $t('billing.subscribe.prices.socials.monthly'),
-                          })
-                        : $t('welcome.plan_cancel_anytime')
+                    $t(priceCopy.terms, {
+                        price: $t('billing.subscribe.prices.socials.monthly'),
+                    })
                 }}
             </p>
         </template>
