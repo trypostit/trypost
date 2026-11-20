@@ -346,3 +346,19 @@ test('the sidebar gets no streak without a current workspace or without app acce
 
     expect(data_get(ShowPostingStreak::forSidebar($user->fresh()), 'weeks'))->toBe(1);
 });
+
+test('a new ranking reaches a badge already cached at once', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    subscribeAccount($this->workspace->account);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBe(['weeks' => 1, 'posted_this_week' => true, 'top_percent' => null]);
+
+    foreach (range(1, RankPostingStreaks::MIN_RANKED - 1) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBe(['weeks' => 1, 'posted_this_week' => true, 'top_percent' => 10]);
+});
