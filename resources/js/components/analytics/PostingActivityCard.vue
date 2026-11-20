@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { IconFlame, IconSend, IconTrophy } from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import { computed, type Component } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -22,6 +23,13 @@ const props = defineProps<{
 }>();
 
 const STATS: StatKey[] = ['current_streak', 'best_streak', 'total'];
+
+/** Each number's icon, in place of the series swatch the Metrics card's legend draws. */
+const STAT_ICONS: Record<StatKey, Component> = {
+    current_streak: IconFlame,
+    best_streak: IconTrophy,
+    total: IconSend,
+};
 
 const isLoading = computed((): boolean => blank(props.activity));
 
@@ -76,26 +84,35 @@ const testId = (key: StatKey): string =>
         </div>
 
         <div v-else-if="activity" class="min-w-0">
-            <div class="mb-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+            <div
+                class="mb-5 flex flex-wrap gap-x-8 gap-y-3"
+                data-testid="posting-activity-stats"
+            >
                 <div
                     v-for="key in STATS"
                     :key="key"
-                    class="flex items-baseline gap-2"
+                    class="flex min-w-0 flex-col gap-1"
                 >
                     <span
-                        class="font-heading text-[28px] leading-[35px] font-medium whitespace-nowrap text-foreground tabular-nums"
-                        :data-testid="testId(key)"
-                    >
-                        {{ statValue(activity, key) }}
-                    </span>
-                    <span
-                        class="flex items-center gap-0.5 self-center text-sm whitespace-nowrap text-muted-foreground"
+                        class="flex items-center gap-0.5 text-sm whitespace-nowrap text-muted-foreground"
                     >
                         {{ $t(labelKey(key)) }}
                         <InfoTip
                             :text="$t(aboutKey(key))"
                             :test-id="`${testId(key)}-about`"
                         />
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <component
+                            :is="STAT_ICONS[key]"
+                            class="size-5 shrink-0 text-chart-3"
+                            aria-hidden="true"
+                        />
+                        <span
+                            class="font-heading text-2xl leading-8 font-medium whitespace-nowrap text-foreground tabular-nums"
+                            :data-testid="testId(key)"
+                            >{{ statValue(activity, key) }}</span
+                        >
                     </span>
                 </div>
             </div>
