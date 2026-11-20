@@ -10,10 +10,12 @@ use App\Enums\Media\Type as MediaType;
 use App\Services\Media\RemoteMediaImporter;
 use App\Services\Media\Sources\GoogleDriveFiles;
 use App\Services\Media\Sources\GooglePhotosPicker;
+use App\Services\Media\Sources\WebdavFiles;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Uri;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 use LogicException;
 
 /**
@@ -152,6 +154,32 @@ class StoreMediaImportRequest extends FormRequest
                 ],
                 'payload' => fn (): string => (string) $this->validated('session_id'),
                 'types' => MediaType::cases(),
+            ],
+            Source::Webdav->value => [
+                'rules' => fn (): array => [
+                    'file' => ['required', 'array:path'],
+                    'file.path' => [
+                        'bail',
+                        'required',
+                        'string',
+                        'max:'.WebdavFiles::MAX_PATH_LENGTH,
+                        function (string $attribute, mixed $value, Closure $fail): void {
+                            try {
+                                $path = WebdavFiles::normalize((string) $value);
+                            } catch (InvalidArgumentException) {
+                                $path = '';
+                            }
+
+                            if ($path === '') {
+                                $fail(__('validation.invalid', ['attribute' => $attribute]));
+                            }
+                        },
+                    ],
+                ],
+                'payload' => fn (): RemoteFile => WebdavFiles::toRemoteFile((string) $this->validated('file.path')),
+                // The browser only lists images and videos; a document on the
+                // share is refused even when its path is posted by hand.
+                'types' => [MediaType::Image, MediaType::Video],
             ],
         ];
     }

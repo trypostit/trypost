@@ -19,11 +19,12 @@ enum Source: string
     case GoogleDrive = 'google_drive';
     case GooglePhotos = 'google_photos';
     case Canva = 'canva';
+    case Webdav = 'webdav';
 
     /** @return list<self> */
     public static function pickerSources(): array
     {
-        return [self::Canva, self::Giphy, self::GoogleDrive, self::GooglePhotos, self::Unsplash];
+        return [self::Canva, self::Giphy, self::GoogleDrive, self::GooglePhotos, self::Unsplash, self::Webdav];
     }
 
     public function isEnabled(): bool
@@ -40,6 +41,10 @@ enum Source: string
             self::Canva => (bool) config('trypost.media_sources.canva.enabled')
                 && filled(config('services.canva.client_id'))
                 && filled(config('services.canva.client_secret')),
+            self::Webdav => (bool) config('trypost.media_sources.webdav.enabled')
+                && filled(config('trypost.media_sources.webdav.url'))
+                && filled(config('trypost.media_sources.webdav.username'))
+                && filled(config('trypost.media_sources.webdav.password')),
             self::Ai => false,
         };
     }
@@ -64,6 +69,7 @@ enum Source: string
             self::GoogleDrive => 'Google Drive',
             self::GooglePhotos => 'Google Photos',
             self::Canva => 'Canva',
+            self::Webdav => (string) config('trypost.media_sources.webdav.label') ?: 'WebDAV',
         };
     }
 
@@ -72,6 +78,8 @@ enum Source: string
     {
         $hosts = match ($this) {
             self::Unsplash, self::Giphy, self::GoogleDrive, self::GooglePhotos, self::Canva => config("trypost.media_sources.{$this->value}.download_hosts"),
+            // Exactly the configured share, nothing else.
+            self::Webdav => (string) parse_url((string) config('trypost.media_sources.webdav.url'), PHP_URL_HOST),
             default => '',
         };
 

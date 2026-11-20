@@ -29,7 +29,7 @@ function mediaSourceEnabled(): array
 }
 
 test('the picker sources are listed in menu order', function () {
-    expect(Source::pickerSources())->toBe([Source::Canva, Source::Giphy, Source::GoogleDrive, Source::GooglePhotos, Source::Unsplash]);
+    expect(Source::pickerSources())->toBe([Source::Canva, Source::Giphy, Source::GoogleDrive, Source::GooglePhotos, Source::Unsplash, Source::Webdav]);
 });
 
 test('no picker source is enabled when every key is empty', function () {
