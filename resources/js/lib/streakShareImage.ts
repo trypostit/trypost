@@ -51,16 +51,16 @@ const DOTS: { x: number; y: number; size: number; color: string }[] = [
 const TILES: { x: number; y: number; icon?: Icon; color?: string }[] = [
     { x: 70, y: 70 },
     { x: 270, y: 70, icon: IconFlameFilled, color: '#f97316' },
-    { x: 70, y: 280, icon: IconCrownFilled, color: '#fbbf24' },
+    { x: 70, y: 320, icon: IconCrownFilled, color: '#fbbf24' },
     { x: 990, y: 70 },
-    { x: 800, y: 280 },
-    { x: 800, y: 490, icon: IconSendFilled, color: '#7c3aed' },
-    { x: -80, y: 490 },
+    { x: 800, y: 320 },
+    { x: 800, y: 530, icon: IconSendFilled, color: '#7c3aed' },
+    { x: -80, y: 530 },
 ];
 
 const TILE = { size: 170, radius: 36, icon: 84 };
 
-const NUMBER_TILE = { x: 320, y: 260, size: 440, radius: 64 };
+const NUMBER_TILE = { x: 320, y: 300, size: 440, radius: 64 };
 
 const paintBackground = (context: CanvasRenderingContext2D): void => {
     context.fillStyle = COLORS.ground;
@@ -71,11 +71,29 @@ const paintBackground = (context: CanvasRenderingContext2D): void => {
     context.fillStyle = COLORS.blob;
     context.fill();
 
+    const { width, height } = SIZE;
+
     context.beginPath();
-    context.moveTo(SIZE.width * 0.6, 0);
-    context.lineTo(SIZE.width, 0);
-    context.lineTo(SIZE.width, SIZE.height);
-    context.lineTo(SIZE.width * 0.57, SIZE.height);
+    context.moveTo(width * 0.64, 0);
+    context.lineTo(width, 0);
+    context.lineTo(width, height);
+    context.lineTo(width * 0.56, height);
+    context.bezierCurveTo(
+        width * 0.44,
+        height * 0.82,
+        width * 0.66,
+        height * 0.62,
+        width * 0.58,
+        height * 0.46,
+    );
+    context.bezierCurveTo(
+        width * 0.5,
+        height * 0.3,
+        width * 0.72,
+        height * 0.14,
+        width * 0.64,
+        0,
+    );
     context.closePath();
     context.fillStyle = COLORS.wedge;
     context.fill();
@@ -212,7 +230,7 @@ const paintSignature = (context: CanvasRenderingContext2D): void => {
 
     const width = logo + 16 + context.measureText('TryPost').width;
     const left = (SIZE.width - width) / 2;
-    const centre = SIZE.height - 120;
+    const centre = SIZE.height - 150;
 
     paintLogo(context, { x: left, y: centre - logo / 2 }, logo);
     writeText(
