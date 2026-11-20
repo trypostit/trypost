@@ -15,6 +15,7 @@ use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status as PostStatus;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class PostController extends Controller
 {
-    use RendersPublishPage;
+    use FlashesToast, RendersPublishPage;
 
     public function index(Request $request): Response|RedirectResponse
     {

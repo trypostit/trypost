@@ -9,6 +9,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\ScheduleAction;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
 use App\Support\PostStatusRules;
@@ -16,7 +17,7 @@ use Illuminate\Http\RedirectResponse;
 
 class PostScheduleController extends Controller
 {
-    use RendersPublishPage;
+    use FlashesToast, RendersPublishPage;
 
     public function update(UpdatePostScheduleRequest $request, Post $post): RedirectResponse
     {
