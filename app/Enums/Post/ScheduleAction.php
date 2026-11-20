@@ -31,12 +31,17 @@ enum ScheduleAction: string
         };
     }
 
-    /** Whether the action puts the post in the queue, at its end or at its top. */
-    public function addsToQueue(): bool
+    /**
+     * What the toast says once the action puts the post in the queue; null for
+     * an action that does not. The top of the queue is a move, not an addition:
+     * "Move to top" only reaches posts already queued.
+     */
+    public function queuedMessage(): ?string
     {
         return match ($this) {
-            self::QueueNext, self::QueueTop => true,
-            self::Draft, self::PublishNow, self::Reschedule => false,
+            self::QueueNext => trans_choice('posts.composer.queue.added', 1, ['count' => 1]),
+            self::QueueTop => __('posts.composer.queue.moved_to_top'),
+            self::Draft, self::PublishNow, self::Reschedule => null,
         };
     }
 }

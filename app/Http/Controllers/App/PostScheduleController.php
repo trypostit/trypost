@@ -44,12 +44,14 @@ class PostScheduleController extends Controller
         if ($action === PostAction::Finalized) {
             session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
             session()->flash('flash.bannerStyle', 'danger');
+
+            return back();
         }
 
-        if ($action !== PostAction::Finalized && $scheduleAction->addsToQueue()) {
-            $queued = data_get($result, 'post');
+        $queuedMessage = $scheduleAction->queuedMessage();
 
-            $this->flashQueuedToast($queued, $this->queuePositionMessage($scheduleAction));
+        if (filled($queuedMessage)) {
+            $this->flashQueuedToast(data_get($result, 'post'), $queuedMessage);
         }
 
         if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {
@@ -59,15 +61,5 @@ class PostScheduleController extends Controller
         }
 
         return back();
-    }
-
-    /** The top of the queue is a move, not an addition: "Move to top" only reaches posts already queued. */
-    private function queuePositionMessage(ScheduleAction $scheduleAction): string
-    {
-        if ($scheduleAction === ScheduleAction::QueueTop) {
-            return __('posts.composer.queue.moved_to_top');
-        }
-
-        return trans_choice('posts.composer.queue.added', 1, ['count' => 1]);
     }
 }
