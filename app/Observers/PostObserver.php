@@ -54,7 +54,9 @@ class PostObserver
             return;
         }
 
-        ShowPostingStreak::forget($post->workspace_id);
+        if ($this->changedWhetherItWentOut($post)) {
+            ShowPostingStreak::forget($post->workspace_id);
+        }
 
         $networkEvent = EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'));
 
@@ -112,5 +114,11 @@ class PostObserver
         SyncAccountPublishingActivity::dispatch((string) $accountId)
             ->delay(now()->addSeconds(SyncAccountPublishingActivity::DEBOUNCE_SECONDS))
             ->afterCommit();
+    }
+
+    /** Whether the post started or stopped counting as sent, the only change the posting streak sees. */
+    private function changedWhetherItWentOut(Post $post): bool
+    {
+        return $post->publish_status->wentOut() !== $post->getOriginal('publish_status')->wentOut();
     }
 }

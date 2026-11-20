@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\LazyCollection;
 
 /**
  * Where a streak stands among every workspace with app access, for the "Top X%"
@@ -22,24 +23,44 @@ final class RankPostingStreaks
 
     private const string CACHE_KEY = 'posting-streak:ranks';
 
+    /** Fewer workspaces than this rank nothing: a small install would only rank itself. */
+    public const int MIN_RANKED = 10;
+
+    private const int CHUNK = 200;
+
     public function execute(): void
     {
         $thisWeek = CarbonImmutable::now('UTC')->startOfWeek(WeekStart::Monday->firstDay());
-        $weeks = [];
-
-        BuildPostingStreak::postingInstants(null, $thisWeek->subWeeks(BuildPostingStreak::WEEKS - 1))
-            ->each(function (object $row) use (&$weeks): void {
-                $weeks[$row->workspace_id][BuildPostingStreak::weekOf($row->at, 'UTC', WeekStart::Monday)] = true;
-            });
+        $since = $thisWeek->subWeeks(BuildPostingStreak::WEEKS - 1);
 
         $streaks = Workspace::query()
             ->with('account.subscriptions')
-            ->lazyById()
+            ->lazyById(self::CHUNK)
             ->filter(fn (Workspace $workspace): bool => $workspace->account?->hasAppAccess() === true)
-            ->map(fn (Workspace $workspace): int => BuildPostingStreak::streak(collect(array_keys(data_get($weeks, $workspace->id, []))), $thisWeek))
+            ->chunk(self::CHUNK)
+            ->flatMap(fn (LazyCollection $workspaces): Collection => self::streaksOf($workspaces->pluck('id')->values()->all(), $since, $thisWeek))
             ->collect();
 
         Cache::forever(self::CACHE_KEY, self::thresholds($streaks));
+    }
+
+    /**
+     * The streak of each workspace, read a chunk at a time so the posts of every
+     * workspace are never held at once.
+     *
+     * @param  list<string>  $workspaceIds
+     * @return Collection<int, int>
+     */
+    private static function streaksOf(array $workspaceIds, CarbonImmutable $since, CarbonImmutable $thisWeek): Collection
+    {
+        $weeks = BuildPostingStreak::postingInstants($workspaceIds, $since)
+            ->collect()
+            ->groupBy('workspace_id')
+            ->map(fn (Collection $rows): Collection => $rows
+                ->map(fn (object $row): string => BuildPostingStreak::weekOf($row->at, 'UTC', WeekStart::Monday))
+                ->unique());
+
+        return collect($workspaceIds)->map(fn (string $id): int => BuildPostingStreak::streak($weeks->get($id, collect()), $thisWeek));
     }
 
     /**
@@ -52,7 +73,7 @@ final class RankPostingStreaks
      */
     private static function thresholds(Collection $streaks): array
     {
-        if ($streaks->isEmpty()) {
+        if ($streaks->count() < self::MIN_RANKED) {
             return [];
         }
 

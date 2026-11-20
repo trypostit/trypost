@@ -10,7 +10,6 @@ use App\Enums\User\WeekStart;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
@@ -49,23 +48,23 @@ final class BuildPostingStreak
     /**
      * When each workspace posted since `$since`, from both sources.
      *
-     * @param  list<string>|null  $workspaceIds  Null reads every workspace.
+     * @param  list<string>  $workspaceIds
      * @return LazyCollection<int, object{workspace_id: string, at: string}>
      */
-    public static function postingInstants(?array $workspaceIds, CarbonInterface $since): LazyCollection
+    public static function postingInstants(array $workspaceIds, CarbonInterface $since): LazyCollection
     {
         $publications = DB::table('analytics_publications')
             ->select(['workspace_id', 'provider_published_at as at'])
             ->whereIn('platform', Platform::analyticsValues())
             ->where('provider_published_at', '>=', $since)
-            ->when($workspaceIds !== null, fn (Builder $query): Builder => $query->whereIn('workspace_id', $workspaceIds));
+            ->whereIn('workspace_id', $workspaceIds);
 
         $posts = DB::table('posts')
             ->select(['workspace_id', 'published_at as at'])
             ->whereIn('platform', self::platformsOutsideInsights())
             ->whereIn('publish_status', collect(PublishStatus::wentOutCases())->map(fn (PublishStatus $status): string => $status->value)->all())
             ->where('published_at', '>=', $since)
-            ->when($workspaceIds !== null, fn (Builder $query): Builder => $query->whereIn('workspace_id', $workspaceIds));
+            ->whereIn('workspace_id', $workspaceIds);
 
         return $publications->unionAll($posts)->cursor();
     }

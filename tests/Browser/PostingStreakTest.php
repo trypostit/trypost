@@ -26,7 +26,7 @@ function postingStreakBrowserWeeks(SocialAccount $account, array $weeksAgo): voi
             'network' => $account->platform->network(),
             'platform_user_id' => $account->platform_user_id,
             'platform' => $account->platform,
-            'provider_published_at' => $thisWeek->subWeeks($ago)->setTime(0, 30),
+            'provider_published_at' => $thisWeek->subWeeks($ago),
         ]);
     }
 }
@@ -106,6 +106,37 @@ test('sharing the streak opens the composer with its post and image', function (
     waitForCount($page, '@composer-media-item', 1);
 
     $page->assertNoJavaScriptErrors();
+});
+
+test('closing the streak while its image uploads leaves the page as it is', function () {
+    postingStreakBrowserWeeks($this->instagram, [0, 1]);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@posting-streak-badge');
+    $page->script('(() => {
+        const send = XMLHttpRequest.prototype.send;
+        const held = [];
+        window.__heldUploads = held;
+        window.__releaseUploads = () => {
+            XMLHttpRequest.prototype.send = send;
+            held.forEach((release) => release());
+        };
+        XMLHttpRequest.prototype.send = function (...body) {
+            held.push(() => send.apply(this, body));
+        };
+    })()');
+    $page->click('@posting-streak-badge');
+    waitForOpen($page, '@posting-streak-popover');
+    $page->click('@posting-streak-share');
+    waitForCondition($page, 'window.__heldUploads.length > 0');
+    $page->keys('@posting-streak-popover', 'Escape');
+    waitForGone($page, '@posting-streak-popover');
+    $page->script('window.__releaseUploads()');
+    letPageRun($page, 3000);
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing('@flash-error-toast')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the badge hides while the sidebar is collapsed', function () {

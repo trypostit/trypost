@@ -7,7 +7,7 @@ import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.
 import PostingActivityHeatmap from '@/components/analytics/workspace/charts/PostingActivityHeatmap.vue';
 import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
 import { Skeleton } from '@/components/ui/skeleton';
-import { blank } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { postingActivityShareOption } from '@/lib/insightsShare';
 import {
     POSTING_ACTIVITY_STAT_ICONS,
@@ -28,9 +28,20 @@ const STATS: PostingActivityStat[] = ['current_streak', 'best_streak', 'total'];
 const isLoading = computed((): boolean => blank(props.activity));
 
 const days = (count: number): string =>
-    transChoice('analytics.posting_activity.days', count, {
-        count: formatFullNumber(count),
-    });
+    transChoice('analytics.posting_activity.days', count);
+
+/** The activity the share button shares: none while it loads, and none without a post to show. */
+const shareable = computed((): PostingActivity | null => {
+    if (!filled(props.activity)) {
+        return null;
+    }
+
+    if (props.activity.total === 0) {
+        return null;
+    }
+
+    return props.activity;
+});
 
 const statValue = (activity: PostingActivity, key: PostingActivityStat): string => {
     if (key === 'total') {
@@ -56,6 +67,8 @@ const iconStyle = (key: PostingActivityStat): { color: string } => ({
 
 const testId = (key: PostingActivityStat): string =>
     `posting-activity-${key.replace('_', '-')}`;
+
+const aboutTestId = (key: PostingActivityStat): string => `${testId(key)}-about`;
 </script>
 
 <template>
@@ -64,11 +77,11 @@ const testId = (key: PostingActivityStat): string =>
         :subtitle="$t('analytics.posting_activity.subtitle')"
         data-testid="posting-activity"
     >
-        <template v-if="activity" #actions>
+        <template v-if="shareable" #actions>
             <ShareChartButton
                 :subject="channel"
                 :range="$t('analytics.posting_activity.subtitle')"
-                :build="shareBuilder(activity)"
+                :build="shareBuilder(shareable)"
                 test-id="share-posting-activity"
             />
         </template>
@@ -98,7 +111,7 @@ const testId = (key: PostingActivityStat): string =>
                         {{ $t(labelKey(key)) }}
                         <InfoTip
                             :text="$t(aboutKey(key))"
-                            :test-id="`${testId(key)}-about`"
+                            :test-id="aboutTestId(key)"
                         />
                     </span>
                     <span class="flex items-center gap-1.5">

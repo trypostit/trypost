@@ -429,9 +429,9 @@ return [
         'caption_summary_workspace' => 'أرقامنا للفترة :range 📈 :metrics',
         'caption_summary_channel' => 'أرقامنا على :channel للفترة :range 📈 :metrics',
         'caption_posting_activity' => [
-            'record_streak' => '🔥 ننشر منذ :days متتالية، وهذه أطول سلسلة لنا حتى الآن! عدد المنشورات خلال آخر 12 شهرًا: :posts.',
-            'on_streak' => '🔥 ننشر منذ :days متتالية. رقمنا القياسي :best، وعدد المنشورات خلال آخر 12 شهرًا: :posts.',
-            'no_streak' => '📅 عدد المنشورات خلال آخر 12 شهرًا: :posts، وأطول سلسلة لنا :best متتالية.',
+            'record_streak' => '🔥 :days من النشر المتواصل، وهذه أطول سلسلة لنا حتى الآن! عدد المنشورات خلال آخر 12 شهرًا: :posts.',
+            'on_streak' => '🔥 :days من النشر المتواصل. رقمنا القياسي :best، وعدد المنشورات خلال آخر 12 شهرًا: :posts.',
+            'no_streak' => '📅 عدد المنشورات خلال آخر 12 شهرًا: :posts، وأطول سلسلة نشر متواصل لنا :best.',
         ],
         'export_failed' => 'تعذّر إنشاء الصورة. حاول مرة أخرى.',
         'colors' => [

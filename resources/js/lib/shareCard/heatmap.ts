@@ -1,16 +1,16 @@
 import { filled } from '@/lib/helpers';
 import { ink, lightColor, muted } from '@/lib/shareCard/colors';
 import { paintIdentity } from '@/lib/shareCard/frame';
-import { iconPaths } from '@/lib/shareCard/icons';
+import { paintIcon } from '@/lib/shareCard/icons';
 import { quantizeLevel } from '@/lib/shareCard/scale';
 import { widest, writeText } from '@/lib/shareCard/text';
 import { heading, IDENTITY, PANEL, sans } from '@/lib/shareCard/theme';
 import type {
     Box,
+    Point,
     ShareCardOptions,
     ShareHeatmap,
     ShareTile,
-    Point,
 } from '@/lib/shareCard/types';
 
 /**
@@ -38,9 +38,15 @@ const HEATMAP = {
 /** How strong each level is, lightest to strongest, like the page's four steps of one color. */
 const LEVEL_ALPHAS = [0.3, 0.55, 0.8, 1];
 
-
 /** The numbers' fonts and icon at `fit` of their full size, so three long figures shrink together instead of being cut. */
-type StatSizes = { label: string; figure: string; figureSize: number; icon: number; iconGap: number; gap: number };
+type StatSizes = {
+    label: string;
+    figure: string;
+    figureSize: number;
+    icon: number;
+    iconGap: number;
+    gap: number;
+};
 
 const statSizes = (fit: number): StatSizes => ({
     label: sans(500, HEATMAP.statLabelSize * fit),
@@ -61,20 +67,36 @@ const iconWidth = (tile: ShareTile, sizes: StatSizes): number => {
 };
 
 /** The width a tile takes: its label or its icon and figure, whichever is wider. */
-const statWidth = (context: CanvasRenderingContext2D, tile: ShareTile, sizes: StatSizes): number => {
+const statWidth = (
+    context: CanvasRenderingContext2D,
+    tile: ShareTile,
+    sizes: StatSizes,
+): number => {
     context.font = sizes.label;
 
     const label = context.measureText(tile.label).width;
 
     context.font = sizes.figure;
 
-    return Math.max(label, iconWidth(tile, sizes) + context.measureText(tile.figure).width);
+    return Math.max(
+        label,
+        iconWidth(tile, sizes) + context.measureText(tile.figure).width,
+    );
 };
 
 /** How much the numbers shrink so all of them fit the panel's width; never grown past their full size. */
-const statsFit = (context: CanvasRenderingContext2D, tiles: ShareTile[], width: number): number => {
+const statsFit = (
+    context: CanvasRenderingContext2D,
+    tiles: ShareTile[],
+    width: number,
+): number => {
     const full = statSizes(1);
-    const needed = tiles.reduce((total, tile) => total + statWidth(context, tile, full), 0) + full.gap * Math.max(tiles.length - 1, 0);
+    const needed =
+        tiles.reduce(
+            (total, tile) => total + statWidth(context, tile, full),
+            0,
+        ) +
+        full.gap * Math.max(tiles.length - 1, 0);
 
     if (needed <= width) {
         return 1;
@@ -84,29 +106,55 @@ const statsFit = (context: CanvasRenderingContext2D, tiles: ShareTile[], width: 
 };
 
 /** A tile's icon, centred on its figure's capitals. */
-const paintStatIcon = (context: CanvasRenderingContext2D, tile: ShareTile, sizes: StatSizes, at: Point): void => {
+const paintStatIcon = (
+    context: CanvasRenderingContext2D,
+    tile: ShareTile,
+    sizes: StatSizes,
+    at: Point,
+): void => {
     if (!filled(tile.icon)) {
         return;
     }
 
-    context.save();
-    context.translate(at.x, at.y - (sizes.figureSize * HEATMAP.capShare) / 2 - sizes.icon / 2);
-    context.scale(sizes.icon / 24, sizes.icon / 24);
-    context.fillStyle = lightColor(tile.icon.color);
-    iconPaths(tile.icon.icon).forEach((path) => context.fill(new Path2D(path)));
-    context.restore();
+    paintIcon(
+        context,
+        tile.icon.icon,
+        lightColor(tile.icon.color),
+        {
+            x: at.x,
+            y:
+                at.y -
+                (sizes.figureSize * HEATMAP.capShare) / 2 -
+                sizes.icon / 2,
+        },
+        sizes.icon,
+    );
 };
 
 /** The numbers one after another, label over icon and figure, like the page's stats, shrunk together when they would not fit. */
-const paintStats = (context: CanvasRenderingContext2D, options: ShareCardOptions, inner: Box): void => {
+const paintStats = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    inner: Box,
+): void => {
     const sizes = statSizes(statsFit(context, options.tiles, inner.width));
     const figureY = inner.y + HEATMAP.statFigureGap;
     let left = inner.x;
 
     options.tiles.forEach((tile) => {
-        writeText(context, tile.label, { x: left, y: inner.y }, { font: sizes.label, color: muted() });
+        writeText(
+            context,
+            tile.label,
+            { x: left, y: inner.y },
+            { font: sizes.label, color: muted() },
+        );
         paintStatIcon(context, tile, sizes, { x: left, y: figureY });
-        writeText(context, tile.figure, { x: left + iconWidth(tile, sizes), y: figureY }, { font: sizes.figure, color: ink() });
+        writeText(
+            context,
+            tile.figure,
+            { x: left + iconWidth(tile, sizes), y: figureY },
+            { font: sizes.figure, color: ink() },
+        );
 
         left += statWidth(context, tile, sizes) + sizes.gap;
     });
@@ -137,7 +185,13 @@ const paintGrid = (
         writeText(
             context,
             month.label,
-            { x: Math.min(area.x + month.column * stride, gridRight - labelWidth), y: top - HEATMAP.monthGap },
+            {
+                x: Math.min(
+                    area.x + month.column * stride,
+                    gridRight - labelWidth,
+                ),
+                y: top - HEATMAP.monthGap,
+            },
             { font: monthFont, color: muted() },
         );
     });
@@ -154,7 +208,9 @@ const paintGrid = (
 
         if (count > 0) {
             context.globalAlpha =
-                LEVEL_ALPHAS[quantizeLevel(count, heatmap.maxCount, LEVEL_ALPHAS.length)];
+                LEVEL_ALPHAS[
+                    quantizeLevel(count, heatmap.maxCount, LEVEL_ALPHAS.length)
+                ];
             context.fillStyle = color;
         }
 

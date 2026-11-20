@@ -6,14 +6,12 @@
  * canvas like the Insights share cards.
  */
 
-import type { Icon } from '@tabler/icons-vue';
-
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
 import { POSTING_ACTIVITY_STAT_ICONS } from '@/lib/postingActivity';
 import { lightColor } from '@/lib/shareCard/colors';
 import { paintLogo } from '@/lib/shareCard/frame';
-import { iconPaths } from '@/lib/shareCard/icons';
+import { paintIcon } from '@/lib/shareCard/icons';
 import { loadFonts } from '@/lib/shareCard/images';
 import { writeText } from '@/lib/shareCard/text';
 import { heading, sans } from '@/lib/shareCard/theme';
@@ -108,21 +106,6 @@ const paintBackground = (context: CanvasRenderingContext2D): void => {
         context.fillStyle = dot.color;
         context.fill();
     });
-};
-
-const paintIcon = (
-    context: CanvasRenderingContext2D,
-    icon: Icon,
-    color: string,
-    at: { x: number; y: number },
-    size: number,
-): void => {
-    context.save();
-    context.translate(at.x, at.y);
-    context.scale(size / 24, size / 24);
-    context.fillStyle = color;
-    iconPaths(icon).forEach((path) => context.fill(new Path2D(path)));
-    context.restore();
 };
 
 const paintTiles = (context: CanvasRenderingContext2D): void => {

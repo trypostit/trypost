@@ -283,3 +283,46 @@ test('a post going out in another workspace leaves this streak cached', function
 
     expect(DB::getQueryLog())->toBeEmpty();
 });
+
+test('a handful of workspaces ranks nothing, so a small install never ranks itself', function () {
+    subscribeAccount($this->workspace->account);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    foreach (range(1, RankPostingStreaks::MIN_RANKED - 2) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    expect(RankPostingStreaks::topPercent(1))->toBeNull()
+        ->and(RankPostingStreaks::topPercent(50))->toBeNull();
+});
+
+test('a post moving between steps that do not count keeps the streak cached', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    $post = Post::factory()->forAccount($this->linkedin)->create();
+    ShowPostingStreak::cached($user, $this->workspace);
+
+    $post->forceFill(['publish_status' => PublishStatus::Publishing])->save();
+    DB::enableQueryLog();
+    ShowPostingStreak::cached($user, $this->workspace);
+
+    expect(DB::getQueryLog())->toBeEmpty();
+});
+
+test('the sidebar streak follows a publication insights re-dates or drops', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    $publication = postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    expect(data_get(ShowPostingStreak::cached($user, $this->workspace), 'weeks'))->toBe(1);
+
+    $publication->update(['provider_published_at' => $this->thisWeek->subWeeks(3)]);
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
+
+    $publication->update(['provider_published_at' => $this->thisWeek->addDay()]);
+    ShowPostingStreak::cached($user, $this->workspace);
+    $publication->delete();
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -94,6 +95,16 @@ test('the workspace card fills in when the first posts arrive after opening the 
     $page->assertNoJavaScriptErrors();
 });
 
+test('a year without posts has nothing to share', function () {
+    postingActivityBrowserPublication($this->instagram, $this->today->subYears(2)->setTime(10, 0));
+
+    $page = visit(route('app.insights'));
+    waitForText($page, '@posting-activity-total', '0');
+
+    $page->assertMissing('@share-posting-activity')
+        ->assertNoJavaScriptErrors();
+});
+
 test('on a phone the grid opens on the latest weeks', function () {
     postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));
 
@@ -104,20 +115,24 @@ test('on a phone the grid opens on the latest weeks', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('on a phone the grid stays on older weeks the user scrolled back to when it resizes', function () {
+test('on a phone the grid stays on older weeks the user scrolled back to when it resizes', function (Locale $locale) {
+    $this->user->update(['locale' => $locale]);
     postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));
 
     $page = visit(route('app.insights'))->on()->mobile();
     waitForState($page, '@posting-activity-scroller', 'element.scrollWidth > element.clientWidth && element.scrollLeft + element.clientWidth >= element.scrollWidth - 1');
 
-    $page->script('document.querySelector(\'[data-testid="posting-activity-scroller"]\').scrollLeft = 0');
+    onElement($page, '@posting-activity-scroller', 'element.scrollLeft = 0');
     waitForState($page, '@posting-activity-scroller', 'element.scrollLeft === 0');
-    $page->script('document.querySelector(\'[data-testid="posting-activity-heatmap"]\').style.paddingRight = "24px"');
+    onElement($page, '@posting-activity-heatmap', 'element.style.paddingRight = "24px"');
     letPageRun($page, 500);
     waitForState($page, '@posting-activity-scroller', 'element.scrollLeft === 0');
 
     $page->assertNoJavaScriptErrors();
-});
+})->with([
+    'left to right' => [Locale::English],
+    'right to left' => [Locale::Arabic],
+]);
 
 test('hovering a day shows its posts and the day', function () {
     postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));

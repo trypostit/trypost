@@ -4,13 +4,7 @@ import { watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Toaster } from '@/components/ui/sonner';
-import { filled } from '@/lib/helpers';
-
-/** A link a toast offers next to its message: "View post" and where it goes. */
-type FlashLink = {
-    label: string;
-    url: string;
-};
+import { type ToastLink, toastLinkOptions } from '@/lib/toastLink';
 
 type Flash = {
     banner?: string;
@@ -19,33 +13,10 @@ type Flash = {
     error?: string;
     warning?: string;
     info?: string;
-    link?: FlashLink;
+    link?: ToastLink;
 };
 
 const page = usePage();
-
-/**
- * What a toast adds when the flash carries a link: the link right after the
- * message, in a toast as wide as both. Any flashed message can lead somewhere.
- * Without a link both are cleared, since a toast still on screen under the
- * same id keeps the options it is not given.
- */
-const linkOptions = (link: FlashLink | undefined) => {
-    if (!filled(link)) {
-        return { action: undefined, classes: undefined };
-    }
-
-    return {
-        action: {
-            label: link.label,
-            onClick: () => router.visit(link.url),
-        },
-        classes: {
-            toast: '!inset-x-0 !mx-auto !w-fit !max-w-(--width)',
-            content: '!grow-0',
-        },
-    };
-};
 
 watch(
     () => page.props.flash as Flash | undefined,
@@ -71,7 +42,7 @@ watch(
             }
         }
 
-        const link = linkOptions(flash.link);
+        const link = toastLinkOptions(flash.link, (url) => router.visit(url));
 
         if (flash.success) {
             toast.success(flash.success, { id: 'flash-success', testId: 'flash-success-toast', ...link });

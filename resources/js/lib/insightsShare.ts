@@ -394,10 +394,7 @@ export const postsShareOption = (
 };
 
 /** A number of days as the posting activity card prints it: "9 days". */
-const streakDays = (count: number): string =>
-    transChoice('analytics.posting_activity.days', count, {
-        count: formatFullNumber(count),
-    });
+const streakDays = (count: number): string => transChoice('analytics.posting_activity.days', count);
 
 /**
  * The post text for the posting activity, a sentence that fits the moment:

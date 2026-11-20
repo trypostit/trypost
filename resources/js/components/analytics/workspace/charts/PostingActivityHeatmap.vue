@@ -82,6 +82,16 @@ const minChartWidth = computed(
         `${ROW_LABEL_SPACE + columns.value * (MIN_CELL + CELL_GAP)}px`,
 );
 
+/** The chart never narrower than its smallest cells, so a phone scrolls it. */
+const chartStyle = computed((): { minWidth: string } => ({
+    minWidth: minChartWidth.value,
+}));
+
+/** A legend square in one of the grid's colors. */
+const swatchStyle = (color: string): { backgroundColor: string } => ({
+    backgroundColor: color,
+});
+
 const colorDomain = computed((): [number, number] => {
     if (props.maxCount < 1) {
         return [1, 1];
@@ -158,7 +168,7 @@ const rememberScroll = (): void => {
 
     const { scrollLeft, clientWidth, scrollWidth } = scroller.value;
 
-    followsToday.value = Math.abs(scrollLeft) + clientWidth >= scrollWidth - 1;
+    followsToday.value = scrollLeft + clientWidth >= scrollWidth - 1;
 };
 
 watch(width, scrollToToday);
@@ -174,6 +184,7 @@ const cellAttributes = {
         <div
             ref="scroller"
             class="overflow-x-auto"
+            dir="ltr"
             role="img"
             @scroll="rememberScroll"
             :aria-label="$t('analytics.posting_activity.title')"
@@ -182,7 +193,7 @@ const cellAttributes = {
             <ChartContainer
                 :config="chartConfig"
                 class="[--vis-heatmap-cell-fill-color:var(--muted)] [--vis-heatmap-label-color:var(--muted-foreground)] [--vis-heatmap-label-font-size:11px] dark:[--vis-heatmap-cell-fill-color:var(--accent)]"
-                :style="{ minWidth: minChartWidth }"
+                :style="chartStyle"
             >
                 <VisSingleContainer
                     :data="days"
@@ -216,7 +227,7 @@ const cellAttributes = {
                 v-for="color in LEVEL_COLORS"
                 :key="color"
                 class="size-3 rounded-[3px]"
-                :style="{ backgroundColor: color }"
+                :style="swatchStyle(color)"
             />
             <span>{{ $t('analytics.posting_activity.more') }}</span>
         </div>
