@@ -211,7 +211,7 @@ return [
             'top_description' => 'Placer ce post en tête de la file d\'attente.',
             'add' => 'Ajouter à la file d\'attente',
             'add_many' => 'Ajouter :count à la file d\'attente',
-            'added' => 'Ajouté à la file d\'attente|:count posts ajoutés à la file d\'attente',
+            'added' => '{1} Votre publication a été ajoutée à la file d\'attente.|[0,*] Vos :count publications ont été ajoutées à la file d\'attente.',
             'no_slots_hint' => 'Ajoutez des horaires de publication pour utiliser la file d\'attente.',
             'no_slots_channels' => 'Aucun horaire : :channels',
             'no_slots_tooltip' => 'Aucun horaire de publication pour :channels. Ajoutez des horaires pour utiliser la file.',

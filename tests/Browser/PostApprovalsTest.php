@@ -150,7 +150,7 @@ test('a requester adding a draft to the queue is told it awaits approval', funct
     waitFor($page, '@flash-success-toast');
 
     $page->assertSeeIn('@flash-success-toast', 'Approval requested')
-        ->assertDontSee('Added to queue')
+        ->assertDontSee('added to the queue')
         ->assertNoJavaScriptErrors();
     expect($draft->fresh()->status)->toBe(PostStatus::PendingApproval);
 });

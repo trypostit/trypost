@@ -325,7 +325,7 @@ test('recovering an empty-target draft into the queue confirms it with a toast',
     expect($recovered->id)->not->toBe($legacy->id)
         ->and($recovered->schedule_mode)->toBe(ScheduleMode::Queue)
         ->and($recovered->scheduled_at->toIso8601String())->toBe(composerQueueSlots($channel, 1)[0]->toIso8601String())
-        ->and($page->script('document.querySelector("[data-testid=flash-success-toast]")?.textContent.trim() ?? ""'))->toContain('Added to queue');
+        ->and($page->script('document.querySelector("[data-testid=flash-success-toast]")?.textContent.trim() ?? ""'))->toContain('Your post was added to the queue.');
 
     $page->assertNoJavaScriptErrors();
 });

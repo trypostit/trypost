@@ -211,7 +211,7 @@ return [
             'top_description' => '이 게시물을 대기열 맨 앞에 둡니다.',
             'add' => '대기열에 추가',
             'add_many' => '대기열에 :count개 추가',
-            'added' => '대기열에 추가됨|게시물 :count개가 대기열에 추가됨',
+            'added' => '{1} 게시물이 대기열에 추가되었습니다.|[0,*] 게시물 :count개가 대기열에 추가되었습니다.',
             'no_slots_hint' => '대기열을 사용하려면 게시 시간을 추가하세요.',
             'no_slots_channels' => '게시 시간 없음: :channels',
             'no_slots_tooltip' => ':channels에 게시 시간이 없습니다. 대기열을 사용하려면 게시 시간을 추가하세요.',

@@ -211,7 +211,7 @@ return [
             'top_description' => 'Zet dit bericht bovenaan de wachtrij.',
             'add' => 'Toevoegen aan wachtrij',
             'add_many' => ':count toevoegen aan wachtrij',
-            'added' => 'Toegevoegd aan wachtrij|:count berichten toegevoegd aan wachtrij',
+            'added' => '{1} Je bericht is aan de wachtrij toegevoegd.|[0,*] Je :count berichten zijn aan de wachtrij toegevoegd.',
             'no_slots_hint' => 'Voeg publicatietijden toe om de wachtrij te gebruiken.',
             'no_slots_channels' => 'Geen publicatietijden: :channels',
             'no_slots_tooltip' => 'Geen publicatietijden voor :channels. Voeg tijden toe om de wachtrij te gebruiken.',

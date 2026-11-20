@@ -211,7 +211,7 @@ return [
             'top_description' => 'この投稿をキューの先頭に置きます。',
             'add' => 'キューに追加',
             'add_many' => ':count件をキューに追加',
-            'added' => 'キューに追加しました|:count件の投稿をキューに追加しました',
+            'added' => '{1} 投稿をキューに追加しました。|[0,*] :count件の投稿をキューに追加しました。',
             'no_slots_hint' => 'キューを使うには投稿時間を追加してください。',
             'no_slots_channels' => '投稿時間なし：:channels',
             'no_slots_tooltip' => ':channels には投稿時間がありません。キューを使うには投稿時間を追加してください。',

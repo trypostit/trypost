@@ -211,7 +211,7 @@ return [
             'top_description' => 'Bu gönderiyi kuyruğun en başına koy.',
             'add' => 'Kuyruğa ekle',
             'add_many' => ':count gönderiyi kuyruğa ekle',
-            'added' => 'Kuyruğa eklendi|:count gönderi kuyruğa eklendi',
+            'added' => '{1} Gönderin kuyruğa eklendi.|[0,*] :count gönderin kuyruğa eklendi.',
             'no_slots_hint' => 'Kuyruğu kullanmak için paylaşım saatleri ekleyin.',
             'no_slots_channels' => 'Paylaşım saati yok: :channels',
             'no_slots_tooltip' => ':channels için paylaşım saati yok. Kuyruğu kullanmak için saat ekleyin.',

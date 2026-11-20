@@ -211,7 +211,7 @@ return [
             'top_description' => 'Taruh postingan ini di urutan teratas antrean.',
             'add' => 'Tambahkan ke antrean',
             'add_many' => 'Tambahkan :count ke antrean',
-            'added' => 'Ditambahkan ke antrean|:count postingan ditambahkan ke antrean',
+            'added' => '{1} Postinganmu sudah ditambahkan ke antrean.|[0,*] :count postinganmu sudah ditambahkan ke antrean.',
             'no_slots_hint' => 'Tambahkan waktu posting untuk memakai antrean.',
             'no_slots_channels' => 'Belum ada waktu posting: :channels',
             'no_slots_tooltip' => 'Belum ada waktu posting untuk :channels. Tambahkan waktu posting untuk memakai antrean.',
