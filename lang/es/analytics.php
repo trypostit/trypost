@@ -471,10 +471,10 @@ return [
     ],
     'posting_streak' => [
         'button' => 'Ver racha',
-        'title' => '{1} Racha de :count semana|[0,*] Racha de :count semanas',
+        'title' => '{1} :count semana seguida|[0,*] :count semanas seguidas',
         'top' => 'Top :percent%',
         'rank_tooltip' => 'Comparado con otros usuarios de TryPost',
-        'keep_going' => '¡Buen trabajo! Programa una publicación para la próxima semana y mantén la racha.',
+        'keep_going' => 'Ya publicaste esta semana. Programa una publicación para la próxima y mantén tu racha.',
         'post_this_week' => 'Aún no has publicado esta semana. Programa una publicación para mantener tu racha.',
         'schedule' => 'Programar publicación',
         'share' => 'Compartir racha',

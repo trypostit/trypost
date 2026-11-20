@@ -471,10 +471,10 @@ return [
     ],
     'posting_streak' => [
         'button' => 'Voir la série',
-        'title' => '{1} Série de :count semaine|[0,*] Série de :count semaines',
+        'title' => '{1} :count semaine d’affilée|[0,*] :count semaines d’affilée',
         'top' => 'Top :percent %',
         'rank_tooltip' => 'Par rapport aux autres utilisateurs de TryPost',
-        'keep_going' => 'Bravo ! Programmez une publication pour la semaine prochaine pour garder la série.',
+        'keep_going' => 'Vous avez publié cette semaine. Programmez une publication pour la semaine prochaine pour garder votre série.',
         'post_this_week' => 'Vous n\'avez pas encore publié cette semaine. Programmez une publication pour garder votre série.',
         'schedule' => 'Programmer',
         'share' => 'Partager la série',

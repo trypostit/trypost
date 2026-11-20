@@ -64,7 +64,7 @@ test('the sidebar badge opens the streak and its nudge', function () {
         ->click('@posting-streak-badge');
     waitForOpen($page, '@posting-streak-popover');
 
-    $page->assertSeeIn('@posting-streak-title', '3 week streak')
+    $page->assertSeeIn('@posting-streak-title', '3 weeks in a row')
         ->assertSeeIn('@posting-streak-nudge', 'Schedule a post for next week')
         ->assertNoJavaScriptErrors();
 });

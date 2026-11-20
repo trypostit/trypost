@@ -471,10 +471,10 @@ return [
     ],
     'posting_streak' => [
         'button' => 'Ver sequência',
-        'title' => '{1} Sequência de :count semana|[0,*] Sequência de :count semanas',
+        'title' => '{1} :count semana seguida|[0,*] :count semanas seguidas',
         'top' => 'Top :percent%',
         'rank_tooltip' => 'Comparado com outros usuários do TryPost',
-        'keep_going' => 'Mandou bem! Agende um post para a próxima semana e mantenha a sequência.',
+        'keep_going' => 'Você já postou esta semana. Agende um post para a próxima e mantenha sua sequência.',
         'post_this_week' => 'Você ainda não postou esta semana. Agende um post para manter sua sequência.',
         'schedule' => 'Agendar post',
         'share' => 'Compartilhar sequência',
