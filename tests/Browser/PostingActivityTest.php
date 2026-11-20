@@ -104,6 +104,21 @@ test('on a phone the grid opens on the latest weeks', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('on a phone the grid stays on older weeks the user scrolled back to when it resizes', function () {
+    postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));
+
+    $page = visit(route('app.insights'))->on()->mobile();
+    waitForState($page, '@posting-activity-scroller', 'element.scrollWidth > element.clientWidth && element.scrollLeft + element.clientWidth >= element.scrollWidth - 1');
+
+    $page->script('document.querySelector(\'[data-testid="posting-activity-scroller"]\').scrollLeft = 0');
+    waitForState($page, '@posting-activity-scroller', 'element.scrollLeft === 0');
+    $page->script('document.querySelector(\'[data-testid="posting-activity-heatmap"]\').style.paddingRight = "24px"');
+    letPageRun($page, 500);
+    waitForState($page, '@posting-activity-scroller', 'element.scrollLeft === 0');
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('hovering a day shows its posts and the day', function () {
     postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));
     postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(12, 0));
@@ -174,12 +189,8 @@ test('today lands on its weekday row in the week the user starts on', function (
     $page = visit(route('app.insights'));
     waitForCount($page, '@posting-activity-cell', 365);
 
-    $row = $page->script('(() => {
-        const cells = [...document.querySelectorAll("[data-testid=posting-activity-cell]")];
-        const rows = [...new Set(cells.map((cell) => Math.round(cell.getBBox().y)))].sort((a, b) => a - b);
-
-        return rows.indexOf(Math.round(cells[cells.length - 1].getBBox().y));
-    })()');
+    $tops = collect(elementsMap($page, '@posting-activity-cell', 'Math.round(element.getBBox().y)'));
+    $row = $tops->unique()->sort()->values()->search($tops->last());
 
     expect($row)->toBe(($this->today->dayOfWeek - $firstWeekday + 7) % 7);
     $page->assertNoJavaScriptErrors();

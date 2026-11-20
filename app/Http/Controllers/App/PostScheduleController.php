@@ -47,9 +47,9 @@ class PostScheduleController extends Controller
         }
 
         if ($action !== PostAction::Finalized && $scheduleAction->addsToQueue()) {
-            $post->refresh();
+            $queued = data_get($result, 'post');
 
-            $this->flashPostToast($this->queuedMessage($post, $this->queuePositionMessage($scheduleAction)), $post);
+            $this->flashPostToast($this->queuedMessage($queued, $this->queuePositionMessage($scheduleAction)), $queued);
         }
 
         if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {

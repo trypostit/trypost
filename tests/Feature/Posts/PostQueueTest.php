@@ -710,3 +710,19 @@ test('a member who needs approval is told the queue request awaits approval, not
         ->assertSessionHasNoErrors()
         ->assertSessionHas('flash.success', __('posts.approvals.requested'));
 });
+
+test('storing into the queue for several channels says how many were added and links the first one', function () {
+    $other = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'timezone' => 'UTC',
+        'posting_schedule' => PostingSchedule::empty()->withTime(2, '10:00'),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel, $other]))
+        ->assertSessionHasNoErrors();
+
+    expect(session('flash.success'))->toBe(trans_choice('posts.composer.queue.added', 2, ['count' => 2]))
+        ->and(session('flash.link.url'))->toBe(route('app.posts.index', ['post' => data_get(session('created_post_ids'), 0)]));
+});

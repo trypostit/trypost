@@ -429,9 +429,9 @@ return [
         'caption_summary_workspace' => 'Nuestros números de :range 📈 :metrics',
         'caption_summary_channel' => 'Nuestros números en :channel de :range 📈 :metrics',
         'caption_posting_activity' => [
-            'record_streak' => '{1} 🔥 :days seguidos publicando, ¡nuestra mejor racha hasta ahora! :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days seguidos publicando, ¡nuestra mejor racha hasta ahora! :posts publicaciones en los últimos 12 meses.',
-            'on_streak' => '{1} 🔥 :days seguidos publicando. Nuestro récord es de :best, con :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days seguidos publicando. Nuestro récord es de :best, con :posts publicaciones en los últimos 12 meses.',
-            'no_streak' => '{1} 📅 :posts publicación en los últimos 12 meses, con una racha récord de :best seguidos.|[0,*] 📅 :posts publicaciones en los últimos 12 meses, con una racha récord de :best seguidos.',
+            'record_streak' => '{1} 🔥 :days publicando sin parar, ¡nuestra mejor racha hasta ahora! :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days publicando sin parar, ¡nuestra mejor racha hasta ahora! :posts publicaciones en los últimos 12 meses.',
+            'on_streak' => '{1} 🔥 :days publicando sin parar. Nuestro récord es de :best, con :posts publicación en los últimos 12 meses.|[0,*] 🔥 :days publicando sin parar. Nuestro récord es de :best, con :posts publicaciones en los últimos 12 meses.',
+            'no_streak' => '{1} 📅 :posts publicación en los últimos 12 meses, con una racha récord de :best.|[0,*] 📅 :posts publicaciones en los últimos 12 meses, con una racha récord de :best.',
         ],
         'export_failed' => 'No se pudo crear la imagen. Inténtalo de nuevo.',
         'colors' => [

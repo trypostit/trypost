@@ -64,10 +64,10 @@ export type ShareSeries = {
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
 export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
-/** One number of the Summary, as its card prints it; `missing` while the metric has no value, which the card draws muted and the post leaves out. */
 /** The icon drawn before a tile's figure, in a CSS color. */
 export type ShareTileIcon = { icon: Icon; color: string };
 
+/** One number of the Summary, as its card prints it; `missing` while the metric has no value, which the card draws muted and the post leaves out. */
 export type ShareTile = { label: string; figure: string; missing: boolean; change: MetricDelta | null; icon?: ShareTileIcon };
 
 /**

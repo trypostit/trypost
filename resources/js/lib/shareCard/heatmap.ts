@@ -2,7 +2,7 @@ import { filled } from '@/lib/helpers';
 import { ink, lightColor, muted } from '@/lib/shareCard/colors';
 import { paintIdentity } from '@/lib/shareCard/frame';
 import { iconPaths } from '@/lib/shareCard/icons';
-import { ellipsise, writeText } from '@/lib/shareCard/text';
+import { widest, writeText } from '@/lib/shareCard/text';
 import { heading, IDENTITY, PANEL, sans } from '@/lib/shareCard/theme';
 import type {
     Box,
@@ -51,83 +51,76 @@ const levelOf = (count: number, maxCount: number): number => {
     );
 };
 
-/** The width a tile takes: its label or its icon and figure, whichever is wider. */
-const statWidth = (
-    context: CanvasRenderingContext2D,
-    tile: ShareTile,
-    fonts: { label: string; figure: string },
-): number => {
-    context.font = fonts.label;
+/** The numbers' fonts and icon at `fit` of their full size, so three long figures shrink together instead of being cut. */
+type StatSizes = { label: string; figure: string; figureSize: number; icon: number; iconGap: number; gap: number };
 
-    const label = context.measureText(tile.label).width;
-
-    context.font = fonts.figure;
-
-    return Math.max(label, iconWidth(tile) + context.measureText(tile.figure).width);
-};
+const statSizes = (fit: number): StatSizes => ({
+    label: sans(500, HEATMAP.statLabelSize * fit),
+    figure: heading(500, HEATMAP.statFigureSize * fit),
+    figureSize: HEATMAP.statFigureSize * fit,
+    icon: HEATMAP.statIcon * fit,
+    iconGap: HEATMAP.statIconGap * fit,
+    gap: HEATMAP.statGap * fit,
+});
 
 /** The room a tile's icon and its gap take before the figure; none without an icon. */
-const iconWidth = (tile: ShareTile): number => {
+const iconWidth = (tile: ShareTile, sizes: StatSizes): number => {
     if (!filled(tile.icon)) {
         return 0;
     }
 
-    return HEATMAP.statIcon + HEATMAP.statIconGap;
+    return sizes.icon + sizes.iconGap;
+};
+
+/** The width a tile takes: its label or its icon and figure, whichever is wider. */
+const statWidth = (context: CanvasRenderingContext2D, tile: ShareTile, sizes: StatSizes): number => {
+    context.font = sizes.label;
+
+    const label = context.measureText(tile.label).width;
+
+    context.font = sizes.figure;
+
+    return Math.max(label, iconWidth(tile, sizes) + context.measureText(tile.figure).width);
+};
+
+/** How much the numbers shrink so all of them fit the panel's width; never grown past their full size. */
+const statsFit = (context: CanvasRenderingContext2D, tiles: ShareTile[], width: number): number => {
+    const full = statSizes(1);
+    const needed = tiles.reduce((total, tile) => total + statWidth(context, tile, full), 0) + full.gap * Math.max(tiles.length - 1, 0);
+
+    if (needed <= width) {
+        return 1;
+    }
+
+    return width / needed;
 };
 
 /** A tile's icon, centred on its figure's capitals. */
-const paintStatIcon = (
-    context: CanvasRenderingContext2D,
-    tile: ShareTile,
-    at: Point,
-): void => {
+const paintStatIcon = (context: CanvasRenderingContext2D, tile: ShareTile, sizes: StatSizes, at: Point): void => {
     if (!filled(tile.icon)) {
         return;
     }
 
-    const size = HEATMAP.statIcon;
-
     context.save();
-    context.translate(at.x, at.y - HEATMAP.statFigureSize * HEATMAP.capShare / 2 - size / 2);
-    context.scale(size / 24, size / 24);
+    context.translate(at.x, at.y - (sizes.figureSize * HEATMAP.capShare) / 2 - sizes.icon / 2);
+    context.scale(sizes.icon / 24, sizes.icon / 24);
     context.fillStyle = lightColor(tile.icon.color);
     iconPaths(tile.icon.icon).forEach((path) => context.fill(new Path2D(path)));
     context.restore();
 };
 
-/** The three numbers one after another, label over icon and figure, like the page's stats. */
-const paintStats = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    inner: Box,
-): void => {
-    const fonts = {
-        label: sans(500, HEATMAP.statLabelSize),
-        figure: heading(500, HEATMAP.statFigureSize),
-    };
-    const count = Math.max(options.tiles.length, 1);
-    const limit = (inner.width - HEATMAP.statGap * (count - 1)) / count;
+/** The numbers one after another, label over icon and figure, like the page's stats, shrunk together when they would not fit. */
+const paintStats = (context: CanvasRenderingContext2D, options: ShareCardOptions, inner: Box): void => {
+    const sizes = statSizes(statsFit(context, options.tiles, inner.width));
+    const figureY = inner.y + HEATMAP.statFigureGap;
     let left = inner.x;
 
     options.tiles.forEach((tile) => {
-        const figureY = inner.y + HEATMAP.statFigureGap;
-        const figureX = left + iconWidth(tile);
+        writeText(context, tile.label, { x: left, y: inner.y }, { font: sizes.label, color: muted() });
+        paintStatIcon(context, tile, sizes, { x: left, y: figureY });
+        writeText(context, tile.figure, { x: left + iconWidth(tile, sizes), y: figureY }, { font: sizes.figure, color: ink() });
 
-        writeText(
-            context,
-            ellipsise(context, tile.label, fonts.label, limit),
-            { x: left, y: inner.y },
-            { font: fonts.label, color: muted() },
-        );
-        paintStatIcon(context, tile, { x: left, y: figureY });
-        writeText(
-            context,
-            ellipsise(context, tile.figure, fonts.figure, limit - iconWidth(tile)),
-            { x: figureX, y: figureY },
-            { font: fonts.figure, color: ink() },
-        );
-
-        left += Math.min(statWidth(context, tile, fonts), limit) + HEATMAP.statGap;
+        left += statWidth(context, tile, sizes) + sizes.gap;
     });
 };
 
@@ -148,11 +141,15 @@ const paintGrid = (
     const empty = lightColor('var(--muted)');
     const monthFont = sans(500, HEATMAP.monthSize);
 
+    const gridRight = area.x + columns * stride - gap;
+
     heatmap.months.forEach((month) => {
+        const labelWidth = widest(context, [month.label], monthFont);
+
         writeText(
             context,
             month.label,
-            { x: area.x + month.column * stride, y: top - HEATMAP.monthGap },
+            { x: Math.min(area.x + month.column * stride, gridRight - labelWidth), y: top - HEATMAP.monthGap },
             { font: monthFont, color: muted() },
         );
     });

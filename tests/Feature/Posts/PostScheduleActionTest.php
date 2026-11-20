@@ -296,3 +296,28 @@ test('moving a queued post to the top toasts that it went to the top, not that i
         ->assertSessionHas('flash.success', __('posts.composer.queue.moved_to_top'))
         ->assertSessionHas('flash.link.url', route('app.posts.index', ['post' => $second->id]));
 });
+
+test('a member who needs approval is told the queue request awaits approval', function () {
+    $member = workspaceMember($this->workspace, 'approval');
+    $draft = scheduleActionPost($this->channel, $member);
+
+    $this->actingAs($member)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'queue_next'])
+        ->assertSessionHas('flash.success', __('posts.approvals.requested'))
+        ->assertSessionHas('flash.link.url', route('app.posts.index', ['post' => $draft->id]));
+});
+
+test('the toast reaches a partial reload that does not ask for it', function () {
+    $page = $this->actingAs($this->user)->get(route('app.posts.index'))->assertOk()->viewData('page');
+
+    $this->withSession(['flash' => ['success' => 'Your post was added to the queue.']])
+        ->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) data_get($page, 'version'),
+            'X-Inertia-Partial-Component' => data_get($page, 'component'),
+            'X-Inertia-Partial-Data' => 'posts',
+        ])
+        ->get(route('app.posts.index'))
+        ->assertOk()
+        ->assertJsonPath('props.flash.success', 'Your post was added to the queue.');
+});

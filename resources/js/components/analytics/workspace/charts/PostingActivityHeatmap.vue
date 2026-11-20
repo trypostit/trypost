@@ -5,7 +5,7 @@ import {
     VisSingleContainer,
 } from '@unovis/vue';
 import { useElementSize } from '@vueuse/core';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import PostingActivityTooltip from '@/components/analytics/workspace/charts/PostingActivityTooltip.vue';
 import {
@@ -132,7 +132,10 @@ const tooltipTriggers = {
     }): string | undefined => tooltipTemplate?.({ ...cell.datum }),
 };
 
-/** A grid wider than a phone opens on the latest weeks, like the end of the year it shows. */
+/** Whether the grid shows its latest weeks; false once the user scrolls back to older ones. */
+const followsToday = ref(true);
+
+/** A grid wider than a phone opens on the latest weeks, and keeps them in view as it resizes until the user scrolls away. */
 const scrollToToday = async (): Promise<void> => {
     await nextTick();
 
@@ -140,7 +143,22 @@ const scrollToToday = async (): Promise<void> => {
         return;
     }
 
+    if (!followsToday.value) {
+        return;
+    }
+
     scroller.value.scrollLeft = scroller.value.scrollWidth;
+};
+
+/** Remembers whether the user left the latest weeks, so a resize never pulls them back. */
+const rememberScroll = (): void => {
+    if (!filled(scroller.value)) {
+        return;
+    }
+
+    const { scrollLeft, clientWidth, scrollWidth } = scroller.value;
+
+    followsToday.value = Math.abs(scrollLeft) + clientWidth >= scrollWidth - 1;
 };
 
 watch(width, scrollToToday);
@@ -156,6 +174,9 @@ const cellAttributes = {
         <div
             ref="scroller"
             class="overflow-x-auto"
+            role="img"
+            @scroll="rememberScroll"
+            :aria-label="$t('analytics.posting_activity.title')"
             data-testid="posting-activity-scroller"
         >
             <ChartContainer

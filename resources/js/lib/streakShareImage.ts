@@ -7,19 +7,17 @@
  */
 
 import type { Icon } from '@tabler/icons-vue';
-import {
-    IconCrownFilled,
-    IconFlameFilled,
-    IconSendFilled,
-} from '@tabler/icons-vue';
 
 import { canvasToFile } from '@/lib/canvasFile';
 import { filled } from '@/lib/helpers';
+import { POSTING_ACTIVITY_STAT_ICONS } from '@/lib/postingActivity';
+import { lightColor } from '@/lib/shareCard/colors';
 import { paintLogo } from '@/lib/shareCard/frame';
 import { iconPaths } from '@/lib/shareCard/icons';
 import { loadFonts } from '@/lib/shareCard/images';
 import { writeText } from '@/lib/shareCard/text';
 import { heading, sans } from '@/lib/shareCard/theme';
+import type { ShareTileIcon } from '@/lib/shareCard/types';
 
 /** A 4:5 portrait, the size feeds show whole. */
 const SIZE = { width: 1080, height: 1350 };
@@ -48,13 +46,13 @@ const DOTS: { x: number; y: number; size: number; color: string }[] = [
 ];
 
 /** The small tiles around the number, some with the posting activity's icons. */
-const TILES: { x: number; y: number; icon?: Icon; color?: string }[] = [
+const TILES: { x: number; y: number; icon?: ShareTileIcon }[] = [
     { x: 70, y: 70 },
-    { x: 270, y: 70, icon: IconFlameFilled, color: '#f97316' },
-    { x: 70, y: 320, icon: IconCrownFilled, color: '#fbbf24' },
+    { x: 270, y: 70, icon: POSTING_ACTIVITY_STAT_ICONS.current_streak },
+    { x: 70, y: 320, icon: POSTING_ACTIVITY_STAT_ICONS.best_streak },
     { x: 990, y: 70 },
     { x: 800, y: 320 },
-    { x: 800, y: 530, icon: IconSendFilled, color: '#7c3aed' },
+    { x: 800, y: 530, icon: POSTING_ACTIVITY_STAT_ICONS.total },
     { x: -80, y: 530 },
 ];
 
@@ -138,16 +136,12 @@ const paintTiles = (context: CanvasRenderingContext2D): void => {
             return;
         }
 
-        if (!filled(tile.color)) {
-            return;
-        }
-
         const inset = (TILE.size - TILE.icon) / 2;
 
         paintIcon(
             context,
-            tile.icon,
-            tile.color,
+            tile.icon.icon,
+            lightColor(tile.icon.color),
             { x: tile.x + inset, y: tile.y + inset },
             TILE.icon,
         );

@@ -429,9 +429,9 @@ return [
         'caption_summary_workspace' => 'Nossos números de :range 📈 :metrics',
         'caption_summary_channel' => 'Nossos números em :channel de :range 📈 :metrics',
         'caption_posting_activity' => [
-            'record_streak' => '{1} 🔥 :days seguidos postando, nossa maior sequência até agora! Foi :posts post nos últimos 12 meses.|[0,*] 🔥 :days seguidos postando, nossa maior sequência até agora! Foram :posts posts nos últimos 12 meses.',
-            'on_streak' => '{1} 🔥 :days seguidos postando. Nosso recorde é de :best, com :posts post nos últimos 12 meses.|[0,*] 🔥 :days seguidos postando. Nosso recorde é de :best, com :posts posts nos últimos 12 meses.',
-            'no_streak' => '{1} 📅 :posts post nos últimos 12 meses, com um recorde de :best seguidos.|[0,*] 📅 :posts posts nos últimos 12 meses, com um recorde de :best seguidos.',
+            'record_streak' => '{1} 🔥 :days postando sem parar, nossa maior sequência até agora! Foi :posts post nos últimos 12 meses.|[0,*] 🔥 :days postando sem parar, nossa maior sequência até agora! Foram :posts posts nos últimos 12 meses.',
+            'on_streak' => '{1} 🔥 :days postando sem parar. Nosso recorde é de :best, com :posts post nos últimos 12 meses.|[0,*] 🔥 :days postando sem parar. Nosso recorde é de :best, com :posts posts nos últimos 12 meses.',
+            'no_streak' => '{1} 📅 :posts post nos últimos 12 meses, com um recorde de :best em sequência.|[0,*] 📅 :posts posts nos últimos 12 meses, com um recorde de :best em sequência.',
         ],
         'export_failed' => 'Não foi possível criar a imagem. Tente de novo.',
         'colors' => [

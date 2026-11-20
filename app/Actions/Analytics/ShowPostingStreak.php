@@ -18,28 +18,31 @@ final class ShowPostingStreak
 
     /**
      * Null while the workspace has no streak: the sidebar shows no badge then.
+     * The streak is cached even at zero weeks, since the cache keeps no null.
      *
      * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
      */
     public static function cached(User $user, Workspace $workspace): ?array
     {
-        return Cache::remember(
+        $streak = Cache::remember(
             "posting-streak:{$workspace->id}:{$user->id}:{$user->timezone}:{$user->week_starts_on->value}",
             now()->addMinutes(self::CACHE_MINUTES),
-            fn (): ?array => self::build($user, $workspace),
+            fn (): array => self::build($user, $workspace),
         );
-    }
-
-    /**
-     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
-     */
-    private static function build(User $user, Workspace $workspace): ?array
-    {
-        $streak = app(BuildPostingStreak::class)->execute($workspace, $user->timezone, $user->week_starts_on);
 
         if (data_get($streak, 'weeks') === 0) {
             return null;
         }
+
+        return $streak;
+    }
+
+    /**
+     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}
+     */
+    private static function build(User $user, Workspace $workspace): array
+    {
+        $streak = app(BuildPostingStreak::class)->execute($workspace, $user->timezone, $user->week_starts_on);
 
         return [
             ...$streak,

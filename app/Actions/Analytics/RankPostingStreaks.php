@@ -7,6 +7,7 @@ namespace App\Actions\Analytics;
 use App\Enums\User\WeekStart;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -36,28 +37,53 @@ final class RankPostingStreaks
             ->lazyById()
             ->filter(fn (Workspace $workspace): bool => $workspace->account?->hasAppAccess() === true)
             ->map(fn (Workspace $workspace): int => BuildPostingStreak::streak(collect(array_keys(data_get($weeks, $workspace->id, []))), $thisWeek))
-            ->sortDesc()
-            ->values()
-            ->all();
+            ->collect();
 
-        Cache::forever(self::CACHE_KEY, $streaks);
+        Cache::forever(self::CACHE_KEY, self::thresholds($streaks));
+    }
+
+    /**
+     * The fewest weeks each "Top X%" needs: one past the longest streak still
+     * shared by more than that share of the workspaces, so the rank keeps one
+     * number per share instead of every workspace's streak.
+     *
+     * @param  Collection<int, int>  $streaks
+     * @return array<int, int>
+     */
+    private static function thresholds(Collection $streaks): array
+    {
+        if ($streaks->isEmpty()) {
+            return [];
+        }
+
+        $running = 0;
+        $atLeast = $streaks->countBy()
+            ->sortKeysDesc()
+            ->map(function (int $count) use (&$running): int {
+                $running += $count;
+
+                return $running;
+            });
+
+        return collect(self::TOP_PERCENTS)
+            ->mapWithKeys(fn (int $percent): array => [
+                $percent => ($atLeast
+                    ->filter(fn (int $count, int $streak): bool => $streak >= 1 && $count / $streaks->count() * 100 > $percent)
+                    ->keys()
+                    ->max() ?? 0) + 1,
+            ])
+            ->all();
     }
 
     /** The smallest "Top X%" a streak reaches among the ranked workspaces, or null below the last one. */
     public static function topPercent(int $weeks): ?int
     {
-        $streaks = collect(Cache::get(self::CACHE_KEY, []));
+        $thresholds = collect(Cache::get(self::CACHE_KEY, []));
 
         if ($weeks < 1) {
             return null;
         }
 
-        if ($streaks->isEmpty()) {
-            return null;
-        }
-
-        $share = $streaks->filter(fn (int $streak): bool => $streak >= $weeks)->count() / $streaks->count() * 100;
-
-        return collect(self::TOP_PERCENTS)->first(fn (int $percent): bool => $share <= $percent);
+        return $thresholds->keys()->first(fn (int $percent): bool => $weeks >= $thresholds->get($percent));
     }
 }

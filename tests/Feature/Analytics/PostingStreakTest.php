@@ -16,9 +16,11 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     Bus::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -230,8 +232,22 @@ test('a streak longer than the window reads as the window', function () {
 });
 
 test('the ranking runs every day', function () {
-    $events = collect(app(Schedule::class)->events())
-        ->map(fn ($event): string => (string) $event->command);
+    $ranking = collect(app(Schedule::class)->events())
+        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'analytics:rank-posting-streaks'));
 
-    expect($events->contains(fn (string $command): bool => str_contains($command, 'analytics:rank-posting-streaks')))->toBeTrue();
+    expect($ranking?->expression)->toBe('0 0 * * *');
 });
+
+test('the sidebar reads the streak from the cache on the next page, with or without a streak', function (bool $posted) {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+
+    if ($posted) {
+        postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+    }
+
+    ShowPostingStreak::cached($user, $this->workspace);
+    DB::enableQueryLog();
+    ShowPostingStreak::cached($user, $this->workspace);
+
+    expect(DB::getQueryLog())->toBeEmpty();
+})->with(['without a streak' => false, 'with a streak' => true]);

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconFlameFilled, IconShare } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import { ref } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,20 @@ const props = defineProps<{
 
 const open = ref(false);
 const sharing = ref(false);
+const mounted = ref(true);
+
+onBeforeUnmount(() => {
+    mounted.value = false;
+});
+
+/** Whether the share the user asked for still has somewhere to land: the popover open, the badge on the page. */
+const stillSharing = (): boolean => {
+    if (!mounted.value) {
+        return false;
+    }
+
+    return open.value;
+};
 
 const weeks = (): string => formatFullNumber(props.streak.weeks);
 
@@ -75,6 +89,10 @@ const sharePost = async (): Promise<void> => {
         });
         const media = await uploadChunked({ file, url: storeChunked.url() });
 
+        if (!stillSharing()) {
+            return;
+        }
+
         open.value = false;
         openPostComposer({
             draft: {
@@ -87,6 +105,10 @@ const sharePost = async (): Promise<void> => {
             },
         });
     } catch {
+        if (!stillSharing()) {
+            return;
+        }
+
         toast.error(trans('analytics.share.post_failed'));
     } finally {
         sharing.value = false;
@@ -181,8 +203,9 @@ const sharePost = async (): Promise<void> => {
                     <TooltipProvider v-if="hasRank()" :delay-duration="200">
                         <Tooltip>
                             <TooltipTrigger as-child>
-                                <span
-                                    class="mt-0.5 rounded bg-primary-text/20 px-1 text-xs leading-4.5 font-medium text-primary-text"
+                                <button
+                                    type="button"
+                                    class="mt-0.5 rounded bg-primary-text/20 px-1 text-xs leading-4.5 font-medium text-primary-text outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     data-testid="posting-streak-rank"
                                 >
                                     {{
@@ -190,7 +213,7 @@ const sharePost = async (): Promise<void> => {
                                             percent: percent(),
                                         })
                                     }}
-                                </span>
+                                </button>
                             </TooltipTrigger>
                             <TooltipContent
                                 class="max-w-[calc(100vw-2rem)] sm:max-w-none sm:whitespace-nowrap"

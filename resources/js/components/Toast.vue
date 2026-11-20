@@ -27,10 +27,12 @@ const page = usePage();
 /**
  * What a toast adds when the flash carries a link: the link right after the
  * message, in a toast as wide as both. Any flashed message can lead somewhere.
+ * Without a link both are cleared, since a toast still on screen under the
+ * same id keeps the options it is not given.
  */
 const linkOptions = (link: FlashLink | undefined) => {
     if (!filled(link)) {
-        return {};
+        return { action: undefined, classes: undefined };
     }
 
     return {
