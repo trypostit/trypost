@@ -332,3 +332,17 @@ test('a post on a network insights reads counts through its publication only', f
 
     expect(postingStreak($this->workspace)['weeks'])->toBe(0);
 });
+
+test('the sidebar gets no streak without a current workspace or without app access', function () {
+    config(['trypost.self_hosted' => false]);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+
+    expect(ShowPostingStreak::forSidebar(null))->toBeNull()
+        ->and(ShowPostingStreak::forSidebar(User::factory()->create(['current_workspace_id' => null])))->toBeNull()
+        ->and(ShowPostingStreak::forSidebar($user))->toBeNull();
+
+    subscribeAccount($this->workspace->account);
+
+    expect(data_get(ShowPostingStreak::forSidebar($user->fresh()), 'weeks'))->toBe(1);
+});

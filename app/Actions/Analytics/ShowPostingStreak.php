@@ -20,6 +20,27 @@ final class ShowPostingStreak
     private const int CACHE_MINUTES = 10;
 
     /**
+     * The streak of the user's current workspace, read in their zone and week,
+     * while its account has app access; null hides the badge.
+     *
+     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
+     */
+    public static function forSidebar(?User $user): ?array
+    {
+        $workspace = $user?->currentWorkspace;
+
+        if (blank($workspace)) {
+            return null;
+        }
+
+        if ($workspace->account?->hasAppAccess() !== true) {
+            return null;
+        }
+
+        return self::cached($user, $workspace);
+    }
+
+    /**
      * Null while the workspace has no streak: the sidebar shows no badge then.
      * The streak is cached even at zero weeks, since the cache keeps no null.
      *

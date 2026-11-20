@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
-            'postingStreak' => fn (): ?array => $this->postingStreak($user),
+            'postingStreak' => fn (): ?array => ShowPostingStreak::forSidebar($user),
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],
@@ -190,26 +190,5 @@ class HandleInertiaRequests extends Middleware
             fn (): bool => blank($user->getRawOriginal('referral_source'))
                 && $user->created_at?->lte(now()->subHour()) === true,
         );
-    }
-
-    /**
-     * The current workspace's posting streak for the sidebar badge, while the
-     * workspace's account has app access; null hides the badge.
-     *
-     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
-     */
-    private function postingStreak(?User $user): ?array
-    {
-        $workspace = $user?->currentWorkspace;
-
-        if (blank($workspace)) {
-            return null;
-        }
-
-        if ($workspace->account?->hasAppAccess() !== true) {
-            return null;
-        }
-
-        return ShowPostingStreak::cached($user, $workspace);
     }
 }
