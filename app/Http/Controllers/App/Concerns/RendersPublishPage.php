@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App\Concerns;
 
 use App\Actions\Post\BuildPublishPageProps;
 use App\Enums\Post\Status as PostStatus;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -26,6 +27,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 trait RendersPublishPage
 {
+    use FlashesToast;
+
     private const array PUBLISH_PAGE_ROUTES = ['app.posts.index', 'app.channels.publish'];
 
     private function renderPublishPage(Request $request, Workspace $workspace, ?SocialAccount $channel = null): Response|RedirectResponse
@@ -162,6 +165,14 @@ trait RendersPublishPage
                     'assistant' => $request->boolean('ai') || $request->boolean('assistant'),
                 ],
             ]);
+    }
+
+    /** The toast once a post goes to the queue, linking to it: a member who needs approval only asked for it. */
+    private function flashQueuedToast(Post $post, string $queued): void
+    {
+        $message = $post->status === PostStatus::PendingApproval ? __('posts.approvals.requested') : $queued;
+
+        $this->flashSuccessWithLink($message, __('posts.actions.view'), route('app.posts.index', ['post' => $post->id]));
     }
 
     private function canOpenComposer(Post $post): bool

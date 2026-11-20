@@ -902,3 +902,21 @@ test('a publishing post sits in its own queue group and moves to sent once it se
     $page->assertVisible("@post-card-{$publishing->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('moving a post to the top toasts with a link to its details, through the partial reload', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $first = publishQueuePost($user, $channel);
+    $post = publishQueuePost($user, $channel);
+    $first->update(['content' => 'First in the queue']);
+    $post->update(['content' => 'Moved to the top']);
+    $this->actingAs($user);
+
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    $page->click("@post-card-menu-{$post->id}");
+    waitFor($page, "@post-move-top-{$post->id}");
+    $page->click("@post-move-top-{$post->id}");
+    waitFor($page, '@flash-success-toast [data-button]');
+
+    $page->assertSeeIn('[data-testid="flash-success-toast"] [data-button]', 'View post')
+        ->assertNoJavaScriptErrors();
+});

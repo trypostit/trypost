@@ -318,16 +318,16 @@ test('recovering an empty-target draft into the queue confirms it with a toast',
 
     $page->click('@composer-submit');
     waitForGone($page, '@post-composer-dialog');
-    waitFor($page, '@queue-added-toast');
+    waitFor($page, '@flash-success-toast');
 
     $recovered = Post::query()->where('workspace_id', $workspace->id)->sole();
 
     expect($recovered->id)->not->toBe($legacy->id)
         ->and($recovered->schedule_mode)->toBe(ScheduleMode::Queue)
-        ->and($recovered->scheduled_at->toIso8601String())->toBe(composerQueueSlots($channel, 1)[0]->toIso8601String())
-        ->and($page->script('document.querySelector("[data-testid=queue-added-toast]")?.textContent.trim() ?? ""'))->toContain('Added to queue');
+        ->and($recovered->scheduled_at->toIso8601String())->toBe(composerQueueSlots($channel, 1)[0]->toIso8601String());
 
-    $page->assertNoJavaScriptErrors();
+    $page->assertSeeIn('[data-testid="flash-success-toast"]', 'Your post was added to the queue.')
+        ->assertNoJavaScriptErrors();
 });
 
 /**
@@ -437,3 +437,26 @@ test('the picker calendar starts the week on the user preference', function (Wee
     'sunday' => [WeekStart::Sunday, 'S', 0],
     'monday' => [WeekStart::Monday, 'M', 1],
 ]);
+
+test('the added-to-queue toast opens the new post details in the queue', function () {
+    [$user, $workspace] = composerQueueWorkspace();
+    $channel = composerQueueChannel($workspace, composerQueueSchedule());
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.create'));
+    composerQueueOpenWith($page, $channel);
+    waitFor($page, '@composer-submit');
+    $page->click('@composer-submit');
+    waitForGone($page, '@post-composer-dialog');
+    waitFor($page, '@flash-success-toast [data-button]');
+
+    $post = Post::query()->where('workspace_id', $workspace->id)->sole();
+
+    $page->assertSeeIn('[data-testid="flash-success-toast"] [data-button]', 'View post')
+        ->click('[data-testid="flash-success-toast"] [data-button]');
+    waitForOpen($page, "@post-details-{$post->id}");
+
+    $page->assertPathIs(route('app.posts.index', absolute: false))
+        ->assertQueryStringHas('post', $post->id)
+        ->assertNoJavaScriptErrors();
+});

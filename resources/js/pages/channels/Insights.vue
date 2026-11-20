@@ -9,6 +9,7 @@ import ChannelPublicationTable from '@/components/analytics/channel/ChannelPubli
 import PostTypeFilter from '@/components/analytics/channel/PostTypeFilter.vue';
 import InsightsExportMenu from '@/components/analytics/InsightsExportMenu.vue';
 import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
+import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
 import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -27,6 +28,7 @@ import type {
     ChannelPublicationPage,
     ContentTypeOption,
     InsightsSyncCadence,
+    PostingActivity,
     SummaryMetric,
 } from '@/types/analytics';
 import { channelName } from '@/types/channel';
@@ -44,11 +46,18 @@ const props = defineProps<{
     labels?: { id: string; name: string; color: string }[];
     contentTypes?: ContentTypeOption[];
     metricSeries?: ChannelMetricSeries;
+    postingActivity?: PostingActivity;
 }>();
 
 useAnalyticsCoveragePoll(() => props.report?.coverage, {
     firstDay: () => props.report?.bounds.min,
-    only: ['availableMetrics', 'publications', 'filters', 'metricSeries'],
+    only: [
+        'availableMetrics',
+        'publications',
+        'filters',
+        'metricSeries',
+        'postingActivity',
+    ],
 });
 
 const url = computed(() => insights.url(props.channel.id));
@@ -269,6 +278,10 @@ watch(selectedTypes, applyFilters, { deep: true });
                     />
                     <ChannelMetricsCard
                         :series="metricSeries"
+                        :channel="shareChannel"
+                    />
+                    <PostingActivityCard
+                        :activity="postingActivity"
                         :channel="shareChannel"
                     />
                 </template>

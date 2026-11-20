@@ -29,12 +29,13 @@ const optionText = (option: Partial<ShareCardOptions> & Pick<ShareMetricOption, 
         ...option.lines.map((line) => line.figure),
         ...(option.series ?? []).flatMap((series) => [series.label, series.figure, series.previousFigure]),
         ...(option.tiles ?? []).flatMap((tile) => [tile.label, tile.figure]),
+        ...(option.heatmap?.months ?? []).map((month) => month.label),
     ]
         .filter((text): text is string => Boolean(text))
         .join(' ');
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first, with the glyphs the card writes. */
-const loadFonts = async (text: string): Promise<void> => {
+export const loadFonts = async (text: string): Promise<void> => {
     if (!('fonts' in document)) {
         return;
     }

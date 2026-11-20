@@ -25,14 +25,12 @@ const props = defineProps<{
     account: PublishSocialAccount;
 }>();
 
-const { canManageAccounts, requiresApproval } = useWorkspaceAbilities();
+const { canManageAccounts } = useWorkspaceAbilities();
 
 const queueSetupOpen = ref(false);
 
 const addToQueue = (): void => {
-    schedulePostCard(props.post.id, 'queue_next', {
-        requestsApproval: requiresApproval.value,
-    });
+    schedulePostCard(props.post.id, 'queue_next');
 };
 
 const closeQueueSetup = (): void => {

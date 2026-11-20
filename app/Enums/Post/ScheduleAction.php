@@ -30,4 +30,18 @@ enum ScheduleAction: string
             self::Reschedule => throw new LogicException('Reschedule goes through ReschedulePost.'),
         };
     }
+
+    /**
+     * What the toast says once the action puts the post in the queue; null for
+     * an action that does not. The top of the queue is a move, not an addition:
+     * "Move to top" only reaches posts already queued.
+     */
+    public function queuedMessage(): ?string
+    {
+        return match ($this) {
+            self::QueueNext => trans_choice('posts.composer.queue.added', 1, ['count' => 1]),
+            self::QueueTop => __('posts.composer.queue.moved_to_top'),
+            self::Draft, self::PublishNow, self::Reschedule => null,
+        };
+    }
 }

@@ -1117,6 +1117,17 @@ function elementsMap(mixed $page, string $selector, string $expression): array
 }
 
 /**
+ * Changes the element the selector matches the way the browser or the user
+ * would (scrolling it, resizing what holds it), with `element` in scope.
+ */
+function onElement(mixed $page, string $selector, string $statement): void
+{
+    $selector = jsSelector($selector);
+
+    $page->script("((element) => { {$statement}; })(document.querySelector({$selector}))");
+}
+
+/**
  * Lets the page run for a while without waiting on anything, to show that
  * something stays as it is (a dialog left open across polls). Never a
  * PHP `sleep()`, which would stop the page's own requests.

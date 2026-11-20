@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Analytics\BuildInsightsExport;
+use App\Actions\Analytics\BuildPostingActivity;
 use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
 use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ReadPublicationAnalytics;
@@ -31,6 +32,7 @@ class InsightsController extends Controller
         ResolveAnalyticsRangePreset $presets,
         ResolveAnalyticsChannelFilter $channelFilter,
         ListAvailableChannelMetrics $availableMetrics,
+        BuildPostingActivity $postingActivity,
     ): Response {
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('view', $workspace);
@@ -46,6 +48,12 @@ class InsightsController extends Controller
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'availableMetrics' => $single === null ? null : $availableMetrics->handle($single, data_get($channelKeys, $single->id)),
             'sync' => SyncCadence::toArray(),
+            'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute(
+                $workspace,
+                $analytics->keys($channelKeys),
+                $request->user()->timezone,
+                $filter,
+            ), 'activity'),
             'report' => [
                 ...$report,
                 'filters' => [

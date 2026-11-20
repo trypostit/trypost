@@ -4,7 +4,7 @@
  * same in every browser and needs no dependency. Every image it draws loads
  * with CORS: one that does not would stop the canvas exporting.
  *
- * Each shape has its painter (`lines`, `rows`, `stacked`, `combo`, `summary`)
+ * Each shape has its painter (`lines`, `rows`, `stacked`, `combo`, `summary`, `heatmap`)
  * on the shared frame, text, drawing and channel helpers; `scale` and `curve`
  * hold the pure arithmetic the painters share with the page's charts.
  */
@@ -14,6 +14,7 @@ import { canvasToFile } from '@/lib/canvasFile';
 import { lightColor } from '@/lib/shareCard/colors';
 import { paintCombo } from '@/lib/shareCard/combo';
 import { paintGround, paintMark, paintPanel } from '@/lib/shareCard/frame';
+import { paintHeatmapCard } from '@/lib/shareCard/heatmap';
 import { prepareShareCard } from '@/lib/shareCard/images';
 import { paintLinesCard } from '@/lib/shareCard/lines';
 import { paintRowsCard } from '@/lib/shareCard/rows';
@@ -28,6 +29,7 @@ export { SHARE_CARD_SIZE, SHARE_TINTS, type ShareTint } from '@/lib/shareCard/th
 export type {
     ShareCardOptions,
     ShareChannel,
+    ShareHeatmap,
     ShareLine,
     ShareMetricOption,
     SharePoint,
@@ -43,6 +45,7 @@ const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: 
     stacked: (context, options, _images, panel) => paintStackedCard(context, options, panel),
     combo: (context, options, _images, panel) => paintCombo(context, options, panel),
     tiles: (context, options, _images, panel) => paintSummary(context, options, panel),
+    heatmap: (context, options, _images, panel) => paintHeatmapCard(context, options, panel),
 };
 
 /**

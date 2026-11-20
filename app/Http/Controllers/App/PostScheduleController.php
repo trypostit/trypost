@@ -9,6 +9,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\ScheduleAction;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
 use App\Support\PostStatusRules;
@@ -16,7 +17,7 @@ use Illuminate\Http\RedirectResponse;
 
 class PostScheduleController extends Controller
 {
-    use RendersPublishPage;
+    use FlashesToast, RendersPublishPage;
 
     public function update(UpdatePostScheduleRequest $request, Post $post): RedirectResponse
     {
@@ -42,8 +43,15 @@ class PostScheduleController extends Controller
         $action = data_get($result, 'action');
 
         if ($action === PostAction::Finalized) {
-            session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
-            session()->flash('flash.bannerStyle', 'danger');
+            return back()
+                ->with('flash.banner', __('posts.flash.cannot_edit_finalized'))
+                ->with('flash.bannerStyle', 'danger');
+        }
+
+        $queuedMessage = $scheduleAction->queuedMessage();
+
+        if (filled($queuedMessage)) {
+            $this->flashQueuedToast(data_get($result, 'post'), $queuedMessage);
         }
 
         if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {

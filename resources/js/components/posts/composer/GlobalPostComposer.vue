@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
-import { transChoice } from 'laravel-vue-i18n';
 import { computed, ref, watch } from 'vue';
-import { toast } from 'vue-sonner';
 
 import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.vue';
 import { clearComposerAutosave } from '@/composables/useComposerAutosave';
@@ -82,14 +80,6 @@ const submitComposition = (
                 page.props.auth?.currentWorkspace?.id,
             );
             closePostComposer();
-            if (composition.queue) {
-                const count = composition.destinations.length;
-                toast.success(
-                    transChoice('posts.composer.queue.added', count, {
-                        count: String(count),
-                    }),
-                );
-            }
             if (createAnother) openPostComposer();
             onSaved?.();
         },

@@ -200,7 +200,7 @@ test('workspace dashboard separates accounts and switches follower and post char
 
     $page->assertVisible('@analytics-summary-followers');
 
-    expect(workspaceInsightsSectionTitles($page))->toBe(['Summary', 'Top 5 Posts', 'Performance', 'Followers', 'Posts']);
+    expect(workspaceInsightsSectionTitles($page))->toBe(['Summary', 'Top 5 Posts', 'Performance', 'Followers', 'Posts', 'Posting activity']);
 
     $page->assertSee('@first')
         ->assertSee('@second')

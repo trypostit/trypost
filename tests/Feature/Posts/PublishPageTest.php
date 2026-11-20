@@ -18,6 +18,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia;
@@ -87,6 +88,7 @@ function publishPageQueryCount(object $test, string $tab, int $postsPerStatus): 
 
     $url = route('app.posts.index', ['tab' => $tab]);
 
+    Cache::flush();
     DB::flushQueryLog();
     DB::enableQueryLog();
 
