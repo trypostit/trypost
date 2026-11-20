@@ -187,7 +187,7 @@ const cellAttributes = {
         </div>
 
         <div
-            class="flex items-center justify-end gap-1.5 text-xs text-muted-foreground"
+            class="flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
         >
             <span>{{ $t('analytics.posting_activity.less') }}</span>
             <span class="size-3 rounded-[3px] bg-muted dark:bg-accent" />

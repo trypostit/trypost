@@ -68,13 +68,17 @@ const testId = (key: StatKey): string =>
         data-testid="posting-activity"
     >
         <template v-if="activity" #actions>
-            <div class="flex items-start gap-4 max-sm:flex-1">
+            <div class="flex items-center gap-2 max-sm:flex-1">
                 <dl
-                    class="flex flex-wrap items-start gap-x-4 gap-y-2 max-sm:me-auto max-sm:min-w-0 max-sm:flex-1 sm:gap-x-6"
+                    class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border max-sm:min-w-64 max-sm:flex-1"
                 >
-                    <div v-for="key in STATS" :key="key" class="grid gap-0.5">
+                    <div
+                        v-for="key in STATS"
+                        :key="key"
+                        class="grid min-w-0 content-start gap-0.5 px-2.5 py-2 sm:px-4"
+                    >
                         <dt
-                            class="flex items-center gap-0.5 text-xs whitespace-nowrap text-muted-foreground"
+                            class="flex items-center gap-0.5 text-xs text-muted-foreground sm:whitespace-nowrap"
                         >
                             {{ $t(labelKey(key)) }}
                             <InfoTip
@@ -89,7 +93,7 @@ const testId = (key: StatKey): string =>
                                 aria-hidden="true"
                             />
                             <span
-                                class="font-heading text-lg leading-6 font-medium whitespace-nowrap text-foreground tabular-nums"
+                                class="font-heading text-base leading-6 font-medium whitespace-nowrap text-foreground tabular-nums sm:text-lg"
                                 :data-testid="testId(key)"
                                 >{{ statValue(activity, key) }}</span
                             >
