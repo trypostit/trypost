@@ -50,10 +50,10 @@ class InsightsController extends Controller
             'sync' => SyncCadence::toArray(),
             'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute(
                 $workspace,
-                $channelKeys === null ? null : array_values($channelKeys),
+                $channelKeys === null ? null : collect($channelKeys)->values()->all(),
                 $request->user()->timezone,
                 $filter,
-            )),
+            ), 'activity'),
             'report' => [
                 ...$report,
                 'filters' => [

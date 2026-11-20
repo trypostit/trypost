@@ -1,5 +1,6 @@
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { filled } from '@/lib/helpers';
 import { weekStartIndex } from '@/preferences';
 import type { PostingActivityDay } from '@/types/analytics';
 
@@ -13,7 +14,7 @@ export type PostingActivityMonth = { column: number; label: string };
 export const postingActivityOffset = (days: PostingActivityDay[]): number => {
     const first = days[0];
 
-    if (!first) {
+    if (!filled(first)) {
         return 0;
     }
 

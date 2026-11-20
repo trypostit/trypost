@@ -8,7 +8,6 @@ use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\ScheduleAction;
-use App\Enums\Post\Status as PostStatus;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
@@ -47,8 +46,10 @@ class PostScheduleController extends Controller
             session()->flash('flash.bannerStyle', 'danger');
         }
 
-        if ($action !== PostAction::Finalized && in_array($scheduleAction, [ScheduleAction::QueueNext, ScheduleAction::QueueTop], true)) {
-            $this->flashPostToast($this->queuedMessage($post->refresh()), $post);
+        if ($action !== PostAction::Finalized && $scheduleAction->addsToQueue()) {
+            $post->refresh();
+
+            $this->flashPostToast($this->queuedMessage($post, $this->queuePositionMessage($scheduleAction)), $post);
         }
 
         if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {
@@ -60,11 +61,11 @@ class PostScheduleController extends Controller
         return back();
     }
 
-    /** What the toast says once a post goes to the queue: a member who needs approval only asked for it. */
-    private function queuedMessage(Post $post): string
+    /** The top of the queue is a move, not an addition: "Move to top" only reaches posts already queued. */
+    private function queuePositionMessage(ScheduleAction $scheduleAction): string
     {
-        if ($post->status === PostStatus::PendingApproval) {
-            return __('posts.approvals.requested');
+        if ($scheduleAction === ScheduleAction::QueueTop) {
+            return __('posts.composer.queue.moved_to_top');
         }
 
         return trans_choice('posts.composer.queue.added', 1, ['count' => 1]);

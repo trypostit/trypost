@@ -8,6 +8,9 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Carbon\CarbonPeriod;
+use Illuminate\Support\Collection;
 
 /**
  * Posts that went out per day over the last year, for the Insights posting activity card.
@@ -29,36 +32,26 @@ final class BuildPostingActivity
     {
         $today = CarbonImmutable::parse(now($timezone)->toDateString(), 'UTC');
         $range = new DateRange($today->subDays(self::DAYS - 1), $today, timezone: $timezone);
-        $counts = [];
-
-        for ($day = $range->start; $day->lessThanOrEqualTo($range->end); $day = $day->addDay()) {
-            $counts[$day->toDateString()] = 0;
-        }
 
         $published = $this->publications->query($workspace, $range->startsAt(), $range->endsAt(), $accountKeys, $filter)
             ->select('publication.provider_published_at')
-            ->cursor();
+            ->cursor()
+            ->countBy(fn (object $row): string => $range->localDate($row->provider_published_at));
 
-        foreach ($published as $row) {
-            $date = $range->localDate($row->provider_published_at);
-
-            if (array_key_exists($date, $counts)) {
-                $counts[$date]++;
-            }
-        }
-
-        $days = collect($counts)
-            ->map(fn (int $count, string $date): array => ['date' => $date, 'count' => $count])
-            ->values()
-            ->all();
-        $streaks = self::streaks($days);
+        $days = collect(CarbonPeriod::create($range->start, $range->end))
+            ->map(fn (CarbonInterface $day): array => [
+                'date' => $day->toDateString(),
+                'count' => (int) $published->get($day->toDateString(), 0),
+            ])
+            ->values();
+        $streaks = self::streaks($days->all());
 
         return [
             'start' => $range->start->toDateString(),
             'end' => $range->end->toDateString(),
-            'days' => $days,
-            'total' => array_sum($counts),
-            'max_count' => max($counts),
+            'days' => $days->all(),
+            'total' => $days->sum('count'),
+            'max_count' => $days->max('count'),
             'current_streak' => data_get($streaks, 'current'),
             'best_streak' => data_get($streaks, 'best'),
         ];
@@ -81,30 +74,20 @@ final class BuildPostingActivity
             $best = max($best, $run);
         }
 
-        return ['current' => self::currentStreak($days), 'best' => $best];
+        return ['current' => self::currentStreak(collect($days)), 'best' => $best];
     }
 
     /**
-     * @param  list<array{date: string, count: int}>  $days
+     * @param  Collection<int, array{date: string, count: int}>  $days
      */
-    private static function currentStreak(array $days): int
+    private static function currentStreak(Collection $days): int
     {
-        $remaining = $days;
-
-        if (data_get(end($remaining), 'count', 0) === 0) {
-            array_pop($remaining);
+        if (data_get($days->last(), 'count', 0) === 0) {
+            $days = $days->slice(0, -1);
         }
 
-        $current = 0;
-
-        foreach (array_reverse($remaining) as $day) {
-            if (data_get($day, 'count') === 0) {
-                return $current;
-            }
-
-            $current++;
-        }
-
-        return $current;
+        return $days->reverse()
+            ->takeWhile(fn (array $day): bool => data_get($day, 'count') > 0)
+            ->count();
     }
 }

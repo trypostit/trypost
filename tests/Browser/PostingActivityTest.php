@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
@@ -162,6 +163,39 @@ test('without a streak today the post leads with the year', function () {
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
     $page->click('@share-chart-post');
     waitForState($page, '@composer-base-content', "element.value === '📅 2 posts in the last 12 months, and a longest streak of 2 days in a row.'");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('today lands on its weekday row in the week the user starts on', function (WeekStart $weekStart, int $firstWeekday) {
+    $this->user->update(['week_starts_on' => $weekStart]);
+    postingActivityBrowserPublication($this->instagram, $this->today->setTime(10, 0));
+
+    $page = visit(route('app.insights'));
+    waitForCount($page, '@posting-activity-cell', 365);
+
+    $row = $page->script('(() => {
+        const cells = [...document.querySelectorAll("[data-testid=posting-activity-cell]")];
+        const rows = [...new Set(cells.map((cell) => Math.round(cell.getBBox().y)))].sort((a, b) => a - b);
+
+        return rows.indexOf(Math.round(cells[cells.length - 1].getBBox().y));
+    })()');
+
+    expect($row)->toBe(($this->today->dayOfWeek - $firstWeekday + 7) % 7);
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'sunday' => [WeekStart::Sunday, 0],
+    'monday' => [WeekStart::Monday, 1],
+]);
+
+test('the channel card fills in when the first posts arrive after opening the page', function () {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitFor($page, '@insights-no-data');
+    letPageRun($page, 2000);
+
+    postingActivityBrowserPublication($this->instagram, $this->today->subDays(1)->setTime(10, 0));
+
+    waitForText($page, '@posting-activity-total', '1');
 
     $page->assertNoJavaScriptErrors();
 });

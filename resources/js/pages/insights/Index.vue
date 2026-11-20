@@ -250,7 +250,6 @@ const accountColors = computed<Record<string, string>>(() => {
                     :available-metrics="availableMetrics ?? undefined"
                     subtitle-testid="insights-range-caption"
                 />
-                <PostingActivityCard :activity="postingActivity" />
                 <TopPosts
                     :top-posts="report.top_posts"
                     :range="report.range"
@@ -278,6 +277,7 @@ const accountColors = computed<Record<string, string>>(() => {
                     :channel-filtered="channelFiltered"
                     :total-channels="channelOptions.length"
                 />
+                <PostingActivityCard :activity="postingActivity" />
             </template>
         </div>
     </AppLayout>

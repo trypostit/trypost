@@ -265,10 +265,6 @@ watch(selectedTypes, applyFilters, { deep: true });
                         :network="getPlatformLabel(channel.platform)"
                         :channel="shareChannel"
                     />
-                    <PostingActivityCard
-                        :activity="postingActivity"
-                        :channel="shareChannel"
-                    />
                     <ChannelPublicationTable
                         v-if="filters"
                         :key="channel.platform"
@@ -282,6 +278,10 @@ watch(selectedTypes, applyFilters, { deep: true });
                     />
                     <ChannelMetricsCard
                         :series="metricSeries"
+                        :channel="shareChannel"
+                    />
+                    <PostingActivityCard
+                        :activity="postingActivity"
                         :channel="shareChannel"
                     />
                 </template>

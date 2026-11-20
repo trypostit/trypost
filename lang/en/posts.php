@@ -212,6 +212,7 @@ return [
             'add' => 'Add to queue',
             'add_many' => 'Add :count to queue',
             'added' => '{1} Your post was added to the queue.|[0,*] Your :count posts were added to the queue.',
+            'moved_to_top' => 'Your post was moved to the top of the queue.',
             'no_slots_hint' => 'Add posting times to use the queue.',
             'no_slots_channels' => 'No posting times: :channels',
             'no_slots_tooltip' => 'No posting times for :channels. Add posting times to use the queue.',

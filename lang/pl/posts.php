@@ -212,6 +212,7 @@ return [
             'add' => 'Dodaj do kolejki',
             'add_many' => 'Dodaj do kolejki: :count',
             'added' => '{1} Twój post został dodany do kolejki.|[0,*] Posty dodane do kolejki: :count.',
+            'moved_to_top' => 'Twój post trafił na początek kolejki.',
             'no_slots_hint' => 'Dodaj godziny publikacji, aby korzystać z kolejki.',
             'no_slots_channels' => 'Brak godzin publikacji: :channels',
             'no_slots_tooltip' => 'Brak godzin publikacji dla :channels. Dodaj godziny, aby korzystać z kolejki.',

@@ -177,6 +177,16 @@ trait RendersPublishPage
         ]);
     }
 
+    /** What the toast says once a post goes to the queue: a member who needs approval only asked for it. */
+    private function queuedMessage(Post $post, string $queued): string
+    {
+        if ($post->status === PostStatus::PendingApproval) {
+            return __('posts.approvals.requested');
+        }
+
+        return $queued;
+    }
+
     private function canOpenComposer(Post $post): bool
     {
         if (! $post->hasChannel()) {

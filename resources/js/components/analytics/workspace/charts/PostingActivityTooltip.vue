@@ -3,7 +3,7 @@ import { transChoice } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import date from '@/date';
-import { activeLocale } from '@/language';
+import { formatFullNumber } from '@/lib/utils';
 import type { PostingActivityDay } from '@/types/analytics';
 
 defineOptions({ inheritAttrs: false });
@@ -18,7 +18,7 @@ const posts = computed((): string =>
         'analytics.posting_activity.posts_on_day',
         props.payload.count,
         {
-            count: props.payload.count.toLocaleString(activeLocale.value),
+            count: formatFullNumber(props.payload.count),
         },
     ),
 );

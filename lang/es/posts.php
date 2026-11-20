@@ -212,6 +212,7 @@ return [
             'add' => 'Añadir a la cola',
             'add_many' => 'Añadir :count a la cola',
             'added' => '{1} Tu publicación se añadió a la cola.|[0,*] Tus :count publicaciones se añadieron a la cola.',
+            'moved_to_top' => 'Tu publicación pasó al principio de la cola.',
             'no_slots_hint' => 'Añade horarios de publicación para usar la cola.',
             'no_slots_channels' => 'Sin horarios: :channels',
             'no_slots_tooltip' => 'No hay horarios de publicación para :channels. Añade horarios para usar la cola.',

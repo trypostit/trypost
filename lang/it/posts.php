@@ -212,6 +212,7 @@ return [
             'add' => 'Aggiungi alla coda',
             'add_many' => 'Aggiungi :count alla coda',
             'added' => '{1} Il tuo post è stato aggiunto alla coda.|[0,*] I tuoi :count post sono stati aggiunti alla coda.',
+            'moved_to_top' => 'Il tuo post è stato spostato in cima alla coda.',
             'no_slots_hint' => 'Aggiungi orari di pubblicazione per usare la coda.',
             'no_slots_channels' => 'Nessun orario: :channels',
             'no_slots_tooltip' => 'Nessun orario di pubblicazione per :channels. Aggiungi orari per usare la coda.',

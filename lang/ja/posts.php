@@ -212,6 +212,7 @@ return [
             'add' => 'キューに追加',
             'add_many' => ':count件をキューに追加',
             'added' => '{1} 投稿をキューに追加しました。|[0,*] :count件の投稿をキューに追加しました。',
+            'moved_to_top' => '投稿をキューの先頭に移動しました。',
             'no_slots_hint' => 'キューを使うには投稿時間を追加してください。',
             'no_slots_channels' => '投稿時間なし：:channels',
             'no_slots_tooltip' => ':channels には投稿時間がありません。キューを使うには投稿時間を追加してください。',

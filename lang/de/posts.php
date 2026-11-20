@@ -212,6 +212,7 @@ return [
             'add' => 'Zur Warteschlange hinzufügen',
             'add_many' => ':count zur Warteschlange hinzufügen',
             'added' => '{1} Dein Beitrag wurde zur Warteschlange hinzugefügt.|[0,*] Deine :count Beiträge wurden zur Warteschlange hinzugefügt.',
+            'moved_to_top' => 'Dein Beitrag steht jetzt ganz oben in der Warteschlange.',
             'no_slots_hint' => 'Füge Veröffentlichungszeiten hinzu, um die Warteschlange zu nutzen.',
             'no_slots_channels' => 'Keine Veröffentlichungszeiten: :channels',
             'no_slots_tooltip' => 'Keine Veröffentlichungszeiten für :channels. Füge Zeiten hinzu, um die Warteschlange zu nutzen.',

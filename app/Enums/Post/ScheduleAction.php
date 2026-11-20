@@ -30,4 +30,13 @@ enum ScheduleAction: string
             self::Reschedule => throw new LogicException('Reschedule goes through ReschedulePost.'),
         };
     }
+
+    /** Whether the action puts the post in the queue, at its end or at its top. */
+    public function addsToQueue(): bool
+    {
+        return match ($this) {
+            self::QueueNext, self::QueueTop => true,
+            self::Draft, self::PublishNow, self::Reschedule => false,
+        };
+    }
 }

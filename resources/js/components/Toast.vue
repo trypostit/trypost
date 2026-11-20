@@ -4,6 +4,7 @@ import { watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Toaster } from '@/components/ui/sonner';
+import { filled } from '@/lib/helpers';
 
 /** A link a toast offers next to its message: "View post" and where it goes. */
 type FlashLink = {
@@ -28,7 +29,7 @@ const page = usePage();
  * message, in a toast as wide as both. Any flashed message can lead somewhere.
  */
 const linkOptions = (link: FlashLink | undefined) => {
-    if (!link) {
+    if (!filled(link)) {
         return {};
     }
 

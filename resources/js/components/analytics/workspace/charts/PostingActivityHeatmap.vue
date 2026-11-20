@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/chart';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import date from '@/date';
+import { filled } from '@/lib/helpers';
 import {
     DAYS_PER_WEEK,
     postingActivityMonths,
@@ -135,7 +136,7 @@ const tooltipTriggers = {
 const scrollToToday = async (): Promise<void> => {
     await nextTick();
 
-    if (!scroller.value) {
+    if (!filled(scroller.value)) {
         return;
     }
 

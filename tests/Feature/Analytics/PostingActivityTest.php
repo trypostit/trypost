@@ -159,3 +159,23 @@ test('it returns zeros and no streaks without publications', function () {
         ->and($activity['current_streak'])->toBe(0)
         ->and($activity['best_streak'])->toBe(0);
 });
+
+test('it counts the first day of the window', function () {
+    postingActivityPostsOn($this->account, $this->today, [364]);
+
+    $activity = postingActivity($this->workspace);
+
+    expect($activity['total'])->toBe(1)
+        ->and($activity['days'][0]['count'])->toBe(1);
+});
+
+test('a viewer ahead of utc gets their own today, which may be the next utc day', function () {
+    $this->travelTo($this->today->setTime(20, 0));
+    postingActivityPublication($this->account, $this->today->setTime(16, 0));
+
+    $activity = postingActivity($this->workspace, timezone: 'Asia/Tokyo');
+
+    expect($activity['end'])->toBe($this->today->addDay()->toDateString())
+        ->and($activity['days'][364])->toBe(['date' => $this->today->addDay()->toDateString(), 'count' => 1])
+        ->and($activity['current_streak'])->toBe(1);
+});

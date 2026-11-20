@@ -701,3 +701,12 @@ test('storing a draft toasts nothing', function () {
         ->assertSessionMissing('flash.success')
         ->assertSessionMissing('flash.link');
 });
+
+test('a member who needs approval is told the queue request awaits approval, not that it was added', function () {
+    $member = workspaceMember($this->workspace, 'approval');
+
+    $this->actingAs($member)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel], ['queue' => 'next']))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('posts.approvals.requested'));
+});

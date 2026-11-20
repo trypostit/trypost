@@ -8,10 +8,10 @@ import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.
 import PostingActivityHeatmap from '@/components/analytics/workspace/charts/PostingActivityHeatmap.vue';
 import InfoTip from '@/components/analytics/workspace/InfoTip.vue';
 import { Skeleton } from '@/components/ui/skeleton';
-import { activeLocale } from '@/language';
 import { blank } from '@/lib/helpers';
 import { postingActivityShareOption } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/shareCard';
+import { formatFullNumber } from '@/lib/utils';
 import type { PostingActivity } from '@/types/analytics';
 
 type StatKey = 'current_streak' | 'best_streak' | 'total';
@@ -28,12 +28,12 @@ const isLoading = computed((): boolean => blank(props.activity));
 
 const days = (count: number): string =>
     transChoice('analytics.posting_activity.days', count, {
-        count: count.toLocaleString(activeLocale.value),
+        count: formatFullNumber(count),
     });
 
 const statValue = (activity: PostingActivity, key: StatKey): string => {
     if (key === 'total') {
-        return activity.total.toLocaleString(activeLocale.value);
+        return formatFullNumber(activity.total);
     }
 
     return days(activity[key]);
@@ -66,67 +66,57 @@ const testId = (key: StatKey): string =>
         :title="$t('analytics.posting_activity.title')"
         :subtitle="$t('analytics.posting_activity.subtitle')"
         data-testid="posting-activity"
-        flush
     >
         <template v-if="activity" #actions>
-            <ShareChartButton
-                :subject="channel"
-                :range="$t('analytics.posting_activity.subtitle')"
-                :build="shareBuilder(activity)"
-                test-id="share-posting-activity"
-            />
-        </template>
-        <div
-            v-if="isLoading"
-            class="grid gap-4 border-t border-border px-4 py-4 sm:px-5"
-            data-testid="posting-activity-skeleton"
-            aria-busy="true"
-        >
-            <div class="grid gap-4 sm:grid-cols-3">
-                <Skeleton class="h-14" />
-                <Skeleton class="h-14" />
-                <Skeleton class="h-14" />
-            </div>
-            <Skeleton class="h-40 w-full" />
-        </div>
-
-        <template v-else-if="activity">
-            <div class="grid border-t border-border sm:grid-cols-3">
-                <div
-                    v-for="key in STATS"
-                    :key="key"
-                    class="flex min-w-0 flex-col gap-2 px-4 py-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] sm:px-5"
+            <div class="flex items-start gap-4 max-sm:flex-1">
+                <dl
+                    class="flex flex-wrap items-start gap-x-4 gap-y-2 max-sm:me-auto max-sm:min-w-0 max-sm:flex-1 sm:gap-x-6"
                 >
-                    <div class="flex min-h-6 items-center gap-0.5">
-                        <p class="truncate text-sm text-muted-foreground">
-                            {{ $t(labelKey(key)) }}
-                        </p>
-                        <InfoTip
-                            :text="$t(aboutKey(key))"
-                            :test-id="`${testId(key)}-about`"
-                        />
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <IconFlame
-                            v-if="showsFlame(activity, key)"
-                            class="size-5 shrink-0 text-orange-500"
-                            aria-hidden="true"
-                        />
-                        <span
-                            class="font-heading text-2xl leading-8 font-medium whitespace-nowrap text-foreground tabular-nums"
-                            :data-testid="testId(key)"
-                            >{{ statValue(activity, key) }}</span
+                    <div v-for="key in STATS" :key="key" class="grid gap-0.5">
+                        <dt
+                            class="flex items-center gap-0.5 text-xs whitespace-nowrap text-muted-foreground"
                         >
+                            {{ $t(labelKey(key)) }}
+                            <InfoTip
+                                :text="$t(aboutKey(key))"
+                                :test-id="`${testId(key)}-about`"
+                            />
+                        </dt>
+                        <dd class="flex items-center gap-1">
+                            <IconFlame
+                                v-if="showsFlame(activity, key)"
+                                class="size-4 shrink-0 text-orange-500"
+                                aria-hidden="true"
+                            />
+                            <span
+                                class="font-heading text-lg leading-6 font-medium whitespace-nowrap text-foreground tabular-nums"
+                                :data-testid="testId(key)"
+                                >{{ statValue(activity, key) }}</span
+                            >
+                        </dd>
                     </div>
-                </div>
-            </div>
-
-            <div class="px-4 py-4 sm:px-5 sm:py-5">
-                <PostingActivityHeatmap
-                    :days="activity.days"
-                    :max-count="activity.max_count"
+                </dl>
+                <ShareChartButton
+                    :subject="channel"
+                    :range="$t('analytics.posting_activity.subtitle')"
+                    :build="shareBuilder(activity)"
+                    test-id="share-posting-activity"
                 />
             </div>
         </template>
+        <div
+            v-if="isLoading"
+            class="grid gap-4"
+            data-testid="posting-activity-skeleton"
+            aria-busy="true"
+        >
+            <Skeleton class="h-40 w-full" />
+        </div>
+
+        <PostingActivityHeatmap
+            v-else-if="activity"
+            :days="activity.days"
+            :max-count="activity.max_count"
+        />
     </AnalyticsSection>
 </template>

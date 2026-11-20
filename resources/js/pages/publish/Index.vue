@@ -747,12 +747,7 @@ const submitComposition = (
             ...composition,
             recover_post_id: editPost.id,
         };
-        router.post(storePost.url(), data, {
-            ...options,
-            onSuccess: () => {
-                options.onSuccess();
-            },
-        });
+        router.post(storePost.url(), data, options);
         return;
     }
     const destination = composition.destinations[0];

@@ -286,3 +286,13 @@ test('moving a post to drafts toasts nothing', function () {
         ->assertSessionMissing('flash.success')
         ->assertSessionMissing('flash.link');
 });
+
+test('moving a queued post to the top toasts that it went to the top, not that it was added', function () {
+    scheduleActionQueued($this->channel, $this->user);
+    $second = scheduleActionQueued($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $second), ['action' => 'queue_top'])
+        ->assertSessionHas('flash.success', __('posts.composer.queue.moved_to_top'))
+        ->assertSessionHas('flash.link.url', route('app.posts.index', ['post' => $second->id]));
+});

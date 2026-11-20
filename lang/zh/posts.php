@@ -212,6 +212,7 @@ return [
             'add' => '加入队列',
             'add_many' => '将 :count 个加入队列',
             'added' => '{1} 你的帖子已加入队列。|[0,*] 你的 :count 个帖子已加入队列。',
+            'moved_to_top' => '你的帖子已移到队列最前面。',
             'no_slots_hint' => '添加发布时间以使用队列。',
             'no_slots_channels' => '没有发布时间：:channels',
             'no_slots_tooltip' => ':channels 没有发布时间。添加发布时间即可使用队列。',

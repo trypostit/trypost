@@ -212,6 +212,7 @@ return [
             'add' => 'Adicionar à fila',
             'add_many' => 'Adicionar :count à fila',
             'added' => '{1} Seu post foi adicionado à fila.|[0,*] Seus :count posts foram adicionados à fila.',
+            'moved_to_top' => 'Seu post foi para o topo da fila.',
             'no_slots_hint' => 'Adicione horários de postagem para usar a fila.',
             'no_slots_channels' => 'Sem horários: :channels',
             'no_slots_tooltip' => 'Sem horários de publicação para :channels. Adicione horários para usar a fila.',

@@ -1,3 +1,4 @@
+import { filled } from '@/lib/helpers';
 import { ink, lightColor, muted } from '@/lib/shareCard/colors';
 import { paintIdentity } from '@/lib/shareCard/frame';
 import { ellipsise, writeText } from '@/lib/shareCard/text';
@@ -146,7 +147,7 @@ export const paintHeatmapCard = (
         height: 0,
     });
 
-    if (!options.heatmap) {
+    if (!filled(options.heatmap)) {
         return;
     }
 

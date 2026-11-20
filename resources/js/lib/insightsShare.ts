@@ -30,7 +30,7 @@ import {
     type ShareShape,
     type ShareTile,
 } from '@/lib/shareCard';
-import { formatCountChange, formatNumberCompact } from '@/lib/utils';
+import { formatCountChange, formatFullNumber, formatNumberCompact } from '@/lib/utils';
 import type {
     AccountIdentityData,
     ChannelMetricSeries,
@@ -396,7 +396,7 @@ export const postsShareOption = (
 /** A number of days as the posting activity card prints it: "9 days". */
 const streakDays = (count: number): string =>
     transChoice('analytics.posting_activity.days', count, {
-        count: count.toLocaleString(activeLocale.value),
+        count: formatFullNumber(count),
     });
 
 /**
@@ -407,7 +407,7 @@ const postingActivityCaption = (activity: PostingActivity): string => {
     const replacements = {
         days: streakDays(activity.current_streak),
         best: streakDays(activity.best_streak),
-        posts: activity.total.toLocaleString(activeLocale.value),
+        posts: formatFullNumber(activity.total),
     };
 
     if (activity.current_streak === 0) {
@@ -430,7 +430,7 @@ export const postingActivityShareOption = (activity: PostingActivity): ShareMetr
     const tiles = [
         activityTile(trans('analytics.posting_activity.current_streak'), streakDays(activity.current_streak)),
         activityTile(trans('analytics.posting_activity.best_streak'), streakDays(activity.best_streak)),
-        activityTile(trans('analytics.posting_activity.total'), activity.total.toLocaleString(activeLocale.value)),
+        activityTile(trans('analytics.posting_activity.total'), formatFullNumber(activity.total)),
     ];
 
     return shareOption({

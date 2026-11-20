@@ -240,7 +240,7 @@ class ChannelController extends Controller
                         : null,
                 ];
             }),
-            'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute($workspace, [$accountKey], $request->user()->timezone, $filter)),
+            'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute($workspace, [$accountKey], $request->user()->timezone, $filter), 'activity'),
             'publications' => function () use ($resolve, $performance, $account, $accountKey, $period, $sort, $filter, $request): LengthAwarePaginator {
                 $current = data_get($resolve(), 'range');
 
