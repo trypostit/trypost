@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { IconFlame, IconSend, IconTrophy } from '@tabler/icons-vue';
+import {
+    IconCrownFilled,
+    IconFlameFilled,
+    IconSendFilled,
+} from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
 import { computed, type Component } from 'vue';
 
@@ -24,11 +28,11 @@ const props = defineProps<{
 
 const STATS: StatKey[] = ['current_streak', 'best_streak', 'total'];
 
-/** Each number's icon, in place of the series swatch the Metrics card's legend draws. */
-const STAT_ICONS: Record<StatKey, Component> = {
-    current_streak: IconFlame,
-    best_streak: IconTrophy,
-    total: IconSend,
+/** Each number's icon and color, in place of the series swatch the Metrics card's legend draws. */
+const STAT_ICONS: Record<StatKey, { icon: Component; color: string }> = {
+    current_streak: { icon: IconFlameFilled, color: 'text-orange-500' },
+    best_streak: { icon: IconCrownFilled, color: 'text-amber-400' },
+    total: { icon: IconSendFilled, color: 'text-chart-3' },
 };
 
 const isLoading = computed((): boolean => blank(props.activity));
@@ -104,8 +108,9 @@ const testId = (key: StatKey): string =>
                     </span>
                     <span class="flex items-center gap-1.5">
                         <component
-                            :is="STAT_ICONS[key]"
-                            class="size-5 shrink-0 text-chart-3"
+                            :is="STAT_ICONS[key].icon"
+                            class="size-5 shrink-0"
+                            :class="STAT_ICONS[key].color"
                             aria-hidden="true"
                         />
                         <span
