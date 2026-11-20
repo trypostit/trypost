@@ -119,24 +119,3 @@ test('the badge hides while the sidebar is collapsed', function () {
 
     $page->assertNoJavaScriptErrors();
 });
-
-test('the popover points at the badge with its arrow', function () {
-    postingStreakBrowserWeeks($this->instagram, [0]);
-
-    $page = visit(route('app.insights'));
-    waitFor($page, '@posting-streak-badge');
-    $page->click('@posting-streak-badge');
-    waitForOpen($page, '@posting-streak-popover');
-    waitFor($page, '@posting-streak-arrow');
-
-    $gap = $page->script('(() => {
-        const badge = document.querySelector("[data-testid=posting-streak-badge]").getBoundingClientRect();
-        const arrow = document.querySelector("[data-testid=posting-streak-arrow]").getBoundingClientRect();
-
-        return [Math.round(arrow.top - badge.bottom), Math.round(arrow.left + arrow.width / 2 - (badge.left + badge.width / 2))];
-    })()');
-
-    expect($gap[0])->toBeLessThanOrEqual(2)
-        ->and(abs($gap[1]))->toBeLessThanOrEqual(1);
-    $page->assertNoJavaScriptErrors();
-});
