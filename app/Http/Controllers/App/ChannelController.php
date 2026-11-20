@@ -23,6 +23,7 @@ use App\Enums\Analytics\ExportFormat;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Channel\ChannelInsightsRequest;
 use App\Http\Requests\App\Channel\DownloadChannelInsightsRequest;
 use App\Http\Requests\App\Channel\ListChannelsRequest;
@@ -46,7 +47,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChannelController extends Controller
 {
-    use EnsuresChannelInCurrentWorkspace, RendersPublishPage;
+    use EnsuresChannelInCurrentWorkspace, FlashesToast, RendersPublishPage;
 
     public function index(ListChannelsRequest $request): Response
     {
