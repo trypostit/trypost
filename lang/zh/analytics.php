@@ -479,7 +479,6 @@ return [
         'schedule' => '安排帖子',
         'share' => '分享记录',
         'share_caption' => '我已用 TryPost 连续发布 :count 周！',
-        'image_weeks' => '周',
         'image_tagline' => '持续发布中！',
     ],
 ];

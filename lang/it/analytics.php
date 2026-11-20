@@ -479,7 +479,6 @@ return [
         'schedule' => 'Programma post',
         'share' => 'Condividi serie',
         'share_caption' => 'Pubblico da :count settimane di fila con TryPost!',
-        'image_weeks' => '{1} settimana|[0,*] settimane',
         'image_tagline' => 'di pubblicazioni costanti!',
     ],
 ];

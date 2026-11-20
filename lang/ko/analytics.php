@@ -479,7 +479,6 @@ return [
         'schedule' => '게시물 예약',
         'share' => '기록 공유',
         'share_caption' => 'TryPost로 :count주 연속 게시 중이에요!',
-        'image_weeks' => '주',
         'image_tagline' => '꾸준히 게시 중!',
     ],
 ];

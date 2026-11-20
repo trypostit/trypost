@@ -479,7 +479,6 @@ return [
         'schedule' => 'Beitrag planen',
         'share' => 'Serie teilen',
         'share_caption' => 'Ich poste seit :count Wochen in Folge mit TryPost!',
-        'image_weeks' => '{1} Woche|[0,*] Wochen',
         'image_tagline' => 'regelmäßig gepostet!',
     ],
 ];

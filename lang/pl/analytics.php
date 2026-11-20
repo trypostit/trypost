@@ -479,7 +479,6 @@ return [
         'schedule' => 'Zaplanuj post',
         'share' => 'Udostępnij serię',
         'share_caption' => 'Publikuję z TryPost już od tygodni: :count z rzędu!',
-        'image_weeks' => 'tyg.',
         'image_tagline' => 'regularnego publikowania!',
     ],
 ];
