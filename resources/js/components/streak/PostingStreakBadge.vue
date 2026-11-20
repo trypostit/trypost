@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { IconFlameFilled, IconShare } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
+import { PopoverArrow } from 'reka-ui';
 import { ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -102,10 +103,16 @@ const sharePost = async (): Promise<void> => {
         <PopoverContent
             side="bottom"
             align="center"
-            :side-offset="16"
-            class="w-61 rounded-xl p-2"
+            :side-offset="0"
+            class="w-61 rounded-xl border border-border p-2"
             data-testid="posting-streak-popover"
         >
+            <PopoverArrow
+                :width="18"
+                :height="9"
+                class="-translate-y-px fill-popover stroke-border [stroke-width:0.7]"
+                data-testid="posting-streak-arrow"
+            />
             <div class="flex flex-col gap-4">
                 <div class="relative h-25.25">
                     <div

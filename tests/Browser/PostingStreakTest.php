@@ -107,3 +107,36 @@ test('sharing the streak opens the composer with its post and image', function (
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('the badge hides while the sidebar is collapsed', function () {
+    postingStreakBrowserWeeks($this->instagram, [0]);
+
+    $page = visit(route('app.insights'))->resize(1280, 900);
+    waitFor($page, '@posting-streak-badge');
+    $page->click('@sidebar-footer-toggle');
+    waitForState($page, '[data-slot="sidebar"][data-state]', "element.dataset.state === 'collapsed'");
+    waitForState($page, '@posting-streak-badge', 'element.getBoundingClientRect().width === 0');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the popover points at the badge with its arrow', function () {
+    postingStreakBrowserWeeks($this->instagram, [0]);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@posting-streak-badge');
+    $page->click('@posting-streak-badge');
+    waitForOpen($page, '@posting-streak-popover');
+    waitFor($page, '@posting-streak-arrow');
+
+    $gap = $page->script('(() => {
+        const badge = document.querySelector("[data-testid=posting-streak-badge]").getBoundingClientRect();
+        const arrow = document.querySelector("[data-testid=posting-streak-arrow]").getBoundingClientRect();
+
+        return [Math.round(arrow.top - badge.bottom), Math.round(arrow.left + arrow.width / 2 - (badge.left + badge.width / 2))];
+    })()');
+
+    expect($gap[0])->toBeLessThanOrEqual(2)
+        ->and(abs($gap[1]))->toBeLessThanOrEqual(1);
+    $page->assertNoJavaScriptErrors();
+});

@@ -141,11 +141,12 @@ const mainNavItems = computed<NavItem[]>(() => [
                     <AppLogo variant="mark" class="text-[21px]" />
                 </span>
             </Link>
-            <PostingStreakBadge
+            <div
                 v-if="postingStreak"
-                :streak="postingStreak"
-                class="group-data-[collapsible=icon]:hidden"
-            />
+                class="flex group-data-[collapsible=icon]:hidden"
+            >
+                <PostingStreakBadge :streak="postingStreak" />
+            </div>
         </SidebarHeader>
 
         <SidebarContent class="gap-0">
