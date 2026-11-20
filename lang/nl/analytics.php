@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Je hebt deze week nog niet gepost. Plan een bericht om je reeks vast te houden.',
         'schedule' => 'Bericht plannen',
         'share' => 'Reeks delen',
-        'share_caption' => 'Ik post al :count weken op rij met TryPost!',
+        'share_caption' => '{1} Ik post al :count week op rij met TryPost!|[0,*] Ik post al :count weken op rij met TryPost!',
         'image_weeks' => '{1} week|[0,*] weken',
         'image_tagline' => 'consequent gepost!',
     ],

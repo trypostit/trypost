@@ -108,36 +108,56 @@ test('sharing the streak opens the composer with its post and image', function (
     $page->assertNoJavaScriptErrors();
 });
 
-test('closing the streak while its image uploads leaves the page as it is', function () {
+test('closing the streak while its image uploads leaves the page as it is', function (string $upload) {
     postingStreakBrowserWeeks($this->instagram, [0, 1]);
 
     $page = visit(route('app.insights'));
     waitFor($page, '@posting-streak-badge');
-    $page->script('(() => {
+    $uploadPath = json_encode(route('app.media.store-chunked', absolute: false));
+    $page->script("(() => {
+        const uploadPath = {$uploadPath};
+        const open = XMLHttpRequest.prototype.open;
         const send = XMLHttpRequest.prototype.send;
         const held = [];
         window.__heldUploads = held;
-        window.__releaseUploads = () => {
+        window.__releaseUploads = (outcome) => {
             XMLHttpRequest.prototype.send = send;
-            held.forEach((release) => release());
+            held.forEach(({ request, body }) => {
+                if (outcome === 'fails') {
+                    request.dispatchEvent(new ProgressEvent('error'));
+
+                    return;
+                }
+
+                send.apply(request, body);
+            });
+        };
+        XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+            this.heldUpload = String(url).includes(uploadPath);
+
+            return open.call(this, method, url, ...rest);
         };
         XMLHttpRequest.prototype.send = function (...body) {
-            held.push(() => send.apply(this, body));
+            if (!this.heldUpload) {
+                return send.apply(this, body);
+            }
+
+            held.push({ request: this, body });
         };
-    })()');
+    })()");
     $page->click('@posting-streak-badge');
     waitForOpen($page, '@posting-streak-popover');
     $page->click('@posting-streak-share');
     waitForCondition($page, 'window.__heldUploads.length > 0');
     $page->keys('@posting-streak-popover', 'Escape');
     waitForGone($page, '@posting-streak-popover');
-    $page->script('window.__releaseUploads()');
+    $page->script("window.__releaseUploads('{$upload}')");
     letPageRun($page, 3000);
 
-    $page->assertMissing('@post-composer-dialog')
-        ->assertMissing('@flash-error-toast')
-        ->assertNoJavaScriptErrors();
-});
+    expect(elementsMap($page, '@post-composer-dialog, @posting-streak-share-error', 'element.dataset.testid'))->toBeEmpty();
+
+    $page->assertNoJavaScriptErrors();
+})->with(['the upload succeeds' => 'succeeds', 'the upload fails' => 'fails']);
 
 test('the badge hides while the sidebar is collapsed', function () {
     postingStreakBrowserWeeks($this->instagram, [0]);

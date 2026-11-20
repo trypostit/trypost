@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Non hai ancora pubblicato questa settimana. Programma un post per mantenere la serie.',
         'schedule' => 'Programma post',
         'share' => 'Condividi serie',
-        'share_caption' => 'Pubblico da :count settimane di fila con TryPost!',
+        'share_caption' => '{1} Pubblico da :count settimana di fila con TryPost!|[0,*] Pubblico da :count settimane di fila con TryPost!',
         'image_weeks' => '{1} settimana|[0,*] settimane',
         'image_tagline' => 'di pubblicazioni costanti!',
     ],

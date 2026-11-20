@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Você ainda não postou esta semana. Agende um post para manter sua sequência.',
         'schedule' => 'Agendar post',
         'share' => 'Compartilhar sequência',
-        'share_caption' => 'Cheguei a :count semanas seguidas postando com o TryPost!',
+        'share_caption' => '{1} Cheguei a :count semana seguida postando com o TryPost!|[0,*] Cheguei a :count semanas seguidas postando com o TryPost!',
         'image_weeks' => '{1} semana|[0,*] semanas',
         'image_tagline' => 'postando sem parar!',
     ],

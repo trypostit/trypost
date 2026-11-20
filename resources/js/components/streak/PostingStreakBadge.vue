@@ -96,9 +96,10 @@ const sharePost = async (): Promise<void> => {
         open.value = false;
         openPostComposer({
             draft: {
-                content: trans('analytics.posting_streak.share_caption', {
-                    count: weeks(),
-                }),
+                content: transChoice(
+                    'analytics.posting_streak.share_caption',
+                    props.streak.weeks,
+                ),
                 media: [media],
                 scheduled_at: null,
                 label_ids: [],
@@ -109,7 +110,9 @@ const sharePost = async (): Promise<void> => {
             return;
         }
 
-        toast.error(trans('analytics.share.post_failed'));
+        toast.error(trans('analytics.share.post_failed'), {
+            testId: 'posting-streak-share-error',
+        });
     } finally {
         sharing.value = false;
     }

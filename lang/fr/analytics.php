@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Vous n\'avez pas encore publié cette semaine. Programmez une publication pour garder votre série.',
         'schedule' => 'Programmer',
         'share' => 'Partager la série',
-        'share_caption' => 'J\'ai publié :count semaines d\'affilée avec TryPost !',
+        'share_caption' => '{1} J\'ai publié :count semaine d\'affilée avec TryPost !|[0,*] J\'ai publié :count semaines d\'affilée avec TryPost !',
         'image_weeks' => '{1} semaine|[0,*] semaines',
         'image_tagline' => 'de publication régulière !',
     ],

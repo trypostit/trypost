@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Aún no has publicado esta semana. Programa una publicación para mantener tu racha.',
         'schedule' => 'Programar publicación',
         'share' => 'Compartir racha',
-        'share_caption' => '¡Llevo :count semanas seguidas publicando con TryPost!',
+        'share_caption' => '{1} ¡Llevo :count semana publicando sin parar con TryPost!|[0,*] ¡Llevo :count semanas seguidas publicando con TryPost!',
         'image_weeks' => '{1} semana|[0,*] semanas',
         'image_tagline' => '¡publicando sin parar!',
     ],

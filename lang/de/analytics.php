@@ -430,8 +430,8 @@ return [
         'caption_summary_channel' => 'Unsere Zahlen auf :channel für :range 📈 :metrics',
         'caption_posting_activity' => [
             'record_streak' => '{1} 🔥 :days in Folge gepostet, unsere bisher längste Serie! :posts Beitrag in den letzten 12 Monaten.|[0,*] 🔥 :days in Folge gepostet, unsere bisher längste Serie! :posts Beiträge in den letzten 12 Monaten.',
-            'on_streak' => '{1} 🔥 :days in Folge gepostet. Unser Rekord liegt bei :best, mit :posts Beitrag in den letzten 12 Monaten.|[0,*] 🔥 :days in Folge gepostet. Unser Rekord liegt bei :best, mit :posts Beiträgen in den letzten 12 Monaten.',
-            'no_streak' => '{1} 📅 :posts Beitrag in den letzten 12 Monaten und eine längste Serie von :best in Folge.|[0,*] 📅 :posts Beiträge in den letzten 12 Monaten und eine längste Serie von :best in Folge.',
+            'on_streak' => '{1} 🔥 :days in Folge gepostet. Unser Rekord: :best, mit :posts Beitrag in den letzten 12 Monaten.|[0,*] 🔥 :days in Folge gepostet. Unser Rekord: :best, mit :posts Beiträgen in den letzten 12 Monaten.',
+            'no_streak' => '{1} 📅 :posts Beitrag in den letzten 12 Monaten. Längste Serie: :best in Folge.|[0,*] 📅 :posts Beiträge in den letzten 12 Monaten. Längste Serie: :best in Folge.',
         ],
         'export_failed' => 'Bild konnte nicht erstellt werden. Versuche es erneut.',
         'colors' => [
@@ -478,7 +478,7 @@ return [
         'post_this_week' => 'Du hast diese Woche noch nichts gepostet. Plane einen Beitrag, damit deine Serie weiterläuft.',
         'schedule' => 'Beitrag planen',
         'share' => 'Serie teilen',
-        'share_caption' => 'Ich poste seit :count Wochen in Folge mit TryPost!',
+        'share_caption' => '{1} Ich poste seit :count Woche in Folge mit TryPost!|[0,*] Ich poste seit :count Wochen in Folge mit TryPost!',
         'image_weeks' => '{1} Woche|[0,*] Wochen',
         'image_tagline' => 'regelmäßig gepostet!',
     ],
