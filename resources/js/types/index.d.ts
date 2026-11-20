@@ -126,7 +126,7 @@ export type AppPageProps<
 > = T & SharedData;
 
 /** A provider people sign in with besides their password. */
-export type SocialProvider = 'google' | 'github';
+export type SocialProvider = 'google' | 'github' | 'oidc';
 
 export interface User {
     id: string;

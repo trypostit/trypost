@@ -75,6 +75,16 @@ return [
         'redirect' => env('GOOGLE_AUTH_CALLBACK'),
     ],
 
+    // Generic OpenID Connect (used for login/signup)
+    'oidc' => [
+        'client_id' => env('OIDC_CLIENT_ID'),
+        'client_secret' => env('OIDC_CLIENT_SECRET'),
+        'redirect' => env('OIDC_AUTH_CALLBACK'),
+        // Either the issuer URL or the full .well-known URL.
+        'discovery_url' => env('OIDC_DISCOVERY_URL'),
+        'scopes' => env('OIDC_SCOPES', 'openid profile email'),
+    ],
+
     // GitHub OAuth (used for login/signup)
     'github' => [
         'client_id' => env('GITHUB_CLIENT_ID'),
