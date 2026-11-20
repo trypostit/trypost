@@ -473,6 +473,7 @@ return [
         'button' => 'Voir la série',
         'title' => '{1} Série de :count semaine|[0,*] Série de :count semaines',
         'top' => 'Top :percent %',
+        'rank_tooltip' => 'Par rapport aux autres utilisateurs de TryPost',
         'keep_going' => 'Bravo ! Programmez une publication pour la semaine prochaine pour garder la série.',
         'post_this_week' => 'Vous n\'avez pas encore publié cette semaine. Programmez une publication pour garder votre série.',
         'schedule' => 'Programmer',

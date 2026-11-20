@@ -473,6 +473,7 @@ return [
         'button' => 'Serie ansehen',
         'title' => '{1} :count Woche in Folge|[0,*] :count Wochen in Folge',
         'top' => 'Top :percent %',
+        'rank_tooltip' => 'Im Vergleich zu anderen TryPost-Nutzern',
         'keep_going' => 'Super! Plane einen Beitrag für nächste Woche, damit die Serie weiterläuft.',
         'post_this_week' => 'Du hast diese Woche noch nichts gepostet. Plane einen Beitrag, damit deine Serie weiterläuft.',
         'schedule' => 'Beitrag planen',

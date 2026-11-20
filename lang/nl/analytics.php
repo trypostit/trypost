@@ -473,6 +473,7 @@ return [
         'button' => 'Reeks bekijken',
         'title' => '{1} :count week op rij|[0,*] :count weken op rij',
         'top' => 'Top :percent%',
+        'rank_tooltip' => 'Vergeleken met andere TryPost-gebruikers',
         'keep_going' => 'Goed bezig! Plan een bericht voor volgende week om de reeks vast te houden.',
         'post_this_week' => 'Je hebt deze week nog niet gepost. Plan een bericht om je reeks vast te houden.',
         'schedule' => 'Bericht plannen',

@@ -473,6 +473,7 @@ return [
         'button' => '연속 기록 보기',
         'title' => ':count주 연속',
         'top' => '상위 :percent%',
+        'rank_tooltip' => '다른 TryPost 사용자와 비교한 순위',
         'keep_going' => '잘하고 있어요! 다음 주 게시물을 예약해 연속 기록을 이어가세요.',
         'post_this_week' => '이번 주에는 아직 게시하지 않았어요. 게시물을 예약해 연속 기록을 이어가세요.',
         'schedule' => '게시물 예약',

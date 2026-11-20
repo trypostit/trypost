@@ -473,6 +473,7 @@ return [
         'button' => 'Seriyi gör',
         'title' => ':count haftalık seri',
         'top' => 'En iyi %:percent',
+        'rank_tooltip' => 'Diğer TryPost kullanıcılarıyla karşılaştırıldığında',
         'keep_going' => 'Harika! Serinin devam etmesi için gelecek haftaya bir gönderi planla.',
         'post_this_week' => 'Bu hafta henüz paylaşım yapmadın. Serini sürdürmek için bir gönderi planla.',
         'schedule' => 'Gönderi planla',

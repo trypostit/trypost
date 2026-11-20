@@ -49,6 +49,7 @@ return [
     'analytics.posting_activity.more' => 12,
     'analytics.posting_activity.title' => 26,
     'analytics.posting_activity.total' => 13,
+    'analytics.posting_streak.rank_tooltip' => 51,
     'analytics.posting_streak.schedule' => 21,
     'analytics.posting_streak.top' => 16,
     'analytics.ranges.versus' => 13,

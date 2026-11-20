@@ -10,6 +10,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { filled } from '@/lib/helpers';
 import { streakShareFile } from '@/lib/streakShareImage';
@@ -162,17 +168,30 @@ const sharePost = async (): Promise<void> => {
                             )
                         }}
                     </h3>
-                    <span
-                        v-if="hasRank()"
-                        class="mt-0.5 rounded bg-primary-text/20 px-1 text-xs leading-4.5 font-medium text-primary-text"
-                        data-testid="posting-streak-rank"
-                    >
-                        {{
-                            $t('analytics.posting_streak.top', {
-                                percent: percent(),
-                            })
-                        }}
-                    </span>
+                    <TooltipProvider v-if="hasRank()" :delay-duration="200">
+                        <Tooltip>
+                            <TooltipTrigger as-child>
+                                <span
+                                    class="mt-0.5 rounded bg-primary-text/20 px-1 text-xs leading-4.5 font-medium text-primary-text"
+                                    data-testid="posting-streak-rank"
+                                >
+                                    {{
+                                        $t('analytics.posting_streak.top', {
+                                            percent: percent(),
+                                        })
+                                    }}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent
+                                class="max-w-none whitespace-nowrap"
+                                data-testid="posting-streak-rank-tooltip"
+                            >
+                                {{
+                                    $t('analytics.posting_streak.rank_tooltip')
+                                }}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     <p
                         class="mt-2 px-2 text-sm leading-5.25 text-muted-foreground"
                         data-testid="posting-streak-nudge"

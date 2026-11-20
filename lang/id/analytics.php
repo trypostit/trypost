@@ -473,6 +473,7 @@ return [
         'button' => 'Lihat rangkaian',
         'title' => 'Rangkaian :count minggu',
         'top' => 'Top :percent%',
+        'rank_tooltip' => 'Dibandingkan dengan pengguna TryPost lainnya',
         'keep_going' => 'Kerja bagus! Jadwalkan postingan untuk minggu depan agar rangkaiannya berlanjut.',
         'post_this_week' => 'Kamu belum memposting minggu ini. Jadwalkan postingan agar rangkaianmu berlanjut.',
         'schedule' => 'Jadwalkan postingan',

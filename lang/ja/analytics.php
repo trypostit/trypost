@@ -473,6 +473,7 @@ return [
         'button' => '連続記録を見る',
         'title' => ':count週連続',
         'top' => '上位:percent%',
+        'rank_tooltip' => '他の TryPost ユーザーとの比較',
         'keep_going' => 'すばらしい！来週の投稿を予約して記録を続けましょう。',
         'post_this_week' => '今週はまだ投稿していません。投稿を予約して記録を続けましょう。',
         'schedule' => '投稿を予約',
