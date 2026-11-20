@@ -455,6 +455,59 @@ test('bluesky publisher includes image alt text in the embed', function () {
     });
 });
 
+test('bluesky publisher sends the aspect ratio of every image that has its dimensions', function (array $meta, ?array $expected) {
+    $this->post->update([
+        'media' => collect([1, 2])->map(fn (int $n): array => [
+            'id' => "test-media-{$n}",
+            'path' => "media/2026-01/test-image-{$n}.jpg",
+            'url' => "https://example.com/media/2026-01/test-image-{$n}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "test-{$n}.jpg",
+            'meta' => $meta,
+        ])->all(),
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'bsky_test_'), fn ($f) => file_put_contents($f, str_repeat('x', 1024))));
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return Http::response([
+                'blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafkreiabc123'], 'mimeType' => 'image/jpeg', 'size' => 1024],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            return Http::response([
+                'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz',
+                'cid' => 'bafyreiabc123',
+            ], 200);
+        }
+
+        return Http::response(str_repeat('x', 1024), 200); // media download
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) use ($expected) {
+        if (! str_contains($request->url(), 'createRecord')) {
+            return false;
+        }
+
+        $ratios = collect(data_get($request->data(), 'record.embed.images'))
+            ->map(fn (array $image): ?array => $image['aspectRatio'] ?? null);
+
+        return $ratios->count() === 2 && $ratios->every(fn (?array $ratio): bool => $ratio === $expected);
+    });
+})->with([
+    'landscape' => [['width' => 1200, 'height' => 630], ['width' => 1200, 'height' => 630]],
+    'portrait carousel slide' => [['width' => 1080, 'height' => 1350], ['width' => 1080, 'height' => 1350]],
+    'no dimensions' => [['alt_text' => 'a red bike'], null],
+    'zero height' => [['width' => 1200, 'height' => 0], null],
+    'zero width' => [['width' => 0, 'height' => 630], null],
+]);
+
 test('bluesky publisher sends empty-string alt when none is set', function () {
     $this->post->update([
         'media' => [
