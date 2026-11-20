@@ -7,7 +7,6 @@ namespace App\Actions\Analytics;
 use App\Enums\User\WeekStart;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -25,18 +24,18 @@ final class RankPostingStreaks
     public function execute(): void
     {
         $thisWeek = CarbonImmutable::now('UTC')->startOfWeek(WeekStart::Monday->firstDay());
-        $workspaceIds = Workspace::query()
+        $weeks = [];
+
+        BuildPostingStreak::postingInstants(null, $thisWeek->subWeeks(BuildPostingStreak::WEEKS - 1))
+            ->each(function (object $row) use (&$weeks): void {
+                $weeks[$row->workspace_id][BuildPostingStreak::weekOf($row->at, 'UTC', WeekStart::Monday)] = true;
+            });
+
+        $streaks = Workspace::query()
             ->with('account.subscriptions')
-            ->get()
-            ->filter(fn (Workspace $workspace): bool => (bool) $workspace->account?->hasAppAccess())
-            ->pluck('id');
-
-        $weeks = BuildPostingStreak::postingInstants($workspaceIds->all(), $thisWeek->subWeeks(BuildPostingStreak::WEEKS))
-            ->groupBy('workspace_id')
-            ->map(fn (Collection $rows): Collection => $rows->map(fn (object $row): string => BuildPostingStreak::weekOf($row->at, 'UTC', WeekStart::Monday))->unique()->collect());
-
-        $streaks = $workspaceIds
-            ->map(fn (string $id): int => BuildPostingStreak::streak($weeks->get($id, collect()), $thisWeek))
+            ->lazyById()
+            ->filter(fn (Workspace $workspace): bool => $workspace->account?->hasAppAccess() === true)
+            ->map(fn (Workspace $workspace): int => BuildPostingStreak::streak(collect(array_keys(data_get($weeks, $workspace->id, []))), $thisWeek))
             ->sortDesc()
             ->values()
             ->all();

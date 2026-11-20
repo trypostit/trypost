@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 
@@ -165,4 +166,72 @@ test('the sidebar streak names its rank once the workspaces are ranked', functio
     app(RankPostingStreaks::class)->execute();
 
     expect(ShowPostingStreak::cached($user, $this->workspace))->toBe(['weeks' => 1, 'posted_this_week' => true, 'top_percent' => 10]);
+});
+
+test('a member sees the workspace streak once the account has app access', function () {
+    config(['trypost.self_hosted' => false]);
+    $owner = User::factory()->create();
+    $this->workspace->update(['user_id' => $owner->id, 'account_id' => $owner->account_id]);
+    subscribeAccount($owner->account);
+    $member = workspaceMember($this->workspace->fresh(), 'member', ['timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    $this->actingAs($member)
+        ->get(route('app.insights'))
+        ->assertInertia(fn ($page) => $page->where('postingStreak.weeks', 1)->etc());
+});
+
+test('the ranking leaves out workspaces without app access', function () {
+    config(['trypost.self_hosted' => false]);
+    subscribeAccount($this->workspace->account);
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    foreach (range(1, 9) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    $unsubscribed = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+
+    foreach (range(0, 5) as $weeksAgo) {
+        postingStreakPublication($unsubscribed, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    expect(RankPostingStreaks::topPercent(1))->toBe(10);
+});
+
+test('workspaces tied at the top share the same rank', function () {
+    foreach (range(1, 2) as $_) {
+        $workspace = Workspace::factory()->create();
+        subscribeAccount($workspace->account);
+        $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+
+        foreach (range(0, 2) as $weeksAgo) {
+            postingStreakPublication($account, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+        }
+    }
+
+    foreach (range(1, 8) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    expect(RankPostingStreaks::topPercent(3))->toBe(25);
+});
+
+test('a streak longer than the window reads as the window', function () {
+    foreach (range(0, BuildPostingStreak::WEEKS + 5) as $weeksAgo) {
+        postingStreakPublication($this->instagram, $this->thisWeek->subWeeks($weeksAgo)->addDay());
+    }
+
+    expect(postingStreak($this->workspace)['weeks'])->toBe(BuildPostingStreak::WEEKS);
+});
+
+test('the ranking runs every day', function () {
+    $events = collect(app(Schedule::class)->events())
+        ->map(fn ($event): string => (string) $event->command);
+
+    expect($events->contains(fn (string $command): bool => str_contains($command, 'analytics:rank-posting-streaks')))->toBeTrue();
 });

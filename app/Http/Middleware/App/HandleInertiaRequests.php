@@ -66,9 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
-            'postingStreak' => fn (): ?array => $user?->currentWorkspace && $account?->hasAppAccess()
-                ? ShowPostingStreak::cached($user, $user->currentWorkspace)
-                : null,
+            'postingStreak' => fn (): ?array => $this->postingStreak($user),
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],
@@ -159,6 +157,27 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array{mcp_url: string}|null
      */
+    /**
+     * The current workspace's posting streak for the sidebar badge, while the
+     * workspace's account has app access; null hides the badge.
+     *
+     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
+     */
+    private function postingStreak(?User $user): ?array
+    {
+        $workspace = $user?->currentWorkspace;
+
+        if (blank($workspace)) {
+            return null;
+        }
+
+        if ($workspace->account?->hasAppAccess() !== true) {
+            return null;
+        }
+
+        return ShowPostingStreak::cached($user, $workspace);
+    }
+
     private function mcpPrompt(?User $user): ?array
     {
         $workspace = $user?->currentWorkspace;

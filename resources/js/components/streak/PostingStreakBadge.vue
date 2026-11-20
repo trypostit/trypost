@@ -193,7 +193,7 @@ const sharePost = async (): Promise<void> => {
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent
-                                class="max-w-none whitespace-nowrap"
+                                class="max-w-[calc(100vw-2rem)] sm:max-w-none sm:whitespace-nowrap"
                                 data-testid="posting-streak-rank-tooltip"
                             >
                                 {{

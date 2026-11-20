@@ -26,7 +26,7 @@ use Illuminate\Support\LazyCollection;
  */
 final class BuildPostingStreak
 {
-    /** How far back a streak is read; a longer one reads as this long. */
+    /** How many weeks a streak is read over, this one included; a longer one reads as this long. */
     public const int WEEKS = 104;
 
     /**
@@ -35,7 +35,7 @@ final class BuildPostingStreak
     public function execute(Workspace $workspace, string $timezone, WeekStart $weekStart): array
     {
         $thisWeek = CarbonImmutable::now($timezone)->startOfWeek($weekStart->firstDay());
-        $weeks = self::postingInstants([$workspace->id], $thisWeek->subWeeks(self::WEEKS)->utc())
+        $weeks = self::postingInstants([$workspace->id], $thisWeek->subWeeks(self::WEEKS - 1)->utc())
             ->map(fn (object $row): string => self::weekOf($row->at, $timezone, $weekStart))
             ->unique()
             ->collect();
