@@ -59,16 +59,6 @@ const aboutKey = (key: PostingActivityStat): string =>
 /** The share card's builder for the loaded activity. */
 const shareBuilder = (activity: PostingActivity) => (): ShareMetricOption =>
     postingActivityShareOption(activity);
-
-/** The number's icon color, as the share card draws it. */
-const iconStyle = (key: PostingActivityStat): { color: string } => ({
-    color: POSTING_ACTIVITY_STAT_ICONS[key].color,
-});
-
-const testId = (key: PostingActivityStat): string =>
-    `posting-activity-${key.replace('_', '-')}`;
-
-const aboutTestId = (key: PostingActivityStat): string => `${testId(key)}-about`;
 </script>
 
 <template>
@@ -111,19 +101,19 @@ const aboutTestId = (key: PostingActivityStat): string => `${testId(key)}-about`
                         {{ $t(labelKey(key)) }}
                         <InfoTip
                             :text="$t(aboutKey(key))"
-                            :test-id="aboutTestId(key)"
+                            :test-id="`posting-activity-${key}-about`"
                         />
                     </span>
                     <span class="flex items-center gap-1.5">
                         <component
                             :is="POSTING_ACTIVITY_STAT_ICONS[key].icon"
                             class="size-5 shrink-0"
-                            :style="iconStyle(key)"
+                            :style="{ color: POSTING_ACTIVITY_STAT_ICONS[key].color }"
                             aria-hidden="true"
                         />
                         <span
                             class="font-heading text-2xl leading-8 font-medium whitespace-nowrap text-foreground tabular-nums"
-                            :data-testid="testId(key)"
+                            :data-testid="`posting-activity-${key}`"
                             >{{ statValue(activity, key) }}</span
                         >
                     </span>

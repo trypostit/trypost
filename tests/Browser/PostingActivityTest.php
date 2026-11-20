@@ -58,11 +58,11 @@ test('the workspace insights page shows the posting activity card', function () 
     }
 
     $page = visit(route('app.insights'));
-    waitFor($page, '@posting-activity-current-streak');
+    waitFor($page, '@posting-activity-current_streak');
     waitForCount($page, '@posting-activity-cell', 365);
 
-    $page->assertSeeIn('@posting-activity-current-streak', '3')
-        ->assertSeeIn('@posting-activity-best-streak', '3')
+    $page->assertSeeIn('@posting-activity-current_streak', '3')
+        ->assertSeeIn('@posting-activity-best_streak', '3')
         ->assertSeeIn('@posting-activity-total', '3')
         ->assertNoJavaScriptErrors();
 });
@@ -79,7 +79,7 @@ test('the channel insights page shows its posting activity and follows the post 
     $page->click('@insights-post-type-option-instagram_story');
     waitForText($page, '@posting-activity-total', '1');
 
-    $page->assertSeeIn('@posting-activity-current-streak', '1')
+    $page->assertSeeIn('@posting-activity-current_streak', '1')
         ->assertNoJavaScriptErrors();
 });
 
