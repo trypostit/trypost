@@ -110,7 +110,7 @@ const sharePost = async (): Promise<void> => {
             <PopoverArrow
                 :width="18"
                 :height="9"
-                class="-translate-y-px fill-popover dark:stroke-border dark:[stroke-width:0.7]"
+                class="-translate-y-px fill-popover stroke-[#331f0024] [stroke-width:0.9] dark:stroke-border dark:[stroke-width:0.7]"
                 data-testid="posting-streak-arrow"
             />
             <div class="flex flex-col gap-4">
