@@ -69,6 +69,24 @@ const hasRank = (): boolean => filled(props.streak.top_percent);
 
 const percent = (): string => String(props.streak.top_percent);
 
+/**
+ * Opening the streak focuses the popover itself, so the rank's tooltip waits
+ * for a hover or a Tab. The event comes from Reka's wrapper; the popover is in it.
+ */
+const focusPopover = (event: Event): void => {
+    event.preventDefault();
+
+    const popover = (event.target as HTMLElement).querySelector<HTMLElement>(
+        '[data-slot="popover-content"]',
+    );
+
+    if (!filled(popover)) {
+        return;
+    }
+
+    popover.focus({ preventScroll: true });
+};
+
 const schedulePost = (): void => {
     open.value = false;
     openPostComposer();
@@ -145,6 +163,7 @@ const sharePost = async (): Promise<void> => {
             :side-offset="16"
             class="w-61 rounded-xl p-2"
             data-testid="posting-streak-popover"
+            @open-auto-focus="focusPopover"
         >
             <div class="flex flex-col gap-4">
                 <div class="relative h-25.25">

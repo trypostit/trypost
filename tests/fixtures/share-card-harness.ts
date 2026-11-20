@@ -28,7 +28,6 @@ type Op = [string, ...number[]];
 
 const load = (file: string) => import(pathToFileURL(path.join(root, file)).href);
 const { comboDates, evenDates, fittingColumns, linearTicks, quantizeLevel, valueAxis } = await load('lib/shareCard/scale.ts');
-const { scaleQuantize } = await import('d3-scale');
 const { traceMonotone } = await load('lib/shareCard/curve.ts');
 const { spreadLabels } = await load('lib/labelLayout.ts');
 
@@ -56,12 +55,12 @@ const curve = (points: [number, number][]): Op[] => {
 
 const axis = valueAxis([-26, 30], 5);
 
-/** Every day's step from one post to the busiest day, by the card and by d3's scale on the page's domain. */
-const levels = (maxCount: number) => {
+/** The first count on each step, from one post to the busiest day, as the card shades them. */
+const levelStarts = (maxCount: number): number[] => {
     const counts = Array.from({ length: Math.max(maxCount, 1) }, (_, index) => index + 1);
-    const page = scaleQuantize<number>().domain([1, Math.max(maxCount, 1)]).range([0, 1, 2, 3]);
+    const levels = counts.map((count) => quantizeLevel(count, maxCount, 4));
 
-    return { card: counts.map((count) => quantizeLevel(count, maxCount, 4)), page: counts.map((count) => page(count)) };
+    return counts.filter((_, index) => index === 0 || levels[index] !== levels[index - 1]);
 };
 
 console.log(
@@ -81,7 +80,7 @@ console.log(
             rising: curve([[0, 0], [10, 1], [20, 10], [30, 30]]),
             two: curve([[0, 0], [10, 5]]),
         },
-        levels: { one: levels(1), four: levels(4), ten: levels(10), odd: levels(37), busy: levels(250) },
+        levels: { one: levelStarts(1), four: levelStarts(4), ten: levelStarts(10), odd: levelStarts(37), busy: levelStarts(250) },
         labels: {
             apart: spreadLabels([100, 102, 300], { gap: 24, top: 0, bottom: 400 }),
             atTheBottom: spreadLabels([390, 395], { gap: 24, top: 0, bottom: 400 }),

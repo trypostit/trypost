@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\RankPostingStreaks;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -67,6 +68,28 @@ test('the sidebar badge opens the streak and its nudge', function () {
     $page->assertSeeIn('@posting-streak-title', '3 week streak')
         ->assertSeeIn('@posting-streak-nudge', 'Schedule a post for next week')
         ->assertNoJavaScriptErrors();
+});
+
+test('opening the streak focuses the popover, never the rank and its tooltip', function () {
+    postingStreakBrowserWeeks($this->instagram, [0, 1, 2]);
+
+    foreach (range(1, RankPostingStreaks::MIN_RANKED - 1) as $_) {
+        subscribeAccount(Workspace::factory()->create()->account);
+    }
+
+    app(RankPostingStreaks::class)->execute();
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@posting-streak-badge');
+    $page->keys('@posting-streak-badge', 'Enter');
+    waitForOpen($page, '@posting-streak-popover');
+    waitFor($page, '@posting-streak-rank');
+    waitForState($page, '@posting-streak-popover', 'element === document.activeElement');
+    letPageRun($page, 500);
+
+    expect(elementsMap($page, '@posting-streak-rank-tooltip', 'element.dataset.testid'))->toBeEmpty();
+
+    $page->assertNoJavaScriptErrors();
 });
 
 test('a streak without a post this week asks for one this week', function () {
