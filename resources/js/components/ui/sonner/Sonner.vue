@@ -19,6 +19,12 @@ const props = defineProps<ToasterProps>()
     position="top-center"
     offset="16px"
     close-button
+    :toast-options="{
+      classes: {
+        actionButton:
+          '!ms-1.5 !h-auto !bg-transparent !p-0 !text-sm !font-medium !text-primary-text hover:!text-primary-text-hover hover:underline',
+      },
+    }"
     :style="{
       '--width': '480px',
       '--normal-bg': 'var(--popover)',

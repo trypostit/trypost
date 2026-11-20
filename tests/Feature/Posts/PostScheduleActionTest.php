@@ -265,3 +265,24 @@ test('adding a draft to the queue from its card stays on the tab it was added fr
     'the drafts tab' => false,
     'a channel drafts tab' => true,
 ]);
+
+test('queue next toasts that the post was added, with a link to its details', function () {
+    $draft = scheduleActionPost($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'queue_next'])
+        ->assertSessionHas('flash.success', trans_choice('posts.composer.queue.added', 1, ['count' => 1]))
+        ->assertSessionHas('flash.link', [
+            'label' => __('posts.actions.view'),
+            'url' => route('app.posts.index', ['post' => $draft->id]),
+        ]);
+});
+
+test('moving a post to drafts toasts nothing', function () {
+    $queued = scheduleActionQueued($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $queued), ['action' => 'draft'])
+        ->assertSessionMissing('flash.success')
+        ->assertSessionMissing('flash.link');
+});

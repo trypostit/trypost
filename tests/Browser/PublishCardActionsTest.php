@@ -170,7 +170,7 @@ test('move to drafts takes the card out of the queue and updates the tab counts'
     expect($queued->refresh()->status)->toBe(PostStatus::Draft);
     $page->assertMissing("@post-card-{$queued->id}")
         ->assertSeeIn('@publish-tab-count-drafts', '1')
-        ->assertMissing('@post-schedule-toast')
+        ->assertMissing('@flash-success-toast')
         ->assertNoJavaScriptErrors();
     expect($page->script("document.querySelector('[data-testid=\"publish-tab-count-queue\"]')?.textContent.trim() ?? '0'"))->toBe('0');
 });

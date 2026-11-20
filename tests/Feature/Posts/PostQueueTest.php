@@ -684,3 +684,20 @@ test('a member who needs approval editing a queued post without queue keeps its 
         ->and(postQueueSlot($queued))->toBe('Mon 09:00')
         ->and(postQueueSlot($next))->toBe('Wed 09:00');
 });
+
+test('storing into the queue toasts that the posts were added, with a link to the first one', function () {
+    $post = postQueueStore($this, $this->channel);
+
+    expect(session('flash.success'))->toBe(trans_choice('posts.composer.queue.added', 1, ['count' => 1]))
+        ->and(session('flash.link'))->toBe([
+            'label' => __('posts.actions.view'),
+            'url' => route('app.posts.index', ['post' => $post->id]),
+        ]);
+});
+
+test('storing a draft toasts nothing', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel], ['status' => 'draft']))
+        ->assertSessionMissing('flash.success')
+        ->assertSessionMissing('flash.link');
+});

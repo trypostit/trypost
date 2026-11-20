@@ -164,6 +164,19 @@ trait RendersPublishPage
             ]);
     }
 
+    /**
+     * A success toast that links to the post's details on the publish page,
+     * which opens the tab its status belongs to (`Toast.vue` reads both keys).
+     */
+    private function flashPostToast(string $message, Post $post): void
+    {
+        session()->flash('flash.success', $message);
+        session()->flash('flash.link', [
+            'label' => __('posts.actions.view'),
+            'url' => route('app.posts.index', ['post' => $post->id]),
+        ]);
+    }
+
     private function canOpenComposer(Post $post): bool
     {
         if (! $post->hasChannel()) {

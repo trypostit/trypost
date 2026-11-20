@@ -12,7 +12,7 @@ import {
     IconPlus,
     IconUsers,
 } from '@tabler/icons-vue';
-import { trans, transChoice } from 'laravel-vue-i18n';
+import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, provide, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -750,15 +750,6 @@ const submitComposition = (
         router.post(storePost.url(), data, {
             ...options,
             onSuccess: () => {
-                if (composition.queue) {
-                    const count = composition.destinations.length;
-                    toast.success(
-                        transChoice('posts.composer.queue.added', count, {
-                            count: String(count),
-                        }),
-                        { testId: 'queue-added-toast' },
-                    );
-                }
                 options.onSuccess();
             },
         });

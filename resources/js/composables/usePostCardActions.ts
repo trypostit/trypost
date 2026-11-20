@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/vue3';
-import { trans, transChoice } from 'laravel-vue-i18n';
+import { trans } from 'laravel-vue-i18n';
 import { inject, type InjectionKey, type Ref } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -57,19 +57,6 @@ export const usePostCardReload = (
     fallback: PostCardReload,
 ): (() => PostCardReload) => inject(postCardReloadKey, () => fallback);
 
-const successMessage = (
-    action: PostScheduleAction,
-    requestsApproval: boolean,
-): string | null => {
-    if (action !== 'queue_next' && action !== 'queue_top') {
-        return null;
-    }
-
-    return requestsApproval
-        ? trans('posts.approvals.requested')
-        : transChoice('posts.composer.queue.added', 1, { count: '1' });
-};
-
 export const toastFirstError = (errors: Record<string, string>): void => {
     const message = Object.values(errors)[0];
 
@@ -84,26 +71,16 @@ export const schedulePostCard = (
     options: {
         only?: string[];
         reset?: string[];
-        requestsApproval?: boolean;
         onStart?: () => void;
         onFinish?: () => void;
     } = {},
 ): void => {
-    const { requestsApproval = false, ...reload } = options;
-
     router.put(
         updatePostSchedule.url(postId),
         { action },
         {
-            ...reload,
+            ...options,
             preserveScroll: true,
-            onSuccess: () => {
-                const message = successMessage(action, requestsApproval);
-
-                if (message) {
-                    toast.success(message, { testId: 'post-schedule-toast' });
-                }
-            },
             onError: toastFirstError,
         },
     );

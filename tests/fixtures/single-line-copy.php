@@ -121,6 +121,7 @@ return [
     'notes.mention_everyone.description' => 35,
     'notes.mention_everyone.word' => 8,
     'notes.title' => 10,
+    'posts.actions.view' => 19,
     'posts.approvals.approve' => 10,
     'posts.approvals.reject' => 9,
     'posts.approvals.revert' => 32,
