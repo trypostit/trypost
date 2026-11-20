@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App\Concerns;
 
 use App\Actions\Post\BuildPublishPageProps;
 use App\Enums\Post\Status as PostStatus;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -26,6 +27,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 trait RendersPublishPage
 {
+    use FlashesToast;
+
     private const array PUBLISH_PAGE_ROUTES = ['app.posts.index', 'app.channels.publish'];
 
     private function renderPublishPage(Request $request, Workspace $workspace, ?SocialAccount $channel = null): Response|RedirectResponse
@@ -164,27 +167,16 @@ trait RendersPublishPage
             ]);
     }
 
-    /**
-     * A success toast that links to the post's details on the publish page,
-     * which opens the tab its status belongs to (`Toast.vue` reads both keys).
-     */
-    private function flashPostToast(string $message, Post $post): void
+    /** The toast once a post goes to the queue, linking to it: a member who needs approval only asked for it. */
+    private function flashQueuedToast(Post $post, string $queued): void
     {
-        session()->flash('flash.success', $message);
-        session()->flash('flash.link', [
-            'label' => __('posts.actions.view'),
-            'url' => route('app.posts.index', ['post' => $post->id]),
-        ]);
-    }
+        $message = $queued;
 
-    /** What the toast says once a post goes to the queue: a member who needs approval only asked for it. */
-    private function queuedMessage(Post $post, string $queued): string
-    {
         if ($post->status === PostStatus::PendingApproval) {
-            return __('posts.approvals.requested');
+            $message = __('posts.approvals.requested');
         }
 
-        return $queued;
+        $this->flashSuccessWithLink($message, __('posts.actions.view'), route('app.posts.index', ['post' => $post->id]));
     }
 
     private function canOpenComposer(Post $post): bool
