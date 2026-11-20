@@ -21,8 +21,9 @@ const props = defineProps<ToasterProps>()
     close-button
     :toast-options="{
       classes: {
+        toast: '!text-sm',
         actionButton:
-          '!ms-1.5 !h-auto !bg-transparent !p-0 !text-sm !font-medium !text-primary-text hover:!text-primary-text-hover hover:underline',
+          '!ms-1.5 !h-auto !self-center !bg-transparent !p-0 !text-sm !leading-[1.5] !font-medium !text-primary-text hover:!text-primary-text-hover hover:underline',
       },
     }"
     :style="{
