@@ -505,6 +505,7 @@ test('bluesky publisher sends the aspect ratio of every image that has its dimen
     'portrait carousel slide' => [['width' => 1080, 'height' => 1350], ['width' => 1080, 'height' => 1350]],
     'no dimensions' => [['alt_text' => 'a red bike'], null],
     'zero height' => [['width' => 1200, 'height' => 0], null],
+    'zero width' => [['width' => 0, 'height' => 630], null],
 ]);
 
 test('bluesky publisher sends empty-string alt when none is set', function () {

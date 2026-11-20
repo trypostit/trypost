@@ -206,8 +206,8 @@ class BlueskyPublisher
      */
     private function aspectRatio(MediaItem $image): array
     {
-        $width = (int) data_get($image->meta, 'width');
-        $height = (int) data_get($image->meta, 'height');
+        $width = $image->width() ?? 0;
+        $height = $image->height() ?? 0;
 
         if ($width <= 0) {
             return [];
