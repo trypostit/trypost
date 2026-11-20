@@ -53,6 +53,13 @@ return [
         'upload_cancel' => 'Upload annuleren',
         'upload_remove' => 'Verwijderen',
         'dropzone_select' => 'selecteer een bestand',
+        'giphy' => [
+            'title' => 'GIPHY',
+            'search_placeholder' => 'Zoek GIF\'s',
+            'empty' => 'Geen GIF\'s gevonden. Probeer een andere zoekopdracht.',
+            'load_more' => 'Meer laden',
+            'error' => 'GIPHY is nu niet beschikbaar. Probeer het over een paar minuten opnieuw.',
+        ],
         'unsplash' => [
             'title' => 'Unsplash',
             'search_placeholder' => 'Zoek gratis foto\'s in hoge resolutie',

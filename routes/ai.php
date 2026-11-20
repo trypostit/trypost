@@ -12,5 +12,5 @@ use Laravel\Mcp\Facades\Mcp;
 Route::middleware('throttle:mcp-oauth')->group(fn () => Mcp::oauthRoutes());
 
 Mcp::web('/mcp/trypost', TryPostServer::class)
-    ->middleware([ChallengeChatGptToolCalls::class, AuthenticateMcp::class.':api', LoadMcpWorkspace::class])
+    ->middleware([ChallengeChatGptToolCalls::class, AuthenticateMcp::class.':api', LoadMcpWorkspace::class, 'throttle:mcp'])
     ->name('mcp.trypost');

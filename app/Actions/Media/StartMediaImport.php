@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use App\Dto\RemoteFile;
-use App\Enums\Media\Source;
+use App\Enums\Media\Type as MediaType;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\User;
 use App\Models\Workspace;
@@ -21,14 +21,16 @@ class StartMediaImport
      * download of a file. The file's headers go to MediaImportHeaders,
      * never into the queued job. A string is a Google Photos picker
      * session: every item picked in it becomes its own import, in the
-     * user's order. Returns the import ids the composer polls.
+     * user's order. `$types` are the media types the file may be.
+     * Returns the import ids the composer waits on.
      *
+     * @param  list<MediaType>  $types
      * @return list<string>
      */
-    public static function execute(User $user, Workspace $workspace, Source $source, RemoteFile|string $fileOrSession): array
+    public static function execute(User $user, Workspace $workspace, RemoteFile|string $fileOrSession, array $types): array
     {
         if (is_string($fileOrSession)) {
-            return self::startGooglePhotosSession($user, $workspace, $fileOrSession);
+            return self::startGooglePhotosSession($user, $workspace, $fileOrSession, $types);
         }
 
         $importId = self::pending($user, $workspace);
@@ -38,7 +40,7 @@ class StartMediaImport
             $fileOrSession = $fileOrSession->withHeaders([]);
         }
 
-        ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $fileOrSession);
+        ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $fileOrSession, $types);
 
         return [$importId];
     }
@@ -48,9 +50,10 @@ class StartMediaImport
      * on their own tile; the session's token stays in the cache until the
      * last download finished.
      *
+     * @param  list<MediaType>  $types
      * @return list<string>
      */
-    private static function startGooglePhotosSession(User $user, Workspace $workspace, string $sessionId): array
+    private static function startGooglePhotosSession(User $user, Workspace $workspace, string $sessionId, array $types): array
     {
         $picker = app(GooglePhotosPicker::class);
         $accessToken = GooglePhotosPicker::token($user->id, $sessionId);
@@ -72,17 +75,19 @@ class StartMediaImport
             GooglePhotosPicker::trackImports($user->id, $sessionId, count($downloads));
         }
 
-        return array_map(function (RemoteFile|string $file) use ($user, $workspace, $sessionId): string {
-            $importId = self::pending($user, $workspace);
+        return collect($files)
+            ->map(function (RemoteFile|string $file) use ($user, $workspace, $sessionId, $types): string {
+                $importId = self::pending($user, $workspace);
 
-            if (is_string($file)) {
-                MediaImportStatus::fail($importId, $file);
-            } else {
-                ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $file, $sessionId);
-            }
+                if (is_string($file)) {
+                    MediaImportStatus::fail($importId, $file);
+                } else {
+                    ImportRemoteMedia::dispatch($importId, $workspace->id, $user->id, $file, $types, $sessionId);
+                }
 
-            return $importId;
-        }, $files);
+                return $importId;
+            })
+            ->all();
     }
 
     private static function pending(User $user, Workspace $workspace): string

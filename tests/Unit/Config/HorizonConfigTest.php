@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Dto\RemoteFile;
+use App\Enums\Media\Type as MediaType;
 use App\Jobs\Media\AdoptWorkspaceLibraryJob;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Jobs\RssFeed\FetchRssFeed;
@@ -50,7 +51,7 @@ test('media imports are worked only by their own supervisor', function () {
 
 test('the media-imports supervisor outlives the import and redis never reserves it twice', function () {
     config()->set('queue.default', 'redis');
-    $job = new ImportRemoteMedia('import', 'workspace', 'user', new RemoteFile('https://example.com/a.png', 'a.png'));
+    $job = new ImportRemoteMedia('import', 'workspace', 'user', new RemoteFile('https://example.com/a.png', 'a.png'), MediaType::cases());
 
     expect($job->queue)->toBe(ImportRemoteMedia::QUEUE)
         ->and($job->timeout)->toBe((int) config('trypost.media_sources.import_timeout_seconds'))
@@ -61,7 +62,7 @@ test('the media-imports supervisor outlives the import and redis never reserves 
 test('the import timeout stays below a short retry_after so the database queue never reserves it twice', function () {
     config()->set(['queue.default' => 'database', 'queue.connections.database.retry_after' => 90]);
 
-    $job = new ImportRemoteMedia('import', 'workspace', 'user', new RemoteFile('https://example.com/a.png', 'a.png'));
+    $job = new ImportRemoteMedia('import', 'workspace', 'user', new RemoteFile('https://example.com/a.png', 'a.png'), MediaType::cases());
 
     expect($job->timeout)->toBe(60)
         ->and($job->timeout)->toBeLessThan(config('queue.connections.database.retry_after'));

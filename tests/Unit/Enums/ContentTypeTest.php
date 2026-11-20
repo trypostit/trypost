@@ -187,6 +187,8 @@ test('content type requires media correctly', function () {
 test('media rules keep editor parity for gif and requires_media flags', function () {
     expect(ContentType::DiscordMessage->acceptsGif())->toBeTrue();
     expect(ContentType::TelegramPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPost->acceptsGif())->toBeTrue();
+    expect(ContentType::LinkedInPagePost->acceptsGif())->toBeTrue();
     expect(ContentType::InstagramFeed->mediaRules()['requires_media'])->toBeTrue();
     expect(ContentType::DiscordMessage->mediaRules()['accepts_gif'])->toBeTrue();
 });
@@ -243,7 +245,7 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
         ],
         'linkedin_post' => [
             'requires_media' => false,
-            'accepts_gif' => false,
+            'accepts_gif' => true,
             'max_files' => 10,
             'max_document_bytes' => min(100 * $mb, $hardDocument),
             'max_video_bytes' => $hardVideo,

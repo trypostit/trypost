@@ -279,7 +279,7 @@ test('a threads poll fetches no link card for a link in its question', function 
     Http::assertNothingSent();
 });
 
-test('replacing the link card with media attaches the card image', function () {
+test('replacing the link card with media attaches the card image once, however fast it is clicked', function () {
     $url = 'https://93.184.216.34/article';
     $fake = UploadedFile::fake()->image('card.jpg', 1200, 630);
     $image = file_get_contents($fake->getPathname());
@@ -294,7 +294,8 @@ test('replacing the link card with media attaches the card image', function () {
     waitForOpen($page, '@post-composer-dialog');
     waitFor($page, "@{$card}");
 
-    $page->click("@{$card}-replace");
+    $replace = jsSelector("@{$card}-replace");
+    $page->script("const button = document.querySelector({$replace}); button.click(); button.click();");
     waitForOpen($page, '@post-composer-dialog');
     waitFor($page, "@composer-{$account->id}-media-item-0");
 

@@ -13,10 +13,13 @@ use App\Models\AccessToken;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 beforeEach(function () {
@@ -87,4 +90,12 @@ test('a bad label color is rejected by the api, the web and mcp with the same me
 
     TryPostServer::actingAs($this->user)->tool(CreateLabelTool::class, $payload)
         ->assertHasErrors([$api->json('errors.color.0')]);
+});
+
+test('an mcp connection may send at least what the api allows a workspace per minute', function () {
+    $request = Request::create(route('api.posts.index'));
+    $request->setUserResolver(fn (): User => $this->user);
+
+    expect(config()->integer('trypost.mcp_requests_per_minute'))
+        ->toBeGreaterThanOrEqual(RateLimiter::limiter('api')($request)->maxAttempts);
 });

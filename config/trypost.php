@@ -117,6 +117,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | MCP rate limit
+    |--------------------------------------------------------------------------
+    |
+    | Requests one MCP token (one AI client, for one user, in one workspace)
+    | may send to the MCP server. The REST API counts apart.
+    |
+    */
+
+    'mcp_requests_per_minute' => (int) env('MCP_REQUESTS_PER_MINUTE', 240),
+    'mcp_requests_per_hour' => (int) env('MCP_REQUESTS_PER_HOUR', 2400),
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |
@@ -201,6 +214,14 @@ return [
     */
 
     'media_sources' => [
+        'giphy' => [
+            'enabled' => (bool) env('GIPHY_ENABLED', true),
+            'api' => 'https://api.giphy.com/v1',
+            'website' => 'https://giphy.com',
+            'download_hosts' => '*.giphy.com',
+            'rating' => 'g',
+            'requests_per_user_per_minute' => 30,
+        ],
         'unsplash' => [
             'api' => $url('UNSPLASH_API_URL', 'https://api.unsplash.com'),
             'website' => $url('UNSPLASH_WEBSITE_URL', 'https://unsplash.com'),

@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import { IconPhotoPlus, IconUpload } from '@tabler/icons-vue';
 import Canva from '@thesvg/vue/canva';
+import Giphy from '@thesvg/vue/giphy';
 import GoogleDrive from '@thesvg/vue/google-drive-2026';
 import GooglePhotos from '@thesvg/vue/google-photos';
 import Unsplash from '@thesvg/vue/unsplash';
@@ -27,7 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
     type MediaImportPayload,
-    useMediaImport,
+    startMediaImport,
 } from '@/composables/useMediaImport';
 import { filled } from '@/lib/helpers';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
@@ -55,12 +56,14 @@ withDefaults(
 
 const emit = defineEmits<{
     (event: 'import-started', payload: { importId: string; label: string }): void;
+    (event: 'open-giphy'): void;
     (event: 'open-unsplash'): void;
     (event: 'upload'): void;
 }>();
 
 const ICONS: Record<SourceKey, Component> = {
     canva: Canva,
+    giphy: Giphy,
     google_drive: GoogleDrive,
     google_photos: GooglePhotos,
     unsplash: Unsplash,
@@ -72,13 +75,12 @@ const ICON_CLASSES: Partial<Record<SourceKey, string>> = {
 };
 
 const page = usePage();
-const mediaImport = useMediaImport();
 
 const startImport = async (
     option: MediaSourceOption,
     payload: MediaImportPayload,
 ): Promise<void> => {
-    const importIds = await mediaImport.run(payload);
+    const importIds = await startMediaImport(payload);
     importIds.forEach((importId) =>
         emit('import-started', { importId, label: option.label }),
     );
@@ -170,6 +172,7 @@ const handlers: Partial<
             session_id: picked.sessionId,
         });
     },
+    giphy: () => emit('open-giphy'),
     unsplash: () => emit('open-unsplash'),
 };
 

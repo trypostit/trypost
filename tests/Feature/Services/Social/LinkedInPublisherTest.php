@@ -16,6 +16,7 @@ use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
 use App\Services\Social\LinkedInPublisher;
 use App\Support\Social\ThreadProgress;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -222,6 +223,77 @@ test('linkedin publisher can publish post with image', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/rest/posts')
         && isset($request['content']['media']['id'])
     );
+});
+
+test('linkedin publisher uploads an animated gif as it is, without re-encoding it', function () {
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
+    $this->post->update([
+        'media' => [[
+            'id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/medias/loop.gif',
+            'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif',
+        ]],
+    ]);
+
+    $this->mock(MediaOptimizer::class)->shouldNotReceive('optimizeImage');
+
+    $api = config('trypost.platforms.linkedin.api');
+    $uploadUrl = 'https://www.linkedin.com/dms/upload/v2/pic/0/gif-upload';
+    $uploaded = null;
+
+    Http::fake([
+        "{$api}/rest/images*" => Http::response(['value' => ['uploadUrl' => $uploadUrl, 'image' => 'urn:li:image:gifUrn']]),
+        "{$api}/rest/posts*" => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:gif']),
+        $uploadUrl => function (Request $request) use (&$uploaded) {
+            $uploaded = $request->body();
+
+            return Http::response(null, 201);
+        },
+        'example.com/medias/loop.gif' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    expect($uploaded)->toBe($gif);
+    Http::assertSent(fn (Request $request) => $request->url() === "{$api}/rest/posts"
+        && data_get($request->data(), 'content.media.id') === 'urn:li:image:gifUrn');
+});
+
+test('linkedin publisher sends an animated gif in a multi-image post next to a re-encoded jpeg', function () {
+    $gif = file_get_contents(base_path('tests/fixtures/1x1.gif'));
+    $this->post->update([
+        'media' => [
+            ['id' => 'gif-1', 'path' => 'medias/loop.gif', 'url' => 'https://example.com/medias/loop.gif', 'type' => 'image', 'mime_type' => 'image/gif', 'original_filename' => 'loop.gif'],
+            ['id' => 'jpg-1', 'path' => 'medias/photo.jpg', 'url' => 'https://example.com/medias/photo.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg'],
+        ],
+    ]);
+
+    $this->mock(MediaOptimizer::class)
+        ->shouldReceive('optimizeImage')
+        ->once()
+        ->andReturnUsing(fn () => tap(tempnam(sys_get_temp_dir(), 'li_jpg_'), fn ($path) => file_put_contents($path, 'jpeg-bytes')));
+
+    $api = config('trypost.platforms.linkedin.api');
+    $uploaded = [];
+
+    Http::fake([
+        "{$api}/rest/images*" => Http::sequence()
+            ->push(['value' => ['uploadUrl' => 'https://www.linkedin.com/dms/upload/1', 'image' => 'urn:li:image:img1']])
+            ->push(['value' => ['uploadUrl' => 'https://www.linkedin.com/dms/upload/2', 'image' => 'urn:li:image:img2']]),
+        "{$api}/rest/posts*" => Http::response(null, 201, ['x-restli-id' => 'urn:li:share:multi']),
+        'www.linkedin.com/dms/upload/*' => function (Request $request) use (&$uploaded) {
+            $uploaded[] = $request->body();
+
+            return Http::response(null, 201);
+        },
+        'example.com/medias/loop.gif' => Http::response($gif, 200, ['Content-Type' => 'image/gif']),
+        'example.com/medias/photo.jpg' => Http::response(linkedInJpegBytes(), 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    expect($uploaded)->toBe([$gif, 'jpeg-bytes']);
+    Http::assertSent(fn (Request $request) => $request->url() === "{$api}/rest/posts"
+        && data_get($request->data(), 'content.multiImage.images.*.id') === ['urn:li:image:img1', 'urn:li:image:img2']);
 });
 
 test('linkedin publisher sends the real alt text on a single image post', function () {

@@ -136,6 +136,10 @@ return [
         'host' => env('POSTHOG_HOST', 'https://us.i.posthog.com'),
     ],
 
+    'giphy' => [
+        'api_key' => env('GIPHY_API_KEY'),
+    ],
+
     'unsplash' => [
         'access_key' => env('UNSPLASH_ACCESS_KEY'),
         'secret_key' => env('UNSPLASH_SECRET_KEY'),
