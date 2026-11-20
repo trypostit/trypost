@@ -471,10 +471,10 @@ return [
     ],
     'posting_streak' => [
         'button' => 'View streak',
-        'title' => '{1} :count week in a row|[0,*] :count weeks in a row',
+        'title' => '{1} :count week streak|[0,*] :count week streak',
         'top' => 'Top :percent%',
         'rank_tooltip' => 'Compared to other TryPost users',
-        'keep_going' => 'You\'ve posted this week. Schedule a post for next week to keep your streak going.',
+        'keep_going' => 'Great job! Schedule a post for next week to keep the streak going.',
         'post_this_week' => 'You haven\'t posted this week yet. Schedule a post to keep your streak going.',
         'schedule' => 'Schedule post',
         'share' => 'Share streak',

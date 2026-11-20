@@ -474,7 +474,7 @@ return [
         'title' => 'Tygodnie z rzędu: :count',
         'top' => 'Top :percent%',
         'rank_tooltip' => 'W porównaniu z innymi użytkownikami TryPost',
-        'keep_going' => 'W tym tygodniu jest już post. Zaplanuj post na przyszły tydzień, żeby utrzymać serię.',
+        'keep_going' => 'Świetnie! Zaplanuj post na przyszły tydzień, żeby utrzymać serię.',
         'post_this_week' => 'W tym tygodniu nie ma jeszcze posta. Zaplanuj post, żeby utrzymać serię.',
         'schedule' => 'Zaplanuj post',
         'share' => 'Udostępnij serię',

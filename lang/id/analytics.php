@@ -471,10 +471,10 @@ return [
     ],
     'posting_streak' => [
         'button' => 'Lihat rangkaian',
-        'title' => ':count minggu berturut-turut',
+        'title' => 'Rangkaian :count minggu',
         'top' => 'Top :percent%',
         'rank_tooltip' => 'Dibandingkan dengan pengguna TryPost lainnya',
-        'keep_going' => 'Kamu sudah memposting minggu ini. Jadwalkan postingan untuk minggu depan agar rangkaianmu berlanjut.',
+        'keep_going' => 'Kerja bagus! Jadwalkan postingan untuk minggu depan agar rangkaiannya berlanjut.',
         'post_this_week' => 'Kamu belum memposting minggu ini. Jadwalkan postingan agar rangkaianmu berlanjut.',
         'schedule' => 'Jadwalkan postingan',
         'share' => 'Bagikan rangkaian',

@@ -474,7 +474,7 @@ return [
         'title' => '连续 :count 周',
         'top' => '前 :percent%',
         'rank_tooltip' => '与其他 TryPost 用户相比',
-        'keep_going' => '你本周已经发布过了。安排下周的帖子，保持连续记录。',
+        'keep_going' => '做得好！安排下周的帖子，保持连续记录。',
         'post_this_week' => '你本周还没有发布。安排一篇帖子来保持连续记录。',
         'schedule' => '安排帖子',
         'share' => '分享记录',
