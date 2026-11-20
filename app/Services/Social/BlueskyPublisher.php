@@ -193,8 +193,31 @@ class BlueskyPublisher
             'images' => $images->map(fn (MediaItem $image): array => [
                 'alt' => $image->altTextFor(Platform::Bluesky) ?? '',
                 'image' => $this->uploadBlob($account, $service, $image->url, $image->mime_type) ?? throw $this->mediaUploadFailed(),
+                ...$this->aspectRatio($image),
             ])->values()->all(),
         ];
+    }
+
+    /**
+     * Without an aspect ratio, Bluesky clients draw the image inside a default
+     * frame and leave empty bands around it.
+     *
+     * @return array{aspectRatio?: array{width: int, height: int}}
+     */
+    private function aspectRatio(MediaItem $image): array
+    {
+        $width = (int) data_get($image->meta, 'width');
+        $height = (int) data_get($image->meta, 'height');
+
+        if ($width <= 0) {
+            return [];
+        }
+
+        if ($height <= 0) {
+            return [];
+        }
+
+        return ['aspectRatio' => ['width' => $width, 'height' => $height]];
     }
 
     /**
