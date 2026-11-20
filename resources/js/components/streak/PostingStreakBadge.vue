@@ -109,8 +109,31 @@ const sharePost = async (): Promise<void> => {
             <div class="flex flex-col gap-4">
                 <div class="relative h-25.25">
                     <div
-                        class="h-16.5 rounded-lg bg-violet-50 bg-[radial-gradient(var(--color-primary)_1.5px,transparent_1.5px)] bg-size-[12px_12px] dark:bg-violet-950/40"
-                    />
+                        class="relative h-16.5 overflow-hidden rounded-lg bg-violet-100 dark:bg-violet-950/60"
+                        aria-hidden="true"
+                    >
+                        <div
+                            class="absolute -top-3 -left-4 h-12 w-24 rounded-full bg-violet-50/80 dark:bg-violet-900/40"
+                        />
+                        <div
+                            class="absolute inset-0 bg-violet-300 [clip-path:polygon(60%_0,100%_0,100%_100%,57%_100%)] dark:bg-violet-700"
+                        />
+                        <span
+                            class="absolute top-2.5 left-3 size-1 rounded-full bg-violet-400"
+                        />
+                        <span
+                            class="absolute top-9 left-9 size-1.5 rounded-full bg-white/90"
+                        />
+                        <span
+                            class="absolute top-2 left-36 size-1 rounded-full bg-violet-950"
+                        />
+                        <span
+                            class="absolute top-11 left-48 size-1 rounded-full bg-white/90"
+                        />
+                        <span
+                            class="absolute top-4 right-3 size-1.5 rounded-full bg-violet-950"
+                        />
+                    </div>
                     <div
                         class="absolute top-4 left-17.25 size-20 rounded-full bg-primary text-center font-heading text-[40px] leading-20 font-normal text-primary-foreground tabular-nums"
                     >
@@ -120,7 +143,7 @@ const sharePost = async (): Promise<void> => {
                         class="absolute top-15 left-29.75 inline-flex size-10 items-center justify-center rounded-full bg-orange-100 ring-2 ring-popover dark:bg-orange-950"
                     >
                         <IconFlameFilled
-                            class="streak-sway size-6 text-orange-500"
+                            class="size-6 streak-sway text-orange-500"
                             aria-hidden="true"
                         />
                     </div>
