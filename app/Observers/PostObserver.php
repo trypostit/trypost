@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
+use App\Actions\Analytics\ShowPostingStreak;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
@@ -52,6 +53,8 @@ class PostObserver
         if (! $post->wasChanged('publish_status')) {
             return;
         }
+
+        ShowPostingStreak::forget($post->workspace_id);
 
         $networkEvent = EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'));
 

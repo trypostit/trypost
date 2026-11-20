@@ -147,3 +147,18 @@ export const fittingColumns = (count: number, fitting: number): number[] => {
 
     return Array.from({ length: count }, (_, index) => index).filter((index) => index % step === 0);
 };
+
+/**
+ * The step a day's count takes among `levels` steps from one post to the
+ * busiest day, as d3's `scaleQuantize` over `[1, maxCount]` (the page's
+ * heatmap scale) picks it; a busiest day of one post puts every day on the top step.
+ */
+export const quantizeLevel = (count: number, maxCount: number, levels: number): number => {
+    if (maxCount <= 1) {
+        return levels - 1;
+    }
+
+    const step = Math.floor(((count - 1) / (maxCount - 1)) * levels);
+
+    return Math.min(levels - 1, step);
+};

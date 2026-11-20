@@ -82,3 +82,15 @@ test('line end labels move apart just enough and stay inside the plot', function
         'atTheBottom' => [364, 388],
     ]);
 });
+
+test('the card shades each day with the step the page heatmap gives it', function () {
+    $levels = runShareCardHarness()['levels'];
+
+    foreach ($levels as $busiest) {
+        expect($busiest['card'])->toBe($busiest['page']);
+    }
+
+    expect($levels['one']['card'])->toBe([3])
+        ->and($levels['four']['card'])->toBe([0, 1, 2, 3])
+        ->and($levels['ten']['card'])->toBe([0, 0, 0, 1, 1, 2, 2, 3, 3, 3]);
+});

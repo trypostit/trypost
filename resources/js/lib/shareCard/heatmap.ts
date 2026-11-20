@@ -2,6 +2,7 @@ import { filled } from '@/lib/helpers';
 import { ink, lightColor, muted } from '@/lib/shareCard/colors';
 import { paintIdentity } from '@/lib/shareCard/frame';
 import { iconPaths } from '@/lib/shareCard/icons';
+import { quantizeLevel } from '@/lib/shareCard/scale';
 import { widest, writeText } from '@/lib/shareCard/text';
 import { heading, IDENTITY, PANEL, sans } from '@/lib/shareCard/theme';
 import type {
@@ -37,19 +38,6 @@ const HEATMAP = {
 /** How strong each level is, lightest to strongest, like the page's four steps of one color. */
 const LEVEL_ALPHAS = [0.3, 0.55, 0.8, 1];
 
-/** The step a day's count takes on a scale from one post to the busiest day, as the page's quantized scale does. */
-const levelOf = (count: number, maxCount: number): number => {
-    if (maxCount <= 1) {
-        return LEVEL_ALPHAS.length - 1;
-    }
-
-    const share = (count - 1) / (maxCount - 1);
-
-    return Math.min(
-        LEVEL_ALPHAS.length - 1,
-        Math.floor(share * LEVEL_ALPHAS.length),
-    );
-};
 
 /** The numbers' fonts and icon at `fit` of their full size, so three long figures shrink together instead of being cut. */
 type StatSizes = { label: string; figure: string; figureSize: number; icon: number; iconGap: number; gap: number };
@@ -166,7 +154,7 @@ const paintGrid = (
 
         if (count > 0) {
             context.globalAlpha =
-                LEVEL_ALPHAS[levelOf(count, heatmap.maxCount)];
+                LEVEL_ALPHAS[quantizeLevel(count, heatmap.maxCount, LEVEL_ALPHAS.length)];
             context.fillStyle = color;
         }
 

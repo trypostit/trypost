@@ -7,10 +7,13 @@ namespace App\Actions\Analytics;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * The streak badge the sidebar shows on every page, cached for a few minutes per
- * user and workspace so a page change never reads the posts again.
+ * user and workspace so a page change never reads the posts again. A post going
+ * out forgets the workspace's badges, so the next page counts it at once.
  */
 final class ShowPostingStreak
 {
@@ -24,8 +27,10 @@ final class ShowPostingStreak
      */
     public static function cached(User $user, Workspace $workspace): ?array
     {
+        $version = Cache::get(self::versionKey($workspace->id), '0');
+
         $streak = Cache::remember(
-            "posting-streak:{$workspace->id}:{$user->id}:{$user->timezone}:{$user->week_starts_on->value}",
+            "posting-streak:{$workspace->id}:{$version}:{$user->id}:{$user->timezone}:{$user->week_starts_on->value}",
             now()->addMinutes(self::CACHE_MINUTES),
             fn (): array => self::build($user, $workspace),
         );
@@ -35,6 +40,17 @@ final class ShowPostingStreak
         }
 
         return $streak;
+    }
+
+    /** Drops every member's cached badge of the workspace, once the change that calls it is committed. */
+    public static function forget(string $workspaceId): void
+    {
+        DB::afterCommit(fn () => Cache::forever(self::versionKey($workspaceId), (string) Str::ulid()));
+    }
+
+    private static function versionKey(string $workspaceId): string
+    {
+        return "posting-streak:version:{$workspaceId}";
     }
 
     /**

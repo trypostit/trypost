@@ -251,3 +251,35 @@ test('the sidebar reads the streak from the cache on the next page, with or with
 
     expect(DB::getQueryLog())->toBeEmpty();
 })->with(['without a streak' => false, 'with a streak' => true]);
+
+test('the sidebar streak counts a post as soon as it goes out on a network outside insights', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    $post = Post::factory()->forAccount($this->linkedin)->create();
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
+
+    $post->forceFill(['publish_status' => PublishStatus::Published, 'published_at' => $this->thisWeek->addDay()])->save();
+
+    expect(data_get(ShowPostingStreak::cached($user, $this->workspace), 'weeks'))->toBe(1);
+});
+
+test('the sidebar streak counts a publication as soon as insights finds it', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+
+    expect(ShowPostingStreak::cached($user, $this->workspace))->toBeNull();
+
+    postingStreakPublication($this->instagram, $this->thisWeek->addDay());
+
+    expect(data_get(ShowPostingStreak::cached($user, $this->workspace), 'weeks'))->toBe(1);
+});
+
+test('a post going out in another workspace leaves this streak cached', function () {
+    $user = User::factory()->create(['current_workspace_id' => $this->workspace->id, 'timezone' => 'UTC', 'week_starts_on' => WeekStart::Monday]);
+    ShowPostingStreak::cached($user, $this->workspace);
+
+    postingStreakPublication(SocialAccount::factory()->create(['platform' => Platform::Instagram]), $this->thisWeek->addDay());
+    DB::enableQueryLog();
+    ShowPostingStreak::cached($user, $this->workspace);
+
+    expect(DB::getQueryLog())->toBeEmpty();
+});
