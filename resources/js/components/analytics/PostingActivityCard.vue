@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { IconFlame } from '@tabler/icons-vue';
 import { transChoice } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
@@ -39,15 +38,6 @@ const statValue = (activity: PostingActivity, key: StatKey): string => {
     return days(activity[key]);
 };
 
-/** The flame marks a streak that is still alive. */
-const showsFlame = (activity: PostingActivity, key: StatKey): boolean => {
-    if (key !== 'current_streak') {
-        return false;
-    }
-
-    return activity.current_streak > 0;
-};
-
 const labelKey = (key: StatKey): string => `analytics.posting_activity.${key}`;
 
 const aboutKey = (key: StatKey): string =>
@@ -68,59 +58,51 @@ const testId = (key: StatKey): string =>
         data-testid="posting-activity"
     >
         <template v-if="activity" #actions>
-            <div class="flex items-center gap-2 max-sm:flex-1">
-                <dl
-                    class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border max-sm:min-w-64 max-sm:flex-1"
-                >
-                    <div
-                        v-for="key in STATS"
-                        :key="key"
-                        class="grid min-w-0 content-start gap-0.5 px-2.5 py-2 sm:px-4"
-                    >
-                        <dt
-                            class="flex items-center gap-0.5 text-xs text-muted-foreground sm:whitespace-nowrap"
-                        >
-                            {{ $t(labelKey(key)) }}
-                            <InfoTip
-                                :text="$t(aboutKey(key))"
-                                :test-id="`${testId(key)}-about`"
-                            />
-                        </dt>
-                        <dd class="flex items-center gap-1">
-                            <IconFlame
-                                v-if="showsFlame(activity, key)"
-                                class="size-4 shrink-0 text-orange-500"
-                                aria-hidden="true"
-                            />
-                            <span
-                                class="font-heading text-base leading-6 font-medium whitespace-nowrap text-foreground tabular-nums sm:text-lg"
-                                :data-testid="testId(key)"
-                                >{{ statValue(activity, key) }}</span
-                            >
-                        </dd>
-                    </div>
-                </dl>
-                <ShareChartButton
-                    :subject="channel"
-                    :range="$t('analytics.posting_activity.subtitle')"
-                    :build="shareBuilder(activity)"
-                    test-id="share-posting-activity"
-                />
-            </div>
+            <ShareChartButton
+                :subject="channel"
+                :range="$t('analytics.posting_activity.subtitle')"
+                :build="shareBuilder(activity)"
+                test-id="share-posting-activity"
+            />
         </template>
         <div
             v-if="isLoading"
-            class="grid gap-4"
+            class="grid gap-5"
             data-testid="posting-activity-skeleton"
             aria-busy="true"
         >
+            <Skeleton class="h-9 w-2/3" />
             <Skeleton class="h-40 w-full" />
         </div>
 
-        <PostingActivityHeatmap
-            v-else-if="activity"
-            :days="activity.days"
-            :max-count="activity.max_count"
-        />
+        <div v-else-if="activity" class="min-w-0">
+            <div class="mb-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+                <div
+                    v-for="key in STATS"
+                    :key="key"
+                    class="flex items-baseline gap-2"
+                >
+                    <span
+                        class="font-heading text-[28px] leading-[35px] font-medium whitespace-nowrap text-foreground tabular-nums"
+                        :data-testid="testId(key)"
+                    >
+                        {{ statValue(activity, key) }}
+                    </span>
+                    <span
+                        class="flex items-center gap-0.5 self-center text-sm whitespace-nowrap text-muted-foreground"
+                    >
+                        {{ $t(labelKey(key)) }}
+                        <InfoTip
+                            :text="$t(aboutKey(key))"
+                            :test-id="`${testId(key)}-about`"
+                        />
+                    </span>
+                </div>
+            </div>
+            <PostingActivityHeatmap
+                :days="activity.days"
+                :max-count="activity.max_count"
+            />
+        </div>
     </AnalyticsSection>
 </template>
