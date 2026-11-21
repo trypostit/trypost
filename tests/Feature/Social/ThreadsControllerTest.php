@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\PendingConnection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Uri;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -23,6 +24,9 @@ test('threads connect redirects to oauth', function () {
 
     expect($response->headers->get('Location'))
         ->toStartWith(config('trypost.platforms.threads.oauth_url').'/oauth/authorize');
+
+    expect(Uri::of($response->headers->get('Location'))->query()->get('scope'))
+        ->toBe('threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies');
 
     expect(PendingConnection::current()?->workspaceId())->toBe($this->workspace->id);
     expect(session('threads_oauth_state'))->not->toBeNull();

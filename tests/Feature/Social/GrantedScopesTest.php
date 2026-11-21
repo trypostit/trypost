@@ -152,7 +152,7 @@ dataset('granted scopes', [
         'https://www.googleapis.com/auth/business.manage',
     ], 'https://www.googleapis.com/auth/business.manage', 'https://www.googleapis.com/auth/userinfo.email'],
     'instagram' => ['instagram', ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_insights'], 'instagram_business_content_publish', 'instagram_business_manage_insights'],
-    'threads' => ['threads', ['threads_basic', 'threads_content_publish', 'threads_manage_insights'], 'threads_content_publish', 'threads_manage_insights'],
+    'threads' => ['threads', ['threads_basic', 'threads_content_publish', 'threads_manage_insights', 'threads_manage_replies'], 'threads_content_publish', 'threads_manage_insights'],
     'mastodon' => ['mastodon', ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'], 'write:statuses', 'read:statuses'],
 ]);
 
@@ -243,7 +243,7 @@ test('a network that reports no scopes keeps the requested ones', function () {
     finishSocialConnect(Platform::Threads)->assertRedirect();
 
     expect(SocialAccount::query()->sole()->scopes)
-        ->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights']);
+        ->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights', 'threads_manage_replies']);
 });
 
 test('threads reads the granted scopes by inspecting the long-lived user token on the threads graph', function () {

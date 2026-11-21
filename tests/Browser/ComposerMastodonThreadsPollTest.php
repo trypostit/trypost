@@ -111,6 +111,46 @@ test('a threads poll has choices only, no length, and schedules', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a threads post starts a thread whose reply turns into a poll, shown under the post', function () {
+    $post = seedPollComposerPost(ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Tabs or spaces?');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-choice-0');
+
+    $page->assertMissing('@thread-reply-0-poll-days')
+        ->fill('@thread-reply-0-poll-choice-0', 'Tabs')
+        ->fill('@thread-reply-0-poll-choice-1', 'Spaces');
+    waitForText($page, '@preview-thread-reply-0 @threads-preview-poll', 'Spaces');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta['thread_replies'])->toEqual([
+        ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces']]],
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a threads ghost post offers no thread', function () {
+    $post = seedPollComposerPost(ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click("@composer-type-{$id}-threads_ghost_post");
+    waitForGone($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_post");
+    waitFor($page, '@thread-start');
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a mastodon poll stays behind the content warning in the preview', function () {
     $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
     $page = openPollComposer($post);

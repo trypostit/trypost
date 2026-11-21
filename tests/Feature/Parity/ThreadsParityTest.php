@@ -34,6 +34,7 @@ function threadsParityContentType(Platform $platform): string
     return match ($platform) {
         Platform::Bluesky => ContentType::BlueskyPost->value,
         Platform::Mastodon => ContentType::MastodonPost->value,
+        Platform::Threads => ContentType::ThreadsPost->value,
         default => ContentType::XPost->value,
     };
 }
@@ -42,6 +43,7 @@ dataset('thread networks', [
     'bluesky' => [Platform::Bluesky, 300],
     'mastodon' => [Platform::Mastodon, 500],
     'x' => [Platform::X, 280],
+    'threads' => [Platform::Threads, 500],
 ]);
 
 test('thread replies sent as strings are stored as text objects through api and mcp', function () {
@@ -227,8 +229,8 @@ test('the batch path rejects 25 replies through api and mcp', function () {
 });
 
 test('scheduling replies on a network that cannot chain is rejected through api and mcp', function () {
-    $account = threadsParityPlatform(Platform::Threads);
-    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['thread_replies' => ['Two']]];
+    $account = threadsParityPlatform(Platform::Telegram);
+    $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::TelegramPost->value, 'meta' => ['thread_replies' => ['Two']]];
     $message = __('posts.form.thread.unsupported');
 
     $response = $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), [
