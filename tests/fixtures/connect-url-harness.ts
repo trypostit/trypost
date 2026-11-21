@@ -1,7 +1,8 @@
 /**
  * Prints the reconnect URL `connectUrl()` (`lib/connectRoutes.ts`)
  * builds for each platform given as an argument, so `ConnectUrlTest.php` can
- * check it against the server's connect routes. A LinkedIn Page reconnects
+ * check it against the server's connect routes. The connect routes are built
+ * by `connectRouteModule()` below, so the harness needs no frontend build. A LinkedIn Page reconnects
  * through LinkedIn; a network without a connect route (Telegram) has none.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
@@ -17,8 +18,21 @@ const [resourcesDir, ...platforms] = process.argv.slice(2);
 /** A module path as a file: `name.ts`, or `name/index.ts` for a folder of routes. */
 const moduleFile = (base: string): string => (existsSync(`${base}.ts`) ? `${base}.ts` : path.join(base, 'index.ts'));
 
+/**
+ * A connect route as Wayfinder generates it (`resources/js/routes/app/social/<name>`),
+ * built here because the generated routes exist only after a frontend build,
+ * which the backend test run does not make. Its URL follows the server's
+ * `/connect/<name>` routes, which `ConnectUrlTest.php` compares it with.
+ */
+const connectRouteModule = (name: string): string =>
+    `data:text/javascript,${encodeURIComponent(`export const connect = { url: (options) => '/connect/${name}' + (options?.query ? '?' + new URLSearchParams(options.query).toString() : '') };`)}`;
+
 registerHooks({
     resolve: (specifier, context, nextResolve) => {
+        if (specifier.startsWith('@/routes/app/social/')) {
+            return { url: connectRouteModule(specifier.slice('@/routes/app/social/'.length)), shortCircuit: true };
+        }
+
         if (specifier.startsWith('@/')) {
             return nextResolve(pathToFileURL(moduleFile(path.join(path.resolve(resourcesDir), specifier.slice(2)))).href, context);
         }
