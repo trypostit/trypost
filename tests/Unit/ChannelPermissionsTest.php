@@ -160,3 +160,12 @@ test('a post type that stands alone lists no thread replies', function () {
     expect(ContentType::XPoll->takesThreadReplies())->toBeFalse()
         ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();
 });
+
+test('a scope no reconnect would grant never refuses a post, as it never warns the channel', function () {
+    config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.upload']]);
+    $account = SocialAccount::factory()->make(['platform' => Platform::TikTok, 'scopes' => ['user.info.basic', 'video.upload']]);
+
+    expect(ChannelPermissions::lacks($account, GatedFeature::Publish))->toBeTrue()
+        ->and(ChannelPermissions::violation($account, [], null))->toBeNull()
+        ->and(ChannelPermissions::missing($account))->toBe([]);
+});

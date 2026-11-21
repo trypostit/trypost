@@ -146,3 +146,32 @@ test('a member who cannot reconnect the channel is told an admin needs to, on th
         default => $response->assertUnprocessable()->assertJsonValidationErrors(['social_account_id' => $message]),
     };
 })->with(['web', 'mcp']);
+
+test('publishing now or rescheduling a post on a channel without the publish scope is refused and leaves it as it was', function (array $action) {
+    $post = postOnChannelWithoutPublishScope();
+    $at = now()->addDays(2)->startOfHour();
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => $at]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), $action)
+        ->assertSessionHasErrors(['social_account_id' => __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
+
+    $post->refresh();
+    expect($post->status)->toBe(Status::Scheduled)
+        ->and($post->scheduled_at->equalTo($at))->toBeTrue();
+})->with([
+    'publish now' => [['action' => 'publish_now']],
+    'reschedule' => [fn (): array => ['action' => 'reschedule', 'scheduled_at' => now()->addDays(3)->startOfHour()->toIso8601String()]],
+]);
+
+test('a member creating a post on a channel without the publish scope is told an admin needs to reconnect it', function () {
+    $member = workspaceMember($this->workspace);
+    $lacking = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'scopes' => ['tweet.read', 'users.read']]);
+
+    TryPostServer::actingAs($member)->tool(CreatePostsTool::class, [
+        'content' => 'From a member',
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'destinations' => [['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value]],
+    ])->assertHasErrors([__('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
+});

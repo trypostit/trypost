@@ -1,6 +1,7 @@
 /**
  * Where each network's connect flow starts, and the URL that reconnects a
- * channel through it (no Vue or Inertia here, so it runs anywhere).
+ * channel through it. Plain functions with no Vue or Inertia, so a Node
+ * harness can run them with a stubbed `window.location`.
  */
 import { filled } from '@/lib/helpers';
 import { connect as blueskyConnect } from '@/routes/app/social/bluesky';

@@ -7,7 +7,6 @@ namespace App\Support;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\User;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -125,13 +124,13 @@ class PostStatusRules
      * Guards publishing a post's stored state without resubmitting its platforms
      * (MCP publish, the "publish now" queue card action).
      */
-    public static function assertStoredPostPublishable(Post $post, ?User $actor = null): void
+    public static function assertStoredPostPublishable(Post $post): void
     {
         if (! $post->hasChannel()) {
             throw ValidationException::withMessages(['social_account_id' => __('posts.errors.choose_channel')]);
         }
 
-        PostPlatformMetaRules::assertStoredPostPublishable($post, $actor);
+        PostPlatformMetaRules::assertStoredPostPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
     }
 }

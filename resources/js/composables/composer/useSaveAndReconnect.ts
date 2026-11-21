@@ -25,15 +25,15 @@ interface SaveAndReconnectOptions {
 type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
 
 /**
- * Saves the post as a draft, then reconnects its channel, so a post held
- * back by a permission the channel lacks (`ChannelPermissionWarning`) is kept
- * while the user grants it. The save says it leaves the app, so the page does
- * not step back through history after it, which would cancel the visit to the
+ * Saves the post as a draft, then reconnects its channel, so a post held back
+ * by a permission the channel lacks (`ChannelPermissionWarning`) is kept while
+ * the user grants it. The save says it leaves the app, so the page does not
+ * step back through history after it, which would cancel the visit to the
  * network's sign-in. A network that reconnects in place (Telegram's dialog;
  * none of them gates a feature today) has no sign-in to visit, so the post
- * stays open in the composer instead. A pending
- * post is decided on first (only someone who manages channels sees the link,
- * and they approve), so saving never takes it out of review.
+ * stays open in the composer instead. A pending post is decided on first
+ * (only someone who manages channels sees the link, and they approve), so
+ * saving never takes it out of review.
  */
 export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
     const { startConnect } = useNetworkConnect([]);

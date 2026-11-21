@@ -232,7 +232,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $permissionViolation = ChannelPermissions::violation($account, $destination['meta'] ?? [], $actor);
+                $permissionViolation = ChannelPermissions::violation($account, data_get($destination, 'meta', []), $actor);
                 if (filled($permissionViolation)) {
                     [$path, $message] = $permissionViolation;
                     $validator->errors()->add("{$key}.{$path}", $message);

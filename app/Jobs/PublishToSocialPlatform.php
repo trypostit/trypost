@@ -249,7 +249,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         $this->failAndFinalize(
-            __('channels.permissions.publish.message', ['network' => $this->post->platform->label()]),
+            ChannelPermissions::refusalMessage($this->post->socialAccount, GatedFeature::Publish, actor: null),
             [
                 'category' => ErrorCategory::Permission->value,
                 'missing_scopes' => $missingScopes,

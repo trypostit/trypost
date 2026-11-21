@@ -513,6 +513,9 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     $page->fill('@thread-reply-0', 'Second post');
     waitFor($page, "@channel-permission-warning-{$other}-reconnect");
     $page->assertSeeIn("@channel-permission-warning-{$other}", SocialAccount::query()->find($blocked)->display_name);
+    $named = SocialAccount::query()->find($blocked)->display_name;
+    expect($page->script("document.querySelector('[data-testid=\"channel-permission-warning-{$other}\"]').textContent.replace(/\\s+/g, ' ').trim()"))
+        ->toBe("{$named}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
     $page->click("@channel-permission-warning-{$other}-reconnect");
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
 

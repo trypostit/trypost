@@ -54,7 +54,7 @@ class PublishPostTool extends Tool
             return Response::error(__('posts.errors.no_social_account'));
         }
 
-        PostStatusRules::assertStoredPostPublishable($post, $request->user());
+        PostStatusRules::assertStoredPostPublishable($post);
 
         $scheduledAt = data_get($validated, 'scheduled_at');
 

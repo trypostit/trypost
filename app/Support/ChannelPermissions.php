@@ -32,13 +32,13 @@ class ChannelPermissions
         return config("trypost.platforms.{$platform->value}.permissions.{$feature->value}.scopes", []);
     }
 
-    /** The first scope of the feature the account's stored grant lacks, else null. */
+    /** The first scope of the feature the account's stored grant lacks, else null (an unknown grant lacks none). */
     public static function missingScope(SocialAccount $account, GatedFeature $feature): ?string
     {
         return $account->missingScope(...self::scopes($account->platform, $feature));
     }
 
-    /** Whether the account's stored grant lacks a scope of the feature (an unknown grant lacks none). */
+    /** Whether the account's stored grant lacks a scope of the feature (`missingScope()`). */
     public static function lacks(SocialAccount $account, GatedFeature $feature): bool
     {
         return filled(self::missingScope($account, $feature));
@@ -102,10 +102,20 @@ class ChannelPermissions
             return null;
         }
 
-        $messages = self::messages($account->platform, $feature);
-        $key = self::canReconnect($account, $actor) ? $messages['message'] : $messages['member_message'];
+        return [$feature->errorPath(), self::refusalMessage($account, $feature, $actor)];
+    }
 
-        return [$feature->errorPath(), __($key, ['network' => $account->platform->label()])];
+    /**
+     * What the channel is told when it lacks the feature's scope: the reconnect
+     * ask, or who can reconnect when `$actor` cannot. Without an actor (the
+     * publish job) it is the reconnect ask.
+     */
+    public static function refusalMessage(SocialAccount $account, GatedFeature $feature, ?User $actor): string
+    {
+        $messages = self::messages($account->platform, $feature);
+        $key = self::canReconnect($account, $actor) ? data_get($messages, 'message') : data_get($messages, 'member_message');
+
+        return __($key, ['network' => $account->platform->label()]);
     }
 
     /**

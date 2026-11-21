@@ -2932,6 +2932,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         {{ $t(metaRequirement(group.anchor)!) }}
                                     </WarningLine>
                                     <ThreadStandaloneWarning
+                                        :platform="group.platform"
                                         :content-type="
                                             groupDestination(group).content_type
                                         "

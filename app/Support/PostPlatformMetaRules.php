@@ -15,7 +15,6 @@ use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Social\MastodonPoll;
@@ -277,7 +276,8 @@ class PostPlatformMetaRules
      * Adds the validation error for meta that becomes mandatory once a post is
      * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
      * A feature the channel lacks a scope for is refused by
-     * `PostCompositionValidator`, which every create and update goes through.
+     * `PostCompositionValidator`, which every post scheduled or published
+     * through `CreatePosts` or `UpdatePost` goes through.
      */
     public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, ?ContentType $contentType = null): void
     {
@@ -303,18 +303,10 @@ class PostPlatformMetaRules
      *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post, ?User $actor = null): void
+    public static function assertStoredPostPublishable(Post $post): void
     {
         if (! $post->hasDestination()) {
             return;
-        }
-
-        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta, $actor);
-
-        if (filled($permissionViolation)) {
-            [$path, $message] = $permissionViolation;
-
-            throw ValidationException::withMessages([$path => $message]);
         }
 
         $violation = self::requiredMetaViolation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type)
