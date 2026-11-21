@@ -10,6 +10,7 @@ const props = withDefaults(
     defineProps<{
         contentType?: ContentTypeValue | null;
         meta?: Record<string, any> | null;
+        testId: string;
     }>(),
     { contentType: null, meta: null },
 );
@@ -20,10 +21,7 @@ const warningKey = computed(() =>
 </script>
 
 <template>
-    <WarningLine
-        v-if="warningKey"
-        data-testid="thread-standalone-warning"
-    >
+    <WarningLine v-if="warningKey" :data-testid="testId">
         {{ $t(warningKey) }}
     </WarningLine>
 </template>

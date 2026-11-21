@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost는 아직 이 채널에서 :network에 게시할 수 없습니다. 다시 연결하고 TryPost가 게시하도록 허용하세요.',
             'member_message' => 'TryPost는 아직 이 채널에서 :network에 게시할 수 없습니다. 워크스페이스 관리자가 다시 연결해야 합니다.',

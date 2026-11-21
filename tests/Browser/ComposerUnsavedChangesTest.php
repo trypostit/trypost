@@ -448,13 +448,13 @@ function seedHeldBackMastodonThread(int $channels = 1): Post
 test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList) {
     $post = seedHeldBackMastodonThread();
     $page = $fromList
-        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), 'channel-permission-reconnect')
+        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), "channel-permission-warning-{$post->social_account_id}-reconnect")
         : visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, '@channel-permission-reconnect');
-    $page->assertSeeIn('@channel-permission-warning', __('posts.form.thread.unsupported'));
+    waitFor($page, "@channel-permission-warning-{$post->social_account_id}-reconnect");
+    $page->assertSeeIn("@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.unsupported'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
-    $page->click('@channel-permission-reconnect');
+    $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
     waitForPath($page, (string) parse_url(route('app.social.mastodon.connect'), PHP_URL_PATH));
 
     expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
@@ -468,10 +468,10 @@ test('a member who cannot manage channels is told an admin needs to reconnect, w
     test()->actingAs($member);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForText($page, '@channel-permission-warning', __('posts.form.thread.reply_empty'));
+    waitForText($page, "@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.reply_empty'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
-    $page->assertMissing('@channel-permission-reconnect')
+    $page->assertMissing("@channel-permission-warning-{$post->social_account_id}-reconnect")
         ->assertNoJavaScriptErrors();
 });
 
@@ -481,7 +481,7 @@ test('a channel lacking the publish scope names its network in the warning and t
     $message = __('channels.permissions.publish.message', ['network' => Platform::Mastodon->label()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForText($page, '@channel-permission-warning', $message);
+    waitForText($page, "@channel-permission-warning-{$post->social_account_id}", $message);
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
     $page->hover('@composer-submit');
     waitForText($page, '@composer-blocked-tooltip', $message);
@@ -508,9 +508,9 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     $page->click('@thread-start');
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
-    waitFor($page, '@channel-permission-reconnect');
-    $page->assertSeeIn('@channel-permission-warning', SocialAccount::query()->find($blocked)->display_name);
-    $page->click('@channel-permission-reconnect');
+    waitFor($page, "@channel-permission-warning-{$other}-reconnect");
+    $page->assertSeeIn("@channel-permission-warning-{$other}", SocialAccount::query()->find($blocked)->display_name);
+    $page->click("@channel-permission-warning-{$other}-reconnect");
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
 
     $page->assertNoJavaScriptErrors();
@@ -524,8 +524,8 @@ test('a post waiting for approval is never saved by save-and-reconnect and asks 
     $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $post->user_id]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, '@channel-permission-reconnect');
-    $page->click('@channel-permission-reconnect');
+    waitFor($page, "@channel-permission-warning-{$post->social_account_id}-reconnect");
+    $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
     waitFor($page, '@reconnect-pending');
 
     $page->assertSee(__('posts.form.reconnect.pending'))

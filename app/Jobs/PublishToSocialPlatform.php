@@ -244,12 +244,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             GatedFeature::Publish,
         );
 
-        if ($missingScopes === []) {
+        if (blank($missingScopes)) {
             return false;
         }
 
         $this->failAndFinalize(
-            'Missing permissions: '.implode(', ', $missingScopes).'. Please reconnect your account.',
+            __('channels.permissions.publish.message', ['network' => $this->post->platform->label()]),
             [
                 'category' => ErrorCategory::Permission->value,
                 'missing_scopes' => $missingScopes,

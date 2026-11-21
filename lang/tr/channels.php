@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost bu kanal üzerinden henüz :network\'te yayın yapamıyor. Kanalı yeniden bağlayın ve TryPost\'un yayınlamasına izin verin.',
             'member_message' => 'TryPost bu kanal üzerinden henüz :network\'te yayın yapamıyor. Bir çalışma alanı yöneticisinin kanalı yeniden bağlaması gerekir.',

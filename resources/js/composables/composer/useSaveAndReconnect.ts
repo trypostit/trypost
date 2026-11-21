@@ -1,10 +1,13 @@
 import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 
-import { connectUrl } from '@/composables/useNetworkConnect';
-import type { PostComposition } from '@/composables/usePostComposition';
+import { useNetworkConnect } from '@/composables/useNetworkConnect';
+import type {
+    ComposerAccount,
+    PostComposition,
+} from '@/composables/usePostComposition';
+import { connectUrl } from '@/lib/connectRoutes';
 import { filled } from '@/lib/helpers';
-import type { PlatformValue } from '@/types/platform';
 import { PostStatus } from '@/types/post';
 
 interface SaveAndReconnectOptions {
@@ -18,27 +21,21 @@ interface SaveAndReconnectOptions {
     ) => boolean;
 }
 
-interface ReconnectedAccount {
-    id: string;
-    platform: PlatformValue;
-}
+/** The channel to reconnect: its id and the network whose connect flow it uses. */
+type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
 
 /**
- * Saves the post as a draft, then reconnects its channel, so a thread held
- * back by a permission the channel lacks is kept while the user grants it.
- * The save says it leaves the app, so the page does not step back through
- * history after it, which would cancel the visit to the network's sign-in.
- * A pending post is decided on first (only someone who manages channels
- * sees the link, and they approve), so saving never takes it out of review.
+ * Saves the post as a draft, then reconnects its channel, so a post held
+ * back by a permission the channel lacks (`ChannelPermissionWarning`) is kept
+ * while the user grants it. The save says it leaves the app, so the page does
+ * not step back through history after it, which would cancel the visit to the
+ * network's sign-in. A channel reconnected in place (Telegram's dialog) has no
+ * sign-in to visit, so the post stays open in the composer instead. A pending
+ * post is decided on first (only someone who manages channels sees the link,
+ * and they approve), so saving never takes it out of review.
  */
 export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
-    const reconnect = (account: ReconnectedAccount): void => {
-        const url = connectUrl(account.platform, account.id);
-
-        if (filled(url)) {
-            window.location.assign(url);
-        }
-    };
+    const { startConnect } = useNetworkConnect([]);
 
     return (account: ReconnectedAccount): void => {
         if (options.status() === PostStatus.PendingApproval) {
@@ -49,9 +46,17 @@ export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
             return;
         }
 
+        const url = connectUrl(account.platform, account.id);
+
+        if (!filled(url)) {
+            startConnect(account.platform, account.id);
+
+            return;
+        }
+
         const submitted = options.submit(
             PostStatus.Draft,
-            () => reconnect(account),
+            () => window.location.assign(url),
             true,
         );
 

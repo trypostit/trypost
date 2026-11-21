@@ -157,10 +157,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import {
-    missingPermissionKey,
-    missingPermissionsOf,
-} from '@/lib/channelPermissions';
+import { channelPermissionKey } from '@/lib/channelPermissions';
 import {
     characterCount,
     displayLength,
@@ -1574,9 +1571,9 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
     }
     for (const key of [
         threadStandaloneKey(contentType, destination.meta),
-        missingPermissionKey(
+        channelPermissionKey(
+            props.platformConfigs[account.id],
             destination.meta,
-            missingPermissionsOf(props.platformConfigs[account.id]),
             canManageAccounts.value,
         ),
     ]) {
@@ -1652,6 +1649,21 @@ const blockingIssue = computed(() => {
 
     return null;
 });
+/** Whether the card's channel takes text only while the post carries media. */
+const hasTextOnlyWarning = (group: NetworkGroup): boolean =>
+    destinationIssues(group.anchor).some(
+        (issue) => issue.key === 'posts.form.warnings.text_only',
+    );
+/** Whether the card's text has more hashtags than its network allows. */
+const exceedsHashtags = (group: NetworkGroup): boolean => {
+    const remaining = groupHashtagsRemaining(group);
+
+    if (!filled(remaining)) {
+        return false;
+    }
+
+    return remaining < 0;
+};
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
     const result = evaluatePlatformMeta(
@@ -2915,12 +2927,14 @@ const onDialogOpenChange = (value: boolean): void => {
                                             groupDestination(group).content_type
                                         "
                                         :meta="groupDestination(group).meta"
+                                        :test-id="`thread-standalone-warning-${group.anchor.id}`"
                                     />
                                     <ChannelPermissionWarning
                                         :accounts="group.accounts"
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
                                         :disabled="submitting"
+                                        :test-id="`channel-permission-warning-${group.anchor.id}`"
                                         @reconnect="saveAndReconnect"
                                     />
                                     <WarningLine
@@ -2935,19 +2949,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                         }}
                                     </WarningLine>
                                     <WarningLine
-                                        v-if="
-                                            destinationIssues(group.anchor).some(
-                                                (issue) =>
-                                                    issue.key ===
-                                                    'posts.form.warnings.text_only',
-                                            )
-                                        "
+                                        v-if="hasTextOnlyWarning(group)"
                                         :data-testid="`composer-text-only-warning-${group.anchor.id}`"
                                     >
                                         {{ $t('posts.form.warnings.text_only') }}
                                     </WarningLine>
                                     <WarningLine
-                                        v-if="(groupHashtagsRemaining(group) ?? 0) < 0"
+                                        v-if="exceedsHashtags(group)"
                                         :data-testid="`composer-hashtag-warning-${group.anchor.id}`"
                                     >
                                         {{

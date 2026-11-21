@@ -55,7 +55,7 @@ class AnalyticsCollectionException extends Exception
     {
         $missing = ChannelPermissions::missingScope($account, $feature);
 
-        if ($missing !== null) {
+        if (filled($missing)) {
             throw new self('permission', "account grant lacks the {$missing} scope");
         }
     }

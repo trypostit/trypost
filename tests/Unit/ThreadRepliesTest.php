@@ -131,6 +131,6 @@ test('a post type that stands alone refuses replies with its own message', funct
 });
 
 test('every network that chains replies sets how many it takes, and none sets more than the ceiling', function (Platform $platform) {
-    expect(ThreadReplies::maxReplies($platform) > 0)->toBe(ThreadReplies::supports($platform))
+    expect(ThreadReplies::maxReplies($platform) > 0)->toBe(filled(ThreadReplies::replyContentType($platform)))
         ->and(ThreadReplies::maxReplies($platform))->toBeLessThanOrEqual(ThreadReplies::MAX_REPLIES);
 })->with(Platform::cases());

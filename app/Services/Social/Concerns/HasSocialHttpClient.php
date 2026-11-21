@@ -25,23 +25,24 @@ trait HasSocialHttpClient
      * defusing rewrites URLs, Telegram escapes entities, and every platform
      * strips HTML the editor stored. Checking the raw draft both rejected
      * posts that would have fit and let through posts the network rejects.
-     * Thread replies are checked first, on every post type; a captionless
+     * A feature its channel lacks a scope for, then thread replies, are checked
+     * first, on every post type; a captionless
      * content type sends no text and is not measured. The
      * hashtag cap is a save-time rule only, so a post stored before it still
      * publishes.
      */
     protected function validateContentLength(Post $post): void
     {
-        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type);
-
-        if ($threadViolation !== null) {
-            throw new ContentLimitException($post->platform, $threadViolation[1]);
-        }
-
         $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta);
 
         if (filled($permissionViolation)) {
             throw new MissingPermissionException($post->platform, $permissionViolation[1]);
+        }
+
+        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type);
+
+        if ($threadViolation !== null) {
+            throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
         $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));

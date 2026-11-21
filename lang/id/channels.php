@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost belum bisa memublikasikan ke :network lewat kanal ini. Hubungkan kembali dan izinkan TryPost memublikasikan.',
             'member_message' => 'TryPost belum bisa memublikasikan ke :network lewat kanal ini. Admin workspace perlu menghubungkannya kembali.',

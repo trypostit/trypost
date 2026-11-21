@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel：:message',
         'publish' => [
             'message' => 'TryPost 暂时无法通过此频道发布到 :network。请重新连接并允许 TryPost 发布。',
             'member_message' => 'TryPost 暂时无法通过此频道发布到 :network。需要工作区管理员重新连接。',

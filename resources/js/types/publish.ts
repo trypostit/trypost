@@ -1,9 +1,9 @@
-import type { MissingPermissions } from '@/lib/channelPermissions';
 import type { RecurrenceFrequency } from '@/lib/recurrence';
 import type {
     MetricsUnavailableReason,
     PublicationAnalyticsDetail,
 } from '@/types/analytics';
+import type { MissingPermissions } from '@/types/channel-permission';
 import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import type { PlatformValue } from '@/types/platform';

@@ -1343,7 +1343,7 @@ test('terminal TikTok account guards keep derivatives while a publish_id can be 
         ->and($platform->error_context['tiktok_publish_id'] ?? null)->toBe("publish-{$guard}");
 
     if ($guard === 'missing_scopes') {
-        expect($platform->error_message)->toBe('Missing permissions: video.publish. Please reconnect your account.')
+        expect($platform->error_message)->toBe(__('channels.permissions.publish.message', ['network' => Platform::TikTok->label()]))
             ->and($platform->error_context['category'] ?? null)->toBe('permission')
             ->and($platform->error_context['missing_scopes'] ?? null)->toBe(['video.publish']);
 
@@ -1977,7 +1977,7 @@ test('publish to social platform fails when scopes are missing', function () {
 
     $this->post->refresh();
     expect($this->post->publish_status)->toBe(PlatformStatus::Failed);
-    expect($this->post->error_message)->toContain('Missing permissions');
+    expect($this->post->error_message)->toBe(__('channels.permissions.publish.message', ['network' => $this->post->platform->label()]));
     expect($this->post->error_context['category'])->toBe('permission');
     expect($this->post->error_context['missing_scopes'])->toContain('w_member_social');
 });

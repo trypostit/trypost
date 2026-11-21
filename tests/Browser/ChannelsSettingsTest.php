@@ -338,3 +338,20 @@ test('a channel that lacks a permission a feature needs says so and offers to re
         ->assertMissing("@channel-reconnect-{$granted->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('a channel that lost its connection says so instead of asking for new permissions', function () {
+    $user = channelsSettingsAdmin();
+    $lost = SocialAccount::factory()->instagram()->tokenExpired()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'));
+    waitFor($page, "@channel-row-{$lost->id}");
+
+    $page->assertSeeIn("@channel-connection-lost-{$lost->id}", __('channels.list.connection_lost'))
+        ->assertMissing("@channel-permissions-missing-{$lost->id}")
+        ->assertVisible("@channel-reconnect-{$lost->id}")
+        ->assertNoJavaScriptErrors();
+});

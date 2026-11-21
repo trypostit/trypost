@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\MissingPermissionException;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\XPublisher;
 use App\Support\ChannelPermissions;
+use Illuminate\Support\Facades\Http;
 
 function xAccountGranting(?array $scopes): SocialAccount
 {
@@ -112,4 +118,23 @@ test('a channel is never told to reconnect for an optional read or a scope TryPo
     config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
 
     expect(ChannelPermissions::missing($tiktok))->toBe([]);
+});
+
+test('a channel missing only analytics scopes is never held back from a post', function () {
+    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), []))->toBeNull();
+});
+
+test('a publisher refuses a feature its channel lacks as a permission, before anything goes out', function () {
+    $account = SocialAccount::factory()->x()->create(['scopes' => ['tweet.write', 'tweet.read', 'users.read']]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create([
+        'content' => 'First post',
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
+    ]);
+    Http::fake();
+
+    expect(fn () => app(XPublisher::class)->publish($post))
+        ->toThrow(fn (MissingPermissionException $exception) => expect($exception->category)->toBe(ErrorCategory::Permission)
+            ->and($exception->platformErrorCode)->toBe('missing_permission')
+            ->and($exception->userMessage)->toBe(__('posts.form.thread.reply_empty')));
+    Http::assertNothingSent();
 });

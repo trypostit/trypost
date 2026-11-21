@@ -1,26 +1,11 @@
 import { filled } from '@/lib/helpers';
 import { threadRepliesOf } from '@/lib/threadReplies';
-
-/**
- * The features a network may only allow once the account grants a scope
- * beyond its publish scopes (`App\Enums\SocialAccount\GatedFeature`).
- */
-export const GatedFeature = {
-    Publish: 'publish',
-    ThreadReplies: 'thread_replies',
-    Followers: 'followers',
-    PostInsights: 'post_insights',
-    PostInsightsExtended: 'post_insights_extended',
-    PostHistory: 'post_history',
-} as const;
-
-export type GatedFeatureValue = (typeof GatedFeature)[keyof typeof GatedFeature];
-
-/** The copy a channel lacking a feature's scope is shown: `message`, and `member_message` for someone who cannot reconnect it. */
-export type MissingPermission = { message: string; member_message: string };
-
-/** The features a channel lacks the scope for (`missingPermissions` of its platform config). */
-export type MissingPermissions = Partial<Record<GatedFeatureValue, MissingPermission>>;
+import {
+    GatedFeature,
+    type GatedFeatureValue,
+    type MissingPermission,
+    type MissingPermissions,
+} from '@/types/channel-permission';
 
 /** The features a channel lacks a scope for, read from its platform config (`missingPermissions`). */
 export const missingPermissionsOf = (
@@ -53,11 +38,22 @@ export const featureIsUsedBy = (
     return false;
 };
 
+/** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
+export const permissionMessageKey = (
+    permission: MissingPermission,
+    canManageAccounts: boolean,
+): string => {
+    if (canManageAccounts) {
+        return permission.message;
+    }
+
+    return permission.member_message;
+};
+
 /**
  * Why a post cannot go out on a channel that lacks the scope of a feature
- * it uses, as `ChannelPermissions::violation()` says on the server: the
- * feature's `message`, or its `member_message` for someone who cannot
- * reconnect the channel. Null when nothing holds it back.
+ * it uses, as `ChannelPermissions::violation()` says on the server. Null
+ * when nothing holds it back.
  */
 export const missingPermissionKey = (
     meta: Record<string, any> | null,
@@ -75,12 +71,20 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (canManageAccounts) {
-            return permission.message;
-        }
-
-        return permission.member_message;
+        return permissionMessageKey(permission, canManageAccounts);
     }
 
     return null;
 };
+
+/** `missingPermissionKey()` for a channel, read from its platform config. */
+export const channelPermissionKey = (
+    platformConfig: Record<string, any> | undefined,
+    meta: Record<string, any> | null,
+    canManageAccounts: boolean,
+): string | null =>
+    missingPermissionKey(
+        meta,
+        missingPermissionsOf(platformConfig),
+        canManageAccounts,
+    );

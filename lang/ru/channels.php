@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost пока не может публиковать в :network через этот канал. Переподключите его и разрешите TryPost публиковать.',
             'member_message' => 'TryPost пока не может публиковать в :network через этот канал. Администратор рабочего пространства должен переподключить его.',

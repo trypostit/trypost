@@ -35,8 +35,11 @@ const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
 );
 
-const { GatedFeature, missingPermissionKey } = await import(
+const { missingPermissionKey } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/channelPermissions.ts')).href
+);
+const { GatedFeature } = await import(
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/channel-permission.ts')).href
 );
 const { STANDALONE_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/content-type.ts')).href
@@ -70,6 +73,7 @@ console.log(
         permission_keys: {
             allowed: missingPermissionKey(thread, {}, true),
             not_used: missingPermissionKey({}, missing, true),
+            analytics_only: missingPermissionKey(thread, { post_insights: missing.thread_replies }, true),
             lacks_scope_admin: missingPermissionKey(thread, missing, true),
             lacks_scope_member: missingPermissionKey(thread, missing, false),
         },

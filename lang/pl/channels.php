@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost nie może jeszcze publikować w :network przez ten kanał. Połącz go ponownie i zezwól TryPost na publikowanie.',
             'member_message' => 'TryPost nie może jeszcze publikować w :network przez ten kanał. Administrator workspace\'u musi połączyć go ponownie.',

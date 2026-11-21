@@ -395,3 +395,12 @@ test('a member is told an admin needs to grant the insights permission, with no 
         ->assertMissing('@channel-permission-notice-reconnect')
         ->assertNoJavaScriptErrors();
 });
+
+test('a channel missing only the publish scope shows no insights notice', function () {
+    $this->instagram->update(['scopes' => ['instagram_business_basic', 'instagram_business_manage_insights']]);
+
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@insights-range-7d');
+
+    $page->assertMissing('@channel-permission-notice')->assertNoJavaScriptErrors();
+});

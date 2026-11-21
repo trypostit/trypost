@@ -35,15 +35,10 @@ class ChannelPermissions
     /** The first scope of the feature the account's stored grant lacks, else null. */
     public static function missingScope(SocialAccount $account, GatedFeature $feature): ?string
     {
-        $scopes = self::scopes($account->platform, $feature);
-
-        if (blank($scopes)) {
-            return null;
-        }
-
-        return $account->missingScope(...$scopes);
+        return $account->missingScope(...self::scopes($account->platform, $feature));
     }
 
+    /** Whether the account's stored grant lacks a scope of the feature (an unknown grant lacks none). */
     public static function lacks(SocialAccount $account, GatedFeature $feature): bool
     {
         return filled(self::missingScope($account, $feature));
@@ -52,7 +47,8 @@ class ChannelPermissions
     /**
      * The feature's scopes a grant lacks, each requirement named by its first
      * alternative. Unlike `missingScope()`, an empty grant lacks them all: the
-     * connect refusal and the publish job read the grant a login reported.
+     * connect refusal reads the grant a login reported, and the publish job
+     * reads the stored grant the same strict way before anything goes out.
      *
      * @param  list<string>  $granted
      * @return list<string>
@@ -77,8 +73,7 @@ class ChannelPermissions
     {
         return collect(GatedFeature::cases())
             ->reject(fn (GatedFeature $feature): bool => $feature->isOptional())
-            ->filter(fn (GatedFeature $feature): bool => self::lacks($account, $feature))
-            ->filter(fn (GatedFeature $feature): bool => self::reconnectGrants($account->platform, $feature))
+            ->filter(fn (GatedFeature $feature): bool => self::blocks($account, $feature))
             ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::messages($account->platform, $feature)])
             ->all();
     }
@@ -100,7 +95,7 @@ class ChannelPermissions
         }
 
         $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => $feature->isUsedBy($meta) && self::lacks($account, $feature));
+            ->first(fn (GatedFeature $feature): bool => $feature->isUsedBy($meta) && self::blocks($account, $feature));
 
         if (blank($feature)) {
             return null;
@@ -110,6 +105,20 @@ class ChannelPermissions
         $key = self::canReconnect($account) ? $messages['message'] : $messages['member_message'];
 
         return [$feature->errorPath(), __($key, ['network' => $account->platform->label()])];
+    }
+
+    /**
+     * Whether the account lacks a scope of the feature that reconnecting would
+     * grant: the one rule behind the channel's warnings and a post's refusal,
+     * so the composer and the server agree.
+     */
+    private static function blocks(SocialAccount $account, GatedFeature $feature): bool
+    {
+        if (! self::lacks($account, $feature)) {
+            return false;
+        }
+
+        return self::reconnectGrants($account->platform, $feature);
     }
 
     /**
@@ -133,7 +142,7 @@ class ChannelPermissions
             return true;
         }
 
-        return $user->can('manageAccounts', $account->workspace);
+        return $user->can('manageAccounts', $account->loadMissing('workspace')->workspace);
     }
 
     /**

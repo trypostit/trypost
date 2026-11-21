@@ -6,8 +6,10 @@ use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Post;
+use App\Models\SocialAccount;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -59,3 +61,36 @@ test('publishing a stored post on a channel without the publish scope is refused
 
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
+
+test('scheduling to several channels refuses only the one that lacks the publish scope, naming its destination', function () {
+    $granted = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $lacking = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'scopes' => ['tweet.read', 'users.read']]);
+
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
+        'content' => 'Two channels',
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'destinations' => [
+            ['social_account_id' => $granted->id, 'content_type' => ContentType::XPost->value],
+            ['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value],
+        ],
+    ])->assertHasErrors([__('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
+
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->whereIn('social_account_id', [$granted->id, $lacking->id])->exists())->toBeFalse();
+});
+
+test('a channel missing only analytics scopes still schedules on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::XPost);
+    $post->socialAccount->update(['scopes' => ['tweet.write']]);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    match ($surface) {
+        'mcp' => $response->assertOk(),
+        default => $response->assertSessionHasNoErrors(),
+    };
+    expect($post->fresh()->status)->toBe(Status::Scheduled);
+})->with(['web', 'api', 'mcp']);

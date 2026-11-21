@@ -273,28 +273,22 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Adds the validation errors that keep a post from being published or
-     * scheduled: meta that becomes mandatory (TikTok privacy, Pinterest board,
-     * Discord channel), and a feature the post uses that its channel lacks a
-     * scope for (`ChannelPermissions`), each under its own field.
+     * Adds the validation error for meta that becomes mandatory once a post is
+     * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
+     * A feature the channel lacks a scope for is refused by
+     * `PostCompositionValidator`, which every create and update goes through.
      */
     public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, ?ContentType $contentType = null): void
     {
-        $metaViolation = self::requiredMetaViolation($target, $meta, $contentType);
+        $violation = self::requiredMetaViolation($target, $meta, $contentType);
 
-        if (filled($metaViolation)) {
-            self::addErrorOnce($validator, "meta.{$metaViolation[0]}", $metaViolation[1]);
+        if (blank($violation)) {
+            return;
         }
 
-        $permissionViolation = ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, Arr::wrap($meta));
+        [$field, $message] = $violation;
+        $key = "meta.{$field}";
 
-        if (filled($permissionViolation)) {
-            self::addErrorOnce($validator, ...$permissionViolation);
-        }
-    }
-
-    private static function addErrorOnce(Validator $validator, string $key, string $message): void
-    {
         if (! $validator->errors()->has($key)) {
             $validator->errors()->add($key, $message);
         }

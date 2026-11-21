@@ -396,3 +396,14 @@ test('approving a poll request schedules it as a poll with its choices', functio
     'custom time' => [fn () => ['queue' => null, 'scheduled_at' => now()->addDays(2)->toIso8601String()]],
     'queue' => [['queue' => 'next']],
 ]);
+
+test('approving a request on a channel that lost the publish scope is refused and the request stays pending', function () {
+    $request = approvalActionsPost($this, $this->requester, ['queue' => 'top']);
+    $this->channel->update(['scopes' => ['openid', 'profile']]);
+
+    $this->actingAs($this->owner)
+        ->put(route('app.posts.approve', $request))
+        ->assertSessionHasErrors(['social_account_id' => __('channels.permissions.publish.message', ['network' => Platform::LinkedIn->label()])]);
+
+    expect($request->refresh()->status)->toBe(PostStatus::PendingApproval);
+});

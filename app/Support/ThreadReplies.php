@@ -20,11 +20,11 @@ use Illuminate\Support\Str;
 /**
  * Replies that follow a post as a thread (`meta.thread_replies`), on the
  * networks that let an app reply to its own post (each network's `replies`
- * setting in `config/trypost.php`). Each reply is `{text, media}`; its media belongs to that reply and follows
- * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply. On X and Mastodon a reply may carry a poll
- * instead of media (`{text, media, poll}`), following that network's `Poll`
- * rules with the reply text as its question.
+ * setting in `config/trypost.php`). Each reply is `{text, media}`; its media
+ * belongs to that reply and follows the rules of the network's reply content
+ * type. A reply stored as a bare string is a text-only reply. On X and
+ * Mastodon a reply may carry a poll instead of media (`{text, media, poll}`),
+ * following that network's `Poll` rules with the reply text as its question.
  */
 class ThreadReplies
 {

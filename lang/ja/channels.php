@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel：:message',
         'publish' => [
             'message' => 'TryPostはまだこのチャンネルから:networkに公開できません。再接続して、TryPostに公開を許可してください。',
             'member_message' => 'TryPostはまだこのチャンネルから:networkに公開できません。ワークスペースの管理者が再接続する必要があります。',

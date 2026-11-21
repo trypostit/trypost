@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import TransSlots from '@/components/TransSlots.vue';
 import WarningLine from '@/components/WarningLine.vue';
+import WarningLink from '@/components/WarningLink.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ComposerAccount } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import {
-    missingPermissionKey,
-    missingPermissionsOf,
-} from '@/lib/channelPermissions';
+import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
+import { channelName } from '@/types/channel';
 
 /**
  * Why a card cannot go out: one of its channels lacks the scope a feature
  * the post uses needs (`missingPermissions` of its platform config). It names
- * the first such channel; someone who manages channels gets a link that saves
- * the post and reconnects that channel, anyone else is told who can.
+ * the first such channel when the card has several; someone who manages
+ * channels gets a link that saves the post and reconnects that channel,
+ * anyone else is told who can.
  */
 const props = withDefaults(
     defineProps<{
@@ -23,6 +24,7 @@ const props = withDefaults(
         platformConfigs: Record<string, any>;
         meta?: Record<string, any> | null;
         disabled?: boolean;
+        testId: string;
     }>(),
     { meta: null, disabled: false },
 );
@@ -32,9 +34,9 @@ const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();
 const { canManageAccounts } = useWorkspaceAbilities();
 
 const keyFor = (account: ComposerAccount): string | null =>
-    missingPermissionKey(
+    channelPermissionKey(
+        props.platformConfigs[account.id],
         props.meta,
-        missingPermissionsOf(props.platformConfigs[account.id]),
         canManageAccounts.value,
     );
 
@@ -65,16 +67,12 @@ const networkLabel = computed((): string => {
 });
 
 /** A card of several channels names the one the warning is about. */
-const channelName = computed((): string | null => {
+const namedChannel = computed((): string | null => {
     if (props.accounts.length < 2 || !filled(blockedAccount.value)) {
         return null;
     }
 
-    if (filled(blockedAccount.value.display_name)) {
-        return blockedAccount.value.display_name;
-    }
-
-    return blockedAccount.value.username;
+    return channelName(blockedAccount.value);
 });
 
 const reconnect = (): void => {
@@ -85,21 +83,28 @@ const reconnect = (): void => {
 </script>
 
 <template>
-    <WarningLine
-        v-if="warningKey"
-        data-testid="channel-permission-warning"
-    >
-        <strong v-if="channelName">{{ channelName }}: </strong>
-        {{ $t(warningKey, { network: networkLabel }) }}
-        <button
+    <WarningLine v-if="warningKey" :data-testid="testId">
+        <TransSlots
+            v-if="namedChannel"
+            :message="$t('channels.permissions.on_channel')"
+        >
+            <template #channel>
+                <strong>{{ namedChannel }}</strong>
+            </template>
+            <template #message>
+                {{ $t(warningKey, { network: networkLabel }) }}
+            </template>
+        </TransSlots>
+        <template v-else>
+            {{ $t(warningKey, { network: networkLabel }) }}
+        </template>
+        <WarningLink
             v-if="canManageAccounts"
-            type="button"
-            class="font-medium underline underline-offset-2 hover:text-foreground/80 disabled:pointer-events-none disabled:opacity-50"
-            data-testid="channel-permission-reconnect"
+            :data-testid="`${testId}-reconnect`"
             :disabled="disabled"
             @click="reconnect"
         >
-            {{ $t('posts.form.reconnect.save') }}</button
-        >
+            {{ $t('posts.form.reconnect.save') }}
+        </WarningLink>
     </WarningLine>
 </template>

@@ -2,11 +2,16 @@
 import { computed } from 'vue';
 
 import WarningLine from '@/components/WarningLine.vue';
+import WarningLink from '@/components/WarningLink.vue';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import type { GatedFeatureValue, MissingPermission } from '@/lib/channelPermissions';
+import { permissionMessageKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
+import type {
+    GatedFeatureValue,
+    MissingPermission,
+} from '@/types/channel-permission';
 import type { ConnectedAccount } from '@/types/social-account';
 
 /**
@@ -39,11 +44,7 @@ const messageKey = computed((): string | null => {
         return null;
     }
 
-    if (canManageAccounts.value) {
-        return permission.value.message;
-    }
-
-    return permission.value.member_message;
+    return permissionMessageKey(permission.value, canManageAccounts.value);
 });
 
 const networkLabel = computed(() => getPlatformLabel(props.channel.platform));
@@ -56,14 +57,12 @@ const reconnect = (): void => {
 <template>
     <WarningLine v-if="messageKey" data-testid="channel-permission-notice">
         {{ $t(messageKey, { network: networkLabel }) }}
-        <button
+        <WarningLink
             v-if="canManageAccounts"
-            type="button"
-            class="font-medium underline underline-offset-2 hover:text-foreground/80"
             data-testid="channel-permission-notice-reconnect"
             @click="reconnect"
         >
-            {{ $t('channels.reconnect') }}</button
-        >
+            {{ $t('channels.reconnect') }}
+        </WarningLink>
     </WarningLine>
 </template>

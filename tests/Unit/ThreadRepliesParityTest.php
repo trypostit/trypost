@@ -40,6 +40,7 @@ test('the composer threads every network the way the server does', function () {
         ->and($composer['permission_keys'])->toBe([
             'allowed' => null,
             'not_used' => null,
+            'analytics_only' => null,
             'lacks_scope_admin' => 'posts.form.thread.reply_empty',
             'lacks_scope_member' => 'posts.form.thread.unsupported',
         ]);

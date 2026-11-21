@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'لا يستطيع TryPost النشر على :network عبر هذه القناة بعد. أعد ربطها واسمح لـ TryPost بالنشر.',
             'member_message' => 'لا يستطيع TryPost النشر على :network عبر هذه القناة بعد. يجب أن يعيد مسؤول مساحة العمل ربطها.',

@@ -21,7 +21,6 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountLabel } from '@/lib/analyticsAccounts';
 import { showsPostTypeFilter } from '@/lib/channelInsights';
-import { GatedFeature } from '@/lib/channelPermissions';
 import { insights } from '@/routes/app/channels';
 import type {
     AnalyticsReport,
@@ -34,6 +33,7 @@ import type {
     SummaryMetric,
 } from '@/types/analytics';
 import { channelName } from '@/types/channel';
+import { GatedFeature } from '@/types/channel-permission';
 import type { PublishChannel } from '@/types/publish';
 
 /** The analytics features whose missing scope this page warns about. */
@@ -243,6 +243,12 @@ watch(selectedTypes, applyFilters, { deep: true });
                 </div>
             </header>
 
+            <ChannelPermissionNotice
+                v-if="supported"
+                :channel="channel"
+                :features="INSIGHTS_FEATURES"
+            />
+
             <EmptyState
                 v-if="!supported"
                 data-testid="insights-unsupported"
@@ -256,10 +262,6 @@ watch(selectedTypes, applyFilters, { deep: true });
             />
 
             <template v-else-if="report">
-                <ChannelPermissionNotice
-                    :channel="channel"
-                    :features="INSIGHTS_FEATURES"
-                />
                 <ImportCoverage :coverage="report.coverage" />
 
                 <EmptyState

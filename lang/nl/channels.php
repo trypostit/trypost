@@ -293,6 +293,7 @@ return [
     ],
 
     'permissions' => [
+        'on_channel' => ':channel: :message',
         'publish' => [
             'message' => 'TryPost kan via dit kanaal nog niet op :network publiceren. Koppel het opnieuw en sta TryPost toe te publiceren.',
             'member_message' => 'TryPost kan via dit kanaal nog niet op :network publiceren. Een workspacebeheerder moet het opnieuw koppelen.',

@@ -1,6 +1,6 @@
-import type { MissingPermissions } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import type { MediaType } from '@/lib/mediaType';
+import type { MissingPermissions } from '@/types/channel-permission';
 import { Platform, type PlatformValue } from '@/types/platform';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import {
