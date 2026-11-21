@@ -7,9 +7,10 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
-use App\Support\Analytics\YouTubeScopes;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,7 +22,7 @@ class YouTubePublicationCollector extends AbstractPublicationHistoryCollector
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
-        if ($account->missingScope(YouTubeScopes::READ) !== null) {
+        if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

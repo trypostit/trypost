@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\Media\Type as MediaType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Support\ChannelPermissions;
 
 test('platform has correct labels', function () {
     expect(Platform::LinkedIn->label())->toBe('LinkedIn');
@@ -394,7 +396,7 @@ test('google business has a real token refresh flow with a 1 hour default ttl', 
 });
 
 test('google business requires the business.manage scope to publish', function () {
-    expect(Platform::GoogleBusiness->requiredPublishScopes())->toBe([
+    expect(ChannelPermissions::scopes(Platform::GoogleBusiness, GatedFeature::Publish))->toBe([
         'https://www.googleapis.com/auth/business.manage',
     ]);
 });

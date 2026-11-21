@@ -6,6 +6,7 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\DiscordPublishException;
@@ -41,6 +42,7 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\ChannelPermissions;
 use App\Support\Social\LimitRetryPolicy;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
@@ -90,7 +92,7 @@ function limitRetryTarget(object $test, Platform $platform, array $attributes = 
         Platform::Mastodon => $factory->mastodon(),
         Platform::Telegram => $factory->telegram(),
         Platform::Discord => $factory->discord(),
-        default => $factory->state(['platform' => $platform, 'scopes' => $platform->requiredPublishScopes()]),
+        default => $factory->state(['platform' => $platform, 'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish)]),
     };
     $account = $state->create(['workspace_id' => $test->workspace->id]);
 

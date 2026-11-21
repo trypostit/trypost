@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
@@ -11,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -44,7 +46,7 @@ function scopeGuardAccount(Platform $platform, ?array $scopes): SocialAccount
 {
     return SocialAccount::factory()->create([
         'platform' => $platform,
-        'scopes' => $scopes ?? $platform->requiredPublishScopes(),
+        'scopes' => $scopes ?? ChannelPermissions::scopes($platform, GatedFeature::Publish),
         'token_expires_at' => now()->addDays(30),
     ]);
 }

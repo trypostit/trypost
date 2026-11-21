@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import ComposerCardWarning from '@/components/posts/composer/ComposerCardWarning.vue';
+import WarningLine from '@/components/WarningLine.vue';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { ComposerAccount } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { missingPermissionKey } from '@/lib/channelPermissions';
@@ -52,6 +53,14 @@ const warningKey = computed((): string | null => {
     return keyFor(blockedAccount.value);
 });
 
+const networkLabel = computed((): string => {
+    if (blockedAccount.value === null) {
+        return '';
+    }
+
+    return getPlatformLabel(blockedAccount.value.platform);
+});
+
 const reconnect = (): void => {
     if (blockedAccount.value !== null) {
         emit('reconnect', blockedAccount.value);
@@ -60,11 +69,11 @@ const reconnect = (): void => {
 </script>
 
 <template>
-    <ComposerCardWarning
+    <WarningLine
         v-if="warningKey"
         data-testid="channel-permission-warning"
     >
-        {{ $t(warningKey) }}
+        {{ $t(warningKey, { network: networkLabel }) }}
         <button
             v-if="canManageAccounts"
             type="button"
@@ -75,5 +84,5 @@ const reconnect = (): void => {
         >
             {{ $t('posts.form.reconnect.save') }}</button
         >
-    </ComposerCardWarning>
+    </WarningLine>
 </template>

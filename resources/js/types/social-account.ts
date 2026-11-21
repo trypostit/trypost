@@ -1,3 +1,4 @@
+import type { MissingPermissions } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import type { MediaType } from '@/lib/mediaType';
 import { Platform, type PlatformValue } from '@/types/platform';
@@ -42,6 +43,8 @@ export interface ConnectedAccount {
     verified_badge?: VerifiedBadge | null;
     profile_url?: string | null;
     status: SocialAccountStatusValue | null;
+    /** The features the channel lacks a scope for (`ChannelPermissions::missing()`). */
+    missing_permissions?: MissingPermissions;
 }
 
 const CONNECTION_LOST_STATUSES: SocialAccountStatusValue[] = [

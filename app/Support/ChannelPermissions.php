@@ -8,28 +8,65 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
+use Illuminate\Support\Arr;
 
 /**
- * The scopes a channel needs for the features a network gates behind a grant
- * beyond its publish scopes (`GatedFeature`). Each network declares them in
- * its `permissions` setting (`trypost.platforms.<network>.permissions.<feature>`:
- * `scope`, and the lang keys an account without it is shown, `message`, and
- * `member_message` for someone who cannot reconnect it). The scope is asked
- * on connect but never one of `Platform::requiredPublishScopes()`, so refusing
- * it still connects the channel.
+ * The one map of what each network needs the account to have granted before
+ * TryPost can do something on a channel (`GatedFeature`): each network's
+ * `permissions` setting, `trypost.platforms.<network>.permissions.<feature>`,
+ * with `scopes` (requirements as `SocialAccount::missingScope()` reads them:
+ * a scope, or a list of alternatives) and optionally its own `message` and
+ * `member_message` lang keys. Connect, publishing, analytics and the UI all
+ * read it; unknown scopes are never read as missing.
  */
 class ChannelPermissions
 {
-    /** The scope the network asks for before a channel may use the feature. */
-    public static function scope(Platform $platform, GatedFeature $feature): ?string
+    /**
+     * @return list<string|list<string>>
+     */
+    public static function scopes(Platform $platform, GatedFeature $feature): array
     {
-        return config("trypost.platforms.{$platform->value}.permissions.{$feature->value}.scope");
+        return config("trypost.platforms.{$platform->value}.permissions.{$feature->value}.scopes", []);
+    }
+
+    /** The first scope of the feature the account's stored grant lacks, else null. */
+    public static function missingScope(SocialAccount $account, GatedFeature $feature): ?string
+    {
+        $scopes = self::scopes($account->platform, $feature);
+
+        if ($scopes === []) {
+            return null;
+        }
+
+        return $account->missingScope(...$scopes);
     }
 
     /**
-     * The features the account's stored grant lacks the scope for, keyed by
-     * feature, with the lang keys it is shown. Unknown scopes are never read as
-     * missing.
+     * The feature's scopes a grant lacks, each requirement named by its first
+     * alternative. Unlike `missingScope()`, an empty grant lacks them all: the
+     * connect refusal and the publish job read the grant a login reported.
+     * A requirement is a scope or a list of alternatives, as the config holds it.
+     *
+     * @param  list<string>  $granted
+     * @return list<string>
+     */
+    public static function missingFrom(array $granted, Platform $platform, GatedFeature $feature): array
+    {
+        return collect(self::scopes($platform, $feature))
+            ->reject(fn (string|array $requirement): bool => filled(array_intersect(Arr::wrap($requirement), $granted)))
+            ->map(fn (string|array $requirement): string => Arr::first(Arr::wrap($requirement)))
+            ->values()
+            ->all();
+    }
+
+    public static function lacks(SocialAccount $account, GatedFeature $feature): bool
+    {
+        return filled(self::missingScope($account, $feature));
+    }
+
+    /**
+     * Every feature the account lacks a scope for, keyed by feature, with the
+     * lang keys it is shown.
      *
      * @return array<string, array{message: string, member_message: string}>
      */
@@ -37,13 +74,13 @@ class ChannelPermissions
     {
         return collect(GatedFeature::cases())
             ->filter(fn (GatedFeature $feature): bool => self::lacks($account, $feature))
-            ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::messages($account->platform, $feature)])
+            ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::copy($account->platform, $feature)])
             ->all();
     }
 
     /**
-     * The first feature the post uses that its channel lacks the scope for,
-     * as `[field, message]`, so web, API, MCP and the publisher refuse it before
+     * The first feature the post uses that its channel lacks a scope for, as
+     * `[field, message]`, so web, API, MCP and the publisher refuse it before
      * anything goes out. A post whose channel is unknown is never refused here.
      *
      * @param  array<string, mixed>|null  $meta
@@ -57,34 +94,23 @@ class ChannelPermissions
 
         foreach (GatedFeature::cases() as $feature) {
             if ($feature->isUsedBy($type, $meta) && self::lacks($account, $feature)) {
-                return [$feature->value, __(self::messages($account->platform, $feature)['message'])];
+                return [$feature->value, __(self::copy($account->platform, $feature)['message'], ['network' => $account->platform->label()])];
             }
         }
 
         return null;
     }
 
-    private static function lacks(SocialAccount $account, GatedFeature $feature): bool
-    {
-        $scope = self::scope($account->platform, $feature);
-
-        if (blank($scope)) {
-            return false;
-        }
-
-        return filled($account->missingScope($scope));
-    }
-
     /**
      * @return array{message: string, member_message: string}
      */
-    private static function messages(Platform $platform, GatedFeature $feature): array
+    private static function copy(Platform $platform, GatedFeature $feature): array
     {
         $setting = "trypost.platforms.{$platform->value}.permissions.{$feature->value}";
 
         return [
-            'message' => (string) config("{$setting}.message"),
-            'member_message' => (string) config("{$setting}.member_message"),
+            'message' => config("{$setting}.message", "{$feature->copyGroup()}.message"),
+            'member_message' => config("{$setting}.member_message", "{$feature->copyGroup()}.member_message"),
         ];
     }
 }

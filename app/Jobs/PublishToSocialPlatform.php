@@ -8,6 +8,7 @@ use App\Actions\Post\FinalizePostPublication;
 use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\PublishStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Events\PostStatusUpdated;
@@ -32,6 +33,7 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\ChannelPermissions;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\LimitRetryPolicy;
 use App\Support\Social\PublishCheckpoint;
@@ -236,10 +238,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function failForMissingScopes(): bool
     {
-        $missingScopes = array_values(array_diff(
-            $this->post->platform->requiredPublishScopes(),
+        $missingScopes = ChannelPermissions::missingFrom(
             $this->post->socialAccount->scopes ?? [],
-        ));
+            $this->post->platform,
+            GatedFeature::Publish,
+        );
 
         if ($missingScopes === []) {
             return false;

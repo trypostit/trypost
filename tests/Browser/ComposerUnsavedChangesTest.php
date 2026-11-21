@@ -424,7 +424,7 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
 function seedHeldBackMastodonThread(int $channels = 1): Post
 {
     config(['trypost.platforms.mastodon.permissions.thread_replies' => [
-        'scope' => 'write:replies',
+        'scopes' => ['write:replies'],
         'message' => 'posts.form.thread.unsupported',
         'member_message' => 'posts.form.thread.reply_empty',
     ]]);
@@ -433,8 +433,8 @@ function seedHeldBackMastodonThread(int $channels = 1): Post
     $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
     $accounts = SocialAccount::factory()->mastodon()->count($channels)->create(['workspace_id' => $workspace->id]);
-    $accounts->first()->update(['scopes' => ['read', 'write', 'write:replies']]);
-    $accounts->last()->update(['scopes' => ['read', 'write']]);
+    $accounts->first()->update(['scopes' => ['write:statuses', 'write:replies']]);
+    $accounts->last()->update(['scopes' => ['write:statuses']]);
     $post = Post::factory()->forAccount($accounts->last(), ContentType::MastodonPost)->create([
         'user_id' => $user->id,
         'content' => 'Held back',

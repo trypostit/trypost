@@ -187,6 +187,7 @@ return [
         'no_posting_times' => '게시 시간 없음',
         'no_results' => '검색과 일치하는 채널이 없습니다.',
         'connection_lost' => '이 채널의 연결이 끊어졌습니다',
+        'permissions_missing' => '이 채널에 새 권한이 필요합니다',
         'settings' => '설정',
         'more_actions' => '추가 작업',
     ],
@@ -289,5 +290,20 @@ return [
         'blue' => '인증됨',
         'business' => '인증된 조직',
         'government' => '정부 계정',
+    ],
+
+    'permissions' => [
+        'publish' => [
+            'message' => 'TryPost는 아직 이 채널에서 :network에 게시할 수 없습니다. 다시 연결하고 TryPost가 게시하도록 허용하세요.',
+            'member_message' => 'TryPost는 아직 이 채널에서 :network에 게시할 수 없습니다. 워크스페이스 관리자가 다시 연결해야 합니다.',
+        ],
+        'insights' => [
+            'message' => '이 채널의 인사이트를 보려면 다시 연결하고 TryPost가 :network의 인사이트를 읽도록 허용하세요.',
+            'member_message' => '이 채널의 인사이트를 보려면 워크스페이스 관리자가 다시 연결해야 합니다.',
+        ],
+        'thread_replies' => [
+            'message' => ':network에 답글을 게시하려면 이 채널을 다시 연결하고 TryPost가 게시하도록 허용하세요.',
+            'member_message' => ':network에 답글을 게시하려면 워크스페이스 관리자가 이 채널을 다시 연결해야 합니다.',
+        ],
     ],
 ];

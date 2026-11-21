@@ -9,18 +9,23 @@ use App\Models\SocialAccount;
 use App\Support\ChannelPermissions;
 use App\Support\PostPlatformMetaRules;
 
+function xAccountGranting(?array $scopes): SocialAccount
+{
+    return SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => $scopes]);
+}
+
 beforeEach(function () {
     config(['trypost.platforms.x.permissions.thread_replies' => [
-        'scope' => 'tweet.moderate.write',
+        'scopes' => ['tweet.moderate.write'],
         'message' => 'posts.form.thread.reply_empty',
         'member_message' => 'posts.form.thread.unsupported',
     ]]);
 });
 
-test('a channel without the scope a feature needs cannot use it, and is told so', function () {
+test('a channel without the scope a feature needs is held back from it and told so', function () {
     $thread = ['thread_replies' => ['second']];
-    $without = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write']]);
-    $with = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write', 'tweet.moderate.write']]);
+    $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
+    $with = xAccountGranting(['tweet.write', 'tweet.read', 'users.read', 'tweet.moderate.write']);
 
     expect(ChannelPermissions::violation($without, ContentType::XPost, $thread))
         ->toBe(['thread_replies', __('posts.form.thread.reply_empty')])
@@ -31,26 +36,43 @@ test('a channel without the scope a feature needs cannot use it, and is told so'
 });
 
 test('a post that does not use the feature is never held back by its scope', function () {
-    $without = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write']]);
+    $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
 
     expect(ChannelPermissions::violation($without, ContentType::XPost, ['thread_replies' => []]))->toBeNull()
         ->and(ChannelPermissions::violation($without, ContentType::XPost, null))->toBeNull();
 });
 
-test('unknown scopes, an unknown channel and a network that gates nothing hold nothing back', function () {
-    $thread = ['thread_replies' => ['second']];
-    $unknown = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => null]);
-    $mastodon = SocialAccount::factory()->make(['platform' => Platform::Mastodon, 'scopes' => ['read']]);
+test('a channel lacking the publish scope cannot schedule anything, with the network named', function () {
+    $account = xAccountGranting(['tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::violation($unknown, ContentType::XPost, $thread))->toBeNull()
-        ->and(ChannelPermissions::violation(null, ContentType::XPost, $thread))->toBeNull()
-        ->and(ChannelPermissions::scope(Platform::Mastodon, GatedFeature::ThreadReplies))->toBeNull()
-        ->and(ChannelPermissions::missing($mastodon))->toBe([]);
+    expect(ChannelPermissions::violation($account, ContentType::XPost, []))
+        ->toBe(['publish', __('channels.permissions.publish.message', ['network' => Platform::X->label()])])
+        ->and(PostPlatformMetaRules::requiredMetaViolation($account, [], ContentType::XPost))
+        ->toBe(['publish', __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
 });
 
-test('scheduling and publishing refuse a feature the channel lacks the scope for', function () {
-    $without = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write']]);
+test('every analytics feature a channel lacks is listed with the insights copy', function () {
+    $account = xAccountGranting(['tweet.write']);
 
-    expect(PostPlatformMetaRules::requiredMetaViolation($without, ['thread_replies' => ['second']], ContentType::XPost))
-        ->toBe(['thread_replies', __('posts.form.thread.reply_empty')]);
+    expect(array_keys(ChannelPermissions::missing($account)))->toBe(['thread_replies', 'followers', 'post_insights', 'post_history'])
+        ->and(ChannelPermissions::missing($account)['followers'])
+        ->toBe(['message' => 'channels.permissions.insights.message', 'member_message' => 'channels.permissions.insights.member_message']);
+});
+
+test('unknown scopes, an unknown channel and a network that gates nothing hold nothing back', function () {
+    $thread = ['thread_replies' => ['second']];
+    $telegram = SocialAccount::factory()->make(['platform' => Platform::Telegram, 'scopes' => ['anything']]);
+
+    expect(ChannelPermissions::violation(xAccountGranting(null), ContentType::XPost, $thread))->toBeNull()
+        ->and(ChannelPermissions::violation(null, ContentType::XPost, $thread))->toBeNull()
+        ->and(ChannelPermissions::scopes(Platform::Telegram, GatedFeature::Publish))->toBe([])
+        ->and(ChannelPermissions::missing($telegram))->toBe([]);
+});
+
+test('a login reporting no scopes lacks every publish scope, while a stored grant that is unknown lacks none', function () {
+    expect(ChannelPermissions::missingFrom([], Platform::X, GatedFeature::Publish))->toBe(['tweet.write'])
+        ->and(ChannelPermissions::missingFrom(['tweet.write'], Platform::X, GatedFeature::Publish))->toBe([])
+        ->and(ChannelPermissions::missingFrom(['https://www.googleapis.com/auth/youtube'], Platform::YouTube, GatedFeature::Followers))->toBe([])
+        ->and(ChannelPermissions::missingFrom([], Platform::YouTube, GatedFeature::Followers))->toBe(['https://www.googleapis.com/auth/youtube.readonly'])
+        ->and(ChannelPermissions::missingScope(xAccountGranting(null), GatedFeature::Publish))->toBeNull();
 });

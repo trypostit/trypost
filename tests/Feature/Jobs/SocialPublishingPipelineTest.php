@@ -7,6 +7,7 @@ use App\Actions\Post\ImportExternalPosts;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
@@ -33,6 +34,7 @@ use App\Services\Social\ThreadsPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\ChannelPermissions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Queue\WorkerOptions;
 use Illuminate\Support\Facades\Bus;
@@ -61,7 +63,7 @@ function scheduledPipelineTarget(Platform $platform): Post
 {
     $account = SocialAccount::factory()->create([
         'platform' => $platform,
-        'scopes' => $platform->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish),
     ]);
     $contentType = ContentType::defaultFor($platform);
     $post = Post::factory()->forAccount($account, $contentType)->scheduled()->create([

@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'Saat yok',
         'no_results' => 'Aramanızla eşleşen kanal yok.',
         'connection_lost' => 'Bu kanalın bağlantısı koptu',
+        'permissions_missing' => 'Bu kanalın yeni izinlere ihtiyacı var',
         'settings' => 'Ayarlar',
         'more_actions' => 'Diğer işlemler',
     ],
@@ -289,5 +290,20 @@ return [
         'blue' => 'Doğrulanmış',
         'business' => 'Doğrulanmış kuruluş',
         'government' => 'Devlet hesabı',
+    ],
+
+    'permissions' => [
+        'publish' => [
+            'message' => 'TryPost bu kanal üzerinden henüz :network\'te yayın yapamıyor. Kanalı yeniden bağlayın ve TryPost\'un yayınlamasına izin verin.',
+            'member_message' => 'TryPost bu kanal üzerinden henüz :network\'te yayın yapamıyor. Bir çalışma alanı yöneticisinin kanalı yeniden bağlaması gerekir.',
+        ],
+        'insights' => [
+            'message' => 'Bu kanalın istatistiklerini göstermek için kanalı yeniden bağlayın ve TryPost\'un :network istatistiklerini okumasına izin verin.',
+            'member_message' => 'Bu kanalın istatistiklerini göstermek için bir çalışma alanı yöneticisinin kanalı yeniden bağlaması gerekir.',
+        ],
+        'thread_replies' => [
+            'message' => ':network\'te yanıt yayınlamak için bu kanalı yeniden bağlayın ve TryPost\'un yanıtları paylaşmasına izin verin.',
+            'member_message' => ':network\'te yanıt yayınlamak için bir çalışma alanı yöneticisinin bu kanalı yeniden bağlaması gerekir.',
+        ],
     ],
 ];

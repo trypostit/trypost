@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ContentLimitException;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
+use App\Support\ChannelPermissions;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -1637,7 +1639,7 @@ test('instagram facebook publisher recovers a published container on graph.faceb
         'platform_user_id' => 'ig_fb_123',
         'access_token' => 'page_token_123',
         'token_expires_at' => null,
-        'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes(Platform::InstagramFacebook, GatedFeature::Publish),
     ]);
     $this->post->forceFill([
         'social_account_id' => $account->id,

@@ -187,6 +187,7 @@ return [
         'no_posting_times' => '投稿時間なし',
         'no_results' => '検索に一致するチャンネルはありません。',
         'connection_lost' => 'このチャンネルの接続が切れました',
+        'permissions_missing' => 'このチャンネルには新しい権限が必要です',
         'settings' => '設定',
         'more_actions' => 'その他の操作',
     ],
@@ -289,5 +290,20 @@ return [
         'blue' => '認証済み',
         'business' => '認証済み組織',
         'government' => '政府アカウント',
+    ],
+
+    'permissions' => [
+        'publish' => [
+            'message' => 'TryPostはまだこのチャンネルから:networkに公開できません。再接続して、TryPostに公開を許可してください。',
+            'member_message' => 'TryPostはまだこのチャンネルから:networkに公開できません。ワークスペースの管理者が再接続する必要があります。',
+        ],
+        'insights' => [
+            'message' => 'このチャンネルのインサイトを表示するには、再接続してTryPostに:networkのインサイトの読み取りを許可してください。',
+            'member_message' => 'このチャンネルのインサイトを表示するには、ワークスペースの管理者が再接続する必要があります。',
+        ],
+        'thread_replies' => [
+            'message' => ':networkで返信を公開するには、このチャンネルを再接続してTryPostに投稿を許可してください。',
+            'member_message' => ':networkで返信を公開するには、ワークスペースの管理者がこのチャンネルを再接続する必要があります。',
+        ],
     ],
 ];

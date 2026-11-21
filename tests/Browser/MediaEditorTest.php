@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Ai\Agents\MediaAltTextGenerator;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -30,7 +32,7 @@ function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFe
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => $platform,
-        'scopes' => $platform->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish),
     ]);
 
     $post = Post::factory()->forAccount($account, $contentType)->create([

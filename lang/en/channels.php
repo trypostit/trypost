@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'No posting times',
         'no_results' => 'No channels match your search.',
         'connection_lost' => 'This channel lost its connection',
+        'permissions_missing' => 'This channel needs new permissions',
         'settings' => 'Settings',
         'more_actions' => 'More actions',
     ],
@@ -289,5 +290,20 @@ return [
         'blue' => 'Verified',
         'business' => 'Verified organization',
         'government' => 'Government account',
+    ],
+
+    'permissions' => [
+        'publish' => [
+            'message' => 'TryPost can\'t publish to :network on this channel yet. Reconnect it and allow TryPost to publish.',
+            'member_message' => 'TryPost can\'t publish to :network on this channel yet. A workspace admin needs to reconnect it.',
+        ],
+        'insights' => [
+            'message' => 'To show this channel\'s insights, reconnect it and allow TryPost to read insights on :network.',
+            'member_message' => 'To show this channel\'s insights, a workspace admin needs to reconnect it.',
+        ],
+        'thread_replies' => [
+            'message' => 'To publish replies on :network, reconnect this channel and allow TryPost to post them.',
+            'member_message' => 'To publish replies on :network, a workspace admin needs to reconnect this channel.',
+        ],
     ],
 ];

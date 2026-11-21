@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Post\DeleteChannelPosts;
 use App\Actions\Post\Queue\ReflowChannelQueue;
 use App\Enums\Repurpose\Status as RepurposeStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\Post\QueueBusyException;
@@ -20,6 +21,7 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -241,7 +243,7 @@ class SocialController extends Controller
      */
     protected function refusalForMissingPublishScopes(array $granted): ?RedirectResponse
     {
-        if (array_diff($this->platform->requiredPublishScopes(), $granted) === []) {
+        if (ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish) === []) {
             return null;
         }
 

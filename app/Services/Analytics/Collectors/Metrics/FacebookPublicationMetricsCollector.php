@@ -8,9 +8,11 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Str;
@@ -65,7 +67,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, 'pages_read_engagement');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $graph = $account->platform->graphApiUrl();
         $isStory = $publication->content_type === PublicationContentType::Story;
         $videoId = data_get($publication->provider_metadata, FacebookMediaKey::Video->value);
@@ -79,7 +81,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         };
         $values = [];
 
-        if ($account->missingScope('read_insights') === null) {
+        if (! ChannelPermissions::lacks($account, GatedFeature::PostInsightsExtended)) {
             $values = $this->insights($this->optionalInsightItems($account, "{$graph}/{$insightsId}/{$edge}", $fields, [
                 'period' => 'lifetime',
             ]));

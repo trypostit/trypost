@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import {
     IconAlertCircle,
+    IconAlertTriangle,
     IconBrandFacebook,
     IconDotsVertical,
     IconExternalLink,
@@ -56,6 +57,32 @@ const emit = defineEmits<{
 const name = computed(() => channelName(props.channel));
 
 const lost = computed(() => isConnectionLost(props.channel));
+
+/** A connected channel that lacks a scope a feature needs (`missing_permissions`). */
+const needsPermissions = computed((): boolean => {
+    if (lost.value) {
+        return false;
+    }
+
+    return filled(props.channel.missing_permissions);
+});
+
+const needsReconnect = computed((): boolean => {
+    if (lost.value) {
+        return true;
+    }
+
+    return needsPermissions.value;
+});
+
+/** A lost connection stops publishing; a missing permission only some features. */
+const reconnectVariant = computed((): 'destructive' | 'outline' => {
+    if (lost.value) {
+        return 'destructive';
+    }
+
+    return 'outline';
+});
 
 const timezone = computed(() => props.channel.timezone_option);
 
@@ -149,6 +176,14 @@ const disconnect = (): void => {
                     <span>{{ $t('channels.list.connection_lost') }}</span>
                 </p>
                 <p
+                    v-else-if="needsPermissions"
+                    class="flex min-w-0 items-start gap-1 text-sm text-warning"
+                    :data-testid="`channel-permissions-missing-${channel.id}`"
+                >
+                    <IconAlertTriangle class="mt-[3px] size-3.5 shrink-0" />
+                    <span>{{ $t('channels.list.permissions_missing') }}</span>
+                </p>
+                <p
                     v-else
                     class="truncate text-sm text-muted-foreground"
                     :title="networkLine($t)"
@@ -213,8 +248,8 @@ const disconnect = (): void => {
 
         <div class="flex shrink-0 items-center justify-end gap-1 max-md:order-2">
             <Button
-                v-if="lost"
-                variant="destructive"
+                v-if="needsReconnect"
+                :variant="reconnectVariant"
                 size="sm"
                 class="max-md:hidden"
                 :data-testid="`channel-reconnect-${channel.id}`"
@@ -306,8 +341,8 @@ const disconnect = (): void => {
         </div>
 
         <Button
-            v-if="lost"
-            variant="destructive"
+            v-if="needsReconnect"
+            :variant="reconnectVariant"
             size="sm"
             class="col-span-2 order-4 md:hidden"
             :data-testid="`channel-reconnect-phone-${channel.id}`"

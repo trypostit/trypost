@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Analytics\YouTubeScopes;
 use Illuminate\Support\Str;
 
 /*
@@ -533,6 +534,9 @@ return [
     'platforms' => [
         'linkedin' => [
             'enabled' => env('LINKEDIN_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['w_member_social']],
+            ],
             'api' => $url('LINKEDIN_API', 'https://api.linkedin.com'),
             // OAuth host is different from the data API (api.linkedin.com).
             'oauth_api' => $url('LINKEDIN_OAUTH_API', 'https://www.linkedin.com'),
@@ -542,6 +546,9 @@ return [
         ],
         'linkedin-page' => [
             'enabled' => env('LINKEDIN_PAGE_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['w_organization_social']],
+            ],
             'api' => $url('LINKEDIN_PAGE_API', 'https://api.linkedin.com'),
             // Scopes for LinkedIn Page authentication
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('LINKEDIN_PAGE_SCOPES', 'openid,profile,email,w_organization_social,r_organization_social,rw_organization_admin,w_member_social'))))),
@@ -549,12 +556,24 @@ return [
         ],
         'x' => [
             'enabled' => env('X_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['tweet.write']],
+                'followers' => ['scopes' => ['tweet.read', 'users.read']],
+                'post_insights' => ['scopes' => ['tweet.read', 'users.read']],
+                'post_history' => ['scopes' => ['tweet.read', 'users.read']],
+            ],
             'api' => $url('X_API', 'https://api.x.com/2'),
             'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
             'replies' => ['max' => 24],
         ],
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['video.publish']],
+                'followers' => ['scopes' => ['user.info.stats']],
+                'post_insights' => ['scopes' => ['video.list']],
+                'post_history' => ['scopes' => ['video.list']],
+            ],
             'api' => $url('TIKTOK_API', 'https://open.tiktokapis.com/v2'),
             // OAuth scopes to request. Trim when the TikTok app lacks a product
             // (e.g. no Display API => drop user.info.profile, user.info.stats,
@@ -563,17 +582,37 @@ return [
         ],
         'youtube' => [
             'enabled' => env('YOUTUBE_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['https://www.googleapis.com/auth/youtube.upload']],
+                'followers' => ['scopes' => [YouTubeScopes::READ]],
+                'post_insights' => ['scopes' => [YouTubeScopes::READ]],
+                'post_insights_extended' => ['scopes' => [YouTubeScopes::ANALYTICS]],
+                'post_history' => ['scopes' => [YouTubeScopes::READ]],
+            ],
             'data_api' => $url('YOUTUBE_DATA_API', 'https://www.googleapis.com/youtube/v3'),
             'analytics_api' => $url('YOUTUBE_ANALYTICS_API', 'https://youtubeanalytics.googleapis.com/v2'),
             'oauth_api' => $url('YOUTUBE_OAUTH_API', 'https://oauth2.googleapis.com'),
         ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['pages_manage_posts']],
+                'followers' => ['scopes' => ['pages_read_engagement']],
+                'post_insights' => ['scopes' => ['pages_read_engagement']],
+                'post_insights_extended' => ['scopes' => ['read_insights']],
+                'post_history' => ['scopes' => ['pages_read_engagement']],
+            ],
             'graph_api' => $url('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['instagram_business_content_publish']],
+                'followers' => ['scopes' => ['instagram_business_basic']],
+                'post_insights' => ['scopes' => ['instagram_business_basic', 'instagram_business_manage_insights']],
+                'post_history' => ['scopes' => ['instagram_business_basic']],
+            ],
             'graph_api' => $url('INSTAGRAM_GRAPH_API', 'https://graph.instagram.com/v25.0'),
             // graph.instagram.com (no version) is the auth/refresh host.
             'auth_api' => $url('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
@@ -582,10 +621,22 @@ return [
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['instagram_content_publish']],
+                'followers' => ['scopes' => ['instagram_basic', 'pages_read_engagement']],
+                'post_insights' => ['scopes' => ['instagram_basic', 'instagram_manage_insights', 'pages_read_engagement']],
+                'post_history' => ['scopes' => ['instagram_basic']],
+            ],
             'graph_api' => $url('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['threads_content_publish']],
+                'followers' => ['scopes' => ['threads_basic', 'threads_manage_insights']],
+                'post_insights' => ['scopes' => ['threads_basic', 'threads_manage_insights']],
+                'post_history' => ['scopes' => ['threads_basic']],
+            ],
             'graph_api' => $url('THREADS_GRAPH_API', 'https://graph.threads.net/v1.0'),
             // graph.threads.net (no version) is the auth/refresh host.
             'auth_api' => $url('THREADS_AUTH_API', 'https://graph.threads.net'),
@@ -593,6 +644,12 @@ return [
         ],
         'pinterest' => [
             'enabled' => env('PINTEREST_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['pins:write']],
+                'followers' => ['scopes' => ['user_accounts:read']],
+                'post_insights' => ['scopes' => ['pins:read', 'boards:read']],
+                'post_history' => ['scopes' => ['pins:read', 'boards:read']],
+            ],
             'api' => $url('PINTEREST_API', 'https://api.pinterest.com/v5'),
         ],
         'bluesky' => [
@@ -618,6 +675,9 @@ return [
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['write:statuses']],
+            ],
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => $url('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
             'replies' => ['max' => 24],
@@ -648,6 +708,9 @@ return [
         ],
         'google_business' => [
             'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
+            'permissions' => [
+                'publish' => ['scopes' => ['https://www.googleapis.com/auth/business.manage']],
+            ],
             // Account Management API — lists the Business accounts a user administers.
             'account_management_api' => $url('GOOGLE_BUSINESS_ACCOUNT_MANAGEMENT_API', 'https://mybusinessaccountmanagement.googleapis.com/v1'),
             // Business Information API — lists locations under an account.

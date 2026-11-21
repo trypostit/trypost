@@ -6,7 +6,12 @@ import { threadRepliesOf } from '@/lib/threadReplies';
  * beyond its publish scopes (`App\Enums\SocialAccount\GatedFeature`).
  */
 export const GatedFeature = {
+    Publish: 'publish',
     ThreadReplies: 'thread_replies',
+    Followers: 'followers',
+    PostInsights: 'post_insights',
+    PostInsightsExtended: 'post_insights_extended',
+    PostHistory: 'post_history',
 } as const;
 
 export type GatedFeatureValue = (typeof GatedFeature)[keyof typeof GatedFeature];
@@ -17,11 +22,15 @@ export type MissingPermission = { message: string; member_message: string };
 /** The features a channel lacks the scope for (`missingPermissions` of its platform config). */
 export type MissingPermissions = Partial<Record<GatedFeatureValue, MissingPermission>>;
 
-/** Whether a post uses the feature, as `GatedFeature::isUsedBy()` says on the server. */
+/** Whether a post uses the feature, as `GatedFeature::isUsedBy()` says on the server: every post publishes, analytics are never part of one. */
 export const featureIsUsedBy = (
     feature: GatedFeatureValue,
     meta: Record<string, any> | null,
 ): boolean => {
+    if (feature === GatedFeature.Publish) {
+        return true;
+    }
+
     if (feature === GatedFeature.ThreadReplies) {
         return filled(threadRepliesOf(meta));
     }

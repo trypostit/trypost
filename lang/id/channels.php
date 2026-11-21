@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'Belum ada jadwal',
         'no_results' => 'Tidak ada channel yang cocok dengan pencarianmu.',
         'connection_lost' => 'Koneksi channel ini terputus',
+        'permissions_missing' => 'Kanal ini memerlukan izin baru',
         'settings' => 'Pengaturan',
         'more_actions' => 'Aksi lainnya',
     ],
@@ -289,5 +290,20 @@ return [
         'blue' => 'Terverifikasi',
         'business' => 'Organisasi terverifikasi',
         'government' => 'Akun pemerintah',
+    ],
+
+    'permissions' => [
+        'publish' => [
+            'message' => 'TryPost belum bisa memublikasikan ke :network lewat kanal ini. Hubungkan kembali dan izinkan TryPost memublikasikan.',
+            'member_message' => 'TryPost belum bisa memublikasikan ke :network lewat kanal ini. Admin workspace perlu menghubungkannya kembali.',
+        ],
+        'insights' => [
+            'message' => 'Untuk menampilkan statistik kanal ini, hubungkan kembali dan izinkan TryPost membaca statistik di :network.',
+            'member_message' => 'Untuk menampilkan statistik kanal ini, admin workspace perlu menghubungkannya kembali.',
+        ],
+        'thread_replies' => [
+            'message' => 'Untuk memublikasikan balasan di :network, hubungkan kembali kanal ini dan izinkan TryPost mempostingnya.',
+            'member_message' => 'Untuk memublikasikan balasan di :network, admin workspace perlu menghubungkan kembali kanal ini.',
+        ],
     ],
 ];

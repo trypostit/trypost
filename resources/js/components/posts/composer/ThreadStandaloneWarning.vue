@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import ComposerCardWarning from '@/components/posts/composer/ComposerCardWarning.vue';
+import WarningLine from '@/components/WarningLine.vue';
 import { threadStandaloneKey } from '@/lib/threadReplies';
 import type { ContentTypeValue } from '@/types/content-type';
 
@@ -20,10 +20,10 @@ const warningKey = computed(() =>
 </script>
 
 <template>
-    <ComposerCardWarning
+    <WarningLine
         v-if="warningKey"
         data-testid="thread-standalone-warning"
     >
         {{ $t(warningKey) }}
-    </ComposerCardWarning>
+    </WarningLine>
 </template>

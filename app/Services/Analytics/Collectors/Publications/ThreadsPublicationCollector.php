@@ -7,7 +7,9 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use App\Support\Social\ThreadsPoll;
 use Carbon\CarbonImmutable;
 
@@ -22,7 +24,7 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
         ?string $cursor,
         CarbonImmutable $cutoff,
     ): PublicationPage {
-        if ($account->missingScope('threads_basic') !== null) {
+        if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

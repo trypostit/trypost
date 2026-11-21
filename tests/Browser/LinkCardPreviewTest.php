@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Amp\DeferredFuture;
 use Amp\TimeoutCancellation;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -13,6 +14,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use Illuminate\Foundation\Http\Events\RequestHandled;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
@@ -45,7 +47,7 @@ function seedLinkCardPreviewPost(
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => $platform,
-        'scopes' => $platform->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish),
     ]);
 
     $post = Post::factory()->forAccount($account, match ($platform) {
@@ -318,7 +320,7 @@ test('the shared step editor shows no link card and the network card does', func
     $linkedin = SocialAccount::factory()->create([
         'workspace_id' => $facebook->workspace_id,
         'platform' => Platform::LinkedIn,
-        'scopes' => Platform::LinkedIn->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes(Platform::LinkedIn, GatedFeature::Publish),
     ]);
 
     $page = visit(route('app.posts.create'));

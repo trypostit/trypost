@@ -319,3 +319,22 @@ test('the settings cog and the actions menu of a channel row show a tooltip, and
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a channel that lacks a permission a feature needs says so and offers to reconnect', function () {
+    $user = channelsSettingsAdmin();
+    $lacking = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+    ]);
+    $granted = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'));
+    waitFor($page, "@channel-row-{$lacking->id}");
+
+    $page->assertSeeIn("@channel-permissions-missing-{$lacking->id}", __('channels.list.permissions_missing'))
+        ->assertSeeIn("@channel-reconnect-{$lacking->id}", __('channels.reconnect'))
+        ->assertMissing("@channel-permissions-missing-{$granted->id}")
+        ->assertMissing("@channel-reconnect-{$granted->id}")
+        ->assertNoJavaScriptErrors();
+});

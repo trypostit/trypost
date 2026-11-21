@@ -9,6 +9,7 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
@@ -20,7 +21,7 @@ class PinterestPublicationMetricsCollector extends AbstractPublicationMetricsCol
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, 'pins:read', 'boards:read');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $isVideo = in_array($publication->content_type, [PublicationContentType::Video, PublicationContentType::Short], true);
         $fields = ['IMPRESSION', 'SAVE', 'PIN_CLICK', 'OUTBOUND_CLICK', 'SAVE_RATE', 'TOTAL_COMMENTS', 'TOTAL_REACTIONS'];
 

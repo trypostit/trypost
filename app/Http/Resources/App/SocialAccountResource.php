@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\App;
 
+use App\Support\ChannelPermissions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,7 @@ class SocialAccountResource extends JsonResource
             'timezone' => $this->timezone,
             'has_posting_schedule' => $this->hasPostingSchedule(),
             'error_message' => $this->error_message,
+            'missing_permissions' => (object) ChannelPermissions::missing($this->resource),
             'last_used_at' => $this->last_used_at,
             'created_at' => $this->created_at,
         ];

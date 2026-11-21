@@ -8,6 +8,7 @@ use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\PollVotingStatus;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
@@ -24,7 +25,7 @@ class ThreadsPublicationMetricsCollector extends AbstractMetaPublicationMetricsC
     protected function read(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, 'threads_basic', 'threads_manage_insights');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $response = $this->get($account,
             "{$account->platform->graphApiUrl()}/{$publication->remote_id}/insights",
             ['metric' => 'views,likes,replies,reposts,quotes'],

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -43,7 +45,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedIn,
-            'scopes' => Platform::LinkedIn->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::LinkedIn, GatedFeature::Publish),
         ]);
     }
 
@@ -51,7 +53,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedInPage,
-            'scopes' => Platform::LinkedInPage->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::LinkedInPage, GatedFeature::Publish),
         ]);
     }
 
@@ -120,7 +122,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::GoogleBusiness,
-            'scopes' => Platform::GoogleBusiness->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::GoogleBusiness, GatedFeature::Publish),
             'meta' => [
                 'location_id' => 'accounts/123456789/locations/987654321',
                 'account_name' => 'accounts/123456789',
@@ -134,7 +136,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Bluesky,
-            'scopes' => Platform::Bluesky->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::Bluesky, GatedFeature::Publish),
             'token_expires_at' => now()->addHours(2),
             'meta' => [
                 'service' => 'https://bsky.social',
@@ -148,7 +150,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Mastodon,
-            'scopes' => Platform::Mastodon->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::Mastodon, GatedFeature::Publish),
             'token_expires_at' => null, // Mastodon tokens don't expire
             'meta' => [
                 'instance' => 'https://mastodon.social',
@@ -162,7 +164,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Telegram,
-            'scopes' => Platform::Telegram->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::Telegram, GatedFeature::Publish),
             'token_expires_at' => null, // the shared bot token never expires
             'access_token' => '',
             'refresh_token' => '',
@@ -179,7 +181,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Discord,
-            'scopes' => Platform::Discord->requiredPublishScopes(),
+            'scopes' => ChannelPermissions::scopes(Platform::Discord, GatedFeature::Publish),
             'token_expires_at' => null, // posting uses the global bot token
             'access_token' => '',
             'refresh_token' => '',
