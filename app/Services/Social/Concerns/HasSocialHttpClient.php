@@ -9,6 +9,7 @@ use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
+use App\Support\ChannelPermissions;
 use App\Support\ThreadReplies;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -34,6 +35,12 @@ trait HasSocialHttpClient
 
         if ($threadViolation !== null) {
             throw new ContentLimitException($post->platform, $threadViolation[1]);
+        }
+
+        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->content_type, $post->meta);
+
+        if ($permissionViolation !== null) {
+            throw new ContentLimitException($post->platform, $permissionViolation[1]);
         }
 
         $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));

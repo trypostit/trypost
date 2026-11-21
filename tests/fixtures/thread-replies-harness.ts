@@ -25,7 +25,7 @@ const {
     replyEmptyKey,
     replyTooLongKey,
     startThreadKey,
-    threadBlockKey,
+    threadStandaloneKey,
     threadMaxReplies,
     threadReplyContentType,
 } = await import(
@@ -35,6 +35,9 @@ const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
 );
 
+const { GatedFeature, missingPermissionKey } = await import(
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/channelPermissions.ts')).href
+);
 const { STANDALONE_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/content-type.ts')).href
 );
@@ -56,17 +59,19 @@ const results = Object.fromEntries(
 );
 
 const thread = { thread_replies: [{ text: 'Second', media: [] }] };
-const permission = { message: 'posts.form.thread.reply_empty', member_message: 'posts.form.thread.unsupported' };
+const missing = { thread_replies: { message: 'posts.form.thread.reply_empty', member_message: 'posts.form.thread.unsupported' } };
 
 console.log(
     JSON.stringify({
         platforms: results,
         standalone_types: STANDALONE_CONTENT_TYPES,
-        block_keys: {
-            allowed: threadBlockKey('x_post', thread, null, true),
-            no_replies: threadBlockKey('x_post', {}, permission, true),
-            lacks_scope_admin: threadBlockKey('x_post', thread, permission, true),
-            lacks_scope_member: threadBlockKey('x_post', thread, permission, false),
+        gated_features: Object.values(GatedFeature),
+        standalone_key: threadStandaloneKey('x_post', thread),
+        permission_keys: {
+            allowed: missingPermissionKey(thread, {}, true),
+            not_used: missingPermissionKey({}, missing, true),
+            lacks_scope_admin: missingPermissionKey(thread, missing, true),
+            lacks_scope_member: missingPermissionKey(thread, missing, false),
         },
     }),
 );

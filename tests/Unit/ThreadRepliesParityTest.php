@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Support\ThreadReplies;
 use Symfony\Component\Process\ExecutableFinder;
@@ -34,9 +35,11 @@ test('the composer threads every network the way the server does', function () {
 
     expect($composer['platforms'])->toBe($server)
         ->and($composer['standalone_types'])->toBe(config('trypost.thread_replies.standalone_types'))
-        ->and($composer['block_keys'])->toBe([
+        ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
+        ->and($composer['standalone_key'])->toBeNull()
+        ->and($composer['permission_keys'])->toBe([
             'allowed' => null,
-            'no_replies' => null,
+            'not_used' => null,
             'lacks_scope_admin' => 'posts.form.thread.reply_empty',
             'lacks_scope_member' => 'posts.form.thread.unsupported',
         ]);

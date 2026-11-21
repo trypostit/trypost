@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\ThreadProgress;
 use App\Support\ThreadReplies;
@@ -129,37 +128,6 @@ test('a post type that stands alone refuses replies with its own message', funct
         ->toBe(['thread_replies', __('posts.form.thread.unsupported')])
         ->and(ThreadReplies::violation(Platform::X, ['thread_replies' => ['second']], ContentType::XPost))->toBeNull()
         ->and(ThreadReplies::violation(Platform::X, [], ContentType::XPoll))->toBeNull();
-});
-
-test('an account without the scope its network asks for replies cannot carry them', function () {
-    config(['trypost.platforms.x.replies' => [
-        'max' => 24,
-        'scope' => 'tweet.moderate.write',
-        'message' => 'posts.form.thread.reply_empty',
-        'member_message' => 'posts.form.thread.unsupported',
-    ]]);
-    $meta = ['thread_replies' => ['second']];
-
-    $without = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write']]);
-    $with = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => ['tweet.write', 'tweet.moderate.write']]);
-    $unknown = SocialAccount::factory()->make(['platform' => Platform::X, 'scopes' => null]);
-
-    expect(ThreadReplies::lacksPermission($without))->toBeTrue()
-        ->and(ThreadReplies::violation($without, $meta, ContentType::XPost))->toBe(['thread_replies', __('posts.form.thread.reply_empty')])
-        ->and(ThreadReplies::permissionMessages($without))->toBe(['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported'])
-        ->and(ThreadReplies::violation($with, $meta, ContentType::XPost))->toBeNull()
-        ->and(ThreadReplies::permissionMessages($with))->toBeNull()
-        ->and(ThreadReplies::violation($unknown, $meta, ContentType::XPost))->toBeNull()
-        ->and(ThreadReplies::violation($without, [], ContentType::XPost))->toBeNull()
-        ->and(ThreadReplies::violation(Platform::X, $meta, ContentType::XPost))->toBeNull();
-});
-
-test('a network that asks no scope for replies never lacks it', function () {
-    $account = SocialAccount::factory()->make(['platform' => Platform::Mastodon, 'scopes' => ['read']]);
-
-    expect(ThreadReplies::requiredScope(Platform::Mastodon))->toBeNull()
-        ->and(ThreadReplies::lacksPermission($account))->toBeFalse()
-        ->and(ThreadReplies::permissionMessages($account))->toBeNull();
 });
 
 test('every network that chains replies sets how many it takes, and none sets more than the ceiling', function (Platform $platform) {

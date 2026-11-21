@@ -540,9 +540,12 @@ return [
             'comment_too_long' => 'Dein Kommentar überschreitet das Limit von :limit Zeichen um :over.',
             'comment_empty' => 'Dein Kommentar ist leer.',
             'comment_attachments' => 'LinkedIn-Kommentare können keine Medien enthalten.',
-            'save_and_reconnect' => 'Neu verbinden',
-            'reconnect_blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
-            'reconnect_pending' => 'Dieser Beitrag wartet auf Freigabe. Gib ihn frei oder verschiebe ihn in die Entwürfe, bevor du den Kanal erneut verbindest.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Neu verbinden',
+            'blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
+            'pending' => 'Dieser Beitrag wartet auf Freigabe. Gib ihn frei oder verschiebe ihn in die Entwürfe, bevor du den Kanal erneut verbindest.',
         ],
 
         'pinterest' => [

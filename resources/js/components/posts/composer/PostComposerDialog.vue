@@ -55,6 +55,7 @@ import GiphyDialog from '@/components/media/GiphyDialog.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
+import ChannelPermissionWarning from '@/components/posts/composer/ChannelPermissionWarning.vue';
 import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
 import ComposerAccountOptions from '@/components/posts/composer/ComposerAccountOptions.vue';
 import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
@@ -70,7 +71,7 @@ import MediaEditorDialog, {
     type MediaEditChange,
 } from '@/components/posts/composer/MediaEditorDialog.vue';
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
-import ThreadBlockWarning from '@/components/posts/composer/ThreadBlockWarning.vue';
+import ThreadStandaloneWarning from '@/components/posts/composer/ThreadStandaloneWarning.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import PollField from '@/components/posts/editor/PollField.vue';
@@ -156,6 +157,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { missingPermissionKey } from '@/lib/channelPermissions';
 import {
     characterCount,
     displayLength,
@@ -186,11 +188,10 @@ import {
     replyTooLongKey,
     startThreadKey,
     threadMaxReplies,
-    type ReplyPermission,
     takesThreadReplies,
-    threadBlockKey,
     type ThreadReply,
     threadRepliesOf,
+    threadStandaloneKey,
     threadReplyContentType,
     threadReplyPostType,
 } from '@/lib/threadReplies';
@@ -1568,9 +1569,17 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
-    const threadBlock = accountThreadBlockKey(account);
-    if (filled(threadBlock)) {
-        issues.push({ key: threadBlock, params: {}, contentType });
+    for (const key of [
+        threadStandaloneKey(contentType, destination.meta),
+        missingPermissionKey(
+            destination.meta,
+            props.platformConfigs[account.id]?.missingPermissions ?? null,
+            canManageAccounts.value,
+        ),
+    ]) {
+        if (filled(key)) {
+            issues.push({ key, params: {}, contentType });
+        }
     }
     const replyContentType = threadReplyPostType(account.platform);
     if (replyContentType) {
@@ -1636,39 +1645,6 @@ const blockingIssue = computed(() => {
 
     return null;
 });
-/** Why the account's thread cannot go out, from `threadBlockKey()`. */
-const accountThreadBlockKey = (account: ComposerAccount): string | null => {
-    const destination = composition.resolvedDestination(account);
-
-    return threadBlockKey(
-        destination.content_type,
-        destination.meta,
-        props.platformConfigs[account.id]?.repliesPermission ?? null,
-        canManageAccounts.value,
-    );
-};
-/** The card's account whose thread is held back, for its warning and reconnect; the anchor when none is. */
-const groupThreadBlockAccount = (group: NetworkGroup): ComposerAccount => {
-    for (const account of group.accounts) {
-        if (filled(accountThreadBlockKey(account))) {
-            return account;
-        }
-    }
-
-    return group.anchor;
-};
-const groupRepliesPermission = (group: NetworkGroup): ReplyPermission | null => {
-    const config = props.platformConfigs[groupThreadBlockAccount(group).id];
-
-    if (blank(config?.repliesPermission)) {
-        return null;
-    }
-
-    return config.repliesPermission;
-};
-const saveAndReconnectGroup = (group: NetworkGroup): void => {
-    saveAndReconnect(groupThreadBlockAccount(group));
-};
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
     const result = evaluatePlatformMeta(
@@ -2924,16 +2900,18 @@ const onDialogOpenChange = (value: boolean): void => {
                                         />
                                         {{ $t(metaRequirement(group.anchor)!) }}
                                     </div>
-                                    <ThreadBlockWarning
+                                    <ThreadStandaloneWarning
                                         :content-type="
                                             groupDestination(group).content_type
                                         "
                                         :meta="groupDestination(group).meta"
-                                        :replies-permission="
-                                            groupRepliesPermission(group)
-                                        "
+                                    />
+                                    <ChannelPermissionWarning
+                                        :accounts="group.accounts"
+                                        :platform-configs="platformConfigs"
+                                        :meta="groupDestination(group).meta"
                                         :disabled="submitting"
-                                        @reconnect="saveAndReconnectGroup(group)"
+                                        @reconnect="saveAndReconnect"
                                     />
                                     <div
                                         v-if="setMediaWarning(group.anchor)"

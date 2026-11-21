@@ -152,13 +152,6 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
-/**
- * The copy a channel without the scope its network asks for replies is shown
- * (`repliesPermission` of its platform config): `message`, and
- * `member_message` for someone who cannot reconnect it.
- */
-export type ReplyPermission = { message: string; member_message: string };
-
 /** Whether a post type takes thread replies on its network. */
 export const takesThreadReplies = (contentType: ContentTypeValue | null): boolean => {
     if (contentType === null) {
@@ -169,31 +162,16 @@ export const takesThreadReplies = (contentType: ContentTypeValue | null): boolea
 };
 
 /**
- * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
- * the server: its post type stands alone, or its channel lacks the scope its
- * network asks for replies. Null when nothing holds it back.
+ * Why a post's thread cannot go out because its post type stands alone, as
+ * `ThreadReplies::violation()` says on the server. Null when it can.
  */
-export const threadBlockKey = (
+export const threadStandaloneKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
-    repliesPermission: ReplyPermission | null,
-    canManageAccounts: boolean,
 ): string | null => {
-    if (blank(threadRepliesOf(meta))) {
+    if (blank(threadRepliesOf(meta)) || contentType === null) {
         return null;
     }
 
-    if (contentType !== null && !takesThreadReplies(contentType)) {
-        return STANDALONE_CONTENT_TYPES[contentType] ?? null;
-    }
-
-    if (repliesPermission === null) {
-        return null;
-    }
-
-    if (canManageAccounts) {
-        return repliesPermission.message;
-    }
-
-    return repliesPermission.member_message;
+    return STANDALONE_CONTENT_TYPES[contentType] ?? null;
 };

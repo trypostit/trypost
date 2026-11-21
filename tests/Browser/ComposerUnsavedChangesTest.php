@@ -423,8 +423,7 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
  */
 function seedHeldBackMastodonThread(int $channels = 1): Post
 {
-    config(['trypost.platforms.mastodon.replies' => [
-        'max' => 24,
+    config(['trypost.platforms.mastodon.permissions.thread_replies' => [
         'scope' => 'write:replies',
         'message' => 'posts.form.thread.unsupported',
         'member_message' => 'posts.form.thread.reply_empty',
@@ -449,18 +448,32 @@ function seedHeldBackMastodonThread(int $channels = 1): Post
 test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList) {
     $post = seedHeldBackMastodonThread();
     $page = $fromList
-        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), 'thread-block-reconnect')
+        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), 'channel-permission-reconnect')
         : visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, '@thread-block-reconnect');
-    $page->assertSeeIn('@thread-block-warning', __('posts.form.thread.unsupported'));
+    waitFor($page, '@channel-permission-reconnect');
+    $page->assertSeeIn('@channel-permission-warning', __('posts.form.thread.unsupported'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
-    $page->click('@thread-block-reconnect');
+    $page->click('@channel-permission-reconnect');
     waitForPath($page, (string) parse_url(route('app.social.mastodon.connect'), PHP_URL_PATH));
 
     expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
         ->and($post->fresh()->status)->toBe(PostStatus::Draft);
 })->with(['opened from the list' => true, 'opened by its edit link' => false]);
+
+test('a member who cannot manage channels is told an admin needs to reconnect, with no link', function () {
+    $post = seedHeldBackMastodonThread();
+    $member = workspaceMember($post->workspace);
+    $post->update(['user_id' => $member->id]);
+    test()->actingAs($member);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, '@channel-permission-warning', __('posts.form.thread.reply_empty'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->assertMissing('@channel-permission-reconnect')
+        ->assertNoJavaScriptErrors();
+});
 
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
     $post = seedHeldBackMastodonThread(channels: 2);
@@ -481,8 +494,8 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     $page->click('@thread-start');
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
-    waitFor($page, '@thread-block-reconnect');
-    $page->click('@thread-block-reconnect');
+    waitFor($page, '@channel-permission-reconnect');
+    $page->click('@channel-permission-reconnect');
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
 
     $page->assertNoJavaScriptErrors();

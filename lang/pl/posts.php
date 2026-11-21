@@ -540,9 +540,12 @@ return [
             'comment_too_long' => 'Komentarz przekracza limit :limit znaków o :over.',
             'comment_empty' => 'Komentarz jest pusty.',
             'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
-            'save_and_reconnect' => 'Zapisz i połącz',
-            'reconnect_blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
-            'reconnect_pending' => 'Ten post czeka na zatwierdzenie. Zatwierdź go lub przenieś do szkiców przed ponownym połączeniem kanału.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Zapisz i połącz',
+            'blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
+            'pending' => 'Ten post czeka na zatwierdzenie. Zatwierdź go lub przenieś do szkiców przed ponownym połączeniem kanału.',
         ],
 
         'pinterest' => [

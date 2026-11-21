@@ -54,50 +54,11 @@ class ThreadReplies
     /** How many replies follow a post on the network (its `replies.max` setting). */
     public static function maxReplies(?Platform $platform): int
     {
-        return (int) self::setting($platform, 'max', 0);
-    }
-
-    /**
-     * The grant the network asks for before an app may reply, when it is not
-     * one of its publish scopes (its `replies.scope` setting).
-     */
-    public static function requiredScope(?Platform $platform): ?string
-    {
-        return self::setting($platform, 'scope');
-    }
-
-    /**
-     * Whether the account's stored grant lacks the scope its network asks for
-     * before replying: an account connected before TryPost asked for it
-     * reconnects first. Unknown scopes are never read as missing.
-     */
-    public static function lacksPermission(SocialAccount $account): bool
-    {
-        $scope = self::requiredScope($account->platform);
-
-        if (blank($scope)) {
-            return false;
+        if ($platform === null) {
+            return 0;
         }
 
-        return filled($account->missingScope($scope));
-    }
-
-    /**
-     * The lang keys an account without the reply scope is shown: `message`,
-     * and `member_message` for someone who cannot reconnect the channel.
-     *
-     * @return array{message: string, member_message: string}|null
-     */
-    public static function permissionMessages(SocialAccount $account): ?array
-    {
-        if (! self::lacksPermission($account)) {
-            return null;
-        }
-
-        return [
-            'message' => (string) self::setting($account->platform, 'message'),
-            'member_message' => (string) self::setting($account->platform, 'member_message'),
-        ];
+        return (int) config("trypost.platforms.{$platform->value}.replies.max", 0);
     }
 
     /** The lang key of a post type that takes no replies on its network, else null. */
@@ -108,15 +69,6 @@ class ThreadReplies
         }
 
         return config("trypost.thread_replies.standalone_types.{$type->value}");
-    }
-
-    private static function setting(?Platform $platform, string $key, mixed $default = null): mixed
-    {
-        if ($platform === null) {
-            return $default;
-        }
-
-        return config("trypost.platforms.{$platform->value}.replies.{$key}", $default);
     }
 
     /**
@@ -263,8 +215,8 @@ class ThreadReplies
      * Each reply is measured like the post itself: sanitized text plus what the
      * network counts besides it (the Mastodon content warning every reply repeats),
      * against the account's limit when the account is known (X long posts).
-     * A reply needs text or media, the post a type that takes replies, and a
-     * known account the scope its network asks for before replying.
+     * A reply needs text or media, and the post a type that takes replies. The
+     * scope a network may ask for replies is `ChannelPermissions`'.
      *
      * @return array{0: string, 1: string}|null
      */
@@ -292,12 +244,6 @@ class ThreadReplies
         }
 
         $account = $target instanceof SocialAccount ? $target : null;
-        $permission = transform($account, fn (SocialAccount $account): ?array => self::permissionMessages($account));
-
-        if (filled($permission)) {
-            return ['thread_replies', __($permission['message'])];
-        }
-
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
 
         foreach ($replies as $index => $reply) {

@@ -540,9 +540,12 @@ return [
             'comment_too_long' => 'Il tuo commento supera il limite di :limit caratteri di :over.',
             'comment_empty' => 'Il tuo commento è vuoto.',
             'comment_attachments' => 'I commenti su LinkedIn non possono contenere media.',
-            'save_and_reconnect' => 'Salva e ricollega',
-            'reconnect_blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
-            'reconnect_pending' => 'Questo post è in attesa di approvazione. Approvalo o spostalo nelle bozze prima di ricollegare il canale.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Salva e ricollega',
+            'blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
+            'pending' => 'Questo post è in attesa di approvazione. Approvalo o spostalo nelle bozze prima di ricollegare il canale.',
         ],
 
         'pinterest' => [

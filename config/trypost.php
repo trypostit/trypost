@@ -531,11 +531,14 @@ return [
     | are revoked, expired, or pending approval).
     |
     | `replies` is what a network takes as thread replies (`meta.thread_replies`,
-    | read by App\Support\ThreadReplies): `max` replies under a post, and, when
-    | the network asks a grant beyond its publish scopes before an app may
-    | reply, that `scope` with the lang keys shown to an account without it
-    | (`message`, and `member_message` for someone who cannot reconnect it). A
-    | network without `replies` takes none.
+    | read by App\Support\ThreadReplies): `max` replies under a post. A network
+    | without `replies` takes none.
+    |
+    | `permissions` lists the features (App\Enums\SocialAccount\GatedFeature)
+    | a network allows only once the account grants a scope beyond its publish
+    | scopes: per feature, that `scope` and the lang keys an account without it
+    | is shown (`message`, and `member_message` for someone who cannot
+    | reconnect it), read by App\Support\ChannelPermissions.
     |
     */
 

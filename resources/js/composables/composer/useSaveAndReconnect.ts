@@ -47,8 +47,8 @@ export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
             options.status() === PostStatus.PendingApproval &&
             !requiresApproval.value
         ) {
-            toast.error(trans('posts.form.thread.reconnect_pending'), {
-                testId: 'thread-reconnect-pending',
+            toast.error(trans('posts.form.reconnect.pending'), {
+                testId: 'reconnect-pending',
             });
 
             return;
@@ -61,8 +61,8 @@ export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
         );
 
         if (!submitted) {
-            toast.error(trans('posts.form.thread.reconnect_blocked'), {
-                testId: 'thread-reconnect-blocked',
+            toast.error(trans('posts.form.reconnect.blocked'), {
+                testId: 'reconnect-blocked',
             });
         }
     };

@@ -540,9 +540,12 @@ return [
             'comment_too_long' => 'Je reactie overschrijdt de limiet van :limit tekens met :over.',
             'comment_empty' => 'Je reactie is leeg.',
             'comment_attachments' => 'Reacties op LinkedIn kunnen geen media bevatten.',
-            'save_and_reconnect' => 'Opslaan en koppelen',
-            'reconnect_blocked' => 'Dit bericht kan nog niet worden opgeslagen. Wacht tot de uploads klaar zijn en los op wat gemarkeerd is, en probeer het opnieuw.',
-            'reconnect_pending' => 'Dit bericht wacht op goedkeuring. Keur het goed of verplaats het naar concepten voordat je het kanaal opnieuw koppelt.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Opslaan en koppelen',
+            'blocked' => 'Dit bericht kan nog niet worden opgeslagen. Wacht tot de uploads klaar zijn en los op wat gemarkeerd is, en probeer het opnieuw.',
+            'pending' => 'Dit bericht wacht op goedkeuring. Keur het goed of verplaats het naar concepten voordat je het kanaal opnieuw koppelt.',
         ],
 
         'pinterest' => [

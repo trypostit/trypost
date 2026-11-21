@@ -429,6 +429,12 @@ class PostPlatformMetaRules
             return $threadViolation;
         }
 
+        $permissionViolation = ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, $type, is_array($meta) ? $meta : null);
+
+        if ($permissionViolation !== null) {
+            return $permissionViolation;
+        }
+
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));
         $ctaAction = CtaAction::fromMeta(data_get($meta, 'call_to_action.action_type'));
         $needsGoogleBusinessEvent = $platform === Platform::GoogleBusiness && $topicType->requiresEvent();

@@ -540,9 +540,12 @@ return [
             'comment_too_long' => 'Komentar kamu melebihi batas :limit karakter sebanyak :over.',
             'comment_empty' => 'Komentar kamu kosong.',
             'comment_attachments' => 'Komentar LinkedIn tidak bisa memuat media.',
-            'save_and_reconnect' => 'Simpan & hubungkan',
-            'reconnect_blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
-            'reconnect_pending' => 'Postingan ini menunggu persetujuan. Setujui atau pindahkan ke draf sebelum menghubungkan kembali kanal.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Simpan & hubungkan',
+            'blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
+            'pending' => 'Postingan ini menunggu persetujuan. Setujui atau pindahkan ke draf sebelum menghubungkan kembali kanal.',
         ],
 
         'pinterest' => [
