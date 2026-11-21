@@ -980,6 +980,22 @@ test('a bluesky thread starts from the toolbar and stacks its replies under the 
     expect($post->fresh()->meta)->toEqual(['thread_replies' => [['text' => 'Third post', 'media' => []]]]);
 });
 
+test('a threads ghost post offers no thread', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_ghost_post");
+    waitForGone($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_post");
+    waitFor($page, '@thread-start');
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a thread reply of invisible characters is empty like on the server', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);

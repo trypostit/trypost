@@ -434,8 +434,11 @@ test('a threads post schedules a thread with text replies on the web, api and mc
     ]);
 
     assertPollParityPassed($surface, $response);
-    expect($post->fresh()->status)->toBe(Status::Scheduled)
-        ->and($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Two', 'media' => []], ['text' => 'Three', 'media' => []]]);
+
+    $stored = $post->fresh();
+
+    expect($stored->status)->toBe(Status::Scheduled)
+        ->and($stored->meta['thread_replies'])->toEqual([['text' => 'Two', 'media' => []], ['text' => 'Three', 'media' => []]]);
 })->with(['web', 'api', 'mcp']);
 
 test('a threads reply over 500 characters cannot be scheduled on the web, api and mcp', function (string $surface) {
@@ -494,3 +497,20 @@ test('publishing a stored threads ghost post with replies is refused on mcp', fu
 
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
+
+test('a threads account connected before the replies permission saves a thread as a draft but cannot schedule it on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+    $post->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $thread = ['meta' => ['thread_replies' => ['Two']]];
+
+    assertPollParityPassed($surface, pollParityUpdate($surface, $post, $thread));
+
+    $response = pollParityUpdate($surface, $post, [
+        ...$thread,
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies' => __('posts.form.thread.replies_permission')]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);

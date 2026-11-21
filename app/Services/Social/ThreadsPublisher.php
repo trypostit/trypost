@@ -11,12 +11,12 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\ThreadsPoll;
-use App\Support\ThreadReplies;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -33,8 +33,6 @@ class ThreadsPublisher
 
     private const int MEDIA_READY_GRACE_SECONDS = 2;
 
-    private const string REPLIES_SCOPE = 'threads_manage_replies';
-
     private string $baseUrl;
 
     public function __construct()
@@ -46,6 +44,13 @@ class ThreadsPublisher
     {
         $this->validateContentLength($post);
 
+        if ($post->content_type === ContentType::ThreadsGhostPost && $post->mediaItems->isNotEmpty()) {
+            throw new ThreadsPublishException(
+                userMessage: __('posts.form.warnings.text_only'),
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
@@ -54,55 +59,41 @@ class ThreadsPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $userId = $account->platform_user_id;
-        $accessToken = $account->access_token;
-
-        $media = $post->mediaItems;
-
-        if ($post->content_type === ContentType::ThreadsGhostPost && $media->isNotEmpty()) {
-            throw new ThreadsPublishException(
-                userMessage: __('posts.form.warnings.text_only'),
-                category: ErrorCategory::MediaFormat,
-            );
-        }
-
-        if ($post->content_type === ContentType::ThreadsGhostPost && filled(ThreadReplies::of($post->meta))) {
-            throw new ThreadsPublishException(
-                userMessage: __('posts.form.thread.ghost_post'),
-                category: ErrorCategory::ContentPolicy,
-            );
-        }
-
-        $this->ensureRepliesAllowed($post);
-
-        $rootHash = ThreadProgress::hash((string) $content, $media->map(fn (MediaItem $item): string => $item->id)->all());
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 
         return $this->publishThread(
             $post,
             $rootHash,
-            fn (): array => $this->publishSegment($userId, $accessToken, $content, $media, $this->containerOptions($post, $content)),
-            fn (string $text, Collection $replyMedia, array $parent, array $root, ?array $poll): array => $this->publishSegment($userId, $accessToken, $text, $replyMedia, $this->replyOptions($text, $replyMedia, $parent, $poll)),
+            fn (): array => $this->publishRoot($post, $content),
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->publishReply($account, $text, $media, $parent, $poll),
         );
     }
 
     /**
-     * A thread needs `threads_manage_replies`, which accounts connected before
-     * TryPost asked for it lack: they reconnect before anything goes out.
+     * @return array{id: string, url: ?string}
      */
-    private function ensureRepliesAllowed(Post $post): void
+    private function publishRoot(Post $post, ?string $content): array
     {
-        if (blank(ThreadReplies::of($post->meta))) {
-            return;
+        return $this->publishSegment($post->socialAccount, $content, $post->mediaItems, $this->containerOptions($post, $content));
+    }
+
+    /**
+     * A reply of the thread, under the post before it, with its own poll.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $parent
+     * @param  array<string, mixed>|null  $poll
+     * @return array{id: string, url: ?string}
+     */
+    private function publishReply(SocialAccount $account, string $text, Collection $media, array $parent, ?array $poll): array
+    {
+        $options = ['reply_to_id' => (string) data_get($parent, 'id')];
+
+        if (filled($poll)) {
+            $options['poll_attachment'] = $this->pollAttachment($text, $media->isNotEmpty(), ['poll' => $poll]);
         }
 
-        if ($post->socialAccount->missingScope(self::REPLIES_SCOPE) === null) {
-            return;
-        }
-
-        throw new ThreadsPublishException(
-            userMessage: __('posts.errors.threads_replies_permission'),
-            category: ErrorCategory::Permission,
-        );
+        return $this->publishSegment($account, $text, $media, $options);
     }
 
     /**
@@ -113,8 +104,11 @@ class ThreadsPublisher
      * @param  array<string, mixed>  $options
      * @return array{id: string, url: ?string}
      */
-    private function publishSegment(string $userId, string $accessToken, ?string $content, Collection $media, array $options): array
+    private function publishSegment(SocialAccount $account, ?string $content, Collection $media, array $options): array
     {
+        $userId = $account->platform_user_id;
+        $accessToken = $account->access_token;
+
         if ($media->isEmpty()) {
             if (blank($content)) {
                 throw new ThreadsPublishException(
@@ -137,25 +131,6 @@ class ThreadsPublisher
         return $this->publishMediaWithRetry(
             fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media, $options),
         );
-    }
-
-    /**
-     * A reply goes under the post before it, and carries its own poll.
-     *
-     * @param  Collection<int, MediaItem>  $media
-     * @param  array<string, mixed>  $parent
-     * @param  array<string, mixed>|null  $poll
-     * @return array<string, mixed>
-     */
-    private function replyOptions(string $text, Collection $media, array $parent, ?array $poll): array
-    {
-        $options = ['reply_to_id' => (string) data_get($parent, 'id')];
-
-        if (blank($poll)) {
-            return $options;
-        }
-
-        return [...$options, 'poll_attachment' => $this->pollAttachment($text, $media->isNotEmpty(), ['poll' => $poll])];
     }
 
     /**
@@ -478,9 +453,9 @@ class ThreadsPublisher
     }
 
     /**
-     * A poll goes on a text post or reply only, with its question and choices, sent as
-     * a JSON string as the Threads docs show it (like Instagram's nested
-     * parameters).
+     * A poll goes on a text post or reply only, with its question and choices,
+     * sent as a JSON string as the Threads docs show it (like Instagram's
+     * nested parameters).
      */
     private function pollAttachment(?string $content, bool $hasMedia, ?array $meta): string
     {

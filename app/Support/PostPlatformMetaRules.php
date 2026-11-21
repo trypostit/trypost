@@ -263,7 +263,7 @@ class PostPlatformMetaRules
             'X: is_ai_generated (sent as made_with_ai, discloses AI-generated media on the post). poll (content_type x_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies, up to '.XPoll::QUESTION_MAX_LENGTH.' characters): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.XPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.XPoll::MIN_DURATION.' to '.XPoll::MAX_DURATION.', how long voting stays open)}, both required to schedule or publish.',
             'Mastodon poll (content_type mastodon_poll only, no media; the post content is the question; a reply of the thread can be a poll too, see thread_replies): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.MastodonPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped), duration_minutes ('.MastodonPoll::MIN_DURATION.' to '.MastodonPoll::MAX_DURATION.', how long voting stays open), multiple (default false: voters may pick several choices), hide_totals (default false: votes stay hidden until the poll ends)}, options and duration_minutes required to schedule or publish.',
             'Threads poll (content_type threads_poll only, a text post without media; the post content is the question; a reply of the thread can be a poll too, see thread_replies): {options (list of '.Poll::MIN_OPTIONS.' to '.Poll::MAX_OPTIONS.' choices of 1 to '.ThreadsPoll::OPTION_MAX_LENGTH.' characters, no two the same; blank ones are dropped)}, required to schedule or publish; Threads sets how long it stays open.',
-            'Threads: topic_tag (1-50 characters after a leading # is dropped, no . or &; on a thread it goes on the first post only). Use content_type threads_ghost_post for a text-only post archived after 24 hours (no media, no topic, no thread_replies). A thread on Threads (thread_replies) needs the replies permission the account grants when it connects: an account connected before TryPost asked for it fails the thread when it publishes, before anything goes out, until it reconnects; a post without replies is unaffected.',
+            'Threads: topic_tag (1-50 characters after a leading # is dropped, no . or &; on a thread it goes on the first post only). Use content_type threads_ghost_post for a text-only post archived after 24 hours (no media, no topic, no thread_replies). A thread on Threads (thread_replies) needs the replies permission the account grants when it connects: an account connected before TryPost asked for it can keep a thread in a draft but cannot schedule or publish it until it reconnects; a post without replies is unaffected.',
             'Facebook, Bluesky, LinkedIn: link_preview (default true; false publishes a text post with a link without its preview card).',
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
@@ -423,12 +423,7 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-
-        if ($type === ContentType::ThreadsGhostPost && filled(ThreadReplies::of($meta))) {
-            return ['thread_replies', __('posts.form.thread.ghost_post')];
-        }
-
-        $threadViolation = ThreadReplies::violation($target, $meta);
+        $threadViolation = ThreadReplies::violation($target, $meta, $type);
 
         if ($threadViolation !== null) {
             return $threadViolation;

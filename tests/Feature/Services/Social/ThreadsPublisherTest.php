@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -13,6 +14,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\ThreadsPublisher;
 use App\Support\Social\ThreadProgress;
+use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -1172,15 +1175,25 @@ test('a threads poll with four choices sends option_a to option_d', function () 
     ]);
 });
 
-function fakeThreadsThreadFlow(): void
+/**
+ * Fakes a thread on Threads: each container creation answers the next of
+ * `$containers` (three ready containers by default), and each publication
+ * the next post id, from post-1.
+ */
+function fakeThreadsThreadFlow(PromiseInterface ...$containers): void
 {
     $base = config('trypost.platforms.threads.graph_api');
 
+    if (blank($containers)) {
+        $containers = [
+            Http::response(['id' => 'container-1']),
+            Http::response(['id' => 'container-2']),
+            Http::response(['id' => 'container-3']),
+        ];
+    }
+
     Http::fake([
-        "{$base}/123456789/threads" => Http::sequence()
-            ->push(['id' => 'container-1'])
-            ->push(['id' => 'container-2'])
-            ->push(['id' => 'container-3']),
+        "{$base}/123456789/threads" => Http::sequence($containers),
         "{$base}/123456789/threads_publish" => Http::sequence()
             ->push(['id' => 'post-1'])
             ->push(['id' => 'post-2'])
@@ -1190,7 +1203,35 @@ function fakeThreadsThreadFlow(): void
     ]);
 }
 
-test('a threads thread publishes each reply under the post before it', function () {
+/**
+ * The fields of every container sent to Threads, in order.
+ *
+ * @return Collection<int, array<string, mixed>>
+ */
+function threadsContainersSent(): Collection
+{
+    return Http::recorded(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads'))
+        ->map(fn (array $pair): array => $pair[0]->data())
+        ->values();
+}
+
+/**
+ * @return array<string, string>
+ */
+function threadsImage(string $id): array
+{
+    return ['id' => $id, 'type' => 'image', 'path' => "{$id}.jpg", 'url' => "https://example.com/{$id}.jpg", 'mime_type' => 'image/jpeg'];
+}
+
+/**
+ * An account connected before TryPost asked for `threads_manage_replies`.
+ */
+function connectedBeforeRepliesPermission(SocialAccount $account): void
+{
+    $account->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+}
+
+test('a threads thread publishes each reply under the post before it, with the topic on the first post only', function () {
     $this->post->update([
         'content' => 'First',
         'meta' => ['topic_tag' => 'laravel', 'thread_replies' => ['Second', ['text' => 'Third', 'media' => []]]],
@@ -1199,33 +1240,53 @@ test('a threads thread publishes each reply under the post before it', function 
 
     $result = $this->publisher->publish($this->post->fresh());
 
-    $containers = Http::recorded(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads'))
-        ->map(fn (array $pair): array => $pair[0]->data())
-        ->values();
-
     expect($result)->toBe([
         'id' => 'post-1',
         'url' => 'https://www.threads.net/@testuser/post/A',
         'thread_reply_ids' => ['post-2', 'post-3'],
     ])
-        ->and($containers->pluck('text')->all())->toBe(['First', 'Second', 'Third'])
-        ->and($containers->map(fn (array $data): ?string => data_get($data, 'reply_to_id'))->all())->toBe([null, 'post-1', 'post-2'])
-        ->and($containers->map(fn (array $data): ?string => data_get($data, 'topic_tag'))->all())->toBe(['laravel', null, null]);
+        ->and(threadsContainersSent()->pluck('text')->all())->toBe(['First', 'Second', 'Third'])
+        ->and(threadsContainersSent()->pluck('reply_to_id')->all())->toBe([null, 'post-1', 'post-2'])
+        ->and(threadsContainersSent()->pluck('topic_tag')->all())->toBe(['laravel', null, null]);
 });
 
 test('a threads reply carries its own image', function () {
     $this->post->update([
         'content' => 'First',
-        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]]]],
+        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [threadsImage('m')]]]],
     ]);
     fakeThreadsThreadFlow();
 
     $this->publisher->publish($this->post->fresh());
 
-    Http::assertSent(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads')
-        && data_get($request->data(), 'media_type') === 'IMAGE'
-        && data_get($request->data(), 'image_url') === 'https://example.com/m.jpg'
-        && data_get($request->data(), 'reply_to_id') === 'post-1');
+    expect(threadsContainersSent()->last())->toMatchArray([
+        'media_type' => 'IMAGE',
+        'image_url' => 'https://example.com/m.jpg',
+        'reply_to_id' => 'post-1',
+    ]);
+});
+
+test('a threads reply with several images is a carousel under the post before it', function () {
+    $this->post->update([
+        'content' => 'First',
+        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [threadsImage('a'), threadsImage('b')]]]],
+    ]);
+    fakeThreadsThreadFlow(
+        Http::response(['id' => 'container-1']),
+        Http::response(['id' => 'container-child-a']),
+        Http::response(['id' => 'container-child-b']),
+        Http::response(['id' => 'container-carousel']),
+    );
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['post-2'])
+        ->and(threadsContainersSent()->pluck('is_carousel_item')->all())->toBe([null, 'true', 'true', null])
+        ->and(threadsContainersSent()->last())->toMatchArray([
+            'media_type' => 'CAROUSEL',
+            'children' => 'container-child-a,container-child-b',
+            'reply_to_id' => 'post-1',
+        ]);
 });
 
 test('a threads reply poll is a text reply carrying its choices', function () {
@@ -1237,10 +1298,10 @@ test('a threads reply poll is a text reply carrying its choices', function () {
 
     $this->publisher->publish($this->post->fresh());
 
-    Http::assertSent(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads')
-        && data_get($request->data(), 'media_type') === 'TEXT'
-        && data_get($request->data(), 'reply_to_id') === 'post-1'
-        && json_decode((string) data_get($request->data(), 'poll_attachment'), true) === ['option_a' => 'Tabs', 'option_b' => 'Spaces']);
+    $reply = threadsContainersSent()->last();
+
+    expect($reply)->toMatchArray(['media_type' => 'TEXT', 'reply_to_id' => 'post-1'])
+        ->and(json_decode((string) data_get($reply, 'poll_attachment'), true))->toBe(['option_a' => 'Tabs', 'option_b' => 'Spaces']);
 });
 
 test('a threads thread resumes after the posts already live', function () {
@@ -1248,66 +1309,14 @@ test('a threads thread resumes after the posts already live', function () {
         'content' => 'First',
         'meta' => ['thread_replies' => ['Second']],
     ]);
-    $post = $this->post->fresh();
-    $rootHash = ThreadProgress::hash('First', []);
-    ThreadProgress::remember($post, [['hash' => $rootHash, 'id' => 'post-1', 'url' => 'https://www.threads.net/@testuser/post/A']]);
+    ThreadProgress::remember($this->post, [['hash' => ThreadProgress::hash('First'), 'id' => 'post-1', 'url' => 'https://www.threads.net/@testuser/post/A']]);
     fakeThreadsThreadFlow();
-
-    $result = $this->publisher->publish($post->fresh());
-
-    $containers = Http::recorded(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads'));
-
-    expect($containers)->toHaveCount(1)
-        ->and($containers->first()[0]->data())->toMatchArray(['text' => 'Second', 'reply_to_id' => 'post-1'])
-        ->and($result['thread_reply_ids'])->toBe(['post-1']);
-});
-
-test('a threads thread on an account without the replies permission fails before calling threads', function () {
-    $this->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
-    $this->post->update(['meta' => ['thread_replies' => ['Second']]]);
-    Http::fake();
-
-    expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(ThreadsPublishException::class, __('posts.errors.threads_replies_permission'));
-    Http::assertNothingSent();
-});
-
-test('a single threads post on an account without the replies permission still publishes', function () {
-    $this->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
-    fakeThreadsContainerFlow();
-
-    expect($this->publisher->publish($this->post->fresh())['id'])->toBe('post-1');
-});
-
-test('a threads reply with several images is a carousel under the post before it', function () {
-    $image = fn (string $id): array => ['id' => $id, 'type' => 'image', 'path' => "{$id}.jpg", 'url' => "https://example.com/{$id}.jpg", 'mime_type' => 'image/jpeg'];
-    $this->post->update([
-        'content' => 'First',
-        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [$image('a'), $image('b')]]]],
-    ]);
-    $base = config('trypost.platforms.threads.graph_api');
-    Http::fake([
-        "{$base}/123456789/threads" => Http::sequence()
-            ->push(['id' => 'container-1'])
-            ->push(['id' => 'container-child-a'])
-            ->push(['id' => 'container-child-b'])
-            ->push(['id' => 'container-carousel']),
-        "{$base}/123456789/threads_publish" => Http::sequence()->push(['id' => 'post-1'])->push(['id' => 'post-2']),
-        "{$base}/container-*" => Http::response(['status' => 'FINISHED']),
-        "{$base}/post-*" => Http::response(['permalink' => 'https://www.threads.net/@testuser/post/A']),
-    ]);
 
     $result = $this->publisher->publish($this->post->fresh());
 
-    $containers = Http::recorded(fn ($request): bool => Str::endsWith($request->url(), '/123456789/threads'))
-        ->map(fn (array $pair): array => $pair[0]->data())
-        ->values();
-
-    expect($result['thread_reply_ids'])->toBe(['post-2'])
-        ->and($containers->map(fn (array $data): ?string => data_get($data, 'reply_to_id'))->all())->toBe([null, null, null, 'post-1'])
-        ->and(data_get($containers[3], 'media_type'))->toBe('CAROUSEL')
-        ->and(data_get($containers[3], 'children'))->toBe('container-child-a,container-child-b')
-        ->and(data_get($containers[1], 'is_carousel_item'))->toBe('true');
+    expect(threadsContainersSent())->toHaveCount(1)
+        ->and(threadsContainersSent()->first())->toMatchArray(['text' => 'Second', 'reply_to_id' => 'post-1'])
+        ->and($result['thread_reply_ids'])->toBe(['post-1']);
 });
 
 test('a threads reply refused by threads keeps the live post checkpointed for the retry', function () {
@@ -1315,20 +1324,34 @@ test('a threads reply refused by threads keeps the live post checkpointed for th
         'content' => 'First',
         'meta' => ['thread_replies' => ['Second']],
     ]);
-    $base = config('trypost.platforms.threads.graph_api');
-    Http::fake([
-        "{$base}/123456789/threads" => Http::sequence()
-            ->push(['id' => 'container-1'])
-            ->push(['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400),
-        "{$base}/123456789/threads_publish" => Http::response(['id' => 'post-1']),
-        "{$base}/container-*" => Http::response(['status' => 'FINISHED']),
-        "{$base}/post-*" => Http::response(['permalink' => 'https://www.threads.net/@testuser/post/A']),
-    ]);
+    fakeThreadsThreadFlow(
+        Http::response(['id' => 'container-1']),
+        Http::response(['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400),
+    );
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(ThreadsPublishException::class);
 
-    expect(data_get($this->post->fresh()->error_context, ThreadProgress::KEY.'.0.id'))->toBe('post-1')
-        ->and(data_get($this->post->fresh()->error_context, ThreadProgress::KEY.'.1'))->toBeNull();
+    $progress = data_get($this->post->fresh()->error_context, ThreadProgress::KEY);
+
+    expect($progress)->toHaveCount(1)
+        ->and(data_get($progress, '0.id'))->toBe('post-1');
+});
+
+test('a threads thread on an account without the replies permission fails before calling threads', function () {
+    connectedBeforeRepliesPermission($this->socialAccount);
+    $this->post->update(['meta' => ['thread_replies' => ['Second']]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.replies_permission'));
+    Http::assertNothingSent();
+});
+
+test('a single threads post on an account without the replies permission still publishes', function () {
+    connectedBeforeRepliesPermission($this->socialAccount);
+    fakeThreadsContainerFlow();
+
+    expect($this->publisher->publish($this->post->fresh())['id'])->toBe('post-1');
 });
 
 test('a threads ghost post with replies fails before calling threads', function () {
@@ -1339,6 +1362,6 @@ test('a threads ghost post with replies fails before calling threads', function 
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(ThreadsPublishException::class, __('posts.form.thread.ghost_post'));
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.ghost_post'));
     Http::assertNothingSent();
 });
