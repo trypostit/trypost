@@ -75,7 +75,7 @@ class ThreadReplies
             return false;
         }
 
-        return $account->missingScope($scope) !== null;
+        return filled($account->missingScope($scope));
     }
 
     public static function maxReplies(?Platform $platform): int
@@ -237,7 +237,7 @@ class ThreadReplies
      *
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
+    public static function violation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
         $replies = self::of($meta);

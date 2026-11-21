@@ -148,7 +148,7 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
-export const THREAD_GHOST_POST_KEY = 'posts.form.thread.ghost_post';
+const THREAD_GHOST_POST_KEY = 'posts.form.thread.ghost_post';
 export const THREAD_REPLIES_PERMISSION_KEY = 'posts.form.thread.replies_permission';
 
 /**

@@ -64,17 +64,9 @@ class ThreadsPublisher
         return $this->publishThread(
             $post,
             $rootHash,
-            fn (): array => $this->publishRoot($post, $content),
+            fn (): array => $this->publishSegment($account, $content, $post->mediaItems, $this->containerOptions($post, $content)),
             fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->publishReply($account, $text, $media, $parent, $poll),
         );
-    }
-
-    /**
-     * @return array{id: string, url: ?string}
-     */
-    private function publishRoot(Post $post, ?string $content): array
-    {
-        return $this->publishSegment($post->socialAccount, $content, $post->mediaItems, $this->containerOptions($post, $content));
     }
 
     /**
