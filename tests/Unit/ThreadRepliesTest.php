@@ -27,7 +27,10 @@ test('thread replies are checked per network', function (Platform $platform, arr
     'blank reply object' => [Platform::X, [['text' => ' ', 'media' => []]], 'thread_replies.0'],
     'media-only reply' => [Platform::X, [['text' => '', 'media' => [['id' => 'image']]]], null],
     'reply object over the limit' => [Platform::X, [['text' => str_repeat('a', 281), 'media' => [['id' => 'image']]]], 'thread_replies.0'],
-    'threads cannot chain' => [Platform::Threads, ['second'], 'thread_replies'],
+    'threads replies fit' => [Platform::Threads, [str_repeat('a', 500)], null],
+    'threads 500' => [Platform::Threads, [str_repeat('a', 501)], 'thread_replies.0'],
+    'threads reply poll question fits' => [Platform::Threads, [['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces']]]], null],
+    'telegram cannot chain' => [Platform::Telegram, ['second'], 'thread_replies'],
     'linkedin comment fits' => [Platform::LinkedIn, [str_repeat('a', 3000)], null],
     'linkedin page comment fits' => [Platform::LinkedInPage, ['Link in the comments'], null],
     'linkedin comment 3000' => [Platform::LinkedIn, [str_repeat('a', 3001)], 'thread_replies.0'],
@@ -69,14 +72,16 @@ test('thread_replies has a rule so validated() keeps it', function () {
         ->and(ThreadReplies::supports(Platform::Bluesky))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::LinkedIn))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::LinkedInPage))->toBeTrue()
-        ->and(ThreadReplies::supports(Platform::Threads))->toBeFalse();
+        ->and(ThreadReplies::supports(Platform::Threads))->toBeTrue()
+        ->and(ThreadReplies::supports(Platform::Telegram))->toBeFalse();
 });
 
 test('a linkedin post takes one comment while the other threads take up to 24 replies', function () {
     expect(ThreadReplies::maxReplies(Platform::LinkedIn))->toBe(1)
         ->and(ThreadReplies::maxReplies(Platform::LinkedInPage))->toBe(1)
         ->and(ThreadReplies::maxReplies(Platform::X))->toBe(24)
-        ->and(ThreadReplies::maxReplies(Platform::Threads))->toBe(0)
+        ->and(ThreadReplies::maxReplies(Platform::Threads))->toBe(24)
+        ->and(ThreadReplies::maxReplies(Platform::Telegram))->toBe(0)
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::LinkedIn, ['thread_replies' => ['first', 'second']]))
         ->toBe(['thread_replies', trans_choice('posts.form.thread.too_many', 1, ['max' => 1])]);
 });
@@ -104,7 +109,9 @@ test('a reply publishes as its network post type and takes that type media rules
         ->and(ThreadReplies::replyContentType(Platform::Mastodon))->toBe(ContentType::MastodonPost)
         ->and(ThreadReplies::replyContentType(Platform::LinkedIn))->toBe(ContentType::LinkedInComment)
         ->and(ThreadReplies::replyContentType(Platform::LinkedInPage))->toBe(ContentType::LinkedInComment)
-        ->and(ThreadReplies::replyContentType(Platform::Threads))->toBeNull()
+        ->and(ThreadReplies::replyContentType(Platform::Threads))->toBe(ContentType::ThreadsPost)
+        ->and(ThreadReplies::replyPoll(Platform::Threads)::contentType())->toBe(ContentType::ThreadsPoll)
+        ->and(ThreadReplies::replyContentType(Platform::Telegram))->toBeNull()
         ->and(ThreadReplies::of(['thread_replies' => ['Two', ['text' => 'Three', 'media' => [$image]]]]))->toBe([
             ['text' => 'Two', 'media' => []],
             ['text' => 'Three', 'media' => [$image]],

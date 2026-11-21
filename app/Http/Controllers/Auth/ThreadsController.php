@@ -24,6 +24,7 @@ class ThreadsController extends SocialController
         'threads_basic',
         'threads_content_publish',
         'threads_manage_insights',
+        'threads_manage_replies',
     ];
 
     public function connect(Request $request): Response

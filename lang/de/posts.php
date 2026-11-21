@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'Die Warteschlange hat sich geändert, seit du sie geöffnet hast. Aktualisiere die Seite und versuche es erneut.',
         'account_disconnected' => 'Social-Media-Konto ist getrennt',
         'account_token_expired' => 'Sitzung des Social-Media-Kontos abgelaufen – bitte erneut verbinden',
+        'threads_replies_permission' => 'Um einen Thread auf Threads zu veröffentlichen, verbinde diesen Kanal erneut und erlaube TryPost, Antworten zu posten.',
         'platform_unavailable' => 'Die Plattform ist vorübergehend nicht verfügbar. Wir versuchen es in Kürze erneut.',
         'platform_unavailable_exhausted' => 'Die Plattform blieb nach mehreren Versuchen nicht verfügbar. Bitte später erneut versuchen.',
         'publishing_timed_out' => 'Die Veröffentlichung ist abgelaufen. Bitte erneut versuchen.',

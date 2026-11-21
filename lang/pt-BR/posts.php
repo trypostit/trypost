@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'A fila mudou desde que você abriu. Atualize e tente de novo.',
         'account_disconnected' => 'Conta social está desconectada',
         'account_token_expired' => 'Sessão da conta social expirou — reconecte a conta',
+        'threads_replies_permission' => 'Para publicar uma thread no Threads, reconecte este canal e permita que o TryPost publique respostas.',
         'platform_unavailable' => 'A plataforma está temporariamente indisponível. Vamos tentar de novo em breve.',
         'platform_unavailable_exhausted' => 'A plataforma continuou indisponível após várias tentativas. Tente de novo mais tarde.',
         'publishing_timed_out' => 'A publicação excedeu o tempo limite. Tente novamente.',

@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post with the scopes we hold.
  * Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply. On X and Mastodon a reply may carry a poll
+ * string is a text-only reply. On X, Mastodon and Threads a reply may carry a poll
  * instead of media (`{text, media, poll}`), following that network's `Poll`
  * rules with the reply text as its question.
  */
@@ -40,6 +40,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
+            Platform::Threads => ContentType::ThreadsPost,
             Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
@@ -53,7 +54,7 @@ class ThreadReplies
     public static function maxReplies(?Platform $platform): int
     {
         return match ($platform) {
-            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
+            Platform::Bluesky, Platform::Mastodon, Platform::X, Platform::Threads => self::MAX_REPLIES,
             Platform::LinkedIn, Platform::LinkedInPage => 1,
             default => 0,
         };

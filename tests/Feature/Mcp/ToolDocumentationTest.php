@@ -55,7 +55,7 @@ dataset('post writing tools', [
 ]);
 
 test('post writing tools explain how to publish a thread', function (string $tool) {
-    expect(mcpToolDescription($tool))->toContain('thread_replies')->toContain('X, Bluesky or Mastodon');
+    expect(mcpToolDescription($tool))->toContain('thread_replies')->toContain('X, Bluesky, Mastodon or Threads');
 })->with('post writing tools');
 
 test('post writing tools say content is plain text', function (string $tool) {

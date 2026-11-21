@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'La file d\'attente a changé depuis votre ouverture. Actualisez et réessayez.',
         'account_disconnected' => 'Le compte social est déconnecté',
         'account_token_expired' => 'La session du compte social a expiré — veuillez reconnecter',
+        'threads_replies_permission' => 'Pour publier un fil sur Threads, reconnectez ce canal et autorisez TryPost à publier des réponses.',
         'platform_unavailable' => 'La plateforme est temporairement indisponible. Nouvelle tentative sous peu.',
         'platform_unavailable_exhausted' => 'La plateforme est restée indisponible après plusieurs tentatives. Réessayez plus tard.',
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',

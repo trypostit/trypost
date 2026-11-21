@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'De wachtrij is gewijzigd sinds je hem opende. Vernieuw en probeer het opnieuw.',
         'account_disconnected' => 'Social account is losgekoppeld',
         'account_token_expired' => 'Sessie van social account verlopen — koppel opnieuw',
+        'threads_replies_permission' => 'Om een thread op Threads te publiceren, koppel je dit kanaal opnieuw en sta je TryPost toe reacties te plaatsen.',
         'platform_unavailable' => 'Het platform is tijdelijk niet beschikbaar. We proberen het zo opnieuw.',
         'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',

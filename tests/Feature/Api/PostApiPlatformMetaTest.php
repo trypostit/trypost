@@ -1278,8 +1278,8 @@ it('persists thread replies and rejects them where the network cannot chain when
         'meta' => ['thread_replies' => [str_repeat('a', 281)]],
     ])->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies.0']);
 
-    $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->forAccount($threads)->create([
+    $telegram = SocialAccount::factory()->telegram()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($telegram)->create([
         'user_id' => $this->user->id,
         'content' => 'Root',
         'status' => PostStatus::Draft,

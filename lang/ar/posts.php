@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'تغيّرت قائمة الانتظار منذ فتحتها. حدّث الصفحة وحاول مرة أخرى.',
         'account_disconnected' => 'الحساب الاجتماعي مفصول',
         'account_token_expired' => 'انتهت جلسة الحساب الاجتماعي — يرجى إعادة الربط',
+        'threads_replies_permission' => 'لنشر سلسلة على Threads، أعد ربط هذه القناة واسمح لـ TryPost بنشر الردود.',
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',

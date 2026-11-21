@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'La coda è cambiata da quando l\'hai aperta. Aggiorna e riprova.',
         'account_disconnected' => 'L\'account social è scollegato',
         'account_token_expired' => 'Sessione dell\'account social scaduta — ricollegalo',
+        'threads_replies_permission' => 'Per pubblicare un thread su Threads, ricollega questo canale e consenti a TryPost di pubblicare risposte.',
         'platform_unavailable' => 'La piattaforma è temporaneamente non disponibile. Riproveremo a breve.',
         'platform_unavailable_exhausted' => 'La piattaforma è rimasta non disponibile dopo diversi tentativi. Riprova più tardi.',
         'publishing_timed_out' => 'Pubblicazione scaduta. Riprova.',

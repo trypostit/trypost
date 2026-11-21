@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'Kolejka zmieniła się od momentu jej otwarcia. Odśwież stronę i spróbuj ponownie.',
         'account_disconnected' => 'Konto społecznościowe jest rozłączone',
         'account_token_expired' => 'Sesja konta społecznościowego wygasła — połącz ponownie',
+        'threads_replies_permission' => 'Aby opublikować wątek w Threads, połącz ponownie ten kanał i zezwól TryPost na publikowanie odpowiedzi.',
         'platform_unavailable' => 'Platforma jest tymczasowo niedostępna. Spróbujemy ponownie wkrótce.',
         'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',

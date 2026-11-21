@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'Kuyruk siz açtıktan sonra değişti. Yenileyip tekrar deneyin.',
         'account_disconnected' => 'Sosyal hesabın bağlantısı kesildi',
         'account_token_expired' => 'Sosyal hesap oturumunun süresi doldu — lütfen yeniden bağlanın',
+        'threads_replies_permission' => 'Threads\'te bir zincir yayınlamak için bu kanalı yeniden bağlayın ve TryPost\'un yanıt paylaşmasına izin verin.',
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',

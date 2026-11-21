@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'Antrean berubah sejak kamu membukanya. Muat ulang dan coba lagi.',
         'account_disconnected' => 'Akun media sosial terputus',
         'account_token_expired' => 'Sesi akun media sosial berakhir — hubungkan kembali',
+        'threads_replies_permission' => 'Untuk memublikasikan utas di Threads, hubungkan kembali kanal ini dan izinkan TryPost memposting balasan.',
         'platform_unavailable' => 'Platform sedang tidak tersedia. Kami akan segera mencoba lagi.',
         'platform_unavailable_exhausted' => 'Platform tetap tidak tersedia setelah beberapa percobaan. Coba lagi nanti.',
         'publishing_timed_out' => 'Waktu penerbitan habis. Coba lagi.',

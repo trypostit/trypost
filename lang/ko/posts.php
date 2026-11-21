@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => '대기열을 연 이후 변경되었습니다. 새로 고침한 후 다시 시도해 주세요.',
         'account_disconnected' => '소셜 계정 연결이 해제되었습니다',
         'account_token_expired' => '소셜 계정 세션이 만료되었습니다 — 재연결하세요',
+        'threads_replies_permission' => 'Threads에 스레드를 게시하려면 이 채널을 다시 연결하고 TryPost가 답글을 게시하도록 허용하세요.',
         'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
         'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',

@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => '自你打开以来队列已发生变化。请刷新后重试。',
         'account_disconnected' => '社交账号已断开连接',
         'account_token_expired' => '社交账号会话已过期——请重新连接',
+        'threads_replies_permission' => '要在 Threads 上发布串文，请重新连接此频道并允许 TryPost 发布回复。',
         'platform_unavailable' => '平台暂时不可用。我们稍后会重试。',
         'platform_unavailable_exhausted' => '多次重试后平台仍不可用。请稍后再试。',
         'publishing_timed_out' => '发布超时。请重试。',

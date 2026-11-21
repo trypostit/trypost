@@ -958,6 +958,7 @@ return [
         'queue_order_stale' => 'The queue changed since you opened it. Refresh and try again.',
         'account_disconnected' => 'Social account is disconnected',
         'account_token_expired' => 'Social account session expired — please reconnect',
+        'threads_replies_permission' => 'To publish a thread on Threads, reconnect this channel and allow TryPost to post replies.',
         'platform_unavailable' => 'The platform is temporarily unavailable. We\'ll retry shortly.',
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
