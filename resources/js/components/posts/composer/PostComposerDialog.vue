@@ -1563,6 +1563,10 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
+    const threadBlock = threadBlockKey(account);
+    if (filled(threadBlock)) {
+        issues.push({ key: threadBlock, params: {}, contentType });
+    }
     const replyContentType = threadReplyPostType(account.platform);
     if (replyContentType) {
         const limit = replyLimit(account);
@@ -1627,6 +1631,40 @@ const blockingIssue = computed(() => {
 
     return null;
 });
+/**
+ * Why an account's thread cannot go out, as `ThreadReplies::violation()` says
+ * on the server: a ghost post stands alone, and an account connected before
+ * the replies permission reconnects first.
+ */
+const threadBlockKey = (account: ComposerAccount): string | null => {
+    const destination = composition.resolvedDestination(account);
+
+    if (blank(threadRepliesOf(destination.meta))) {
+        return null;
+    }
+
+    if (destination.content_type === ContentType.ThreadsGhostPost) {
+        return 'posts.form.thread.ghost_post';
+    }
+
+    if (props.platformConfigs[account.id]?.repliesAllowed === false) {
+        return 'posts.form.thread.replies_permission';
+    }
+
+    return null;
+};
+/** The first account of the card whose thread cannot go out, for its warning. */
+const groupThreadBlockKey = (group: NetworkGroup): string | null => {
+    for (const account of group.accounts) {
+        const key = threadBlockKey(account);
+
+        if (filled(key)) {
+            return key;
+        }
+    }
+
+    return null;
+};
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
     const result = evaluatePlatformMeta(
@@ -2864,6 +2902,17 @@ const onDialogOpenChange = (value: boolean): void => {
                                             class="size-4 shrink-0 text-warning"
                                         />
                                         {{ $t(metaRequirement(group.anchor)!) }}
+                                    </div>
+                                    <div
+                                        v-if="groupThreadBlockKey(group)"
+                                        role="status"
+                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
+                                        :data-testid="`composer-thread-warning-${group.anchor.id}`"
+                                    >
+                                        <IconAlertTriangle
+                                            class="size-4 shrink-0 text-warning"
+                                        />
+                                        {{ $t(groupThreadBlockKey(group)!) }}
                                     </div>
                                     <div
                                         v-if="setMediaWarning(group.anchor)"
