@@ -1,6 +1,10 @@
 import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
-import { ContentType, type ContentTypeValue } from '@/types/content-type';
+import {
+    ContentType,
+    type ContentTypeValue,
+    STANDALONE_CONTENT_TYPES,
+} from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
     isReplyPollPlatform,
@@ -146,4 +150,50 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     }
 
     return 'posts.form.thread.reply_empty';
+};
+
+/**
+ * The copy a channel without the scope its network asks for replies is shown
+ * (`repliesPermission` of its platform config): `message`, and
+ * `admin_message` for someone who cannot reconnect it.
+ */
+export type ReplyPermission = { message: string; admin_message: string };
+
+/** Whether a post type takes thread replies on its network. */
+export const takesThreadReplies = (contentType: ContentTypeValue | null): boolean => {
+    if (contentType === null) {
+        return true;
+    }
+
+    return blank(STANDALONE_CONTENT_TYPES[contentType]);
+};
+
+/**
+ * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
+ * the server: its post type stands alone, or its channel lacks the scope its
+ * network asks for replies. Null when nothing holds it back.
+ */
+export const threadBlockKey = (
+    contentType: ContentTypeValue | null,
+    meta: Record<string, any> | null,
+    repliesPermission: ReplyPermission | null,
+    canManageAccounts: boolean,
+): string | null => {
+    if (blank(threadRepliesOf(meta))) {
+        return null;
+    }
+
+    if (contentType !== null && filled(STANDALONE_CONTENT_TYPES[contentType])) {
+        return STANDALONE_CONTENT_TYPES[contentType];
+    }
+
+    if (repliesPermission === null) {
+        return null;
+    }
+
+    if (canManageAccounts) {
+        return repliesPermission.message;
+    }
+
+    return repliesPermission.admin_message;
 };

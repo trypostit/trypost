@@ -720,6 +720,7 @@ const submitComposition = (
     composition: PostComposition,
     _createAnother?: boolean,
     onSaved?: () => void,
+    leavesApp = false,
 ): void => {
     const editPost = props.editPost;
     if (!editPost) return;
@@ -737,7 +738,7 @@ const submitComposition = (
         onFinish: () => {
             composerSubmitting.value = false;
 
-            if (saved && returnsBack) {
+            if (saved && returnsBack && !leavesApp) {
                 returnToOpeningPage();
             }
         },

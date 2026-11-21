@@ -50,6 +50,12 @@ export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Partial<Record<ContentType
     [ContentType.LinkedInComment]: 'posts.form.thread.comment_attachments',
 };
 
+/**
+ * Post types that take no thread replies on a network that otherwise does,
+ * with why (`trypost.thread_replies.standalone_types` on the server).
+ */
+export const STANDALONE_CONTENT_TYPES: Readonly<Partial<Record<ContentTypeValue, string>>> = {};
+
 /** Content types that are a poll (`ContentType::isPoll()` on the server): the post text is the question and there is no media. */
 export const POLL_CONTENT_TYPES: ReadonlySet<ContentTypeValue> = new Set([
     ContentType.XPoll,

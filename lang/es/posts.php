@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'Tu comentario supera el límite de :limit caracteres por :over.',
             'comment_empty' => 'Tu comentario está vacío.',
             'comment_attachments' => 'Los comentarios de LinkedIn no admiten archivos multimedia.',
+            'save_and_reconnect' => 'Guardar y reconectar',
+            'reconnect_blocked' => 'Esta publicación aún no se puede guardar. Espera a que terminen las subidas y corrige lo resaltado, luego inténtalo de nuevo.',
+            'reconnect_pending' => 'Esta publicación está esperando aprobación. Apruébala o muévela a borradores antes de volver a conectar el canal.',
         ],
 
         'pinterest' => [

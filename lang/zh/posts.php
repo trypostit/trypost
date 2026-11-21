@@ -540,6 +540,9 @@ return [
             'comment_too_long' => '你的评论超出 :limit 个字符的限制 :over 个字符。',
             'comment_empty' => '你的评论是空的。',
             'comment_attachments' => 'LinkedIn 评论不能包含媒体。',
+            'save_and_reconnect' => '保存并重新连接',
+            'reconnect_blocked' => '此帖子暂时无法保存。请等待上传完成并修正标出的内容，然后重试。',
+            'reconnect_pending' => '此帖子正在等待审批。请先批准或移至草稿，再重新连接频道。',
         ],
 
         'pinterest' => [

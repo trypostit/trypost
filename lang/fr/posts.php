@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'Votre commentaire dépasse la limite de :limit caractères de :over.',
             'comment_empty' => 'Votre commentaire est vide.',
             'comment_attachments' => 'Les commentaires LinkedIn ne peuvent pas contenir de médias.',
+            'save_and_reconnect' => 'Reconnecter',
+            'reconnect_blocked' => 'Cette publication ne peut pas encore être enregistrée. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
+            'reconnect_pending' => 'Cette publication attend une approbation. Approuvez-la ou passez-la en brouillon avant de reconnecter le canal.',
         ],
 
         'pinterest' => [

@@ -1,7 +1,9 @@
 /**
  * Prints what the composer's thread helpers (`lib/threadReplies.ts`) answer for
- * each platform given as an argument (a reply that is a poll included), so `ThreadRepliesParityTest.php` can
- * compare them with `ThreadReplies` on the server.
+ * each platform given as an argument (a reply that is a poll included), the
+ * post types that stand alone and why a thread is held back, so
+ * `ThreadRepliesParityTest.php` can compare them with `ThreadReplies` on the
+ * server.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
  * and extension-less specifiers onto `resources/js/**.ts`.
@@ -23,6 +25,7 @@ const {
     replyEmptyKey,
     replyTooLongKey,
     startThreadKey,
+    threadBlockKey,
     threadMaxReplies,
     threadReplyContentType,
 } = await import(
@@ -30,6 +33,10 @@ const {
 );
 const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
+);
+
+const { STANDALONE_CONTENT_TYPES } = await import(
+    pathToFileURL(path.join(path.resolve(resourcesDir), 'types/content-type.ts')).href
 );
 
 const pollReply = { text: 'Which one?', media: [], poll: { options: ['Yes', 'No'] } };
@@ -48,4 +55,18 @@ const results = Object.fromEntries(
     ]),
 );
 
-console.log(JSON.stringify(results));
+const thread = { thread_replies: [{ text: 'Second', media: [] }] };
+const permission = { message: 'posts.form.thread.reply_empty', admin_message: 'posts.form.thread.unsupported' };
+
+console.log(
+    JSON.stringify({
+        platforms: results,
+        standalone_types: STANDALONE_CONTENT_TYPES,
+        block_keys: {
+            allowed: threadBlockKey('x_post', thread, null, true),
+            no_replies: threadBlockKey('x_post', {}, permission, true),
+            lacks_scope_admin: threadBlockKey('x_post', thread, permission, true),
+            lacks_scope_member: threadBlockKey('x_post', thread, permission, false),
+        },
+    }),
+);

@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'Your comment exceeds the :limit-character limit by :over.',
             'comment_empty' => 'Your comment is empty.',
             'comment_attachments' => 'LinkedIn comments can\'t include media.',
+            'save_and_reconnect' => 'Save & reconnect',
+            'reconnect_blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
+            'reconnect_pending' => 'This post is waiting for approval. Approve it or move it to drafts before reconnecting the channel.',
         ],
 
         'pinterest' => [

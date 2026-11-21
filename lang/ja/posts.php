@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'コメントが:limit文字の上限を:over文字超えています。',
             'comment_empty' => 'コメントが空です。',
             'comment_attachments' => 'LinkedInのコメントにはメディアを添付できません。',
+            'save_and_reconnect' => '保存して再接続',
+            'reconnect_blocked' => 'この投稿はまだ保存できません。アップロードが終わるのを待ち、強調表示された箇所を修正してから、もう一度お試しください。',
+            'reconnect_pending' => 'この投稿は承認待ちです。チャンネルを再接続する前に、承認するか下書きに移動してください。',
         ],
 
         'pinterest' => [

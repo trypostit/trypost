@@ -32,5 +32,12 @@ test('the composer threads every network the way the server does', function () {
         ]];
     })->all();
 
-    expect($composer)->toBe($server);
+    expect($composer['platforms'])->toBe($server)
+        ->and($composer['standalone_types'])->toBe(config('trypost.thread_replies.standalone_types'))
+        ->and($composer['block_keys'])->toBe([
+            'allowed' => null,
+            'no_replies' => null,
+            'lacks_scope_admin' => 'posts.form.thread.reply_empty',
+            'lacks_scope_member' => 'posts.form.thread.unsupported',
+        ]);
 });

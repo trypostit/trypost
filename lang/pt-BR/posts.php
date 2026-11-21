@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'Seu comentário passa do limite de :limit caracteres em :over.',
             'comment_empty' => 'Seu comentário está vazio.',
             'comment_attachments' => 'Comentários no LinkedIn não aceitam mídia.',
+            'save_and_reconnect' => 'Salvar e reconectar',
+            'reconnect_blocked' => 'Este post ainda não pode ser salvo. Aguarde os uploads terminarem e corrija o que está destacado, depois tente de novo.',
+            'reconnect_pending' => 'Este post está aguardando aprovação. Aprove-o ou mova-o para rascunhos antes de reconectar o canal.',
         ],
 
         'pinterest' => [

@@ -540,6 +540,9 @@ return [
             'comment_too_long' => 'Yorumunuz :limit karakter sınırını :over karakter aşıyor.',
             'comment_empty' => 'Yorumunuz boş.',
             'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
+            'save_and_reconnect' => 'Kaydet ve bağla',
+            'reconnect_blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
+            'reconnect_pending' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce onaylayın veya taslaklara taşıyın.',
         ],
 
         'pinterest' => [
