@@ -266,3 +266,13 @@ test('a follower read is refused on the post history scopes alone', function (Pl
         ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
     Http::assertNothingSent();
 })->with(['instagram via facebook' => [Platform::InstagramFacebook], 'threads' => [Platform::Threads]]);
+
+test('an insights read is skipped without a request when the connect does not ask for its scopes', function () {
+    Http::fake();
+    config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish']]);
+    $publication = scopeGuardPublication(scopeGuardAccount(Platform::Threads, scopeGuardGrant(Platform::Threads)));
+
+    expect(fn () => app(PublicationMetricsCollectorFactory::class)->for(Platform::Threads)->collect($publication, CarbonImmutable::now('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
+    Http::assertNothingSent();
+});

@@ -21,7 +21,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
-        if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

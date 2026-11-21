@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -423,11 +424,7 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
  */
 function seedHeldBackMastodonThread(int $channels = 1): Post
 {
-    config(['trypost.platforms.mastodon.permissions.thread_replies' => [
-        'scopes' => ['write:replies'],
-        'message' => 'posts.form.thread.unsupported',
-        'member_message' => 'posts.form.thread.reply_empty',
-    ]]);
+    gateFeature(Platform::Mastodon, GatedFeature::ThreadReplies, ['write:replies'], ['message' => 'posts.form.thread.unsupported', 'member_message' => 'posts.form.thread.reply_empty']);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('member'));
@@ -491,6 +488,22 @@ test('a channel lacking the publish scope names its network in the warning and t
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a network whose connect does not ask for the replies scope offers no thread in the composer', function (bool $requested) {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['meta' => []]);
+    $post->socialAccount->update(['scopes' => ['write:statuses', 'write:replies']]);
+
+    if (! $requested) {
+        config(['trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media']]);
+    }
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-caption-{$post->social_account_id}");
+
+    $requested ? waitFor($page, '@thread-start') : $page->assertMissing('@thread-start');
+    $page->assertNoJavaScriptErrors();
+})->with(['asked for' => true, 'left out' => false]);
 
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
     $post = seedHeldBackMastodonThread(channels: 2);

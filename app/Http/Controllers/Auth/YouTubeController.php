@@ -21,13 +21,6 @@ class YouTubeController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::YouTube;
 
-    protected array $scopes = [
-        'https://www.googleapis.com/auth/youtube.upload',
-        'https://www.googleapis.com/auth/youtube.readonly',
-        'https://www.googleapis.com/auth/youtube.force-ssl',
-        'https://www.googleapis.com/auth/yt-analytics.readonly',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -48,7 +41,7 @@ class YouTubeController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
             $refusal = $this->refusalForMissingPublishScopes($scopes);
 
             if ($refusal !== null) {
@@ -95,7 +88,7 @@ class YouTubeController extends SocialController
     {
         return Inertia::location(
             Socialite::driver($this->driver)
-                ->scopes($this->scopes)
+                ->scopes($this->requestedScopes())
                 ->with([
                     'access_type' => 'offline',
                     'prompt' => 'select_account consent',

@@ -8,6 +8,7 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
@@ -2638,7 +2639,7 @@ test('a linkedin comment still refused after five minutes fails the publish with
 });
 
 test('a thread on a channel without the replies scope fails as a permission before anything goes out', function () {
-    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
     $post = publishJobRetarget($this->post, $account, [
         'content' => 'First post',

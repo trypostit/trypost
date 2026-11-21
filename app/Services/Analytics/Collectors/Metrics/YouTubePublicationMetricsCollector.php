@@ -130,7 +130,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
      */
     private function report(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array
     {
-        if (ChannelPermissions::lacks($account, GatedFeature::PostInsightsExtended)) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostInsightsExtended)) {
             return [];
         }
 

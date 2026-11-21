@@ -20,12 +20,6 @@ class InstagramController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::Instagram;
 
-    protected array $scopes = [
-        'instagram_business_basic',
-        'instagram_business_content_publish',
-        'instagram_business_manage_insights',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -37,7 +31,7 @@ class InstagramController extends SocialController
         $this->rememberConnectSession($request, $workspace);
 
         $url = Socialite::driver($this->driver)
-            ->scopes($this->scopes)
+            ->scopes($this->requestedScopes())
             ->redirect()
             ->getTargetUrl();
 
@@ -51,7 +45,7 @@ class InstagramController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

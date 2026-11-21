@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\XPublisher;
 use App\Support\ChannelPermissions;
+use App\Support\PostPlatformMetaRules;
+use App\Support\ThreadReplies;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 
@@ -22,11 +24,7 @@ function xAccountGranting(?array $scopes): SocialAccount
 }
 
 beforeEach(function () {
-    config(['trypost.platforms.x.permissions.thread_replies' => [
-        'scopes' => ['tweet.moderate.write'],
-        'message' => 'posts.form.thread.reply_empty',
-        'member_message' => 'posts.form.thread.unsupported',
-    ]]);
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write'], ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']);
 });
 
 test('a channel without the scope a feature needs is held back from it and told so', function () {
@@ -57,7 +55,7 @@ test('a channel lacking the publish scope is refused on the channel, with the ne
 });
 
 test('without its own copy a thread refusal names the network, and publishing comes before replies', function () {
-    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
     $thread = ['thread_replies' => ['second']];
 
     expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), $thread, null))
@@ -168,4 +166,27 @@ test('a scope no reconnect would grant never refuses a post, as it never warns t
     expect(ChannelPermissions::lacks($account, GatedFeature::Publish))->toBeTrue()
         ->and(ChannelPermissions::violation($account, [], null))->toBeNull()
         ->and(ChannelPermissions::missing($account))->toBe([]);
+});
+
+test('a feature whose scopes the connect does not ask for is off: no warning and nothing to reconnect for', function () {
+    config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish']]);
+    $account = SocialAccount::factory()->make(['platform' => Platform::Threads, 'scopes' => ['threads_basic', 'threads_content_publish']]);
+
+    expect(ChannelPermissions::disabledFeatures(Platform::Threads))->toBe(['followers', 'post_insights'])
+        ->and(ChannelPermissions::permits($account, GatedFeature::PostInsights))->toBeFalse()
+        ->and(ChannelPermissions::permits($account, GatedFeature::PostHistory))->toBeTrue()
+        ->and(ChannelPermissions::missing($account))->toBe([]);
+});
+
+test('replies are off on a network whose connect does not ask for their scope', function () {
+    config(['trypost.platforms.x.scopes' => ['tweet.read', 'tweet.write', 'users.read']]);
+
+    expect(ThreadReplies::supports(Platform::X))->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies())->toBeFalse()
+        ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['second']], ContentType::XPost))
+        ->toBe(['thread_replies', __('posts.form.thread.unsupported')]);
+
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
+
+    expect(ThreadReplies::supports(Platform::X))->toBeTrue();
 });

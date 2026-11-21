@@ -29,6 +29,7 @@ class PlatformConfigResource extends JsonResource
             'requiresContent' => $this->platform->requiresContent(),
             'publishConfig' => $this->platform->publishConfig(),
             'missingPermissions' => (object) ChannelPermissions::missing($this->resource),
+            'disabledFeatures' => ChannelPermissions::disabledFeatures($this->platform),
         ];
     }
 }

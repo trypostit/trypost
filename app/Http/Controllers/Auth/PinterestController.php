@@ -19,14 +19,6 @@ class PinterestController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::Pinterest;
 
-    protected array $scopes = [
-        'boards:read',
-        'boards:write',
-        'pins:read',
-        'pins:write',
-        'user_accounts:read',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -35,7 +27,7 @@ class PinterestController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes);
+        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes());
     }
 
     public function callback(Request $request): RedirectResponse
@@ -45,7 +37,7 @@ class PinterestController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

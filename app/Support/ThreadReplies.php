@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -46,10 +47,17 @@ class ThreadReplies
         };
     }
 
-    /** Whether the network takes replies: its `replies.max` setting. */
+    /**
+     * Whether the network takes replies: its `replies.max` setting, and, when
+     * replies need a scope, the connect asks for it (`ChannelPermissions::enabled()`).
+     */
     public static function supports(?Platform $platform): bool
     {
-        return self::maxReplies($platform) > 0;
+        if (self::maxReplies($platform) === 0) {
+            return false;
+        }
+
+        return ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies);
     }
 
     /** How many replies follow a post on the network (its `replies.max` setting). */

@@ -22,6 +22,22 @@ export const missingPermissionsOf = (
     return platformConfig.missingPermissions;
 };
 
+/** Whether the feature is on for a channel's network (not in `disabledFeatures` of its platform config). */
+export const featureIsEnabled = (
+    platformConfig: Record<string, any> | undefined,
+    feature: GatedFeatureValue,
+): boolean => {
+    if (!filled(platformConfig)) {
+        return true;
+    }
+
+    if (!filled(platformConfig.disabledFeatures)) {
+        return true;
+    }
+
+    return !platformConfig.disabledFeatures.includes(feature);
+};
+
 /** Whether a post uses the feature, as `GatedFeature::isUsedBy()` says on the server: every post publishes, analytics are never part of one. */
 export const featureIsUsedBy = (
     feature: GatedFeatureValue,

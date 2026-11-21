@@ -24,7 +24,7 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
         ?string $cursor,
         CarbonImmutable $cutoff,
     ): PublicationPage {
-        if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

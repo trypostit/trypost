@@ -236,6 +236,17 @@ class SocialController extends Controller
     }
 
     /**
+     * The scopes this network's connect asks for (`trypost.platforms.<network>.scopes`,
+     * overridden by env on a self-hosted app that lacks a permission).
+     *
+     * @return list<string>
+     */
+    protected function requestedScopes(): array
+    {
+        return ChannelPermissions::requestedScopes($this->platform);
+    }
+
+    /**
      * Refuses the connection when the login left out a scope the platform needs
      * to publish, so no account is stored that could only fail later.
      *

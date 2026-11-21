@@ -81,7 +81,7 @@ class FacebookPublicationMetricsCollector extends AbstractMetaPublicationMetrics
         };
         $values = [];
 
-        if (! ChannelPermissions::lacks($account, GatedFeature::PostInsightsExtended)) {
+        if (ChannelPermissions::permits($account, GatedFeature::PostInsightsExtended)) {
             $values = $this->insights($this->optionalInsightItems($account, "{$graph}/{$insightsId}/{$edge}", $fields, [
                 'period' => 'lifetime',
             ]));

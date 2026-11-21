@@ -12,6 +12,19 @@ use Illuminate\Support\Str;
  */
 $url = static fn (string $key, string $default): string => Str::rtrim((string) env($key, $default), '/');
 
+/*
+ * The OAuth scopes a network's connect asks for: the env list (comma
+ * separated) when it is set, else TryPost's default. A self-hosted app
+ * without a permission leaves its scope out, and every feature that needs
+ * it is off (App\Support\ChannelPermissions::enabled()).
+ */
+$scopes = static fn (string $key, string $default): array => Str::of((string) env($key, $default))
+    ->explode(',')
+    ->map(fn (string $scope): string => trim($scope))
+    ->filter()
+    ->values()
+    ->all();
+
 return [
 
     /*
@@ -543,7 +556,7 @@ return [
             // OAuth host is different from the data API (api.linkedin.com).
             'oauth_api' => $url('LINKEDIN_OAUTH_API', 'https://www.linkedin.com'),
             // Scopes for LinkedIn authentication
-            'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('LINKEDIN_SCOPES', 'openid,profile,email,w_member_social'))))),
+            'scopes' => $scopes('LINKEDIN_SCOPES', 'openid,profile,email,w_member_social'),
             'replies' => ['max' => 1],
         ],
         'linkedin-page' => [
@@ -553,11 +566,12 @@ return [
             ],
             'api' => $url('LINKEDIN_PAGE_API', 'https://api.linkedin.com'),
             // Scopes for LinkedIn Page authentication
-            'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('LINKEDIN_PAGE_SCOPES', 'openid,profile,email,w_organization_social,r_organization_social,rw_organization_admin,w_member_social'))))),
+            'scopes' => $scopes('LINKEDIN_PAGE_SCOPES', 'openid,profile,email,w_organization_social,r_organization_social,rw_organization_admin,w_member_social'),
             'replies' => ['max' => 1],
         ],
         'x' => [
             'enabled' => env('X_ENABLED', true),
+            'scopes' => $scopes('X_SCOPES', 'tweet.read,tweet.write,users.read,media.write,offline.access'),
             'permissions' => [
                 'publish' => ['scopes' => ['tweet.write']],
                 'followers' => ['scopes' => ['tweet.read', 'users.read']],
@@ -580,10 +594,11 @@ return [
             // OAuth scopes to request. Trim when the TikTok app lacks a product
             // (e.g. no Display API => drop user.info.profile, user.info.stats,
             // video.list; analytics degrade gracefully, username stays empty).
-            'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('TIKTOK_SCOPES', 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload,video.list'))))),
+            'scopes' => $scopes('TIKTOK_SCOPES', 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload,video.list'),
         ],
         'youtube' => [
             'enabled' => env('YOUTUBE_ENABLED', true),
+            'scopes' => $scopes('YOUTUBE_SCOPES', 'https://www.googleapis.com/auth/youtube.upload,https://www.googleapis.com/auth/youtube.readonly,https://www.googleapis.com/auth/youtube.force-ssl,https://www.googleapis.com/auth/yt-analytics.readonly'),
             'permissions' => [
                 'publish' => ['scopes' => ['https://www.googleapis.com/auth/youtube.upload']],
                 'followers' => ['scopes' => [YouTubeScopes::READ]],
@@ -597,6 +612,7 @@ return [
         ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
+            'scopes' => $scopes('FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,business_management'),
             'permissions' => [
                 'publish' => ['scopes' => ['pages_manage_posts']],
                 'followers' => ['scopes' => ['pages_read_engagement']],
@@ -609,6 +625,7 @@ return [
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
+            'scopes' => $scopes('INSTAGRAM_SCOPES', 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights'),
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_business_content_publish']],
                 'followers' => ['scopes' => ['instagram_business_basic']],
@@ -623,6 +640,7 @@ return [
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
+            'scopes' => $scopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights'),
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_content_publish']],
                 'followers' => ['scopes' => ['instagram_basic', 'pages_read_engagement']],
@@ -633,6 +651,7 @@ return [
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),
+            'scopes' => $scopes('THREADS_SCOPES', 'threads_basic,threads_content_publish,threads_manage_insights'),
             'permissions' => [
                 'publish' => ['scopes' => ['threads_content_publish']],
                 'followers' => ['scopes' => ['threads_basic', 'threads_manage_insights']],
@@ -646,6 +665,7 @@ return [
         ],
         'pinterest' => [
             'enabled' => env('PINTEREST_ENABLED', true),
+            'scopes' => $scopes('PINTEREST_SCOPES', 'boards:read,boards:write,pins:read,pins:write,user_accounts:read'),
             'permissions' => [
                 'publish' => ['scopes' => ['pins:write']],
                 'followers' => ['scopes' => ['user_accounts:read']],
@@ -677,6 +697,7 @@ return [
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
+            'scopes' => $scopes('MASTODON_SCOPES', 'read:accounts,read:statuses,write:statuses,write:media'),
             'permissions' => [
                 'publish' => ['scopes' => ['write:statuses']],
             ],
@@ -706,10 +727,11 @@ return [
             // SEND_MESSAGES (1<<11) + EMBED_LINKS (1<<14) + ATTACH_FILES (1<<15) +
             // READ_MESSAGE_HISTORY (1<<16) + MENTION_EVERYONE (1<<17) = 248832.
             'bot_permissions' => env('DISCORD_PERMISSIONS', '248832'),
-            'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('DISCORD_SCOPES', 'bot,identify,guilds'))))),
+            'scopes' => $scopes('DISCORD_SCOPES', 'bot,identify,guilds'),
         ],
         'google_business' => [
             'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
+            'scopes' => $scopes('GOOGLE_BUSINESS_SCOPES', 'https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/business.manage'),
             'permissions' => [
                 'publish' => ['scopes' => ['https://www.googleapis.com/auth/business.manage']],
             ],

@@ -23,8 +23,6 @@ class MastodonController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Mastodon;
 
-    private const SCOPES = 'read:accounts read:statuses write:statuses write:media';
-
     /**
      * The instance step, before the redirect to the instance's consent screen.
      */
@@ -72,7 +70,7 @@ class MastodonController extends SocialController
             $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [
                 'client_name' => config('app.name'),
                 'redirect_uris' => route('app.social.mastodon.callback'),
-                'scopes' => self::SCOPES,
+                'scopes' => implode(' ', $this->requestedScopes()),
                 'website' => config('app.url'),
             ]);
 
@@ -106,7 +104,7 @@ class MastodonController extends SocialController
                 'client_id' => $app['client_id'],
                 'response_type' => 'code',
                 'redirect_uri' => route('app.social.mastodon.callback'),
-                'scope' => self::SCOPES,
+                'scope' => implode(' ', $this->requestedScopes()),
                 'state' => $state,
                 'force_login' => PendingConnection::current()?->isSwitchingAccount() ? 'true' : null,
             ]);
@@ -179,7 +177,7 @@ class MastodonController extends SocialController
 
             $profile = $profileResponse->json();
 
-            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), explode(' ', self::SCOPES));
+            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), $this->requestedScopes());
 
             return $this->refusalForMissingPublishScopes($grantedScopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

@@ -157,7 +157,10 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { channelPermissionKey } from '@/lib/channelPermissions';
+import {
+    channelPermissionKey,
+    featureIsEnabled,
+} from '@/lib/channelPermissions';
 import {
     characterCount,
     displayLength,
@@ -205,6 +208,7 @@ import type {
     SharedData,
     User,
 } from '@/types';
+import { GatedFeature } from '@/types/channel-permission';
 import {
     CAPTIONLESS_CONTENT_TYPES,
     MEDIALESS_CONTENT_TYPE_REASONS,
@@ -1194,9 +1198,17 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
     threadRepliesOf(groupDestination(group).meta);
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
-/** A post type that stands alone never starts a thread (`STANDALONE_CONTENT_TYPES`). */
+/**
+ * Whether the card offers a thread: its network chains replies, the network's
+ * connect asks for the scope replies need (`disabledFeatures`), and its post
+ * type does not stand alone (`STANDALONE_CONTENT_TYPES`).
+ */
 const supportsThread = (group: NetworkGroup): boolean => {
     if (!isThreadPlatform(group.platform)) {
+        return false;
+    }
+
+    if (!featureIsEnabled(props.platformConfigs[group.anchor.id], GatedFeature.ThreadReplies)) {
         return false;
     }
 

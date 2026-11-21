@@ -38,6 +38,51 @@ class ChannelPermissions
         return $account->missingScope(...self::scopes($account->platform, $feature));
     }
 
+    /**
+     * The scopes the network's connect asks for (`trypost.platforms.<network>.scopes`).
+     *
+     * @return list<string>
+     */
+    public static function requestedScopes(Platform $platform): array
+    {
+        return config("trypost.platforms.{$platform->value}.scopes", []);
+    }
+
+    /**
+     * Whether the feature is on for the network: every scope it needs is one
+     * the connect asks for. A self-hosted app that leaves a scope out of its
+     * env list turns the features that need it off, on the server and in the
+     * composer; nobody is asked to reconnect for them.
+     */
+    public static function enabled(Platform $platform, GatedFeature $feature): bool
+    {
+        return blank(self::missingFrom(self::requestedScopes($platform), $platform, $feature));
+    }
+
+    /**
+     * The features that are off for the network, for the composer to hide.
+     *
+     * @return list<string>
+     */
+    public static function disabledFeatures(Platform $platform): array
+    {
+        return collect(GatedFeature::cases())
+            ->reject(fn (GatedFeature $feature): bool => self::enabled($platform, $feature))
+            ->map(fn (GatedFeature $feature): string => $feature->value)
+            ->values()
+            ->all();
+    }
+
+    /** Whether TryPost may use the feature on the channel: it is on and the grant holds its scopes. */
+    public static function permits(SocialAccount $account, GatedFeature $feature): bool
+    {
+        if (! self::enabled($account->platform, $feature)) {
+            return false;
+        }
+
+        return ! self::lacks($account, $feature);
+    }
+
     /** Whether the account's stored grant lacks a scope of the feature (`missingScope()`). */
     public static function lacks(SocialAccount $account, GatedFeature $feature): bool
     {
@@ -63,8 +108,8 @@ class ChannelPermissions
     }
 
     /**
-     * Every feature the account lacks a scope for and a reconnect would grant,
-     * keyed by feature, with the lang keys it is shown. Optional reads are
+     * Every feature that is on and the account lacks a scope for, keyed by
+     * feature, with the lang keys it is shown. Optional reads are
      * left out: without them the data is only thinner.
      *
      * @return array<string, array{message: string, member_message: string}>
@@ -119,17 +164,17 @@ class ChannelPermissions
     }
 
     /**
-     * Whether the account lacks a scope of the feature that reconnecting would
-     * grant: the one rule behind the channel's warnings and a post's refusal,
-     * so the composer and the server agree.
+     * Whether the account lacks a scope of a feature that is on: the one rule
+     * behind the channel's warnings and a post's refusal, so the composer and
+     * the server agree. A feature that is off asks nobody to reconnect.
      */
     private static function blocks(SocialAccount $account, GatedFeature $feature): bool
     {
-        if (! self::lacks($account, $feature)) {
+        if (! self::enabled($account->platform, $feature)) {
             return false;
         }
 
-        return self::reconnectGrants($account->platform, $feature);
+        return self::lacks($account, $feature);
     }
 
     /**
@@ -156,23 +201,6 @@ class ChannelPermissions
         }
 
         return $actor->can('manageAccounts', $account->loadMissing('workspace')->workspace);
-    }
-
-    /**
-     * Whether reconnecting asks for the feature's scopes: a network whose
-     * requested scopes are configured (`trypost.platforms.<network>.scopes`,
-     * e.g. a TikTok app without the Display API) may leave them out, and then
-     * a reconnect cannot fix the missing scope.
-     */
-    private static function reconnectGrants(Platform $platform, GatedFeature $feature): bool
-    {
-        $requested = config("trypost.platforms.{$platform->value}.scopes");
-
-        if (blank($requested)) {
-            return true;
-        }
-
-        return blank(self::missingFrom($requested, $platform, $feature));
     }
 
     /**

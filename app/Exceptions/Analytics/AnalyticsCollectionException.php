@@ -53,6 +53,10 @@ class AnalyticsCollectionException extends Exception
      */
     public static function unlessPermitted(SocialAccount $account, GatedFeature $feature): void
     {
+        if (! ChannelPermissions::enabled($account->platform, $feature)) {
+            throw new self('permission', "TryPost does not ask for the scopes {$feature->value} needs");
+        }
+
         $missing = ChannelPermissions::missingScope($account, $feature);
 
         if (filled($missing)) {

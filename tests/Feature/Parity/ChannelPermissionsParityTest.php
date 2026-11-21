@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
@@ -112,7 +113,7 @@ test('the web composer refuses only the channel that lacks the publish scope, on
 });
 
 test('a thread on a channel without the replies scope is refused on its replies on the web, api and mcp', function (string $surface) {
-    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
     $post = pollParityPost(ContentType::XPost);
     $message = __('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]);
 
