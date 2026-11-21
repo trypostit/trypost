@@ -475,6 +475,20 @@ test('a member who cannot manage channels is told an admin needs to reconnect, w
         ->assertNoJavaScriptErrors();
 });
 
+test('a channel lacking the publish scope names its network in the warning and the blocked schedule button', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->socialAccount->update(['scopes' => ['write:replies']]);
+    $message = __('channels.permissions.publish.message', ['network' => Platform::Mastodon->label()]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, '@channel-permission-warning', $message);
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    $page->hover('@composer-submit');
+    waitForText($page, '@composer-blocked-tooltip', $message);
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
     $post = seedHeldBackMastodonThread(channels: 2);
     $blocked = $post->social_account_id;

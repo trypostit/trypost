@@ -65,15 +65,18 @@ class ChannelPermissions
     }
 
     /**
-     * Every feature the account lacks a scope for, keyed by feature, with the
-     * lang keys it is shown.
+     * Every feature the account lacks a scope for and a reconnect would grant,
+     * keyed by feature, with the lang keys it is shown. Optional reads are
+     * left out: without them the data is only thinner.
      *
      * @return array<string, array{message: string, member_message: string}>
      */
     public static function missing(SocialAccount $account): array
     {
         return collect(GatedFeature::cases())
+            ->reject(fn (GatedFeature $feature): bool => $feature->isOptional())
             ->filter(fn (GatedFeature $feature): bool => self::lacks($account, $feature))
+            ->filter(fn (GatedFeature $feature): bool => self::reconnectGrants($account->platform, $feature))
             ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::copy($account->platform, $feature)])
             ->all();
     }
@@ -99,6 +102,23 @@ class ChannelPermissions
         }
 
         return null;
+    }
+
+    /**
+     * Whether reconnecting asks for the feature's scopes: a network whose
+     * requested scopes are configured (`trypost.platforms.<network>.scopes`,
+     * e.g. a TikTok app without the Display API) may leave them out, and then
+     * a reconnect cannot fix the missing scope.
+     */
+    private static function reconnectGrants(Platform $platform, GatedFeature $feature): bool
+    {
+        $requested = config("trypost.platforms.{$platform->value}.scopes");
+
+        if (! is_array($requested)) {
+            return true;
+        }
+
+        return self::missingFrom($requested, $platform, $feature) === [];
     }
 
     /**

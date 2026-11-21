@@ -47,7 +47,7 @@ test('a channel lacking the publish scope cannot schedule anything, with the net
 
     expect(ChannelPermissions::violation($account, ContentType::XPost, []))
         ->toBe(['publish', __('channels.permissions.publish.message', ['network' => Platform::X->label()])])
-        ->and(PostPlatformMetaRules::requiredMetaViolation($account, [], ContentType::XPost))
+        ->and(PostPlatformMetaRules::schedulingViolation($account, [], ContentType::XPost))
         ->toBe(['publish', __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
 });
 
@@ -75,4 +75,17 @@ test('a login reporting no scopes lacks every publish scope, while a stored gran
         ->and(ChannelPermissions::missingFrom(['https://www.googleapis.com/auth/youtube'], Platform::YouTube, GatedFeature::Followers))->toBe([])
         ->and(ChannelPermissions::missingFrom([], Platform::YouTube, GatedFeature::Followers))->toBe(['https://www.googleapis.com/auth/youtube.readonly'])
         ->and(ChannelPermissions::missingScope(xAccountGranting(null), GatedFeature::Publish))->toBeNull();
+});
+
+test('a channel is never told to reconnect for an optional read or a scope TryPost no longer asks for', function () {
+    $facebook = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_manage_posts', 'pages_read_engagement']]);
+    $tiktok = SocialAccount::factory()->make(['platform' => Platform::TikTok, 'scopes' => ['user.info.basic', 'video.publish']]);
+
+    expect(ChannelPermissions::lacks($facebook, GatedFeature::PostInsightsExtended))->toBeTrue()
+        ->and(ChannelPermissions::missing($facebook))->toBe([])
+        ->and(array_keys(ChannelPermissions::missing($tiktok)))->toBe(['followers', 'post_insights', 'post_history']);
+
+    config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
+
+    expect(ChannelPermissions::missing($tiktok))->toBe([]);
 });

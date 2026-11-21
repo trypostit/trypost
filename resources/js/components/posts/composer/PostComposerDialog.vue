@@ -1578,7 +1578,11 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         ),
     ]) {
         if (filled(key)) {
-            issues.push({ key, params: {}, contentType });
+            issues.push({
+                key,
+                params: { network: getPlatformLabel(account.platform) },
+                contentType,
+            });
         }
     }
     const replyContentType = threadReplyPostType(account.platform);

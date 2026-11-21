@@ -523,11 +523,12 @@ return [
     | type => the lang key that says why). A network without `replies` takes
     | none.
     |
-    | `permissions` lists the features (App\Enums\SocialAccount\GatedFeature)
-    | a network allows only once the account grants a scope beyond its publish
-    | scopes: per feature, that `scope` and the lang keys an account without it
-    | is shown (`message`, and `member_message` for someone who cannot
-    | reconnect it), read by App\Support\ChannelPermissions.
+    | `permissions` is what TryPost needs the account to have granted for each
+    | feature (App\Enums\SocialAccount\GatedFeature: publish, thread_replies,
+    | followers, post_insights, post_insights_extended, post_history): its
+    | `scopes`, a list of requirements, each a scope or a list of alternatives,
+    | and optionally its own `message` / `member_message` lang keys. Read only
+    | through App\Support\ChannelPermissions.
     |
     */
 

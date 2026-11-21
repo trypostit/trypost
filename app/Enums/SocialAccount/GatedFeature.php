@@ -38,6 +38,19 @@ enum GatedFeature: string
     }
 
     /**
+     * A read TryPost skips quietly without its scope (Facebook `read_insights`,
+     * YouTube Analytics): the data is only thinner, so the channel is never
+     * told to reconnect for it.
+     */
+    public function isOptional(): bool
+    {
+        return match ($this) {
+            self::PostInsightsExtended => true,
+            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory => false,
+        };
+    }
+
+    /**
      * The lang group of the copy a channel lacking the feature is shown
      * (`message`, `member_message`), unless its network sets its own. The
      * analytics features share one: to the user they are all insights.

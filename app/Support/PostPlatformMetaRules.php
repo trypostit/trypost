@@ -278,7 +278,7 @@ class PostPlatformMetaRules
      */
     public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', ?ContentType $contentType = null): void
     {
-        $violation = self::requiredMetaViolation($target, $meta, $contentType);
+        $violation = self::schedulingViolation($target, $meta, $contentType);
 
         if (blank($violation)) {
             return;
@@ -306,7 +306,7 @@ class PostPlatformMetaRules
             return;
         }
 
-        $violation = self::requiredMetaViolation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type)
+        $violation = self::schedulingViolation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type)
             ?? self::contentMetaViolation($post->platform, $post->meta, (string) $post->content);
 
         if (filled($violation)) {
@@ -413,6 +413,22 @@ class PostPlatformMetaRules
     }
 
     /**
+     * What keeps a post from being scheduled or published: its required meta
+     * (`requiredMetaViolation()`), then a feature it uses that its channel
+     * lacks a scope for (`ChannelPermissions`). Only the paths that schedule
+     * or publish a post read the permission part; a repurpose destination is
+     * only checked for its meta, and a channel that cannot publish fails its
+     * post at publish time (see "Repurpose account health" in AGENTS.md).
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function schedulingViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type): ?array
+    {
+        return self::requiredMetaViolation($target, $meta, $type)
+            ?? ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, $type, is_array($meta) ? $meta : null);
+    }
+
+    /**
      * The missing required meta field for a platform about to publish, or null when
      * nothing is missing. Single source of "what each platform requires to publish".
      * Instagram music and trial reels only exist on reels, so their rules apply
@@ -427,12 +443,6 @@ class PostPlatformMetaRules
 
         if ($threadViolation !== null) {
             return $threadViolation;
-        }
-
-        $permissionViolation = ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, $type, is_array($meta) ? $meta : null);
-
-        if ($permissionViolation !== null) {
-            return $permissionViolation;
         }
 
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));

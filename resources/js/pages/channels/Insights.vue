@@ -36,13 +36,13 @@ import type {
 import { channelName } from '@/types/channel';
 import type { PublishChannel } from '@/types/publish';
 
-
 /** The analytics features whose missing scope this page warns about. */
 const INSIGHTS_FEATURES = [
     GatedFeature.Followers,
     GatedFeature.PostInsights,
     GatedFeature.PostHistory,
 ];
+
 const props = defineProps<{
     channel: PublishChannel;
     supported: boolean;
