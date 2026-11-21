@@ -383,3 +383,15 @@ test('a channel with every permission shows no permission notice', function () {
 
     $page->assertMissing('@channel-permission-notice')->assertNoJavaScriptErrors();
 });
+
+test('a member is told an admin needs to grant the insights permission, with no link', function () {
+    $this->instagram->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish']]);
+    $this->actingAs(workspaceMember($this->instagram->workspace));
+
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@channel-permission-notice');
+
+    $page->assertSeeIn('@channel-permission-notice', __('channels.permissions.insights.member_message', ['network' => Platform::Instagram->label()]))
+        ->assertMissing('@channel-permission-notice-reconnect')
+        ->assertNoJavaScriptErrors();
+});

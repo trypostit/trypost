@@ -543,7 +543,7 @@ return [
         ],
 
         'reconnect' => [
-            'save' => 'Kaydet ve bağla',
+            'save' => 'Taslağı kaydet ve yeniden bağla',
             'blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
             'pending' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce onaylayın veya taslaklara taşıyın.',
         ],

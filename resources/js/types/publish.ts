@@ -1,3 +1,4 @@
+import type { MissingPermissions } from '@/lib/channelPermissions';
 import type { RecurrenceFrequency } from '@/lib/recurrence';
 import type {
     MetricsUnavailableReason,
@@ -39,6 +40,8 @@ export interface PublishSocialAccount {
     has_posting_schedule?: boolean;
     timezone?: string;
     status?: SocialAccountStatusValue | null;
+    /** The features the channel lacks a scope for (`ChannelPermissions::missing()`). */
+    missing_permissions?: MissingPermissions;
 }
 
 export interface PublishChannel extends PublishSocialAccount {

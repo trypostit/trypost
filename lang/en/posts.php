@@ -543,7 +543,7 @@ return [
         ],
 
         'reconnect' => [
-            'save' => 'Save & reconnect',
+            'save' => 'Save draft & reconnect',
             'blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
             'pending' => 'This post is waiting for approval. Approve it or move it to drafts before reconnecting the channel.',
         ],

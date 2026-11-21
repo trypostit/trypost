@@ -231,7 +231,13 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $metaViolation = PostPlatformMetaRules::schedulingViolation($account, $destination['meta'] ?? [], $contentType)
+                $permissionViolation = ChannelPermissions::violation($account, data_get($destination, 'meta'));
+                if (filled($permissionViolation)) {
+                    [$path, $message] = $permissionViolation;
+                    $validator->errors()->add("{$key}.{$path}", $message);
+                }
+
+                $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $contentType)
                     ?? PostPlatformMetaRules::contentMetaViolation($account->platform, $destination['meta'] ?? [], (string) $destination['content']);
                 if (filled($metaViolation) && ! $validator->errors()->has("{$key}.meta.{$metaViolation[0]}")) {
                     [$field, $message] = $metaViolation;

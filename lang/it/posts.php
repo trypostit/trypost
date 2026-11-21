@@ -543,7 +543,7 @@ return [
         ],
 
         'reconnect' => [
-            'save' => 'Salva e ricollega',
+            'save' => 'Salva bozza e ricollega',
             'blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
             'pending' => 'Questo post è in attesa di approvazione. Approvalo o spostalo nelle bozze prima di ricollegare il canale.',
         ],

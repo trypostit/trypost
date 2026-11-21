@@ -6,6 +6,7 @@ import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import type { GatedFeatureValue, MissingPermission } from '@/lib/channelPermissions';
+import { filled } from '@/lib/helpers';
 import type { ConnectedAccount } from '@/types/social-account';
 
 /**
@@ -25,7 +26,7 @@ const permission = computed((): MissingPermission | null => {
     for (const feature of props.features) {
         const missing = props.channel.missing_permissions?.[feature];
 
-        if (missing !== undefined) {
+        if (filled(missing)) {
             return missing;
         }
     }
@@ -34,7 +35,7 @@ const permission = computed((): MissingPermission | null => {
 });
 
 const messageKey = computed((): string | null => {
-    if (permission.value === null) {
+    if (!filled(permission.value)) {
         return null;
     }
 

@@ -243,7 +243,7 @@ class SocialController extends Controller
      */
     protected function refusalForMissingPublishScopes(array $granted): ?RedirectResponse
     {
-        if (ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish) === []) {
+        if (blank(ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish))) {
             return null;
         }
 

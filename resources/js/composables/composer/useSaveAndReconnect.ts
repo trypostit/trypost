@@ -3,8 +3,8 @@ import { toast } from 'vue-sonner';
 
 import { connectUrl } from '@/composables/useNetworkConnect';
 import type { PostComposition } from '@/composables/usePostComposition';
-import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { filled } from '@/lib/helpers';
+import type { PlatformValue } from '@/types/platform';
 import { PostStatus } from '@/types/post';
 
 interface SaveAndReconnectOptions {
@@ -20,7 +20,7 @@ interface SaveAndReconnectOptions {
 
 interface ReconnectedAccount {
     id: string;
-    platform: string;
+    platform: PlatformValue;
 }
 
 /**
@@ -28,12 +28,10 @@ interface ReconnectedAccount {
  * back by a permission the channel lacks is kept while the user grants it.
  * The save says it leaves the app, so the page does not step back through
  * history after it, which would cancel the visit to the network's sign-in.
- * An approver is asked to decide on a pending post first, so saving never
- * takes it out of review by accident.
+ * A pending post is decided on first (only someone who manages channels
+ * sees the link, and they approve), so saving never takes it out of review.
  */
 export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
-    const { requiresApproval } = useWorkspaceAbilities();
-
     const reconnect = (account: ReconnectedAccount): void => {
         const url = connectUrl(account.platform, account.id);
 
@@ -43,10 +41,7 @@ export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
     };
 
     return (account: ReconnectedAccount): void => {
-        if (
-            options.status() === PostStatus.PendingApproval &&
-            !requiresApproval.value
-        ) {
+        if (options.status() === PostStatus.PendingApproval) {
             toast.error(trans('posts.form.reconnect.pending'), {
                 testId: 'reconnect-pending',
             });

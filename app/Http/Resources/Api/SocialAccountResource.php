@@ -27,7 +27,7 @@ class SocialAccountResource extends JsonResource
             'max_content_length' => $this->maxContentLength(),
             'long_posts' => $this->hasXLongPosts(),
             'verified_badge' => $this->verified_badge,
-            'missing_permissions' => array_keys(ChannelPermissions::missing($this->resource)),
+            'missing_permissions' => collect(ChannelPermissions::missing($this->resource))->keys()->all(),
         ];
     }
 }

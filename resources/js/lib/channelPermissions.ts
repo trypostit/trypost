@@ -22,6 +22,21 @@ export type MissingPermission = { message: string; member_message: string };
 /** The features a channel lacks the scope for (`missingPermissions` of its platform config). */
 export type MissingPermissions = Partial<Record<GatedFeatureValue, MissingPermission>>;
 
+/** The features a channel lacks a scope for, read from its platform config (`missingPermissions`). */
+export const missingPermissionsOf = (
+    platformConfig: Record<string, any> | undefined,
+): MissingPermissions | null => {
+    if (!filled(platformConfig)) {
+        return null;
+    }
+
+    if (!filled(platformConfig.missingPermissions)) {
+        return null;
+    }
+
+    return platformConfig.missingPermissions;
+};
+
 /** Whether a post uses the feature, as `GatedFeature::isUsedBy()` says on the server: every post publishes, analytics are never part of one. */
 export const featureIsUsedBy = (
     feature: GatedFeatureValue,

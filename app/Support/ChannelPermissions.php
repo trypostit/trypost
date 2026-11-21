@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * The one map of what each network needs the account to have granted before
@@ -22,6 +23,8 @@ use Illuminate\Support\Arr;
 class ChannelPermissions
 {
     /**
+     * The feature's requirements as the config holds them.
+     *
      * @return list<string|list<string>>
      */
     public static function scopes(Platform $platform, GatedFeature $feature): array
@@ -34,34 +37,33 @@ class ChannelPermissions
     {
         $scopes = self::scopes($account->platform, $feature);
 
-        if ($scopes === []) {
+        if (blank($scopes)) {
             return null;
         }
 
         return $account->missingScope(...$scopes);
     }
 
+    public static function lacks(SocialAccount $account, GatedFeature $feature): bool
+    {
+        return filled(self::missingScope($account, $feature));
+    }
+
     /**
      * The feature's scopes a grant lacks, each requirement named by its first
      * alternative. Unlike `missingScope()`, an empty grant lacks them all: the
      * connect refusal and the publish job read the grant a login reported.
-     * A requirement is a scope or a list of alternatives, as the config holds it.
      *
      * @param  list<string>  $granted
      * @return list<string>
      */
     public static function missingFrom(array $granted, Platform $platform, GatedFeature $feature): array
     {
-        return collect(self::scopes($platform, $feature))
-            ->reject(fn (string|array $requirement): bool => filled(array_intersect(Arr::wrap($requirement), $granted)))
-            ->map(fn (string|array $requirement): string => Arr::first(Arr::wrap($requirement)))
+        return self::alternatives($platform, $feature)
+            ->reject(fn (array $alternatives): bool => collect($alternatives)->intersect($granted)->isNotEmpty())
+            ->map(fn (array $alternatives): string => Arr::first($alternatives))
             ->values()
             ->all();
-    }
-
-    public static function lacks(SocialAccount $account, GatedFeature $feature): bool
-    {
-        return filled(self::missingScope($account, $feature));
     }
 
     /**
@@ -77,31 +79,61 @@ class ChannelPermissions
             ->reject(fn (GatedFeature $feature): bool => $feature->isOptional())
             ->filter(fn (GatedFeature $feature): bool => self::lacks($account, $feature))
             ->filter(fn (GatedFeature $feature): bool => self::reconnectGrants($account->platform, $feature))
-            ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::copy($account->platform, $feature)])
+            ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::messages($account->platform, $feature)])
             ->all();
     }
 
     /**
      * The first feature the post uses that its channel lacks a scope for, as
-     * `[field, message]`, so web, API, MCP and the publisher refuse it before
-     * anything goes out. A post whose channel is unknown is never refused here.
+     * `[path, message]` (`GatedFeature::errorPath()`), so web, API, MCP and the
+     * publisher refuse it before anything goes out. The message names who can
+     * reconnect when the signed-in user cannot; a job has no user and gets the
+     * channel's own message. A post whose channel is unknown is never refused.
      *
      * @param  array<string, mixed>|null  $meta
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(?SocialAccount $account, ?ContentType $type, ?array $meta): ?array
+    public static function violation(?SocialAccount $account, ?array $meta): ?array
     {
-        if ($account === null) {
+        if (blank($account)) {
             return null;
         }
 
-        foreach (GatedFeature::cases() as $feature) {
-            if ($feature->isUsedBy($type, $meta) && self::lacks($account, $feature)) {
-                return [$feature->value, __(self::copy($account->platform, $feature)['message'], ['network' => $account->platform->label()])];
-            }
+        $feature = collect(GatedFeature::cases())
+            ->first(fn (GatedFeature $feature): bool => $feature->isUsedBy($meta) && self::lacks($account, $feature));
+
+        if (blank($feature)) {
+            return null;
         }
 
-        return null;
+        $messages = self::messages($account->platform, $feature);
+        $key = self::canReconnect($account) ? $messages['message'] : $messages['member_message'];
+
+        return [$feature->errorPath(), __($key, ['network' => $account->platform->label()])];
+    }
+
+    /**
+     * Each requirement as its list of alternatives: the config holds a scope
+     * or a list of them, and this is the one place that reads both shapes.
+     *
+     * @return Collection<int, list<string>>
+     */
+    private static function alternatives(Platform $platform, GatedFeature $feature): Collection
+    {
+        return collect(self::scopes($platform, $feature))
+            ->map(fn (string|array $requirement): array => Arr::wrap($requirement));
+    }
+
+    /** Whether the signed-in user may reconnect the channel; a job, with no user, may. */
+    private static function canReconnect(SocialAccount $account): bool
+    {
+        $user = Auth::user();
+
+        if (blank($user)) {
+            return true;
+        }
+
+        return $user->can('manageAccounts', $account->workspace);
     }
 
     /**
@@ -114,17 +146,17 @@ class ChannelPermissions
     {
         $requested = config("trypost.platforms.{$platform->value}.scopes");
 
-        if (! is_array($requested)) {
+        if (blank($requested)) {
             return true;
         }
 
-        return self::missingFrom($requested, $platform, $feature) === [];
+        return blank(self::missingFrom($requested, $platform, $feature));
     }
 
     /**
      * @return array{message: string, member_message: string}
      */
-    private static function copy(Platform $platform, GatedFeature $feature): array
+    private static function messages(Platform $platform, GatedFeature $feature): array
     {
         $setting = "trypost.platforms.{$platform->value}.permissions.{$feature->value}";
 

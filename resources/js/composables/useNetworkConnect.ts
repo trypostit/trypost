@@ -37,11 +37,20 @@ const CONNECT_ROUTES: Record<
     [Platform.YouTube]: youtubeConnect,
 };
 
+/** The connect flow a platform starts from: a LinkedIn Page connects through LinkedIn. */
+const connectEntry = (platform: string): string => {
+    if (platform === Platform.LinkedInPage) {
+        return Platform.LinkedIn;
+    }
+
+    return platform;
+};
+
 export const connectUrl = (
     platform: string,
     reconnectId?: string,
 ): string | undefined =>
-    CONNECT_ROUTES[platform]?.url({
+    CONNECT_ROUTES[connectEntry(platform)]?.url({
         query: {
             return_to: window.location.pathname,
             ...(reconnectId ? { reconnect: reconnectId } : {}),
@@ -52,9 +61,6 @@ export const useNetworkConnect = (
     platforms: MaybeRefOrGetter<AvailablePlatform[]>,
 ) => {
     const dialog = useConnectChannelDialog();
-
-    const connectEntry = (platform: string): string =>
-        platform === Platform.LinkedInPage ? Platform.LinkedIn : platform;
 
     const openConnect = (platform: string, reconnectId?: string) => {
         const url = connectUrl(platform, reconnectId);

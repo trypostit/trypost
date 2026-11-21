@@ -273,20 +273,28 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Adds the validation error for meta that becomes mandatory once a post is
-     * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
+     * Adds the validation errors that keep a post from being published or
+     * scheduled: meta that becomes mandatory (TikTok privacy, Pinterest board,
+     * Discord channel), and a feature the post uses that its channel lacks a
+     * scope for (`ChannelPermissions`), each under its own field.
      */
-    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', ?ContentType $contentType = null): void
+    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, ?ContentType $contentType = null): void
     {
-        $violation = self::schedulingViolation($target, $meta, $contentType);
+        $metaViolation = self::requiredMetaViolation($target, $meta, $contentType);
 
-        if (blank($violation)) {
-            return;
+        if (filled($metaViolation)) {
+            self::addErrorOnce($validator, "meta.{$metaViolation[0]}", $metaViolation[1]);
         }
 
-        [$field, $message] = $violation;
-        $key = "{$prefix}.{$field}";
+        $permissionViolation = ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, Arr::wrap($meta));
 
+        if (filled($permissionViolation)) {
+            self::addErrorOnce($validator, ...$permissionViolation);
+        }
+    }
+
+    private static function addErrorOnce(Validator $validator, string $key, string $message): void
+    {
         if (! $validator->errors()->has($key)) {
             $validator->errors()->add($key, $message);
         }
@@ -306,7 +314,15 @@ class PostPlatformMetaRules
             return;
         }
 
-        $violation = self::schedulingViolation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type)
+        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta);
+
+        if (filled($permissionViolation)) {
+            [$path, $message] = $permissionViolation;
+
+            throw ValidationException::withMessages([$path => $message]);
+        }
+
+        $violation = self::requiredMetaViolation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type)
             ?? self::contentMetaViolation($post->platform, $post->meta, (string) $post->content);
 
         if (filled($violation)) {
@@ -410,22 +426,6 @@ class PostPlatformMetaRules
             ...transform($contentType?->poll(), fn (string $poll): array => $poll::formatErrors($meta), []),
             ...ThreadReplies::pollFormatErrors($platform, $meta),
         ];
-    }
-
-    /**
-     * What keeps a post from being scheduled or published: its required meta
-     * (`requiredMetaViolation()`), then a feature it uses that its channel
-     * lacks a scope for (`ChannelPermissions`). Only the paths that schedule
-     * or publish a post read the permission part; a repurpose destination is
-     * only checked for its meta, and a channel that cannot publish fails its
-     * post at publish time (see "Repurpose account health" in AGENTS.md).
-     *
-     * @return array{0: string, 1: string}|null
-     */
-    public static function schedulingViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type): ?array
-    {
-        return self::requiredMetaViolation($target, $meta, $type)
-            ?? ChannelPermissions::violation($target instanceof SocialAccount ? $target : null, $type, is_array($meta) ? $meta : null);
     }
 
     /**

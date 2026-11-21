@@ -6,6 +6,7 @@ namespace App\Services\Social\Concerns;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\MissingPermissionException;
 use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
@@ -37,10 +38,10 @@ trait HasSocialHttpClient
             throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
-        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->content_type, $post->meta);
+        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta);
 
-        if ($permissionViolation !== null) {
-            throw new ContentLimitException($post->platform, $permissionViolation[1]);
+        if (filled($permissionViolation)) {
+            throw new MissingPermissionException($post->platform, $permissionViolation[1]);
         }
 
         $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));

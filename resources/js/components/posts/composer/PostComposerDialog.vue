@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Link, useHttp, usePage } from '@inertiajs/vue3';
 import {
-    IconAlertTriangle,
     IconArrowLeft,
     IconArrowRight,
     IconArrowsMaximize,
@@ -98,6 +97,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import WarningLine from '@/components/WarningLine.vue';
 import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
@@ -157,7 +157,10 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { missingPermissionKey } from '@/lib/channelPermissions';
+import {
+    missingPermissionKey,
+    missingPermissionsOf,
+} from '@/lib/channelPermissions';
 import {
     characterCount,
     displayLength,
@@ -1573,7 +1576,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         threadStandaloneKey(contentType, destination.meta),
         missingPermissionKey(
             destination.meta,
-            props.platformConfigs[account.id]?.missingPermissions ?? null,
+            missingPermissionsOf(props.platformConfigs[account.id]),
             canManageAccounts.value,
         ),
     ]) {
@@ -1950,6 +1953,14 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
     cropTarget.value = null;
 };
 
+/** Whether the save reopens an empty composer: never for an edit, or for a save that leaves the app. */
+const createsAnother = (leavesApp: boolean): boolean => {
+    if (leavesApp || filled(props.postId)) {
+        return false;
+    }
+
+    return createAnother.value;
+};
 /**
  * Saves the post. `onSaved` runs once it is saved; `leavesApp` says it sends
  * the user out of the app (a channel's sign-in), so the page does not step
@@ -1982,7 +1993,7 @@ const submit = (
     emit(
         'submit',
         payload,
-        createAnother.value && !props.postId,
+        createsAnother(leavesApp),
         () => {
             unsavedChanges.markSaved();
             onSaved?.();
@@ -2893,17 +2904,12 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                 </template>
                                 <template #warnings>
-                                    <div
+                                    <WarningLine
                                         v-if="metaRequirement(group.anchor)"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-meta-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{ $t(metaRequirement(group.anchor)!) }}
-                                    </div>
+                                    </WarningLine>
                                     <ThreadStandaloneWarning
                                         :content-type="
                                             groupDestination(group).content_type
@@ -2917,23 +2923,18 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :disabled="submitting"
                                         @reconnect="saveAndReconnect"
                                     />
-                                    <div
+                                    <WarningLine
                                         v-if="setMediaWarning(group.anchor)"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-media-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{
                                             $t(
                                                 `posts.form.warnings.${setMediaWarning(group.anchor)!.key}`,
                                                 setMediaWarning(group.anchor)!.params,
                                             )
                                         }}
-                                    </div>
-                                    <div
+                                    </WarningLine>
+                                    <WarningLine
                                         v-if="
                                             destinationIssues(group.anchor).some(
                                                 (issue) =>
@@ -2941,24 +2942,14 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     'posts.form.warnings.text_only',
                                             )
                                         "
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-text-only-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{ $t('posts.form.warnings.text_only') }}
-                                    </div>
-                                    <div
+                                    </WarningLine>
+                                    <WarningLine
                                         v-if="(groupHashtagsRemaining(group) ?? 0) < 0"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-hashtag-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 text-warning"
-                                        />
                                         {{
                                             $t(
                                                 'posts.form.hashtags_exceed_platform',
@@ -2974,7 +2965,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 },
                                             )
                                         }}
-                                    </div>
+                                    </WarningLine>
                                     <ChannelMediaWarnings
                                         :platform="group.platform"
                                         :content-type="

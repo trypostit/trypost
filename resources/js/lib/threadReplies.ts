@@ -154,7 +154,7 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
 
 /** Whether a post type takes thread replies on its network. */
 export const takesThreadReplies = (contentType: ContentTypeValue | null): boolean => {
-    if (contentType === null) {
+    if (!filled(contentType)) {
         return true;
     }
 
@@ -169,7 +169,7 @@ export const threadStandaloneKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
 ): string | null => {
-    if (blank(threadRepliesOf(meta)) || contentType === null) {
+    if (blank(threadRepliesOf(meta)) || !filled(contentType)) {
         return null;
     }
 

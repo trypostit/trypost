@@ -15,6 +15,7 @@ use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFa
 use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -199,3 +200,45 @@ test('facebook keeps the post counts and skips page insights without read_insigh
     expect(collect($observation->metrics)->firstWhere('key', MetricKey::Reactions)?->value)->toBe(5)
         ->and(scopeGuardRequested('/insights'))->toBeFalse();
 });
+
+/**
+ * A grant holding the publish scopes and exactly the scopes of the given
+ * features, so a collector reading another feature's scopes would refuse it.
+ *
+ * @return list<string>
+ */
+function scopeGuardGrantFor(Platform $platform, GatedFeature ...$features): array
+{
+    return collect([GatedFeature::Publish, ...$features])
+        ->flatMap(fn (GatedFeature $granted): array => Arr::flatten(ChannelPermissions::scopes($platform, $granted)))
+        ->unique()
+        ->values()
+        ->all();
+}
+
+test('a publication history read needs only the post history scopes', function (Platform $platform, string $path) {
+    Http::fake(['*' => Http::response([])]);
+    $account = scopeGuardAccount($platform, scopeGuardGrantFor($platform, GatedFeature::PostHistory));
+
+    rescue(fn () => app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, CarbonImmutable::parse('2026-01-01', 'UTC')), report: false);
+
+    expect(scopeGuardRequested($path))->toBeTrue();
+})->with('publication scope guards');
+
+test('a publication metrics read needs only the post insights scopes', function (Platform $platform, string $path) {
+    Http::fake(['*' => Http::response([])]);
+    $publication = scopeGuardPublication(scopeGuardAccount($platform, scopeGuardGrantFor($platform, GatedFeature::PostInsights, GatedFeature::PostInsightsExtended)));
+
+    rescue(fn () => app(PublicationMetricsCollectorFactory::class)->for($platform)->collect($publication, CarbonImmutable::now('UTC')), report: false);
+
+    expect(scopeGuardRequested($path))->toBeTrue();
+})->with('metric scope guards');
+
+test('a follower read needs only the follower scopes', function (Platform $platform, string $path) {
+    Http::fake(['*' => Http::response([])]);
+    $account = scopeGuardAccount($platform, scopeGuardGrantFor($platform, GatedFeature::Followers));
+
+    rescue(fn () => app(FollowerCollectorFactory::class)->for($platform)->collect($account, CarbonImmutable::now('UTC')), report: false);
+
+    expect(scopeGuardRequested($path))->toBeTrue();
+})->with('follower scope guards');

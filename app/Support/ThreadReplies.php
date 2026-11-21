@@ -46,15 +46,16 @@ class ThreadReplies
         };
     }
 
+    /** Whether the network takes replies: its `replies.max` setting. */
     public static function supports(?Platform $platform): bool
     {
-        return self::replyContentType($platform) !== null;
+        return self::maxReplies($platform) > 0;
     }
 
     /** How many replies follow a post on the network (its `replies.max` setting). */
     public static function maxReplies(?Platform $platform): int
     {
-        if ($platform === null) {
+        if (blank($platform)) {
             return 0;
         }
 
@@ -64,7 +65,7 @@ class ThreadReplies
     /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
     public static function standaloneMessage(Platform $platform, ?ContentType $type): ?string
     {
-        if ($type === null) {
+        if (blank($type)) {
             return null;
         }
 

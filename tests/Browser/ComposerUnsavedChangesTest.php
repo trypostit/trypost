@@ -509,10 +509,29 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
     waitFor($page, '@channel-permission-reconnect');
+    $page->assertSeeIn('@channel-permission-warning', SocialAccount::query()->find($blocked)->display_name);
     $page->click('@channel-permission-reconnect');
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
 
     $page->assertNoJavaScriptErrors();
+    expect(Post::query()->whereKeyNot($post->id)->where('social_account_id', $blocked)->sole())
+        ->status->toBe(PostStatus::Draft)
+        ->meta->thread_replies->toEqual([['text' => 'Second post', 'media' => []]]);
+});
+
+test('a post waiting for approval is never saved by save-and-reconnect and asks to decide on it first', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $post->user_id]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@channel-permission-reconnect');
+    $page->click('@channel-permission-reconnect');
+    waitFor($page, '@reconnect-pending');
+
+    $page->assertSee(__('posts.form.reconnect.pending'))
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->status)->toBe(PostStatus::PendingApproval);
 });
 
 test('the browser back button on an edited post asks first, keeps the edit on cancel and goes back on discard', function () {

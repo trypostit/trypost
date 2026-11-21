@@ -543,7 +543,7 @@ return [
         ],
 
         'reconnect' => [
-            'save' => 'Reconnecter',
+            'save' => 'Enregistrer le brouillon et reconnecter',
             'blocked' => 'Cette publication ne peut pas encore être enregistrée. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
             'pending' => 'Cette publication attend une approbation. Approuvez-la ou passez-la en brouillon avant de reconnecter le canal.',
         ],

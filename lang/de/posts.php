@@ -543,7 +543,7 @@ return [
         ],
 
         'reconnect' => [
-            'save' => 'Neu verbinden',
+            'save' => 'Entwurf speichern und neu verbinden',
             'blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
             'pending' => 'Dieser Beitrag wartet auf Freigabe. Gib ihn frei oder verschiebe ihn in die Entwürfe, bevor du den Kanal erneut verbindest.',
         ],

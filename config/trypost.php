@@ -704,7 +704,7 @@ return [
             // Permission bitfield requested for the bot: VIEW_CHANNEL (1<<10) +
             // SEND_MESSAGES (1<<11) + EMBED_LINKS (1<<14) + ATTACH_FILES (1<<15) +
             // READ_MESSAGE_HISTORY (1<<16) + MENTION_EVERYONE (1<<17) = 248832.
-            'permissions' => env('DISCORD_PERMISSIONS', '248832'),
+            'bot_permissions' => env('DISCORD_PERMISSIONS', '248832'),
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('DISCORD_SCOPES', 'bot,identify,guilds'))))),
         ],
         'google_business' => [

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enums\SocialAccount;
 
-use App\Enums\PostPlatform\ContentType;
 use App\Support\ThreadReplies;
 
 /**
@@ -24,16 +23,30 @@ enum GatedFeature: string
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
      * schedule or publish it. Mirrored by `featureIsUsedBy()` in
-     * `lib/channelPermissions.ts`. Analytics features are never part of a post.
+     * `lib/channelPermissions.ts`: every post publishes, a post with replies
+     * uses them, analytics are never part of a post.
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public function isUsedBy(?ContentType $type, ?array $meta): bool
+    public function isUsedBy(?array $meta): bool
     {
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory => false,
+        };
+    }
+
+    /**
+     * Where a refusal for the feature lands among a post's fields: the channel
+     * itself for publishing, the replies for a thread. Analytics are never part
+     * of a post, so they never land anywhere but on the channel.
+     */
+    public function errorPath(): string
+    {
+        return match ($this) {
+            self::ThreadReplies => 'meta.thread_replies',
+            self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory => 'social_account_id',
         };
     }
 
