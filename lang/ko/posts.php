@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => '더 말하기',
             'reply_label' => '스레드의 게시물 :number',
             'unsupported' => '이 네트워크에서는 게시물 스레드를 사용할 수 없습니다.',
+            'ghost_post' => '고스트 게시물에는 답글을 달 수 없습니다. 답글을 삭제하거나 유형을 스레드로 바꾸세요.',
             'reply_empty' => '스레드의 답글이 비어 있습니다.',
             'reply_too_long' => '답글이 :limit자 제한을 :over자 초과합니다.',
             'too_many' => '{1} 이 게시물에는 댓글을 하나만 달 수 있습니다.|[0,*] 이 게시물에는 답글을 최대 :max개까지 달 수 있습니다.',

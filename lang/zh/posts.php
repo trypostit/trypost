@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => '说点什么',
             'reply_label' => '帖子串中的第 :number 条',
             'unsupported' => '此网络不支持帖子串。',
+            'ghost_post' => '幽灵帖子不能有回复。请删除回复，或将类型改为串文。',
             'reply_empty' => '帖子串中的一条回复为空。',
             'reply_too_long' => '一条回复超出 :limit 字符上限 :over 个字符。',
             'too_many' => '{1} 此帖子只能添加一条评论。|[0,*] 此帖子最多可添加 :max 条回复。',

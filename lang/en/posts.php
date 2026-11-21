@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Say more',
             'reply_label' => 'Post :number of the thread',
             'unsupported' => 'Threads of posts are not available on this network.',
+            'ghost_post' => 'A ghost post can\'t have replies. Remove the replies or switch the post type to Thread.',
             'reply_empty' => 'A reply in the thread is empty.',
             'reply_too_long' => 'A reply exceeds the :limit-character limit by :over.',
             'too_many' => '{1} Only one comment can follow this post.|[0,*] Up to :max replies can follow this post.',

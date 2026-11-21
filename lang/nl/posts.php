@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Vertel meer',
             'reply_label' => 'Bericht :number van de thread',
             'unsupported' => 'Threads van berichten zijn niet beschikbaar op dit netwerk.',
+            'ghost_post' => 'Een ghost-post kan geen reacties hebben. Verwijder de reacties of kies het type Thread.',
             'reply_empty' => 'Een antwoord in de thread is leeg.',
             'reply_too_long' => 'Een antwoord overschrijdt de limiet van :limit tekens met :over.',
             'too_many' => '{1} Dit bericht neemt maar één reactie.|[0,*] Dit bericht neemt maximaal :max antwoorden.',

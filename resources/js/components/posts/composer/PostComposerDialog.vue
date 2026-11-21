@@ -201,6 +201,7 @@ import type {
 } from '@/types';
 import {
     CAPTIONLESS_CONTENT_TYPES,
+    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
     POLL_CONTENT_TYPES,
 } from '@/types/content-type';
@@ -1187,8 +1188,14 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
     threadRepliesOf(groupDestination(group).meta);
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
-const supportsThread = (group: NetworkGroup): boolean =>
-    isThreadPlatform(group.platform);
+/** A ghost post stands alone, so it never starts a thread (`posts.form.thread.ghost_post` on the server). */
+const supportsThread = (group: NetworkGroup): boolean => {
+    if (!isThreadPlatform(group.platform)) {
+        return false;
+    }
+
+    return groupDestination(group).content_type !== ContentType.ThreadsGhostPost;
+};
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 

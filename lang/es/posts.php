@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Di algo más',
             'reply_label' => 'Publicación :number del hilo',
             'unsupported' => 'Los hilos de publicaciones no están disponibles en esta red.',
+            'ghost_post' => 'Un post fantasma no puede tener respuestas. Quita las respuestas o cambia el tipo a Hilo.',
             'reply_empty' => 'Una respuesta del hilo está vacía.',
             'reply_too_long' => 'Una respuesta supera el límite de :limit caracteres en :over.',
             'too_many' => '{1} Esta publicación admite solo un comentario.|[0,*] Esta publicación admite hasta :max respuestas.',

@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Tulis lanjutannya',
             'reply_label' => 'Postingan ke-:number di thread',
             'unsupported' => 'Thread tidak tersedia di platform ini.',
+            'ghost_post' => 'Ghost post tidak bisa punya balasan. Hapus balasannya atau ubah jenisnya ke Thread.',
             'reply_empty' => 'Ada balasan di thread yang kosong.',
             'reply_too_long' => 'Ada balasan yang melebihi batas :limit karakter sebanyak :over.',
             'too_many' => '{1} Postingan ini hanya bisa diberi satu komentar.|[0,*] Postingan ini bisa diberi maksimal :max balasan.',

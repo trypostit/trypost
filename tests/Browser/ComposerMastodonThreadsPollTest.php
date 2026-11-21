@@ -137,6 +137,20 @@ test('a threads post starts a thread whose reply turns into a poll, shown under 
     $page->assertNoJavaScriptErrors();
 });
 
+test('a threads ghost post offers no thread', function () {
+    $post = seedPollComposerPost(ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click("@composer-type-{$id}-threads_ghost_post");
+    waitForGone($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_post");
+    waitFor($page, '@thread-start');
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a mastodon poll stays behind the content warning in the preview', function () {
     $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
     $page = openPollComposer($post);

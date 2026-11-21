@@ -66,6 +66,13 @@ class ThreadsPublisher
             );
         }
 
+        if ($post->content_type === ContentType::ThreadsGhostPost && filled(ThreadReplies::of($post->meta))) {
+            throw new ThreadsPublishException(
+                userMessage: __('posts.form.thread.ghost_post'),
+                category: ErrorCategory::ContentPolicy,
+            );
+        }
+
         $this->ensureRepliesAllowed($post);
 
         $rootHash = ThreadProgress::hash((string) $content, $media->map(fn (MediaItem $item): string => $item->id)->all());
