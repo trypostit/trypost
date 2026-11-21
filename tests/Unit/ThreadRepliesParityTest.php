@@ -34,7 +34,7 @@ test('the composer threads every network the way the server does', function () {
     })->all();
 
     expect($composer['platforms'])->toBe($server)
-        ->and($composer['standalone_types'])->toBe(config('trypost.thread_replies.standalone_types'))
+        ->and($composer['standalone_types'])->toBe(collect(Platform::cases())->flatMap(fn (Platform $platform): array => config("trypost.platforms.{$platform->value}.replies.standalone_types", []))->all())
         ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
         ->and($composer['standalone_key'])->toBeNull()
         ->and($composer['permission_keys'])->toBe([

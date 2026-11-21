@@ -509,20 +509,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Post types that stand alone
-    |--------------------------------------------------------------------------
-    |
-    | Post types that take no thread replies on a network that otherwise does,
-    | keyed by content type, with the lang key that says why.
-    |
-    */
-
-    'thread_replies' => [
-        'standalone_types' => [],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Social Platforms
     |--------------------------------------------------------------------------
     |
@@ -531,8 +517,10 @@ return [
     | are revoked, expired, or pending approval).
     |
     | `replies` is what a network takes as thread replies (`meta.thread_replies`,
-    | read by App\Support\ThreadReplies): `max` replies under a post. A network
-    | without `replies` takes none.
+    | read by App\Support\ThreadReplies): `max` replies under a post, and
+    | `standalone_types`, the post types of the network that take none (content
+    | type => the lang key that says why). A network without `replies` takes
+    | none.
     |
     | `permissions` lists the features (App\Enums\SocialAccount\GatedFeature)
     | a network allows only once the account grants a scope beyond its publish

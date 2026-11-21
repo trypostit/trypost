@@ -61,14 +61,14 @@ class ThreadReplies
         return (int) config("trypost.platforms.{$platform->value}.replies.max", 0);
     }
 
-    /** The lang key of a post type that takes no replies on its network, else null. */
-    public static function standaloneMessage(?ContentType $type): ?string
+    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
+    public static function standaloneMessage(Platform $platform, ?ContentType $type): ?string
     {
         if ($type === null) {
             return null;
         }
 
-        return config("trypost.thread_replies.standalone_types.{$type->value}");
+        return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
     }
 
     /**
@@ -233,7 +233,7 @@ class ThreadReplies
             return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
-        $standalone = self::standaloneMessage($type);
+        $standalone = self::standaloneMessage($platform, $type);
 
         if (filled($standalone)) {
             return ['thread_replies', __($standalone)];

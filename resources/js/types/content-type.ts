@@ -52,7 +52,7 @@ export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Partial<Record<ContentType
 
 /**
  * Post types that take no thread replies on a network that otherwise does,
- * with why (`trypost.thread_replies.standalone_types` on the server).
+ * with why (each network's `replies.standalone_types` on the server).
  */
 export const STANDALONE_CONTENT_TYPES: Readonly<Partial<Record<ContentTypeValue, string>>> = {};
 

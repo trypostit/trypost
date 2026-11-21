@@ -122,7 +122,7 @@ test('how many replies a network takes comes from its replies setting', function
 });
 
 test('a post type that stands alone refuses replies with its own message', function () {
-    config(['trypost.thread_replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.unsupported']]);
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.unsupported']]);
 
     expect(ThreadReplies::violation(Platform::X, ['thread_replies' => ['second']], ContentType::XPoll))
         ->toBe(['thread_replies', __('posts.form.thread.unsupported')])
