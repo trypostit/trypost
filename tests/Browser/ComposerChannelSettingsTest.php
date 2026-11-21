@@ -1008,13 +1008,13 @@ test('a threads thread switched to a ghost post is held back with a warning unti
     $page->fill('@thread-reply-0', 'Second post');
 
     $page->click("@composer-type-{$id}-threads_ghost_post");
-    waitForText($page, "@composer-thread-warning-{$id}", __('posts.form.thread.ghost_post'));
+    waitForText($page, '@threads-thread-warning', __('posts.form.thread.ghost_post'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
     $page->assertMissing('@thread-add-reply')
         ->assertMissing('@composer-errors');
 
     $page->click("@composer-type-{$id}-threads_post");
-    waitForGone($page, "@composer-thread-warning-{$id}");
+    waitForGone($page, '@threads-thread-warning');
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') !== 'true'");
     $page->assertNoJavaScriptErrors();
 });
@@ -1027,12 +1027,12 @@ test('a threads thread on an account connected before the replies permission ask
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@thread-start');
-    $page->assertMissing("@composer-thread-warning-{$id}")
+    $page->assertMissing('@threads-thread-warning')
         ->click('@thread-start');
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
 
-    waitForText($page, "@composer-thread-warning-{$id}", __('posts.form.thread.replies_permission'));
+    waitForText($page, '@threads-thread-warning', __('posts.form.thread.replies_permission'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
     $page->click('@composer-save-draft');
@@ -1040,6 +1040,25 @@ test('a threads thread on an account connected before the replies permission ask
 
     expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Second post', 'media' => []]]);
     $page->assertNoJavaScriptErrors();
+});
+
+test('a member who cannot manage channels is told an admin needs to reconnect, with no button', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $post->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $member = workspaceMember($post->workspace);
+    $post->update(['user_id' => $member->id]);
+    test()->actingAs($member);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+
+    waitForText($page, '@threads-thread-warning', __('posts.form.thread.replies_permission_admin'));
+    $page->assertMissing('@threads-thread-reconnect')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a thread reply of invisible characters is empty like on the server', function () {

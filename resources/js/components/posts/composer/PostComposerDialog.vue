@@ -70,6 +70,7 @@ import MediaEditorDialog, {
     type MediaEditChange,
 } from '@/components/posts/composer/MediaEditorDialog.vue';
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
+import ThreadsThreadWarning from '@/components/posts/composer/ThreadsThreadWarning.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import PollField from '@/components/posts/editor/PollField.vue';
@@ -101,6 +102,7 @@ import { useComposerTimezone } from '@/composables/composer/useComposerTimezone'
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
+import { useSaveAndReconnect } from '@/composables/composer/useSaveAndReconnect';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
@@ -185,6 +187,7 @@ import {
     startThreadKey,
     threadMaxReplies,
     type ThreadReply,
+    threadBlockKey,
     threadRepliesOf,
     threadReplyContentType,
     threadReplyPostType,
@@ -271,6 +274,7 @@ const emit = defineEmits<{
         composition: PostComposition,
         createAnother: boolean,
         onSaved?: () => void,
+        leavesApp?: boolean,
     ): void;
 }>();
 
@@ -1563,7 +1567,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
-    const threadBlock = threadBlockKey(account);
+    const threadBlock = accountThreadBlockKey(account);
     if (filled(threadBlock)) {
         issues.push({ key: threadBlock, params: {}, contentType });
     }
@@ -1631,39 +1635,23 @@ const blockingIssue = computed(() => {
 
     return null;
 });
-/**
- * Why an account's thread cannot go out, as `ThreadReplies::violation()` says
- * on the server: a ghost post stands alone, and an account connected before
- * the replies permission reconnects first.
- */
-const threadBlockKey = (account: ComposerAccount): string | null => {
+/** A card of Threads accounts, which shows why its thread cannot go out. */
+const isThreadsGroup = (group: NetworkGroup): boolean => {
+    if (group.platform === Platform.Threads) {
+        return true;
+    }
+
+    return false;
+};
+/** Why the account's thread cannot go out, from `threadBlockKey()`. */
+const accountThreadBlockKey = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
 
-    if (blank(threadRepliesOf(destination.meta))) {
-        return null;
-    }
-
-    if (destination.content_type === ContentType.ThreadsGhostPost) {
-        return 'posts.form.thread.ghost_post';
-    }
-
-    if (props.platformConfigs[account.id]?.repliesAllowed === false) {
-        return 'posts.form.thread.replies_permission';
-    }
-
-    return null;
-};
-/** The first account of the card whose thread cannot go out, for its warning. */
-const groupThreadBlockKey = (group: NetworkGroup): string | null => {
-    for (const account of group.accounts) {
-        const key = threadBlockKey(account);
-
-        if (filled(key)) {
-            return key;
-        }
-    }
-
-    return null;
+    return threadBlockKey(
+        destination.content_type,
+        destination.meta,
+        props.platformConfigs[account.id]?.repliesAllowed,
+    );
 };
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
@@ -1966,9 +1954,15 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
     cropTarget.value = null;
 };
 
+/**
+ * Saves the post. `onSaved` runs once it is saved; `leavesApp` says it sends
+ * the user out of the app (a channel's sign-in), so the page does not step
+ * back through history after the save, which would cancel that visit.
+ */
 const submit = (
     status: PostComposition['status'],
     onSaved?: () => void,
+    leavesApp = false,
 ): boolean => {
     if (
         !canSubmit.value ||
@@ -1989,10 +1983,16 @@ const submit = (
     }
     rememberAccounts(composition.selectedAccountIds.value);
     autosave.flush();
-    emit('submit', payload, createAnother.value && !props.postId, () => {
-        unsavedChanges.markSaved();
-        onSaved?.();
-    });
+    emit(
+        'submit',
+        payload,
+        createAnother.value && !props.postId,
+        () => {
+            unsavedChanges.markSaved();
+            onSaved?.();
+        },
+        leavesApp,
+    );
 
     return true;
 };
@@ -2004,6 +2004,11 @@ const submitDraft = (): void => {
 const saveAndLinkFacebook = useSaveAndLinkFacebook({
     status: () => props.initialPost?.status,
     publishesNow: () => scheduleMode.value === 'now',
+    submit,
+});
+
+const saveAndReconnect = useSaveAndReconnect({
+    status: () => props.initialPost?.status,
     submit,
 });
 
@@ -2903,17 +2908,19 @@ const onDialogOpenChange = (value: boolean): void => {
                                         />
                                         {{ $t(metaRequirement(group.anchor)!) }}
                                     </div>
-                                    <div
-                                        v-if="groupThreadBlockKey(group)"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
-                                        :data-testid="`composer-thread-warning-${group.anchor.id}`"
-                                    >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
-                                        {{ $t(groupThreadBlockKey(group)!) }}
-                                    </div>
+                                    <ThreadsThreadWarning
+                                        v-if="isThreadsGroup(group)"
+                                        :content-type="
+                                            groupDestination(group).content_type
+                                        "
+                                        :meta="groupDestination(group).meta"
+                                        :replies-allowed="
+                                            platformConfigs[group.anchor.id]
+                                                ?.repliesAllowed
+                                        "
+                                        :disabled="submitting"
+                                        @reconnect="saveAndReconnect(group.anchor)"
+                                    />
                                     <div
                                         v-if="setMediaWarning(group.anchor)"
                                         role="status"

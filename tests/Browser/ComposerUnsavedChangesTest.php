@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Uri;
 use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
@@ -415,6 +416,29 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
 
     return $page;
 }
+
+test('saving a thread to reconnect its threads channel leaves for the sign-in instead of stepping back', function () {
+    $post = seedUnsavedChangesReel();
+    $account = $post->socialAccount;
+    $account->update([
+        'platform' => Platform::Threads,
+        'scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights'],
+    ]);
+    $post->update(['platform' => Platform::Threads, 'content_type' => ContentType::ThreadsPost]);
+    config(['trypost.platforms.threads.oauth_url' => (string) Uri::of(route('app.posts.index'))->withPath('threads-sign-in')]);
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'), 'thread-start');
+
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+    waitFor($page, '@threads-thread-reconnect');
+    $page->click('@threads-thread-reconnect');
+    waitForPath($page, '/threads-sign-in/oauth/authorize');
+
+    expect($post->fresh())
+        ->status->toBe(PostStatus::Draft)
+        ->meta->thread_replies->toEqual([['text' => 'Second post', 'media' => []]]);
+});
 
 test('the browser back button on an edited post asks first, keeps the edit on cancel and goes back on discard', function () {
     $post = seedUnsavedChangesReel();

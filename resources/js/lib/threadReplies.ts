@@ -147,3 +147,32 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
 
     return 'posts.form.thread.reply_empty';
 };
+
+export const THREAD_GHOST_POST_KEY = 'posts.form.thread.ghost_post';
+export const THREAD_REPLIES_PERMISSION_KEY = 'posts.form.thread.replies_permission';
+
+/**
+ * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
+ * the server: a Threads ghost post stands alone, and a channel connected
+ * without the replies permission reconnects first (`repliesAllowed` from its
+ * platform config).
+ */
+export const threadBlockKey = (
+    contentType: ContentTypeValue | null | undefined,
+    meta: Record<string, any> | null | undefined,
+    repliesAllowed: boolean | undefined,
+): string | null => {
+    if (blank(threadRepliesOf(meta))) {
+        return null;
+    }
+
+    if (contentType === ContentType.ThreadsGhostPost) {
+        return THREAD_GHOST_POST_KEY;
+    }
+
+    if (repliesAllowed === false) {
+        return THREAD_REPLIES_PERMISSION_KEY;
+    }
+
+    return null;
+};
