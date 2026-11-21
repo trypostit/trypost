@@ -509,12 +509,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Post types that stand alone
+    |--------------------------------------------------------------------------
+    |
+    | Post types that take no thread replies on a network that otherwise does,
+    | keyed by content type, with the lang key that says why.
+    |
+    */
+
+    'thread_replies' => [
+        'standalone_types' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Social Platforms
     |--------------------------------------------------------------------------
     |
     | Configure which social platforms are enabled in the application.
     | Set to false to temporarily disable a platform (e.g., when credentials
     | are revoked, expired, or pending approval).
+    |
+    | `replies` is what a network takes as thread replies (`meta.thread_replies`,
+    | read by App\Support\ThreadReplies): `max` replies under a post, and, when
+    | the network asks a grant beyond its publish scopes before an app may
+    | reply, that `scope` with the lang keys shown to an account without it
+    | (`message`, and `admin_message` for someone who cannot reconnect it). A
+    | network without `replies` takes none.
     |
     */
 
@@ -526,17 +547,20 @@ return [
             'oauth_api' => $url('LINKEDIN_OAUTH_API', 'https://www.linkedin.com'),
             // Scopes for LinkedIn authentication
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('LINKEDIN_SCOPES', 'openid,profile,email,w_member_social'))))),
+            'replies' => ['max' => 1],
         ],
         'linkedin-page' => [
             'enabled' => env('LINKEDIN_PAGE_ENABLED', true),
             'api' => $url('LINKEDIN_PAGE_API', 'https://api.linkedin.com'),
             // Scopes for LinkedIn Page authentication
             'scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('LINKEDIN_PAGE_SCOPES', 'openid,profile,email,w_organization_social,r_organization_social,rw_organization_admin,w_member_social'))))),
+            'replies' => ['max' => 1],
         ],
         'x' => [
             'enabled' => env('X_ENABLED', true),
             'api' => $url('X_API', 'https://api.x.com/2'),
             'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
+            'replies' => ['max' => 24],
         ],
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),
@@ -599,11 +623,13 @@ return [
             'video_max_bytes' => env('BLUESKY_VIDEO_MAX_BYTES', 300_000_000),
             // PLC directory, used to resolve an account's real PDS host from its DID.
             'plc_directory' => $url('BLUESKY_PLC_DIRECTORY', 'https://plc.directory'),
+            'replies' => ['max' => 24],
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => $url('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
+            'replies' => ['max' => 24],
         ],
         'telegram' => [
             'enabled' => env('TELEGRAM_ENABLED', true),

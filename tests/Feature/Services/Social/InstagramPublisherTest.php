@@ -7,6 +7,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -258,6 +259,26 @@ test('instagram publisher sends no collaborators on a story that still has them 
 
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/ig_123456789/media'));
     Http::assertNotSent(fn (Request $request): bool => data_get($request->data(), 'collaborators') !== null);
+});
+
+test('a story carrying thread replies is refused before anything is sent, though a story sends no text', function () {
+    Http::fake();
+    $this->post->update([
+        'content_type' => ContentType::InstagramStory,
+        'meta' => ['thread_replies' => [['text' => 'First comment', 'media' => []]]],
+        'media' => [[
+            'id' => 'test-media-story',
+            'path' => 'media/2026-01/story.jpg',
+            'url' => 'https://example.com/media/2026-01/story.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'story.jpg',
+        ]],
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
+
+    Http::assertNothingSent();
 });
 
 test('instagram publisher fits a real off-ratio story image to a 1080x1920 jpeg', function () {

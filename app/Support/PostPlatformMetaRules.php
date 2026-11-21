@@ -423,7 +423,7 @@ class PostPlatformMetaRules
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $threadViolation = ThreadReplies::violation($target, $meta);
+        $threadViolation = ThreadReplies::violation($target, $meta, $type);
 
         if ($threadViolation !== null) {
             return $threadViolation;

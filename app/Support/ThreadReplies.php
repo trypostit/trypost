@@ -19,8 +19,8 @@ use Illuminate\Support\Str;
 
 /**
  * Replies that follow a post as a thread (`meta.thread_replies`), on the
- * networks that let an app reply to its own post with the scopes we hold.
- * Each reply is `{text, media}`; its media belongs to that reply and follows
+ * networks that let an app reply to its own post (each network's `replies`
+ * setting in `config/trypost.php`). Each reply is `{text, media}`; its media belongs to that reply and follows
  * the rules of the network's reply content type. A reply stored as a bare
  * string is a text-only reply. On X and Mastodon a reply may carry a poll
  * instead of media (`{text, media, poll}`), following that network's `Poll`
@@ -50,13 +50,72 @@ class ThreadReplies
         return self::replyContentType($platform) !== null;
     }
 
+    /** How many replies follow a post on the network (its `replies.max` setting). */
     public static function maxReplies(?Platform $platform): int
     {
-        return match ($platform) {
-            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
-            Platform::LinkedIn, Platform::LinkedInPage => 1,
-            default => 0,
-        };
+        return (int) self::setting($platform, 'max', 0);
+    }
+
+    /**
+     * The grant the network asks for before an app may reply, when it is not
+     * one of its publish scopes (its `replies.scope` setting).
+     */
+    public static function requiredScope(?Platform $platform): ?string
+    {
+        return self::setting($platform, 'scope');
+    }
+
+    /**
+     * Whether the account's stored grant lacks the scope its network asks for
+     * before replying: an account connected before TryPost asked for it
+     * reconnects first. Unknown scopes are never read as missing.
+     */
+    public static function lacksPermission(SocialAccount $account): bool
+    {
+        $scope = self::requiredScope($account->platform);
+
+        if (blank($scope)) {
+            return false;
+        }
+
+        return filled($account->missingScope($scope));
+    }
+
+    /**
+     * The lang keys an account without the reply scope is shown: `message`,
+     * and `admin_message` for someone who cannot reconnect the channel.
+     *
+     * @return array{message: string, admin_message: string}|null
+     */
+    public static function permissionMessages(SocialAccount $account): ?array
+    {
+        if (! self::lacksPermission($account)) {
+            return null;
+        }
+
+        return [
+            'message' => (string) self::setting($account->platform, 'message'),
+            'admin_message' => (string) self::setting($account->platform, 'admin_message'),
+        ];
+    }
+
+    /** The lang key of a post type that takes no replies on its network, else null. */
+    public static function standaloneMessage(?ContentType $type): ?string
+    {
+        if ($type === null) {
+            return null;
+        }
+
+        return config("trypost.thread_replies.standalone_types.{$type->value}");
+    }
+
+    private static function setting(?Platform $platform, string $key, mixed $default = null): mixed
+    {
+        if ($platform === null) {
+            return $default;
+        }
+
+        return config("trypost.platforms.{$platform->value}.replies.{$key}", $default);
     }
 
     /**
@@ -203,11 +262,12 @@ class ThreadReplies
      * Each reply is measured like the post itself: sanitized text plus what the
      * network counts besides it (the Mastodon content warning every reply repeats),
      * against the account's limit when the account is known (X long posts).
-     * A reply needs text or media.
+     * A reply needs text or media, the post a type that takes replies, and a
+     * known account the scope its network asks for before replying.
      *
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(Platform|SocialAccount|null $target, mixed $meta): ?array
+    public static function violation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type): ?array
     {
         $platform = $target instanceof SocialAccount ? $target->platform : $target;
         $replies = self::of($meta);
@@ -220,12 +280,24 @@ class ThreadReplies
             return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
+        $standalone = self::standaloneMessage($type);
+
+        if (filled($standalone)) {
+            return ['thread_replies', __($standalone)];
+        }
+
         if (count($replies) > self::maxReplies($platform)) {
             return ['thread_replies', trans_choice('posts.form.thread.too_many', self::maxReplies($platform), ['max' => self::maxReplies($platform)])];
         }
 
-        $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
         $account = $target instanceof SocialAccount ? $target : null;
+        $permission = transform($account, fn (SocialAccount $account): ?array => self::permissionMessages($account));
+
+        if (filled($permission)) {
+            return ['thread_replies', __($permission['message'])];
+        }
+
+        $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
 
         foreach ($replies as $index => $reply) {
             $violation = self::replyViolation($reply, $platform, $account, $reserved);

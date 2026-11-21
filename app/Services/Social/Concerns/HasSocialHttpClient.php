@@ -23,20 +23,14 @@ trait HasSocialHttpClient
      * defusing rewrites URLs, Telegram escapes entities, and every platform
      * strips HTML the editor stored. Checking the raw draft both rejected
      * posts that would have fit and let through posts the network rejects.
-     * A captionless content type sends no text and is not measured. The
+     * Thread replies are checked first, on every post type; a captionless
+     * content type sends no text and is not measured. The
      * hashtag cap is a save-time rule only, so a post stored before it still
      * publishes.
      */
     protected function validateContentLength(Post $post): void
     {
-        if ($post->content_type?->isCaptionless()) {
-            return;
-        }
-
-        $raw = $post->content ?? '';
-        $content = app(ContentSanitizer::class)->displayText($raw, $post->platform);
-
-        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta);
+        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type);
 
         if ($threadViolation !== null) {
             throw new ContentLimitException($post->platform, $threadViolation[1]);
@@ -47,6 +41,13 @@ trait HasSocialHttpClient
         if (filled($replyPollMediaError)) {
             throw new ContentLimitException($post->platform, $replyPollMediaError);
         }
+
+        if ($post->content_type?->isCaptionless()) {
+            return;
+        }
+
+        $raw = $post->content ?? '';
+        $content = app(ContentSanitizer::class)->displayText($raw, $post->platform);
 
         $maxLength = ContentType::maxContentLengthFor($post->socialAccount, $post->platform, $post->content_type);
         $contentLength = Str::length($content) + $post->platform->reservedLength($post->meta);
