@@ -43,6 +43,8 @@ final class ShowPostingStreak
     /**
      * Null while the workspace has no streak: the sidebar shows no badge then.
      * The streak is cached even at zero weeks, since the cache keeps no null.
+     * Its rank is read from the latest ranking on every call, so a new
+     * ranking shows at once without forgetting any badge.
      *
      * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}|null
      */
@@ -53,14 +55,17 @@ final class ShowPostingStreak
         $streak = Cache::remember(
             "posting-streak:{$workspace->id}:{$version}:{$user->id}:{$user->timezone}:{$user->week_starts_on->value}",
             now()->addMinutes(self::CACHE_MINUTES),
-            fn (): array => self::build($user, $workspace),
+            fn (): array => app(BuildPostingStreak::class)->execute($workspace, $user->timezone, $user->week_starts_on),
         );
 
         if (data_get($streak, 'weeks') === 0) {
             return null;
         }
 
-        return $streak;
+        return [
+            ...$streak,
+            'top_percent' => RankPostingStreaks::topPercent(data_get($streak, 'weeks')),
+        ];
     }
 
     /** Drops every member's cached badge of the workspace, once the change that calls it is committed. */
@@ -72,18 +77,5 @@ final class ShowPostingStreak
     private static function versionKey(string $workspaceId): string
     {
         return "posting-streak:version:{$workspaceId}";
-    }
-
-    /**
-     * @return array{weeks: int, posted_this_week: bool, top_percent: ?int}
-     */
-    private static function build(User $user, Workspace $workspace): array
-    {
-        $streak = app(BuildPostingStreak::class)->execute($workspace, $user->timezone, $user->week_starts_on);
-
-        return [
-            ...$streak,
-            'top_percent' => RankPostingStreaks::topPercent(data_get($streak, 'weeks')),
-        ];
     }
 }
