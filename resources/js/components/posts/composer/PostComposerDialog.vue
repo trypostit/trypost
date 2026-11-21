@@ -186,6 +186,7 @@ import {
     replyTooLongKey,
     startThreadKey,
     threadMaxReplies,
+    type ReplyPermission,
     takesThreadReplies,
     threadBlockKey,
     type ThreadReply,
@@ -1646,6 +1647,28 @@ const accountThreadBlockKey = (account: ComposerAccount): string | null => {
         canManageAccounts.value,
     );
 };
+/** The card's account whose thread is held back, for its warning and reconnect; the anchor when none is. */
+const groupThreadBlockAccount = (group: NetworkGroup): ComposerAccount => {
+    for (const account of group.accounts) {
+        if (filled(accountThreadBlockKey(account))) {
+            return account;
+        }
+    }
+
+    return group.anchor;
+};
+const groupRepliesPermission = (group: NetworkGroup): ReplyPermission | null => {
+    const config = props.platformConfigs[groupThreadBlockAccount(group).id];
+
+    if (blank(config?.repliesPermission)) {
+        return null;
+    }
+
+    return config.repliesPermission;
+};
+const saveAndReconnectGroup = (group: NetworkGroup): void => {
+    saveAndReconnect(groupThreadBlockAccount(group));
+};
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
     const result = evaluatePlatformMeta(
@@ -2907,11 +2930,10 @@ const onDialogOpenChange = (value: boolean): void => {
                                         "
                                         :meta="groupDestination(group).meta"
                                         :replies-permission="
-                                            platformConfigs[group.anchor.id]
-                                                ?.repliesPermission
+                                            groupRepliesPermission(group)
                                         "
                                         :disabled="submitting"
-                                        @reconnect="saveAndReconnect(group.anchor)"
+                                        @reconnect="saveAndReconnectGroup(group)"
                                     />
                                     <div
                                         v-if="setMediaWarning(group.anchor)"

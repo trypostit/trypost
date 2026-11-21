@@ -770,6 +770,7 @@ const submitComposition = (
 
             if (
                 !returnsBack &&
+                !leavesApp &&
                 new URLSearchParams(window.location.search).has('edit')
             ) {
                 router.visit(listUrl(), {

@@ -56,7 +56,7 @@ const results = Object.fromEntries(
 );
 
 const thread = { thread_replies: [{ text: 'Second', media: [] }] };
-const permission = { message: 'posts.form.thread.reply_empty', admin_message: 'posts.form.thread.unsupported' };
+const permission = { message: 'posts.form.thread.reply_empty', member_message: 'posts.form.thread.unsupported' };
 
 console.log(
     JSON.stringify({

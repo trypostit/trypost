@@ -28,6 +28,7 @@ use Illuminate\Support\Str;
  */
 class ThreadReplies
 {
+    /** The most replies any network takes; each network's own cap is its `replies.max` setting. */
     public const int MAX_REPLIES = 24;
 
     /**
@@ -83,9 +84,9 @@ class ThreadReplies
 
     /**
      * The lang keys an account without the reply scope is shown: `message`,
-     * and `admin_message` for someone who cannot reconnect the channel.
+     * and `member_message` for someone who cannot reconnect the channel.
      *
-     * @return array{message: string, admin_message: string}|null
+     * @return array{message: string, member_message: string}|null
      */
     public static function permissionMessages(SocialAccount $account): ?array
     {
@@ -95,7 +96,7 @@ class ThreadReplies
 
         return [
             'message' => (string) self::setting($account->platform, 'message'),
-            'admin_message' => (string) self::setting($account->platform, 'admin_message'),
+            'member_message' => (string) self::setting($account->platform, 'member_message'),
         ];
     }
 

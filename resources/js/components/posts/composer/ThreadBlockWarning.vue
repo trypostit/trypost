@@ -3,6 +3,7 @@ import { IconAlertTriangle } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { filled } from '@/lib/helpers';
 import { threadBlockKey, type ReplyPermission } from '@/lib/threadReplies';
 import type { ContentTypeValue } from '@/types/content-type';
 
@@ -40,16 +41,13 @@ const warningKey = computed(() =>
     ),
 );
 
+/** Only the permission's own message offers the link, shown to someone who manages channels. */
 const canReconnect = computed((): boolean => {
-    if (props.repliesPermission === null) {
+    if (warningKey.value !== props.repliesPermission?.message) {
         return false;
     }
 
-    if (warningKey.value !== props.repliesPermission.message) {
-        return false;
-    }
-
-    return canManageAccounts.value;
+    return filled(warningKey.value);
 });
 
 const reconnect = (): void => emit('reconnect');

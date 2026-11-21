@@ -416,6 +416,78 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
     return $page;
 }
 
+/**
+ * A Mastodon post whose channel lacks a reply scope Mastodon is set to ask for
+ * here, so its thread is held back with the save-and-reconnect link (the
+ * Mastodon connect start is a page of the app, so the visit lands in it).
+ */
+function seedHeldBackMastodonThread(int $channels = 1): Post
+{
+    config(['trypost.platforms.mastodon.replies' => [
+        'max' => 24,
+        'scope' => 'write:replies',
+        'message' => 'posts.form.thread.unsupported',
+        'member_message' => 'posts.form.thread.reply_empty',
+    ]]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $accounts = SocialAccount::factory()->mastodon()->count($channels)->create(['workspace_id' => $workspace->id]);
+    $accounts->first()->update(['scopes' => ['read', 'write', 'write:replies']]);
+    $accounts->last()->update(['scopes' => ['read', 'write']]);
+    $post = Post::factory()->forAccount($accounts->last(), ContentType::MastodonPost)->create([
+        'user_id' => $user->id,
+        'content' => 'Held back',
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
+    ]);
+    test()->actingAs($user);
+
+    return $post;
+}
+
+test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList) {
+    $post = seedHeldBackMastodonThread();
+    $page = $fromList
+        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), 'thread-block-reconnect')
+        : visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-block-reconnect');
+    $page->assertSeeIn('@thread-block-warning', __('posts.form.thread.unsupported'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->click('@thread-block-reconnect');
+    waitForPath($page, (string) parse_url(route('app.social.mastodon.connect'), PHP_URL_PATH));
+
+    expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft);
+})->with(['opened from the list' => true, 'opened by its edit link' => false]);
+
+test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
+    $post = seedHeldBackMastodonThread(channels: 2);
+    $blocked = $post->social_account_id;
+    $other = SocialAccount::query()->whereKeyNot($blocked)->where('workspace_id', $post->workspace_id)->value('id');
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForOpen($page, '@post-composer-dialog');
+
+    foreach ([$other, $blocked] as $accountId) {
+        $page->click('@composer-add-account');
+        waitFor($page, "@composer-account-option-{$accountId}");
+        $page->click("@composer-account-option-{$accountId}")
+            ->click('@composer-header');
+        waitForGone($page, "@composer-account-option-{$accountId}");
+    }
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+    waitFor($page, '@thread-block-reconnect');
+    $page->click('@thread-block-reconnect');
+    waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('the browser back button on an edited post asks first, keeps the edit on cancel and goes back on discard', function () {
     $post = seedUnsavedChangesReel();
     $page = openUnsavedChangesFromList($post);

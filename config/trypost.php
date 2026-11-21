@@ -534,7 +534,7 @@ return [
     | read by App\Support\ThreadReplies): `max` replies under a post, and, when
     | the network asks a grant beyond its publish scopes before an app may
     | reply, that `scope` with the lang keys shown to an account without it
-    | (`message`, and `admin_message` for someone who cannot reconnect it). A
+    | (`message`, and `member_message` for someone who cannot reconnect it). A
     | network without `replies` takes none.
     |
     */

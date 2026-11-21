@@ -136,7 +136,7 @@ test('an account without the scope its network asks for replies cannot carry the
         'max' => 24,
         'scope' => 'tweet.moderate.write',
         'message' => 'posts.form.thread.reply_empty',
-        'admin_message' => 'posts.form.thread.unsupported',
+        'member_message' => 'posts.form.thread.unsupported',
     ]]);
     $meta = ['thread_replies' => ['second']];
 
@@ -146,7 +146,7 @@ test('an account without the scope its network asks for replies cannot carry the
 
     expect(ThreadReplies::lacksPermission($without))->toBeTrue()
         ->and(ThreadReplies::violation($without, $meta, ContentType::XPost))->toBe(['thread_replies', __('posts.form.thread.reply_empty')])
-        ->and(ThreadReplies::permissionMessages($without))->toBe(['message' => 'posts.form.thread.reply_empty', 'admin_message' => 'posts.form.thread.unsupported'])
+        ->and(ThreadReplies::permissionMessages($without))->toBe(['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported'])
         ->and(ThreadReplies::violation($with, $meta, ContentType::XPost))->toBeNull()
         ->and(ThreadReplies::permissionMessages($with))->toBeNull()
         ->and(ThreadReplies::violation($unknown, $meta, ContentType::XPost))->toBeNull()
@@ -161,3 +161,8 @@ test('a network that asks no scope for replies never lacks it', function () {
         ->and(ThreadReplies::lacksPermission($account))->toBeFalse()
         ->and(ThreadReplies::permissionMessages($account))->toBeNull();
 });
+
+test('every network that chains replies sets how many it takes, and none sets more than the ceiling', function (Platform $platform) {
+    expect(ThreadReplies::maxReplies($platform) > 0)->toBe(ThreadReplies::supports($platform))
+        ->and(ThreadReplies::maxReplies($platform))->toBeLessThanOrEqual(ThreadReplies::MAX_REPLIES);
+})->with(Platform::cases());

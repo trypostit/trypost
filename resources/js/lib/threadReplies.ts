@@ -155,9 +155,9 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
 /**
  * The copy a channel without the scope its network asks for replies is shown
  * (`repliesPermission` of its platform config): `message`, and
- * `admin_message` for someone who cannot reconnect it.
+ * `member_message` for someone who cannot reconnect it.
  */
-export type ReplyPermission = { message: string; admin_message: string };
+export type ReplyPermission = { message: string; member_message: string };
 
 /** Whether a post type takes thread replies on its network. */
 export const takesThreadReplies = (contentType: ContentTypeValue | null): boolean => {
@@ -183,8 +183,8 @@ export const threadBlockKey = (
         return null;
     }
 
-    if (contentType !== null && filled(STANDALONE_CONTENT_TYPES[contentType])) {
-        return STANDALONE_CONTENT_TYPES[contentType];
+    if (contentType !== null && !takesThreadReplies(contentType)) {
+        return STANDALONE_CONTENT_TYPES[contentType] ?? null;
     }
 
     if (repliesPermission === null) {
@@ -195,5 +195,5 @@ export const threadBlockKey = (
         return repliesPermission.message;
     }
 
-    return repliesPermission.admin_message;
+    return repliesPermission.member_message;
 };
