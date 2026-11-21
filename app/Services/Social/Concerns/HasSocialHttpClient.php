@@ -26,14 +26,13 @@ trait HasSocialHttpClient
      * strips HTML the editor stored. Checking the raw draft both rejected
      * posts that would have fit and let through posts the network rejects.
      * A feature its channel lacks a scope for, then thread replies, are checked
-     * first, on every post type; a captionless
-     * content type sends no text and is not measured. The
-     * hashtag cap is a save-time rule only, so a post stored before it still
-     * publishes.
+     * first, on every post type; a captionless content type sends no text and
+     * is not measured. The hashtag cap is a save-time rule only, so a post
+     * stored before it still publishes.
      */
     protected function validateContentLength(Post $post): void
     {
-        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta);
+        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta, actor: null);
 
         if (filled($permissionViolation)) {
             throw new MissingPermissionException($post->platform, $permissionViolation[1]);

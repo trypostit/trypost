@@ -355,3 +355,18 @@ test('a channel that lost its connection says so instead of asking for new permi
         ->assertVisible("@channel-reconnect-{$lost->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('on a phone a channel that needs new permissions offers its reconnect button under the row', function () {
+    $user = channelsSettingsAdmin();
+    $lacking = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'))->resize(390, 844);
+    waitFor($page, "@channel-reconnect-phone-{$lacking->id}");
+
+    $page->assertSeeIn("@channel-reconnect-phone-{$lacking->id}", __('channels.reconnect'))
+        ->assertNoJavaScriptErrors();
+});

@@ -2,6 +2,7 @@
  * Where each network's connect flow starts, and the URL that reconnects a
  * channel through it (no Vue or Inertia here, so it runs anywhere).
  */
+import { filled } from '@/lib/helpers';
 import { connect as blueskyConnect } from '@/routes/app/social/bluesky';
 import { connect as discordConnect } from '@/routes/app/social/discord';
 import { connect as facebookConnect } from '@/routes/app/social/facebook';
@@ -45,13 +46,26 @@ export const connectEntry = (platform: string): string => {
     return platform;
 };
 
+/**
+ * The URL that starts the network's connect flow and comes back to this page,
+ * reconnecting `reconnectId` when given; none for a network that connects in
+ * place (Telegram's dialog).
+ */
 export const connectUrl = (
     platform: string,
     reconnectId?: string,
-): string | undefined =>
-    CONNECT_ROUTES[connectEntry(platform)]?.url({
-        query: {
-            return_to: window.location.pathname,
-            ...(reconnectId ? { reconnect: reconnectId } : {}),
-        },
-    });
+): string | undefined => {
+    const route = CONNECT_ROUTES[connectEntry(platform)];
+
+    if (!filled(route)) {
+        return undefined;
+    }
+
+    const query: Record<string, string> = { return_to: window.location.pathname };
+
+    if (filled(reconnectId)) {
+        query.reconnect = reconnectId;
+    }
+
+    return route.url({ query });
+};

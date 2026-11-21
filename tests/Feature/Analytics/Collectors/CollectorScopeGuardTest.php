@@ -242,3 +242,27 @@ test('a follower read needs only the follower scopes', function (Platform $platf
 
     expect(scopeGuardRequested($path))->toBeTrue();
 })->with('follower scope guards');
+
+dataset('networks whose history scopes are a subset of their insights scopes', [
+    'instagram' => [Platform::Instagram],
+    'instagram via facebook' => [Platform::InstagramFacebook],
+    'threads' => [Platform::Threads],
+]);
+
+test('a publication metrics read is refused on the post history scopes alone', function (Platform $platform) {
+    Http::fake();
+    $publication = scopeGuardPublication(scopeGuardAccount($platform, scopeGuardGrantFor($platform, GatedFeature::PostHistory)));
+
+    expect(fn () => app(PublicationMetricsCollectorFactory::class)->for($platform)->collect($publication, CarbonImmutable::now('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
+    Http::assertNothingSent();
+})->with('networks whose history scopes are a subset of their insights scopes');
+
+test('a follower read is refused on the post history scopes alone', function (Platform $platform) {
+    Http::fake();
+    $account = scopeGuardAccount($platform, scopeGuardGrantFor($platform, GatedFeature::PostHistory));
+
+    expect(fn () => app(FollowerCollectorFactory::class)->for($platform)->collect($account, CarbonImmutable::now('UTC')))
+        ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
+    Http::assertNothingSent();
+})->with(['instagram via facebook' => [Platform::InstagramFacebook], 'threads' => [Platform::Threads]]);

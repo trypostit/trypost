@@ -545,7 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Taslağı kaydet ve yeniden bağla',
             'blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
-            'pending' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce onaylayın veya taslaklara taşıyın.',
+            'pending' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce taslaklara taşıyın.',
         ],
 
         'pinterest' => [

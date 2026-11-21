@@ -7,9 +7,9 @@ namespace App\Support;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
+use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * The one map of what each network needs the account to have granted before
@@ -82,13 +82,14 @@ class ChannelPermissions
      * The first feature the post uses that its channel lacks a scope for, as
      * `[path, message]` (`GatedFeature::errorPath()`), so web, API, MCP and the
      * publisher refuse it before anything goes out. The message names who can
-     * reconnect when the signed-in user cannot; a job has no user and gets the
-     * channel's own message. A post whose channel is unknown is never refused.
+     * reconnect when `$actor` cannot; without an actor (the publish job) it is
+     * the channel's own reconnect message. A post whose channel is unknown is
+     * never refused.
      *
      * @param  array<string, mixed>|null  $meta
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(?SocialAccount $account, ?array $meta): ?array
+    public static function violation(?SocialAccount $account, ?array $meta, ?User $actor): ?array
     {
         if (blank($account)) {
             return null;
@@ -102,7 +103,7 @@ class ChannelPermissions
         }
 
         $messages = self::messages($account->platform, $feature);
-        $key = self::canReconnect($account) ? $messages['message'] : $messages['member_message'];
+        $key = self::canReconnect($account, $actor) ? $messages['message'] : $messages['member_message'];
 
         return [$feature->errorPath(), __($key, ['network' => $account->platform->label()])];
     }
@@ -133,16 +134,18 @@ class ChannelPermissions
             ->map(fn (string|array $requirement): array => Arr::wrap($requirement));
     }
 
-    /** Whether the signed-in user may reconnect the channel; a job, with no user, may. */
-    private static function canReconnect(SocialAccount $account): bool
+    /**
+     * Whether the refusal asks `$actor` to reconnect the channel: an actor who
+     * may manage it. Without an actor (the publish job) the channel's own
+     * reconnect message is the one stored on the post.
+     */
+    private static function canReconnect(SocialAccount $account, ?User $actor): bool
     {
-        $user = Auth::user();
-
-        if (blank($user)) {
+        if (blank($actor)) {
             return true;
         }
 
-        return $user->can('manageAccounts', $account->loadMissing('workspace')->workspace);
+        return $actor->can('manageAccounts', $account->loadMissing('workspace')->workspace);
     }
 
     /**

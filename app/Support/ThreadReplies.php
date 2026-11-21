@@ -244,8 +244,8 @@ class ThreadReplies
             return ['thread_replies', trans_choice('posts.form.thread.too_many', self::maxReplies($platform), ['max' => self::maxReplies($platform)])];
         }
 
-        $account = $target instanceof SocialAccount ? $target : null;
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
+        $account = $target instanceof SocialAccount ? $target : null;
 
         foreach ($replies as $index => $reply) {
             $violation = self::replyViolation($reply, $platform, $account, $reserved);

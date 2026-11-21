@@ -68,7 +68,11 @@ const networkLabel = computed((): string => {
 
 /** A card of several channels names the one the warning is about. */
 const namedChannel = computed((): string | null => {
-    if (props.accounts.length < 2 || !filled(blockedAccount.value)) {
+    if (props.accounts.length < 2) {
+        return null;
+    }
+
+    if (!filled(blockedAccount.value)) {
         return null;
     }
 
@@ -98,6 +102,7 @@ const reconnect = (): void => {
         <template v-else>
             {{ $t(warningKey, { network: networkLabel }) }}
         </template>
+        {{ ' ' }}
         <WarningLink
             v-if="canManageAccounts"
             :data-testid="`${testId}-reconnect`"

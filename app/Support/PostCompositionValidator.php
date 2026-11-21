@@ -11,6 +11,7 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
@@ -50,7 +51,7 @@ class PostCompositionValidator
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */
-    public static function validate(Workspace $workspace, array $composition, array $existingMedia = []): array
+    public static function validate(Workspace $workspace, array $composition, array $existingMedia = [], ?User $actor = null): array
     {
         Validator::make($composition, [
             'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
@@ -151,7 +152,7 @@ class PostCompositionValidator
             PostPlatformMetaRules::messages('destinations.*.meta'),
             PostPlatformMetaRules::attributes('destinations.*.meta'),
         );
-        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace): void {
+        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace, $actor): void {
             $seen = [];
 
             foreach ($composition['destinations'] as $index => $destination) {
@@ -231,7 +232,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $permissionViolation = ChannelPermissions::violation($account, $destination['meta'] ?? []);
+                $permissionViolation = ChannelPermissions::violation($account, $destination['meta'] ?? [], $actor);
                 if (filled($permissionViolation)) {
                     [$path, $message] = $permissionViolation;
                     $validator->errors()->add("{$key}.{$path}", $message);

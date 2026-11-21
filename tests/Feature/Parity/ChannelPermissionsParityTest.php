@@ -94,3 +94,55 @@ test('a channel missing only analytics scopes still schedules on the web, api an
     };
     expect($post->fresh()->status)->toBe(Status::Scheduled);
 })->with(['web', 'api', 'mcp']);
+
+test('the web composer refuses only the channel that lacks the publish scope, on its own destination', function () {
+    $granted = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $lacking = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'scopes' => ['tweet.read', 'users.read']]);
+
+    $this->actingAs($this->user)->postJson(route('app.posts.store'), [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'content' => 'Two channels',
+        'destinations' => [
+            ['social_account_id' => $granted->id, 'content_type' => ContentType::XPost->value],
+            ['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value],
+        ],
+    ])->assertJsonValidationErrors(['destinations.1.social_account_id'])
+        ->assertJsonMissingValidationErrors(['destinations.0.social_account_id']);
+});
+
+test('a thread on a channel without the replies scope is refused on its replies on the web, api and mcp', function (string $surface) {
+    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    $post = pollParityPost(ContentType::XPost);
+    $message = __('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
+    ]);
+
+    match ($surface) {
+        'mcp' => $response->assertHasErrors([$message]),
+        default => $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies' => $message]),
+    };
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('a member who cannot reconnect the channel is told an admin needs to, on the web and mcp', function (string $surface) {
+    $member = workspaceMember($this->workspace);
+    $post = postOnChannelWithoutPublishScope();
+    $post->update(['user_id' => $member->id]);
+    $this->user = $member;
+    $message = __('channels.permissions.publish.member_message', ['network' => Platform::X->label()]);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    match ($surface) {
+        'mcp' => $response->assertHasErrors([$message]),
+        default => $response->assertUnprocessable()->assertJsonValidationErrors(['social_account_id' => $message]),
+    };
+})->with(['web', 'mcp']);

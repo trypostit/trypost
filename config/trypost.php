@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Support\Analytics\YouTubeScopes;
+use App\Support\ThreadReplies;
 use Illuminate\Support\Str;
 
 /*
@@ -565,7 +566,7 @@ return [
             ],
             'api' => $url('X_API', 'https://api.x.com/2'),
             'defuse_links' => (bool) env('X_DEFUSE_LINKS', false),
-            'replies' => ['max' => 24],
+            'replies' => ['max' => ThreadReplies::MAX_REPLIES],
         ],
         'tiktok' => [
             'enabled' => env('TIKTOK_ENABLED', true),
@@ -672,7 +673,7 @@ return [
             'video_max_bytes' => env('BLUESKY_VIDEO_MAX_BYTES', 300_000_000),
             // PLC directory, used to resolve an account's real PDS host from its DID.
             'plc_directory' => $url('BLUESKY_PLC_DIRECTORY', 'https://plc.directory'),
-            'replies' => ['max' => 24],
+            'replies' => ['max' => ThreadReplies::MAX_REPLIES],
         ],
         'mastodon' => [
             'enabled' => env('MASTODON_ENABLED', true),
@@ -681,7 +682,7 @@ return [
             ],
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => $url('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),
-            'replies' => ['max' => 24],
+            'replies' => ['max' => ThreadReplies::MAX_REPLIES],
         ],
         'telegram' => [
             'enabled' => env('TELEGRAM_ENABLED', true),

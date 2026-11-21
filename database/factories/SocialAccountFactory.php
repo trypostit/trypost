@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
-use App\Support\ChannelPermissions;
 use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -45,7 +43,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedIn,
-            'scopes' => ChannelPermissions::scopes(Platform::LinkedIn, GatedFeature::Publish),
+            'scopes' => ['openid', 'profile', 'email', 'w_member_social'],
         ]);
     }
 
@@ -53,7 +51,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedInPage,
-            'scopes' => ChannelPermissions::scopes(Platform::LinkedInPage, GatedFeature::Publish),
+            'scopes' => ['openid', 'profile', 'email', 'w_organization_social'],
         ]);
     }
 
@@ -122,7 +120,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::GoogleBusiness,
-            'scopes' => ChannelPermissions::scopes(Platform::GoogleBusiness, GatedFeature::Publish),
+            'scopes' => ['https://www.googleapis.com/auth/business.manage'],
             'meta' => [
                 'location_id' => 'accounts/123456789/locations/987654321',
                 'account_name' => 'accounts/123456789',
@@ -150,7 +148,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Mastodon,
-            'scopes' => ChannelPermissions::scopes(Platform::Mastodon, GatedFeature::Publish),
+            'scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'],
             'token_expires_at' => null, // Mastodon tokens don't expire
             'meta' => [
                 'instance' => 'https://mastodon.social',

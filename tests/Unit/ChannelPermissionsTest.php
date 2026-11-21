@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\XPublisher;
 use App\Support\ChannelPermissions;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 
 function xAccountGranting(?array $scopes): SocialAccount
@@ -33,25 +34,25 @@ test('a channel without the scope a feature needs is held back from it and told 
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
     $with = xAccountGranting(['tweet.write', 'tweet.read', 'users.read', 'tweet.moderate.write']);
 
-    expect(ChannelPermissions::violation($without, $thread))
+    expect(ChannelPermissions::violation($without, $thread, null))
         ->toBe(['meta.thread_replies', __('posts.form.thread.reply_empty')])
         ->and(ChannelPermissions::missing($without))
         ->toBe(['thread_replies' => ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']])
-        ->and(ChannelPermissions::violation($with, $thread))->toBeNull()
+        ->and(ChannelPermissions::violation($with, $thread, null))->toBeNull()
         ->and(ChannelPermissions::missing($with))->toBe([]);
 });
 
 test('a post that does not use the feature is never held back by its scope', function () {
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::violation($without, ['thread_replies' => []]))->toBeNull()
-        ->and(ChannelPermissions::violation($without, null))->toBeNull();
+    expect(ChannelPermissions::violation($without, ['thread_replies' => []], null))->toBeNull()
+        ->and(ChannelPermissions::violation($without, null, null))->toBeNull();
 });
 
 test('a channel lacking the publish scope is refused on the channel, with the network named', function () {
     $account = xAccountGranting(['tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::violation($account, []))
+    expect(ChannelPermissions::violation($account, [], null))
         ->toBe(['social_account_id', __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
 });
 
@@ -59,18 +60,18 @@ test('without its own copy a thread refusal names the network, and publishing co
     config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
     $thread = ['thread_replies' => ['second']];
 
-    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), $thread))
+    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), $thread, null))
         ->toBe(['meta.thread_replies', __('channels.permissions.thread_replies.message', ['network' => Platform::X->label()])])
-        ->and(ChannelPermissions::violation(xAccountGranting(['tweet.read']), $thread)[0])->toBe('social_account_id');
+        ->and(ChannelPermissions::violation(xAccountGranting(['tweet.read']), $thread, null)[0])->toBe('social_account_id');
 });
 
 test('a member who cannot reconnect the channel is told who can', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::X, 'scopes' => ['tweet.read', 'users.read']]);
-    $this->actingAs(workspaceMember($workspace));
+    $member = workspaceMember($workspace);
 
-    expect(ChannelPermissions::violation($account, []))
+    expect(ChannelPermissions::violation($account, [], $member))
         ->toBe(['social_account_id', __('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
 });
 
@@ -93,8 +94,8 @@ test('unknown scopes, an unknown channel and a network that gates nothing hold n
     $thread = ['thread_replies' => ['second']];
     $telegram = SocialAccount::factory()->make(['platform' => Platform::Telegram, 'scopes' => ['anything']]);
 
-    expect(ChannelPermissions::violation(xAccountGranting(null), $thread))->toBeNull()
-        ->and(ChannelPermissions::violation(null, $thread))->toBeNull()
+    expect(ChannelPermissions::violation(xAccountGranting(null), $thread, null))->toBeNull()
+        ->and(ChannelPermissions::violation(null, $thread, null))->toBeNull()
         ->and(ChannelPermissions::scopes(Platform::Telegram, GatedFeature::Publish))->toBe([])
         ->and(ChannelPermissions::missing($telegram))->toBe([]);
 });
@@ -121,7 +122,7 @@ test('a channel is never told to reconnect for an optional read or a scope TryPo
 });
 
 test('a channel missing only analytics scopes is never held back from a post', function () {
-    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), []))->toBeNull();
+    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), [], null))->toBeNull();
 });
 
 test('a publisher refuses a feature its channel lacks as a permission, before anything goes out', function () {
@@ -137,4 +138,25 @@ test('a publisher refuses a feature its channel lacks as a permission, before an
             ->and($exception->platformErrorCode)->toBe('missing_permission')
             ->and($exception->userMessage)->toBe(__('posts.form.thread.reply_empty')));
     Http::assertNothingSent();
+});
+
+test('every locale names the network wherever english does', function () {
+    $english = trans('channels.permissions', locale: 'en');
+
+    foreach (glob(lang_path('*'), GLOB_ONLYDIR) as $directory) {
+        $locale = basename($directory);
+
+        foreach (Arr::dot($english) as $key => $copy) {
+            if (str_contains((string) $copy, ':network')) {
+                expect((string) trans("channels.permissions.{$key}", locale: $locale))->toContain(':network');
+            }
+        }
+    }
+});
+
+test('a post type that stands alone lists no thread replies', function () {
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.unsupported']]);
+
+    expect(ContentType::XPoll->takesThreadReplies())->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();
 });

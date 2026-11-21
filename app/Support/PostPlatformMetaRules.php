@@ -15,6 +15,7 @@ use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Social\MastodonPoll;
@@ -302,13 +303,13 @@ class PostPlatformMetaRules
      *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post): void
+    public static function assertStoredPostPublishable(Post $post, ?User $actor = null): void
     {
         if (! $post->hasDestination()) {
             return;
         }
 
-        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta);
+        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta, $actor);
 
         if (filled($permissionViolation)) {
             [$path, $message] = $permissionViolation;

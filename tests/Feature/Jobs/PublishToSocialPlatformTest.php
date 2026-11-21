@@ -2636,3 +2636,21 @@ test('a linkedin comment still refused after five minutes fails the publish with
         ]));
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
+
+test('a thread on a channel without the replies scope fails as a permission before anything goes out', function () {
+    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content' => 'First post',
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
+    ]);
+    Http::fake();
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    $post->refresh();
+    expect($post->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($post->error_message)->toBe(__('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]))
+        ->and($post->error_context['category'] ?? null)->toBe('permission');
+    Http::assertNothingSent();
+});

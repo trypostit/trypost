@@ -545,7 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Concept opslaan en opnieuw koppelen',
             'blocked' => 'Dit bericht kan nog niet worden opgeslagen. Wacht tot de uploads klaar zijn en los op wat gemarkeerd is, en probeer het opnieuw.',
-            'pending' => 'Dit bericht wacht op goedkeuring. Keur het goed of verplaats het naar concepten voordat je het kanaal opnieuw koppelt.',
+            'pending' => 'Dit bericht wacht op goedkeuring. Verplaats het naar concepten voordat je het kanaal opnieuw koppelt.',
         ],
 
         'pinterest' => [

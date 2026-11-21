@@ -62,7 +62,7 @@ const results = Object.fromEntries(
 );
 
 const thread = { thread_replies: [{ text: 'Second', media: [] }] };
-const missing = { thread_replies: { message: 'posts.form.thread.reply_empty', member_message: 'posts.form.thread.unsupported' } };
+const missing = { thread_replies: { message: 'reconnect', member_message: 'ask an admin' } };
 
 console.log(
     JSON.stringify({
@@ -73,6 +73,7 @@ console.log(
         permission_keys: {
             allowed: missingPermissionKey(thread, {}, true),
             not_used: missingPermissionKey({}, missing, true),
+            publish_before_replies: missingPermissionKey(thread, { thread_replies: missing.thread_replies, publish: { message: 'publish', member_message: 'publish member' } }, true),
             analytics_only: missingPermissionKey(thread, { post_insights: missing.thread_replies }, true),
             lacks_scope_admin: missingPermissionKey(thread, missing, true),
             lacks_scope_member: missingPermissionKey(thread, missing, false),

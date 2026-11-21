@@ -169,7 +169,11 @@ export const threadStandaloneKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
 ): string | null => {
-    if (blank(threadRepliesOf(meta)) || !filled(contentType)) {
+    if (blank(threadRepliesOf(meta))) {
+        return null;
+    }
+
+    if (!filled(contentType)) {
         return null;
     }
 

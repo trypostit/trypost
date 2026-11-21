@@ -1650,10 +1650,15 @@ const blockingIssue = computed(() => {
     return null;
 });
 /** Whether the card's channel takes text only while the post carries media. */
-const hasTextOnlyWarning = (group: NetworkGroup): boolean =>
-    destinationIssues(group.anchor).some(
-        (issue) => issue.key === 'posts.form.warnings.text_only',
-    );
+const hasTextOnlyWarning = (group: NetworkGroup): boolean => {
+    const issueKeys = destinationIssues(group.anchor).map((issue) => issue.key);
+
+    if (issueKeys.includes('posts.form.warnings.text_only')) {
+        return true;
+    }
+
+    return false;
+};
 /** Whether the card's text has more hashtags than its network allows. */
 const exceedsHashtags = (group: NetworkGroup): boolean => {
     const remaining = groupHashtagsRemaining(group);
@@ -1967,7 +1972,11 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
 
 /** Whether the save reopens an empty composer: never for an edit, or for a save that leaves the app. */
 const createsAnother = (leavesApp: boolean): boolean => {
-    if (leavesApp || filled(props.postId)) {
+    if (leavesApp) {
+        return false;
+    }
+
+    if (filled(props.postId)) {
         return false;
     }
 

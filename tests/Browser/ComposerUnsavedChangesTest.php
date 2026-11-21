@@ -483,6 +483,9 @@ test('a channel lacking the publish scope names its network in the warning and t
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForText($page, "@channel-permission-warning-{$post->social_account_id}", $message);
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    $warning = "channel-permission-warning-{$post->social_account_id}";
+    expect($page->script("document.querySelector('[data-testid=\"{$warning}\"]').textContent.replace(/\\s+/g, ' ').trim()"))
+        ->toBe("{$message} ".__('posts.form.reconnect.save'));
     $page->hover('@composer-submit');
     waitForText($page, '@composer-blocked-tooltip', $message);
 
