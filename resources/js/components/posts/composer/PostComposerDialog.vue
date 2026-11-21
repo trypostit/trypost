@@ -102,7 +102,7 @@ import { useComposerTimezone } from '@/composables/composer/useComposerTimezone'
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
-import { useSaveAndReconnect } from '@/composables/composer/useSaveAndReconnect';
+import { useSaveAndReconnectThreads } from '@/composables/composer/useSaveAndReconnectThreads';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
@@ -2007,7 +2007,7 @@ const saveAndLinkFacebook = useSaveAndLinkFacebook({
     submit,
 });
 
-const saveAndReconnect = useSaveAndReconnect({
+const saveAndReconnectThreads = useSaveAndReconnectThreads({
     status: () => props.initialPost?.status,
     submit,
 });
@@ -2919,7 +2919,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 ?.repliesAllowed
                                         "
                                         :disabled="submitting"
-                                        @reconnect="saveAndReconnect(group.anchor)"
+                                        @reconnect="saveAndReconnectThreads(group.anchor)"
                                     />
                                     <div
                                         v-if="setMediaWarning(group.anchor)"

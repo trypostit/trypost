@@ -7,7 +7,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { filled } from '@/lib/helpers';
 import { PostStatus } from '@/types/post';
 
-interface SaveAndReconnectOptions {
+interface SaveAndReconnectThreadsOptions {
     /** The status the edited post had when it opened, if it was saved. */
     status: () => string | undefined;
     /** Saves the post; false when it cannot be saved yet. */
@@ -31,7 +31,7 @@ interface ReconnectedAccount {
  * An approver is asked to decide on a pending post first, so saving never
  * takes it out of review by accident.
  */
-export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
+export const useSaveAndReconnectThreads = (options: SaveAndReconnectThreadsOptions) => {
     const { requiresApproval } = useWorkspaceAbilities();
 
     const reconnect = (account: ReconnectedAccount): void => {
