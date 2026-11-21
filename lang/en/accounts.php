@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Location not found.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Data deletion request',
+        'pending_title' => 'We\'re deleting your data',
+        'completed_title' => 'Your data was deleted',
+        'pending_description' => 'We received your request on :date and are deleting the data we stored about you. This page shows when it\'s done.',
+        'completed_description' => 'On :date we deleted the data we stored about you.',
+        'confirmation_code' => 'Confirmation code',
+    ],
 ];

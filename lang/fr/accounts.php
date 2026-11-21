@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Établissement introuvable.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Demande de suppression des données',
+        'pending_title' => 'Nous supprimons vos données',
+        'completed_title' => 'Vos données ont été supprimées',
+        'pending_description' => 'Nous avons reçu votre demande le :date et supprimons les données que nous avons enregistrées à votre sujet. Cette page indique quand c\'est terminé.',
+        'completed_description' => 'Le :date, nous avons supprimé les données que nous avions enregistrées à votre sujet.',
+        'confirmation_code' => 'Code de confirmation',
+    ],
 ];

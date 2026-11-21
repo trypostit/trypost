@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Konum bulunamadı.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Veri silme talebi',
+        'pending_title' => 'Verilerini siliyoruz',
+        'completed_title' => 'Verilerin silindi',
+        'pending_description' => 'Talebini :date tarihinde aldık ve senin hakkında sakladığımız verileri siliyoruz. Bittiğinde bu sayfada görünür.',
+        'completed_description' => ':date tarihinde senin hakkında sakladığımız verileri sildik.',
+        'confirmation_code' => 'Onay kodu',
+    ],
 ];

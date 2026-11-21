@@ -196,4 +196,13 @@ return [
             'location_not_found' => '未找到该商家地点。',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => '数据删除请求',
+        'pending_title' => '我们正在删除你的数据',
+        'completed_title' => '你的数据已删除',
+        'pending_description' => '我们已于 :date 收到你的请求，正在删除我们存储的关于你的数据。完成后会在此页面显示。',
+        'completed_description' => '我们已于 :date 删除了我们存储的关于你的数据。',
+        'confirmation_code' => '确认码',
+    ],
 ];

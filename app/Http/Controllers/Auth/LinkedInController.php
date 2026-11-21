@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
+use App\Services\Social\LinkedInOrganizations;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -78,7 +79,7 @@ class LinkedInController extends SocialController
                 ...($this->personEnabled() ? [$this->personIdentity($person, $credentials)] : []),
                 ...array_map(
                     fn (array $organization): array => $this->organizationIdentity($organization, $person, $credentials),
-                    $this->organizationEnabled() ? $this->fetchOrganizations($socialUser->token) : [],
+                    $this->organizationEnabled() ? (LinkedInOrganizations::administeredBy($socialUser->token) ?? []) : [],
                 ),
             ];
 
@@ -241,46 +242,5 @@ class LinkedInController extends SocialController
         }
 
         return null;
-    }
-
-    /**
-     * Organizations the authenticated member administers, used to offer company
-     * pages as a posting identity alongside their personal profile.
-     *
-     * @return array<int, array{id: mixed, name: string, vanity_name: ?string, logo: ?string}>
-     */
-    private function fetchOrganizations(string $accessToken): array
-    {
-        $response = Http::withToken($accessToken)
-            ->get(config('trypost.platforms.linkedin.api').'/v2/organizationAcls', [
-                'q' => 'roleAssignee',
-                'role' => 'ADMINISTRATOR',
-                'projection' => '(elements*(organization~(id,localizedName,vanityName,logoV2(original~:playableStreams))))',
-            ]);
-
-        if ($response->failed()) {
-            Log::error('LinkedIn Organizations fetch error', [
-                'error' => $response->body(),
-            ]);
-
-            return [];
-        }
-
-        $organizations = [];
-
-        foreach (data_get($response->json(), 'elements', []) as $element) {
-            $org = data_get($element, 'organization~');
-
-            if ($org) {
-                $organizations[] = [
-                    'id' => data_get($org, 'id'),
-                    'name' => data_get($org, 'localizedName', 'Unknown'),
-                    'vanity_name' => data_get($org, 'vanityName'),
-                    'logo' => data_get($org, 'logoV2.original~.elements.0.identifiers.0.identifier'),
-                ];
-            }
-        }
-
-        return $organizations;
     }
 }

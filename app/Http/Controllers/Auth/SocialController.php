@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\Post\DeleteChannelPosts;
-use App\Actions\Post\Queue\ReflowChannelQueue;
+use App\Actions\SocialAccount\DisconnectSocialAccount;
 use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
@@ -66,11 +65,7 @@ class SocialController extends Controller
         $before = $this->repurposeStatesFor($account);
 
         try {
-            ReflowChannelQueue::withLock([$account->id], fn () => DB::transaction(function () use ($account): void {
-                DeleteChannelPosts::forAccount($account);
-
-                $account->delete();
-            }));
+            DisconnectSocialAccount::execute($account);
         } catch (QueueBusyException $exception) {
             return back()->with('flash.error', $exception->getMessage());
         }

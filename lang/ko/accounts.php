@@ -196,4 +196,13 @@ return [
             'location_not_found' => '위치를 찾을 수 없습니다.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => '데이터 삭제 요청',
+        'pending_title' => '데이터를 삭제하고 있어요',
+        'completed_title' => '데이터가 삭제되었어요',
+        'pending_description' => ':date에 요청을 받았고, 저장해 둔 회원님의 데이터를 삭제하고 있어요. 완료되면 이 페이지에 표시돼요.',
+        'completed_description' => ':date에 저장해 둔 회원님의 데이터를 삭제했어요.',
+        'confirmation_code' => '확인 코드',
+    ],
 ];

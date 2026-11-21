@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Філію не знайдено.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Запит на видалення даних',
+        'pending_title' => 'Ми видаляємо ваші дані',
+        'completed_title' => 'Ваші дані видалено',
+        'pending_description' => 'Ми отримали ваш запит :date і видаляємо збережені про вас дані. На цій сторінці буде видно, коли все готово.',
+        'completed_description' => ':date ми видалили збережені про вас дані.',
+        'confirmation_code' => 'Код підтвердження',
+    ],
 ];

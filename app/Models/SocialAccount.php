@@ -11,6 +11,7 @@ use App\Casts\PostingScheduleCast;
 use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\MetaApp;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
@@ -78,6 +79,7 @@ class SocialAccount extends Model
         'disconnected_at',
         'last_used_at',
         'last_verified_at',
+        'profile_refreshed_at',
         'timezone',
         'posting_goal',
         'posting_schedule',
@@ -106,6 +108,7 @@ class SocialAccount extends Model
             'disconnected_at' => 'datetime',
             'last_used_at' => 'datetime',
             'last_verified_at' => 'datetime',
+            'profile_refreshed_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
             'position' => 'integer',
@@ -190,6 +193,7 @@ class SocialAccount extends Model
     ): self {
         $values['platform'] = $platform;
         $values['platform_user_id'] = $platformUserId;
+        $values['profile_refreshed_at'] = now();
 
         $identity = [
             'platform' => $platform->value,
@@ -623,5 +627,24 @@ class SocialAccount extends Model
     public function scopeIncludedInAnalytics(Builder $query): Builder
     {
         return $query->whereIn('platform', SocialPlatform::analyticsValues());
+    }
+
+    /**
+     * Channels a Meta user authorized through one of the install's Meta apps,
+     * matched by the app-scoped user id Meta sends to that app's callbacks:
+     * the Facebook user stored on connect for Pages and for Instagram through
+     * a Page, the Instagram user for Instagram Login (its app-scoped id, or
+     * the professional account id when that is what the callback carries),
+     * and the Threads user.
+     */
+    public function scopeAuthorizedByMetaUser(Builder $query, MetaApp $app, string $userId): Builder
+    {
+        return $query
+            ->whereIn('platform', $app->platforms())
+            ->where(fn (Builder $match): Builder => match ($app) {
+                MetaApp::Facebook => $match->where('meta->user_id', $userId),
+                MetaApp::Instagram => $match->where('platform_user_id', $userId)->orWhere('meta->ig_user_id', $userId),
+                MetaApp::Threads => $match->where('platform_user_id', $userId),
+            });
     }
 }

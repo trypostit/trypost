@@ -113,7 +113,7 @@ class InstagramFacebookController extends MetaController
                 ->all();
 
             $identities = array_map(
-                fn (array $page): array => $this->toIdentity($page, $granted),
+                fn (array $page): array => $this->toIdentity($page, $granted, transform($socialUser->id, fn (mixed $id): string => (string) $id)),
                 $this->describeInstagramAccounts($connectable),
             );
 
@@ -152,13 +152,15 @@ class InstagramFacebookController extends MetaController
 
     /**
      * A lookup we never made says nothing about the handle or avatar a reconnect
-     * already has, so an undescribed account leaves both as they are.
+     * already has, so an undescribed account leaves both as they are. The
+     * Facebook user who connected is kept so the Facebook app's Deauthorize and
+     * Data Deletion callbacks can find the account.
      *
      * @param  array<string, mixed>  $page
      * @param  array<int, string>  $scopes
      * @return array<string, mixed>
      */
-    private function toIdentity(array $page, array $scopes): array
+    private function toIdentity(array $page, array $scopes, ?string $userId): array
     {
         $described = (bool) data_get($page, 'ig_described');
         $name = data_get($page, 'ig_name') ?? data_get($page, 'ig_username') ?? data_get($page, 'page_name');
@@ -180,6 +182,7 @@ class InstagramFacebookController extends MetaController
                 'meta' => [
                     'page_id' => data_get($page, 'page_id'),
                     'page_name' => data_get($page, 'page_name'),
+                    'user_id' => $userId,
                 ],
             ], $described ? [] : ['username' => true]),
             keepsAvatar: ! $described,

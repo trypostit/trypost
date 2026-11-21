@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Lokasi tidak ditemukan.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Permintaan penghapusan data',
+        'pending_title' => 'Kami sedang menghapus data Anda',
+        'completed_title' => 'Data Anda sudah dihapus',
+        'pending_description' => 'Kami menerima permintaan Anda pada :date dan sedang menghapus data yang kami simpan tentang Anda. Halaman ini menampilkan kapan selesai.',
+        'completed_description' => 'Pada :date kami menghapus data yang kami simpan tentang Anda.',
+        'confirmation_code' => 'Kode konfirmasi',
+    ],
 ];
