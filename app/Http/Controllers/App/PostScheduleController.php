@@ -8,6 +8,7 @@ use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\ScheduleAction;
+use App\Enums\Post\Status as PostStatus;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
@@ -43,8 +44,10 @@ class PostScheduleController extends Controller
         $action = data_get($result, 'action');
 
         if ($action === PostAction::Finalized) {
+            $message = $result['post']->status === PostStatus::Publishing ? 'posts.edit.publishing_overlay_title' : 'posts.flash.cannot_edit_finalized';
+
             return back()
-                ->with('flash.banner', __('posts.flash.cannot_edit_finalized'))
+                ->with('flash.banner', __($message))
                 ->with('flash.bannerStyle', 'danger');
         }
 

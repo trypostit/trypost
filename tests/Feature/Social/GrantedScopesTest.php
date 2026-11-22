@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -215,14 +216,15 @@ test('a login that left out an optional scope connects and records it as missing
 })->with('granted scopes');
 
 test('a YouTube grant with an alternative upload scope connects and schedules a short', function (string $scope) {
-    $grant = ['https://www.googleapis.com/auth/'.$scope, 'https://www.googleapis.com/auth/youtube.readonly'];
+    $grant = ['https://www.googleapis.com/auth/'.$scope];
     $definition = grantedScopesCallback('youtube', $grant);
     $this->actingAs($this->owner)->get(route($definition['route'], ['code' => 'code-1']))
         ->assertRedirect(route('app.social.connect.show', Platform::YouTube));
     expect(socialConnectFailure())->toBeNull();
     assertFinishedOnChannel(finishSocialConnect(Platform::YouTube));
     $channel = SocialAccount::query()->sole();
-    expect($channel->scopes)->toEqualCanonicalizing($grant);
+    expect($channel->scopes)->toEqualCanonicalizing($grant)
+        ->and(ChannelPermissions::missing($channel))->toBe([]);
 
     $video = Media::factory()->video()->temporaryUpload($this->workspace)->create([
         'meta' => ['duration' => 20, 'width' => 1080, 'height' => 1920],
