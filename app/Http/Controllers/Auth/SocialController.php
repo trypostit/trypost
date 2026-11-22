@@ -268,20 +268,29 @@ class SocialController extends Controller
         return $this->redirectForMissingPublishPermission($granted);
     }
 
-    /** @param list<string> $granted */
+    /**
+     * Consent sessions started before requested scopes were saved can restart
+     * when the provider returns no grant.
+     *
+     * @param  list<string>  $granted
+     */
     protected function redirectForMissingPublishPermission(array $granted): RedirectResponse
     {
         $pending = $this->pendingForThisNetwork();
-        if ($granted === [] && $pending !== null && $pending->requestedScopes() === null) {
-            $url = $this->startUrl($pending, $pending->isSwitchingAccount());
-            if ($url !== null && $pending->workspaceId() === request()->user()->current_workspace_id) {
-                return redirect()->to($url);
-            }
 
+        if (filled($granted) || $pending === null || $pending->requestedScopes() !== null) {
+            return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+        }
+
+        if ($pending->workspaceId() !== request()->user()->current_workspace_id) {
             return $this->failConnection(ConnectFlowException::SESSION_EXPIRED);
         }
 
-        return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+        $url = $this->startUrl($pending, $pending->isSwitchingAccount());
+
+        return $url === null
+            ? $this->failConnection(ConnectFlowException::SESSION_EXPIRED)
+            : redirect()->to($url);
     }
 
     protected function rememberConnectSession(Request $request, Workspace $workspace): void
