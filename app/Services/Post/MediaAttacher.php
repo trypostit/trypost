@@ -40,7 +40,7 @@ class MediaAttacher
      *
      * @throws ValidationException
      */
-    public function attachFromUrls(Post $post, array $urls, ?User $actor = null): array
+    public function attachFromUrls(Post $post, array $urls, User $actor): array
     {
         AppendPostMedia::ensureAcceptsMedia($post, 'urls');
 

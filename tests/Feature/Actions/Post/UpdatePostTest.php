@@ -30,7 +30,7 @@ test('execute rejects a platforms list from a stale client', function () {
         'status' => PostStatus::Scheduled->value,
         'content' => 'Edited',
         'platforms' => [],
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect($post->fresh()->content)->toBe('Original')
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
@@ -45,7 +45,7 @@ test('a draft without a channel keeps its edits but cannot be scheduled', functi
         'content' => 'Original',
     ]);
 
-    UpdatePost::execute($workspace, $post, ['status' => PostStatus::Draft->value, 'content' => 'Edited']);
+    UpdatePost::execute($workspace, $post, ['status' => PostStatus::Draft->value, 'content' => 'Edited'], $user);
 
     expect($post->fresh()->content)->toBe('Edited')
         ->and($post->fresh()->status)->toBe(PostStatus::Draft);
@@ -53,7 +53,7 @@ test('a draft without a channel keeps its edits but cannot be scheduled', functi
     expect(fn () => UpdatePost::execute($workspace, $post->fresh(), [
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
@@ -76,7 +76,7 @@ test('execute keeps the google business jpeg on an edit', function () {
     UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Scheduled->value,
         'content' => 'Updated promotion',
-    ]);
+    ], $user);
 
     expect($post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview);
     Storage::assertExists($path);
@@ -96,7 +96,7 @@ test('invalid publication metadata rolls the edit back', function () {
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'Edited',
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft)
         ->and($post->fresh()->content)->toBe('Original');
@@ -115,7 +115,7 @@ test('an edit does not land on a post the scheduler claimed after it was loaded'
 
     Post::query()->whereKey($post->id)->update(['status' => PostStatus::Publishing]);
 
-    $result = UpdatePost::execute($workspace, $post, ['status' => 'draft', 'content' => 'Edited']);
+    $result = UpdatePost::execute($workspace, $post, ['status' => 'draft', 'content' => 'Edited'], $user);
 
     expect($result['action'])->toBe(PostAction::Finalized)
         ->and($post->fresh()->status)->toBe(PostStatus::Publishing)
@@ -135,7 +135,7 @@ test('a second publish now after the post settled is a no-op', function () {
 
     Post::query()->whereKey($post->id)->update(['status' => PostStatus::Published]);
 
-    $result = UpdatePost::execute($workspace, $post, ['status' => 'publishing']);
+    $result = UpdatePost::execute($workspace, $post, ['status' => 'publishing'], $user);
 
     expect($result['action'])->toBe(PostAction::Finalized)
         ->and($post->fresh()->status)->toBe(PostStatus::Published);

@@ -32,14 +32,13 @@ use Illuminate\Validation\ValidationException;
 class UpdatePost
 {
     /**
-     * `$actor` is the user making the change; system callers pass none and are never gated.
      * A pending post is changed under its approval lock (see PostApproval::whilePending()).
      * `queue_slot` (an instant, set only by MoveChannelPostToQueueSlot under the channel lock)
      * stores a single-channel post in queue mode at that slot without reflowing the queue.
      *
      * @return array{post: Post, action: PostAction|null}
      */
-    public static function execute(Workspace $workspace, Post $post, array $data, ?User $actor = null): array
+    public static function execute(Workspace $workspace, Post $post, array $data, User $actor): array
     {
         return $post->status === PostStatus::PendingApproval
             ? PostApproval::whilePending($post, fn (): array => self::apply($workspace, $post, $data, $actor))
@@ -49,7 +48,7 @@ class UpdatePost
     /**
      * @return array{post: Post, action: PostAction|null}
      */
-    private static function apply(Workspace $workspace, Post $post, array $data, ?User $actor): array
+    private static function apply(Workspace $workspace, Post $post, array $data, User $actor): array
     {
         if (PostStatusRules::blocksEditing($post)) {
             return ['post' => $post, 'action' => PostAction::Finalized];
@@ -116,7 +115,7 @@ class UpdatePost
      * @param  array<string, mixed>  $data
      * @return array{post: Post, action: PostAction|null}
      */
-    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, ?User $actor): array
+    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, User $actor): array
     {
         $position = filled(data_get($data, 'queue')) ? QueuePosition::from(data_get($data, 'queue')) : null;
         $channel = $post->socialAccount;
@@ -175,7 +174,7 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, [
+        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, $actor, [
             'status' => $status,
             'queue' => $keepsPending ? null : $position?->value,
             'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
@@ -188,7 +187,7 @@ class UpdatePost
                     ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
                 'meta' => $meta,
             ]],
-        ], $post->media ?? [], actor: $actor));
+        ], $post->media ?? []));
 
         $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
             if (self::finalizedMeanwhile($post)) {
@@ -264,13 +263,13 @@ class UpdatePost
     /**
      * @return array{post: Post, action: PostAction|null}
      */
-    private static function finish(Post $post, PostStatus $previousStatus, PostStatus $storedStatus, ?CarbonInterface $occurrence, ?User $actor): array
+    private static function finish(Post $post, PostStatus $previousStatus, PostStatus $storedStatus, ?CarbonInterface $occurrence, User $actor): array
     {
-        if ($actor !== null && PostApproval::isRequest($previousStatus, $storedStatus)) {
+        if (PostApproval::isRequest($previousStatus, $storedStatus)) {
             NotifyApprovalRequested::execute(collect([$post]), $actor);
         }
 
-        if ($actor !== null && PostApproval::isApproval($previousStatus, $storedStatus)) {
+        if (PostApproval::isApproval($previousStatus, $storedStatus)) {
             NotifyApprovalDecision::execute($post, ApprovalDecision::Approved, $actor, $post->approvalRequester());
         }
 

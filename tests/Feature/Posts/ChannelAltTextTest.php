@@ -97,7 +97,7 @@ test('editing one channel post changes only that channel alt text', function () 
 
     UpdatePost::execute($this->workspace, $post, [
         'media' => [[...$post->media[0], 'meta' => [...$post->media[0]['meta'], 'alt_text' => 'X description']]],
-    ]);
+    ], $this->user);
 
     expect(data_get($post->fresh()->media, '0.meta.alt_text'))->toBe('X description')
         ->and(data_get(channelAltTextPost($this->bluesky)->media, '0.meta.alt_text'))->toBe('Bluesky description')

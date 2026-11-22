@@ -28,7 +28,7 @@ class AppendPostMedia
      *
      * @throws ValidationException
      */
-    public static function execute(Post $post, array $items, ?User $actor): void
+    public static function execute(Post $post, array $items, User $actor): void
     {
         PostApproval::locked($post, fn () => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $items, $actor): void {
             self::ensureAcceptsMedia($post);

@@ -594,7 +594,7 @@ test('rescheduling an occurrence off the series moves the series to the new time
     UpdatePost::execute($this->workspace, $second, [
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => CarbonImmutable::parse('2027-03-03 10:00', 'UTC')->toIso8601String(),
-    ]);
+    ], $this->user);
     $this->travelTo(CarbonImmutable::parse('2027-03-03 10:05', 'UTC'));
     publishRecurringPost($second->refresh());
 
@@ -641,7 +641,7 @@ test('editing a recurring post or its time keeps the rule', function () {
         'status' => PostStatus::Scheduled->value,
         'content' => 'Edited caption',
         'scheduled_at' => now()->addDays(5)->toIso8601String(),
-    ]);
+    ], $this->user);
 
     expect($post->refresh()->content)->toBe('Edited caption')
         ->and($post->scheduled_at->toDateTimeString())->toBe(now()->addDays(5)->toDateTimeString())

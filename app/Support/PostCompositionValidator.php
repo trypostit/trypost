@@ -51,7 +51,7 @@ class PostCompositionValidator
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */
-    public static function validate(Workspace $workspace, array $composition, array $existingMedia = [], ?User $actor = null): array
+    public static function validate(Workspace $workspace, User $actor, array $composition, array $existingMedia = []): array
     {
         Validator::make($composition, [
             'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
@@ -235,7 +235,7 @@ class PostCompositionValidator
 
                 $blockedFeature = ChannelPermissions::featureBlockingPost($account, data_get($destination, 'meta', []));
                 if (filled($blockedFeature)) {
-                    $canManageAccounts ??= $actor?->can('manageAccounts', $workspace) ?? true;
+                    $canManageAccounts ??= $actor->can('manageAccounts', $workspace);
                     $validator->errors()->add(
                         "{$key}.{$blockedFeature->postValidationField()}",
                         ChannelPermissions::reconnectMessage($account->platform, $blockedFeature, $canManageAccounts),
