@@ -420,44 +420,56 @@ const QUEUE_RELOAD = {
 
 const reordering = ref(false);
 
-const reorderQueue = (channelId: string, orderedPostIds: string[]): void => {
-    const previous = localQueue.value;
+const resetQueue = (): void => {
+    localQueue.value = queueSource.value;
+};
 
+const rollbackQueue = (message: string): void => {
+    resetQueue();
+    toast.error(message, { testId: 'queue-reorder-error-toast' });
+};
+
+const queueRequestFailed = (): false => {
+    rollbackQueue(trans('posts.errors.queue_busy'));
+
+    return false;
+};
+
+const queueVisitOptions = {
+    ...QUEUE_RELOAD,
+    preserveScroll: true,
+    preserveState: true,
+    onError: (errors: Record<string, string>) => {
+        const [message] = Object.values(errors);
+
+        if (filled(message)) {
+            rollbackQueue(message);
+
+            return;
+        }
+
+        queueRequestFailed();
+    },
+    onNetworkError: queueRequestFailed,
+    onHttpException: queueRequestFailed,
+    onCancel: resetQueue,
+    onFinish: () => {
+        reordering.value = false;
+    },
+};
+
+const reorderQueue = (channelId: string, orderedPostIds: string[]): void => {
     if (reordering.value) {
         return;
     }
 
     reordering.value = true;
-
-    const rollback = (message: string): void => {
-        localQueue.value = queueSource.value;
-        toast.error(message, { testId: 'queue-reorder-error-toast' });
-    };
-
-    localQueue.value = withChannelOrder(previous, channelId, orderedPostIds);
+    localQueue.value = withChannelOrder(localQueue.value, channelId, orderedPostIds);
 
     router.put(
         reorderChannelQueue.url(channelId),
         { post_ids: orderedPostIds },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            ...QUEUE_RELOAD,
-            onFinish: () => {
-                reordering.value = false;
-            },
-            onError: (errors) =>
-                rollback(
-                    errors.post_ids ??
-                        errors.queue ??
-                        trans('posts.errors.queue_busy'),
-                ),
-            onHttpException: () => {
-                rollback(trans('posts.errors.queue_busy'));
-
-                return false;
-            },
-        },
+        queueVisitOptions,
     );
 };
 
@@ -513,45 +525,13 @@ const moveToSlot = (postId: string, slot: QueueSlotTarget): void => {
 
     reordering.value = true;
 
-    const rollback = (message: string): void => {
-        localQueue.value = queueSource.value;
-        toast.error(message, { testId: 'queue-reorder-error-toast' });
-    };
-
     localQueue.value = withPostInSlot(localQueue.value, postId, slot);
 
     router.put(
         moveChannelPostToSlot.url(slot.channelId),
         { post_id: postId, slot_at: slot.at },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            ...QUEUE_RELOAD,
-            onFinish: () => {
-                reordering.value = false;
-            },
-            onError: (errors) => rollback(moveToSlotError(errors)),
-            onHttpException: () => {
-                rollback(trans('posts.errors.queue_busy'));
-
-                return false;
-            },
-        },
+        queueVisitOptions,
     );
-};
-
-/**
- * Why a drop on a slot was refused: the server's first message (the slot, the
- * queue, or a permission the channel lacks), else the queue being busy.
- */
-const moveToSlotError = (errors: Record<string, string>): string => {
-    const [message] = Object.values(errors);
-
-    if (filled(message)) {
-        return message;
-    }
-
-    return trans('posts.errors.queue_busy');
 };
 
 /**
@@ -753,6 +733,20 @@ const returnToOpeningPage = (): void => {
     );
 };
 
+/** Updates merge meta. Omit untouched replies and send null when the editor removed them. */
+const metaForUpdate = (
+    original: ComposerInitialPost['meta'],
+    edited: ComposerInitialPost['meta'],
+): ComposerInitialPost['meta'] => {
+    const { thread_replies: replies, ...meta } = edited;
+
+    if (JSON.stringify(replies) === JSON.stringify(original.thread_replies)) {
+        return meta;
+    }
+
+    return { ...meta, thread_replies: replies ?? null };
+};
+
 const submitComposition = (
     composition: PostComposition,
     _createAnother?: boolean,
@@ -794,11 +788,7 @@ const submitComposition = (
         content: destination.content ?? composition.content,
         media: destination.media ?? composition.media,
         content_type: destination.content_type,
-        meta: {
-            ...destination.meta,
-            // Updates merge meta, so clearing the thread requires an explicit null.
-            thread_replies: destination.meta?.thread_replies ?? null,
-        },
+        meta: metaForUpdate(initialPost.value.meta, destination.meta),
         label_ids: composition.label_ids,
         ...(composition.queue
             ? { queue: composition.queue }

@@ -689,6 +689,37 @@ test('dropping a post on a slot taken meanwhile is rolled back and reported', fu
     $page->assertNoJavaScriptErrors();
 });
 
+test('a network failure restores the original queue slot and reports the failed move', function () {
+    [$user, , $channel] = publishQueueSetup();
+    publishQueuePost($user, $channel);
+    $slot = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 3)[2];
+    $when = $slot->addMinutes(90);
+    $post = publishQueueCustomPost($user, $channel, $when);
+    $key = publishQueueSlotKey($channel, $slot);
+    $this->actingAs($user);
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, "@post-drag-handle-{$post->id}");
+    waitFor($page, "@queue-slot-{$key}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, ...args) {
+                open.call(this, method, ...args);
+                if (method.toUpperCase() === 'PUT' && String(args[0]).endsWith('/queue/slot')) {
+                    this.send = () => {
+                        this.dispatchEvent(new ProgressEvent('error'));
+                    };
+                }
+            };
+        })()
+        JS);
+    $page->drag("@post-card-{$post->id}", "@queue-slot-{$key}");
+    waitForText($page, '@queue-reorder-error-toast', __('posts.errors.queue_busy'));
+
+    expect($post->fresh()->scheduled_at->equalTo($when))->toBeTrue();
+    $page->assertVisible("@queue-slot-{$key}")->assertNoJavaScriptErrors();
+});
+
 test('dragging a queued post onto a later free slot keeps it there and leaves the others in place', function () {
     [$user, , $channel] = publishQueueSetup();
     $first = publishQueuePost($user, $channel);

@@ -467,6 +467,43 @@ test('saving a held-back thread to reconnect its channel leaves for the connect 
 })->with(['opened from the list' => true, 'opened by its edit link' => false])
     ->with(['untouched' => false, 'with unsaved edits' => true]);
 
+test('saving only the caption keeps replies changed in another session', function (bool $hadReplies) {
+    $post = seedHeldBackMastodonThread();
+
+    if (! $hadReplies) {
+        $post->update(['meta' => []]);
+    }
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    $caption = "@composer-caption-{$post->social_account_id}";
+    waitFor($page, $caption);
+    $page->fill($caption, 'Caption edit only');
+    $post->update(['meta' => ['thread_replies' => [['text' => 'Added in a second session', 'media' => []]]]]);
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $saved = $post->fresh();
+    expect($saved->content)->toBe('Caption edit only')
+        ->and(data_get($saved->meta, 'thread_replies.0.text'))->toBe('Added in a second session');
+    $page->assertNoJavaScriptErrors();
+})->with(['thread added' => false, 'thread edited' => true]);
+
+test('save and reconnect reports a post finalized meanwhile and stays in the app', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    waitFor($page, $link);
+    $page->fill("@composer-caption-{$post->social_account_id}", 'Unsaved caption');
+    $post->update(['status' => PostStatus::Publishing]);
+    $page->click($link);
+    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+
+    expect($post->fresh()->content)->toBe('Held back')
+        ->and($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a member who cannot manage channels is told an admin needs to reconnect, with no link', function () {
     $post = seedHeldBackMastodonThread();
     $member = workspaceMember($post->workspace);
