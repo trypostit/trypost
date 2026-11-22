@@ -70,7 +70,7 @@ class MastodonController extends SocialController
                 $this->rememberConnectSession($request, $workspace);
             }
 
-            $scopes = $this->consentScopeString(' ');
+            $scopes = $this->spaceSeparatedConsentScopes();
 
             // Register app on the instance
             $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [

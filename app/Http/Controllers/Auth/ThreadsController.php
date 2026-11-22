@@ -36,7 +36,7 @@ class ThreadsController extends SocialController
         $params = http_build_query([
             'client_id' => config('services.threads.client_id'),
             'redirect_uri' => config('services.threads.redirect'),
-            'scope' => $this->consentScopeString(','),
+            'scope' => $this->commaSeparatedConsentScopes(),
             'response_type' => 'code',
             'state' => $state,
         ]);

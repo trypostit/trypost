@@ -25,6 +25,8 @@ class BootstrapAccountAnalytics implements ShouldQueue
 {
     use Queueable;
 
+    private const string PRIOR_CHECKPOINT_UNAVAILABLE = 'prior_checkpoint_unavailable';
+
     public int $tries = 3;
 
     /** @return list<int> */
@@ -85,7 +87,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
                 'status' => SyncStatus::Partial,
                 'oldest_reached_at' => $historicalPublications->min('provider_published_at'),
                 'high_watermark_at' => $historicalNewest,
-                'last_error_category' => 'prior_checkpoint_unavailable',
+                'last_error_category' => self::PRIOR_CHECKPOINT_UNAVAILABLE,
             ]);
         }
 
@@ -116,34 +118,51 @@ class BootstrapAccountAnalytics implements ShouldQueue
         $retryPartial = $backfill->status === SyncStatus::Partial
             && ! $backfillRebound
             && ! $recoveredWithoutCheckpoint
-            && $backfill->last_error_category !== 'prior_checkpoint_unavailable';
+            && $backfill->last_error_category !== self::PRIOR_CHECKPOINT_UNAVAILABLE;
 
         if ($resumeFailed || $retryPartial) {
             $backfill->update([
                 'status' => SyncStatus::Pending,
-                'checkpoint' => [
-                    'cursor' => $resumeFailed
-                        ? data_get($backfill->checkpoint, 'cursor')
-                        : null,
-                    'revision' => (int) data_get($backfill->checkpoint, 'revision', 0),
-                    ...($account->platform === Platform::X
-                        ? ['seen_count' => $resumeFailed
-                            ? (int) data_get($backfill->checkpoint, 'seen_count', 0)
-                            : 0]
-                        : []),
-                    ...($resumeFailed && data_get($backfill->checkpoint, 'public_history_only') ? ['public_history_only' => true] : []),
-                    ...($resumeFailed && data_get($backfill->checkpoint, 'resumed_after_disconnect')
-                        ? ['resumed_after_disconnect' => true]
-                        : []),
-                ],
+                'checkpoint' => $this->backfillCheckpointForRetry($backfill, $account->platform),
             ]);
         }
 
         if (! $backfill->isTerminal()) {
             BackfillAccountPublications::dispatch($account->id, $backfill->id)->afterCommit();
-        } elseif ($backfillRebound || $recoveredWithoutCheckpoint || $this->refreshOnTerminal) {
+
+            return;
+        }
+
+        if ($backfillRebound || $recoveredWithoutCheckpoint || $this->refreshOnTerminal) {
             DiscoverAccountPublications::dispatch($account->id, $discovery->id)->afterCommit();
         }
+    }
+
+    /**
+     * @return array{cursor: mixed, revision: int, seen_count?: int, public_history_only?: true, resumed_after_disconnect?: true}
+     */
+    private function backfillCheckpointForRetry(AnalyticsSyncState $backfill, Platform $platform): array
+    {
+        $previous = $backfill->checkpoint ?? [];
+        $resumeFailed = $backfill->status === SyncStatus::Failed;
+        $checkpoint = [
+            'cursor' => $resumeFailed ? data_get($previous, 'cursor') : null,
+            'revision' => (int) data_get($previous, 'revision', 0),
+        ];
+
+        if ($platform === Platform::X) {
+            $checkpoint['seen_count'] = $resumeFailed ? (int) data_get($previous, 'seen_count', 0) : 0;
+        }
+
+        if ($resumeFailed && data_get($previous, 'public_history_only')) {
+            $checkpoint['public_history_only'] = true;
+        }
+
+        if ($resumeFailed && data_get($previous, 'resumed_after_disconnect')) {
+            $checkpoint['resumed_after_disconnect'] = true;
+        }
+
+        return $checkpoint;
     }
 
     /**
@@ -175,32 +194,40 @@ class BootstrapAccountAnalytics implements ShouldQueue
             || $state->identity_key !== $identity['identity_key']) {
             $checkpoint = $state->checkpoint ?? [];
             $status = $state->status;
-            if ($rebound && $status === SyncStatus::Running) {
-                $status = SyncStatus::Pending;
+
+            if ($rebound) {
+                $status = $this->statusAfterReconnect($state, $account);
+                $cursor = data_get($checkpoint, 'cursor');
+                $checkpoint['cursor'] = $collector === SyncCollector::PublicationDiscovery ? null : $cursor;
+                $checkpoint['revision'] = (int) data_get($checkpoint, 'revision', 0) + 1;
+
+                if ($collector === SyncCollector::PublicationBackfill && filled($cursor) && $state->oldest_reached_at !== null) {
+                    $checkpoint['resumed_after_disconnect'] = true;
+                }
             }
-            if ($rebound && $this->shouldRetryDisconnectedHistory($state, $account)) {
-                $status = SyncStatus::Paused;
-            }
+
             $state->update([
                 ...$identity,
                 'social_account_id' => $account->id,
                 'status' => $status,
-                'checkpoint' => $rebound ? [
-                    ...$checkpoint,
-                    'cursor' => $collector === SyncCollector::PublicationDiscovery
-                        ? null
-                        : data_get($checkpoint, 'cursor'),
-                    'revision' => (int) data_get($checkpoint, 'revision', 0) + 1,
-                    ...($collector === SyncCollector::PublicationBackfill
-                        && filled(data_get($checkpoint, 'cursor'))
-                        && $state->oldest_reached_at !== null
-                        ? ['resumed_after_disconnect' => true]
-                        : []),
-                ] : $checkpoint,
+                'checkpoint' => $checkpoint,
             ]);
         }
 
         return [$state, $rebound];
+    }
+
+    private function statusAfterReconnect(AnalyticsSyncState $state, SocialAccount $account): SyncStatus
+    {
+        if ($state->status === SyncStatus::Running) {
+            return SyncStatus::Pending;
+        }
+
+        if ($this->shouldRetryDisconnectedHistory($state, $account)) {
+            return SyncStatus::Paused;
+        }
+
+        return $state->status;
     }
 
     /**

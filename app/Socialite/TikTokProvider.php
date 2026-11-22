@@ -10,21 +10,22 @@ use SocialiteProviders\TikTok\Provider;
 class TikTokProvider extends Provider
 {
     /**
-     * The driver chooses profile fields immediately after the token exchange.
-     * Use the grant TikTok returned, retaining the requested scopes if it was omitted.
+     * Use the granted scopes before the parent driver chooses which profile fields to request.
      *
      * @param  string  $code  The authorization code passed by Socialite.
      * @return array<string, mixed>
      */
     public function getAccessTokenResponse(mixed $code): array
     {
-        $response = parent::getAccessTokenResponse($code);
-        $scope = data_get($response, 'scope');
+        $tokenResponse = parent::getAccessTokenResponse($code);
+        $reportedScopes = data_get($tokenResponse, 'scope');
 
-        if (filled($scope)) {
-            $this->setScopes(Str::matchAll('/[^\s,]+/', $scope)->all());
+        if (blank($reportedScopes)) {
+            return $tokenResponse;
         }
 
-        return $response;
+        $this->setScopes(Str::matchAll('/[^\s,]+/', $reportedScopes)->all());
+
+        return $tokenResponse;
     }
 }

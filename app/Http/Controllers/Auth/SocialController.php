@@ -241,9 +241,14 @@ class SocialController extends Controller
         return $this->pendingForThisNetwork()?->requestedScopes() ?? [];
     }
 
-    protected function consentScopeString(string $separator): string
+    protected function commaSeparatedConsentScopes(): string
     {
-        return Arr::join($this->consentScopes(), $separator);
+        return Arr::join($this->consentScopes(), ',');
+    }
+
+    protected function spaceSeparatedConsentScopes(): string
+    {
+        return Arr::join($this->consentScopes(), ' ');
     }
 
     /**
