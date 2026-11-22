@@ -95,7 +95,7 @@ test('a partial thread counts only the published segments before the first incom
 
     expect(ThreadProgress::failureMessage($this->post, 'Rate limited', $context))
         ->toBe(__('posts.errors.thread_incomplete', ['published' => 1, 'total' => 3, 'error' => 'Rate limited']))
-        ->and(ThreadProgress::resumable($context, ['root', 'two', 'three']))->toBe([$root]);
+        ->and(ThreadProgress::resumable($context, ['two', 'three']))->toBe([$root]);
 });
 
 test('a changed reply is posted again from the first change', function () {

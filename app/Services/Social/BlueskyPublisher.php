@@ -67,7 +67,7 @@ class BlueskyPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $lookForLiveReply = filled(ThreadProgress::rootHash($post->error_context));
+        $lookForLiveReply = ThreadProgress::hasPublishedRoot($post->error_context);
 
         return $this->publishThread(
             $post,

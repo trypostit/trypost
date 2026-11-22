@@ -35,14 +35,13 @@ final class ThreadProgress
     }
 
     /**
-     * The hash of the root already live. The root is the target's identity, so a
-     * resume keeps it even when the same text would now hash differently.
-     *
      * @param  array<string, mixed>|null  $context
      */
-    public static function rootHash(?array $context): ?string
+    public static function hasPublishedRoot(?array $context): bool
     {
-        return self::publishedSegments($context)->first()['hash'] ?? null;
+        $root = self::publishedSegmentAt($context, 0);
+
+        return $root !== null && filled($root['hash']);
     }
 
     /**
@@ -67,17 +66,18 @@ final class ThreadProgress
     }
 
     /**
-     * The stored segments that still match the current ones, in order. The
-     * first segment whose text changed ends the resumable part.
+     * Keep the root already live, even if its text would now hash differently.
+     * Resume replies only up to the first one that changed.
      *
      * @param  array<string, mixed>|null  $context
-     * @param  list<string>  $hashes
-     * @return list<array<string, mixed>>
+     * @param  list<string>  $replyHashes
+     * @return list<array{hash: string, id: string, ...}>
      */
-    public static function resumable(?array $context, array $hashes): array
+    public static function resumable(?array $context, array $replyHashes): array
     {
         return self::publishedSegments($context)
-            ->takeWhile(fn (array $segment, int $index): bool => $segment['hash'] === ($hashes[$index] ?? null))
+            ->takeWhile(fn (array $segment, int $position): bool => $position === 0
+                || $segment['hash'] === ($replyHashes[$position - 1] ?? null))
             ->all();
     }
 
@@ -100,19 +100,27 @@ final class ThreadProgress
      */
     private static function publishedSegments(?array $context): Collection
     {
-        $stored = data_get($context, self::KEY, []);
         $published = collect();
 
-        for ($index = 0; isset($stored[$index]); $index++) {
-            $segment = $stored[$index];
-
-            if (! is_string($segment['hash'] ?? null) || ! is_string($segment['id'] ?? null)) {
-                break;
-            }
-
+        while (($segment = self::publishedSegmentAt($context, $published->count())) !== null) {
             $published->push($segment);
         }
 
         return $published;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     * @return array{hash: string, id: string, ...}|null
+     */
+    private static function publishedSegmentAt(?array $context, int $index): ?array
+    {
+        $segment = $context[self::KEY][$index] ?? null;
+
+        if (is_string($segment['hash'] ?? null) && is_string($segment['id'] ?? null)) {
+            return $segment;
+        }
+
+        return null;
     }
 }

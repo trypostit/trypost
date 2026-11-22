@@ -47,11 +47,28 @@ test('resume keeps the longest matching prefix', function () {
         ['hash' => 'h2', 'id' => '3'],
     ]];
 
-    expect(ThreadProgress::resumable($stored, ['h0', 'h1', 'h2', 'h3']))->toHaveCount(3)
-        ->and(ThreadProgress::resumable($stored, ['h0', 'changed', 'h2']))->toBe([['hash' => 'h0', 'id' => '1']])
-        ->and(ThreadProgress::resumable($stored, ['other']))->toBe([])
-        ->and(ThreadProgress::resumable(null, ['h0']))->toBe([]);
+    expect(ThreadProgress::resumable($stored, ['h1', 'h2', 'h3']))->toHaveCount(3)
+        ->and(ThreadProgress::resumable($stored, ['changed', 'h2']))->toBe([['hash' => 'h0', 'id' => '1']])
+        ->and(ThreadProgress::resumable($stored, []))->toBe([['hash' => 'h0', 'id' => '1']])
+        ->and(ThreadProgress::resumable(null, ['h1']))->toBe([]);
 });
+
+test('a thread resumes only up to the first missing position', function () {
+    $root = ['hash' => 'h0', 'id' => '1'];
+    $reply = ['hash' => 'h2', 'id' => '3'];
+    $context = [ThreadProgress::KEY => [0 => $root, 2 => $reply]];
+
+    expect(ThreadProgress::resumable($context, ['h1', 'h2']))->toBe([$root])
+        ->and(ThreadProgress::resumable([ThreadProgress::KEY => [2 => $reply]], ['h1', 'h2']))->toBe([]);
+});
+
+test('a published root needs its remote id and a recorded hash', function (array $root, bool $published) {
+    expect(ThreadProgress::hasPublishedRoot([ThreadProgress::KEY => [$root]]))->toBe($published);
+})->with([
+    'complete root' => [['hash' => 'h0', 'id' => '1'], true],
+    'missing remote id' => [['hash' => 'h0'], false],
+    'blank hash' => [['hash' => ' ', 'id' => '1'], false],
+]);
 
 test('a segment without a poll keeps the checkpoint hash it had before polls, and a poll changes it', function () {
     $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60];
