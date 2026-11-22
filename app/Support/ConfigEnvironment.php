@@ -23,6 +23,6 @@ final class ConfigEnvironment
         $configured = (string) env($key);
         $scopes = filled($configured) ? $configured : $default;
 
-        return Str::matchAll('/[^\s,]+/', $scopes)->all();
+        return OAuthScopes::parse($scopes);
     }
 }

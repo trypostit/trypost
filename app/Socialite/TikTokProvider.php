@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Socialite;
 
-use Illuminate\Support\Str;
+use App\Support\OAuthScopes;
 use SocialiteProviders\TikTok\Provider;
 
 class TikTokProvider extends Provider
@@ -24,7 +24,7 @@ class TikTokProvider extends Provider
             return $tokenResponse;
         }
 
-        $this->setScopes(Str::matchAll('/[^\s,]+/', $reportedScopes)->all());
+        $this->setScopes(OAuthScopes::parse($reportedScopes));
 
         return $tokenResponse;
     }

@@ -22,11 +22,11 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Support\ChannelPermissions;
+use App\Support\OAuthScopes;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -228,9 +228,11 @@ class SocialController extends Controller
      */
     protected function reportedScopes(array|string|null $reported): array
     {
-        $scopes = array_values(array_unique(array_filter(
-            preg_split('/[\s,]+/', implode(' ', (array) $reported)) ?: [],
-        )));
+        $scopes = collect(OAuthScopes::parse(OAuthScopes::spaceSeparated((array) $reported)))
+            ->filter()
+            ->uniqueStrict()
+            ->values()
+            ->all();
 
         return $scopes === [] ? $this->consentScopes() : $scopes;
     }
@@ -243,12 +245,12 @@ class SocialController extends Controller
 
     protected function commaSeparatedConsentScopes(): string
     {
-        return Arr::join($this->consentScopes(), ',');
+        return OAuthScopes::commaSeparated($this->consentScopes());
     }
 
     protected function spaceSeparatedConsentScopes(): string
     {
-        return Arr::join($this->consentScopes(), ' ');
+        return OAuthScopes::spaceSeparated($this->consentScopes());
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Dto\CanvaTokens;
 use App\Enums\Media\CanvaPreset;
 use App\Exceptions\Media\CanvaReconnectRequired;
 use App\Models\MediaSourceConnection;
+use App\Support\OAuthScopes;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\PendingRequest;
@@ -46,7 +47,7 @@ class CanvaClient
             'response_type' => 'code',
             'client_id' => (string) config('services.canva.client_id'),
             'redirect_uri' => route('app.integrations.canva.callback'),
-            'scope' => implode(' ', self::SCOPES),
+            'scope' => OAuthScopes::spaceSeparated(self::SCOPES),
             'code_challenge' => $codeChallenge,
             'code_challenge_method' => (string) config('trypost.media_sources.canva.code_challenge_method'),
             'state' => $state,
