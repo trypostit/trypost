@@ -57,6 +57,12 @@ return [
     'google_signup' => 'Daftar dengan Google',
     'github_login' => 'Masuk dengan GitHub',
     'github_signup' => 'Daftar dengan GitHub',
+    'oidc_login' => 'Masuk dengan :provider',
+    'oidc_signup' => 'Daftar dengan :provider',
+    'oidc_group_denied' => 'Akunmu tidak termasuk dalam grup yang boleh menggunakan aplikasi ini.',
+    'oidc_email_missing' => 'Penyedia identitasmu tidak mengirimkan alamat email.',
+    'oidc_email_unverified' => 'Alamat emailmu belum diverifikasi di penyedia identitasmu.',
+    'oidc_failed' => 'Masuk dengan SSO gagal. Silakan coba lagi.',
     'github_email_unavailable' => 'Kami tidak bisa mengambil emailmu dari GitHub. Jadikan email GitHub-mu publik atau berikan izin akses email, lalu coba lagi.',
 
     'login' => [
