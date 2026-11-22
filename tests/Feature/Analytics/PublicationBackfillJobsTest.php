@@ -384,7 +384,15 @@ test('a backfill job persists one page then advances its cursor and dispatches c
 });
 
 test('a paused history backfill retains its cursor and resumes once the scope is available', function () {
-    Http::fake();
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [['id' => 'older-post', 'create_time' => now()->subMonth()->timestamp]],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
     $scopes = ['user.info.basic', 'video.publish', 'video.upload'];
     $account = SocialAccount::factory()->create([
         'platform' => Platform::TikTok,
@@ -397,6 +405,7 @@ test('a paused history backfill retains its cursor and resumes once the scope is
         'status' => SyncStatus::Running,
         'checkpoint' => ['cursor' => '1234', 'revision' => 2],
         'last_success_at' => null,
+        'last_error_category' => 'rate_limited',
     ]);
     $job = new BackfillAccountPublications($account->id, $state->id);
     Bus::fake();
@@ -405,11 +414,10 @@ test('a paused history backfill retains its cursor and resumes once the scope is
     app()->call([$job, 'handle']);
     Http::assertNothingSent();
     expect($state->fresh())
-        ->status->toBe(SyncStatus::Running)
-        ->checkpoint->toBe(['cursor' => '1234', 'revision' => 2])
+        ->status->toBe(SyncStatus::Paused)
+        ->checkpoint->toBe(['cursor' => '1234', 'revision' => 3])
         ->last_success_at->toBeNull();
 
-    $this->travel(3)->hours();
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
     Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
 
@@ -419,13 +427,24 @@ test('a paused history backfill retains its cursor and resumes once the scope is
     (new BootstrapAccountAnalytics($account->id))->handle();
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
 
-    bindPublicationPage(new PublicationPage([
-        new DiscoveredPublication('older-post', CarbonImmutable::now('UTC')->subMonth(), PublicationContentType::Video),
-    ], null, true));
     app()->call([$job, 'handle']);
 
     expect($state->fresh()->status)->toBe(SyncStatus::Complete)
         ->and(AnalyticsPublication::query()->where('remote_id', 'older-post')->exists())->toBeTrue();
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'cursor') === 1234);
+});
+
+test('bootstrapping an account without history permissions leaves its backfill paused without dispatching it', function () {
+    config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
+    $account = SocialAccount::factory()->tiktok()->create();
+    Bus::fake();
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    $backfill = $account->analyticsSyncStates()->forCollector(SyncCollector::PublicationBackfill)->sole();
+    expect($backfill->status)->toBe(SyncStatus::Paused);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
 });
 
 test('a publication page resolves the account identity once for every post', function () {

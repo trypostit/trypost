@@ -48,12 +48,19 @@ final class ThreadProgress
      */
     public static function failureMessage(Post $post, string $message, ?array $context): string
     {
-        $published = count((array) data_get($context, self::KEY, []));
-        $total = 1 + (ThreadReplies::supports($post->platform) ? count(ThreadReplies::of($post->meta)) : 0);
+        $published = collect(data_get($context, self::KEY))->count();
 
-        return $published > 0 && $published < $total
-            ? __('posts.errors.thread_incomplete', ['published' => $published, 'total' => $total, 'error' => $message])
-            : $message;
+        if ($published === 0) {
+            return $message;
+        }
+
+        $total = 1 + count(ThreadReplies::of($post->meta));
+
+        if ($published >= $total) {
+            return $message;
+        }
+
+        return __('posts.errors.thread_incomplete', ['published' => $published, 'total' => $total, 'error' => $message]);
     }
 
     /**

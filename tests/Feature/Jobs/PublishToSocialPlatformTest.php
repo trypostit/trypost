@@ -2404,6 +2404,36 @@ test('a mastodon thread that fails midway is visible and its retry never posts a
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'status') === 'Three' && data_get($request->data(), 'in_reply_to_id') === '2');
 });
 
+test('a thread retry still reports live segments when replies are disabled', function () {
+    Event::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update(['content' => 'Root']);
+    $target = publishJobRetarget($this->post, $account, ['meta' => ['thread_replies' => ['Reply']]]);
+    $instance = data_get($account->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
+        ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
+        ->push(['error' => 'Validation failed'], 422)]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    config(['trypost.platforms.mastodon.permissions.thread_replies.scopes' => ['write:replies']]);
+    Bus::fake([PublishToSocialPlatform::class]);
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+        ->assertSuccessful();
+    (new PublishToSocialPlatform($target->fresh()))->handle();
+
+    $failed = $target->fresh();
+    expect($failed->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.form.thread.unsupported'),
+        ]))
+        ->and(collect(data_get($failed->error_context, 'thread_progress'))->pluck('id')->all())->toBe(['1']);
+    Http::assertSentCount(2);
+});
+
 test('the reply ids are written in the same update that publishes the target', function () {
     Event::fake();
     $publisher = Mockery::mock(LinkedInPublisher::class);

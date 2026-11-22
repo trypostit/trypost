@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
 use App\Support\ChannelPermissions;
@@ -11,6 +12,7 @@ use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -31,7 +33,7 @@ class LinkedInController extends SocialController
      */
     protected function ensurePlatformEnabled(): void
     {
-        if (! $this->personEnabled() && ! $this->organizationEnabled()) {
+        if ($this->enabledPlatforms()->isEmpty()) {
             abort(Response::HTTP_FORBIDDEN, 'This platform is currently unavailable.');
         }
     }
@@ -60,41 +62,59 @@ class LinkedInController extends SocialController
 
         try {
             $socialUser = Socialite::driver($this->driver)->user();
+            $reconnect = $this->reconnectAccount($workspace);
+            $enabledPlatforms = $this->enabledPlatforms();
+            $missingIdentity = 'not_linkedin_admin';
+
+            if ($reconnect !== null) {
+                $enabledPlatforms = $enabledPlatforms->filter(fn (SocialPlatform $platform): bool => $platform === $reconnect->platform);
+                $missingIdentity = $reconnect->platform === SocialPlatform::LinkedInPage ? 'page_not_found' : 'wrong_account';
+            }
+
+            if ($enabledPlatforms->isEmpty()) {
+                return $this->failConnection($missingIdentity);
+            }
+
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->connectScopes());
+            $publishablePlatforms = $enabledPlatforms->filter(
+                fn (SocialPlatform $platform): bool => blank(ChannelPermissions::missingFrom($scopes, $platform, GatedFeature::Publish)),
+            );
+
+            if ($publishablePlatforms->isEmpty()) {
+                return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+            }
 
             $credentials = [
                 'access_token' => $socialUser->token,
                 'refresh_token' => $socialUser->refreshToken,
                 'token_expires_at' => $socialUser->expiresIn ? now()->addSeconds($socialUser->expiresIn) : null,
-                'scopes' => $this->normalizeScopes($socialUser->approvedScopes ?? []),
+                'scopes' => $scopes,
             ];
 
             $person = [
                 'id' => (string) $socialUser->getId(),
                 'name' => $socialUser->getName(),
                 'avatar' => $socialUser->getAvatar(),
-                'vanity_name' => $this->personEnabled() ? $this->fetchVanityName($socialUser->token) : null,
             ];
 
-            $identities = [
-                ...($this->personEnabled() ? [$this->personIdentity($person, $credentials)] : []),
-                ...array_map(
-                    fn (array $organization): array => $this->organizationIdentity($organization, $person, $credentials),
-                    $this->organizationEnabled() ? $this->fetchOrganizations($socialUser->token) : [],
-                ),
-            ];
+            $identities = [];
 
-            if ($identities === []) {
-                return $this->failConnection('not_linkedin_admin');
+            if ($publishablePlatforms->contains(SocialPlatform::LinkedIn)) {
+                $person['vanity_name'] = $this->fetchVanityName($socialUser->token);
+                $identities[] = $this->personIdentity($person, $credentials);
             }
 
-            $reconnect = $this->reconnectAccount($workspace);
+            if ($publishablePlatforms->contains(SocialPlatform::LinkedInPage)) {
+                foreach ($this->fetchOrganizations($socialUser->token) as $organization) {
+                    $identities[] = $this->organizationIdentity($organization, $person, $credentials);
+                }
+            }
 
-            return $this->offerIdentities(
-                $workspace,
-                $identities,
-                $reconnect,
-                $reconnect?->platform === SocialPlatform::LinkedInPage ? 'page_not_found' : 'wrong_account',
-            );
+            if ($identities === []) {
+                return $this->failConnection($missingIdentity);
+            }
+
+            return $this->offerIdentities($workspace, $identities, $reconnect, $missingIdentity);
         } catch (Exception $e) {
             Log::error('LinkedIn OAuth Error', [
                 'error' => $e->getMessage(),
@@ -187,40 +207,20 @@ class LinkedInController extends SocialController
      */
     private function connectScopes(): array
     {
-        $scopes = collect();
-
-        if ($this->personEnabled()) {
-            $scopes = $scopes->merge(ChannelPermissions::requestedScopes(SocialPlatform::LinkedIn));
-        }
-
-        if ($this->organizationEnabled()) {
-            $scopes = $scopes->merge(ChannelPermissions::requestedScopes(SocialPlatform::LinkedInPage));
-        }
-
-        return $scopes->unique()->values()->all();
-    }
-
-    private function personEnabled(): bool
-    {
-        return SocialPlatform::LinkedIn->isEnabled();
-    }
-
-    private function organizationEnabled(): bool
-    {
-        return SocialPlatform::LinkedInPage->isEnabled();
+        return $this->enabledPlatforms()
+            ->flatMap(ChannelPermissions::requestedScopes(...))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
-     * LinkedIn returns approved scopes comma-joined, but Socialite splits OAuth
-     * scopes on space — so the whole CSV lands as a single array element. Re-split
-     * on commas to store individual scope tokens.
-     *
-     * @param  array<int, string>  $approvedScopes
-     * @return array<int, string>
+     * @return Collection<int, SocialPlatform>
      */
-    private function normalizeScopes(array $approvedScopes): array
+    private function enabledPlatforms(): Collection
     {
-        return array_values(array_filter(explode(',', implode(',', $approvedScopes))));
+        return collect([SocialPlatform::LinkedIn, SocialPlatform::LinkedInPage])
+            ->filter(fn (SocialPlatform $platform): bool => $platform->isEnabled());
     }
 
     private function fetchVanityName(string $accessToken): ?string

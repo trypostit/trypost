@@ -36,6 +36,8 @@ export interface PlatformConfig {
     disabledFeatures: GatedFeatureValue[];
 }
 
+export type PlatformConfigs = Partial<Record<string, PlatformConfig>>;
+
 /** What `Platform::publishConfig()` serves for an account: each network fills only its own keys. */
 export interface PublishConfig {
     /** TikTok: the privacy levels the creator may pick, and the policy links. */

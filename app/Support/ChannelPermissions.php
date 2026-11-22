@@ -94,11 +94,7 @@ class ChannelPermissions
     /** Whether TryPost may use the feature on the channel: it is on and the grant holds its scopes. */
     public static function permits(SocialAccount $account, GatedFeature $feature): bool
     {
-        if (! self::enabled($account->platform, $feature)) {
-            return false;
-        }
-
-        return ! self::lacks($account, $feature);
+        return self::isGrantedWhenEnabled($account, $feature) === true;
     }
 
     /** Whether the account's stored grant lacks a scope of the feature (`missingScope()`). */
@@ -170,11 +166,17 @@ class ChannelPermissions
      */
     private static function blocks(SocialAccount $account, GatedFeature $feature): bool
     {
+        return self::isGrantedWhenEnabled($account, $feature) === false;
+    }
+
+    /** Whether the grant covers the feature, or null when the feature is off. */
+    private static function isGrantedWhenEnabled(SocialAccount $account, GatedFeature $feature): ?bool
+    {
         if (! self::enabled($account->platform, $feature)) {
-            return false;
+            return null;
         }
 
-        return self::lacks($account, $feature);
+        return ! self::lacks($account, $feature);
     }
 
     /**

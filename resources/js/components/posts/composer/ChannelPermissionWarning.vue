@@ -9,7 +9,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
-import type { PlatformConfig } from '@/types/platform';
+import type { PlatformConfigs } from '@/types/platform';
 import type { ComposerAccount } from '@/types/post-composition';
 
 /**
@@ -23,7 +23,7 @@ import type { ComposerAccount } from '@/types/post-composition';
 const props = withDefaults(
     defineProps<{
         accounts: ComposerAccount[];
-        platformConfigs: Record<string, PlatformConfig>;
+        platformConfigs: PlatformConfigs;
         meta?: Record<string, any> | null;
         disabled?: boolean;
         reconnectable?: boolean;

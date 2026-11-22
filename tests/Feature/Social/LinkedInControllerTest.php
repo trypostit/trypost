@@ -21,23 +21,6 @@ beforeEach(function () {
     $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 });
 
-/**
- * Build a Socialite user for the LinkedIn person behind the OAuth grant.
- */
-function linkedInSocialiteUser(string $id = 'person-123'): SocialiteUser
-{
-    $socialiteUser = Mockery::mock(SocialiteUser::class);
-    $socialiteUser->shouldReceive('getId')->andReturn($id);
-    $socialiteUser->shouldReceive('getName')->andReturn('John Doe');
-    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
-    $socialiteUser->token = 'test-access-token';
-    $socialiteUser->refreshToken = 'test-refresh-token';
-    $socialiteUser->expiresIn = 5184000; // 60 days
-    $socialiteUser->approvedScopes = ['openid', 'profile', 'email', 'w_member_social'];
-
-    return $socialiteUser;
-}
-
 test('linkedin authorize url carries the member and organization scopes', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.linkedin.connect'));
 
@@ -147,24 +130,27 @@ test('connect redirects to workspace creation when there is no current workspace
  * Fake the LinkedIn login and the organizations it administers, then run the callback.
  *
  * @param  list<array<string, mixed>>  $organizations
+ * @param  list<string>  $approvedScopes
  */
-function runLinkedInCallback(object $test, array $organizations = [], string $personId = 'person-123', ?string $avatar = null): void
-{
-    $socialiteUser = linkedInSocialiteUser($personId);
-
-    if ($avatar !== null) {
-        $socialiteUser = Mockery::mock(SocialiteUser::class);
-        $socialiteUser->shouldReceive('getId')->andReturn($personId);
-        $socialiteUser->shouldReceive('getName')->andReturn('John Doe');
-        $socialiteUser->shouldReceive('getAvatar')->andReturn($avatar);
-        $socialiteUser->token = 'test-access-token';
-        $socialiteUser->refreshToken = 'test-refresh-token';
-        $socialiteUser->expiresIn = 5184000;
-        $socialiteUser->approvedScopes = ['openid', 'profile', 'email', 'w_member_social'];
-    }
+function runLinkedInCallback(
+    object $test,
+    array $organizations = [],
+    string $personId = 'person-123',
+    ?string $avatar = null,
+    array $approvedScopes = ['openid', 'profile', 'email', 'w_member_social', 'w_organization_social', 'rw_organization_admin'],
+): void {
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn($personId);
+    $socialiteUser->shouldReceive('getName')->andReturn('John Doe');
+    $socialiteUser->shouldReceive('getAvatar')->andReturn($avatar);
+    $socialiteUser->token = 'test-access-token';
+    $socialiteUser->refreshToken = 'test-refresh-token';
+    $socialiteUser->expiresIn = 5184000;
+    $socialiteUser->approvedScopes = $approvedScopes;
 
     Socialite::shouldReceive('driver')->with('linkedin-openid')->andReturn(Mockery::mock(['user' => $socialiteUser]));
 
+    Http::preventStrayRequests();
     Http::fake([
         config('trypost.platforms.linkedin.api').'/v2/me*' => Http::response(['id' => $personId, 'vanityName' => 'johndoe'], 200),
         config('trypost.platforms.linkedin.api').'/v2/organizationAcls*' => Http::response([
@@ -206,6 +192,51 @@ test('linkedin callback offers only the member when they administer no organizat
     runLinkedInCallback($this);
 
     expect(PendingConnection::current()->identityKeys())->toBe(['linkedin:person-123']);
+});
+
+test('linkedin callback offers only identities with the granted publish scope', function (string $scope, string $identity, string $skippedEndpoint) {
+    startSocialConnect($this->workspace, Platform::LinkedIn);
+    $scopes = ['openid', 'profile', 'email', 'rw_organization_admin', $scope];
+
+    runLinkedInCallback($this, [['id' => 123456, 'localizedName' => 'Test Company']], approvedScopes: $scopes);
+
+    expect(PendingConnection::current()->identityKeys())->toBe([$identity]);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), $skippedEndpoint));
+
+    assertFinishedOnChannel(finishSocialConnect(Platform::LinkedIn, [$identity]));
+    expect($this->workspace->socialAccounts()->sole()->scopes)->toBe($scopes);
+})->with([
+    'personal profile' => ['w_member_social', 'linkedin:person-123', '/v2/organizationAcls'],
+    'company page' => ['w_organization_social', 'linkedin-page:123456', '/v2/me'],
+]);
+
+test('linkedin callback refuses a grant without any publish scope', function () {
+    startSocialConnect($this->workspace, Platform::LinkedIn);
+
+    runLinkedInCallback($this, approvedScopes: ['openid', 'profile', 'email', 'rw_organization_admin']);
+
+    $this->get(route('app.social.connect.show', Platform::LinkedIn))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('state', 'missing_permission')
+            ->where('identities', [])
+        );
+    Http::assertNothingSent();
+    $this->assertDatabaseCount('social_accounts', 0);
+});
+
+test('linkedin uses the requested scopes when the token response does not report scopes', function () {
+    config([
+        'trypost.platforms.linkedin.scopes' => ['openid', 'profile', 'email', 'w_member_social'],
+        'trypost.platforms.linkedin-page.scopes' => ['openid', 'profile', 'email', 'w_organization_social', 'rw_organization_admin'],
+    ]);
+    startSocialConnect($this->workspace, Platform::LinkedIn);
+
+    runLinkedInCallback($this, [['id' => 123456, 'localizedName' => 'Test Company']], approvedScopes: ['']);
+
+    expect(PendingConnection::current()->identityKeys())->toBe(['linkedin:person-123', 'linkedin-page:123456']);
+    assertFinishedOnChannel(finishSocialConnect(Platform::LinkedIn, ['linkedin-page:123456']));
+    expect($this->workspace->socialAccounts()->sole()->scopes)
+        ->toBe(['openid', 'profile', 'email', 'w_member_social', 'w_organization_social', 'rw_organization_admin']);
 });
 
 test('linkedin callback fails with expired session', function () {
@@ -332,24 +363,11 @@ test('an organization the member does not administer cannot be finished', functi
 test('linkedin splits comma-separated approved scopes before saving', function () {
     startSocialConnect($this->workspace, Platform::LinkedIn);
 
-    $socialiteUser = Mockery::mock(SocialiteUser::class);
-    $socialiteUser->shouldReceive('getId')->andReturn('person-123');
-    $socialiteUser->shouldReceive('getName')->andReturn('John Doe');
-    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
-    $socialiteUser->token = 'test-access-token';
-    $socialiteUser->refreshToken = 'test-refresh-token';
-    $socialiteUser->expiresIn = 5184000;
-    $socialiteUser->approvedScopes = ['email,openid,profile,w_member_social,w_organization_social'];
-
-    Socialite::shouldReceive('driver')->with('linkedin-openid')->andReturn(Mockery::mock(['user' => $socialiteUser]));
-    Http::fake([
-        config('trypost.platforms.linkedin.api').'/v2/me*' => Http::response(['vanityName' => 'johndoe'], 200),
-        config('trypost.platforms.linkedin.api').'/v2/organizationAcls*' => Http::response(['elements' => [
-            ['organization~' => ['id' => 123456, 'localizedName' => 'Test Company']],
-        ]], 200),
-    ]);
-
-    $this->actingAs($this->user)->get(route('app.social.linkedin.callback'))->assertRedirect();
+    runLinkedInCallback(
+        $this,
+        [['id' => 123456, 'localizedName' => 'Test Company']],
+        approvedScopes: ['email,openid,profile,w_member_social,w_organization_social'],
+    );
 
     finishSocialConnect(Platform::LinkedIn, ['linkedin-page:123456'])->assertRedirect();
 
@@ -414,6 +432,43 @@ test('linkedin reconnect keeps the original page card', function () {
     expect($this->workspace->socialAccounts()->count())->toBe(1)
         ->and($account->fresh()->access_token)->toBe('test-access-token');
 });
+
+test('linkedin reconnect requires publish permission for the original identity', function (Platform $platform, string $identityId, string $otherPublishScope) {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => $platform,
+        'platform_user_id' => $identityId,
+        'access_token' => 'expired-token',
+        'status' => Status::TokenExpired,
+    ]);
+    startSocialConnect($this->workspace, Platform::LinkedIn, $account);
+
+    runLinkedInCallback(
+        $this,
+        [['id' => 123456, 'localizedName' => 'Test Company']],
+        approvedScopes: ['openid', 'profile', 'email', 'rw_organization_admin', $otherPublishScope],
+    );
+
+    $this->get(route('app.social.connect.show', Platform::LinkedIn))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('state', 'missing_permission')
+            ->where('identities', [])
+            ->where('reconnecting', true)
+            ->where('retryUrl', route('app.social.linkedin.connect', [
+                'reconnect' => $account->id,
+                'return_to' => route('app.workspace.channels', absolute: false),
+            ]))
+        );
+    finishSocialConnect(Platform::LinkedIn, ["{$platform->value}:{$identityId}"])
+        ->assertSessionHasErrors('identities.0');
+    $this->assertDatabaseCount('social_accounts', 1);
+    expect($account->fresh())
+        ->access_token->toBe('expired-token')
+        ->status->toBe(Status::TokenExpired);
+})->with([
+    'personal profile' => [Platform::LinkedIn, 'person-123', 'w_organization_social'],
+    'company page' => [Platform::LinkedInPage, '123456', 'w_member_social'],
+]);
 
 test('linkedin shows an organization already connected as locked', function () {
     SocialAccount::factory()->create([

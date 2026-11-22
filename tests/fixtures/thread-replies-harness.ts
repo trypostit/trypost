@@ -69,8 +69,12 @@ console.log(
         platforms: results,
         standalone_types: STANDALONE_CONTENT_TYPES,
         gated_features: Object.values(GatedFeature),
-        standalone_key: threadUnavailableKey('x_post', thread, true),
-        replies_off_key: threadUnavailableKey('x_post', thread, false),
+        standalone_key: threadUnavailableKey('x', 'x_post', thread, true),
+        replies_off_key: threadUnavailableKey('x', 'x_post', thread, false),
+        unsupported_story_keys: [
+            threadUnavailableKey('instagram', 'instagram_story', thread, true),
+            threadUnavailableKey('facebook', 'facebook_story', thread, true),
+        ],
         permission_keys: {
             allowed: missingPermissionKey(thread, {}, true),
             not_used: missingPermissionKey({}, missing, true),

@@ -531,7 +531,17 @@ test('a stored thread on a network whose connect does not ask for the replies sc
     $page->assertMissing('@thread-start')
         ->assertMissing('@preview-thread')
         ->assertMissing("@channel-permission-warning-{$post->social_account_id}")
+        ->keys("@composer-caption-{$post->social_account_id}", 'Shift+Enter')
+        ->assertMissing('@thread-reply-collapsed-1')
+        ->click('@thread-reply-collapsed-0')
+        ->keys('@thread-reply-0', 'Shift+Enter')
+        ->assertMissing('@thread-reply-1')
+        ->assertMissing('@thread-add-reply')
+        ->assertMissing("@composer-{$post->social_account_id}-poll")
+        ->click('@thread-reply-remove-0')
         ->assertNoJavaScriptErrors();
+    waitForGone($page, '@thread-replies');
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') !== 'true'");
 });
 
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {

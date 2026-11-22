@@ -25,6 +25,32 @@ class AdvanceAnalyticsSyncState
         private readonly ResolveAnalyticsAccountKey $accountKeys,
     ) {}
 
+    /** Preserve the cursor and invalidate any in-flight page's checkpoint revision. */
+    public function pause(string $stateId, string $socialAccountId): void
+    {
+        DB::transaction(function () use ($stateId, $socialAccountId): void {
+            $state = AnalyticsSyncState::query()
+                ->where('social_account_id', $socialAccountId)
+                ->whereIn('status', [SyncStatus::Pending, SyncStatus::Running])
+                ->lockForUpdate()
+                ->find($stateId);
+
+            if (blank($state)) {
+                return;
+            }
+
+            $checkpoint = $state->checkpoint ?? [];
+            $state->update([
+                'status' => SyncStatus::Paused,
+                'checkpoint' => [
+                    ...$checkpoint,
+                    'revision' => (int) data_get($checkpoint, 'revision', 0) + 1,
+                ],
+                'last_error_category' => null,
+            ]);
+        });
+    }
+
     /**
      * @return array{cursor: ?string, revision: int, cutoff: CarbonImmutable}|null
      */

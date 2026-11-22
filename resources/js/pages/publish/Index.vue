@@ -794,7 +794,11 @@ const submitComposition = (
         content: destination.content ?? composition.content,
         media: destination.media ?? composition.media,
         content_type: destination.content_type,
-        meta: destination.meta,
+        meta: {
+            ...destination.meta,
+            // Updates merge meta, so clearing the thread requires an explicit null.
+            thread_replies: destination.meta?.thread_replies ?? null,
+        },
         label_ids: composition.label_ids,
         ...(composition.queue
             ? { queue: composition.queue }

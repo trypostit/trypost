@@ -140,27 +140,17 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
-/** Whether a post type takes thread replies on its network. */
-export const takesThreadReplies = (contentType: ContentTypeValue | null): boolean => {
-    if (!filled(contentType)) {
-        return true;
-    }
-
-    return blank(STANDALONE_CONTENT_TYPES[contentType]);
-};
-
 /**
- * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
- * the server: the network's connect does not ask for the scope replies need
- * (`repliesEnabled` false), or the post type stands alone. Null when it can.
+ * Why the network cannot accept replies for this post type. `repliesEnabled`
+ * is whether the network asks for the permissions its replies need.
  */
-export const threadUnavailableKey = (
+export const threadUnsupportedKey = (
+    platform: PlatformValue,
     contentType: ContentTypeValue | null,
-    meta: Record<string, any> | null,
     repliesEnabled: boolean,
 ): PostFormTranslationKey | null => {
-    if (blank(threadRepliesOf(meta))) {
-        return null;
+    if (threadMaxReplies(platform) === 0) {
+        return 'posts.form.thread.unsupported';
     }
 
     if (!repliesEnabled) {
@@ -172,4 +162,18 @@ export const threadUnavailableKey = (
     }
 
     return STANDALONE_CONTENT_TYPES[contentType] ?? null;
+};
+
+/** A post with stored replies reports the same availability error as `ThreadReplies::violation()`. */
+export const threadUnavailableKey = (
+    platform: PlatformValue,
+    contentType: ContentTypeValue | null,
+    meta: Record<string, any> | null,
+    repliesEnabled: boolean,
+): PostFormTranslationKey | null => {
+    if (blank(threadRepliesOf(meta))) {
+        return null;
+    }
+
+    return threadUnsupportedKey(platform, contentType, repliesEnabled);
 };

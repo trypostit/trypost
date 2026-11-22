@@ -91,6 +91,8 @@ abstract class AbstractPublicationSync implements ShouldQueue
         }
 
         if (! ChannelPermissions::permits($channel, GatedFeature::PostHistory)) {
+            $sync->pause($this->syncStateId, $channel->id);
+
             return;
         }
 
@@ -141,19 +143,20 @@ abstract class AbstractPublicationSync implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        $state = AnalyticsSyncState::query()->find($this->syncStateId);
         $account = SocialAccount::query()->find($this->socialAccountId);
 
         if ($account) {
             app(AnalyticsJobLog::class)->record($account, $this->collector()->value, 'cursor:queue_failed', $this->attempts(), 'queue_failed');
         }
 
-        if ($state && $state->social_account_id === $this->socialAccountId && ! $state->isTerminal()) {
-            $state->update([
+        AnalyticsSyncState::query()
+            ->whereKey($this->syncStateId)
+            ->where('social_account_id', $this->socialAccountId)
+            ->whereIn('status', [SyncStatus::Pending, SyncStatus::Running])
+            ->update([
                 'status' => SyncStatus::Failed,
                 'last_error_category' => 'queue_failed',
             ]);
-        }
     }
 
     private function recordFailure(

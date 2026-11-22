@@ -186,11 +186,11 @@ import {
     replyTooLongKey,
     startThreadKey,
     threadMaxReplies,
-    takesThreadReplies,
     threadRepliesOf,
-    threadUnavailableKey,
     threadReplyContentType,
     threadReplyPostType,
+    threadUnavailableKey,
+    threadUnsupportedKey,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { userTimezone } from '@/preferences';
@@ -210,9 +210,10 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    isThreadPlatform,
-} from '@/types/network-options';
-import { Platform, type PlatformConfig, type PlatformValue } from '@/types/platform';
+    Platform,
+    type PlatformConfigs,
+    type PlatformValue,
+} from '@/types/platform';
 import {
     PostStatus,
     ScheduleMode,
@@ -243,7 +244,7 @@ const props = withDefaults(
         initialAccountIds?: string[];
         initialQueueSlot?: string | null;
         submitting?: boolean;
-        platformConfigs?: Record<string, PlatformConfig>;
+        platformConfigs?: PlatformConfigs;
         pinterestBoards?: Record<string, PinterestBoardsPayload>;
         tiktokCreatorInfos?: Record<
             string,
@@ -512,13 +513,13 @@ const {
     composition,
     (account) => pollLimitsOf(props.platformConfigs[account.id]?.publishConfig),
     {
-    activeReply: (group) => activeReply(group),
-    replies: (group) => threadReplies(group),
-    setReplies: (group, replies) => setThreadReplies(group, replies),
-    replyLimit: (group) => threadReplyLimit(group),
-    uploading: (group, reply) =>
-        Boolean(replyUploaderFor(group, reply)?.busy.value),
-    enabled: (group) => groupRepliesEnabled(group),
+        activeReply: (group) => activeReply(group),
+        replies: (group) => threadReplies(group),
+        setReplies: (group, replies) => setThreadReplies(group, replies),
+        replyLimit: (group) => threadReplyLimit(group),
+        uploading: (group, reply) =>
+            Boolean(replyUploaderFor(group, reply)?.busy.value),
+        supportsReplies: (group) => supportsThread(group),
     },
 );
 /**
@@ -1202,35 +1203,42 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
     threadRepliesOf(groupDestination(group).meta);
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
-/**
- * Whether the card offers a thread: its network chains replies, the network's
- * connect asks for the scope replies need (`disabledFeatures`), and its post
- * type does not stand alone (`STANDALONE_CONTENT_TYPES`).
- */
-const supportsThread = (group: NetworkGroup): boolean => {
-    if (!isThreadPlatform(group.platform)) {
+const hasThreadReplies = (group: NetworkGroup): boolean =>
+    filled(threadReplies(group));
+const supportsThread = (group: NetworkGroup): boolean =>
+    blank(
+        threadUnsupportedKey(
+            group.platform,
+            groupDestination(group).content_type,
+            groupRepliesEnabled(group),
+        ),
+    );
+
+const canStartThreadFromCaption = (group: NetworkGroup): boolean => {
+    if (repliesAreComments(group.platform)) {
         return false;
     }
 
-    if (!groupRepliesEnabled(group)) {
-        return false;
-    }
-
-    return takesThreadReplies(groupDestination(group).content_type);
+    return supportsThread(group);
 };
 /** Whether replies are on for the card's network (`disabledFeatures` of its platform config). */
 const groupRepliesEnabled = (group: NetworkGroup): boolean =>
     accountRepliesEnabled(group.anchor);
 const accountRepliesEnabled = (account: ComposerAccount): boolean =>
-    featureIsEnabled(props.platformConfigs[account.id], GatedFeature.ThreadReplies);
-/** How many replies the card takes: its network's cap, or only those it has when replies are off, so they can be removed. */
+    featureIsEnabled(
+        props.platformConfigs[account.id],
+        GatedFeature.ThreadReplies,
+    );
+/** Use zero to prevent adding replies while keeping stored replies editable. */
 const groupReplyLimit = (group: NetworkGroup): number => {
-    if (!groupRepliesEnabled(group)) {
-        return threadReplies(group).length;
+    if (!supportsThread(group)) {
+        return 0;
     }
 
     return threadMaxReplies(group.platform);
 };
+const canAddThreadReply = (group: NetworkGroup): boolean =>
+    threadReplies(group).length < groupReplyLimit(group);
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
@@ -1258,12 +1266,11 @@ const setThreadReplies = (
     );
 };
 const addThreadReply = (group: NetworkGroup): void => {
-    const replies = threadReplies(group);
-
-    if (replies.length >= threadMaxReplies(group.platform)) {
+    if (!canAddThreadReply(group)) {
         return;
     }
 
+    const replies = threadReplies(group);
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1271,13 +1278,11 @@ const focusFirstReply = (): void => {
     threadActive.value = 0;
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
-    const replies = threadReplies(group);
-
-    if (replies.length >= threadMaxReplies(group.platform)) {
+    if (!canAddThreadReply(group)) {
         return;
     }
 
-    setThreadReplies(group, [newThreadReply(), ...replies]);
+    setThreadReplies(group, [newThreadReply(), ...threadReplies(group)]);
     threadActive.value = 0;
 };
 const activeRemaining = (group: NetworkGroup): number | null => {
@@ -1600,6 +1605,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
     }
     for (const key of [
         threadUnavailableKey(
+            account.platform,
             contentType,
             destination.meta,
             accountRepliesEnabled(account),
@@ -2916,11 +2922,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     threadReplies(group)[threadActive] !== undefined
                                 "
                                 :active-reply="threadActive"
-                                :threadable="
-                                    supportsThread(group) &&
-                                    !repliesAreComments(group.platform)
-                                "
-                                :threaded="threadReplies(group).length > 0"
+                                :threadable="canStartThreadFromCaption(group)"
+                                :threaded="hasThreadReplies(group)"
                                 @expand-caption="deselectThread"
                                 @start-thread="startThreadFromCaption(group)"
                                 @next-post="focusFirstReply"
@@ -3158,7 +3161,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                 </template>
                                 <template
-                                    v-if="threadReplies(group).length"
+                                    v-if="hasThreadReplies(group)"
                                     #replies
                                 >
                                     <ThreadRepliesField
@@ -3313,9 +3316,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                         >
                                             {{ activeRemaining(group) }}
                                         </CharacterCounter>
-                                        <template v-if="supportsThread(group)">
+                                        <template v-if="canAddThreadReply(group)">
                                             <Button
-                                                v-if="!threadReplies(group).length"
+                                                v-if="!hasThreadReplies(group)"
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
@@ -3329,12 +3332,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     $t(startThreadKey(group.platform))
                                                 }}</span>
                                             </Button>
-                                            <Tooltip
-                                                v-else-if="
-                                                    threadReplies(group).length <
-                                                    threadMaxReplies(group.platform)
-                                                "
-                                            >
+                                            <Tooltip v-else>
                                                 <TooltipTrigger as-child>
                                                     <Button
                                                         type="button"

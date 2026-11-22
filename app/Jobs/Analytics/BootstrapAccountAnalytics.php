@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
+use App\Actions\Analytics\AdvanceAnalyticsSyncState;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
@@ -106,6 +107,8 @@ class BootstrapAccountAnalytics implements ShouldQueue
         }
 
         if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
+            app(AdvanceAnalyticsSyncState::class)->pause($backfill->id, $account->id);
+
             return;
         }
 

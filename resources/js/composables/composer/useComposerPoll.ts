@@ -30,14 +30,13 @@ type ComposerCards = Pick<
 type CardMeta = Record<string, any>;
 
 /** What the composer's thread gives the reply polls: the reply being edited, the replies, a reply's text limit, and whether a reply's file is still uploading. */
-export interface ComposerThread {
+interface ComposerThread {
     activeReply: (group: NetworkGroup) => ThreadReply | undefined;
     replies: (group: NetworkGroup) => ThreadReply[];
     setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
     replyLimit: (group: NetworkGroup) => number | null;
     uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
-    /** Whether replies are on for the card's network (its `disabledFeatures`). */
-    enabled: (group: NetworkGroup) => boolean;
+    supportsReplies: (group: NetworkGroup) => boolean;
 }
 
 /**
@@ -289,7 +288,7 @@ export const useComposerPoll = (
             return false;
         }
 
-        if (!thread.enabled(group)) {
+        if (!thread.supportsReplies(group)) {
             return false;
         }
 
@@ -321,6 +320,10 @@ export const useComposerPoll = (
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {
+        if (!replyPollAvailable(group)) {
+            return;
+        }
+
         const reply = thread.activeReply(group);
         const limits = groupPollLimits(group);
 

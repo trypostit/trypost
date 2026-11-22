@@ -134,12 +134,24 @@ const slots = useSlots();
 const captionId = computed(() => `${props.testIdPrefix}-caption`);
 const hintId = computed(() => `${props.testIdPrefix}-templates-hint`);
 const rootToolbarTarget = computed(() => `${props.testIdPrefix}-root-toolbar`);
-const replyToolbarTarget = computed(
-    () => `${props.testIdPrefix}-reply-toolbar-${props.activeReply}`,
-);
 const showsCaption = computed(
     () => !CAPTIONLESS_CONTENT_TYPES.has(props.contentType),
 );
+const threadToolbarTarget = computed((): string | null => {
+    if (!props.threaded) {
+        return null;
+    }
+
+    if (props.captionCollapsed) {
+        return `#${props.testIdPrefix}-reply-toolbar-${props.activeReply}`;
+    }
+
+    if (!showsCaption.value) {
+        return null;
+    }
+
+    return `#${rootToolbarTarget.value}`;
+});
 const showsMedia = computed(
     () => props.hasMedia || !MEDIALESS_CONTENT_TYPES.has(props.contentType),
 );
@@ -263,9 +275,9 @@ const showsHeader = computed(
                 <slot v-if="!threaded" name="attachment" />
                 <slot v-if="showsMedia" name="media" />
                 <Teleport
-                    v-if="threaded"
+                    v-if="threadToolbarTarget"
                     defer
-                    :to="`#${captionCollapsed ? replyToolbarTarget : rootToolbarTarget}`"
+                    :to="threadToolbarTarget"
                 >
                     <slot name="toolbar" />
                 </Teleport>

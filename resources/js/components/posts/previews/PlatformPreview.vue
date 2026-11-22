@@ -19,17 +19,16 @@ import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaRuleFor } from '@/lib/contentTypeMediaRules';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import {
     repliesAreComments,
-    takesThreadReplies,
     threadRepliesOf,
     threadReplyContentType,
+    threadUnsupportedKey,
 } from '@/lib/threadReplies';
 import { withCoversFor } from '@/lib/videoFrame';
 import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { isThreadPlatform } from '@/types/network-options';
 import type { PlatformValue, PublishConfig } from '@/types/platform';
 import type { ThreadReply } from '@/types/thread-reply';
 
@@ -72,17 +71,15 @@ const takesCoverImage = computed((): boolean => {
 
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
-const showsThread = computed((): boolean => {
-    if (!props.repliesEnabled) {
-        return false;
-    }
-
-    if (!filled(props.contentType)) {
-        return true;
-    }
-
-    return takesThreadReplies(props.contentType);
-});
+const showsThread = computed(() =>
+    blank(
+        threadUnsupportedKey(
+            props.platform,
+            props.contentType ?? null,
+            props.repliesEnabled,
+        ),
+    ),
+);
 
 const previewMeta = computed((): Record<string, any> | undefined => {
     const meta = props.meta;
@@ -103,7 +100,7 @@ const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
         return [];
     }
 
-    if (!isThreadPlatform(props.platform) || repliesAreComments(props.platform)) {
+    if (repliesAreComments(props.platform)) {
         return [];
     }
 

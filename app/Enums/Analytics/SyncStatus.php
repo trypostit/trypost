@@ -8,6 +8,7 @@ enum SyncStatus: string
 {
     case Pending = 'pending';
     case Running = 'running';
+    case Paused = 'paused';
     case Complete = 'complete';
     case Partial = 'partial';
     case ProviderLimited = 'provider_limited';

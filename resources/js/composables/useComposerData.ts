@@ -20,7 +20,11 @@ import type {
     ChannelTikTokCreatorInfo,
     SidebarChannel,
 } from '@/types/channel';
-import { Platform, type PlatformConfig } from '@/types/platform';
+import {
+    Platform,
+    type PlatformConfig,
+    type PlatformConfigs,
+} from '@/types/platform';
 import type { ComposerAccount } from '@/types/post-composition';
 import type { PostingSchedule } from '@/types/posting-schedule';
 
@@ -151,7 +155,7 @@ export const useComposerData = () => {
         }),
     );
 
-    const platformConfigs = computed<Record<string, PlatformConfig>>(() =>
+    const platformConfigs = computed<PlatformConfigs>(() =>
         Object.fromEntries(
             Object.entries(composer.value?.accounts ?? {}).map(
                 ([id, details]) => [id, details.platform_config],

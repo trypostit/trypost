@@ -7,7 +7,6 @@ import { threadUnavailableKey } from '@/lib/threadReplies';
 import type { ContentTypeValue } from '@/types/content-type';
 import type { PlatformValue } from '@/types/platform';
 
-/** Why a card's thread cannot go out: replies are off on its network, or its post type stands alone (`threadUnavailableKey()`). */
 const props = withDefaults(
     defineProps<{
         platform: PlatformValue;
@@ -20,7 +19,12 @@ const props = withDefaults(
 );
 
 const warningKey = computed(() =>
-    threadUnavailableKey(props.contentType, props.meta, props.repliesEnabled),
+    threadUnavailableKey(
+        props.platform,
+        props.contentType,
+        props.meta,
+        props.repliesEnabled,
+    ),
 );
 
 const networkLabel = computed(() => getPlatformLabel(props.platform));

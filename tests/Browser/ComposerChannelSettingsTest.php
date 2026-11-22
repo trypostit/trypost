@@ -1142,6 +1142,49 @@ test('the x card offers the ai-generated switch with its explanation and saves i
     expect($post->fresh()->meta)->toEqual(['is_ai_generated' => true]);
 });
 
+test('a story with a stored thread can be saved to the schedule after removing its replies', function (Platform $platform, ContentType $type) {
+    fakeChannelSettingsApis();
+    $photo = [[
+        'id' => (string) Str::uuid(),
+        'type' => 'image',
+        'path' => 'medias/story.jpg',
+        'url' => 'https://example.com/story.jpg',
+        'mime_type' => 'image/jpeg',
+        'original_filename' => 'story.jpg',
+        'meta' => ['width' => 1080, 'height' => 1920],
+    ]];
+    $post = seedChannelSettingsPost($platform, $type, $photo);
+    $scheduledAt = now()->addDay()->startOfHour();
+    $post->update([
+        'status' => Status::Scheduled,
+        'scheduled_at' => $scheduledAt,
+        'meta' => ['thread_replies' => [['text' => 'Stored reply', 'media' => []]]],
+    ]);
+    $warning = "@thread-unavailable-warning-{$post->social_account_id}";
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, $warning, __('posts.form.thread.unsupported'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    $page->assertMissing('@preview-thread')
+        ->assertVisible('@thread-reply-collapsed-0')
+        ->assertMissing('@thread-add-reply')
+        ->click('@thread-reply-remove-0');
+
+    waitForGone($page, $warning);
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') !== 'true'");
+    $page->assertMissing('@thread-replies')->click('@composer-submit');
+    waitForGone($page, '@post-composer-dialog');
+
+    $saved = $post->fresh();
+    expect($saved->status)->toBe(Status::Scheduled)
+        ->and($saved->scheduled_at->equalTo($scheduledAt))->toBeTrue()
+        ->and(data_get($saved->meta, 'thread_replies'))->toBeNull();
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'Instagram' => [Platform::Instagram, ContentType::InstagramStory],
+    'Facebook' => [Platform::Facebook, ContentType::FacebookStory],
+]);
+
 test('shift enter opens the next post of an x thread and backspace on an empty post folds it back', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
