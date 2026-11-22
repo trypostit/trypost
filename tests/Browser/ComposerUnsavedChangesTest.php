@@ -604,7 +604,24 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     $page->assertSeeIn("@channel-permission-warning-{$other}", $blockedChannel->display_name);
     expect(Str::squish($page->text("@channel-permission-warning-{$other}")))
         ->toBe("{$blockedChannel->display_name}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
-    $page->click("@channel-permission-warning-{$other}-reconnect");
+    $requests = $page->script(<<<JS
+        (() => {
+            const reconnect = document.querySelector('[data-testid="channel-permission-warning-{$other}-reconnect"]');
+            let requests = 0;
+            const countSave = ({ detail }) => {
+                if (detail.visit.method === 'post') {
+                    requests++;
+                }
+            };
+            document.addEventListener('inertia:before', countSave);
+            reconnect.click();
+            reconnect.click();
+            document.removeEventListener('inertia:before', countSave);
+
+            return requests;
+        })()
+    JS);
+    expect($requests)->toBe(1);
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blockedChannel->id}'");
 
     $page->assertNoJavaScriptErrors();
@@ -1219,9 +1236,9 @@ test('saving an edited post that was published meanwhile closes it and back does
     $post->forceFill(['status' => PostStatus::Published, 'published_at' => now()])->save();
     $page->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
-    waitForCondition($page, "!location.search.includes('edit=')");
+    waitForCondition($page, "location.search === '?tab=drafts'");
     $page->back();
-    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')

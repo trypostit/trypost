@@ -70,6 +70,10 @@ const submitComposition = (
     createAnother: boolean,
     onSaved?: () => void,
 ): void => {
+    if (submitting.value) {
+        return;
+    }
+
     submitting.value = true;
     const payload: Record<string, any> = { ...composition };
     router.post(storePost.url(), payload, {

@@ -756,20 +756,20 @@ const submitComposition = (
     const editPost = props.editPost;
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
-    let saved = false;
+    let closed = false;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         onSuccess: () => {
-            saved = true;
+            closed = true;
             composerOpen.value = false;
             onSaved?.();
         },
         onFinish: () => {
             composerSubmitting.value = false;
 
-            if (saved && returnsBack && !leavesApp) {
+            if (closed && returnsBack && !leavesApp) {
                 returnToOpeningPage();
             }
         },
@@ -796,6 +796,11 @@ const submitComposition = (
     };
     router.put(updatePost.url(editPost.id), data, {
         ...options,
+        onError: (errors) => {
+            if (filled(errors.post)) {
+                closed = true;
+            }
+        },
         onSuccess: () => {
             options.onSuccess();
 

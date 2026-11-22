@@ -737,7 +737,7 @@ test('editing the last note of a long thread scrolls its Save button into view',
     waitForCount($page, '@note-item', 10);
 
     $last = "[data-note-id=\"{$notes->last()->id}\"]";
-    $page->hover($last)->click("{$last} [data-testid=note-actions]");
+    $page->keys("{$last} [data-testid=note-actions]", 'Enter');
     waitFor($page, '@note-edit');
     $page->click('@note-edit');
     waitForState($page, '@note-edit-save', "(() => { const list = document.querySelector('[data-testid=notes-list]').getBoundingClientRect(); const save = element.getBoundingClientRect(); return save.top >= list.top - 1 && save.bottom <= list.bottom + 1; })()");
