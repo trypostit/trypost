@@ -43,6 +43,7 @@ use App\Services\PostHogService;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
+use App\Socialite\TikTokProvider;
 use App\Support\Auth\PasswordRequirements;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -69,7 +70,6 @@ use SocialiteProviders\Facebook\FacebookExtendSocialite;
 use SocialiteProviders\LinkedIn\LinkedInExtendSocialite;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Pinterest\PinterestExtendSocialite;
-use SocialiteProviders\TikTok\TikTokExtendSocialite;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 class AppServiceProvider extends ServiceProvider
@@ -313,7 +313,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SocialiteWasCalled::class, LinkedInExtendSocialite::class);
         Event::listen(SocialiteWasCalled::class, LinkedInPageExtendSocialite::class);
         Event::listen(SocialiteWasCalled::class, PinterestExtendSocialite::class);
-        Event::listen(SocialiteWasCalled::class, TikTokExtendSocialite::class);
+        Event::listen(SocialiteWasCalled::class, function (SocialiteWasCalled $event): void {
+            $event->extendSocialite('tiktok', TikTokProvider::class);
+        });
     }
 
     protected function configureDefaults(): void

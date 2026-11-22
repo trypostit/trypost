@@ -8,8 +8,13 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\PendingConnection;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
+use Illuminate\Support\Arr;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
+use Psr\Http\Message\RequestInterface;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -134,6 +139,48 @@ test('tiktok oauth callback creates account', function () {
         'status' => Status::Connected->value,
     ]);
 });
+
+test('tiktok connects using only the profile fields allowed by the token', function (?string $scope, ?string $username) {
+    $token = ['access_token' => 'test-token', ...Arr::whereNotNull(['scope' => $scope])];
+    $profile = ['open_id' => 'tiktok123', 'display_name' => 'TikTok User', 'avatar_large_url' => null];
+    $stack = HandlerStack::create(new MockHandler([
+        new GuzzleResponse(200, [], json_encode($token)),
+        function (RequestInterface $request) use ($profile, $username): GuzzleResponse {
+            expect($request->getUri()->getPath())->toBe('/v2/user/info/');
+            parse_str($request->getUri()->getQuery(), $query);
+            $fields = explode(',', $query['fields']);
+
+            if (in_array('username', $fields, true)) {
+                if ($username === null) {
+                    return new GuzzleResponse(401, [], '{"error":{"code":"scope_not_authorized"}}');
+                }
+
+                $profile['username'] = $username;
+            }
+
+            return new GuzzleResponse(200, [], json_encode(['data' => ['user' => $profile]]));
+        },
+    ]));
+    config(['services.tiktok.guzzle' => ['handler' => $stack]]);
+    startSocialConnect($this->workspace, Platform::TikTok);
+
+    $this->actingAs($this->user)->withSession(['state' => 'issued-state'])
+        ->get(route('app.social.tiktok.callback', ['code' => 'code', 'state' => 'issued-state']))
+        ->assertRedirect(route('app.social.connect.show', Platform::TikTok));
+
+    expect(socialConnectFailure())->toBeNull();
+    assertFinishedOnChannel(finishSocialConnect(Platform::TikTok));
+    $channel = SocialAccount::query()->sole();
+    expect($channel->username)->toBe($username)
+        ->and($channel->display_name)->toBe('TikTok User');
+    if ($scope !== null) {
+        expect($channel->scopes)->toBe(explode(',', $scope));
+    }
+})->with([
+    'profile declined' => ['user.info.basic,video.publish', null],
+    'profile granted' => ['user.info.basic,user.info.profile,video.publish', 'tiktoker'],
+    'grant omitted after consent' => [null, 'tiktoker'],
+]);
 
 test('tiktok callback fails with expired session', function () {
     // No session data - simulating expired session
