@@ -31,7 +31,7 @@ class AdvanceAnalyticsSyncState
         DB::transaction(function () use ($stateId, $socialAccountId): void {
             $state = AnalyticsSyncState::query()
                 ->where('social_account_id', $socialAccountId)
-                ->whereIn('status', [SyncStatus::Pending, SyncStatus::Running])
+                ->pendingOrRunning()
                 ->lockForUpdate()
                 ->find($stateId);
 

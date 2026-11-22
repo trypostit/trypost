@@ -78,7 +78,7 @@ test('scheduling to several channels refuses only the one that lacks the publish
         ],
     ])->assertHasErrors([__('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
 
-    expect(Post::query()->where('workspace_id', $this->workspace->id)->whereIn('social_account_id', [$granted->id, $lacking->id])->exists())->toBeFalse();
+    expect($this->workspace->posts()->onChannels([$granted->id, $lacking->id])->exists())->toBeFalse();
 });
 
 test('a channel missing only analytics scopes still schedules on the web, api and mcp', function (string $surface) {
@@ -203,5 +203,5 @@ test('a member whose posts need approval is told an admin needs to reconnect the
         'destinations' => [['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value]],
     ])->assertHasErrors([__('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
 
-    expect(Post::query()->where('social_account_id', $lacking->id)->exists())->toBeFalse();
+    expect($lacking->posts()->exists())->toBeFalse();
 });

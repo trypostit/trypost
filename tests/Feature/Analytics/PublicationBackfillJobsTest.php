@@ -413,9 +413,11 @@ test('a paused history backfill retains its cursor and resumes once the scope is
     config(['trypost.platforms.tiktok.scopes' => $scopes]);
     app()->call([$job, 'handle']);
     Http::assertNothingSent();
+    $job->failed(new RuntimeException('Late queue failure'));
     expect($state->fresh())
         ->status->toBe(SyncStatus::Paused)
         ->checkpoint->toBe(['cursor' => '1234', 'revision' => 3])
+        ->last_error_category->toBeNull()
         ->last_success_at->toBeNull();
 
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();

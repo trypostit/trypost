@@ -152,7 +152,7 @@ abstract class AbstractPublicationSync implements ShouldQueue
         AnalyticsSyncState::query()
             ->whereKey($this->syncStateId)
             ->where('social_account_id', $this->socialAccountId)
-            ->whereIn('status', [SyncStatus::Pending, SyncStatus::Running])
+            ->pendingOrRunning()
             ->update([
                 'status' => SyncStatus::Failed,
                 'last_error_category' => 'queue_failed',

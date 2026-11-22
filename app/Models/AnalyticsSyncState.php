@@ -83,6 +83,11 @@ class AnalyticsSyncState extends Model
         ];
     }
 
+    public function scopePendingOrRunning(Builder $query): Builder
+    {
+        return $query->whereIn('status', [SyncStatus::Pending, SyncStatus::Running]);
+    }
+
     public function scopeTerminal(Builder $query): Builder
     {
         return $query->whereIn('status', [

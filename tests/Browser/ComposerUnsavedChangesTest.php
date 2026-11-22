@@ -546,12 +546,12 @@ test('a stored thread on a network whose connect does not ask for the replies sc
 
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
     $post = seedHeldBackMastodonThread(channels: 2);
-    $blocked = $post->social_account_id;
-    $other = SocialAccount::query()->whereKeyNot($blocked)->where('workspace_id', $post->workspace_id)->value('id');
+    $blockedChannel = $post->socialAccount;
+    $other = $post->workspace->socialAccounts()->whereKeyNot($blockedChannel->id)->value('id');
     $page = visit(route('app.posts.create'))->resize(1280, 900);
     waitForOpen($page, '@post-composer-dialog');
 
-    foreach ([$other, $blocked] as $accountId) {
+    foreach ([$other, $blockedChannel->id] as $accountId) {
         $page->click('@composer-add-account');
         waitFor($page, "@composer-account-option-{$accountId}");
         $page->click("@composer-account-option-{$accountId}")
@@ -564,15 +564,14 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
     waitFor($page, "@channel-permission-warning-{$other}-reconnect");
-    $page->assertSeeIn("@channel-permission-warning-{$other}", SocialAccount::query()->find($blocked)->display_name);
-    $named = SocialAccount::query()->find($blocked)->display_name;
+    $page->assertSeeIn("@channel-permission-warning-{$other}", $blockedChannel->display_name);
     expect(Str::squish($page->text("@channel-permission-warning-{$other}")))
-        ->toBe("{$named}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
+        ->toBe("{$blockedChannel->display_name}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
     $page->click("@channel-permission-warning-{$other}-reconnect");
-    waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
+    waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blockedChannel->id}'");
 
     $page->assertNoJavaScriptErrors();
-    expect(Post::query()->whereKeyNot($post->id)->where('social_account_id', $blocked)->sole())
+    expect($blockedChannel->posts()->whereKeyNot($post->id)->sole())
         ->status->toBe(PostStatus::Draft)
         ->meta->thread_replies->toEqual([['text' => 'Second post', 'media' => []]]);
 });
