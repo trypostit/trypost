@@ -10,9 +10,9 @@ import {
     openPostComposer,
     postComposerRequest,
 } from '@/composables/useGlobalPostComposer';
-import type { PostComposition } from '@/composables/usePostComposition';
 import { store as storePost } from '@/routes/app/posts';
 import type { SharedData } from '@/types';
+import type { PostComposition } from '@/types/post-composition';
 
 const page = usePage<SharedData>();
 const composerData = useComposerData();

@@ -2,22 +2,13 @@ import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
-import type {
-    ComposerAccount,
-    PostComposition,
-} from '@/composables/usePostComposition';
 import { connectUrl } from '@/lib/connectRoutes';
 import { filled } from '@/lib/helpers';
 import { PostStatus } from '@/types/post';
-
-interface SaveAndReconnectOptions {
-    /** Saves the post; false when it cannot be saved yet. */
-    submit: (
-        status: PostComposition['status'],
-        onSaved: () => void,
-        leavesApp: boolean,
-    ) => boolean;
-}
+import type {
+    ComposerAccount,
+    SubmitPostComposition,
+} from '@/types/post-composition';
 
 /** The channel to reconnect: its id and the network whose connect flow it uses. */
 type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
@@ -32,7 +23,7 @@ type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
  * stays open in the composer instead. A post waiting for approval never
  * offers it (`ChannelPermissionWarning`'s `reconnectable`).
  */
-export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
+export const useSaveAndReconnect = (submit: SubmitPostComposition) => {
     const { startConnect } = useNetworkConnect([]);
 
     return (account: ReconnectedAccount): void => {
@@ -44,7 +35,7 @@ export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
             return;
         }
 
-        const submitted = options.submit(
+        const submitted = submit(
             PostStatus.Draft,
             () => window.location.assign(url),
             true,

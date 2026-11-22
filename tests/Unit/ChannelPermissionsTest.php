@@ -5,12 +5,11 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MissingPermissionException;
 use App\Models\Post;
 use App\Models\SocialAccount;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Services\Social\XPublisher;
 use App\Support\ChannelPermissions;
 use App\Support\PostPlatformMetaRules;
@@ -32,45 +31,47 @@ test('a channel without the scope a feature needs is held back from it and told 
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
     $with = xAccountGranting(['tweet.write', 'tweet.read', 'users.read', 'tweet.moderate.write']);
 
-    expect(ChannelPermissions::violation($without, $thread, null))
-        ->toBe(['meta.thread_replies', __('posts.form.thread.reply_empty')])
+    expect(ChannelPermissions::featureBlockingPost($without, $thread))
+        ->toBe(GatedFeature::ThreadReplies)
+        ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::ThreadReplies))->toBe(__('posts.form.thread.reply_empty'))
         ->and(ChannelPermissions::missing($without))
         ->toBe(['thread_replies' => ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']])
-        ->and(ChannelPermissions::violation($with, $thread, null))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($with, $thread))->toBeNull()
         ->and(ChannelPermissions::missing($with))->toBe([]);
 });
 
 test('a post that does not use the feature is never held back by its scope', function () {
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::violation($without, ['thread_replies' => []], null))->toBeNull()
-        ->and(ChannelPermissions::violation($without, null, null))->toBeNull();
+    expect(ChannelPermissions::featureBlockingPost($without, ['thread_replies' => []]))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($without, null))->toBeNull();
 });
 
 test('a channel lacking the publish scope is refused on the channel, with the network named', function () {
     $account = xAccountGranting(['tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::violation($account, [], null))
-        ->toBe(['social_account_id', __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
+    expect(ChannelPermissions::featureBlockingPost($account, []))
+        ->toBe(GatedFeature::Publish)
+        ->and(GatedFeature::Publish->postValidationField())->toBe('social_account_id')
+        ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::Publish))
+        ->toBe(__('channels.permissions.publish.message', ['network' => Platform::X->label()]));
 });
 
 test('without its own copy a thread refusal names the network, and publishing comes before replies', function () {
     gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
     $thread = ['thread_replies' => ['second']];
 
-    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), $thread, null))
-        ->toBe(['meta.thread_replies', __('channels.permissions.thread_replies.message', ['network' => Platform::X->label()])])
-        ->and(ChannelPermissions::violation(xAccountGranting(['tweet.read']), $thread, null)[0])->toBe('social_account_id');
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), $thread))
+        ->toBe(GatedFeature::ThreadReplies)
+        ->and(GatedFeature::ThreadReplies->postValidationField())->toBe('meta.thread_replies')
+        ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::ThreadReplies))
+        ->toBe(__('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]))
+        ->and(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.read']), $thread))->toBe(GatedFeature::Publish);
 });
 
 test('a member who cannot reconnect the channel is told who can', function () {
-    $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::X, 'scopes' => ['tweet.read', 'users.read']]);
-    $member = workspaceMember($workspace);
-
-    expect(ChannelPermissions::violation($account, [], $member))
-        ->toBe(['social_account_id', __('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
+    expect(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::Publish, canManageAccounts: false))
+        ->toBe(__('channels.permissions.publish.member_message', ['network' => Platform::X->label()]));
 });
 
 test('a requirement of several scopes is lacking when any one is, and an alternative satisfies its requirement', function () {
@@ -92,8 +93,8 @@ test('unknown scopes, an unknown channel and a network that gates nothing hold n
     $thread = ['thread_replies' => ['second']];
     $telegram = SocialAccount::factory()->make(['platform' => Platform::Telegram, 'scopes' => ['anything']]);
 
-    expect(ChannelPermissions::violation(xAccountGranting(null), $thread, null))->toBeNull()
-        ->and(ChannelPermissions::violation(null, $thread, null))->toBeNull()
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(null), $thread))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost(null, $thread))->toBeNull()
         ->and(ChannelPermissions::scopes(Platform::Telegram, GatedFeature::Publish))->toBe([])
         ->and(ChannelPermissions::missing($telegram))->toBe([]);
 });
@@ -121,7 +122,7 @@ test('a channel is never told to reconnect for an optional read or a scope TryPo
 });
 
 test('a channel missing only analytics scopes is never held back from a post', function () {
-    expect(ChannelPermissions::violation(xAccountGranting(['tweet.write']), [], null))->toBeNull();
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), []))->toBeNull();
 });
 
 test('a publisher refuses a feature its channel lacks as a permission, before anything goes out', function () {
@@ -136,6 +137,21 @@ test('a publisher refuses a feature its channel lacks as a permission, before an
         ->toThrow(fn (MissingPermissionException $exception) => expect($exception->category)->toBe(ErrorCategory::Permission)
             ->and($exception->platformErrorCode)->toBe('missing_permission')
             ->and($exception->userMessage)->toBe(__('posts.form.thread.reply_empty')));
+    Http::assertNothingSent();
+});
+
+test('a publisher applies the standalone rule to a legacy post with no stored content type', function () {
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPost->value => 'posts.form.thread.unsupported']]);
+    $account = SocialAccount::factory()->x()->create(['scopes' => ['tweet.write', 'tweet.moderate.write']]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create([
+        'content' => 'First post',
+        'content_type' => null,
+        'meta' => ['thread_replies' => ['Second']],
+    ]);
+    Http::fake();
+
+    expect(fn () => app(XPublisher::class)->publish($post))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
     Http::assertNothingSent();
 });
 
@@ -166,7 +182,7 @@ test('publishing is always asked for, even when the env list leaves its scope ou
 
     expect(ChannelPermissions::requestedScopes(Platform::TikTok))->toBe(['user.info.basic', 'video.upload', 'video.publish'])
         ->and(ChannelPermissions::disabledFeatures(Platform::TikTok))->not->toContain(GatedFeature::Publish->value)
-        ->and(ChannelPermissions::violation($account, [], null))->toBe(['social_account_id', __('channels.permissions.publish.message', ['network' => Platform::TikTok->label()])]);
+        ->and(ChannelPermissions::featureBlockingPost($account, []))->toBe(GatedFeature::Publish);
 });
 
 test('a publish requirement met by any of its alternatives adds nothing to the request', function () {

@@ -11,8 +11,8 @@ import { isShiftEnter } from '@/lib/keyboard';
 import {
     isBlankThreadReply,
     insertThreadReply,
-    type ThreadReply,
 } from '@/lib/threadReplies';
+import type { ThreadReply } from '@/types/thread-reply';
 
 const props = withDefaults(
     defineProps<{

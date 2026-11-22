@@ -188,7 +188,7 @@ class UpdatePost
                     ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
                 'meta' => $meta,
             ]],
-        ], $post->media ?? [], $actor));
+        ], $post->media ?? [], actor: $actor));
 
         $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
             if (self::finalizedMeanwhile($post)) {

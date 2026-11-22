@@ -6,9 +6,12 @@ namespace App\Console\Commands\Analytics;
 
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\DiscoverAccountPublications;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -38,6 +41,10 @@ class DispatchPublicationDiscovery extends Command
                     return;
                 }
 
+                if (! ChannelPermissions::permits($channel, GatedFeature::PostHistory)) {
+                    return;
+                }
+
                 $backfill = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
 
@@ -60,6 +67,14 @@ class DispatchPublicationDiscovery extends Command
                     && $backfill->updated_at?->lessThan($staleBefore);
 
                 if ($staleBackfill) {
+                    BootstrapAccountAnalytics::dispatch($channel->id);
+
+                    return;
+                }
+
+                if ($backfill->status === SyncStatus::Partial
+                    && $backfill->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL
+                    && $channel->canReadMastodonStatuses()) {
                     BootstrapAccountAnalytics::dispatch($channel->id);
 
                     return;

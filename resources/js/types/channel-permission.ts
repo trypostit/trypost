@@ -9,6 +9,7 @@ export const GatedFeature = {
     PostInsights: 'post_insights',
     PostInsightsExtended: 'post_insights_extended',
     PostHistory: 'post_history',
+    PrivatePostRead: 'private_post_read',
 } as const;
 
 export type GatedFeatureValue = (typeof GatedFeature)[keyof typeof GatedFeature];

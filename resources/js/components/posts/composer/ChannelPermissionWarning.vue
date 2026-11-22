@@ -5,11 +5,12 @@ import TransSlots from '@/components/TransSlots.vue';
 import WarningLine from '@/components/WarningLine.vue';
 import WarningLink from '@/components/WarningLink.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import type { ComposerAccount } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
+import type { PlatformConfig } from '@/types/platform';
+import type { ComposerAccount } from '@/types/post-composition';
 
 /**
  * Why a card cannot go out: one of its channels lacks the scope a feature
@@ -22,7 +23,7 @@ import { channelName } from '@/types/channel';
 const props = withDefaults(
     defineProps<{
         accounts: ComposerAccount[];
-        platformConfigs: Record<string, any>;
+        platformConfigs: Record<string, PlatformConfig>;
         meta?: Record<string, any> | null;
         disabled?: boolean;
         reconnectable?: boolean;
@@ -35,37 +36,28 @@ const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();
 
 const { canManageAccounts } = useWorkspaceAbilities();
 
-const keyFor = (account: ComposerAccount): string | null =>
-    channelPermissionKey(
-        props.platformConfigs[account.id],
-        props.meta,
-        canManageAccounts.value,
-    );
-
-const blockedAccount = computed((): ComposerAccount | null => {
+const permissionWarning = computed(() => {
     for (const account of props.accounts) {
-        if (filled(keyFor(account))) {
-            return account;
+        const key = channelPermissionKey(
+            props.platformConfigs[account.id],
+            props.meta,
+            canManageAccounts.value,
+        );
+
+        if (filled(key)) {
+            return { account, key };
         }
     }
 
     return null;
 });
 
-const warningKey = computed((): string | null => {
-    if (!filled(blockedAccount.value)) {
-        return null;
-    }
-
-    return keyFor(blockedAccount.value);
-});
-
 const networkLabel = computed((): string => {
-    if (!filled(blockedAccount.value)) {
+    if (!filled(permissionWarning.value)) {
         return '';
     }
 
-    return getPlatformLabel(blockedAccount.value.platform);
+    return getPlatformLabel(permissionWarning.value.account.platform);
 });
 
 /** A card of several channels names the one the warning is about. */
@@ -74,11 +66,11 @@ const namedChannel = computed((): string | null => {
         return null;
     }
 
-    if (!filled(blockedAccount.value)) {
+    if (!filled(permissionWarning.value)) {
         return null;
     }
 
-    return channelName(blockedAccount.value);
+    return channelName(permissionWarning.value.account);
 });
 
 const offersReconnect = computed((): boolean => {
@@ -90,14 +82,14 @@ const offersReconnect = computed((): boolean => {
 });
 
 const reconnect = (): void => {
-    if (filled(blockedAccount.value)) {
-        emit('reconnect', blockedAccount.value);
+    if (filled(permissionWarning.value)) {
+        emit('reconnect', permissionWarning.value.account);
     }
 };
 </script>
 
 <template>
-    <WarningLine v-if="warningKey" :data-testid="testId">
+    <WarningLine v-if="permissionWarning" :data-testid="testId">
         <TransSlots
             v-if="namedChannel"
             :message="$t('channels.permissions.on_channel')"
@@ -106,11 +98,11 @@ const reconnect = (): void => {
                 <strong>{{ namedChannel }}</strong>
             </template>
             <template #message>
-                {{ $t(warningKey, { network: networkLabel }) }}
+                {{ $t(permissionWarning.key, { network: networkLabel }) }}
             </template>
         </TransSlots>
         <template v-else>
-            {{ $t(warningKey, { network: networkLabel }) }}
+            {{ $t(permissionWarning.key, { network: networkLabel }) }}
         </template>
         {{ ' ' }}
         <WarningLink

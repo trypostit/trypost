@@ -68,7 +68,7 @@ function serverPermissionKeys(): array
     return collect($cases)->map(function (array $case) use ($copy): ?string {
         [$meta, $missing, $canReconnect] = $case;
         $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptional() && $feature->isUsedBy($meta) && collect($missing)->contains($feature));
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta) && collect($missing)->contains($feature));
 
         if (blank($feature)) {
             return null;

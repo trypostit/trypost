@@ -1060,10 +1060,6 @@ enum ContentType: string
      */
     public function takesThreadReplies(): bool
     {
-        if (! ThreadReplies::supports($this->platform())) {
-            return false;
-        }
-
-        return blank(ThreadReplies::standaloneMessage($this->platform(), $this));
+        return ThreadReplies::supportsPostType($this->platform(), $this);
     }
 }

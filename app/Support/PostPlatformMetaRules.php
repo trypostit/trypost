@@ -425,11 +425,22 @@ class PostPlatformMetaRules
      */
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
-        $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $threadViolation = ThreadReplies::violation($target, $meta, $type);
+        $account = null;
+        $platform = $target;
 
-        if ($threadViolation !== null) {
-            return $threadViolation;
+        if ($target instanceof SocialAccount) {
+            $account = $target;
+            $platform = $target->platform;
+        }
+
+        if (filled($platform)) {
+            $threadViolation = ThreadReplies::violation($platform, $type ?? ContentType::defaultFor($platform), $meta, $account);
+
+            if (filled($threadViolation)) {
+                return $threadViolation;
+            }
+        } elseif (filled(ThreadReplies::of($meta))) {
+            return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));

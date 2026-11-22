@@ -32,16 +32,22 @@ trait HasSocialHttpClient
      */
     protected function validateContentLength(Post $post): void
     {
-        $permissionViolation = ChannelPermissions::violation($post->socialAccount, $post->meta, actor: null);
+        $account = $post->socialAccount;
+        $platform = $account?->platform ?? $post->platform;
+        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta);
 
-        if (filled($permissionViolation)) {
-            throw new MissingPermissionException($post->platform, $permissionViolation[1]);
+        if (filled($blockedFeature)) {
+            throw new MissingPermissionException(
+                $post->platform,
+                ChannelPermissions::reconnectMessage($platform, $blockedFeature),
+            );
         }
 
-        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta, $post->content_type);
+        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
+        $threadViolation = ThreadReplies::violation($platform, $type, $post->meta, $account);
 
-        if ($threadViolation !== null) {
-            throw new ContentLimitException($post->platform, $threadViolation[1]);
+        if (filled($threadViolation)) {
+            throw new ContentLimitException($post->platform, data_get($threadViolation, '1'));
         }
 
         $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));

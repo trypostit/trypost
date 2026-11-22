@@ -19,21 +19,22 @@ enum GatedFeature: string
     case PostInsights = 'post_insights';
     case PostInsightsExtended = 'post_insights_extended';
     case PostHistory = 'post_history';
+    case PrivatePostRead = 'private_post_read';
 
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
-     * schedule or publish it. Mirrored by `featureIsUsedBy()` in
+     * schedule or publish it. Mirrored by `requiresFeatureToPublish()` in
      * `lib/channelPermissions.ts`: every post publishes, a post with replies
      * uses them, analytics are never part of a post.
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public function isUsedBy(?array $meta): bool
+    public function isRequiredToPublish(?array $meta): bool
     {
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
-            self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory => false,
+            self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => false,
         };
     }
 
@@ -42,23 +43,23 @@ enum GatedFeature: string
      * itself for publishing, the replies for a thread. Analytics are never part
      * of a post, so they never land anywhere but on the channel.
      */
-    public function errorPath(): string
+    public function postValidationField(): string
     {
         return match ($this) {
             self::ThreadReplies => 'meta.thread_replies',
-            self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory => 'social_account_id',
+            self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'social_account_id',
         };
     }
 
     /**
      * A read TryPost skips quietly without its scope (Facebook `read_insights`,
-     * YouTube Analytics): the data is only thinner, so the channel is never
+     * YouTube Analytics, Mastodon private posts): the data is only thinner, so the channel is never
      * told to reconnect for it.
      */
-    public function isOptional(): bool
+    public function isOptionalRead(): bool
     {
         return match ($this) {
-            self::PostInsightsExtended => true,
+            self::PostInsightsExtended, self::PrivatePostRead => true,
             self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory => false,
         };
     }
@@ -68,12 +69,12 @@ enum GatedFeature: string
      * (`message`, `member_message`), unless its network sets its own. The
      * analytics features share one: to the user they are all insights.
      */
-    public function copyGroup(): string
+    public function translationGroup(): string
     {
         return match ($this) {
             self::Publish => 'channels.permissions.publish',
             self::ThreadReplies => 'channels.permissions.thread_replies',
-            self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory => 'channels.permissions.insights',
+            self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'channels.permissions.insights',
         };
     }
 }

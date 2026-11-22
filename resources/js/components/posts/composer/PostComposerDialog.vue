@@ -147,11 +147,6 @@ import {
 import {
     ACCOUNT_SCOPED_SETTINGS,
     usePostComposition,
-    type ComposerAccount,
-    type ComposerInitialDraft,
-    type ComposerInitialPost,
-    type NetworkGroup,
-    type PostComposition,
 } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
@@ -192,7 +187,6 @@ import {
     startThreadKey,
     threadMaxReplies,
     takesThreadReplies,
-    type ThreadReply,
     threadRepliesOf,
     threadUnavailableKey,
     threadReplyContentType,
@@ -218,12 +212,21 @@ import type { MediaItem } from '@/types/media';
 import {
     isThreadPlatform,
 } from '@/types/network-options';
-import { Platform, type PlatformValue } from '@/types/platform';
+import { Platform, type PlatformConfig, type PlatformValue } from '@/types/platform';
 import {
     PostStatus,
     ScheduleMode,
     type QueuePositionValue,
 } from '@/types/post';
+import type {
+    ComposerAccount,
+    ComposerInitialDraft,
+    ComposerInitialPost,
+    NetworkGroup,
+    PostComposition,
+    SubmitPostComposition,
+} from '@/types/post-composition';
+import type { ThreadReply } from '@/types/thread-reply';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 const props = withDefaults(
@@ -240,7 +243,7 @@ const props = withDefaults(
         initialAccountIds?: string[];
         initialQueueSlot?: string | null;
         submitting?: boolean;
-        platformConfigs?: Record<string, any>;
+        platformConfigs?: Record<string, PlatformConfig>;
         pinterestBoards?: Record<string, PinterestBoardsPayload>;
         tiktokCreatorInfos?: Record<
             string,
@@ -2014,11 +2017,11 @@ const createsAnother = (leavesApp: boolean): boolean => {
  * back through history after the save, which would cancel that visit, and
  * `onSaved` waits for the unsaved-changes guard to drop its history entry.
  */
-const submit = (
-    status: PostComposition['status'],
-    onSaved?: () => void,
+const submit: SubmitPostComposition = (
+    status,
+    onSaved,
     leavesApp = false,
-): boolean => {
+) => {
     if (
         !canSubmit.value ||
         (status !== PostStatus.Draft && hasBlockingIssues.value)
@@ -2069,7 +2072,7 @@ const saveAndLinkFacebook = useSaveAndLinkFacebook({
     submit,
 });
 
-const saveAndReconnect = useSaveAndReconnect({ submit });
+const saveAndReconnect = useSaveAndReconnect(submit);
 /** A post waiting for approval is decided on first, so saving never takes it out of review. */
 const isPendingApproval = computed(
     (): boolean => props.initialPost?.status === PostStatus.PendingApproval,
@@ -3408,10 +3411,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 :platform-index="
                                                     selectedAccounts.indexOf(account)
                                                 "
-                                                :platform-config="
-                                                    platformConfigs[account.id] ??
-                                                    null
-                                                "
+                                                :platform-config="platformConfigs[account.id]"
                                                 :pinterest-boards="
                                                     pinterestBoards[account.id] ??
                                                     null
@@ -3439,10 +3439,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
-                                        :platform-config="
-                                            platformConfigs[group.anchor.id] ??
-                                            null
-                                        "
+                                        :platform-config="platformConfigs[group.anchor.id]"
                                         @update:meta="
                                             composition.setGroupOverride(
                                                 group.key,

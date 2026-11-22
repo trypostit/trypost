@@ -277,32 +277,34 @@ test('an insights read is skipped without a request when the connect does not as
     Http::assertNothingSent();
 });
 
-test('a publication history read sends nothing when the connect does not ask for its scopes, even with a full grant', function (Platform $platform, string $path, array $requested) {
+test('a publication history read sends nothing when the connect does not ask for its scopes, even with a full grant', function (Platform $platform, array $requested) {
     Http::fake(['*' => Http::response([])]);
     config(["trypost.platforms.{$platform->value}.scopes" => $requested]);
     $account = scopeGuardAccount($platform, scopeGuardGrant($platform));
 
-    rescue(fn () => app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, now('UTC')->subMonths(3)->startOfMonth()), report: false);
+    $page = app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, now('UTC')->subMonths(3)->startOfMonth());
 
-    expect(scopeGuardRequested($path))->toBeFalse();
+    expect($page->publications)->toBeEmpty()
+        ->and($page->providerExhausted)->toBeTrue();
+    Http::assertNothingSent();
 })->with([
-    'tiktok' => [Platform::TikTok, '/video/list/', ['user.info.basic', 'video.publish', 'video.upload']],
-    'pinterest' => [Platform::Pinterest, '/pins', ['boards:read', 'boards:write', 'pins:write', 'user_accounts:read']],
+    'tiktok' => [Platform::TikTok, ['user.info.basic', 'video.publish', 'video.upload']],
+    'pinterest' => [Platform::Pinterest, ['boards:read', 'boards:write', 'pins:write', 'user_accounts:read']],
 ]);
 
-test('an optional insights read sends nothing when the connect does not ask for its scope, while the rest of the read goes on', function (Platform $platform, string $path, array $requested) {
+test('an optional insights read sends nothing when the connect does not ask for its scope, while the rest of the read goes on', function (Platform $platform, string $path, array $requested, MetricKey $metric) {
     Http::fake([
         '*/videos*' => Http::response(['items' => [['id' => 'remote-1', 'statistics' => ['viewCount' => '10']]]]),
-        '*' => Http::response([]),
+        '*' => Http::response(['reactions' => ['summary' => ['total_count' => 10]]]),
     ]);
     config(["trypost.platforms.{$platform->value}.scopes" => $requested]);
     $publication = scopeGuardPublication(scopeGuardAccount($platform, scopeGuardGrant($platform)));
 
-    rescue(fn () => app(PublicationMetricsCollectorFactory::class)->for($platform)->collect($publication, CarbonImmutable::now('UTC')), report: false);
+    $observation = app(PublicationMetricsCollectorFactory::class)->for($platform)->collect($publication, CarbonImmutable::now('UTC'));
 
-    expect(Http::recorded())->not->toBeEmpty()
+    expect(collect($observation->metrics)->firstWhere('key', $metric)?->value)->toBe(10)
         ->and(scopeGuardRequested($path))->toBeFalse();
 })->with([
-    'facebook without read_insights' => [Platform::Facebook, '/insights', ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'business_management']],
-    'youtube without analytics' => [Platform::YouTube, '/reports', ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube.force-ssl']],
+    'facebook without read_insights' => [Platform::Facebook, '/insights', ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'business_management'], MetricKey::Reactions],
+    'youtube without analytics' => [Platform::YouTube, '/reports', ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube.force-ssl'], MetricKey::Views],
 ]);

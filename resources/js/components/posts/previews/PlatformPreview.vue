@@ -22,7 +22,7 @@ import { mediaRuleFor } from '@/lib/contentTypeMediaRules';
 import { filled } from '@/lib/helpers';
 import {
     repliesAreComments,
-    type ThreadReply,
+    takesThreadReplies,
     threadRepliesOf,
     threadReplyContentType,
 } from '@/lib/threadReplies';
@@ -31,6 +31,7 @@ import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { isThreadPlatform } from '@/types/network-options';
 import type { PlatformValue, PublishConfig } from '@/types/platform';
+import type { ThreadReply } from '@/types/thread-reply';
 
 interface Props {
     platform: PlatformValue;
@@ -71,19 +72,34 @@ const takesCoverImage = computed((): boolean => {
 
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
-/** The meta the network's preview draws: without its replies when replies are off (a LinkedIn comment included). */
-const previewMeta = computed((): Record<string, any> | undefined => {
-    if (props.repliesEnabled) {
-        return props.meta;
+const showsThread = computed((): boolean => {
+    if (!props.repliesEnabled) {
+        return false;
     }
 
-    return Object.fromEntries(
-        Object.entries(props.meta ?? {}).filter(([key]) => key !== 'thread_replies'),
-    );
+    if (!filled(props.contentType)) {
+        return true;
+    }
+
+    return takesThreadReplies(props.contentType);
+});
+
+const previewMeta = computed((): Record<string, any> | undefined => {
+    const meta = props.meta;
+
+    if (showsThread.value) {
+        return meta;
+    }
+
+    if (!filled(meta)) {
+        return meta;
+    }
+
+    return Object.fromEntries(Object.entries(meta).filter(([key]) => key !== 'thread_replies'));
 });
 
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
-    if (!props.repliesEnabled) {
+    if (!showsThread.value) {
         return [];
     }
 

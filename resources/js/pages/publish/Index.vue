@@ -62,11 +62,6 @@ import {
     postCardLabelsKey,
     schedulePostCard,
 } from '@/composables/usePostCardActions';
-import type {
-    ComposerInitialDraft,
-    ComposerInitialPost,
-    PostComposition,
-} from '@/composables/usePostComposition';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import type { QueueSlotTarget } from '@/composables/useSortableQueue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
@@ -78,6 +73,11 @@ import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { postAttemptAt } from '@/lib/postCard';
 import { grid, settings } from '@/routes/app/channels';
 import { PostStatus, ScheduleMode } from '@/types/post';
+import type {
+    ComposerInitialDraft,
+    ComposerInitialPost,
+    PostComposition,
+} from '@/types/post-composition';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import type {
     PostCard,

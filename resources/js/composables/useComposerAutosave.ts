@@ -3,10 +3,6 @@ import { computed, getCurrentScope, onScopeDispose, ref } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 
 import { mediaUploadLimits } from '@/composables/useMediaUpload';
-import type {
-    ComposerAccount,
-    DestinationOverride,
-} from '@/composables/usePostComposition';
 import dayjs from '@/dayjs';
 import {
     readWorkspaceItem,
@@ -19,6 +15,10 @@ import { classify, MediaType } from '@/lib/mediaType';
 import type { SharedData } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
 import type { MediaItem, MediaSource, SourceMetaValue } from '@/types/media';
+import type {
+    ComposerAccount,
+    DestinationOverride,
+} from '@/types/post-composition';
 
 export const AUTOSAVE_DEBOUNCE_MS = 800;
 

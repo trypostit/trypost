@@ -124,10 +124,17 @@ test('how many replies a network takes comes from its replies setting', function
 test('a post type that stands alone refuses replies with its own message', function () {
     config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.reply_empty']]);
 
-    expect(ThreadReplies::violation(Platform::X, ['thread_replies' => ['second']], ContentType::XPoll))
+    expect(ThreadReplies::violation(Platform::X, ContentType::XPoll, ['thread_replies' => ['second']]))
         ->toBe(['thread_replies', __('posts.form.thread.reply_empty')])
-        ->and(ThreadReplies::violation(Platform::X, ['thread_replies' => ['second']], ContentType::XPost))->toBeNull()
-        ->and(ThreadReplies::violation(Platform::X, [], ContentType::XPoll))->toBeNull();
+        ->and(ThreadReplies::violation(Platform::X, ContentType::XPost, ['thread_replies' => ['second']]))->toBeNull()
+        ->and(ThreadReplies::violation(Platform::X, ContentType::XPoll, []))->toBeNull();
+});
+
+test('an omitted content type still validates replies against the default post type', function () {
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPost->value => 'posts.form.thread.reply_empty']]);
+
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['second']]))
+        ->toBe(['thread_replies', __('posts.form.thread.reply_empty')]);
 });
 
 test('every network that chains replies sets how many it takes, and none sets more than the ceiling', function (Platform $platform) {

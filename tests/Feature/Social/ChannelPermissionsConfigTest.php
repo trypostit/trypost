@@ -85,6 +85,7 @@ test('each network needs exactly these scopes for each feature', function () {
         ],
         Platform::Mastodon->value => [
             'publish' => [['write:statuses', 'write']],
+            'private_post_read' => [['read:statuses', 'read']],
         ],
         Platform::GoogleBusiness->value => [
             'publish' => ['https://www.googleapis.com/auth/business.manage'],

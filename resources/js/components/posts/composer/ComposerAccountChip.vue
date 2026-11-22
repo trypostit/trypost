@@ -13,7 +13,7 @@ import { useCanHover } from '@/composables/useCanHover';
 import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import type { ComposerAccount } from '@/composables/usePostComposition';
+import type { ComposerAccount } from '@/types/post-composition';
 
 defineProps<{
     account: ComposerAccount;

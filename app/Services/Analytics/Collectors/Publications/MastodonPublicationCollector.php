@@ -17,7 +17,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
 {
     private const PAGE_SIZE = 40;
 
-    private const PARTIAL_REASON = 'mastodon_reconnect_for_private_history';
+    public const string PRIVATE_HISTORY_PARTIAL = 'mastodon_reconnect_for_private_history';
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
@@ -84,7 +84,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
             publications: $publications,
             nextCursor: $nextCursor,
             providerExhausted: $crossedCutoff || $nextCursor === null,
-            partialReason: $hasPrivateHistoryScope ? null : self::PARTIAL_REASON,
+            partialReason: $hasPrivateHistoryScope ? null : self::PRIVATE_HISTORY_PARTIAL,
         );
     }
 

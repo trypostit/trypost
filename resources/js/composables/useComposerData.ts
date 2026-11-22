@@ -10,7 +10,6 @@ import {
     shallowRef,
 } from 'vue';
 
-import type { ComposerAccount } from '@/composables/usePostComposition';
 import {
     account as composerAccount,
     live as composerLive,
@@ -21,17 +20,18 @@ import type {
     ChannelTikTokCreatorInfo,
     SidebarChannel,
 } from '@/types/channel';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformConfig } from '@/types/platform';
+import type { ComposerAccount } from '@/types/post-composition';
 import type { PostingSchedule } from '@/types/posting-schedule';
 
-export interface ComposerSharedData {
+interface ComposerSharedData {
     accounts: Record<
         string,
         {
             timezone: string | null;
             posting_schedule: PostingSchedule | null;
             has_posting_schedule: boolean;
-            platform_config: Record<string, any>;
+            platform_config: PlatformConfig;
         }
     >;
     signatures: { id: string; name: string; content: string }[];
@@ -48,7 +48,7 @@ interface ComposerAccountData {
     tiktokCreatorInfo?: ChannelTikTokCreatorInfo | null;
 }
 
-export interface ComposerLiveState {
+interface ComposerLiveState {
     failed: Readonly<Ref<boolean>>;
     /** Bumped on each retry so per-day reads ask again. */
     attempt: Readonly<Ref<number>>;
@@ -59,7 +59,7 @@ export interface ComposerLiveState {
     takenSlots: (accountId: string, from: string, to: string) => Promise<string[]>;
 }
 
-export const composerLiveKey: InjectionKey<ComposerLiveState> =
+const composerLiveKey: InjectionKey<ComposerLiveState> =
     Symbol('composerLive');
 
 /**
@@ -151,7 +151,7 @@ export const useComposerData = () => {
         }),
     );
 
-    const platformConfigs = computed<Record<string, any>>(() =>
+    const platformConfigs = computed<Record<string, PlatformConfig>>(() =>
         Object.fromEntries(
             Object.entries(composer.value?.accounts ?? {}).map(
                 ([id, details]) => [id, details.platform_config],

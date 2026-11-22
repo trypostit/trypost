@@ -6,25 +6,11 @@ import {
     type MissingPermission,
     type MissingPermissions,
 } from '@/types/channel-permission';
-
-/** The features a channel lacks a scope for, read from its platform config (`missingPermissions`). */
-export const missingPermissionsOf = (
-    platformConfig: Record<string, any> | undefined,
-): MissingPermissions | null => {
-    if (!filled(platformConfig)) {
-        return null;
-    }
-
-    if (!filled(platformConfig.missingPermissions)) {
-        return null;
-    }
-
-    return platformConfig.missingPermissions;
-};
+import type { PlatformConfig } from '@/types/platform';
 
 /** Whether the feature is on for a channel's network (not in `disabledFeatures` of its platform config). */
 export const featureIsEnabled = (
-    platformConfig: Record<string, any> | undefined,
+    platformConfig: PlatformConfig | undefined,
     feature: GatedFeatureValue,
 ): boolean => {
     if (!filled(platformConfig)) {
@@ -38,8 +24,8 @@ export const featureIsEnabled = (
     return !platformConfig.disabledFeatures.includes(feature);
 };
 
-/** Whether a post uses the feature, as `GatedFeature::isUsedBy()` says on the server: every post publishes, analytics are never part of one. */
-export const featureIsUsedBy = (
+/** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, analytics are never part of one. */
+const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
     meta: Record<string, any> | null,
 ): boolean => {
@@ -68,12 +54,12 @@ export const permissionMessageKey = (
 
 /**
  * Why a post cannot go out on a channel that lacks the scope of a feature
- * it uses, as `ChannelPermissions::violation()` says on the server. Null
+ * it uses, as `ChannelPermissions::featureBlockingPost()` says on the server. Null
  * when nothing holds it back.
  */
 export const missingPermissionKey = (
     meta: Record<string, any> | null,
-    missing: MissingPermissions | null,
+    missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
@@ -83,7 +69,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!featureIsUsedBy(feature, meta)) {
+        if (!requiresFeatureToPublish(feature, meta)) {
             continue;
         }
 
@@ -95,12 +81,12 @@ export const missingPermissionKey = (
 
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (
-    platformConfig: Record<string, any> | undefined,
+    platformConfig: PlatformConfig | undefined,
     meta: Record<string, any> | null,
     canManageAccounts: boolean,
 ): string | null =>
     missingPermissionKey(
         meta,
-        missingPermissionsOf(platformConfig),
+        platformConfig?.missingPermissions,
         canManageAccounts,
     );

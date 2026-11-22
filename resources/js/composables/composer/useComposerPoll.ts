@@ -1,12 +1,7 @@
-import type {
-    ComposerAccount,
-    DestinationDraft,
-    NetworkGroup,
-    usePostComposition,
-} from '@/composables/usePostComposition';
+import type { usePostComposition } from '@/composables/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
 import { newPoll } from '@/lib/poll';
-import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
+import { withReplyPoll } from '@/lib/threadReplies';
 import {
     type ContentTypeValue,
     MEDIALESS_CONTENT_TYPE_REASONS,
@@ -18,6 +13,12 @@ import {
     THREAD_REPLY_POLL_CONTENT_TYPES,
 } from '@/types/network-options';
 import type { Poll, PollLimits } from '@/types/poll';
+import type {
+    ComposerAccount,
+    DestinationDraft,
+    NetworkGroup,
+} from '@/types/post-composition';
+import type { ThreadReply } from '@/types/thread-reply';
 
 /** What the composer gives the card polls: each card's destination and the override that changes it. */
 type ComposerCards = Pick<

@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 
-import type { ComposerInitialDraft } from '@/composables/usePostComposition';
+import type { ComposerInitialDraft } from '@/types/post-composition';
 
 export interface PostComposerRequest {
     id: number;

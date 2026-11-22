@@ -31,6 +31,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
@@ -200,6 +201,32 @@ test('bootstrap creates separate backfill and discovery states and dispatches th
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $backfill->id);
 });
 
+test('discovery restarts a public-only Mastodon backfill when its existing grant can read privately again', function () {
+    $publicScopes = ['read:accounts', 'write:statuses', 'write:media'];
+    $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read', 'write']]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Partial,
+        'last_error_category' => 'mastodon_reconnect_for_private_history',
+    ]);
+    Bus::fake();
+
+    config(['trypost.platforms.mastodon.scopes' => $publicScopes]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+
+    config(['trypost.platforms.mastodon.scopes' => [...$publicScopes, 'read:statuses']]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($backfill->fresh()->status)->toBe(SyncStatus::Pending);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $backfill->id);
+});
+
 test('bootstrap resumes a failed backfill from its last committed cursor', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);
@@ -354,6 +381,51 @@ test('a backfill job persists one page then advances its cursor and dispatches c
         ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 1])
         ->and($state->fresh()->status)->toBe(SyncStatus::Running);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $state->id);
+});
+
+test('a paused history backfill retains its cursor and resumes once the scope is available', function () {
+    Http::fake();
+    $scopes = ['user.info.basic', 'video.publish', 'video.upload'];
+    $account = SocialAccount::factory()->create([
+        'platform' => Platform::TikTok,
+        'scopes' => [...$scopes, 'video.list'],
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Running,
+        'checkpoint' => ['cursor' => '1234', 'revision' => 2],
+        'last_success_at' => null,
+    ]);
+    $job = new BackfillAccountPublications($account->id, $state->id);
+    Bus::fake();
+
+    config(['trypost.platforms.tiktok.scopes' => $scopes]);
+    app()->call([$job, 'handle']);
+    Http::assertNothingSent();
+    expect($state->fresh())
+        ->status->toBe(SyncStatus::Running)
+        ->checkpoint->toBe(['cursor' => '1234', 'revision' => 2])
+        ->last_success_at->toBeNull();
+
+    $this->travel(3)->hours();
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+
+    config(['trypost.platforms.tiktok.scopes' => [...$scopes, 'video.list']]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
+
+    bindPublicationPage(new PublicationPage([
+        new DiscoveredPublication('older-post', CarbonImmutable::now('UTC')->subMonth(), PublicationContentType::Video),
+    ], null, true));
+    app()->call([$job, 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(AnalyticsPublication::query()->where('remote_id', 'older-post')->exists())->toBeTrue();
 });
 
 test('a publication page resolves the account identity once for every post', function () {

@@ -154,6 +154,7 @@ class PostCompositionValidator
         );
         $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace, $actor): void {
             $seen = [];
+            $canManageAccounts = null;
 
             foreach ($composition['destinations'] as $index => $destination) {
                 $accountId = $destination['social_account_id'];
@@ -232,10 +233,13 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $permissionViolation = ChannelPermissions::violation($account, data_get($destination, 'meta', []), $actor);
-                if (filled($permissionViolation)) {
-                    [$path, $message] = $permissionViolation;
-                    $validator->errors()->add("{$key}.{$path}", $message);
+                $blockedFeature = ChannelPermissions::featureBlockingPost($account, data_get($destination, 'meta', []));
+                if (filled($blockedFeature)) {
+                    $canManageAccounts ??= $actor?->can('manageAccounts', $workspace) ?? true;
+                    $validator->errors()->add(
+                        "{$key}.{$blockedFeature->postValidationField()}",
+                        ChannelPermissions::reconnectMessage($account->platform, $blockedFeature, $canManageAccounts),
+                    );
                 }
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $contentType)

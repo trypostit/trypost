@@ -9,7 +9,7 @@ use LogicException;
 
 /**
  * The post uses a feature its channel lacks a scope for
- * (`ChannelPermissions::violation()`). Raised before any request, so the
+ * (`ChannelPermissions::featureBlockingPost()`). Raised before any request, so the
  * failure reads as a permission the user fixes by reconnecting.
  */
 final class MissingPermissionException extends SocialPublishException

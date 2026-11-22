@@ -3,9 +3,9 @@ import { uuid } from '@/lib/uuid';
 import {
     ContentType,
     type ContentTypeValue,
+    type PostFormTranslationKey,
     STANDALONE_CONTENT_TYPES,
 } from '@/types/content-type';
-import type { MediaItem } from '@/types/media';
 import {
     isReplyPollPlatform,
     isThreadPlatform,
@@ -15,19 +15,7 @@ import {
 } from '@/types/network-options';
 import type { PlatformValue } from '@/types/platform';
 import type { Poll } from '@/types/poll';
-
-/**
- * One post of a thread after the first. `key` only lives in the composer: it
- * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it. On X and Mastodon a reply may carry a
- * poll instead of media, its text being the question.
- */
-export type ThreadReply = {
-    key: string;
-    text: string;
-    media: MediaItem[];
-    poll?: Partial<Poll>;
-};
+import type { ThreadReply } from '@/types/thread-reply';
 
 export const newThreadReply = (): ThreadReply => ({
     key: uuid(),
@@ -170,7 +158,7 @@ export const threadUnavailableKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
     repliesEnabled: boolean,
-): string | null => {
+): PostFormTranslationKey | null => {
     if (blank(threadRepliesOf(meta))) {
         return null;
     }

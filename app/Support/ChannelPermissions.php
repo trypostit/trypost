@@ -7,16 +7,14 @@ namespace App\Support;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
-use App\Models\User;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
 
 /**
  * The one map of what each network needs the account to have granted before
  * TryPost can do something on a channel (`GatedFeature`): each network's
  * `permissions` setting, `trypost.platforms.<network>.permissions.<feature>`,
- * with `scopes` (requirements as `SocialAccount::missingScope()` reads them:
- * a scope, or a list of alternatives) and optionally its own `message` and
+ * with `scopes` (a scope or a list of alternatives per requirement)
+ * and optionally its own `message` and
  * `member_message` lang keys. Connect, publishing, analytics and the UI all
  * read it; unknown scopes are never read as missing.
  */
@@ -35,7 +33,11 @@ class ChannelPermissions
     /** The first scope of the feature the account's stored grant lacks, else null (an unknown grant lacks none). */
     public static function missingScope(SocialAccount $account, GatedFeature $feature): ?string
     {
-        return $account->missingScope(...self::scopes($account->platform, $feature));
+        if (blank($account->scopes)) {
+            return null;
+        }
+
+        return Arr::first(self::missingFrom($account->scopes, $account->platform, $feature));
     }
 
     /**
@@ -52,13 +54,13 @@ class ChannelPermissions
     {
         $configured = config("trypost.platforms.{$platform->value}.scopes", []);
 
-        $required = self::alternatives($platform, GatedFeature::Publish)
-            ->merge(collect(config("trypost.platforms.{$platform->value}.required_scopes", []))->map(fn (string|array $requirement): array => Arr::wrap($requirement)))
-            ->reject(fn (array $alternatives): bool => collect($alternatives)->intersect($configured)->isNotEmpty())
-            ->map(fn (array $alternatives): string => Arr::first($alternatives));
+        $required = [
+            ...self::scopes($platform, GatedFeature::Publish),
+            ...config("trypost.platforms.{$platform->value}.required_scopes", []),
+        ];
 
         return collect($configured)
-            ->merge($required)
+            ->merge(self::unmetRequirements($configured, $required))
             ->unique()
             ->values()
             ->all();
@@ -116,11 +118,7 @@ class ChannelPermissions
      */
     public static function missingFrom(array $granted, Platform $platform, GatedFeature $feature): array
     {
-        return self::alternatives($platform, $feature)
-            ->reject(fn (array $alternatives): bool => collect($alternatives)->intersect($granted)->isNotEmpty())
-            ->map(fn (array $alternatives): string => Arr::first($alternatives))
-            ->values()
-            ->all();
+        return self::unmetRequirements($granted, self::scopes($platform, $feature));
     }
 
     /**
@@ -133,50 +131,36 @@ class ChannelPermissions
     public static function missing(SocialAccount $account): array
     {
         return collect(GatedFeature::cases())
-            ->reject(fn (GatedFeature $feature): bool => $feature->isOptional())
+            ->reject(fn (GatedFeature $feature): bool => $feature->isOptionalRead())
             ->filter(fn (GatedFeature $feature): bool => self::blocks($account, $feature))
             ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::messages($account->platform, $feature)])
             ->all();
     }
 
     /**
-     * The first feature the post uses that its channel lacks a scope for, as
-     * `[path, message]` (`GatedFeature::errorPath()`), so web, API, MCP and the
-     * publisher refuse it before anything goes out. The message names who can
-     * reconnect when `$actor` cannot; without an actor (the publish job) it is
-     * the channel's own reconnect message. A post whose channel is unknown is
-     * never refused.
+     * The first feature needed to publish the post that the channel lacks a scope for.
      *
      * @param  array<string, mixed>|null  $meta
-     * @return array{0: string, 1: string}|null
      */
-    public static function violation(?SocialAccount $account, ?array $meta, ?User $actor): ?array
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta): ?GatedFeature
     {
         if (blank($account)) {
             return null;
         }
 
-        $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => $feature->isUsedBy($meta) && self::blocks($account, $feature));
-
-        if (blank($feature)) {
-            return null;
-        }
-
-        return [$feature->errorPath(), self::refusalMessage($account, $feature, $actor)];
+        return collect(GatedFeature::cases())
+            ->first(fn (GatedFeature $feature): bool => $feature->isRequiredToPublish($meta) && self::blocks($account, $feature));
     }
 
     /**
-     * What the channel is told when it lacks the feature's scope: the reconnect
-     * ask, or who can reconnect when `$actor` cannot. Without an actor (the
-     * publish job) it is the reconnect ask.
+     * The message shown when a feature requires reconnecting the channel.
      */
-    public static function refusalMessage(SocialAccount $account, GatedFeature $feature, ?User $actor): string
+    public static function reconnectMessage(Platform $platform, GatedFeature $feature, bool $canManageAccounts = true): string
     {
-        $messages = self::messages($account->platform, $feature);
-        $key = self::canReconnect($account, $actor) ? data_get($messages, 'message') : data_get($messages, 'member_message');
+        $messages = self::messages($platform, $feature);
+        $key = $canManageAccounts ? 'message' : 'member_message';
 
-        return __($key, ['network' => $account->platform->label()]);
+        return __(data_get($messages, $key), ['network' => $platform->label()]);
     }
 
     /**
@@ -194,29 +178,20 @@ class ChannelPermissions
     }
 
     /**
-     * Each requirement as its list of alternatives: the config holds a scope
-     * or a list of them, and this is the one place that reads both shapes.
+     * Name each unmet requirement by its first acceptable scope.
      *
-     * @return Collection<int, list<string>>
+     * @param  list<string>  $granted
+     * @param  list<string|list<string>>  $requirements  Each config entry is a scope or a list of alternatives.
+     * @return list<string>
      */
-    private static function alternatives(Platform $platform, GatedFeature $feature): Collection
+    private static function unmetRequirements(array $granted, array $requirements): array
     {
-        return collect(self::scopes($platform, $feature))
-            ->map(fn (string|array $requirement): array => Arr::wrap($requirement));
-    }
-
-    /**
-     * Whether the refusal asks `$actor` to reconnect the channel: an actor who
-     * may manage it. Without an actor (the publish job) the channel's own
-     * reconnect message is the one stored on the post.
-     */
-    private static function canReconnect(SocialAccount $account, ?User $actor): bool
-    {
-        if (blank($actor)) {
-            return true;
-        }
-
-        return $actor->can('manageAccounts', $account->loadMissing('workspace')->workspace);
+        return collect($requirements)
+            ->map(Arr::wrap(...))
+            ->reject(fn (array $alternatives): bool => collect($alternatives)->intersect($granted)->isNotEmpty())
+            ->map(fn (array $alternatives): string => Arr::first($alternatives))
+            ->values()
+            ->all();
     }
 
     /**
@@ -227,8 +202,8 @@ class ChannelPermissions
         $setting = "trypost.platforms.{$platform->value}.permissions.{$feature->value}";
 
         return [
-            'message' => config("{$setting}.message", "{$feature->copyGroup()}.message"),
-            'member_message' => config("{$setting}.member_message", "{$feature->copyGroup()}.member_message"),
+            'message' => config("{$setting}.message", "{$feature->translationGroup()}.message"),
+            'member_message' => config("{$setting}.member_message", "{$feature->translationGroup()}.member_message"),
         ];
     }
 }

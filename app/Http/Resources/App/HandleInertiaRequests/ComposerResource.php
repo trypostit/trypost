@@ -11,6 +11,7 @@ use App\Models\WorkspaceLabel;
 use App\Models\WorkspaceSignature;
 use App\Support\Inertia\LazilyKeyedOnceProp;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
 class ComposerResource
@@ -67,7 +68,7 @@ class ComposerResource
 
     /**
      * Changes whenever an account, signature or label of the workspace is
-     * created, updated or deleted, or the UI language changes: one query plus
+     * created, updated or deleted, or the locale or permissions change: one query plus
      * the version counter ComposerVersionObserver bumps, which catches edits
      * within the same second.
      */
@@ -93,6 +94,9 @@ class ComposerResource
             data_get($aggregates, 'labels_count'),
             data_get($aggregates, 'labels_max_updated_at'),
             Cache::get(self::versionKey($workspace->id), 0),
+            collect(config('trypost.platforms'))
+                ->map(fn (array $platform): array => Arr::only($platform, ['scopes', 'required_scopes', 'permissions']))
+                ->all(),
         ]));
 
         $locale = app()->getLocale();

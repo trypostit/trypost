@@ -7,11 +7,13 @@ namespace App\Jobs\Analytics;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -101,6 +103,10 @@ class BootstrapAccountAnalytics implements ShouldQueue
                 ->where('platform', $account->platform)
                 ->whereNull('social_account_id')
                 ->update(['social_account_id' => $account->id]);
+        }
+
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
+            return;
         }
 
         $resumeFailed = $backfill->status === SyncStatus::Failed;

@@ -70,13 +70,18 @@ class ThreadReplies
         return (int) config("trypost.platforms.{$platform->value}.replies.max", 0);
     }
 
-    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
-    public static function standaloneMessage(Platform $platform, ?ContentType $type): ?string
+    public static function supportsPostType(Platform $platform, ContentType $type): bool
     {
-        if (blank($type)) {
-            return null;
+        if (! self::supports($platform)) {
+            return false;
         }
 
+        return blank(self::standaloneMessage($platform, $type));
+    }
+
+    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
+    public static function standaloneMessage(Platform $platform, ContentType $type): ?string
+    {
         return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
     }
 
@@ -229,16 +234,15 @@ class ThreadReplies
      *
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type): ?array
+    public static function violation(Platform $platform, ContentType $type, mixed $meta, ?SocialAccount $account = null): ?array
     {
-        $platform = $target instanceof SocialAccount ? $target->platform : $target;
         $replies = self::of($meta);
 
-        if ($replies === []) {
+        if (blank($replies)) {
             return null;
         }
 
-        if ($platform === null || ! self::supports($platform)) {
+        if (! self::supports($platform)) {
             return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
@@ -253,8 +257,6 @@ class ThreadReplies
         }
 
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
-        $account = $target instanceof SocialAccount ? $target : null;
-
         foreach ($replies as $index => $reply) {
             $violation = self::replyViolation($reply, $platform, $account, $reserved);
 
