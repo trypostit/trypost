@@ -15,13 +15,13 @@ type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
 
 /**
  * Saves the post as a draft, then reconnects its channel, so a post held back
- * by a permission the channel lacks (`ChannelPermissionWarning`) is kept while
+ * by a permission the channel lacks (`PostComposerPermissionWarning`) is kept while
  * the user grants it. The save says it leaves the app, so the page does not
  * step back through history after it, which would cancel the visit to the
  * network's sign-in. A network that reconnects in place (Telegram's dialog;
  * none of them gates a feature today) has no sign-in to visit, so the post
  * stays open in the composer instead. A post waiting for approval never
- * offers it (`ChannelPermissionWarning`'s `reconnectable`).
+ * offers it (`PostComposerPermissionWarning`'s `reconnectable`).
  */
 export const useSaveAndReconnect = (submit: SubmitPostComposition) => {
     const { startConnect } = useNetworkConnect([]);

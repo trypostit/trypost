@@ -54,7 +54,6 @@ import GiphyDialog from '@/components/media/GiphyDialog.vue';
 import MediaTray from '@/components/media/MediaTray.vue';
 import UnsplashDialog from '@/components/media/UnsplashDialog.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
-import ChannelPermissionWarning from '@/components/posts/composer/ChannelPermissionWarning.vue';
 import ComposerAccountChip from '@/components/posts/composer/ComposerAccountChip.vue';
 import ComposerAccountOptions from '@/components/posts/composer/ComposerAccountOptions.vue';
 import ComposerAccountStack from '@/components/posts/composer/ComposerAccountStack.vue';
@@ -69,6 +68,7 @@ import ComposerTemplatesPanel from '@/components/posts/composer/ComposerTemplate
 import MediaEditorDialog, {
     type MediaEditChange,
 } from '@/components/posts/composer/MediaEditorDialog.vue';
+import PostComposerPermissionWarning from '@/components/posts/composer/PostComposerPermissionWarning.vue';
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
 import ThreadUnavailableWarning from '@/components/posts/composer/ThreadUnavailableWarning.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
@@ -2981,7 +2981,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :meta="groupDestination(group).meta"
                                         :test-id="`thread-unavailable-warning-${group.anchor.id}`"
                                     />
-                                    <ChannelPermissionWarning
+                                    <PostComposerPermissionWarning
                                         :accounts="group.accounts"
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"

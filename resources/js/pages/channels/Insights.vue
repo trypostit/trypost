@@ -12,7 +12,7 @@ import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
 import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
 import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
-import ChannelPermissionNotice from '@/components/channels/ChannelPermissionNotice.vue';
+import ChannelInsightsPermissionNotice from '@/components/channels/ChannelInsightsPermissionNotice.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
@@ -243,7 +243,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                 </div>
             </header>
 
-            <ChannelPermissionNotice
+            <ChannelInsightsPermissionNotice
                 v-if="supported"
                 :channel="channel"
                 :features="INSIGHTS_FEATURES"
