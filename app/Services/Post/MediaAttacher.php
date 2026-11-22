@@ -64,7 +64,7 @@ class MediaAttacher
         }
 
         if ($attached !== []) {
-            AppendPostMedia::fromNewUploads($post, $attached, $actor);
+            AppendPostMedia::attachRequestUploads($post, $attached, $actor);
             $owned = collect($post->media ?? [])->keyBy('id');
             $attached = array_map(fn (array $item): array => $owned->get(data_get($item, 'id'), $item), $attached);
         }

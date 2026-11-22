@@ -160,7 +160,7 @@ class PostController extends Controller
 
         $media = $post->workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
-        AppendPostMedia::fromNewUploads($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
+        AppendPostMedia::attachRequestUploads($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
 
         $post->refresh()->load(['socialAccount', 'labels']);
 

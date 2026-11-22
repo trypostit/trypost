@@ -103,64 +103,29 @@ class AdvanceAnalyticsSyncState
      */
     public function begin(string $stateId, bool $restartTerminal = false, ?string $socialAccountId = null): ?array
     {
-        return DB::transaction(function () use ($restartTerminal, $socialAccountId, $stateId): ?array {
+        return DB::transaction(function () use ($stateId, $restartTerminal, $socialAccountId): ?array {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state
+            if ($state === null
                 || ($socialAccountId !== null && $state->social_account_id !== $socialAccountId)
                 || ($state->isTerminal() && ! $restartTerminal)) {
                 return null;
             }
 
-            $checkpoint = $state->checkpoint ?? [];
-            $revision = ((int) data_get($checkpoint, 'revision', 0)) + 1;
-            $cursor = $restartTerminal && $state->isTerminal()
-                ? null
-                : data_get($checkpoint, 'cursor');
-            $publicHistoryCursor = filled($cursor) && (data_get($checkpoint, 'public_history_only')
-                || $state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL);
-            if ($publicHistoryCursor && $state->socialAccount?->canReadMastodonStatuses()) {
-                $cursor = null;
-                $publicHistoryCursor = false;
-            }
-
-            $seenCount = $restartTerminal && $state->isTerminal()
-                ? 0
-                : (int) data_get($checkpoint, 'seen_count', 0);
+            $checkpoint = $this->checkpointForRun($state, $restartTerminal);
 
             $state->update([
                 'status' => SyncStatus::Running,
-                'checkpoint' => [
-                    'cursor' => $cursor,
-                    'revision' => $revision,
-                    ...($publicHistoryCursor ? ['public_history_only' => true] : []),
-                    ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
-                        ? ['seen_count' => $seenCount]
-                        : []),
-                    ...(data_get($checkpoint, 'resumed_after_disconnect')
-                        ? ['resumed_after_disconnect' => true]
-                        : []),
-                    ...(data_get($checkpoint, 'had_provider_limit')
-                        ? ['had_provider_limit' => true]
-                        : []),
-                    ...(! $restartTerminal && data_get($checkpoint, 'invalid_cursor_resets')
-                        ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
-                        : []),
-                    ...(! ($restartTerminal && $state->isTerminal()) && data_get($checkpoint, 'run_high_watermark_at')
-                        ? ['run_high_watermark_at' => data_get($checkpoint, 'run_high_watermark_at')]
-                        : []),
-                ],
+                'checkpoint' => $checkpoint,
                 'last_error_category' => null,
             ]);
 
-            $cutoff = $state->collector === SyncCollector::PublicationBackfill
-                ? ($state->target_since ?? CarbonImmutable::now('UTC')->subDays(365))
-                : ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->subHours(max(0, (int) config('trypost.analytics.discovery_overlap_hours')));
+            $cursor = $checkpoint['cursor'];
 
             return [
                 'cursor' => is_string($cursor) && $cursor !== '' ? $cursor : null,
-                'revision' => $revision,
-                'cutoff' => $cutoff->toImmutable(),
+                'revision' => $checkpoint['revision'],
+                'cutoff' => $this->cutoffForRun($state),
             ];
         });
     }
@@ -359,6 +324,74 @@ class AdvanceAnalyticsSyncState
 
             return $this->initializeDiscovery($account, $state->high_watermark_at)->id;
         });
+    }
+
+    /**
+     * @return array{
+     *     cursor: mixed,
+     *     revision: int,
+     *     public_history_only?: true,
+     *     seen_count?: int,
+     *     resumed_after_disconnect?: true,
+     *     had_provider_limit?: true,
+     *     invalid_cursor_resets?: int,
+     *     run_high_watermark_at?: mixed
+     * }
+     */
+    private function checkpointForRun(AnalyticsSyncState $state, bool $restartTerminal): array
+    {
+        $previous = $state->checkpoint ?? [];
+        $restarting = $restartTerminal && $state->isTerminal();
+        $cursor = $restarting ? null : data_get($previous, 'cursor');
+        $checkpoint = [
+            'cursor' => $cursor,
+            'revision' => (int) data_get($previous, 'revision', 0) + 1,
+        ];
+
+        $hasPublicHistoryCursor = filled($cursor) && (data_get($previous, 'public_history_only')
+            || $state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL);
+        if ($hasPublicHistoryCursor) {
+            if ($state->socialAccount?->canReadMastodonStatuses()) {
+                $checkpoint['cursor'] = null;
+            } else {
+                $checkpoint['public_history_only'] = true;
+            }
+        }
+
+        if ($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X) {
+            $checkpoint['seen_count'] = $restarting ? 0 : (int) data_get($previous, 'seen_count', 0);
+        }
+
+        if (data_get($previous, 'resumed_after_disconnect')) {
+            $checkpoint['resumed_after_disconnect'] = true;
+        }
+
+        if (data_get($previous, 'had_provider_limit')) {
+            $checkpoint['had_provider_limit'] = true;
+        }
+
+        $cursorResets = data_get($previous, 'invalid_cursor_resets');
+        if (! $restartTerminal && $cursorResets) {
+            $checkpoint['invalid_cursor_resets'] = (int) $cursorResets;
+        }
+
+        $runHighWatermark = data_get($previous, 'run_high_watermark_at');
+        if (! $restarting && $runHighWatermark) {
+            $checkpoint['run_high_watermark_at'] = $runHighWatermark;
+        }
+
+        return $checkpoint;
+    }
+
+    private function cutoffForRun(AnalyticsSyncState $state): CarbonImmutable
+    {
+        if ($state->collector === SyncCollector::PublicationBackfill) {
+            return $state->target_since ?? CarbonImmutable::now('UTC')->subDays(365);
+        }
+
+        $overlapHours = max(0, (int) config('trypost.analytics.discovery_overlap_hours'));
+
+        return ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->subHours($overlapHours);
     }
 
     private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): AnalyticsSyncState

@@ -44,10 +44,8 @@ class PostScheduleController extends Controller
         $action = data_get($result, 'action');
 
         if ($action === PostAction::Finalized) {
-            $message = $result['post']->status === PostStatus::Publishing ? 'posts.edit.publishing_overlay_title' : 'posts.flash.cannot_edit_finalized';
-
             return back()
-                ->with('flash.banner', __($message))
+                ->with('flash.banner', $this->scheduleBlockedMessage($result['post']))
                 ->with('flash.bannerStyle', 'danger');
         }
 
@@ -64,5 +62,14 @@ class PostScheduleController extends Controller
         }
 
         return back();
+    }
+
+    private function scheduleBlockedMessage(Post $post): string
+    {
+        if ($post->status === PostStatus::Publishing) {
+            return __('posts.edit.publishing_overlay_title');
+        }
+
+        return PostStatusRules::editBlockedMessage();
     }
 }

@@ -57,7 +57,7 @@ class AppendPostMedia
      *
      * @param  list<array<string, mixed>>  $items
      */
-    public static function fromNewUploads(Post $post, array $items, User $actor): void
+    public static function attachRequestUploads(Post $post, array $items, User $actor): void
     {
         try {
             self::execute($post, $items, $actor);
