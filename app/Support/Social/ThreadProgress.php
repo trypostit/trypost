@@ -53,18 +53,17 @@ final class ThreadProgress
     public static function failureMessage(Post $post, string $message, ?array $context): string
     {
         $published = self::publishedSegments($context)->count();
-
-        if ($published === 0) {
-            return $message;
-        }
-
         $total = 1 + count(ThreadReplies::of($post->meta));
 
-        if ($published >= $total) {
-            return $message;
+        if ($published > 0 && $published < $total) {
+            return __('posts.errors.thread_incomplete', [
+                'published' => $published,
+                'total' => $total,
+                'error' => $message,
+            ]);
         }
 
-        return __('posts.errors.thread_incomplete', ['published' => $published, 'total' => $total, 'error' => $message]);
+        return $message;
     }
 
     /**
