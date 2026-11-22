@@ -65,6 +65,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { filled } from '@/lib/helpers';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { postAttemptAt } from '@/lib/postCard';
 import { grid, settings } from '@/routes/app/channels';
@@ -521,12 +522,7 @@ const moveToSlot = (postId: string, slot: QueueSlotTarget): void => {
             onFinish: () => {
                 reordering.value = false;
             },
-            onError: (errors) =>
-                rollback(
-                    errors.slot_at ??
-                        errors.queue ??
-                        trans('posts.errors.queue_busy'),
-                ),
+            onError: (errors) => rollback(moveToSlotError(errors)),
             onHttpException: () => {
                 rollback(trans('posts.errors.queue_busy'));
 
@@ -534,6 +530,20 @@ const moveToSlot = (postId: string, slot: QueueSlotTarget): void => {
             },
         },
     );
+};
+
+/**
+ * Why a drop on a slot was refused: the server's first message (the slot, the
+ * queue, or a permission the channel lacks), else the queue being busy.
+ */
+const moveToSlotError = (errors: Record<string, string>): string => {
+    const [message] = Object.values(errors);
+
+    if (filled(message)) {
+        return message;
+    }
+
+    return trans('posts.errors.queue_busy');
 };
 
 const hasChannels = computed(

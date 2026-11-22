@@ -255,3 +255,14 @@ test('a queued post moved by a member who needs approval goes to approval withou
         ->and($this->a->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-06T12:00:00+00:00')
         ->and($this->b->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-05T12:00:00+00:00');
 });
+
+test('a queued post on a channel without the publish scope is not moved to a slot and the refusal names the network', function () {
+    $this->channel->update(['scopes' => ['an.unrelated.scope']]);
+    $before = $this->a->scheduled_at;
+
+    $this->actingAs($this->user)
+        ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $this->a->id, 'slot_at' => now('UTC')->addDay()->setTime(18, 0)->toIso8601String()])
+        ->assertSessionHasErrors(['social_account_id' => __('channels.permissions.publish.message', ['network' => $this->channel->platform->label()])]);
+
+    expect($this->a->fresh()->scheduled_at->equalTo($before))->toBeTrue();
+});

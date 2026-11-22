@@ -35,7 +35,7 @@ export interface ComposerThread {
     setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
     replyLimit: (group: NetworkGroup) => number | null;
     uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
-    /** Whether the card's network takes replies at all (`supportsThread`). */
+    /** Whether replies are on for the card's network (its `disabledFeatures`). */
     enabled: (group: NetworkGroup) => boolean;
 }
 

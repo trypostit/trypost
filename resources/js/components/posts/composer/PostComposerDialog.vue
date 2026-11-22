@@ -2011,7 +2011,8 @@ const createsAnother = (leavesApp: boolean): boolean => {
 /**
  * Saves the post. `onSaved` runs once it is saved; `leavesApp` says it sends
  * the user out of the app (a channel's sign-in), so the page does not step
- * back through history after the save, which would cancel that visit.
+ * back through history after the save, which would cancel that visit, and
+ * `onSaved` waits for the unsaved-changes guard to drop its history entry.
  */
 const submit = (
     status: PostComposition['status'],
@@ -2043,6 +2044,13 @@ const submit = (
         createsAnother(leavesApp),
         () => {
             unsavedChanges.markSaved();
+
+            if (leavesApp) {
+                unsavedChanges.leave(() => onSaved?.());
+
+                return;
+            }
+
             onSaved?.();
         },
         leavesApp,

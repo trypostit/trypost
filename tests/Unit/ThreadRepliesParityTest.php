@@ -38,12 +38,42 @@ test('the composer threads every network the way the server does', function () {
         ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
         ->and($composer['standalone_key'])->toBeNull()
         ->and($composer['replies_off_key'])->toBe('posts.form.thread.unsupported')
-        ->and($composer['permission_keys'])->toBe([
-            'allowed' => null,
-            'not_used' => null,
-            'publish_before_replies' => 'publish',
-            'analytics_only' => null,
-            'lacks_scope_admin' => 'reconnect',
-            'lacks_scope_member' => 'ask an admin',
-        ]);
+        ->and($composer['permission_keys'])->toBe(serverPermissionKeys());
 });
+
+/**
+ * What the server refuses for each of the harness's cases: the first feature
+ * (`GatedFeature::cases()` order) the post uses and the channel lacks, shown
+ * with the harness's copy for it, the member's when the user cannot reconnect.
+ *
+ * @return array<string, string|null>
+ */
+function serverPermissionKeys(): array
+{
+    $thread = ['thread_replies' => [['text' => 'Second', 'media' => []]]];
+    $copy = [
+        GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
+        GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
+        GatedFeature::Publish->value => ['publish', 'publish member'],
+    ];
+    $cases = [
+        'allowed' => [$thread, [], true],
+        'not_used' => [[], [GatedFeature::ThreadReplies], true],
+        'publish_before_replies' => [$thread, [GatedFeature::ThreadReplies, GatedFeature::Publish], true],
+        'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
+        'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
+        'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
+    ];
+
+    return collect($cases)->map(function (array $case) use ($copy): ?string {
+        [$meta, $missing, $canReconnect] = $case;
+        $feature = collect(GatedFeature::cases())
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptional() && $feature->isUsedBy($meta) && collect($missing)->contains($feature));
+
+        if (blank($feature)) {
+            return null;
+        }
+
+        return data_get($copy, "{$feature->value}.".($canReconnect ? 0 : 1));
+    })->all();
+}

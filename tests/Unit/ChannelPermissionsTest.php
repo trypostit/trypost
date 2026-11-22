@@ -107,6 +107,7 @@ test('a login reporting no scopes lacks every publish scope, while a stored gran
 });
 
 test('a channel is never told to reconnect for an optional read or a scope TryPost no longer asks for', function () {
+    config(['trypost.platforms.tiktok.scopes' => data_get(trypostConfigWith(['TIKTOK_SCOPES' => '']), 'platforms.tiktok.scopes')]);
     $facebook = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_manage_posts', 'pages_read_engagement']]);
     $tiktok = SocialAccount::factory()->make(['platform' => Platform::TikTok, 'scopes' => ['user.info.basic', 'video.publish']]);
 
@@ -153,7 +154,7 @@ test('every locale names the network wherever english does', function () {
 });
 
 test('a post type that stands alone lists no thread replies', function () {
-    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.unsupported']]);
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.reply_empty']]);
 
     expect(ContentType::XPoll->takesThreadReplies())->toBeFalse()
         ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();

@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Illuminate\Support\Uri;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -48,6 +50,23 @@ test('user can initiate mastodon oauth flow', function () {
     expect(session('mastodon_instance'))->toBe('https://mastodon.social');
     expect(session('mastodon_client_id'))->toBe('test-client-id');
     expect(session('mastodon_client_secret'))->toBe('test-client-secret');
+    Http::assertSent(fn (ClientRequest $request): bool => $request['scopes'] === 'read:accounts read:statuses write:statuses write:media');
+});
+
+test('mastodon registers and authorizes with the scopes the install configures, plus what connecting and publishing need', function () {
+    config(['trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses']]);
+    Http::fake([
+        'https://mastodon.social/api/v1/apps' => Http::response([
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+        ], 200),
+    ]);
+
+    $location = $this->actingAs($this->user)
+        ->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.social'])
+        ->headers->get('Location');
+
+    expect(Str::of(Uri::of($location)->query()->get('scope'))->split('/[\s+]+/')->all())->toBe(['read:accounts', 'read:statuses', 'write:statuses', 'write:media']);
     Http::assertSent(fn (ClientRequest $request): bool => $request['scopes'] === 'read:accounts read:statuses write:statuses write:media');
 });
 

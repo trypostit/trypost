@@ -11,6 +11,7 @@ use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\PostingSchedule;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -175,4 +176,32 @@ test('a member creating a post on a channel without the publish scope is told an
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'destinations' => [['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value]],
     ])->assertHasErrors([__('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
+});
+
+test('adding a post on a channel without the publish scope to the queue is refused and leaves it a draft', function (string $action) {
+    $post = postOnChannelWithoutPublishScope();
+    $schedule = collect(range(0, 6))->reduce(fn (PostingSchedule $schedule, int $day): PostingSchedule => $schedule->withTime($day, '12:00'), PostingSchedule::empty());
+    $post->socialAccount->update(['posting_schedule' => $schedule]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => $action])
+        ->assertSessionHasErrors(['social_account_id' => __('channels.permissions.publish.message', ['network' => Platform::X->label()])]);
+
+    expect($post->fresh())
+        ->status->toBe(Status::Draft)
+        ->scheduled_at->toBeNull();
+})->with(['queue_next', 'queue_top']);
+
+test('a member whose posts need approval is told an admin needs to reconnect the channel, and no request goes to approval', function () {
+    $member = workspaceMember($this->workspace, 'approval');
+    $lacking = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id, 'scopes' => ['tweet.read', 'users.read']]);
+
+    TryPostServer::actingAs($member)->tool(CreatePostsTool::class, [
+        'content' => 'From a member who needs approval',
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'destinations' => [['social_account_id' => $lacking->id, 'content_type' => ContentType::XPost->value]],
+    ])->assertHasErrors([__('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
+
+    expect(Post::query()->where('social_account_id', $lacking->id)->exists())->toBeFalse();
 });

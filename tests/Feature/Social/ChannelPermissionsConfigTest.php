@@ -7,6 +7,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Support\ChannelPermissions;
 
 test('by default every feature is on, because the connect asks for every scope each one needs', function (Platform $platform) {
+    config(['trypost.platforms' => data_get(trypostConfigWith(['LINKEDIN_SCOPES' => '', 'LINKEDIN_PAGE_SCOPES' => '', 'X_SCOPES' => '', 'TIKTOK_SCOPES' => '', 'YOUTUBE_SCOPES' => '', 'FACEBOOK_SCOPES' => '', 'INSTAGRAM_SCOPES' => '', 'INSTAGRAM_FACEBOOK_SCOPES' => '', 'THREADS_SCOPES' => '', 'PINTEREST_SCOPES' => '', 'MASTODON_SCOPES' => '', 'DISCORD_SCOPES' => '', 'GOOGLE_BUSINESS_SCOPES' => '']), 'platforms')]);
+
     expect(ChannelPermissions::disabledFeatures($platform))->toBe([]);
 })->with(Platform::cases());
 

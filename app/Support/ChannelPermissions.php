@@ -40,8 +40,11 @@ class ChannelPermissions
 
     /**
      * The scopes the network's connect asks for: its configured list
-     * (`trypost.platforms.<network>.scopes`), always with the scopes publishing
-     * needs, since publishing is what TryPost is for and can never be off.
+     * (`trypost.platforms.<network>.scopes`), always with what connecting and
+     * publishing need (the publish scopes and `required_scopes`), so a list
+     * that leaves one out turns an optional feature off and never breaks a
+     * connect or a publish. A requirement any granted alternative meets adds
+     * nothing; else its first alternative is asked for.
      *
      * @return list<string>
      */
@@ -49,8 +52,13 @@ class ChannelPermissions
     {
         $configured = config("trypost.platforms.{$platform->value}.scopes", []);
 
+        $required = self::alternatives($platform, GatedFeature::Publish)
+            ->merge(collect(config("trypost.platforms.{$platform->value}.required_scopes", []))->map(fn (string|array $requirement): array => Arr::wrap($requirement)))
+            ->reject(fn (array $alternatives): bool => collect($alternatives)->intersect($configured)->isNotEmpty())
+            ->map(fn (array $alternatives): string => Arr::first($alternatives));
+
         return collect($configured)
-            ->merge(self::missingFrom($configured, $platform, GatedFeature::Publish))
+            ->merge($required)
             ->unique()
             ->values()
             ->all();

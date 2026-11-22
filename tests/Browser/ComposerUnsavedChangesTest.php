@@ -14,6 +14,7 @@ use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Support\Uri;
 use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
@@ -443,8 +444,9 @@ function seedHeldBackMastodonThread(int $channels = 1): Post
     return $post;
 }
 
-test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList) {
+test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList, bool $edited) {
     $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()->startOfHour()]);
     $page = $fromList
         ? openUnsavedChangesFromList($post, route('app.settings.preferences'), "channel-permission-warning-{$post->social_account_id}-reconnect")
         : visit(route('app.posts.edit', $post))->resize(1280, 900);
@@ -452,12 +454,19 @@ test('saving a held-back thread to reconnect its channel leaves for the connect 
     $page->assertSeeIn("@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.unsupported'));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
+    if ($edited) {
+        $page->click("@composer-caption-{$post->social_account_id}")
+            ->type("@composer-caption-{$post->social_account_id}", 'Edited before reconnecting');
+    }
+
     $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
-    waitForPath($page, (string) parse_url(route('app.social.mastodon.connect'), PHP_URL_PATH));
+    waitForPath($page, Uri::of(route('app.social.mastodon.connect'))->path());
 
     expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
-        ->and($post->fresh()->status)->toBe(PostStatus::Draft);
-})->with(['opened from the list' => true, 'opened by its edit link' => false]);
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft)
+        ->and(Str::contains($post->fresh()->content, 'Edited before reconnecting'))->toBe($edited);
+})->with(['opened from the list' => true, 'opened by its edit link' => false])
+    ->with(['untouched' => false, 'with unsaved edits' => true]);
 
 test('a member who cannot manage channels is told an admin needs to reconnect, with no link', function () {
     $post = seedHeldBackMastodonThread();
@@ -501,7 +510,13 @@ test('a network whose connect does not ask for the replies scope offers no threa
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, "@composer-caption-{$post->social_account_id}");
 
-    $requested ? waitFor($page, '@thread-start') : $page->assertMissing('@thread-start');
+    if ($requested) {
+        waitFor($page, '@thread-start');
+    } else {
+        letPageRun($page, 1000);
+        $page->assertMissing('@thread-start');
+    }
+
     $page->assertNoJavaScriptErrors();
 })->with(['asked for' => true, 'left out' => false]);
 
@@ -515,6 +530,7 @@ test('a stored thread on a network whose connect does not ask for the replies sc
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
     $page->assertMissing('@thread-start')
+        ->assertMissing('@preview-thread')
         ->assertMissing("@channel-permission-warning-{$post->social_account_id}")
         ->assertNoJavaScriptErrors();
 });

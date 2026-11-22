@@ -7,6 +7,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\ChannelPermissions;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 
@@ -31,23 +32,27 @@ function connectRedirectScopes(string $location): array
         ->all();
 }
 
-test('every connect asks for the scopes the install configures, plus publishing, and not the defaults it left out', function (Platform $platform, string $route, ?string $leftOut, array $settings = []) {
-    $publish = ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish);
+test('every connect asks for the scopes the install configures, plus what connecting and publishing need, and not the optional defaults it left out', function (Platform $platform, string $route, ?string $leftOut, array $settings = []) {
+    $required = collect(ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish))
+        ->merge(collect(config("trypost.platforms.{$platform->value}.required_scopes", []))->map(fn (string|array $requirement): string => Arr::first(Arr::wrap($requirement))))
+        ->all();
     config(["trypost.platforms.{$platform->value}.scopes" => ['trypost.sentinel'], ...$settings]);
 
     $scopes = connectRedirectScopes($this->actingAs($this->user)->get(route($route))->headers->get('Location'));
 
-    expect($scopes)->toContain('trypost.sentinel', ...$publish);
+    expect($scopes)->toContain('trypost.sentinel', ...$required);
 
     if (filled($leftOut)) {
         expect($scopes)->not->toContain($leftOut);
     }
 })->with([
-    'x' => [Platform::X, 'app.social.x.connect', 'media.write'],
+    'x, where connecting and publishing need every default scope' => [Platform::X, 'app.social.x.connect', null],
     'facebook' => [Platform::Facebook, 'app.social.facebook.connect', 'read_insights'],
     'youtube' => [Platform::YouTube, 'app.social.youtube.connect', 'https://www.googleapis.com/auth/yt-analytics.readonly'],
     'pinterest' => [Platform::Pinterest, 'app.social.pinterest.connect', 'boards:write'],
     'google business' => [Platform::GoogleBusiness, 'app.social.google-business.connect', 'https://www.googleapis.com/auth/userinfo.email'],
+    'instagram' => [Platform::Instagram, 'app.social.instagram.connect', 'instagram_business_manage_insights'],
+    'instagram through facebook' => [Platform::InstagramFacebook, 'app.social.instagram-facebook.connect', 'instagram_manage_insights'],
     'threads' => [Platform::Threads, 'app.social.threads.connect', 'threads_manage_insights'],
     'tiktok' => [Platform::TikTok, 'app.social.tiktok.connect', 'video.list'],
     'linkedin, whose provider always adds openid, profile and email' => [Platform::LinkedIn, 'app.social.linkedin.connect', null, ['trypost.platforms.linkedin-page.enabled' => false]],

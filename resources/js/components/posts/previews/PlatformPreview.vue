@@ -71,6 +71,17 @@ const takesCoverImage = computed((): boolean => {
 
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
+/** The meta the network's preview draws: without its replies when replies are off (a LinkedIn comment included). */
+const previewMeta = computed((): Record<string, any> | undefined => {
+    if (props.repliesEnabled) {
+        return props.meta;
+    }
+
+    return Object.fromEntries(
+        Object.entries(props.meta ?? {}).filter(([key]) => key !== 'thread_replies'),
+    );
+});
+
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
     if (!props.repliesEnabled) {
         return [];
@@ -188,7 +199,7 @@ const previewComponent = computed(() => {
                 :content="previewContent"
                 :media="previewMedia"
                 :content-type="contentType"
-                :meta="meta"
+                :meta="previewMeta"
                 :posted-at="postedAt"
                 :publish-config="publishConfig"
                 :thread-position="threadReplies.length ? 'first' : undefined"

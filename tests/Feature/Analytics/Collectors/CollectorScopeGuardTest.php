@@ -128,7 +128,7 @@ test('a publication history read the grant covers calls the network', function (
     Http::fake(['*' => Http::response([])]);
     $account = scopeGuardAccount($platform, scopeGuardGrant($platform));
 
-    rescue(fn () => app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, CarbonImmutable::parse('2026-01-01', 'UTC')), report: false);
+    rescue(fn () => app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, now('UTC')->subMonths(3)->startOfMonth()), report: false);
 
     expect(scopeGuardRequested($path))->toBeTrue();
 })->with('publication scope guards');
@@ -276,3 +276,33 @@ test('an insights read is skipped without a request when the connect does not as
         ->toThrow(fn (AnalyticsCollectionException $exception) => expect($exception->category)->toBe('permission'));
     Http::assertNothingSent();
 });
+
+test('a publication history read sends nothing when the connect does not ask for its scopes, even with a full grant', function (Platform $platform, string $path, array $requested) {
+    Http::fake(['*' => Http::response([])]);
+    config(["trypost.platforms.{$platform->value}.scopes" => $requested]);
+    $account = scopeGuardAccount($platform, scopeGuardGrant($platform));
+
+    rescue(fn () => app(PublicationHistoryCollectorFactory::class)->for($account)->page($account, null, now('UTC')->subMonths(3)->startOfMonth()), report: false);
+
+    expect(scopeGuardRequested($path))->toBeFalse();
+})->with([
+    'tiktok' => [Platform::TikTok, '/video/list/', ['user.info.basic', 'video.publish', 'video.upload']],
+    'pinterest' => [Platform::Pinterest, '/pins', ['boards:read', 'boards:write', 'pins:write', 'user_accounts:read']],
+]);
+
+test('an optional insights read sends nothing when the connect does not ask for its scope, while the rest of the read goes on', function (Platform $platform, string $path, array $requested) {
+    Http::fake([
+        '*/videos*' => Http::response(['items' => [['id' => 'remote-1', 'statistics' => ['viewCount' => '10']]]]),
+        '*' => Http::response([]),
+    ]);
+    config(["trypost.platforms.{$platform->value}.scopes" => $requested]);
+    $publication = scopeGuardPublication(scopeGuardAccount($platform, scopeGuardGrant($platform)));
+
+    rescue(fn () => app(PublicationMetricsCollectorFactory::class)->for($platform)->collect($publication, CarbonImmutable::now('UTC')), report: false);
+
+    expect(Http::recorded())->not->toBeEmpty()
+        ->and(scopeGuardRequested($path))->toBeFalse();
+})->with([
+    'facebook without read_insights' => [Platform::Facebook, '/insights', ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'business_management']],
+    'youtube without analytics' => [Platform::YouTube, '/reports', ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube.force-ssl']],
+]);

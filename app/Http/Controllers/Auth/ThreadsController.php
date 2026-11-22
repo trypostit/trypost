@@ -11,6 +11,7 @@ use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -36,7 +37,7 @@ class ThreadsController extends SocialController
         $params = http_build_query([
             'client_id' => config('services.threads.client_id'),
             'redirect_uri' => config('services.threads.redirect'),
-            'scope' => implode(',', $this->requestedScopes()),
+            'scope' => Arr::join($this->requestedScopes(), ','),
             'response_type' => 'code',
             'state' => $state,
         ]);
