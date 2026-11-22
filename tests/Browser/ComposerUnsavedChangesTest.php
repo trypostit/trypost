@@ -14,7 +14,6 @@ use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Illuminate\Support\Uri;
 use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
@@ -406,9 +405,9 @@ function unsavedChangesListPath(): string
     return (string) parse_url(route('app.posts.index'), PHP_URL_PATH);
 }
 
-function openUnsavedChangesFromList(Post $post, ?string $from = null, string $readyTestId = 'instagram-share-to-feed'): mixed
+function openUnsavedChangesFromList(Post $post, ?string $from = null, string $readyTestId = 'instagram-share-to-feed', string $tab = 'drafts'): mixed
 {
-    $list = route('app.posts.index', ['tab' => 'drafts']);
+    $list = route('app.posts.index', ['tab' => $tab]);
     $page = $from === null
         ? visit($list)->resize(1280, 900)
         : visit($from)->resize(1280, 900)->navigate($list);
@@ -448,7 +447,7 @@ test('saving a held-back thread to reconnect its channel leaves for the connect 
     $post = seedHeldBackMastodonThread();
     $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()->startOfHour()]);
     $page = $fromList
-        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), "channel-permission-warning-{$post->social_account_id}-reconnect")
+        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), "channel-permission-warning-{$post->social_account_id}-reconnect", 'queue')
         : visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, "@channel-permission-warning-{$post->social_account_id}-reconnect");
     $page->assertSeeIn("@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.unsupported'));
@@ -460,7 +459,7 @@ test('saving a held-back thread to reconnect its channel leaves for the connect 
     }
 
     $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
-    waitForPath($page, Uri::of(route('app.social.mastodon.connect'))->path());
+    waitForPath($page, route('app.social.mastodon.connect', absolute: false));
 
     expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
         ->and($post->fresh()->status)->toBe(PostStatus::Draft)
