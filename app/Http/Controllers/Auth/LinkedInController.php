@@ -15,8 +15,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -42,18 +42,9 @@ class LinkedInController extends SocialController
     {
         $this->ensurePlatformEnabled();
 
-        $workspace = $request->user()->currentWorkspace;
+        $this->authorize('manageAccounts', $request->user()->currentWorkspace);
 
-        $this->authorize('manageAccounts', $workspace);
-
-        $this->rememberConnectSession($request, $workspace);
-
-        return Inertia::location(
-            Socialite::driver($this->driver)
-                ->scopes($this->connectScopes())
-                ->redirect()
-                ->getTargetUrl()
-        );
+        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes());
     }
 
     public function callback(Request $request): RedirectResponse
@@ -63,19 +54,18 @@ class LinkedInController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
             $reconnect = $this->reconnectAccount($workspace);
-            $enabledPlatforms = $this->enabledPlatforms();
-            $missingIdentity = 'not_linkedin_admin';
-
-            if ($reconnect !== null) {
-                $enabledPlatforms = $enabledPlatforms->filter(fn (SocialPlatform $platform): bool => $platform === $reconnect->platform);
-                $missingIdentity = $reconnect->platform === SocialPlatform::LinkedInPage ? 'page_not_found' : 'wrong_account';
-            }
+            $enabledPlatforms = $this->enabledPlatforms($reconnect?->platform);
+            $missingIdentity = match ($reconnect?->platform) {
+                null => 'not_linkedin_admin',
+                SocialPlatform::LinkedIn => 'wrong_account',
+                SocialPlatform::LinkedInPage => 'page_not_found',
+            };
 
             if ($enabledPlatforms->isEmpty()) {
                 return $this->failConnection($missingIdentity);
             }
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->connectScopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
             $publishablePlatforms = $enabledPlatforms->filter(
                 fn (SocialPlatform $platform): bool => blank(ChannelPermissions::missingFrom($scopes, $platform, GatedFeature::Publish)),
             );
@@ -84,33 +74,9 @@ class LinkedInController extends SocialController
                 return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
             }
 
-            $credentials = [
-                'access_token' => $socialUser->token,
-                'refresh_token' => $socialUser->refreshToken,
-                'token_expires_at' => $socialUser->expiresIn ? now()->addSeconds($socialUser->expiresIn) : null,
-                'scopes' => $scopes,
-            ];
+            $identities = $this->publishingIdentities($socialUser, $publishablePlatforms, $scopes);
 
-            $person = [
-                'id' => (string) $socialUser->getId(),
-                'name' => $socialUser->getName(),
-                'avatar' => $socialUser->getAvatar(),
-            ];
-
-            $identities = [];
-
-            if ($publishablePlatforms->contains(SocialPlatform::LinkedIn)) {
-                $person['vanity_name'] = $this->fetchVanityName($socialUser->token);
-                $identities[] = $this->personIdentity($person, $credentials);
-            }
-
-            if ($publishablePlatforms->contains(SocialPlatform::LinkedInPage)) {
-                foreach ($this->fetchOrganizations($socialUser->token) as $organization) {
-                    $identities[] = $this->organizationIdentity($organization, $person, $credentials);
-                }
-            }
-
-            if ($identities === []) {
+            if (blank($identities)) {
                 return $this->failConnection($missingIdentity);
             }
 
@@ -141,58 +107,80 @@ class LinkedInController extends SocialController
     }
 
     /**
-     * The member's personal profile becomes a `linkedin` account.
-     *
-     * @param  array<string, mixed>  $person
+     * @param  Collection<int, SocialPlatform>  $platforms
+     * @param  list<string>  $scopes
+     * @return list<array<string, mixed>>
+     */
+    private function publishingIdentities(SocialiteUser $member, Collection $platforms, array $scopes): array
+    {
+        $credentials = [
+            'access_token' => $member->token,
+            'refresh_token' => $member->refreshToken,
+            'token_expires_at' => $member->expiresIn ? now()->addSeconds($member->expiresIn) : null,
+            'scopes' => $scopes,
+        ];
+
+        $identities = [];
+
+        if ($platforms->contains(SocialPlatform::LinkedIn)) {
+            $identities[] = $this->profileIdentity($member, $credentials);
+        }
+
+        if ($platforms->contains(SocialPlatform::LinkedInPage)) {
+            foreach ($this->fetchOrganizations($member->token) as $organization) {
+                $identities[] = $this->organizationIdentity($organization, $member, $credentials);
+            }
+        }
+
+        return $identities;
+    }
+
+    /**
      * @param  array<string, mixed>  $credentials
      * @return array<string, mixed>
      */
-    private function personIdentity(array $person, array $credentials): array
+    private function profileIdentity(SocialiteUser $member, array $credentials): array
     {
+        $username = $this->fetchVanityName($member->token);
+        $name = $member->getName();
+
         return PendingConnection::identity(
             SocialPlatform::LinkedIn,
-            (string) data_get($person, 'id'),
-            data_get($person, 'name'),
-            data_get($person, 'vanity_name'),
-            data_get($person, 'avatar'),
+            (string) $member->getId(),
+            $name,
+            $username,
+            $member->getAvatar(),
             SocialPlatform::LinkedIn->identityType()->value,
-            [
-                ...$credentials,
-                'username' => data_get($person, 'vanity_name'),
-                'display_name' => data_get($person, 'name'),
-            ],
+            [...$credentials, 'username' => $username, 'display_name' => $name],
         );
     }
 
     /**
-     * A company the member administers becomes a `linkedin-page` account, with the
-     * acting member recorded in meta so the page publisher can post on its behalf.
-     * Only the admin-verified list read here is ever offered.
-     *
      * @param  array<string, mixed>  $organization
-     * @param  array<string, mixed>  $person
      * @param  array<string, mixed>  $credentials
      * @return array<string, mixed>
      */
-    private function organizationIdentity(array $organization, array $person, array $credentials): array
+    private function organizationIdentity(array $organization, SocialiteUser $admin, array $credentials): array
     {
         $organizationId = data_get($organization, 'id');
+        $name = data_get($organization, 'localizedName', 'Unknown');
+        $username = data_get($organization, 'vanityName');
 
         return PendingConnection::identity(
             SocialPlatform::LinkedInPage,
             (string) $organizationId,
-            data_get($organization, 'name'),
-            data_get($organization, 'vanity_name'),
-            data_get($organization, 'logo'),
+            $name,
+            $username,
+            data_get($organization, 'logoV2.original~.elements.0.identifiers.0.identifier'),
             SocialPlatform::LinkedInPage->identityType()->value,
             [
                 ...$credentials,
-                'username' => data_get($organization, 'vanity_name'),
-                'display_name' => data_get($organization, 'name'),
+                'username' => $username,
+                'display_name' => $name,
                 'meta' => [
                     'organization_id' => $organizationId,
-                    'admin_user_id' => data_get($person, 'id'),
-                    'admin_name' => data_get($person, 'name'),
+                    'admin_user_id' => (string) $admin->getId(),
+                    'admin_name' => $admin->getName(),
                 ],
             ],
         );
@@ -205,7 +193,7 @@ class LinkedInController extends SocialController
      *
      * @return array<int, string>
      */
-    private function connectScopes(): array
+    protected function requestedScopes(): array
     {
         return $this->enabledPlatforms()
             ->flatMap(ChannelPermissions::requestedScopes(...))
@@ -217,9 +205,15 @@ class LinkedInController extends SocialController
     /**
      * @return Collection<int, SocialPlatform>
      */
-    private function enabledPlatforms(): Collection
+    private function enabledPlatforms(?SocialPlatform $reconnectPlatform = null): Collection
     {
-        return collect([SocialPlatform::LinkedIn, SocialPlatform::LinkedInPage])
+        $platforms = [SocialPlatform::LinkedIn, SocialPlatform::LinkedInPage];
+
+        if ($reconnectPlatform !== null) {
+            $platforms = [$reconnectPlatform];
+        }
+
+        return collect($platforms)
             ->filter(fn (SocialPlatform $platform): bool => $platform->isEnabled());
     }
 
@@ -248,7 +242,7 @@ class LinkedInController extends SocialController
      * Organizations the authenticated member administers, used to offer company
      * pages as a posting identity alongside their personal profile.
      *
-     * @return array<int, array{id: mixed, name: string, vanity_name: ?string, logo: ?string}>
+     * @return list<array<string, mixed>>
      */
     private function fetchOrganizations(string $accessToken): array
     {
@@ -267,21 +261,10 @@ class LinkedInController extends SocialController
             return [];
         }
 
-        $organizations = [];
-
-        foreach (data_get($response->json(), 'elements', []) as $element) {
-            $org = data_get($element, 'organization~');
-
-            if ($org) {
-                $organizations[] = [
-                    'id' => data_get($org, 'id'),
-                    'name' => data_get($org, 'localizedName', 'Unknown'),
-                    'vanity_name' => data_get($org, 'vanityName'),
-                    'logo' => data_get($org, 'logoV2.original~.elements.0.identifiers.0.identifier'),
-                ];
-            }
-        }
-
-        return $organizations;
+        return $response->collect('elements')
+            ->filter(fn (array $entry): bool => filled(data_get($entry, 'organization~.id')))
+            ->pluck('organization~')
+            ->values()
+            ->all();
     }
 }

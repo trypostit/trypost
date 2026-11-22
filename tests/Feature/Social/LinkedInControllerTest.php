@@ -33,6 +33,7 @@ test('linkedin authorize url carries the member and organization scopes', functi
 test('linkedin connect redirects to oauth provider via the openid driver', function () {
     $driverMock = Mockery::mock();
     $driverMock->shouldReceive('scopes')->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.linkedin.com/oauth/v2/authorization?test=1',
     ]));
@@ -66,6 +67,7 @@ function captureLinkedInConnectScopes(object $test): array
             return true;
         })
         ->andReturnSelf();
+    $driverMock->shouldReceive('with')->with([])->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://www.linkedin.com/oauth/v2/authorization?test=1',
     ]));
@@ -184,6 +186,18 @@ test('linkedin callback offers the member and the organizations they administer'
         );
 
     $this->assertDatabaseCount('social_accounts', 0);
+});
+
+test('linkedin offers only organizations with an id', function () {
+    startSocialConnect($this->workspace, Platform::LinkedIn);
+
+    runLinkedInCallback($this, [
+        ['localizedName' => 'Incomplete Company'],
+        ['id' => '', 'localizedName' => 'Missing ID'],
+        ['id' => 123456, 'localizedName' => 'Test Company'],
+    ]);
+
+    expect(PendingConnection::current()->identityKeys())->toBe(['linkedin:person-123', 'linkedin-page:123456']);
 });
 
 test('linkedin callback offers only the member when they administer no organization', function () {
