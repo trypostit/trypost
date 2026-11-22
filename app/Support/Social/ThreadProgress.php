@@ -6,6 +6,7 @@ namespace App\Support\Social;
 
 use App\Models\Post;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Collection;
 
 /**
  * Segments of a thread already live on the network, kept in
@@ -24,7 +25,13 @@ final class ThreadProgress
      */
     public static function hash(string $text, array $mediaIds = [], ?array $poll = null): string
     {
-        return sha1((string) json_encode(blank($poll) ? [$text, $mediaIds] : [$text, $mediaIds, $poll]));
+        $segment = [$text, $mediaIds];
+
+        if (filled($poll)) {
+            $segment[] = $poll;
+        }
+
+        return sha1((string) json_encode($segment));
     }
 
     /**
@@ -35,10 +42,7 @@ final class ThreadProgress
      */
     public static function rootHash(?array $context): ?string
     {
-        $root = data_get($context, self::KEY.'.0');
-        $hash = data_get($root, 'hash');
-
-        return is_string($hash) && is_string(data_get($root, 'id')) ? $hash : null;
+        return self::publishedSegments($context)->first()['hash'] ?? null;
     }
 
     /**
@@ -48,7 +52,7 @@ final class ThreadProgress
      */
     public static function failureMessage(Post $post, string $message, ?array $context): string
     {
-        $published = collect(data_get($context, self::KEY))->count();
+        $published = self::publishedSegments($context)->count();
 
         if ($published === 0) {
             return $message;
@@ -73,17 +77,9 @@ final class ThreadProgress
      */
     public static function resumable(?array $context, array $hashes): array
     {
-        $kept = [];
-
-        foreach (array_values((array) data_get($context, self::KEY, [])) as $index => $entry) {
-            if (! is_array($entry) || ($hashes[$index] ?? null) !== data_get($entry, 'hash') || ! is_string(data_get($entry, 'id'))) {
-                break;
-            }
-
-            $kept[] = $entry;
-        }
-
-        return $kept;
+        return self::publishedSegments($context)
+            ->takeWhile(fn (array $segment, int $index): bool => $segment['hash'] === ($hashes[$index] ?? null))
+            ->all();
     }
 
     /**
@@ -94,5 +90,30 @@ final class ThreadProgress
         $post->writePublication([
             'error_context' => [...($post->error_context ?? []), self::KEY => $posted],
         ]);
+    }
+
+    /**
+     * The persisted JSON can contain an incomplete entry. Only a continuous
+     * run of checkpoints from the root records how far the thread got.
+     *
+     * @param  array<string, mixed>|null  $context
+     * @return Collection<int, array{hash: string, id: string, ...}>
+     */
+    private static function publishedSegments(?array $context): Collection
+    {
+        $stored = data_get($context, self::KEY, []);
+        $published = collect();
+
+        for ($index = 0; isset($stored[$index]); $index++) {
+            $segment = $stored[$index];
+
+            if (! is_string($segment['hash'] ?? null) || ! is_string($segment['id'] ?? null)) {
+                break;
+            }
+
+            $published->push($segment);
+        }
+
+        return $published;
     }
 }

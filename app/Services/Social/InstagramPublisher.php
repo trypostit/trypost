@@ -20,6 +20,7 @@ use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\PublishContentValidator;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -50,7 +51,7 @@ class InstagramPublisher
     public function publish(Post $post): array
     {
         $this->post = $post;
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $account = $post->socialAccount;
         $this->baseUrl = $account->platform->graphApiUrl();

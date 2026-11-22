@@ -17,6 +17,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadProgress;
 use App\Support\UrlDetector;
 use Carbon\CarbonInterface;
@@ -54,7 +55,7 @@ class BlueskyPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

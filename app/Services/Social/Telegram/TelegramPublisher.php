@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\PublishContentValidator;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 
@@ -28,7 +29,7 @@ class TelegramPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $account = $post->socialAccount;
         $chatId = (string) data_get($account->meta, 'chat_id');

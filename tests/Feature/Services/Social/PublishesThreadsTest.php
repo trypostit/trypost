@@ -89,6 +89,15 @@ test('a failed reply keeps the progress and the retry resumes after it', functio
         ->and($result['thread_reply_ids'])->toBe(['id-two', 'id-three']);
 });
 
+test('a partial thread counts only the published segments before the first incomplete checkpoint', function () {
+    $root = ['hash' => 'root', 'id' => 'r'];
+    $context = [ThreadProgress::KEY => [$root, ['hash' => 'two'], ['hash' => 'three', 'id' => '3']]];
+
+    expect(ThreadProgress::failureMessage($this->post, 'Rate limited', $context))
+        ->toBe(__('posts.errors.thread_incomplete', ['published' => 1, 'total' => 3, 'error' => 'Rate limited']))
+        ->and(ThreadProgress::resumable($context, ['root', 'two', 'three']))->toBe([$root]);
+});
+
 test('a changed reply is posted again from the first change', function () {
     ThreadProgress::remember($this->post, [
         ['hash' => ThreadProgress::hash('root'), 'id' => 'r'],

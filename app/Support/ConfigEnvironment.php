@@ -20,16 +20,9 @@ final class ConfigEnvironment
      */
     public static function oauthScopes(string $key, string $default): array
     {
-        $value = (string) env($key);
+        $configured = (string) env($key);
+        $scopes = filled($configured) ? $configured : $default;
 
-        if (blank($value)) {
-            $value = $default;
-        }
-
-        return Str::of($value)
-            ->split('/[\s,]+/')
-            ->filter(fn (string $scope): bool => filled($scope))
-            ->values()
-            ->all();
+        return Str::matchAll('/[^\s,]+/', $scopes)->all();
     }
 }

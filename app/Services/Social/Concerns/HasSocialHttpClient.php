@@ -4,75 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Concerns;
 
-use App\Enums\PostPlatform\ContentType;
-use App\Exceptions\Social\ContentLimitException;
-use App\Exceptions\Social\MissingPermissionException;
-use App\Models\Post;
-use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
-use App\Support\ChannelPermissions;
-use App\Support\ThreadReplies;
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Arr;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
+use Throwable;
 
 trait HasSocialHttpClient
 {
-    /**
-     * Measures the sanitized content — the exact string the publisher sends —
-     * rather than the stored draft. The two differ by more than markup: X
-     * defusing rewrites URLs, Telegram escapes entities, and every platform
-     * strips HTML the editor stored. Checking the raw draft both rejected
-     * posts that would have fit and let through posts the network rejects.
-     * A feature its channel lacks a scope for, then thread replies, are checked
-     * first, on every post type; a captionless content type sends no text and
-     * is not measured. The hashtag cap is a save-time rule only, so a post
-     * stored before it still publishes.
-     */
-    protected function validateContentLength(Post $post): void
-    {
-        $account = $post->socialAccount;
-        $platform = $account?->platform ?? $post->platform;
-        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta);
-
-        if (filled($blockedFeature)) {
-            throw new MissingPermissionException(
-                $post->platform,
-                ChannelPermissions::reconnectMessage($platform, $blockedFeature),
-            );
-        }
-
-        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
-        $threadViolation = ThreadReplies::violation($platform, $type, $post->meta, $account);
-
-        if (filled($threadViolation)) {
-            throw new ContentLimitException($post->platform, data_get($threadViolation, '1'));
-        }
-
-        $replyPollMediaError = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));
-
-        if (filled($replyPollMediaError)) {
-            throw new ContentLimitException($post->platform, $replyPollMediaError);
-        }
-
-        if ($post->content_type?->isCaptionless()) {
-            return;
-        }
-
-        $raw = $post->content ?? '';
-        $content = app(ContentSanitizer::class)->displayText($raw, $post->platform);
-
-        $maxLength = ContentType::maxContentLengthFor($post->socialAccount, $post->platform, $post->content_type);
-        $contentLength = Str::length($content) + $post->platform->reservedLength($post->meta);
-
-        if ($contentLength <= $maxLength) {
-            return;
-        }
-
-        throw ContentLimitException::exceeds($post->platform, $maxLength, $contentLength);
-    }
-
     private bool $interactiveHttp = false;
 
     /**
@@ -97,7 +36,7 @@ trait HasSocialHttpClient
         return Http::retry(
             times: 3,
             sleepMilliseconds: 5000,
-            when: fn ($exception, $request) => ($exception->response ?? null)?->status() === 429,
+            when: fn (Throwable $exception): bool => $exception instanceof RequestException && $exception->response->tooManyRequests(),
             throw: false,
         )->timeout(120);
     }
