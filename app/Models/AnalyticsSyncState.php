@@ -83,6 +83,13 @@ class AnalyticsSyncState extends Model
         ];
     }
 
+    public function scopeLegacyLimitedBackfill(Builder $query): Builder
+    {
+        return $query->forCollector(SyncCollector::PublicationBackfill)
+            ->where('status', SyncStatus::ProviderLimited)
+            ->where('last_error_category', 'provider_limited');
+    }
+
     public function scopePendingOrRunning(Builder $query): Builder
     {
         return $query->whereIn('status', [SyncStatus::Pending, SyncStatus::Running]);

@@ -13,6 +13,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
 use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -49,10 +50,26 @@ class AdvanceAnalyticsSyncState
         }
 
         $account->analyticsSyncStates()
-            ->forCollector(SyncCollector::PublicationBackfill)
-            ->where('status', SyncStatus::ProviderLimited)
-            ->where('last_error_category', 'provider_limited')
+            ->legacyLimitedBackfill()
             ->update($restart);
+    }
+
+    /** Keep the evidence for a legacy TikTok limit before disconnect removes the account and its scopes. */
+    public function rememberDisconnectedHistoryGrant(SocialAccount $account): void
+    {
+        if ($account->platform !== Platform::TikTok || blank($account->scopes)) {
+            return;
+        }
+
+        DB::transaction(function () use ($account): void {
+            $state = $account->analyticsSyncStates()->legacyLimitedBackfill()->lockForUpdate()->first();
+            if ($state !== null) {
+                $state->update(['checkpoint' => [
+                    ...($state->checkpoint ?? []),
+                    'missing_history_grant' => ChannelPermissions::lacks($account, GatedFeature::PostHistory),
+                ]]);
+            }
+        });
     }
 
     /** Preserve the cursor and invalidate any in-flight page's checkpoint revision. */
@@ -100,6 +117,13 @@ class AdvanceAnalyticsSyncState
             $cursor = $restartTerminal && $state->isTerminal()
                 ? null
                 : data_get($checkpoint, 'cursor');
+            $publicHistoryCursor = filled($cursor) && (data_get($checkpoint, 'public_history_only')
+                || $state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL);
+            if ($publicHistoryCursor && $state->socialAccount?->canReadMastodonStatuses()) {
+                $cursor = null;
+                $publicHistoryCursor = false;
+            }
+
             $seenCount = $restartTerminal && $state->isTerminal()
                 ? 0
                 : (int) data_get($checkpoint, 'seen_count', 0);
@@ -109,6 +133,7 @@ class AdvanceAnalyticsSyncState
                 'checkpoint' => [
                     'cursor' => $cursor,
                     'revision' => $revision,
+                    ...($publicHistoryCursor ? ['public_history_only' => true] : []),
                     ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
                         ? ['seen_count' => $seenCount]
                         : []),
@@ -185,9 +210,9 @@ class AdvanceAnalyticsSyncState
             );
             $reachedTarget = $state->collector === SyncCollector::PublicationBackfill
                 && $page->canStopAtTarget
-                && $oldest
+                && $pageOldest
                 && $state->target_since
-                && $oldest->lessThanOrEqualTo($state->target_since);
+                && $pageOldest->lessThanOrEqualTo($state->target_since);
             $isXBackfill = $state->collector === SyncCollector::PublicationBackfill
                 && $account->platform === Platform::X;
             $seenCount = (int) data_get($checkpoint, 'seen_count', 0) + ($page->providerRowCount ?? count($page->publications));
@@ -198,9 +223,14 @@ class AdvanceAnalyticsSyncState
             $hadProviderLimit = $page->providerLimited || data_get($checkpoint, 'had_provider_limit');
             $finished = $page->providerExhausted || $reachedTarget;
 
+            $partialReason = $page->partialReason;
+            if (data_get($checkpoint, 'public_history_only')) {
+                $partialReason = MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
+            }
+
             $status = match (true) {
                 $xTimelineLimited, $hadProviderLimit && $finished => SyncStatus::ProviderLimited,
-                filled($page->partialReason) && $finished => SyncStatus::Partial,
+                filled($partialReason) && $finished => SyncStatus::Partial,
                 $finished => SyncStatus::Complete,
                 default => SyncStatus::Running,
             };
@@ -214,6 +244,9 @@ class AdvanceAnalyticsSyncState
                 'checkpoint' => [
                     'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
                     'revision' => $capturedRevision,
+                    ...($partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL && $status === SyncStatus::Running
+                        ? ['public_history_only' => true]
+                        : []),
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
                     ...($hadProviderLimit && $status === SyncStatus::Running ? ['had_provider_limit' => true] : []),
                     ...($status === SyncStatus::Running && data_get($checkpoint, 'invalid_cursor_resets')
@@ -229,7 +262,7 @@ class AdvanceAnalyticsSyncState
                 'last_error_category' => match (true) {
                     $hadProviderLimit => 'provider_limited',
                     $xTimelineLimited => 'x_timeline_limit',
-                    default => $page->partialReason,
+                    default => $partialReason,
                 },
             ]);
 

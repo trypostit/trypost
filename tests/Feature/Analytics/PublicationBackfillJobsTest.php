@@ -26,6 +26,7 @@ use App\Services\Analytics\Collectors\Publications\AbstractPublicationHistoryCol
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
@@ -1323,3 +1324,78 @@ test('a restored X history grant restarts its timeline count and keeps the check
 
     expect($state->fresh()->checkpoint)->toMatchArray(['seen_count' => 0, 'revision' => 3]);
 });
+
+test('restoring private history during a Mastodon backfill recovers earlier private posts', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read:accounts', 'write:statuses']]);
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    $endpoint = $account->mastodon_instance.'/api/v1/accounts/'.$account->platform_user_id.'/statuses';
+    $status = fn (string $id, int $days): array => ['id' => $id, 'created_at' => now()->subDays($days)->toIso8601String()];
+    Http::preventStrayRequests();
+    Http::fake([$endpoint.'*' => function (Request $request) use ($endpoint, $status) {
+        if (filled(data_get($request->data(), 'max_id'))) {
+            return Http::response([$status('100', 60)]);
+        }
+
+        $statuses = [$status('400', 1), $status('200', 50)];
+        if ($request->hasHeader('Authorization')) {
+            $statuses[] = [...$status('300', 25), 'visibility' => 'private'];
+        }
+
+        return Http::response($statuses, 200, ['Link' => '<'.$endpoint.'?max_id=200>; rel="next"']);
+    }]);
+
+    $job = new BackfillAccountPublications($account->id, $state->id);
+    app()->call([$job, 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+
+    $account->update(['scopes' => ['read:accounts', 'read:statuses', 'write:statuses']]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+    for ($page = 0; $page < 3 && ! $state->fresh()->isTerminal(); $page++) {
+        app()->call([$job, 'handle']);
+    }
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(AnalyticsPublication::whereBelongsTo($account, 'socialAccount')->pluck('remote_id')->all())
+        ->toEqualCanonicalizing(['100', '200', '300', '400']);
+});
+
+test('reconnecting a deleted TikTok channel retries a legacy scope refusal and preserves a known provider limit', function (array $oldScopes, bool $retries) {
+    Bus::fake();
+    $old = SocialAccount::factory()->tiktok()->create(['scopes' => $oldScopes]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+    ]);
+    $old->delete();
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->social_account_id)->toBe($account->id);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $retries ? 1 : 0);
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $retries ? 0 : 1);
+})->with([
+    'history was denied' => [['video.publish'], true],
+    'history was granted' => [['video.list'], false],
+]);
+
+test('a legacy orphaned TikTok limit without a saved grant is retried only for an empty history', function (bool $imported) {
+    Bus::fake();
+    $account = SocialAccount::factory()->tiktok()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => null,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'oldest_reached_at' => $imported ? now()->subMonth() : null,
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->social_account_id)->toBe($account->id);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $imported ? 0 : 1);
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $imported ? 1 : 0);
+})->with(['empty history' => false, 'previously imported history' => true]);

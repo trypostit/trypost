@@ -46,6 +46,7 @@ class SocialAccountObserver
 
     public function deleting(SocialAccount $socialAccount): void
     {
+        app(AdvanceAnalyticsSyncState::class)->rememberDisconnectedHistoryGrant($socialAccount);
         app(RepurposeAccountSync::class)->accountRemoved($socialAccount);
     }
 

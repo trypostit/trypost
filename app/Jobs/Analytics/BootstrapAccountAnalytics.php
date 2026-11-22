@@ -131,6 +131,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
                             ? (int) data_get($backfill->checkpoint, 'seen_count', 0)
                             : 0]
                         : []),
+                    ...($resumeFailed && data_get($backfill->checkpoint, 'public_history_only') ? ['public_history_only' => true] : []),
                     ...($resumeFailed && data_get($backfill->checkpoint, 'resumed_after_disconnect')
                         ? ['resumed_after_disconnect' => true]
                         : []),
@@ -173,12 +174,17 @@ class BootstrapAccountAnalytics implements ShouldQueue
             || $state->platform_user_id !== $identity['platform_user_id']
             || $state->identity_key !== $identity['identity_key']) {
             $checkpoint = $state->checkpoint ?? [];
+            $status = $state->status;
+            if ($rebound && $status === SyncStatus::Running) {
+                $status = SyncStatus::Pending;
+            }
+            if ($rebound && $this->shouldRetryDisconnectedHistory($state, $account)) {
+                $status = SyncStatus::Paused;
+            }
             $state->update([
                 ...$identity,
                 'social_account_id' => $account->id,
-                'status' => $rebound && $state->status === SyncStatus::Running
-                    ? SyncStatus::Pending
-                    : $state->status,
+                'status' => $status,
                 'checkpoint' => $rebound ? [
                     ...$checkpoint,
                     'cursor' => $collector === SyncCollector::PublicationDiscovery
@@ -195,5 +201,20 @@ class BootstrapAccountAnalytics implements ShouldQueue
         }
 
         return [$state, $rebound];
+    }
+
+    /**
+     * Older orphaned TikTok checkpoints have no grant attached. Retry an ambiguous
+     * limit on reconnect only if that backfill never reached a publication.
+     */
+    private function shouldRetryDisconnectedHistory(AnalyticsSyncState $state, SocialAccount $account): bool
+    {
+        if ($account->platform !== Platform::TikTok || $state->collector !== SyncCollector::PublicationBackfill
+            || $state->status !== SyncStatus::ProviderLimited || $state->last_error_category !== 'provider_limited') {
+            return false;
+        }
+
+        return data_get($state->checkpoint, 'missing_history_grant')
+            ?? ($state->oldest_reached_at === null && $state->high_watermark_at === null);
     }
 }

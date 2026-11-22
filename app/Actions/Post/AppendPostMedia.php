@@ -8,6 +8,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\ChannelPermissions;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
 use App\Support\PostStatusRules;
@@ -37,6 +38,10 @@ class AppendPostMedia
 
             if (PostStatusRules::blocksEditing($post)) {
                 throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
+            }
+
+            if ($post->status === PostStatus::Scheduled && $post->socialAccount !== null) {
+                ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->meta, $actor);
             }
 
             if ($post->hasDestination() && ContentType::derivesFromMedia($post->platform)) {

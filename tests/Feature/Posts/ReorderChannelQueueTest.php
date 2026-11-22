@@ -234,9 +234,12 @@ test('a member who needs approval cannot reorder the queue', function () {
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
 });
 
-test('only posts changing slots need the permission to publish their replies', function () {
+test('only posts changing slots need permission and support for their replies', function (bool $enabled) {
     $channel = $this->channel;
     gateFeature($channel->platform, GatedFeature::ThreadReplies, ['write.comments']);
+    if (! $enabled) {
+        config(["trypost.platforms.{$channel->platform->value}.scopes" => ['w_member_social']]);
+    }
     $channel->update(['scopes' => ['w_member_social']]);
     $this->c->update(['meta' => ['thread_replies' => [['text' => 'Comment', 'media' => []]]]]);
     $before = reorderTimes($this->a, $this->b, $this->c);
@@ -244,11 +247,13 @@ test('only posts changing slots need the permission to publish their replies', f
     $this->actingAs($this->user)
         ->putJson(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->c->id, $this->a->id]])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('post_ids');
+        ->assertJsonValidationErrors(['post_ids' => $enabled
+            ? __('channels.permissions.thread_replies.message', ['network' => $channel->platform->label()])
+            : __('posts.form.thread.unsupported')]);
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
 
     $this->put(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->a->id, $this->c->id]])
         ->assertSessionHasNoErrors();
     expect($this->b->fresh()->scheduled_at->toIso8601String())->toBe($before[$this->a->id]);
-});
+})->with(['scope missing from grant' => true, 'feature disabled in configuration' => false]);

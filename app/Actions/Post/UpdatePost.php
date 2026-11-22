@@ -247,11 +247,11 @@ class UpdatePost
     /**
      * Re-reads the post under a row lock inside the write transaction, so a post the
      * scheduler claimed or another request settled after it was loaded is left alone.
-     * An editable post starts its metadata patch from the values held under that lock.
+     * A partial edit keeps the current media and metadata when they were omitted.
      */
     private static function lockForEditing(Post $post): bool
     {
-        $locked = Post::query()->whereKey($post->id)->lockForUpdate()->firstOrFail();
+        $locked = Post::query()->lockForUpdate()->findOrFail($post->id);
 
         if (PostStatusRules::blocksEditing($locked)) {
             $post->setRawAttributes($locked->getAttributes(), true);
@@ -259,8 +259,8 @@ class UpdatePost
             return false;
         }
 
-        $post->meta = $locked->meta;
-        $post->syncOriginalAttribute('meta');
+        $composition = ['content', 'content_type', 'media', 'meta'];
+        $post->fill($locked->only($composition))->syncOriginalAttributes($composition);
 
         return true;
     }

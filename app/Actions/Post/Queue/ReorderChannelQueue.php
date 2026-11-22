@@ -47,13 +47,7 @@ class ReorderChannelQueue
                         continue;
                     }
 
-                    $blocked = ChannelPermissions::featureBlockingPost($channel, $post->meta);
-                    if ($blocked !== null) {
-                        throw ValidationException::withMessages([
-                            'post_ids' => ChannelPermissions::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
-                        ]);
-                    }
-
+                    ChannelPermissions::ensureScheduledPostCanChange($channel, $post->meta, $actor, 'post_ids');
                     ReflowChannelQueue::updateIfScheduled($post, ['scheduled_at' => $slot]);
                 }
             });

@@ -7,7 +7,9 @@ namespace App\Support;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
+use App\Models\User;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The one map of what each network needs the account to have granted before
@@ -165,6 +167,21 @@ class ChannelPermissions
 
         return collect(GatedFeature::cases())
             ->first(fn (GatedFeature $feature): bool => $feature->isRequiredToPublish($meta) && self::blocks($account, $feature));
+    }
+
+    /** @param array<string, mixed>|null $meta */
+    public static function ensureScheduledPostCanChange(SocialAccount $channel, ?array $meta, User $actor, ?string $field = null): void
+    {
+        $blocked = self::featureBlockingPost($channel, $meta);
+        if ($blocked !== null) {
+            throw ValidationException::withMessages([
+                $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
+            ]);
+        }
+
+        if (GatedFeature::ThreadReplies->isRequiredToPublish($meta) && ! ThreadReplies::supports($channel->platform)) {
+            throw ValidationException::withMessages([$field ?? GatedFeature::ThreadReplies->postValidationField() => __('posts.form.thread.unsupported')]);
+        }
     }
 
     /**
