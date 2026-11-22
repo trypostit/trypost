@@ -114,18 +114,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
             return;
         }
 
-        $resumeFailed = $backfill->status === SyncStatus::Failed;
-        $retryPartial = $backfill->status === SyncStatus::Partial
-            && ! $backfillRebound
-            && ! $recoveredWithoutCheckpoint
-            && $backfill->last_error_category !== self::PRIOR_CHECKPOINT_UNAVAILABLE;
-
-        if ($resumeFailed || $retryPartial) {
-            $backfill->update([
-                'status' => SyncStatus::Pending,
-                'checkpoint' => $this->backfillCheckpointForRetry($backfill, $account->platform),
-            ]);
-        }
+        $this->retryBackfill($backfill, $account->platform, canRestartPartial: ! $backfillRebound && ! $recoveredWithoutCheckpoint);
 
         if (! $backfill->isTerminal()) {
             BackfillAccountPublications::dispatch($account->id, $backfill->id)->afterCommit();
@@ -138,13 +127,18 @@ class BootstrapAccountAnalytics implements ShouldQueue
         }
     }
 
-    /**
-     * @return array{cursor: mixed, revision: int, seen_count?: int, public_history_only?: true, resumed_after_disconnect?: true}
-     */
-    private function backfillCheckpointForRetry(AnalyticsSyncState $backfill, Platform $platform): array
+    private function retryBackfill(AnalyticsSyncState $backfill, Platform $platform, bool $canRestartPartial): void
     {
-        $previous = $backfill->checkpoint ?? [];
         $resumeFailed = $backfill->status === SyncStatus::Failed;
+        $restartPartial = $canRestartPartial
+            && $backfill->status === SyncStatus::Partial
+            && $backfill->last_error_category !== self::PRIOR_CHECKPOINT_UNAVAILABLE;
+
+        if (! $resumeFailed && ! $restartPartial) {
+            return;
+        }
+
+        $previous = $backfill->checkpoint ?? [];
         $checkpoint = [
             'cursor' => $resumeFailed ? data_get($previous, 'cursor') : null,
             'revision' => (int) data_get($previous, 'revision', 0),
@@ -162,7 +156,10 @@ class BootstrapAccountAnalytics implements ShouldQueue
             $checkpoint['resumed_after_disconnect'] = true;
         }
 
-        return $checkpoint;
+        $backfill->update([
+            'status' => SyncStatus::Pending,
+            'checkpoint' => $checkpoint,
+        ]);
     }
 
     /**
@@ -187,32 +184,30 @@ class BootstrapAccountAnalytics implements ShouldQueue
 
         $rebound = $state->social_account_id !== $account->id;
 
-        if ($rebound
-            || $state->workspace_id !== $identity['workspace_id']
-            || $state->network !== $identity['network']
-            || $state->platform_user_id !== $identity['platform_user_id']
-            || $state->identity_key !== $identity['identity_key']) {
-            $checkpoint = $state->checkpoint ?? [];
-            $status = $state->status;
-
-            if ($rebound) {
-                $status = $this->statusAfterReconnect($state, $account);
-                $cursor = data_get($checkpoint, 'cursor');
-                $checkpoint['cursor'] = $collector === SyncCollector::PublicationDiscovery ? null : $cursor;
-                $checkpoint['revision'] = (int) data_get($checkpoint, 'revision', 0) + 1;
-
-                if ($collector === SyncCollector::PublicationBackfill && filled($cursor) && $state->oldest_reached_at !== null) {
-                    $checkpoint['resumed_after_disconnect'] = true;
-                }
-            }
-
-            $state->update([
-                ...$identity,
-                'social_account_id' => $account->id,
-                'status' => $status,
-                'checkpoint' => $checkpoint,
-            ]);
+        if (! $rebound && $state->only(array_keys($identity)) === $identity) {
+            return [$state, false];
         }
+
+        $checkpoint = $state->checkpoint ?? [];
+        $status = $state->status;
+
+        if ($rebound) {
+            $status = $this->statusAfterReconnect($state, $account);
+            $cursor = data_get($checkpoint, 'cursor');
+            $checkpoint['cursor'] = $collector === SyncCollector::PublicationDiscovery ? null : $cursor;
+            $checkpoint['revision'] = (int) data_get($checkpoint, 'revision', 0) + 1;
+
+            if ($collector === SyncCollector::PublicationBackfill && filled($cursor) && $state->oldest_reached_at !== null) {
+                $checkpoint['resumed_after_disconnect'] = true;
+            }
+        }
+
+        $state->update([
+            ...$identity,
+            'social_account_id' => $account->id,
+            'status' => $status,
+            'checkpoint' => $checkpoint,
+        ]);
 
         return [$state, $rebound];
     }
@@ -223,7 +218,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
             return SyncStatus::Pending;
         }
 
-        if ($this->shouldRetryDisconnectedHistory($state, $account)) {
+        if ($this->shouldRetryLegacyTikTokBackfill($state, $account)) {
             return SyncStatus::Paused;
         }
 
@@ -231,10 +226,10 @@ class BootstrapAccountAnalytics implements ShouldQueue
     }
 
     /**
-     * Older orphaned TikTok checkpoints have no grant attached. Retry an ambiguous
-     * limit on reconnect only if that backfill never reached a publication.
+     * Prefer the saved grant at disconnect. When an older checkpoint lacks it,
+     * retry an ambiguous limit only if the backfill never reached a publication.
      */
-    private function shouldRetryDisconnectedHistory(AnalyticsSyncState $state, SocialAccount $account): bool
+    private function shouldRetryLegacyTikTokBackfill(AnalyticsSyncState $state, SocialAccount $account): bool
     {
         if ($account->platform !== Platform::TikTok || $state->collector !== SyncCollector::PublicationBackfill
             || $state->status !== SyncStatus::ProviderLimited || $state->last_error_category !== 'provider_limited') {
