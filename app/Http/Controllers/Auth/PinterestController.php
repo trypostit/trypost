@@ -27,7 +27,7 @@ class PinterestController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes());
+        return $this->redirectToProvider($request, $this->driver);
     }
 
     public function callback(Request $request): RedirectResponse
@@ -37,7 +37,7 @@ class PinterestController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

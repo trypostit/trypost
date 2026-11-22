@@ -520,6 +520,23 @@ test('reordering the queue through the web, the api and the mcp tool swaps the p
         ->and(Post::query()->queuedOn($this->account->id, now())->orderBy('scheduled_at')->get()->map->scheduled_at->map->toIso8601String()->all())->toBe($slots);
 });
 
+test('a channel missing its publish permission keeps its occupied slots on the web, API and MCP', function () {
+    [$first, $second] = schedulingParityQueued($this->account, $this->workspace->id, $this->user->id, 2);
+    $this->account->update(['scopes' => ['openid']]);
+    $order = ['post_ids' => [$second->id, $first->id]];
+    $message = __('channels.permissions.publish.message', ['network' => $this->account->platform->label()]);
+
+    $this->actingAs($this->user)->putJson(route('app.channels.queue.order', $this->account), $order)
+        ->assertUnprocessable()->assertJsonValidationErrors(['post_ids' => $message]);
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))->putJson(route('api.channels.queue.order', $this->account), $order)
+        ->assertUnprocessable()->assertJsonValidationErrors(['post_ids' => $message]);
+    TryPostServer::actingAs($this->user)->tool(ReorderQueueTool::class, ['account_id' => $this->account->id, ...$order])
+        ->assertHasErrors([$message]);
+
+    expect(schedulingParityQueueOrder($this->account))->toBe([$first->id, $second->id]);
+});
+
 test('reordering with ids that are not the head of the queue is refused with the web message on every surface', function () {
     [$a, $b, $c] = schedulingParityQueued($this->account, $this->workspace->id, $this->user->id, 3);
     $stale = [$b->id, $c->id];

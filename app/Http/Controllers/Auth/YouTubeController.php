@@ -41,7 +41,7 @@ class YouTubeController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
             $refusal = $this->refusalForMissingPublishScopes($scopes);
 
             if ($refusal !== null) {
@@ -88,7 +88,7 @@ class YouTubeController extends SocialController
     {
         return Inertia::location(
             Socialite::driver($this->driver)
-                ->scopes($this->requestedScopes())
+                ->scopes($this->consentScopes())
                 ->with([
                     'access_type' => 'offline',
                     'prompt' => 'select_account consent',

@@ -7,6 +7,7 @@ use App\Actions\Post\Queue\ReorderChannelQueue;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -134,7 +135,7 @@ test('duplicate ids are rejected by the request and by the action', function () 
         ->assertUnprocessable()
         ->assertJsonValidationErrors('post_ids.0');
 
-    expect(fn () => ReorderChannelQueue::handle($this->channel, $ids))
+    expect(fn () => ReorderChannelQueue::handle($this->channel, $ids, $this->user))
         ->toThrow(ValidationException::class, __('posts.errors.queue_order_stale'));
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
@@ -231,4 +232,23 @@ test('a member who needs approval cannot reorder the queue', function () {
         ->assertForbidden();
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
+});
+
+test('only posts changing slots need the permission to publish their replies', function () {
+    $channel = $this->channel;
+    gateFeature($channel->platform, GatedFeature::ThreadReplies, ['write.comments']);
+    $channel->update(['scopes' => ['w_member_social']]);
+    $this->c->update(['meta' => ['thread_replies' => [['text' => 'Comment', 'media' => []]]]]);
+    $before = reorderTimes($this->a, $this->b, $this->c);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->c->id, $this->a->id]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('post_ids');
+
+    expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
+
+    $this->put(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->a->id, $this->c->id]])
+        ->assertSessionHasNoErrors();
+    expect($this->b->fresh()->scheduled_at->toIso8601String())->toBe($before[$this->a->id]);
 });

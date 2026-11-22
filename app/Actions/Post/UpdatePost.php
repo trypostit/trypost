@@ -88,7 +88,7 @@ class UpdatePost
         }
 
         return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $data): array {
-            if (self::finalizedMeanwhile($post)) {
+            if (! self::lockForEditing($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
 
@@ -150,10 +150,6 @@ class UpdatePost
 
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
-        $meta = PostPlatformMetaRules::normalize(array_filter(
-            PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
-            fn (mixed $value): bool => $value !== null,
-        ));
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,
@@ -174,25 +170,30 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, $actor, [
-            'status' => $status,
-            'queue' => $keepsPending ? null : $position?->value,
-            'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
-            'media' => data_get($data, 'media') ?? $post->media ?? [],
-            'scheduled_at' => $keepsPending ? null : $scheduledAt,
-            'label_ids' => data_get($data, 'label_ids') ?? $post->labels()->pluck('workspace_labels.id')->all(),
-            'destinations' => [[
-                'social_account_id' => $post->social_account_id,
-                'content_type' => data_get($data, 'content_type')
-                    ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
-                'meta' => $meta,
-            ]],
-        ], $post->media ?? []));
-
-        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
-            if (self::finalizedMeanwhile($post)) {
+        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($workspace, $post, $channel, $data, $status, $keepsPending, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
+            if (! self::lockForEditing($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
+
+            $meta = PostPlatformMetaRules::normalize(array_filter(
+                PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
+                fn (mixed $value): bool => $value !== null,
+            ));
+
+            $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, $actor, [
+                'status' => $status,
+                'queue' => $keepsPending ? null : $position?->value,
+                'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
+                'media' => data_get($data, 'media') ?? $post->media ?? [],
+                'scheduled_at' => $keepsPending ? null : $scheduledAt,
+                'label_ids' => data_get($data, 'label_ids') ?? $post->labels()->pluck('workspace_labels.id')->all(),
+                'destinations' => [[
+                    'social_account_id' => $post->social_account_id,
+                    'content_type' => data_get($data, 'content_type')
+                        ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
+                    'meta' => $meta,
+                ]],
+            ], $post->media ?? []));
 
             $slotLost = $approvesHolder && ! ReflowChannelQueue::isFreeSlot($channel->refresh(), $post->scheduled_at, $post->id);
             $position = $slotLost ? QueuePosition::Next : $position;
@@ -246,16 +247,20 @@ class UpdatePost
     /**
      * Re-reads the post under a row lock inside the write transaction, so a post the
      * scheduler claimed or another request settled after it was loaded is left alone.
+     * An editable post starts its metadata patch from the values held under that lock.
      */
-    private static function finalizedMeanwhile(Post $post): bool
+    private static function lockForEditing(Post $post): bool
     {
         $locked = Post::query()->whereKey($post->id)->lockForUpdate()->firstOrFail();
 
-        if (! PostStatusRules::blocksEditing($locked)) {
+        if (PostStatusRules::blocksEditing($locked)) {
+            $post->setRawAttributes($locked->getAttributes(), true);
+
             return false;
         }
 
-        $post->setRawAttributes($locked->getAttributes(), true);
+        $post->meta = $locked->meta;
+        $post->syncOriginalAttribute('meta');
 
         return true;
     }

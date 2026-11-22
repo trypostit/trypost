@@ -67,6 +67,25 @@ class ChannelPermissions
     }
 
     /**
+     * LinkedIn offers the enabled profile and Page identities in a single consent screen.
+     *
+     * @return list<string>
+     */
+    public static function scopesForConsent(Platform $platform): array
+    {
+        if ($platform !== Platform::LinkedIn) {
+            return self::requestedScopes($platform);
+        }
+
+        return collect([Platform::LinkedIn, Platform::LinkedInPage])
+            ->filter(fn (Platform $identity): bool => $identity->isEnabled())
+            ->flatMap(self::requestedScopes(...))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Whether the feature is on for the network: every scope it needs is one
      * the connect asks for. A self-hosted app that leaves a scope out of its
      * env list turns the features that need it off, on the server and in the

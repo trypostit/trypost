@@ -57,7 +57,7 @@ abstract class MetaController extends SocialController
      */
     protected function grantedScopes(string $userToken): array|RedirectResponse
     {
-        $granted = GrantedPermissions::for($this->graphApi(), $userToken, $this->requestedScopes());
+        $granted = GrantedPermissions::for($this->graphApi(), $userToken, $this->consentScopes());
 
         return $this->refusalForMissingPublishScopes($granted) ?? $granted;
     }

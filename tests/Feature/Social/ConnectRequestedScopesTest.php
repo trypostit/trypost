@@ -48,7 +48,7 @@ test('connect asks for required scopes even when the env leaves them out', funct
     'instagram' => [Platform::Instagram, 'app.social.instagram.connect', ['instagram_business_basic', 'instagram_business_content_publish'], 'instagram_business_manage_insights'],
     'instagram through facebook' => [Platform::InstagramFacebook, 'app.social.instagram-facebook.connect', ['pages_show_list', 'pages_read_engagement', 'business_management', 'instagram_basic', 'instagram_content_publish'], 'instagram_manage_insights'],
     'threads' => [Platform::Threads, 'app.social.threads.connect', ['threads_basic', 'threads_content_publish'], 'threads_manage_insights'],
-    'tiktok' => [Platform::TikTok, 'app.social.tiktok.connect', ['user.info.basic', 'video.publish', 'video.upload'], 'video.list'],
+    'tiktok' => [Platform::TikTok, 'app.social.tiktok.connect', ['user.info.basic', 'video.publish'], 'video.upload'],
     'linkedin profile' => [Platform::LinkedIn, 'app.social.linkedin.connect', ['openid', 'profile', 'email', 'w_member_social'], 'w_organization_social', ['trypost.platforms.linkedin-page.enabled' => false]],
     'linkedin page' => [Platform::LinkedInPage, 'app.social.linkedin.connect', ['openid', 'profile', 'email', 'w_organization_social', 'rw_organization_admin'], 'w_member_social', ['trypost.platforms.linkedin.enabled' => false]],
     'discord' => [Platform::Discord, 'app.social.discord.connect', ['bot', 'identify', 'guilds']],

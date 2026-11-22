@@ -8,10 +8,12 @@ use App\Dto\Analytics\PublicationPage;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -24,6 +26,34 @@ class AdvanceAnalyticsSyncState
         private readonly UpsertAnalyticsPublication $publications,
         private readonly ResolveAnalyticsAccountKey $accountKeys,
     ) {}
+
+    /**
+     * Before permission pauses existed, a history request missing its scope
+     * finished as provider_limited. Reopen it when that grant is restored.
+     *
+     * @param  list<string>  $previousScopes
+     */
+    public function restoreHistoryGrant(SocialAccount $account, array $previousScopes): void
+    {
+        if (blank($previousScopes) || blank($account->scopes) || ! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
+            return;
+        }
+
+        if (blank(ChannelPermissions::missingFrom($previousScopes, $account->platform, GatedFeature::PostHistory))) {
+            return;
+        }
+
+        $restart = ['status' => SyncStatus::Pending, 'last_error_category' => null];
+        if ($account->platform === Platform::X) {
+            $restart['checkpoint->seen_count'] = 0;
+        }
+
+        $account->analyticsSyncStates()
+            ->forCollector(SyncCollector::PublicationBackfill)
+            ->where('status', SyncStatus::ProviderLimited)
+            ->where('last_error_category', 'provider_limited')
+            ->update($restart);
+    }
 
     /** Preserve the cursor and invalidate any in-flight page's checkpoint revision. */
     public function pause(string $stateId, string $socialAccountId): void

@@ -7,6 +7,7 @@ use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -140,4 +141,31 @@ test('a second publish now after the post settled is a no-op', function () {
     expect($result['action'])->toBe(PostAction::Finalized)
         ->and($post->fresh()->status)->toBe(PostStatus::Published);
     Queue::assertNotPushed(PublishPost::class);
+});
+
+test('updating a content warning preserves a reply saved after the post was loaded', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id, 'content' => 'Caption', 'meta' => []])->fresh();
+    $post->fresh()->update(['meta' => ['thread_replies' => [['text' => 'Concurrent reply', 'media' => []]]]]);
+    UpdatePost::execute($workspace, $post, ['meta' => ['spoiler_text' => 'Warning']], $user);
+    expect($post->fresh()->meta)->toMatchArray(['spoiler_text' => 'Warning'])
+        ->and(data_get($post->fresh()->meta, 'thread_replies.0.text'))->toBe('Concurrent reply');
+});
+
+test('scheduling rechecks the permission needed by a reply added after the post was loaded', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $workspace->id]);
+    gateFeature($account->platform, GatedFeature::ThreadReplies, ['write:replies']);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id, 'content' => 'Caption'])->fresh();
+    $post->fresh()->update(['meta' => ['thread_replies' => [['text' => 'Concurrent reply', 'media' => []]]]]);
+
+    expect(fn () => UpdatePost::execute($workspace, $post, [
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ], $user))->toThrow(ValidationException::class)
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft)
+        ->and(data_get($post->fresh()->meta, 'thread_replies.0.text'))->toBe('Concurrent reply');
 });

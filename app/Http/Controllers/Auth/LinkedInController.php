@@ -44,7 +44,7 @@ class LinkedInController extends SocialController
 
         $this->authorize('manageAccounts', $request->user()->currentWorkspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes());
+        return $this->redirectToProvider($request, $this->driver);
     }
 
     public function callback(Request $request): RedirectResponse
@@ -65,7 +65,7 @@ class LinkedInController extends SocialController
                 return $this->failConnection($missingIdentity);
             }
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
             $publishablePlatforms = $enabledPlatforms->filter(
                 fn (SocialPlatform $platform): bool => blank(ChannelPermissions::missingFrom($scopes, $platform, GatedFeature::Publish)),
             );
@@ -184,22 +184,6 @@ class LinkedInController extends SocialController
                 ],
             ],
         );
-    }
-
-    /**
-     * Union of the scopes for the enabled capabilities, so one consent screen
-     * grants exactly what the workspace can use — member posting, company-page
-     * administration, or both — and the user picks the identity afterwards.
-     *
-     * @return array<int, string>
-     */
-    protected function requestedScopes(): array
-    {
-        return $this->enabledPlatforms()
-            ->flatMap(ChannelPermissions::requestedScopes(...))
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**

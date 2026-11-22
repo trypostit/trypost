@@ -36,7 +36,7 @@ class ThreadsController extends SocialController
         $params = http_build_query([
             'client_id' => config('services.threads.client_id'),
             'redirect_uri' => config('services.threads.redirect'),
-            'scope' => $this->requestedScopeString(','),
+            'scope' => $this->consentScopeString(','),
             'response_type' => 'code',
             'state' => $state,
         ]);
@@ -158,7 +158,6 @@ class ThreadsController extends SocialController
 
         return $this->reportedScopes(
             $response?->successful() ? $response->json('data.scopes') : null,
-            $this->requestedScopes(),
         );
     }
 }

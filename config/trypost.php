@@ -578,7 +578,7 @@ return [
             // (e.g. no Display API => drop user.info.profile, user.info.stats,
             // video.list; analytics degrade gracefully, username stays empty).
             'scopes' => ConfigEnvironment::oauthScopes('TIKTOK_SCOPES', 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload,video.list'),
-            'required_scopes' => ['user.info.basic', 'video.upload'],
+            'required_scopes' => ['user.info.basic'],
         ],
         'youtube' => [
             'enabled' => env('YOUTUBE_ENABLED', true),

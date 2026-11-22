@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Actions\Analytics\AdvanceAnalyticsSyncState;
 use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\SocialAccount\Platform;
@@ -51,6 +52,10 @@ class SocialAccountObserver
     public function updated(SocialAccount $socialAccount): void
     {
         app(RepurposeAccountSync::class)->accountChanged($socialAccount);
+
+        if ($socialAccount->wasChanged('scopes')) {
+            app(AdvanceAnalyticsSyncState::class)->restoreHistoryGrant($socialAccount, $socialAccount->getOriginal('scopes') ?? []);
+        }
 
         if ($socialAccount->wasChanged('access_token')) {
             $this->forgetPinterestBoards($socialAccount);

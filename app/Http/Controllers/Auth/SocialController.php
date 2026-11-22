@@ -224,32 +224,26 @@ class SocialController extends Controller
      * since an unknown grant is not a refusal.
      *
      * @param  array<int, string>|string|null  $reported
-     * @param  array<int, string>  $requested
      * @return array<int, string>
      */
-    protected function reportedScopes(array|string|null $reported, array $requested): array
+    protected function reportedScopes(array|string|null $reported): array
     {
         $scopes = array_values(array_unique(array_filter(
             preg_split('/[\s,]+/', implode(' ', (array) $reported)) ?: [],
         )));
 
-        return $scopes === [] ? array_values($requested) : $scopes;
+        return $scopes === [] ? $this->consentScopes() : $scopes;
     }
 
-    /**
-     * The scopes this network's connect asks for (`trypost.platforms.<network>.scopes`,
-     * overridden by env on a self-hosted app that lacks a permission).
-     *
-     * @return list<string>
-     */
-    protected function requestedScopes(): array
+    /** @return list<string> */
+    protected function consentScopes(): array
     {
-        return ChannelPermissions::requestedScopes($this->platform);
+        return $this->pendingForThisNetwork()?->requestedScopes() ?? [];
     }
 
-    protected function requestedScopeString(string $separator): string
+    protected function consentScopeString(string $separator): string
     {
-        return Arr::join($this->requestedScopes(), $separator);
+        return Arr::join($this->consentScopes(), $separator);
     }
 
     /**
@@ -421,7 +415,7 @@ class SocialController extends Controller
     /** Work a network needs once its account is stored, outside the transaction. */
     protected function afterConnected(SocialAccount $account): void {}
 
-    protected function redirectToProvider(Request $request, string $driver, array $scopes, array $parameters = []): SymfonyResponse
+    protected function redirectToProvider(Request $request, string $driver, array $parameters = []): SymfonyResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -429,23 +423,20 @@ class SocialController extends Controller
 
         return Inertia::location(
             Socialite::driver($driver)
-                ->scopes($scopes)
+                ->scopes($this->consentScopes())
                 ->with($parameters)
                 ->redirect()
                 ->getTargetUrl()
         );
     }
 
-    /**
-     * @param  array<int, string>  $requestedScopes
-     */
-    protected function handleCallback(Request $request, string $driver, array $requestedScopes): RedirectResponse
+    protected function handleCallback(Request $request, string $driver): RedirectResponse
     {
         $workspace = $this->connectWorkspace($request);
 
         try {
             $socialUser = Socialite::driver($driver)->user();
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $requestedScopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

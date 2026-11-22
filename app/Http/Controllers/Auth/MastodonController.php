@@ -66,7 +66,11 @@ class MastodonController extends SocialController
         }
 
         try {
-            $scopes = $this->requestedScopeString(' ');
+            if (PendingConnection::current()?->platform() !== $this->platform) {
+                $this->rememberConnectSession($request, $workspace);
+            }
+
+            $scopes = $this->consentScopeString(' ');
 
             // Register app on the instance
             $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [
@@ -96,10 +100,6 @@ class MastodonController extends SocialController
                 'mastodon_client_secret' => $app['client_secret'],
                 'mastodon_oauth_state' => $state,
             ]);
-
-            if (PendingConnection::current()?->platform() !== $this->platform) {
-                $this->rememberConnectSession($request, $workspace);
-            }
 
             // Redirect to OAuth
             $params = http_build_query([
@@ -179,7 +179,7 @@ class MastodonController extends SocialController
 
             $profile = $profileResponse->json();
 
-            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), $this->requestedScopes());
+            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'));
 
             return $this->refusalForMissingPublishScopes($grantedScopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

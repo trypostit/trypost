@@ -1284,3 +1284,42 @@ test('the discovery command can run only x or everything but x', function () {
     $this->artisan('analytics:dispatch-publication-discovery', ['--except-platform' => ['x']])->assertSuccessful();
     expect(Bus::dispatched(DiscoverAccountPublications::class)->pluck('socialAccountId')->all())->toBe([$instagram->id]);
 });
+
+test('a reconnect resumes a legacy provider-limited backfill only when it restores the history grant', function (array $oldScopes, array $newScopes, bool $resumes) {
+    Bus::fake();
+    $account = SocialAccount::factory()->tiktok()->create(['scopes' => $oldScopes]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+    ]);
+
+    $account->update(['scopes' => $newScopes]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe($resumes ? SyncStatus::Pending : SyncStatus::ProviderLimited);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $resumes ? 1 : 0);
+})->with([
+    'history restored' => [['video.publish'], ['video.publish', 'video.list'], true],
+    'only an unrelated permission added' => [['video.list'], ['video.list', 'video.publish'], false],
+    'reported grant cleared' => [['video.publish'], [], false],
+]);
+
+test('a restored X history grant restarts its timeline count and keeps the checkpoint revision', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['scopes' => ['tweet.write']]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => ['cursor' => null, 'revision' => 3, 'seen_count' => 243],
+    ]);
+
+    $account->update(['scopes' => ['tweet.write', 'tweet.read', 'users.read']]);
+
+    expect($state->fresh()->checkpoint)->toMatchArray(['seen_count' => 0, 'revision' => 3]);
+});

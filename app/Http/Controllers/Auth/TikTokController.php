@@ -27,7 +27,7 @@ class TikTokController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes(), [
+        return $this->redirectToProvider($request, $this->driver, [
             'disable_auto_auth' => 1,
         ]);
     }
@@ -38,10 +38,10 @@ class TikTokController extends SocialController
 
         try {
             $socialUser = Socialite::driver($this->driver)
-                ->scopes($this->requestedScopes())
+                ->scopes($this->consentScopes())
                 ->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

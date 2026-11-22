@@ -380,3 +380,23 @@ test('mastodon connect errors are shown in the user language', function () {
         ->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.example'])
         ->assertSessionHasErrors(['instance' => 'Erro ao conectar à instância do Mastodon.']);
 });
+
+test('a token without reported scopes keeps only the scopes sent to Mastodon at consent', function () {
+    $this->actingAs($this->user);
+    $scopes = ['read:accounts', 'write:statuses', 'write:media'];
+    config(['trypost.platforms.mastodon.scopes' => $scopes]);
+    Http::fake([
+        'https://mastodon.social/api/v1/apps' => Http::response(['client_id' => 'example-client', 'client_secret' => 'example-secret']),
+        'https://mastodon.social/oauth/token' => Http::response(['access_token' => 'example-token']),
+        'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response(['id' => '987', 'username' => 'tester', 'acct' => 'tester', 'display_name' => 'Tester']),
+    ]);
+    $redirect = $this->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.social']);
+    $query = Uri::of($redirect->headers->get('Location'))->query();
+    expect(Str::of($query->get('scope'))->split('/[\s+]+/')->all())->toBe($scopes);
+
+    config(['trypost.platforms.mastodon.scopes' => [...$scopes, 'read:statuses']]);
+    $this->get(route('app.social.mastodon.callback', ['code' => 'example-code', 'state' => $query->get('state')]))->assertRedirect(route('app.social.connect.show', Platform::Mastodon));
+    finishSocialConnect(Platform::Mastodon)->assertRedirect();
+    $account = $this->workspace->socialAccounts()->where('platform_user_id', '987')->sole();
+    expect($account->scopes)->toBe($scopes);
+});

@@ -25,12 +25,12 @@ class XController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->requestedScopes());
+        return $this->redirectToProvider($request, $this->driver);
     }
 
     public function callback(Request $request): RedirectResponse
     {
-        return $this->handleCallback($request, $this->driver, $this->requestedScopes());
+        return $this->handleCallback($request, $this->driver);
     }
 
     protected function afterConnected(SocialAccount $account): void
