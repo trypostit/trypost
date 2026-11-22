@@ -162,15 +162,21 @@ export const takesThreadReplies = (contentType: ContentTypeValue | null): boolea
 };
 
 /**
- * Why a post's thread cannot go out because its post type stands alone, as
- * `ThreadReplies::violation()` says on the server. Null when it can.
+ * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
+ * the server: the network's connect does not ask for the scope replies need
+ * (`repliesEnabled` false), or the post type stands alone. Null when it can.
  */
-export const threadStandaloneKey = (
+export const threadUnavailableKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
+    repliesEnabled: boolean,
 ): string | null => {
     if (blank(threadRepliesOf(meta))) {
         return null;
+    }
+
+    if (!repliesEnabled) {
+        return 'posts.form.thread.unsupported';
     }
 
     if (!filled(contentType)) {

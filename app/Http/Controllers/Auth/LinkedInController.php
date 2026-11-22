@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -186,17 +187,17 @@ class LinkedInController extends SocialController
      */
     private function connectScopes(): array
     {
-        $scopes = [];
+        $scopes = collect();
 
         if ($this->personEnabled()) {
-            $scopes = array_merge($scopes, config('trypost.platforms.linkedin.scopes'));
+            $scopes = $scopes->merge(ChannelPermissions::requestedScopes(SocialPlatform::LinkedIn));
         }
 
         if ($this->organizationEnabled()) {
-            $scopes = array_merge($scopes, config('trypost.platforms.linkedin-page.scopes'));
+            $scopes = $scopes->merge(ChannelPermissions::requestedScopes(SocialPlatform::LinkedInPage));
         }
 
-        return array_values(array_unique($scopes));
+        return $scopes->unique()->values()->all();
     }
 
     private function personEnabled(): bool

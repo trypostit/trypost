@@ -177,10 +177,12 @@ const disconnect = (): void => {
                 </p>
                 <p
                     v-else-if="needsPermissions"
-                    class="flex min-w-0 items-start gap-1 text-sm text-warning"
+                    class="flex min-w-0 items-start gap-1 text-sm text-foreground"
                     :data-testid="`channel-permissions-missing-${channel.id}`"
                 >
-                    <IconAlertTriangle class="mt-[3px] size-3.5 shrink-0" />
+                    <IconAlertTriangle
+                        class="mt-[3px] size-3.5 shrink-0 text-warning"
+                    />
                     <span>{{ $t('channels.list.permissions_missing') }}</span>
                 </p>
                 <p

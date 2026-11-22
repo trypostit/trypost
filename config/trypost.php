@@ -13,14 +13,13 @@ use Illuminate\Support\Str;
 $url = static fn (string $key, string $default): string => Str::rtrim((string) env($key, $default), '/');
 
 /*
- * The OAuth scopes a network's connect asks for: the env list (comma
- * separated) when it is set, else TryPost's default. A self-hosted app
+ * The OAuth scopes a network's connect asks for: the env list (comma or
+ * space separated) when it is set and not blank, else TryPost's default. A self-hosted app
  * without a permission leaves its scope out, and every feature that needs
  * it is off (App\Support\ChannelPermissions::enabled()).
  */
-$scopes = static fn (string $key, string $default): array => Str::of((string) env($key, $default))
-    ->explode(',')
-    ->map(fn (string $scope): string => trim($scope))
+$scopes = static fn (string $key, string $default): array => Str::of(filled(env($key)) ? (string) env($key) : $default)
+    ->split('/[\s,]+/')
     ->filter()
     ->values()
     ->all();
@@ -699,7 +698,7 @@ return [
             'enabled' => env('MASTODON_ENABLED', true),
             'scopes' => $scopes('MASTODON_SCOPES', 'read:accounts,read:statuses,write:statuses,write:media'),
             'permissions' => [
-                'publish' => ['scopes' => ['write:statuses']],
+                'publish' => ['scopes' => [['write:statuses', 'write']]],
             ],
             // Default instance used when the account has no `meta.instance` override.
             'default_instance' => $url('MASTODON_DEFAULT_INSTANCE', 'https://mastodon.social'),

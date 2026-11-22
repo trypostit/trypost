@@ -11,8 +11,6 @@ import { filled } from '@/lib/helpers';
 import { PostStatus } from '@/types/post';
 
 interface SaveAndReconnectOptions {
-    /** The status the edited post had when it opened, if it was saved. */
-    status: () => string | undefined;
     /** Saves the post; false when it cannot be saved yet. */
     submit: (
         status: PostComposition['status'],
@@ -31,22 +29,13 @@ type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
  * step back through history after it, which would cancel the visit to the
  * network's sign-in. A network that reconnects in place (Telegram's dialog;
  * none of them gates a feature today) has no sign-in to visit, so the post
- * stays open in the composer instead. A pending post is decided on first
- * (only someone who manages channels sees the link, and they approve), so
- * saving never takes it out of review.
+ * stays open in the composer instead. A post waiting for approval never
+ * offers it (`ChannelPermissionWarning`'s `reconnectable`).
  */
 export const useSaveAndReconnect = (options: SaveAndReconnectOptions) => {
     const { startConnect } = useNetworkConnect([]);
 
     return (account: ReconnectedAccount): void => {
-        if (options.status() === PostStatus.PendingApproval) {
-            toast.error(trans('posts.form.reconnect.pending'), {
-                testId: 'reconnect-pending',
-            });
-
-            return;
-        }
-
         const url = connectUrl(account.platform, account.id);
 
         if (!filled(url)) {

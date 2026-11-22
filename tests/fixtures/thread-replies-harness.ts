@@ -25,7 +25,7 @@ const {
     replyEmptyKey,
     replyTooLongKey,
     startThreadKey,
-    threadStandaloneKey,
+    threadUnavailableKey,
     threadMaxReplies,
     threadReplyContentType,
 } = await import(
@@ -69,7 +69,8 @@ console.log(
         platforms: results,
         standalone_types: STANDALONE_CONTENT_TYPES,
         gated_features: Object.values(GatedFeature),
-        standalone_key: threadStandaloneKey('x_post', thread),
+        standalone_key: threadUnavailableKey('x_post', thread, true),
+        replies_off_key: threadUnavailableKey('x_post', thread, false),
         permission_keys: {
             allowed: missingPermissionKey(thread, {}, true),
             not_used: missingPermissionKey({}, missing, true),

@@ -545,7 +545,6 @@ return [
         'reconnect' => [
             'save' => 'Simpan draf & hubungkan kembali',
             'blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
-            'pending' => 'Postingan ini menunggu persetujuan. Pindahkan ke draf sebelum menghubungkan kembali kanal.',
         ],
 
         'pinterest' => [

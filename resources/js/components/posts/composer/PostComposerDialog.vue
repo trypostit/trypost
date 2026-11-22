@@ -70,7 +70,7 @@ import MediaEditorDialog, {
     type MediaEditChange,
 } from '@/components/posts/composer/MediaEditorDialog.vue';
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
-import ThreadStandaloneWarning from '@/components/posts/composer/ThreadStandaloneWarning.vue';
+import ThreadUnavailableWarning from '@/components/posts/composer/ThreadUnavailableWarning.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import PollField from '@/components/posts/editor/PollField.vue';
@@ -194,7 +194,7 @@ import {
     takesThreadReplies,
     type ThreadReply,
     threadRepliesOf,
-    threadStandaloneKey,
+    threadUnavailableKey,
     threadReplyContentType,
     threadReplyPostType,
 } from '@/lib/threadReplies';
@@ -515,6 +515,7 @@ const {
     replyLimit: (group) => threadReplyLimit(group),
     uploading: (group, reply) =>
         Boolean(replyUploaderFor(group, reply)?.busy.value),
+    enabled: (group) => groupRepliesEnabled(group),
     },
 );
 /**
@@ -1208,11 +1209,24 @@ const supportsThread = (group: NetworkGroup): boolean => {
         return false;
     }
 
-    if (!featureIsEnabled(props.platformConfigs[group.anchor.id], GatedFeature.ThreadReplies)) {
+    if (!groupRepliesEnabled(group)) {
         return false;
     }
 
     return takesThreadReplies(groupDestination(group).content_type);
+};
+/** Whether replies are on for the card's network (`disabledFeatures` of its platform config). */
+const groupRepliesEnabled = (group: NetworkGroup): boolean =>
+    accountRepliesEnabled(group.anchor);
+const accountRepliesEnabled = (account: ComposerAccount): boolean =>
+    featureIsEnabled(props.platformConfigs[account.id], GatedFeature.ThreadReplies);
+/** How many replies the card takes: its network's cap, or only those it has when replies are off, so they can be removed. */
+const groupReplyLimit = (group: NetworkGroup): number => {
+    if (!groupRepliesEnabled(group)) {
+        return threadReplies(group).length;
+    }
+
+    return threadMaxReplies(group.platform);
 };
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
@@ -1582,7 +1596,11 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         });
     }
     for (const key of [
-        threadStandaloneKey(contentType, destination.meta),
+        threadUnavailableKey(
+            contentType,
+            destination.meta,
+            accountRepliesEnabled(account),
+        ),
         channelPermissionKey(
             props.platformConfigs[account.id],
             destination.meta,
@@ -1665,11 +1683,7 @@ const blockingIssue = computed(() => {
 const hasTextOnlyWarning = (group: NetworkGroup): boolean => {
     const issueKeys = destinationIssues(group.anchor).map((issue) => issue.key);
 
-    if (issueKeys.includes('posts.form.warnings.text_only')) {
-        return true;
-    }
-
-    return false;
+    return issueKeys.includes('posts.form.warnings.text_only');
 };
 /** Whether the card's text has more hashtags than its network allows. */
 const exceedsHashtags = (group: NetworkGroup): boolean => {
@@ -2047,10 +2061,11 @@ const saveAndLinkFacebook = useSaveAndLinkFacebook({
     submit,
 });
 
-const saveAndReconnect = useSaveAndReconnect({
-    status: () => props.initialPost?.status,
-    submit,
-});
+const saveAndReconnect = useSaveAndReconnect({ submit });
+/** A post waiting for approval is decided on first, so saving never takes it out of review. */
+const isPendingApproval = computed(
+    (): boolean => props.initialPost?.status === PostStatus.PendingApproval,
+);
 
 const submitSelectedSchedule = (): void => {
     submit(
@@ -2943,19 +2958,21 @@ const onDialogOpenChange = (value: boolean): void => {
                                     >
                                         {{ $t(metaRequirement(group.anchor)!) }}
                                     </WarningLine>
-                                    <ThreadStandaloneWarning
+                                    <ThreadUnavailableWarning
                                         :platform="group.platform"
+                                        :replies-enabled="groupRepliesEnabled(group)"
                                         :content-type="
                                             groupDestination(group).content_type
                                         "
                                         :meta="groupDestination(group).meta"
-                                        :test-id="`thread-standalone-warning-${group.anchor.id}`"
+                                        :test-id="`thread-unavailable-warning-${group.anchor.id}`"
                                     />
                                     <ChannelPermissionWarning
                                         :accounts="group.accounts"
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
                                         :disabled="submitting"
+                                        :reconnectable="!isPendingApproval"
                                         :test-id="`channel-permission-warning-${group.anchor.id}`"
                                         @reconnect="saveAndReconnect"
                                     />
@@ -3136,7 +3153,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     <ThreadRepliesField
                                         v-model:active="threadActive"
                                         :toolbar-target="`composer-${group.anchor.id}-reply-toolbar`"
-                                        :max="threadMaxReplies(group.platform)"
+                                        :max="groupReplyLimit(group)"
                                         :comment="repliesAreComments(group.platform)"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
@@ -3525,6 +3542,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             platformConfigs[group.anchor.id]
                                                 ?.publishConfig
                                         "
+                                        :replies-enabled="groupRepliesEnabled(group)"
                                         :active-post="threadActive"
                                     />
                                 </section>
@@ -3552,6 +3570,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         platformConfigs[previewAccount.id]
                                             ?.publishConfig
                                     "
+                                    :replies-enabled="accountRepliesEnabled(previewAccount)"
                                     :active-post="threadActive"
                                 />
                             </div>

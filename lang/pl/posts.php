@@ -545,7 +545,6 @@ return [
         'reconnect' => [
             'save' => 'Zapisz szkic i połącz ponownie',
             'blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
-            'pending' => 'Ten post czeka na zatwierdzenie. Przenieś go do szkiców przed ponownym połączeniem kanału.',
         ],
 
         'pinterest' => [

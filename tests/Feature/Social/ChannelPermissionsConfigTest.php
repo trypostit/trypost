@@ -82,10 +82,20 @@ test('each network needs exactly these scopes for each feature', function () {
             'post_history' => ['pins:read', 'boards:read'],
         ],
         Platform::Mastodon->value => [
-            'publish' => ['write:statuses'],
+            'publish' => [['write:statuses', 'write']],
         ],
         Platform::GoogleBusiness->value => [
             'publish' => ['https://www.googleapis.com/auth/business.manage'],
         ],
     ]);
+});
+
+test('a network scopes env is read comma or space separated, and a blank one falls back to the default', function () {
+    expect(data_get(trypostConfigWith(['X_SCOPES' => ' tweet.read , tweet.write,,users.read ']), 'platforms.x.scopes'))
+        ->toBe(['tweet.read', 'tweet.write', 'users.read'])
+        ->and(data_get(trypostConfigWith(['MASTODON_SCOPES' => 'read:accounts write:statuses']), 'platforms.mastodon.scopes'))
+        ->toBe(['read:accounts', 'write:statuses'])
+        ->and(data_get(trypostConfigWith(['X_SCOPES' => '  ']), 'platforms.x.scopes'))
+        ->toBe(data_get(trypostConfigWith(['X_SCOPES' => '']), 'platforms.x.scopes'))
+        ->toContain('tweet.write', 'offline.access');
 });

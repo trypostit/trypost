@@ -45,9 +45,11 @@ interface Props {
     activePost?: number;
     /** The account's `publishConfig` (`Platform::publishConfig()`). */
     publishConfig?: PublishConfig | null;
+    /** Whether the network's connect asks for the scope replies need; off, the preview shows none, as the server publishes none. */
+    repliesEnabled?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { repliesEnabled: true });
 
 const { contentFor } = useXLinkDefuser();
 
@@ -70,6 +72,10 @@ const takesCoverImage = computed((): boolean => {
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
+    if (!props.repliesEnabled) {
+        return [];
+    }
+
     if (!isThreadPlatform(props.platform) || repliesAreComments(props.platform)) {
         return [];
     }

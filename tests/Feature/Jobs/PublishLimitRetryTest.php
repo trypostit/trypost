@@ -92,7 +92,7 @@ function limitRetryTarget(object $test, Platform $platform, array $attributes = 
         Platform::Mastodon => $factory->mastodon(),
         Platform::Telegram => $factory->telegram(),
         Platform::Discord => $factory->discord(),
-        default => $factory->state(['platform' => $platform, 'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish)]),
+        default => $factory->state(['platform' => $platform, 'scopes' => ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish)]),
     };
     $account = $state->create(['workspace_id' => $test->workspace->id]);
 

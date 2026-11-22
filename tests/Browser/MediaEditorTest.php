@@ -32,7 +32,7 @@ function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFe
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => $platform,
-        'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish),
+        'scopes' => ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish),
     ]);
 
     $post = Post::factory()->forAccount($account, $contentType)->create([

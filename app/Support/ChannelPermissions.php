@@ -39,13 +39,21 @@ class ChannelPermissions
     }
 
     /**
-     * The scopes the network's connect asks for (`trypost.platforms.<network>.scopes`).
+     * The scopes the network's connect asks for: its configured list
+     * (`trypost.platforms.<network>.scopes`), always with the scopes publishing
+     * needs, since publishing is what TryPost is for and can never be off.
      *
      * @return list<string>
      */
     public static function requestedScopes(Platform $platform): array
     {
-        return config("trypost.platforms.{$platform->value}.scopes", []);
+        $configured = config("trypost.platforms.{$platform->value}.scopes", []);
+
+        return collect($configured)
+            ->merge(self::missingFrom($configured, $platform, GatedFeature::Publish))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

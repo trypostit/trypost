@@ -35,6 +35,8 @@ export interface ComposerThread {
     setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
     replyLimit: (group: NetworkGroup) => number | null;
     uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
+    /** Whether the card's network takes replies at all (`supportsThread`). */
+    enabled: (group: NetworkGroup) => boolean;
 }
 
 /**
@@ -283,6 +285,10 @@ export const useComposerPoll = (
         }
 
         if (!isReplyPollPlatform(group.platform)) {
+            return false;
+        }
+
+        if (!thread.enabled(group)) {
             return false;
         }
 

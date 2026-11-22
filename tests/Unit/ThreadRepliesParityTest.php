@@ -37,6 +37,7 @@ test('the composer threads every network the way the server does', function () {
         ->and($composer['standalone_types'])->toBe(collect(Platform::cases())->flatMap(fn (Platform $platform): array => config("trypost.platforms.{$platform->value}.replies.standalone_types", []))->all())
         ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
         ->and($composer['standalone_key'])->toBeNull()
+        ->and($composer['replies_off_key'])->toBe('posts.form.thread.unsupported')
         ->and($composer['permission_keys'])->toBe([
             'allowed' => null,
             'not_used' => null,

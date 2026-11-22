@@ -545,7 +545,6 @@ return [
         'reconnect' => [
             'save' => 'Guardar borrador y reconectar',
             'blocked' => 'Esta publicación aún no se puede guardar. Espera a que terminen las subidas y corrige lo resaltado, luego inténtalo de nuevo.',
-            'pending' => 'Esta publicación está esperando aprobación. Muévela a borradores antes de volver a conectar el canal.',
         ],
 
         'pinterest' => [

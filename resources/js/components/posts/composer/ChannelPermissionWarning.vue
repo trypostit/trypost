@@ -15,8 +15,9 @@ import { channelName } from '@/types/channel';
  * Why a card cannot go out: one of its channels lacks the scope a feature
  * the post uses needs (`missingPermissions` of its platform config). It names
  * the first such channel when the card has several; someone who manages
- * channels gets a link that saves the post and reconnects that channel,
- * anyone else is told who can.
+ * channels gets a link that saves the post and reconnects that channel
+ * (never on a post waiting for approval, which is decided on first), anyone
+ * else is told who can.
  */
 const props = withDefaults(
     defineProps<{
@@ -24,9 +25,10 @@ const props = withDefaults(
         platformConfigs: Record<string, any>;
         meta?: Record<string, any> | null;
         disabled?: boolean;
+        reconnectable?: boolean;
         testId: string;
     }>(),
-    { meta: null, disabled: false },
+    { meta: null, disabled: false, reconnectable: true },
 );
 
 const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();
@@ -79,6 +81,14 @@ const namedChannel = computed((): string | null => {
     return channelName(blockedAccount.value);
 });
 
+const offersReconnect = computed((): boolean => {
+    if (!props.reconnectable) {
+        return false;
+    }
+
+    return canManageAccounts.value;
+});
+
 const reconnect = (): void => {
     if (filled(blockedAccount.value)) {
         emit('reconnect', blockedAccount.value);
@@ -104,7 +114,7 @@ const reconnect = (): void => {
         </template>
         {{ ' ' }}
         <WarningLink
-            v-if="canManageAccounts"
+            v-if="offersReconnect"
             :data-testid="`${testId}-reconnect`"
             :disabled="disabled"
             @click="reconnect"

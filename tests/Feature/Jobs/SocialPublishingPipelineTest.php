@@ -63,7 +63,7 @@ function scheduledPipelineTarget(Platform $platform): Post
 {
     $account = SocialAccount::factory()->create([
         'platform' => $platform,
-        'scopes' => ChannelPermissions::scopes($platform, GatedFeature::Publish),
+        'scopes' => ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish),
     ]);
     $contentType = ContentType::defaultFor($platform);
     $post = Post::factory()->forAccount($account, $contentType)->scheduled()->create([

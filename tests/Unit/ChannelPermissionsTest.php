@@ -159,13 +159,19 @@ test('a post type that stands alone lists no thread replies', function () {
         ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();
 });
 
-test('a scope no reconnect would grant never refuses a post, as it never warns the channel', function () {
+test('publishing is always asked for, even when the env list leaves its scope out', function () {
     config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.upload']]);
     $account = SocialAccount::factory()->make(['platform' => Platform::TikTok, 'scopes' => ['user.info.basic', 'video.upload']]);
 
-    expect(ChannelPermissions::lacks($account, GatedFeature::Publish))->toBeTrue()
-        ->and(ChannelPermissions::violation($account, [], null))->toBeNull()
-        ->and(ChannelPermissions::missing($account))->toBe([]);
+    expect(ChannelPermissions::requestedScopes(Platform::TikTok))->toBe(['user.info.basic', 'video.upload', 'video.publish'])
+        ->and(ChannelPermissions::disabledFeatures(Platform::TikTok))->not->toContain(GatedFeature::Publish->value)
+        ->and(ChannelPermissions::violation($account, [], null))->toBe(['social_account_id', __('channels.permissions.publish.message', ['network' => Platform::TikTok->label()])]);
+});
+
+test('a publish requirement met by any of its alternatives adds nothing to the request', function () {
+    config(['trypost.platforms.mastodon.scopes' => ['read', 'write']]);
+
+    expect(ChannelPermissions::requestedScopes(Platform::Mastodon))->toBe(['read', 'write']);
 });
 
 test('a feature whose scopes the connect does not ask for is off: no warning and nothing to reconnect for', function () {

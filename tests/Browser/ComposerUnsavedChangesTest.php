@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
@@ -480,8 +481,7 @@ test('a channel lacking the publish scope names its network in the warning and t
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForText($page, "@channel-permission-warning-{$post->social_account_id}", $message);
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
-    $warning = "channel-permission-warning-{$post->social_account_id}";
-    expect($page->script("document.querySelector('[data-testid=\"{$warning}\"]').textContent.replace(/\\s+/g, ' ').trim()"))
+    expect(Str::squish($page->text("@channel-permission-warning-{$post->social_account_id}")))
         ->toBe("{$message} ".__('posts.form.reconnect.save'));
     $page->hover('@composer-submit');
     waitForText($page, '@composer-blocked-tooltip', $message);
@@ -505,6 +505,20 @@ test('a network whose connect does not ask for the replies scope offers no threa
     $page->assertNoJavaScriptErrors();
 })->with(['asked for' => true, 'left out' => false]);
 
+test('a stored thread on a network whose connect does not ask for the replies scope is held back with a warning, and the preview drops its replies', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->socialAccount->update(['scopes' => ['write:statuses', 'write:replies']]);
+    config(['trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media']]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, "@thread-unavailable-warning-{$post->social_account_id}", __('posts.form.thread.unsupported', ['network' => Platform::Mastodon->label()]));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->assertMissing('@thread-start')
+        ->assertMissing("@channel-permission-warning-{$post->social_account_id}")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
     $post = seedHeldBackMastodonThread(channels: 2);
     $blocked = $post->social_account_id;
@@ -527,7 +541,7 @@ test('a card of two channels warns about the one that lacks the reply scope and 
     waitFor($page, "@channel-permission-warning-{$other}-reconnect");
     $page->assertSeeIn("@channel-permission-warning-{$other}", SocialAccount::query()->find($blocked)->display_name);
     $named = SocialAccount::query()->find($blocked)->display_name;
-    expect($page->script("document.querySelector('[data-testid=\"channel-permission-warning-{$other}\"]').textContent.replace(/\\s+/g, ' ').trim()"))
+    expect(Str::squish($page->text("@channel-permission-warning-{$other}")))
         ->toBe("{$named}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
     $page->click("@channel-permission-warning-{$other}-reconnect");
     waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blocked}'");
@@ -538,16 +552,14 @@ test('a card of two channels warns about the one that lacks the reply scope and 
         ->meta->thread_replies->toEqual([['text' => 'Second post', 'media' => []]]);
 });
 
-test('a post waiting for approval is never saved by save-and-reconnect and asks to decide on it first', function () {
+test('a post waiting for approval never offers save-and-reconnect, so saving cannot take it out of review', function () {
     $post = seedHeldBackMastodonThread();
     $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $post->user_id]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitFor($page, "@channel-permission-warning-{$post->social_account_id}-reconnect");
-    $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
-    waitFor($page, '@reconnect-pending');
+    waitFor($page, "@channel-permission-warning-{$post->social_account_id}");
 
-    $page->assertSee(__('posts.form.reconnect.pending'))
+    $page->assertMissing("@channel-permission-warning-{$post->social_account_id}-reconnect")
         ->assertVisible('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->status)->toBe(PostStatus::PendingApproval);
