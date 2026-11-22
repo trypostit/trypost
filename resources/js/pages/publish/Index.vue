@@ -13,7 +13,15 @@ import {
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, provide, ref, shallowRef, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    provide,
+    ref,
+    shallowRef,
+    watch,
+    type ComponentPublicInstance,
+} from 'vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -546,6 +554,25 @@ const moveToSlotError = (errors: Record<string, string>): string => {
     return trans('posts.errors.queue_busy');
 };
 
+/**
+ * The list body the `InfiniteScroll` reads its items from, kept after it
+ * leaves the page. Inertia 3.8 reads it again 250 ms after a card leaves (a
+ * debounced observer it does not cancel on unmount); when that card was the
+ * last one, the empty state has replaced the list by then, so a selector finds
+ * nothing and the read throws. The last element it had reads as empty instead.
+ */
+let postsBody: HTMLElement | null = null;
+
+const rememberPostsBody = (
+    element: Element | ComponentPublicInstance | null,
+): void => {
+    if (element instanceof HTMLElement) {
+        postsBody = element;
+    }
+};
+
+const postsBodyElement = (): HTMLElement | null => postsBody;
+
 const hasChannels = computed(
     () => props.channel !== null || props.filterAccounts.length > 0,
 );
@@ -942,11 +969,12 @@ const submitComposition = (
                 >
                     <InfiniteScroll
                         data="posts"
-                        items-element="#posts-body"
+                        :items-element="postsBodyElement"
                         preserve-url
                     >
                         <div
                             id="posts-body"
+                            :ref="rememberPostsBody"
                             class="mx-auto flex w-full max-w-[900px] flex-col px-4 pt-6 pb-12 md:px-12"
                         >
                             <QueueTimeline
@@ -996,11 +1024,12 @@ const submitComposition = (
                 >
                     <InfiniteScroll
                         data="posts"
-                        items-element="#posts-body"
+                        :items-element="postsBodyElement"
                         preserve-url
                     >
                         <div
                             id="posts-body"
+                            :ref="rememberPostsBody"
                             class="mx-auto flex w-full max-w-[900px] flex-col gap-10 px-4 pt-6 pb-12 md:px-12"
                         >
                             <section
