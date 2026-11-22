@@ -618,6 +618,17 @@ There is no connect popup (owner decision 2026-10-06): no `window.open`, no
   refuses to combine with the YouTube scopes ("scopes that cannot be requested
   together"). Each Google flow asks for its own scopes only.
 
+## OAuth scope formatting
+
+- Keep OAuth scopes as arrays inside the app. When app code needs to build an
+  OAuth parameter, use `App\Support\OAuthScopes::commaSeparated()` or
+  `spaceSeparated()` according to the provider. Pass arrays directly to
+  Socialite when the driver handles formatting.
+- Use `OAuthScopes::parse()` for input that permits commas or whitespace and
+  `parseSpaceSeparated()` when the protocol expects only spaces, as in Google
+  Media's token response. Keep fallback behavior in the caller, where the
+  context distinguishes a blank env override from an omitted token grant.
+
 ## Disconnecting a channel deletes its posts
 
 `SocialController@disconnect` runs `DeleteChannelPosts::forAccount()` before it
