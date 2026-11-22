@@ -46,7 +46,7 @@ test('each network needs exactly these scopes for each feature', function () {
             'post_history' => ['video.list'],
         ],
         Platform::YouTube->value => [
-            'publish' => ['https://www.googleapis.com/auth/youtube.upload'],
+            'publish' => [['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.force-ssl', 'https://www.googleapis.com/auth/youtubepartner']],
             'followers' => [['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.force-ssl']],
             'post_insights' => [['https://www.googleapis.com/auth/youtube.readonly', 'https://www.googleapis.com/auth/youtube', 'https://www.googleapis.com/auth/youtube.force-ssl']],
             'post_insights_extended' => [['https://www.googleapis.com/auth/yt-analytics.readonly', 'https://www.googleapis.com/auth/yt-analytics-monetary.readonly']],

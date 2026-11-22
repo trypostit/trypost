@@ -46,7 +46,7 @@ function scopeGuardAccount(Platform $platform, ?array $scopes): SocialAccount
 {
     return SocialAccount::factory()->create([
         'platform' => $platform,
-        'scopes' => $scopes ?? ChannelPermissions::scopes($platform, GatedFeature::Publish),
+        'scopes' => $scopes ?? ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish),
         'token_expires_at' => now()->addDays(30),
     ]);
 }

@@ -87,6 +87,22 @@ test('a custom post dropped on a free slot becomes a queue post at that slot', f
         ->and($this->b->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-05T12:00:00+00:00');
 });
 
+test('moving to a slot leaves a post in drafts when another request took it off the schedule', function () {
+    $post = moveToSlotCustomPost($this->channel, $this->user);
+
+    Post::retrieved(function (Post $loaded) use ($post): void {
+        if ($loaded->is($post) && $loaded->status === PostStatus::Scheduled) {
+            Post::query()->whereKey($post->id)->update(['status' => PostStatus::Draft, 'scheduled_at' => null, 'schedule_mode' => null]);
+        }
+    });
+
+    $this->actingAs($this->user)
+        ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $post->id, 'slot_at' => '2026-10-06T12:00:00Z'])
+        ->assertSessionHasErrors(['slot_at' => __('posts.errors.queue_order_stale')]);
+
+    expect($post->fresh())->status->toBe(PostStatus::Draft)->scheduled_at->toBeNull();
+});
+
 test('a queued post dropped on a later free slot moves there and leaves the others in place', function () {
     $this->actingAs($this->user)
         ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $this->a->id, 'slot_at' => '2026-10-05T18:00:00Z'])

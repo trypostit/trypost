@@ -585,7 +585,7 @@ return [
             'scopes' => ConfigEnvironment::oauthScopes('YOUTUBE_SCOPES', 'https://www.googleapis.com/auth/youtube.upload,https://www.googleapis.com/auth/youtube.readonly,https://www.googleapis.com/auth/youtube.force-ssl,https://www.googleapis.com/auth/yt-analytics.readonly'),
             'required_scopes' => [YouTubeScopes::READ],
             'permissions' => [
-                'publish' => ['scopes' => ['https://www.googleapis.com/auth/youtube.upload']],
+                'publish' => ['scopes' => [YouTubeScopes::UPLOAD]],
                 'followers' => ['scopes' => [YouTubeScopes::READ]],
                 'post_insights' => ['scopes' => [YouTubeScopes::READ]],
                 'post_insights_extended' => ['scopes' => [YouTubeScopes::ANALYTICS]],

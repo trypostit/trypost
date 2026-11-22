@@ -14,6 +14,7 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Exceptions\Post\QueueBusyException;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\User;
@@ -40,15 +41,29 @@ class UpdatePost
      */
     public static function execute(Workspace $workspace, Post $post, array $data, User $actor): array
     {
-        return $post->status === PostStatus::PendingApproval
-            ? PostApproval::whilePending($post, fn (): array => self::apply($workspace, $post, $data, $actor))
-            : self::apply($workspace, $post, $data, $actor);
+        $apply = fn (): ?array => self::apply($workspace, $post, $data, $actor);
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $result = $post->status === PostStatus::PendingApproval
+                ? PostApproval::whilePending($post, $apply)
+                : $apply();
+
+            if ($result !== null) {
+                return $result;
+            }
+
+            if (filled(data_get($data, 'queue_slot'))) {
+                throw ValidationException::withMessages(['slot_at' => __('posts.errors.queue_order_stale')]);
+            }
+        }
+
+        throw new QueueBusyException;
     }
 
     /**
-     * @return array{post: Post, action: PostAction|null}
+     * @return array{post: Post, action: PostAction|null}|null
      */
-    private static function apply(Workspace $workspace, Post $post, array $data, User $actor): array
+    private static function apply(Workspace $workspace, Post $post, array $data, User $actor): ?array
     {
         if (PostStatusRules::blocksEditing($post)) {
             return ['post' => $post, 'action' => PostAction::Finalized];
@@ -88,7 +103,9 @@ class UpdatePost
         }
 
         return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $data): array {
-            if (! self::lockForEditing($post)) {
+            $post->refreshForUpdate();
+
+            if (PostStatusRules::blocksEditing($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
 
@@ -113,9 +130,9 @@ class UpdatePost
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{post: Post, action: PostAction|null}
+     * @return array{post: Post, action: PostAction|null}|null
      */
-    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, User $actor): array
+    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, User $actor): ?array
     {
         $position = filled(data_get($data, 'queue')) ? QueuePosition::from(data_get($data, 'queue')) : null;
         $channel = $post->socialAccount;
@@ -170,9 +187,9 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($workspace, $post, $channel, $data, $status, $keepsPending, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
-            if (! self::lockForEditing($post)) {
-                return ['post' => $post, 'action' => PostAction::Finalized];
+        $write = fn (): ?array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($workspace, $post, $channel, $data, $status, $keepsPending, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): ?array {
+            if (! self::lockCurrentSchedule($post)) {
+                return null;
             }
 
             $meta = PostPlatformMetaRules::normalize(array_filter(
@@ -245,24 +262,17 @@ class UpdatePost
     }
 
     /**
-     * Re-reads the post under a row lock inside the write transaction, so a post the
-     * scheduler claimed or another request settled after it was loaded is left alone.
-     * A partial edit keeps the current media and metadata when they were omitted.
+     * The schedule determines which approval and queue locks the edit needs. If it
+     * changed while acquiring them, release the locks and plan the edit again
+     * from the refreshed row. Content-only changes can be merged immediately.
      */
-    private static function lockForEditing(Post $post): bool
+    private static function lockCurrentSchedule(Post $post): bool
     {
-        $locked = Post::query()->lockForUpdate()->findOrFail($post->id);
+        $fields = ['status', 'schedule_mode', 'scheduled_at', 'approval_queue_position'];
+        $schedule = $post->only($fields);
+        $post->refreshForUpdate();
 
-        if (PostStatusRules::blocksEditing($locked)) {
-            $post->setRawAttributes($locked->getAttributes(), true);
-
-            return false;
-        }
-
-        $composition = ['content', 'content_type', 'media', 'meta'];
-        $post->fill($locked->only($composition))->syncOriginalAttributes($composition);
-
-        return true;
+        return $post->only($fields) == $schedule;
     }
 
     /**

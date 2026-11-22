@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
+use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\Media;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -143,7 +148,6 @@ dataset('granted scopes', [
     'youtube' => ['youtube', [
         'https://www.googleapis.com/auth/youtube.upload',
         'https://www.googleapis.com/auth/youtube.readonly',
-        'https://www.googleapis.com/auth/youtube.force-ssl',
         'https://www.googleapis.com/auth/yt-analytics.readonly',
     ], 'https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/yt-analytics.readonly'],
     'google business' => ['google business', [
@@ -165,7 +169,7 @@ function grantedScopesCallback(string $network, array $granted): array
     return $definition;
 }
 
-test('a login that granted every scope connects with the granted scopes stored', function (string $network, array $granted) {
+test('a login that granted the required and optional scopes connects with the granted scopes stored', function (string $network, array $granted) {
     $definition = grantedScopesCallback($network, $granted);
 
     $this->actingAs($this->owner)
@@ -209,6 +213,30 @@ test('a login that left out an optional scope connects and records it as missing
         ->toContain($essential)
         ->not->toContain($optional);
 })->with('granted scopes');
+
+test('a YouTube grant with an alternative upload scope connects and schedules a short', function (string $scope) {
+    $grant = ['https://www.googleapis.com/auth/'.$scope, 'https://www.googleapis.com/auth/youtube.readonly'];
+    $definition = grantedScopesCallback('youtube', $grant);
+    $this->actingAs($this->owner)->get(route($definition['route'], ['code' => 'code-1']))
+        ->assertRedirect(route('app.social.connect.show', Platform::YouTube));
+    expect(socialConnectFailure())->toBeNull();
+    assertFinishedOnChannel(finishSocialConnect(Platform::YouTube));
+    $channel = SocialAccount::query()->sole();
+    expect($channel->scopes)->toEqualCanonicalizing($grant);
+
+    $video = Media::factory()->video()->temporaryUpload($this->workspace)->create([
+        'meta' => ['duration' => 20, 'width' => 1080, 'height' => 1920],
+    ]);
+    $this->post(route('app.posts.store'), [
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'content' => 'New short',
+        'media' => [MediaItem::fromMedia($video)->toArray()],
+        'destinations' => [['social_account_id' => $channel->id, 'content_type' => ContentType::YouTubeShort->value]],
+    ])->assertSessionHasNoErrors();
+
+    expect(Post::query()->whereBelongsTo($channel, 'socialAccount')->sole()->status)->toBe(Status::Scheduled);
+})->with(['youtube.force-ssl', 'youtube', 'youtubepartner']);
 
 test('a reconnect that left out the publish scope keeps the account as it was', function () {
     $account = SocialAccount::factory()->create([

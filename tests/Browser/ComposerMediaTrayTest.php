@@ -24,9 +24,10 @@ function composerMediaTrayDisabled(mixed $page, string $testId): bool
  * otherwise) and wraps XMLHttpRequest so the test can count, hold, release, fail, reject
  * or watch aborts of requests to the chunked upload endpoint (`window.__uploads`).
  *
+ * @param  array<string, mixed>  $accountAttributes
  * @return array{0: mixed, 1: Workspace, 2: SocialAccount, 3: list<SocialAccount>}
  */
-function openComposerMediaTray(mixed $test, string $mode = 'pass', int $channels = 1, string|array $platform = 'linkedin', bool $select = false): array
+function openComposerMediaTray(mixed $test, string $mode = 'pass', int $channels = 1, string|array $platform = 'linkedin', bool $select = false, array $accountAttributes = []): array
 {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -34,7 +35,7 @@ function openComposerMediaTray(mixed $test, string $mode = 'pass', int $channels
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
     $accounts = collect(is_array($platform) ? $platform : array_fill(0, $channels, $platform))
-        ->map(fn (string $network): SocialAccount => SocialAccount::factory()->{$network}()->create(['workspace_id' => $workspace->id]))
+        ->map(fn (string $network): SocialAccount => SocialAccount::factory()->{$network}()->create([...$accountAttributes, 'workspace_id' => $workspace->id]))
         ->all();
     $test->actingAs($user);
 
@@ -233,6 +234,26 @@ test('saving is blocked while an upload is in flight and the finished upload is 
         ->and($post->media[0]['id'])->toBe($owned->id);
     $page->assertNoJavaScriptErrors();
 });
+
+test('save and reconnect keeps the composer open without creating a draft when an upload is pending or failed', function (string $mode) {
+    [$page, $workspace, $account] = openComposerMediaTray($this, $mode, select: true, accountAttributes: ['scopes' => ['openid', 'profile']]);
+    $prefix = "composer-{$account->id}";
+    $reconnect = "@channel-permission-warning-{$account->id}-reconnect";
+    waitFor($page, $reconnect);
+    $page->fill("@composer-caption-{$account->id}", 'Keep this caption');
+    selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('photo.png').']', $prefix);
+
+    if ($mode === 'hold') {
+        waitForCondition($page, 'window.__uploads.held.length === 1');
+    } else {
+        waitFor($page, "@{$prefix}-upload-error");
+    }
+
+    $page->click($reconnect);
+    waitForText($page, '@reconnect-blocked', __('posts.form.reconnect.blocked'));
+    $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
+    expect(Post::query()->whereBelongsTo($workspace)->exists())->toBeFalse();
+})->with(['pending' => 'hold', 'failed' => 'fail-first']);
 
 test('cancel removes an uploading tile and retry recovers a network failure', function () {
     [$page] = openComposerMediaTray($this, 'hold', platform: ['instagram', 'threads'], select: true);
