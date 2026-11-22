@@ -71,7 +71,7 @@ class LinkedInController extends SocialController
             );
 
             if ($publishablePlatforms->isEmpty()) {
-                return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+                return $this->redirectForMissingPublishPermission($scopes);
             }
 
             $identities = $this->publishingIdentities($socialUser, $publishablePlatforms, $scopes);

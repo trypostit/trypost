@@ -71,10 +71,10 @@ final class PendingConnection
         return Platform::tryFrom((string) data_get($this->data, 'platform'));
     }
 
-    /** @return list<string> */
-    public function requestedScopes(): array
+    /** @return list<string>|null Null for a connection started before the requested scopes were saved. */
+    public function requestedScopes(): ?array
     {
-        return data_get($this->data, 'requested_scopes', []);
+        return data_get($this->data, 'requested_scopes');
     }
 
     public function workspaceId(): ?string

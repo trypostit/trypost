@@ -152,7 +152,7 @@ class PostController extends Controller
     {
         $file = $request->file('media');
 
-        AppendPostMedia::ensureAcceptsMedia($post);
+        AppendPostMedia::ensureAcceptsMedia($post, $request->user());
 
         if ($violation = PostMediaRequestRules::typeViolation($post, MediaType::fromMime((string) $file->getMimeType()))) {
             throw ValidationException::withMessages(['media' => $violation]);
@@ -160,7 +160,7 @@ class PostController extends Controller
 
         $media = $post->workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
-        AppendPostMedia::execute($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
+        AppendPostMedia::fromNewUploads($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
 
         $post->refresh()->load(['socialAccount', 'labels']);
 

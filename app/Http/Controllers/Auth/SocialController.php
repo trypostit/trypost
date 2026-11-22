@@ -41,7 +41,7 @@ class SocialController extends Controller
 
     private const array CANCELLED_CONSENT_ERRORS = ['access_denied', 'user_cancelled_login', 'user_cancelled_authorize'];
 
-    protected const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
+    private const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
 
     /** The platform's API host, keyed in config by the enum value. */
     protected function graphApi(): string
@@ -256,6 +256,22 @@ class SocialController extends Controller
     {
         if (blank(ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish))) {
             return null;
+        }
+
+        return $this->redirectForMissingPublishPermission($granted);
+    }
+
+    /** @param list<string> $granted */
+    protected function redirectForMissingPublishPermission(array $granted): RedirectResponse
+    {
+        $pending = $this->pendingForThisNetwork();
+        if ($granted === [] && $pending !== null && $pending->requestedScopes() === null) {
+            $url = $this->startUrl($pending, $pending->isSwitchingAccount());
+            if ($url !== null && $pending->workspaceId() === request()->user()->current_workspace_id) {
+                return redirect()->to($url);
+            }
+
+            return $this->failConnection(ConnectFlowException::SESSION_EXPIRED);
         }
 
         return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);

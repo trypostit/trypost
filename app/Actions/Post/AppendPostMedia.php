@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Post;
 
+use App\Actions\Media\DeleteOwnedMedia;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
@@ -12,7 +13,11 @@ use App\Support\ChannelPermissions;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
 use App\Support\PostStatusRules;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AppendPostMedia
 {
@@ -32,17 +37,8 @@ class AppendPostMedia
     public static function execute(Post $post, array $items, User $actor): void
     {
         PostApproval::locked($post, fn () => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $items, $actor): void {
-            self::ensureAcceptsMedia($post);
-
             $post->appendMedia($items, $batch);
-
-            if (PostStatusRules::blocksEditing($post)) {
-                throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
-            }
-
-            if ($post->status === PostStatus::Scheduled && $post->socialAccount !== null) {
-                ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->meta, $actor);
-            }
+            self::ensureAcceptsMedia($post, $actor);
 
             if ($post->hasDestination() && ContentType::derivesFromMedia($post->platform)) {
                 $post->update(['content_type' => ContentType::forMedia($post->platform, $post->media ?? [])]);
@@ -55,16 +51,36 @@ class AppendPostMedia
     }
 
     /**
-     * Refuses media on a poll, which carries none. `execute()` always checks
-     * it; an entry point that stores or downloads a file first calls it before
-     * doing so.
+     * These uploads belong to this request until the append adopts them. A refusal
+     * after a download or upload releases them. Previously issued upload tokens
+     * stay available to their owner through the normal execute() path.
      *
-     * @throws ValidationException
+     * @param  list<array<string, mixed>>  $items
      */
-    public static function ensureAcceptsMedia(Post $post, string $field = 'media'): void
+    public static function fromNewUploads(Post $post, array $items, User $actor): void
+    {
+        try {
+            self::execute($post, $items, $actor);
+        } catch (Throwable $exception) {
+            DB::transaction(fn () => DeleteOwnedMedia::forRows(Arr::pluck($items, 'id'), fn (Builder $query) => $query->temporaryUploads()));
+
+            throw $exception;
+        }
+    }
+
+    /** Check before fetching a file and again under the post's row lock when attaching it. */
+    public static function ensureAcceptsMedia(Post $post, User $actor, string $field = 'media'): void
     {
         if ($post->content_type?->isPoll() === true) {
             throw ValidationException::withMessages([$field => trans('posts.errors.media_not_accepted')]);
+        }
+
+        if (PostStatusRules::blocksEditing($post)) {
+            throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
+        }
+
+        if ($post->status === PostStatus::Scheduled && $post->socialAccount !== null) {
+            ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->meta, $actor);
         }
     }
 }

@@ -68,12 +68,8 @@ class DispatchPublicationDiscovery extends Command
                     return;
                 }
 
-                $staleBackfill = ($backfill->status === SyncStatus::Pending
-                    || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
-                    && $backfill->updated_at?->lessThan($staleBefore);
-
                 if ($backfill->status === SyncStatus::Paused
-                    || $staleBackfill
+                    || $this->shouldResumeStaleBackfill($backfill, $staleBefore)
                     || $this->shouldRestartMastodonBackfill($backfill, $channel)) {
                     BootstrapAccountAnalytics::dispatch($channel->id);
 
@@ -89,6 +85,20 @@ class DispatchPublicationDiscovery extends Command
             });
 
         return self::SUCCESS;
+    }
+
+    private function shouldResumeStaleBackfill(AnalyticsSyncState $backfill, CarbonImmutable $staleBefore): bool
+    {
+        if (! $backfill->updated_at?->lessThan($staleBefore)) {
+            return false;
+        }
+
+        if ($backfill->status === SyncStatus::Pending) {
+            return true;
+        }
+
+        return $backfill->status === SyncStatus::Running
+            && in_array($backfill->last_error_category, [null, MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL], true);
     }
 
     private function shouldRestartMastodonBackfill(AnalyticsSyncState $backfill, SocialAccount $channel): bool

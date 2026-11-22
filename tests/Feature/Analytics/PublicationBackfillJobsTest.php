@@ -144,6 +144,8 @@ test('daily discovery does not retry a backfill rejected for missing permission'
 test('daily discovery recovers stale bootstraps, bootstraps channels never bootstrapped and leaves delayed retries alone', function () {
     $stalePending = SocialAccount::factory()->instagram()->create();
     $staleRunning = SocialAccount::factory()->instagram()->create();
+    $publicMastodon = SocialAccount::factory()->mastodon()->create(['scopes' => ['read:accounts', 'write:statuses']]);
+    $recentMastodon = SocialAccount::factory()->mastodon()->create();
     $recentPending = SocialAccount::factory()->instagram()->create();
     $rateLimited = SocialAccount::factory()->instagram()->create();
     $awaitingRollout = SocialAccount::factory()->instagram()->create();
@@ -152,6 +154,8 @@ test('daily discovery recovers stale bootstraps, bootstraps channels never boots
     foreach ([
         [$stalePending, SyncStatus::Pending, null, 3],
         [$staleRunning, SyncStatus::Running, null, 3],
+        [$publicMastodon, SyncStatus::Running, 'mastodon_reconnect_for_private_history', 3],
+        [$recentMastodon, SyncStatus::Running, 'mastodon_reconnect_for_private_history', 1],
         [$recentPending, SyncStatus::Pending, null, 1],
         [$rateLimited, SyncStatus::Running, 'rate_limited', 3],
         [$readyForDiscovery, SyncStatus::Complete, null, 3],
@@ -178,7 +182,7 @@ test('daily discovery recovers stale bootstraps, bootstraps channels never boots
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
 
     expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())
-        ->toBe(collect([$stalePending->id, $staleRunning->id, $awaitingRollout->id])->sort()->values()->all());
+        ->toBe(collect([$stalePending->id, $staleRunning->id, $publicMastodon->id, $awaitingRollout->id])->sort()->values()->all());
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $readyForDiscovery->id);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 1);
     Bus::assertNotDispatched(BackfillAccountPublications::class);

@@ -232,6 +232,57 @@ test('a reconnect that left out the publish scope keeps the account as it was', 
         ->scopes->toBe(['https://www.googleapis.com/auth/youtube.upload']);
 });
 
+test('a pre-deploy consent session with no reported grant restarts consent and then connects', function () {
+    grantedScopesCallback('threads', []);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    $start = route('app.social.threads.connect', ['return_to' => PendingConnection::current()->returnPath()]);
+
+    $this->actingAs($this->owner)
+        ->get(route('app.social.threads.callback', ['code' => 'first', 'state' => 'issued-state']))
+        ->assertRedirect($start);
+    expect(SocialAccount::query()->exists())->toBeFalse();
+
+    $this->get($start)->assertRedirectContains('/oauth/authorize');
+    $this->get(route('app.social.threads.callback', ['code' => 'second', 'state' => session('threads_oauth_state')]))
+        ->assertRedirect(route('app.social.connect.show', Platform::Threads));
+    finishSocialConnect(Platform::Threads)->assertRedirect();
+
+    expect(SocialAccount::query()->sole()->scopes)->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights']);
+});
+
+test('a pre-deploy consent session never restarts a reconnect in a different workspace', function () {
+    grantedScopesCallback('tiktok', []);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    $other = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    $this->owner->update(['current_workspace_id' => $other->id]);
+
+    $this->actingAs($this->owner)->get(route('app.social.tiktok.callback'))
+        ->assertRedirect(route('app.social.connect.show', Platform::TikTok));
+
+    expect(socialConnectFailure())->toBe('session_expired')
+        ->and(SocialAccount::query()->exists())->toBeFalse();
+});
+
+test('a pre-deploy consent session honors the grant the provider reports', function (array $grant, bool $publishable) {
+    grantedScopesCallback('tiktok', $grant);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+
+    $this->actingAs($this->owner)->get(route('app.social.tiktok.callback'))->assertRedirect(route('app.social.connect.show', Platform::TikTok));
+
+    if ($publishable) {
+        finishSocialConnect(Platform::TikTok)->assertRedirect();
+        expect(SocialAccount::query()->sole()->scopes)->toBe($grant);
+
+        return;
+    }
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing')
+        ->and(SocialAccount::query()->exists())->toBeFalse();
+})->with([
+    'publish granted' => [['user.info.basic', 'video.publish'], true],
+    'publish declined' => [['user.info.basic'], false],
+]);
+
 test('a network that reports no scopes keeps the requested ones', function () {
     grantedScopesCallback('threads', []);
     Http::fake([config('trypost.platforms.threads.graph_api').'/debug_token*' => Http::response(['error' => ['message' => 'Unsupported']], 400)]);
