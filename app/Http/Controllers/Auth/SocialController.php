@@ -26,6 +26,7 @@ use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -244,6 +245,11 @@ class SocialController extends Controller
     protected function requestedScopes(): array
     {
         return ChannelPermissions::requestedScopes($this->platform);
+    }
+
+    protected function requestedScopeString(string $separator): string
+    {
+        return Arr::join($this->requestedScopes(), $separator);
     }
 
     /**

@@ -12,7 +12,6 @@ use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -67,11 +66,13 @@ class MastodonController extends SocialController
         }
 
         try {
+            $scopes = $this->requestedScopeString(' ');
+
             // Register app on the instance
             $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [
                 'client_name' => config('app.name'),
                 'redirect_uris' => route('app.social.mastodon.callback'),
-                'scopes' => $this->scopeString(),
+                'scopes' => $scopes,
                 'website' => config('app.url'),
             ]);
 
@@ -105,7 +106,7 @@ class MastodonController extends SocialController
                 'client_id' => $app['client_id'],
                 'response_type' => 'code',
                 'redirect_uri' => route('app.social.mastodon.callback'),
-                'scope' => $this->scopeString(),
+                'scope' => $scopes,
                 'state' => $state,
                 'force_login' => PendingConnection::current()?->isSwitchingAccount() ? 'true' : null,
             ]);
@@ -224,11 +225,5 @@ class MastodonController extends SocialController
             'mastodon_client_secret',
             'mastodon_oauth_state',
         ]);
-    }
-
-    /** The requested scopes as Mastodon takes them, space separated. */
-    private function scopeString(): string
-    {
-        return Arr::join($this->requestedScopes(), ' ');
     }
 }
