@@ -12,6 +12,7 @@ use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Enums\Webhook\EventType;
 use App\Events\PostStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -22,6 +23,7 @@ use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
@@ -32,6 +34,7 @@ use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\BlueskyPublisher;
@@ -1981,6 +1984,33 @@ test('publish to social platform fails when scopes are missing', function () {
     expect($this->post->error_message)->toBe(__('channels.permissions.publish.message', ['network' => $this->post->platform->label()]));
     expect($this->post->error_context['category'])->toBe('permission');
     expect($this->post->error_context['missing_scopes'])->toContain('w_member_social');
+});
+
+test('a post failed for a missing publish grant emails the workspace and sends post.failed without calling the network', function () {
+    Queue::fake([SendNotification::class, DispatchWebhook::class]);
+    Http::fake();
+    Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'events' => [EventType::PostFailed->value],
+    ]);
+    $this->socialAccount->update(['scopes' => ['openid', 'profile']]);
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    expect($this->post->fresh())
+        ->status->toBe(PostStatus::Failed)
+        ->error_context->category->toBe(ErrorCategory::Permission->value);
+    Queue::assertPushed(
+        SendNotification::class,
+        fn (SendNotification $job): bool => $job->type === Type::PostFailed && $job->mailable instanceof PostPublishFailed,
+    );
+    Queue::assertPushed(
+        DispatchWebhook::class,
+        fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostFailed->value
+            && data_get($job->payload, 'id') === $this->post->id
+            && data_get($job->payload, 'error_message') === __('channels.permissions.publish.message', ['network' => $this->post->platform->label()]),
+    );
+    Http::assertNothingSent();
 });
 
 test('publish to social platform saves error context on token expired', function () {
