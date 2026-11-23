@@ -522,6 +522,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $failureContext = [...$previousContext, ...($context ?? [])];
 
+        if (PublishCheckpoint::instagramCommentIsUnconfirmed($failureContext)) {
+            $message = __('posts.errors.instagram.comment_unconfirmed');
+        }
+
         $this->post->markPublicationFailed(
             ThreadProgress::failureMessage($this->post, $message, $failureContext),
             $failureContext === [] ? null : $failureContext,

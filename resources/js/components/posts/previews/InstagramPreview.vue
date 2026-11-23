@@ -25,8 +25,7 @@ import {
     soundtrackLabel,
 } from '@/composables/composer/useReelSoundtrack';
 import { filled } from '@/lib/helpers';
-import { threadRepliesOf } from '@/lib/threadReplies';
-import { htmlToPlainText } from '@/lib/utils';
+import { instagramCommentText, threadRepliesOf } from '@/lib/threadReplies';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
@@ -38,7 +37,7 @@ const firstComment = computed(() => {
         return '';
     }
 
-    return htmlToPlainText(reply.text);
+    return instagramCommentText(reply.text);
 });
 
 const feedAspectPadding = computed((): number => {

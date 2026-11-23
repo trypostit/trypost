@@ -5,11 +5,17 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Support\ChannelPermissions;
+use App\Support\OAuthScopes;
 
-test('by default every feature is on, because the connect asks for every scope each one needs', function (Platform $platform) {
+test('by default only Instagram via Facebook first comments require an opt-in', function (Platform $platform) {
     config(['trypost.platforms' => data_get(trypostConfigWith(['LINKEDIN_SCOPES' => '', 'LINKEDIN_PAGE_SCOPES' => '', 'X_SCOPES' => '', 'TIKTOK_SCOPES' => '', 'YOUTUBE_SCOPES' => '', 'FACEBOOK_SCOPES' => '', 'INSTAGRAM_SCOPES' => '', 'INSTAGRAM_FACEBOOK_SCOPES' => '', 'THREADS_SCOPES' => '', 'PINTEREST_SCOPES' => '', 'MASTODON_SCOPES' => '', 'DISCORD_SCOPES' => '', 'GOOGLE_BUSINESS_SCOPES' => '']), 'platforms')]);
 
-    expect(ChannelPermissions::disabledFeatures($platform))->toBe([]);
+    $disabled = [];
+    if ($platform === Platform::InstagramFacebook) {
+        $disabled[] = GatedFeature::ThreadReplies->value;
+    }
+
+    expect(ChannelPermissions::disabledFeatures($platform))->toBe($disabled);
 })->with(Platform::cases());
 
 /**
@@ -106,12 +112,17 @@ test('a network scopes env is read comma or space separated, and a blank one fal
         ->toContain('tweet.write', 'offline.access');
 });
 
-test('instagram first comments are optional on each connection path', function (Platform $platform, string $env, string $basic, string $publish, string $comments) {
+test('instagram first comments are optional on each connection path', function (Platform $platform, string $env, string $basic, string $publish, string $comments, bool $enabledByDefault) {
     $key = "trypost.platforms.{$platform->value}";
     config([$key => data_get(trypostConfigWith([$env => '']), "platforms.{$platform->value}")]);
 
-    expect(ChannelPermissions::requestedScopes($platform))->toContain($basic, $publish, $comments)
+    expect(ChannelPermissions::requestedScopes($platform))->toContain($basic, $publish)
+        ->and(ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies))->toBe($enabledByDefault)
         ->and(ChannelPermissions::missingFrom([$basic, $publish], $platform, GatedFeature::Publish))->toBe([]);
+
+    $commentScopes = OAuthScopes::commaSeparated([$publish, ...ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]);
+    config([$key => data_get(trypostConfigWith([$env => $commentScopes]), "platforms.{$platform->value}")]);
+    expect(ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies))->toBeTrue();
 
     config([$key => data_get(trypostConfigWith([$env => "$basic,$publish"]), "platforms.{$platform->value}")]);
 
@@ -119,6 +130,6 @@ test('instagram first comments are optional on each connection path', function (
         ->and(ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies))->toBeFalse()
         ->and(ChannelPermissions::enabled($platform, GatedFeature::Publish))->toBeTrue();
 })->with([
-    'instagram login' => [Platform::Instagram, 'INSTAGRAM_SCOPES', 'instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'],
-    'facebook login' => [Platform::InstagramFacebook, 'INSTAGRAM_FACEBOOK_SCOPES', 'instagram_basic', 'instagram_content_publish', 'instagram_manage_comments'],
+    'instagram login' => [Platform::Instagram, 'INSTAGRAM_SCOPES', 'instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments', true],
+    'facebook login' => [Platform::InstagramFacebook, 'INSTAGRAM_FACEBOOK_SCOPES', 'instagram_basic', 'instagram_content_publish', 'instagram_manage_comments', false],
 ]);

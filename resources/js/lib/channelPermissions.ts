@@ -1,11 +1,12 @@
 import { filled } from '@/lib/helpers';
-import { threadRepliesOf } from '@/lib/threadReplies';
+import { threadRepliesOf, threadUnsupportedKey } from '@/lib/threadReplies';
 import {
     GatedFeature,
     type GatedFeatureValue,
     type MissingPermission,
     type MissingPermissions,
 } from '@/types/channel-permission';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { PlatformConfig } from '@/types/platform';
 
 /** Whether the feature is on for a channel's network (not in `disabledFeatures` of its platform config). */
@@ -61,8 +62,13 @@ export const missingPermissionKey = (
     meta: Record<string, any> | null,
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
+    repliesSupported = true,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
+        if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
+            continue;
+        }
+
         const permission = missing?.[feature];
 
         if (!filled(permission)) {
@@ -82,11 +88,26 @@ export const missingPermissionKey = (
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (
     platformConfig: PlatformConfig | undefined,
+    contentType: ContentTypeValue | null,
     meta: Record<string, any> | null,
     canManageAccounts: boolean,
-): string | null =>
-    missingPermissionKey(
-        meta,
-        platformConfig?.missingPermissions,
-        canManageAccounts,
+): string | null => {
+    if (!filled(platformConfig)) {
+        return null;
+    }
+
+    const repliesSupported = !filled(
+        threadUnsupportedKey(
+            platformConfig.platform,
+            contentType,
+            featureIsEnabled(platformConfig, GatedFeature.ThreadReplies),
+        ),
     );
+
+    return missingPermissionKey(
+        meta,
+        platformConfig.missingPermissions,
+        canManageAccounts,
+        repliesSupported,
+    );
+};

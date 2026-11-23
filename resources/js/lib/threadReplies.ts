@@ -1,3 +1,4 @@
+import { characterCount, displayText } from '@/lib/characters';
 import { blank, filled, isEmpty, isString } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import {
@@ -55,6 +56,62 @@ const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
 export const threadRepliesOf = (
     meta: Record<string, any> | null | undefined,
 ): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
+
+const decodeCommentCodePoint = (entity: string): string => {
+    const codePoint = Number(entity.slice(2, -1).replace(/^x/i, '0x'));
+
+    if (codePoint > 0x10ffff) {
+        return entity;
+    }
+
+    if ([0x09, 0x0a, 0x0c].includes(codePoint)) {
+        return String.fromCodePoint(codePoint);
+    }
+
+    const character = String.fromCodePoint(codePoint);
+    if (
+        /[\p{Cc}\p{Cs}\u{fdd0}-\u{fdef}]/u.test(character) ||
+        codePoint % 0x10000 >= 0xfffe
+    ) {
+        return entity;
+    }
+
+    return character;
+};
+
+/** Matches the Instagram publisher's ContentSanitizer for plain text and legacy rich-text comments. */
+export const instagramCommentText = (text: string): string => {
+    const parser = new DOMParser();
+    const withoutMarkup = text
+        .replace(/<(?!\/?[a-z][^<>]*>)/gi, '&lt;')
+        .replace(/<p\b[^>]*>/gi, '')
+        .replace(/<li\b[^>]*>/gi, '- ')
+        .replace(/<br\s*\/?>|<\/(?:p|li|div|h[1-6]|blockquote)>/gi, '\n')
+        .replace(/<\/?[a-z](?:[^<>'"]|"[^"]*"|'[^']*')*>/gi, '');
+
+    const decoded = withoutMarkup.replace(
+        /&(?:[a-z][a-z0-9]*|#(?:x[0-9a-f]+|[0-9]+));/gi,
+        (entity) => {
+            if (entity.startsWith('&#')) {
+                return decodeCommentCodePoint(entity);
+            }
+
+            const decoded = parser.parseFromString(
+                `<span>${entity}</span>`,
+                'text/html',
+            ).body.textContent;
+
+            // A full named reference yields at most two code points. A prefix match keeps its suffix and semicolon.
+            if (isString(decoded) && characterCount(decoded) <= 2) {
+                return decoded;
+            }
+
+            return entity;
+        },
+    );
+
+    return displayText(decoded);
+};
 
 /** The reply as a poll, which carries no media, or as a plain post without one. */
 export const withReplyPoll = (

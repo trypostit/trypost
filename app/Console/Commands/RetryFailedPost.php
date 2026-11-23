@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\Log;
 class RetryFailedPost extends Command
 {
     protected $signature = 'posts:retry
-        {post : ID of the failed post to retry}';
+        {post : ID of the failed post to retry}
+        {--confirmed-comment-missing : Retry an unconfirmed Instagram comment after checking that it is absent}';
 
     protected $description = 'Retry a failed post, resuming an in-flight remote publish when a checkpoint exists';
 
@@ -46,6 +47,22 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
+        $commentUnconfirmed = PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context);
+        $confirmedCommentMissing = $commentUnconfirmed && $this->option('confirmed-comment-missing') === true;
+
+        if ($commentUnconfirmed && ! $confirmedCommentMissing) {
+            $this->error(__('posts.errors.instagram.comment_unconfirmed'));
+            $this->line('If the comment is absent, retry with --confirmed-comment-missing.');
+
+            return self::FAILURE;
+        }
+
+        if ($confirmedCommentMissing && ! ThreadProgress::hasPublishedRoot($post->error_context)) {
+            $this->error(__('posts.errors.instagram.comment_media_unconfirmed'));
+
+            return self::FAILURE;
+        }
+
         $this->table(
             ['Post ID', 'Platform', 'Account', 'Last error', 'Mode'],
             [[
@@ -61,7 +78,7 @@ class RetryFailedPost extends Command
             return self::SUCCESS;
         }
 
-        $originalContext = $this->prepareRetry($post);
+        $originalContext = $this->prepareRetry($post, $confirmedCommentMissing);
 
         if ($originalContext === false) {
             $this->warn('The post changed while the command was running; nothing was retried.');
@@ -95,12 +112,20 @@ class RetryFailedPost extends Command
      *
      * @return array<string, mixed>|null|false
      */
-    private function prepareRetry(Post $post): array|null|false
+    private function prepareRetry(Post $post, bool $confirmedCommentMissing): array|null|false
     {
-        return DB::transaction(function () use ($post): array|null|false {
+        return DB::transaction(function () use ($post, $confirmedCommentMissing): array|null|false {
             $locked = Post::query()->lockForUpdate()->find($post->id);
 
             if (! $locked || ! $this->isRetryable($locked)) {
+                return false;
+            }
+
+            if ($confirmedCommentMissing && $locked->error_context !== $post->error_context) {
+                return false;
+            }
+
+            if (! $confirmedCommentMissing && PublishCheckpoint::instagramCommentIsUnconfirmed($locked->error_context)) {
                 return false;
             }
 

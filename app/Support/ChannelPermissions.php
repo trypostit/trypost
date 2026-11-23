@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
@@ -159,14 +160,19 @@ class ChannelPermissions
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public static function featureBlockingPost(?SocialAccount $account, ?array $meta): ?GatedFeature
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ?ContentType $type = null): ?GatedFeature
     {
         if (blank($account)) {
             return null;
         }
 
-        return collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => $feature->isRequiredToPublish($meta) && self::blocks($account, $feature));
+        return collect(GatedFeature::cases())->first(function (GatedFeature $feature) use ($account, $meta, $type): bool {
+            if ($feature === GatedFeature::ThreadReplies && $type !== null && ! ThreadReplies::supportsPostType($account->platform, $type)) {
+                return false;
+            }
+
+            return $feature->isRequiredToPublish($meta) && self::blocks($account, $feature);
+        });
     }
 
     /** @param array<string, mixed>|null $meta */

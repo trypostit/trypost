@@ -20,12 +20,15 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use App\Support\ChannelPermissions;
+use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
@@ -65,6 +68,7 @@ test('instagram publisher throws exception without media', function () {
 });
 
 test('instagram creates a first comment only after the published media id is known', function (Platform $platform, array $scopes, ContentType $type, array $files) {
+    config(["trypost.platforms.{$platform->value}.scopes" => $scopes]);
     $this->socialAccount->update(['platform' => $platform, 'scopes' => $scopes]);
     $this->post->update([
         'platform' => $platform,
@@ -261,6 +265,128 @@ test('a redelivered job does not repeat an instagram comment write interrupted b
         ->and($this->post->fresh()->error_message)->toContain(__('posts.errors.instagram.comment_unconfirmed'));
     Http::assertNothingSent();
 });
+
+test('manual retry refuses an unconfirmed instagram comment after an interrupted worker', function (string $recovery) {
+    Queue::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+        'publication_updated_at' => now()->subHours(2),
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => [
+            ThreadProgress::KEY => [['hash' => 'root', 'id' => 'published-media']],
+            PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
+        ],
+    ])->save();
+
+    if ($recovery === 'worker failure') {
+        (new PublishToSocialPlatform($this->post))->failed(new RuntimeException('Worker timed out'));
+    } else {
+        $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+    }
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed);
+    expect(Artisan::call('posts:retry', ['post' => $failed->id, '--no-interaction' => true]))->toBe(1);
+
+    expect($failed->fresh()->error_message)->toContain(__('posts.errors.instagram.comment_unconfirmed'))
+        ->and($failed->fresh()->error_context)->toHaveKey(PublishCheckpoint::INSTAGRAM_COMMENT_PENDING, true);
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+    Http::assertNothingSent();
+})->with(['worker failure', 'stale publication']);
+
+test('an operator can resume the comment after verifying that instagram did not publish it', function () {
+    Queue::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Failed,
+        'publish_status' => PublishStatus::Failed,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'media' => [[
+            'id' => 'first-comment-photo',
+            'path' => 'media/photo.jpg',
+            'url' => 'https://example.com/photo.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'photo.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+        'error_context' => [
+            ThreadProgress::KEY => [['hash' => 'root', 'id' => 'published-media']],
+            PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
+        ],
+    ])->save();
+    Http::fake(['*/published-media/comments' => Http::response(['id' => 'first-comment'])]);
+
+    $this->artisan('posts:retry', ['post' => $this->post->id, '--confirmed-comment-missing' => true])
+        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+        ->assertSuccessful();
+    Queue::pushed(PublishToSocialPlatform::class)->sole()->handle();
+
+    $published = $this->post->fresh();
+    expect($published->error_message)->toBeNull()
+        ->and($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('published-media')
+        ->and($published->thread_reply_ids)->toBe(['first-comment']);
+    Http::assertSentCount(1);
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+        && Str::endsWith($request->url(), '/published-media/comments'));
+});
+
+test('an instagram comment rate limit retries the comment without republishing the media', function (array $body, int $status) {
+    Queue::fake();
+    Sleep::fake();
+    $this->freezeSecond();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Pending,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container']],
+        'media' => [[
+            'id' => 'first-comment-photo',
+            'path' => 'media/photo.jpg',
+            'url' => 'https://example.com/photo.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'photo.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+    ])->save();
+    Http::fake([
+        '*/container?*' => Http::response(['status_code' => 'FINISHED']),
+        '*/media_publish' => Http::response(['id' => 'published-media']),
+        '*/published-media?*' => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+        '*/published-media/comments' => Http::sequence()
+            ->push($body, $status, ['Retry-After' => '7200'])
+            ->push(['id' => 'first-comment']),
+    ]);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    $retry = $this->post->fresh();
+    expect($retry->publish_status)->toBe(PublishStatus::Retrying)
+        ->and($retry->retry_at?->toIso8601String())->toBe(now()->addHours(2)->toIso8601String())
+        ->and($retry->error_context)->not->toHaveKey(PublishCheckpoint::INSTAGRAM_COMMENT_PENDING);
+    $this->artisan('posts:process-scheduled')->assertSuccessful();
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+
+    $this->travelTo($retry->retry_at);
+    $this->artisan('posts:process-scheduled')->assertSuccessful();
+    Queue::assertPushed(PublishToSocialPlatform::class, 1);
+    Queue::pushed(PublishToSocialPlatform::class)->sole()->handle();
+
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('published-media')
+        ->and($published->thread_reply_ids)->toBe(['first-comment']);
+    $writes = Http::recorded(fn (Request $request): bool => $request->method() === 'POST')->pluck('0');
+    expect($writes->filter(fn (Request $request): bool => Str::endsWith($request->url(), '/media_publish')))->toHaveCount(1)
+        ->and($writes->filter(fn (Request $request): bool => Str::endsWith($request->url(), '/comments')))->toHaveCount(2);
+})->with([
+    'graph rate limit' => [['error' => ['code' => 4, 'message' => 'Too many calls']], 400],
+    'http rate limit' => [[], 429],
+]);
 
 test('a first comment rejected for an expired instagram token uses the refreshed token without republishing media', function () {
     $this->socialAccount->update([

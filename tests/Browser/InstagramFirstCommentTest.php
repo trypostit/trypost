@@ -5,12 +5,15 @@ declare(strict_types=1);
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\ContentSanitizer;
+use App\Support\ChannelPermissions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,6 +21,7 @@ function instagramFirstCommentDraft(Platform $platform, ContentType $type): Post
 {
     Http::fake(['*' => Http::response([])]);
     Storage::fake();
+    config(["trypost.platforms.{$platform->value}.scopes" => ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
@@ -70,8 +74,11 @@ test('the instagram composer saves one text comment and shows it inside the post
     'facebook login reel' => [Platform::InstagramFacebook, ContentType::InstagramReel],
 ]);
 
-test('switching a scheduled instagram post to story blocks saving until its comment is removed', function () {
+test('switching a scheduled instagram post to story blocks saving until its comment is removed', function (bool $hasCommentGrant) {
     $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
+    if (! $hasCommentGrant) {
+        $post->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish']]);
+    }
     $scheduledAt = now()->addDay()->startOfHour();
     $post->update([
         'status' => Status::Scheduled,
@@ -84,6 +91,7 @@ test('switching a scheduled instagram post to story blocks saving until its comm
     $page->click("@composer-type-{$id}-instagram_story");
 
     waitForText($page, "@thread-unavailable-warning-{$id}", __('posts.form.thread.instagram_story'));
+    $page->assertMissing("@channel-permission-warning-{$id}");
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
     $page->assertMissing('@instagram-first-comment-preview')->click("@composer-type-{$id}-instagram_feed");
     waitForText($page, '@instagram-first-comment-preview', 'A saved comment');
@@ -101,15 +109,31 @@ test('switching a scheduled instagram post to story blocks saving until its comm
         ->and($saved->content_type)->toBe(ContentType::InstagramStory)
         ->and(data_get($saved->meta, 'thread_replies'))->toBeNull();
     $page->assertNoJavaScriptErrors();
-});
+})->with(['with comment grant' => true, 'without comment grant' => false]);
 
-test('instagram opens a legacy first comment and previews the text sent to instagram', function () {
+test('instagram previews the exact text sent to instagram', function (string $text) {
     $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
-    $post->update(['meta' => ['thread_replies' => ['<b>Launch</b> &amp; links']]]);
+    $post->update(['meta' => ['thread_replies' => [$text]]]);
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
 
-    waitForText($page, '@instagram-first-comment-preview', 'Launch & links');
+    $displayText = app(ContentSanitizer::class)->sanitize($text, Platform::Instagram);
+    waitForText($page, '@instagram-first-comment-preview', $displayText);
     $page->assertDontSeeIn('@instagram-first-comment-preview', '<b>')->assertNoJavaScriptErrors();
+})->with([
+    'legacy markup' => '<b>Launch</b> &amp; links',
+    'query string' => 'https://example.com/?plan=pro&copy=1',
+    'literal angle bracket' => 'Price: <limit',
+    'entities' => 'A &copy; &#x1F389; &#65; &#128; &copycat;',
+]);
+
+test('the instagram comment counter counts non-breaking spaces like the publisher', function () {
+    $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start')->fill('@thread-reply-0', '&nbsp;'.str_repeat('a', 2200));
+
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    $page->assertNoJavaScriptErrors();
 });
 
 test('the instagram first comment reconnect action is shown only to workspace users who can use it', function (bool $canReconnect) {
@@ -138,9 +162,14 @@ test('the instagram first comment reconnect action is shown only to workspace us
     $page->assertNoJavaScriptErrors();
 })->with(['workspace owner' => true, 'workspace member' => false]);
 
-test('the composer keeps separate first comments for the two instagram login variants', function () {
+test('the composer applies first comment support separately for the two instagram login variants', function (bool $facebookEnabled) {
     $draft = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
     $instagram = $draft->socialAccount;
+    $facebookScopes = data_get(trypostConfigWith(['INSTAGRAM_FACEBOOK_SCOPES' => '']), 'platforms.instagram-facebook.scopes');
+    if ($facebookEnabled) {
+        $facebookScopes[] = 'instagram_manage_comments';
+    }
+    config(['trypost.platforms.instagram-facebook.scopes' => $facebookScopes]);
     $facebook = SocialAccount::factory()->create([
         'workspace_id' => $draft->workspace_id,
         'platform' => Platform::InstagramFacebook,
@@ -160,9 +189,15 @@ test('the composer keeps separate first comments for the two instagram login var
 
     $page->click("@composer-expand-{$facebook->id}");
     waitFor($page, "@composer-caption-{$facebook->id}");
-    $page->assertMissing('@instagram-first-comment-preview')
-        ->click('@thread-start')->fill('@thread-reply-0', 'Facebook login comment');
-    waitForText($page, '@instagram-first-comment-preview', 'Facebook login comment');
+    $page->assertMissing('@instagram-first-comment-preview');
+    $facebookComment = null;
+    if ($facebookEnabled) {
+        $facebookComment = 'Facebook login comment';
+        $page->click('@thread-start')->fill('@thread-reply-0', $facebookComment);
+        waitForText($page, '@instagram-first-comment-preview', $facebookComment);
+    } else {
+        $page->assertMissing('@thread-start')->assertMissing("@channel-permission-warning-{$facebook->id}");
+    }
     $page->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
 
@@ -171,7 +206,7 @@ test('the composer keeps separate first comments for the two instagram login var
     ]);
     expect($comments->all())->toEqual([
         $instagram->id => 'Direct login comment',
-        $facebook->id => 'Facebook login comment',
+        $facebook->id => $facebookComment,
     ]);
     $page->assertNoJavaScriptErrors();
-});
+})->with(['enabled explicitly' => true, 'disabled by default' => false]);

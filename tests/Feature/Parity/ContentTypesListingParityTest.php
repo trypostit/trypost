@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\GatedFeature;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Support\ChannelPermissions;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -62,7 +65,10 @@ test('content types say where thread replies are supported and how many', functi
 });
 
 test('instagram comment capability is listed per login variant and only for feed and reel', function (string $enabled, string $disabled) {
-    config(["trypost.platforms.{$disabled}.scopes" => []]);
+    config([
+        "trypost.platforms.{$enabled}.scopes" => ChannelPermissions::missingFrom([], Platform::from($enabled), GatedFeature::ThreadReplies),
+        "trypost.platforms.{$disabled}.scopes" => [],
+    ]);
 
     $platforms = contentTypesListingApi($this);
     $supported = ['supports_thread_replies' => true, 'max_thread_replies' => 1];

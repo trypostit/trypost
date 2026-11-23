@@ -18,15 +18,18 @@ final class PublishContentValidator
 {
     public static function validate(Post $post): void
     {
-        self::validatePermissions($post);
-        self::validateThreadReplies($post);
+        $platform = $post->socialAccount?->platform ?? $post->platform;
+        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
+
+        self::validatePermissions($post, $type);
+        self::validateThreadReplies($post, $type);
         self::validateCaptionLength($post);
     }
 
-    private static function validatePermissions(Post $post): void
+    private static function validatePermissions(Post $post, ContentType $type): void
     {
         $account = $post->socialAccount;
-        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta);
+        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type);
 
         if (filled($blockedFeature)) {
             throw new MissingPermissionException(
@@ -36,11 +39,10 @@ final class PublishContentValidator
         }
     }
 
-    private static function validateThreadReplies(Post $post): void
+    private static function validateThreadReplies(Post $post, ContentType $type): void
     {
         $account = $post->socialAccount;
         $platform = $account?->platform ?? $post->platform;
-        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
         $violation = ThreadReplies::violation($platform, $type, $post->meta, $account);
 
         if (filled($violation)) {

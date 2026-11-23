@@ -9,6 +9,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
+import type { ContentTypeValue } from '@/types/content-type';
 import type { PlatformConfigs } from '@/types/platform';
 import type { ComposerAccount } from '@/types/post-composition';
 
@@ -23,6 +24,7 @@ import type { ComposerAccount } from '@/types/post-composition';
 const props = withDefaults(
     defineProps<{
         accounts: ComposerAccount[];
+        contentType: ContentTypeValue | null;
         platformConfigs: PlatformConfigs;
         meta?: Record<string, any> | null;
         disabled?: boolean;
@@ -40,6 +42,7 @@ const permissionWarning = computed(() => {
     for (const account of props.accounts) {
         const key = channelPermissionKey(
             props.platformConfigs[account.id],
+            props.contentType,
             props.meta,
             canManageAccounts.value,
         );

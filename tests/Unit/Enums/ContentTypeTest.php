@@ -76,7 +76,7 @@ test('media rules for frontend expose the full editor rule set keyed by content 
 });
 
 test('listing array mirrors media capability fields for api and mcp', function () {
-    $listing = ContentType::PinterestCarousel->toListingArray();
+    $listing = ContentType::PinterestCarousel->toListingArray(Platform::Pinterest);
 
     expect($listing)->toMatchArray([
         'value' => 'pinterest_carousel',
@@ -87,7 +87,7 @@ test('listing array mirrors media capability fields for api and mcp', function (
         'accept_videos' => false,
     ]);
 
-    expect(ContentType::InstagramReel->toListingArray()['accept_images'])->toBeFalse();
+    expect(ContentType::InstagramReel->toListingArray(Platform::Instagram)['accept_images'])->toBeFalse();
 });
 
 test('media rules reuse enum capability helpers', function () {
@@ -581,7 +581,7 @@ test('a type without images lists no alt text and a type without video accepts n
         expect($type->acceptsMov())->toBeFalse();
     }
 
-    expect($type->toListingArray())->toMatchArray([
+    expect($type->toListingArray($type->platform()))->toMatchArray([
         'accepts_mov' => $type->acceptsMov(),
         'supports_alt_text' => $type->supportsImageAltText(),
         'supports_video_alt_text' => $type->supportsVideoAltText(),

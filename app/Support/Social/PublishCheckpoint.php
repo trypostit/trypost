@@ -87,6 +87,12 @@ final class PublishCheckpoint
         return is_array($workflow) && $workflow !== [] ? $workflow : null;
     }
 
+    /** @param  array<string, mixed>|null  $context */
+    public static function instagramCommentIsUnconfirmed(?array $context): bool
+    {
+        return data_get($context, self::INSTAGRAM_COMMENT_PENDING) === true;
+    }
+
     /**
      * @param  array<string, mixed>|null  $context
      */

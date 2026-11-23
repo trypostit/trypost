@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Support\ChannelPermissions;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\ThreadProgress;
 use App\Support\ThreadReplies;
 use Illuminate\Support\Str;
 
 test('instagram feed posts and reels take one text comment and stories take none', function (Platform $platform) {
+    config(["trypost.platforms.{$platform->value}.scopes" => ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]);
     $comment = ['thread_replies' => [Str::repeat('é', 2200)]];
 
     expect(ThreadReplies::violation($platform, ContentType::InstagramFeed, $comment))->toBeNull()

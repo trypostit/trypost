@@ -128,7 +128,7 @@ class InstagramPublisher
         }
 
         $context = $this->post->error_context ?? [];
-        if (data_get($context, PublishCheckpoint::INSTAGRAM_COMMENT_PENDING) === true) {
+        if (PublishCheckpoint::instagramCommentIsUnconfirmed($context)) {
             throw $this->unconfirmedComment();
         }
 
@@ -139,7 +139,7 @@ class InstagramPublisher
 
         $mediaId = $root['id'];
         try {
-            $response = $this->socialHttp()->asForm()->post("{$this->baseUrl}/{$mediaId}/comments", [
+            $response = $this->socialHttp()->retry(1, throw: false)->asForm()->post("{$this->baseUrl}/{$mediaId}/comments", [
                 'message' => $text,
                 'access_token' => $accessToken,
             ]);
@@ -171,12 +171,7 @@ class InstagramPublisher
             return true;
         }
 
-        if (! $response->failed() || $response->tooManyRequests() || InstagramPublishException::isDocumentedRejection($response)) {
-            return false;
-        }
-
-        $errorCode = $response->json('error.code');
-        if (in_array($errorCode, GraphError::RATE_LIMIT_CODES, true)) {
+        if (! $response->failed() || InstagramPublishException::isRateLimit($response) || InstagramPublishException::isDocumentedRejection($response)) {
             return false;
         }
 

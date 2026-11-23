@@ -7,6 +7,13 @@ use App\Support\Analytics\YouTubeScopes;
 use App\Support\ConfigEnvironment;
 use App\Support\ThreadReplies;
 
+$instagramReplies = [
+    'max' => 1,
+    'standalone_types' => [
+        ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
+    ],
+];
+
 return [
 
     /*
@@ -626,16 +633,11 @@ return [
             'auth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
             'oauth_url' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_URL', 'https://www.instagram.com'),
             'oauth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_API', 'https://api.instagram.com'),
-            'replies' => [
-                'max' => 1,
-                'standalone_types' => [
-                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
-                ],
-            ],
+            'replies' => $instagramReplies,
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_comments'),
+            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights'),
             'required_scopes' => ['pages_show_list', 'pages_read_engagement', 'instagram_basic'],
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_content_publish']],
@@ -645,12 +647,7 @@ return [
                 'post_history' => ['scopes' => ['instagram_basic']],
             ],
             'graph_api' => ConfigEnvironment::baseUrl('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
-            'replies' => [
-                'max' => 1,
-                'standalone_types' => [
-                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
-                ],
-            ],
+            'replies' => $instagramReplies,
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),

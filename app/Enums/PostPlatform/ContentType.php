@@ -715,9 +715,8 @@ enum ContentType: string
      *     max_thread_replies: int|null
      * }
      */
-    public function toListingArray(?SocialPlatform $platform = null): array
+    public function toListingArray(SocialPlatform $platform): array
     {
-        $platform ??= $this->platform();
         $takesThreadReplies = $this->takesThreadReplies($platform);
         $rules = $this->mediaRules();
 
@@ -1071,10 +1070,8 @@ enum ContentType: string
      * Whether a post of this type takes thread replies: its network chains
      * them and the type does not stand alone (`replies.standalone_types`).
      */
-    public function takesThreadReplies(?SocialPlatform $platform = null): bool
+    public function takesThreadReplies(SocialPlatform $platform): bool
     {
-        $platform ??= $this->platform();
-
         return $this->isCompatibleWith($platform) && ThreadReplies::supportsPostType($platform, $this);
     }
 }

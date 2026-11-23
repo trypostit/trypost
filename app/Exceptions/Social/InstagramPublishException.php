@@ -48,6 +48,11 @@ class InstagramPublishException extends SocialPublishException
         return $mapped !== null && $mapped[1] !== ErrorCategory::ServerError;
     }
 
+    public static function isRateLimit(Response $response): bool
+    {
+        return $response->tooManyRequests() || in_array($response->json('error.code'), GraphError::RATE_LIMIT_CODES, true);
+    }
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -69,10 +74,15 @@ class InstagramPublishException extends SocialPublishException
         $subcode = is_numeric($errorSubcode) ? (int) $errorSubcode : null;
         $mapped = self::forSubcode($subcode);
 
-        [$message, $category] = $mapped
-            ?? (in_array($errorCode, GraphError::RATE_LIMIT_CODES, true)
-                ? ['Too many API calls. Please try again later.', ErrorCategory::RateLimit]
-                : [$errorUserMsg ?? $errorMessage, ErrorCategory::Unknown]);
+        $message = $errorUserMsg ?? $errorMessage;
+        $category = ErrorCategory::Unknown;
+
+        if ($mapped !== null) {
+            [$message, $category] = $mapped;
+        } elseif (self::isRateLimit($response)) {
+            $message = 'Too many API calls. Please try again later.';
+            $category = ErrorCategory::RateLimit;
+        }
 
         $causedByUser = $mapped !== null
             ? in_array($subcode, self::USER_REJECTION_SUBCODES, true)

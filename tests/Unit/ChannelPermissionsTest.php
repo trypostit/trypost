@@ -172,8 +172,8 @@ test('every locale names the network wherever english does', function () {
 test('a post type that stands alone lists no thread replies', function () {
     config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.reply_empty']]);
 
-    expect(ContentType::XPoll->takesThreadReplies())->toBeFalse()
-        ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();
+    expect(ContentType::XPoll->takesThreadReplies(Platform::X))->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies(Platform::X))->toBeTrue();
 });
 
 test('publishing is always asked for, even when the env list leaves its scope out', function () {
@@ -205,7 +205,7 @@ test('replies are off on a network whose connect does not ask for their scope', 
     config(['trypost.platforms.x.scopes' => ['tweet.read', 'tweet.write', 'users.read']]);
 
     expect(ThreadReplies::supports(Platform::X))->toBeFalse()
-        ->and(ContentType::XPost->takesThreadReplies())->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies(Platform::X))->toBeFalse()
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['second']], ContentType::XPost))
         ->toBe(['thread_replies', __('posts.form.thread.unsupported')]);
 

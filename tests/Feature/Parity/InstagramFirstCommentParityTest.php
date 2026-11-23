@@ -19,6 +19,7 @@ beforeEach(function () {
 });
 
 test('instagram first comments can be saved as a draft before a reconnect and then scheduled', function (string $surface, Platform $platform, array $publishScopes, string $commentScope) {
+    config(["trypost.platforms.{$platform->value}.scopes" => [...$publishScopes, $commentScope]]);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => $platform,
@@ -85,4 +86,27 @@ test('approval rechecks an instagram comment grant that was revoked while awaiti
     };
 
     expect($post->fresh()->status)->toBe(Status::PendingApproval);
+})->with(['web', 'api', 'mcp']);
+
+test('an instagram story with a comment reports the format restriction before the missing comment grant', function (string $surface) {
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+    ]);
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->draft()->create(['user_id' => $this->user->id]);
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create(['meta' => ['width' => 1080, 'height' => 1920]]);
+
+    $response = pollParityUpdate($surface, $post, [
+        'content_type' => ContentType::InstagramStory->value,
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'media' => [$surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token]],
+        'meta' => ['thread_replies' => [['text' => 'A first comment']]],
+    ]);
+
+    $message = __('posts.form.thread.instagram_story');
+    match ($surface) {
+        'mcp' => $response->assertHasErrors([$message]),
+        'web', 'api' => $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies' => $message]),
+    };
 })->with(['web', 'api', 'mcp']);

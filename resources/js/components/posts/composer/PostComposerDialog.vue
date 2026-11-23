@@ -179,6 +179,7 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import { pollLimitsOf } from '@/lib/poll';
 import {
+    instagramCommentText,
     newThreadReply,
     repliesAreComments,
     replyEmptyKey,
@@ -1288,7 +1289,7 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
 };
 const replyTextFor = (reply: ThreadReply, platform: PlatformValue): string => {
     if (threadReplyPostType(platform) === ContentType.InstagramComment) {
-        return htmlToPlainText(reply.text);
+        return instagramCommentText(reply.text);
     }
 
     return contentFor(reply.text, platform);
@@ -1620,6 +1621,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         ),
         channelPermissionKey(
             props.platformConfigs[account.id],
+            contentType,
             destination.meta,
             canManageAccounts.value,
         ),
@@ -1638,9 +1640,9 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         for (const reply of threadRepliesOf(destination.meta)) {
             const text = replyTextFor(reply, account.platform);
             const over = limit === null ? 0 : displayLength(text) - limit;
-            const replyMediaWarning = filled(reply.media)
-                ? getMediaValidationWarning(replyContentType, reply.media)
-                : null;
+            const replyMediaWarning = transform(reply.media, (media) =>
+                getMediaValidationWarning(replyContentType, media),
+            );
             if (isBlankText(text) && blank(reply.media)) {
                 issues.push({
                     key: replyEmptyKey(account.platform),
@@ -2988,6 +2990,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                     <PostComposerPermissionWarning
                                         :accounts="group.accounts"
+                                        :content-type="
+                                            groupDestination(group).content_type
+                                        "
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
                                         :disabled="submitting"
