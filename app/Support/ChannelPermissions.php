@@ -166,13 +166,13 @@ class ChannelPermissions
             return null;
         }
 
-        return collect(GatedFeature::cases())->first(function (GatedFeature $feature) use ($account, $meta, $type): bool {
-            if ($feature === GatedFeature::ThreadReplies && $type !== null && ! ThreadReplies::supportsPostType($account->platform, $type)) {
-                return false;
-            }
+        $features = collect(GatedFeature::cases());
 
-            return $feature->isRequiredToPublish($meta) && self::blocks($account, $feature);
-        });
+        if ($type !== null && ! ThreadReplies::supportsPostType($account->platform, $type)) {
+            $features = $features->reject(fn (GatedFeature $feature): bool => $feature === GatedFeature::ThreadReplies);
+        }
+
+        return $features->first(fn (GatedFeature $feature): bool => $feature->isRequiredToPublish($meta) && self::blocks($account, $feature));
     }
 
     /** @param array<string, mixed>|null $meta */

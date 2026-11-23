@@ -57,9 +57,7 @@ export const isReplyPollPlatform = (
 ): platform is ReplyPollPlatform => REPLY_POLL_PLATFORM_SET.has(platform);
 
 /** The content type a thread reply publishes as. */
-export const THREAD_REPLY_CONTENT_TYPES: Readonly<
-    Record<ThreadPlatform, ContentTypeValue>
-> = {
+export const THREAD_REPLY_CONTENT_TYPES = {
     [Platform.Bluesky]: ContentType.BlueskyPost,
     [Platform.Mastodon]: ContentType.MastodonPost,
     [Platform.X]: ContentType.XPost,
@@ -68,7 +66,7 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<
     [Platform.InstagramFacebook]: ContentType.InstagramComment,
     [Platform.LinkedIn]: ContentType.LinkedInComment,
     [Platform.LinkedInPage]: ContentType.LinkedInComment,
-};
+} as const satisfies Readonly<Record<ThreadPlatform, ContentTypeValue>>;
 
 /** The content type a thread reply that is a poll publishes as. */
 export const THREAD_REPLY_POLL_CONTENT_TYPES: Readonly<

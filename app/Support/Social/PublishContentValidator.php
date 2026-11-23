@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Social;
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\MissingPermissionException;
 use App\Models\Post;
@@ -18,32 +19,25 @@ final class PublishContentValidator
 {
     public static function validate(Post $post): void
     {
-        $platform = $post->socialAccount?->platform ?? $post->platform;
-        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
-
-        self::validatePermissions($post, $type);
-        self::validateThreadReplies($post, $type);
-        self::validateCaptionLength($post);
-    }
-
-    private static function validatePermissions(Post $post, ContentType $type): void
-    {
         $account = $post->socialAccount;
+        $platform = $account?->platform ?? $post->platform;
+        $type = $post->content_type ?? ContentType::forMedia($platform, $post->media ?? []);
         $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type);
 
         if (filled($blockedFeature)) {
             throw new MissingPermissionException(
                 $post->platform,
-                ChannelPermissions::reconnectMessage($account?->platform ?? $post->platform, $blockedFeature),
+                ChannelPermissions::reconnectMessage($platform, $blockedFeature),
             );
         }
+
+        self::validateThreadReplies($post, $platform, $type);
+        self::validateCaptionLength($post);
     }
 
-    private static function validateThreadReplies(Post $post, ContentType $type): void
+    private static function validateThreadReplies(Post $post, Platform $platform, ContentType $type): void
     {
-        $account = $post->socialAccount;
-        $platform = $account?->platform ?? $post->platform;
-        $violation = ThreadReplies::violation($platform, $type, $post->meta, $account);
+        $violation = ThreadReplies::violation($platform, $type, $post->meta, $post->socialAccount);
 
         if (filled($violation)) {
             [, $message] = $violation;

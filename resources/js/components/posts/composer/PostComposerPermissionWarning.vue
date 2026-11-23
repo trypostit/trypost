@@ -26,7 +26,7 @@ const props = withDefaults(
         accounts: ComposerAccount[];
         contentType: ContentTypeValue | null;
         platformConfigs: PlatformConfigs;
-        meta?: Record<string, any> | null;
+        meta?: Record<string, unknown> | null;
         disabled?: boolean;
         reconnectable?: boolean;
         testId: string;

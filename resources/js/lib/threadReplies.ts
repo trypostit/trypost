@@ -38,6 +38,9 @@ export const isBlankThreadReply = ({
 
 /** Stored JSON can contain legacy text or an object; `key` only exists in composer drafts. */
 type StoredThreadReply = string | Partial<ThreadReply>;
+type StoredThreadMeta = Record<string, unknown> & {
+    thread_replies?: StoredThreadReply[] | null;
+};
 
 /** A stored reply as the composer edits it, keyed by its position when it has no key yet. */
 const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
@@ -54,56 +57,94 @@ const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
 
 /** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
-    meta: Record<string, any> | null | undefined,
+    meta: StoredThreadMeta | null | undefined,
 ): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
 
-const decodeCommentCodePoint = (entity: string): string => {
-    const codePoint = Number(entity.slice(2, -1).replace(/^x/i, '0x'));
+const COMMENT_LINE_BREAK_SELECTOR =
+    'br, p, li, div, h1, h2, h3, h4, h5, h6, blockquote';
+const HTML_REFERENCES = /&(?:[a-z][a-z0-9]*|#(?:x[0-9a-f]+|[0-9]+));/gi;
+const UNICODE_MAX = 0x10ffff;
+const UNICODE_PLANE_SIZE = 0x10000;
+const FIRST_NONCHARACTER_IN_PLANE = 0xfffe;
 
-    if (codePoint > 0x10ffff) {
+/** Numeric references that PHP's HTML5 decoder leaves as written. */
+const INVALID_HTML_REFERENCE_RANGES: ReadonlyArray<readonly [number, number]> =
+    [
+        [0x00, 0x08],
+        [0x0b, 0x0b],
+        [0x0d, 0x1f],
+        [0x7f, 0x9f],
+        [0xd800, 0xdfff],
+        [0xfdd0, 0xfdef],
+    ];
+
+const decodeNumericReference = (entity: string): string => {
+    const digits = entity.slice(2, -1).toLowerCase();
+    const codePoint = Number(digits.replace('x', '0x'));
+
+    if (codePoint > UNICODE_MAX) {
         return entity;
     }
 
-    if ([0x09, 0x0a, 0x0c].includes(codePoint)) {
-        return String.fromCodePoint(codePoint);
+    if (codePoint % UNICODE_PLANE_SIZE >= FIRST_NONCHARACTER_IN_PLANE) {
+        return entity;
     }
 
-    const character = String.fromCodePoint(codePoint);
     if (
-        /[\p{Cc}\p{Cs}\u{fdd0}-\u{fdef}]/u.test(character) ||
-        codePoint % 0x10000 >= 0xfffe
+        INVALID_HTML_REFERENCE_RANGES.some(
+            ([start, end]) => codePoint >= start && codePoint <= end,
+        )
     ) {
         return entity;
     }
 
-    return character;
+    return String.fromCodePoint(codePoint);
 };
 
-/** Matches the Instagram publisher's ContentSanitizer for plain text and legacy rich-text comments. */
-export const instagramCommentText = (text: string): string => {
-    const parser = new DOMParser();
-    const withoutMarkup = text
-        .replace(/<(?!\/?[a-z][^<>]*>)/gi, '&lt;')
-        .replace(/<p\b[^>]*>/gi, '')
-        .replace(/<li\b[^>]*>/gi, '- ')
-        .replace(/<br\s*\/?>|<\/(?:p|li|div|h[1-6]|blockquote)>/gi, '\n')
-        .replace(/<\/?[a-z](?:[^<>'"]|"[^"]*"|'[^']*')*>/gi, '');
+const commentWithoutMarkup = (text: string): string => {
+    if (!text.includes('<')) {
+        return text;
+    }
 
-    const decoded = withoutMarkup.replace(
-        /&(?:[a-z][a-z0-9]*|#(?:x[0-9a-f]+|[0-9]+));/gi,
+    const template = document.createElement('template');
+    // Keep references and literal angle brackets intact while stripping legacy markup.
+    template.innerHTML = text
+        .replaceAll('&', '&amp;')
+        .replace(/<(?!\/?[a-z][^<>]*>)/gi, '&lt;');
+
+    for (const item of template.content.querySelectorAll('li')) {
+        item.prepend('- ');
+    }
+
+    for (const block of template.content.querySelectorAll(
+        COMMENT_LINE_BREAK_SELECTOR,
+    )) {
+        if (block.tagName === 'BR' && block.hasAttributes()) {
+            continue;
+        }
+
+        block.after('\n');
+    }
+
+    return template.content.textContent ?? '';
+};
+
+/** Displays the plain text used by Laravel's ContentSanitizer for Instagram comments. */
+export const instagramCommentText = (text: string): string => {
+    let decoder: HTMLTextAreaElement | undefined;
+    const decoded = commentWithoutMarkup(text).replace(
+        HTML_REFERENCES,
         (entity) => {
             if (entity.startsWith('&#')) {
-                return decodeCommentCodePoint(entity);
+                return decodeNumericReference(entity);
             }
 
-            const decoded = parser.parseFromString(
-                `<span>${entity}</span>`,
-                'text/html',
-            ).body.textContent;
+            decoder ??= document.createElement('textarea');
+            decoder.innerHTML = entity;
 
-            // A full named reference yields at most two code points. A prefix match keeps its suffix and semicolon.
-            if (isString(decoded) && characterCount(decoded) <= 2) {
-                return decoded;
+            // A valid named reference decodes fully to one or two characters.
+            if (characterCount(decoder.value) <= 2) {
+                return decoder.value;
             }
 
             return entity;
@@ -246,7 +287,7 @@ export const threadUnsupportedKey = (
 export const threadUnavailableKey = (
     platform: PlatformValue,
     contentType: ContentTypeValue | null,
-    meta: Record<string, any> | null,
+    meta: StoredThreadMeta | null,
     repliesEnabled: boolean,
 ): PostFormTranslationKey | null => {
     if (blank(threadRepliesOf(meta))) {

@@ -24,20 +24,16 @@ import {
     providePreviewSoundtrack,
     soundtrackLabel,
 } from '@/composables/composer/useReelSoundtrack';
-import { filled } from '@/lib/helpers';
+import { filled, transform } from '@/lib/helpers';
 import { instagramCommentText, threadRepliesOf } from '@/lib/threadReplies';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
 const props = defineProps<PreviewProps>();
-const firstComment = computed(() => {
-    const reply = threadRepliesOf(props.meta).at(0);
+const firstComment = computed((): string => {
+    const [comment] = threadRepliesOf(props.meta);
 
-    if (!filled(reply)) {
-        return '';
-    }
-
-    return instagramCommentText(reply.text);
+    return transform(comment, ({ text }) => instagramCommentText(text), '');
 });
 
 const feedAspectPadding = computed((): number => {

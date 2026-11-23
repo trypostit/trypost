@@ -166,7 +166,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
-import { blank, filled, transform } from '@/lib/helpers';
+import { blank, filled, isNumber, transform } from '@/lib/helpers';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
 import {
@@ -1244,9 +1244,11 @@ const canAddThreadReply = (group: NetworkGroup): boolean =>
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
-    return typeof limit === 'number' && limit > 0
-        ? limit - contentWarningLength(account)
-        : null;
+    if (!isNumber(limit) || limit <= 0) {
+        return null;
+    }
+
+    return limit - contentWarningLength(account);
 };
 const threadReplyLimit = (group: NetworkGroup): number | null => {
     const limits = group.accounts
@@ -1639,7 +1641,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
             const text = replyTextFor(reply, account.platform);
-            const over = limit === null ? 0 : displayLength(text) - limit;
+            const over = transform(limit, (max) => displayLength(text) - max, 0);
             const replyMediaWarning = transform(reply.media, (media) =>
                 getMediaValidationWarning(replyContentType, media),
             );

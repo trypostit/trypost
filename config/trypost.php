@@ -7,13 +7,6 @@ use App\Support\Analytics\YouTubeScopes;
 use App\Support\ConfigEnvironment;
 use App\Support\ThreadReplies;
 
-$instagramReplies = [
-    'max' => 1,
-    'standalone_types' => [
-        ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
-    ],
-];
-
 return [
 
     /*
@@ -633,7 +626,12 @@ return [
             'auth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
             'oauth_url' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_URL', 'https://www.instagram.com'),
             'oauth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_API', 'https://api.instagram.com'),
-            'replies' => $instagramReplies,
+            'replies' => [
+                'max' => 1,
+                'standalone_types' => [
+                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
+                ],
+            ],
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
@@ -647,7 +645,12 @@ return [
                 'post_history' => ['scopes' => ['instagram_basic']],
             ],
             'graph_api' => ConfigEnvironment::baseUrl('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
-            'replies' => $instagramReplies,
+            'replies' => [
+                'max' => 1,
+                'standalone_types' => [
+                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
+                ],
+            ],
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),

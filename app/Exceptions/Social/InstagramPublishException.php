@@ -76,22 +76,25 @@ class InstagramPublishException extends SocialPublishException
 
         $message = $errorUserMsg ?? $errorMessage;
         $category = ErrorCategory::Unknown;
+        $causedByUser = in_array($errorCode, GraphError::ACCOUNT_RATE_LIMIT_CODES, true);
 
         if ($mapped !== null) {
             [$message, $category] = $mapped;
+            $causedByUser = in_array($subcode, self::USER_REJECTION_SUBCODES, true);
         } elseif (self::isRateLimit($response)) {
             $message = 'Too many API calls. Please try again later.';
             $category = ErrorCategory::RateLimit;
         }
 
-        $causedByUser = $mapped !== null
-            ? in_array($subcode, self::USER_REJECTION_SUBCODES, true)
-            : in_array($errorCode, GraphError::ACCOUNT_RATE_LIMIT_CODES, true);
+        $platformErrorCode = $errorSubcode;
+        if ($platformErrorCode === null && $category === ErrorCategory::RateLimit) {
+            $platformErrorCode = $errorCode;
+        }
 
         return (new static(
             userMessage: $message,
             category: $category,
-            platformErrorCode: $errorSubcode !== null ? (string) $errorSubcode : ($category === ErrorCategory::RateLimit && $errorCode !== null ? (string) $errorCode : null),
+            platformErrorCode: $platformErrorCode === null ? null : (string) $platformErrorCode,
             rawResponse: $rawResponse,
         ))->withNetworkReset($response)->asNetworkRejectionIf($causedByUser);
     }

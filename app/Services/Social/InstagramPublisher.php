@@ -70,7 +70,8 @@ class InstagramPublisher
         $instagramId = $account->platform_user_id;
         $accessToken = $account->access_token;
         $content = app(ContentSanitizer::class)->forPost($post);
-        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
+        $mediaIds = $post->mediaItems->pluck('id')->all();
+        $rootHash = ThreadProgress::hash($content ?? '', $mediaIds);
 
         return $this->publishThread(
             $post,
@@ -139,10 +140,13 @@ class InstagramPublisher
 
         $mediaId = $root['id'];
         try {
-            $response = $this->socialHttp()->retry(1, throw: false)->asForm()->post("{$this->baseUrl}/{$mediaId}/comments", [
-                'message' => $text,
-                'access_token' => $accessToken,
-            ]);
+            $response = $this->socialHttp()
+                ->retry(1, throw: false)
+                ->asForm()
+                ->post("{$this->baseUrl}/{$mediaId}/comments", [
+                    'message' => $text,
+                    'access_token' => $accessToken,
+                ]);
         } catch (ConnectionException) {
             throw $this->unconfirmedComment();
         }
@@ -171,7 +175,11 @@ class InstagramPublisher
             return true;
         }
 
-        if (! $response->failed() || InstagramPublishException::isRateLimit($response) || InstagramPublishException::isDocumentedRejection($response)) {
+        if (! $response->failed()) {
+            return false;
+        }
+
+        if (InstagramPublishException::isRateLimit($response) || InstagramPublishException::isDocumentedRejection($response)) {
             return false;
         }
 
@@ -187,7 +195,8 @@ class InstagramPublisher
         );
     }
 
-    private function publishFeed(string $instagramId, string $accessToken, ?string $content, $media): array
+    /** @param  Collection<int, MediaItem>  $media */
+    private function publishFeed(string $instagramId, string $accessToken, ?string $content, Collection $media): array
     {
         if ($media->count() > 1) {
             return $this->publishCarousel($instagramId, $accessToken, $content, $media);
@@ -202,7 +211,7 @@ class InstagramPublisher
         return $this->publishSingleImage($instagramId, $accessToken, $content, $firstMedia);
     }
 
-    private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, $media): array
+    private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, MediaItem $media): array
     {
         $params = [
             'image_url' => $media->url,
@@ -223,7 +232,7 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishReel(string $instagramId, string $accessToken, ?string $content, $media): array
+    private function publishReel(string $instagramId, string $accessToken, ?string $content, MediaItem $media): array
     {
         $containerId = $this->createContainer($instagramId, [
             'video_url' => $media->url,
@@ -239,7 +248,7 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishStory(string $instagramId, string $accessToken, $media): array
+    private function publishStory(string $instagramId, string $accessToken, MediaItem $media): array
     {
         $isVideo = $media->isVideo();
 
@@ -265,7 +274,8 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishCarousel(string $instagramId, string $accessToken, ?string $content, $mediaCollection): array
+    /** @param  Collection<int, MediaItem>  $mediaCollection */
+    private function publishCarousel(string $instagramId, string $accessToken, ?string $content, Collection $mediaCollection): array
     {
         // Step 1: Create containers for each media item
         $childContainers = [];

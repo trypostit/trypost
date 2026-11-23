@@ -1,4 +1,4 @@
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import { threadRepliesOf, threadUnsupportedKey } from '@/lib/threadReplies';
 import {
     GatedFeature,
@@ -28,7 +28,7 @@ export const featureIsEnabled = (
 /** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, analytics are never part of one. */
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
-    meta: Record<string, any> | null,
+    meta: Record<string, unknown> | null,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
@@ -59,7 +59,7 @@ export const permissionMessageKey = (
  * when nothing holds it back.
  */
 export const missingPermissionKey = (
-    meta: Record<string, any> | null,
+    meta: Record<string, unknown> | null,
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
     repliesSupported = true,
@@ -89,14 +89,14 @@ export const missingPermissionKey = (
 export const channelPermissionKey = (
     platformConfig: PlatformConfig | undefined,
     contentType: ContentTypeValue | null,
-    meta: Record<string, any> | null,
+    meta: Record<string, unknown> | null,
     canManageAccounts: boolean,
 ): string | null => {
     if (!filled(platformConfig)) {
         return null;
     }
 
-    const repliesSupported = !filled(
+    const repliesSupported = blank(
         threadUnsupportedKey(
             platformConfig.platform,
             contentType,

@@ -16,6 +16,7 @@ use App\Services\Social\ContentSanitizer;
 use App\Support\ChannelPermissions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 function instagramFirstCommentDraft(Platform $platform, ContentType $type): Post
 {
@@ -121,6 +122,8 @@ test('instagram previews the exact text sent to instagram', function (string $te
     $page->assertDontSeeIn('@instagram-first-comment-preview', '<b>')->assertNoJavaScriptErrors();
 })->with([
     'legacy markup' => '<b>Launch</b> &amp; links',
+    'legacy paragraphs and lists' => '<p>Launch</p><ul><li>First<br>Second</li><li>Third</li></ul>',
+    'legacy break with attributes' => 'First<br class="legacy">Second',
     'query string' => 'https://example.com/?plan=pro&copy=1',
     'literal angle bracket' => 'Price: <limit',
     'entities' => 'A &copy; &#x1F389; &#65; &#128; &copycat;',
@@ -130,7 +133,7 @@ test('the instagram comment counter counts non-breaking spaces like the publishe
     $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@thread-start');
-    $page->click('@thread-start')->fill('@thread-reply-0', '&nbsp;'.str_repeat('a', 2200));
+    $page->click('@thread-start')->fill('@thread-reply-0', '&nbsp;'.Str::repeat('a', 2200));
 
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
     $page->assertNoJavaScriptErrors();
