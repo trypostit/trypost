@@ -133,7 +133,7 @@ test('going back to the list keeps the board as the view the user picked', funct
     waitFor($page, '@schedule-view-board');
 
     $page->click('@schedule-view-board');
-    waitFor($page, '@board-column-draft');
+    waitFor($page, '@board-column-scroll-draft');
 
     $page->back();
     waitForPath($page, route('app.posts.index', absolute: false));

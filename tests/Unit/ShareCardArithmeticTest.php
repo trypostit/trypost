@@ -82,3 +82,13 @@ test('line end labels move apart just enough and stay inside the plot', function
         'atTheBottom' => [364, 388],
     ]);
 });
+
+test('the card shades each day with the step d3 gives it on the page heatmap', function () {
+    expect(runShareCardHarness()['levels'])->toBe([
+        'one' => [1],
+        'four' => [1, 2, 3, 4],
+        'ten' => [1, 4, 6, 8],
+        'odd' => [1, 10, 19, 28],
+        'busy' => [1, 64, 126, 188],
+    ]);
+});

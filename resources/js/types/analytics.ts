@@ -341,3 +341,19 @@ export interface UnsupportedPublicationAnalytics {
     unsupported: true;
     reason: string;
 }
+
+/** Posts that went out per day over the last 365 days (`BuildPostingActivity`). */
+export interface PostingActivityDay {
+    date: string;
+    count: number;
+}
+
+export interface PostingActivity {
+    start: string;
+    end: string;
+    days: PostingActivityDay[];
+    total: number;
+    max_count: number;
+    current_streak: number;
+    best_streak: number;
+}

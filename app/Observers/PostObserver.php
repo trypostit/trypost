@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
+use App\Actions\Analytics\ShowPostingStreak;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
@@ -51,6 +52,10 @@ class PostObserver
     {
         if (! $post->wasChanged('publish_status')) {
             return;
+        }
+
+        if ($this->movesPostingStreak($post)) {
+            ShowPostingStreak::forget($post->workspace_id);
         }
 
         $networkEvent = EventType::fromPublishStatus($post->publish_status, $post->getOriginal('publish_status'));
@@ -109,5 +114,11 @@ class PostObserver
         SyncAccountPublishingActivity::dispatch((string) $accountId)
             ->delay(now()->addSeconds(SyncAccountPublishingActivity::DEBOUNCE_SECONDS))
             ->afterCommit();
+    }
+
+    /** Whether the post started or stopped counting as sent, the only change the posting streak sees. */
+    private function movesPostingStreak(Post $post): bool
+    {
+        return $post->publish_status->wentOut() !== $post->getOriginal('publish_status')->wentOut();
     }
 }

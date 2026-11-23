@@ -684,3 +684,45 @@ test('a member who needs approval editing a queued post without queue keeps its 
         ->and(postQueueSlot($queued))->toBe('Mon 09:00')
         ->and(postQueueSlot($next))->toBe('Wed 09:00');
 });
+
+test('storing into the queue toasts that the posts were added, with a link to the first one', function () {
+    $post = postQueueStore($this, $this->channel);
+
+    expect(session('flash.success'))->toBe(trans_choice('posts.composer.queue.added', 1, ['count' => 1]))
+        ->and(session('flash.link'))->toBe([
+            'label' => __('posts.actions.view'),
+            'url' => route('app.posts.index', ['post' => $post->id]),
+        ]);
+});
+
+test('storing a draft toasts nothing', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel], ['status' => 'draft']))
+        ->assertSessionMissing('flash.success')
+        ->assertSessionMissing('flash.link');
+});
+
+test('a member who needs approval is told the queue request awaits approval, not that it was added', function () {
+    $member = workspaceMember($this->workspace, 'approval');
+
+    $this->actingAs($member)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel], ['queue' => 'next']))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.success', __('posts.approvals.requested'));
+});
+
+test('storing into the queue for several channels says how many were added and links the first one', function () {
+    $other = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'timezone' => 'UTC',
+        'posting_schedule' => PostingSchedule::empty()->withTime(2, '10:00'),
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.posts.store'), postQueuePayload([$this->channel, $other]))
+        ->assertSessionHasNoErrors();
+
+    expect(session('flash.success'))->toBe(trans_choice('posts.composer.queue.added', 2, ['count' => 2]))
+        ->and(session('flash.link.url'))->toBe(route('app.posts.index', ['post' => data_get(session('created_post_ids'), 0)]));
+});

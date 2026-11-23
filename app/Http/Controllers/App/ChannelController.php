@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Actions\Analytics\BuildChannelMetricSeries;
 use App\Actions\Analytics\BuildFollowerGrowthRateSeries;
 use App\Actions\Analytics\BuildInsightsExport;
+use App\Actions\Analytics\BuildPostingActivity;
 use App\Actions\Analytics\BuildWorkspaceAnalyticsReport;
 use App\Actions\Analytics\ListAvailableChannelMetrics;
 use App\Actions\Analytics\ListChannelPublicationPerformance;
@@ -22,6 +23,7 @@ use App\Enums\Analytics\ExportFormat;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Controllers\App\Concerns\EnsuresChannelInCurrentWorkspace;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
+use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Channel\ChannelInsightsRequest;
 use App\Http\Requests\App\Channel\DownloadChannelInsightsRequest;
 use App\Http\Requests\App\Channel\ListChannelsRequest;
@@ -45,7 +47,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChannelController extends Controller
 {
-    use EnsuresChannelInCurrentWorkspace, RendersPublishPage;
+    use EnsuresChannelInCurrentWorkspace, FlashesToast, RendersPublishPage;
 
     public function index(ListChannelsRequest $request): Response
     {
@@ -167,6 +169,7 @@ class ChannelController extends Controller
         ListChannelPublicationPerformance $performance,
         BuildChannelMetricSeries $series,
         BuildFollowerGrowthRateSeries $growthRate,
+        BuildPostingActivity $postingActivity,
     ): Response {
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('view', $workspace);
@@ -238,6 +241,7 @@ class ChannelController extends Controller
                         : null,
                 ];
             }),
+            'postingActivity' => Inertia::defer(fn (): array => $postingActivity->execute($workspace, [$accountKey], $request->user()->timezone, $filter), 'activity'),
             'publications' => function () use ($resolve, $performance, $account, $accountKey, $period, $sort, $filter, $request): LengthAwarePaginator {
                 $current = data_get($resolve(), 'range');
 

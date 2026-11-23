@@ -6,6 +6,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -163,4 +165,44 @@ test('a workspace without connected channels shows no past analytics', function 
             ->where('report.bounds.min', null)
             ->where('report.followers.accounts', [])
             ->etc());
+});
+
+test('the dashboard defers the posting activity of the selected channels', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $picked = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+    $other = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+
+    foreach ([[$picked, 2], [$other, 1]] as [$account, $posts]) {
+        foreach (range(1, $posts) as $day) {
+            $publishedAt = now('UTC')->subDays($day)->setTime(12, 0);
+            $publication = AnalyticsPublication::factory()->create([
+                'workspace_id' => $workspace->id,
+                'social_account_id' => $account->id,
+                'social_account_key' => $account->id,
+                'network' => $account->platform->network(),
+                'platform_user_id' => $account->platform_user_id,
+                'platform' => $account->platform,
+                'provider_published_at' => $publishedAt,
+            ]);
+            AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id, 'date' => $publishedAt->toDateString()]);
+        }
+    }
+
+    $this->actingAs($user)
+        ->get(route('app.insights', ['channels' => [$picked->id]]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->missing('postingActivity')
+            ->loadDeferredProps(fn (Assert $reload) => $reload
+                ->where('postingActivity.total', 2)
+                ->where('postingActivity.current_streak', 2)
+                ->has('postingActivity.days', 365)));
+
+    $this->actingAs($user)
+        ->get(route('app.insights'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->loadDeferredProps(fn (Assert $reload) => $reload
+                ->where('postingActivity.total', 3)));
 });

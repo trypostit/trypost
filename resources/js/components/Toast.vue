@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Toaster } from '@/components/ui/sonner';
+import { type ToastLink, toastLinkOptions } from '@/lib/toastLink';
 
 type Flash = {
     banner?: string;
@@ -12,6 +13,7 @@ type Flash = {
     error?: string;
     warning?: string;
     info?: string;
+    link?: ToastLink;
 };
 
 const page = usePage();
@@ -40,20 +42,22 @@ watch(
             }
         }
 
+        const link = toastLinkOptions(flash.link, (url) => router.visit(url));
+
         if (flash.success) {
-            toast.success(flash.success, { id: 'flash-success' });
+            toast.success(flash.success, { id: 'flash-success', testId: 'flash-success-toast', ...link });
         }
 
         if (flash.error) {
-            toast.error(flash.error, { id: 'flash-error' });
+            toast.error(flash.error, { id: 'flash-error', testId: 'flash-error-toast', ...link });
         }
 
         if (flash.warning) {
-            toast.warning(flash.warning, { id: 'flash-warning' });
+            toast.warning(flash.warning, { id: 'flash-warning', testId: 'flash-warning-toast', ...link });
         }
 
         if (flash.info) {
-            toast.info(flash.info, { id: 'flash-info' });
+            toast.info(flash.info, { id: 'flash-info', testId: 'flash-info-toast', ...link });
         }
     },
     { deep: true, immediate: true },

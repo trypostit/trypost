@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
 use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
 use App\Console\Commands\Analytics\DispatchPublicationMetrics;
+use App\Console\Commands\Analytics\RankPostingStreaks;
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
@@ -34,6 +35,7 @@ Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverla
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ResolveTikTokVideoIds::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(RankPostingStreaks::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();

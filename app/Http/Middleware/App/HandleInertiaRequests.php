@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Actions\AccessToken\HasConnectedMcpClient;
+use App\Actions\Analytics\ShowPostingStreak;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
@@ -28,6 +29,7 @@ use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -64,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
+            'postingStreak' => fn (): ?array => ShowPostingStreak::forSidebar($user),
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],
@@ -74,7 +77,7 @@ class HandleInertiaRequests extends Middleware
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
-            'flash' => $request->session()->get('flash', []),
+            'flash' => Inertia::always(fn (): array => $request->session()->get('flash', [])),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
             'locale' => app()->getLocale(),

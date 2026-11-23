@@ -20,6 +20,7 @@ import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
 import NavChannels from '@/components/NavChannels.vue';
 import NavMain from '@/components/NavMain.vue';
 import SidebarUserMenu from '@/components/SidebarUserMenu.vue';
+import PostingStreakBadge from '@/components/streak/PostingStreakBadge.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -55,6 +56,8 @@ const page = usePage();
 const currentWorkspace = computed(
     () => page.props.auth.currentWorkspace,
 );
+/** The workspace's weeks in a row with a post; null hides the badge. */
+const postingStreak = computed(() => page.props.postingStreak);
 
 const {
     canCreatePost,
@@ -134,6 +137,12 @@ const mainNavItems = computed<NavItem[]>(() => [
                     <AppLogo variant="mark" class="text-[21px]" />
                 </span>
             </Link>
+            <div
+                v-if="postingStreak"
+                class="flex group-data-[collapsible=icon]:hidden"
+            >
+                <PostingStreakBadge :streak="postingStreak" />
+            </div>
         </SidebarHeader>
 
         <SidebarContent class="gap-0">

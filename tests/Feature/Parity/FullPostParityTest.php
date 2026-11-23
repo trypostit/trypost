@@ -586,6 +586,10 @@ function fullPostExpected(string $name): array
                                         'mimeType' => 'image/png',
                                         'size' => 1,
                                     ],
+                                    'aspectRatio' => [
+                                        'width' => 1080,
+                                        'height' => 1080,
+                                    ],
                                 ],
                             ],
                         ],
@@ -629,6 +633,10 @@ function fullPostExpected(string $name): array
                                         ],
                                         'mimeType' => 'image/png',
                                         'size' => 1,
+                                    ],
+                                    'aspectRatio' => [
+                                        'width' => 1080,
+                                        'height' => 1080,
                                     ],
                                 ],
                             ],

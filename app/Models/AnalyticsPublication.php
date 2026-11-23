@@ -9,7 +9,9 @@ use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\SocialAccount\Platform;
+use App\Observers\AnalyticsPublicationObserver;
 use Database\Factories\AnalyticsPublicationFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([AnalyticsPublicationObserver::class])]
 class AnalyticsPublication extends Model
 {
     /** @use HasFactory<AnalyticsPublicationFactory> */

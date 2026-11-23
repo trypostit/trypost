@@ -1350,6 +1350,7 @@ Whenever Laravel has a helper for something, use it instead of a native PHP func
 - NEVER use inline class references (e.g., `\DB::listen`, `\Str::uuid()`). ALWAYS import classes at the top of the file with a `use` statement.
     - PHP: `use Illuminate\Support\Facades\DB;` then `DB::listen(...)`
     - TypeScript/Vue: `import { ref } from 'vue'` then `ref(...)`
+- **A class declares every trait it relies on, including the ones another trait brings in** (owner decision November 2026), so reading the class shows all the traits behind it. `PostController` uses `RendersPublishPage`, whose `flashQueuedToast()` calls `flashSuccessWithLink()` from `FlashesToast`; the trait keeps its own `use FlashesToast`, and the controller declares it too: `use FlashesToast, RendersPublishPage;`. PHP accepts the same trait reaching a class twice. Code written before this rule moves to it when touched, not in a sweep.
 
 ## API Response Status Codes
 

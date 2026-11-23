@@ -3,7 +3,7 @@
  * script-level computed, so every `trans()` here reads the loaded locale.
  */
 
-import { trans } from 'laravel-vue-i18n';
+import { trans, transChoice } from 'laravel-vue-i18n';
 
 import date from '@/date';
 import { activeLocale } from '@/language';
@@ -19,6 +19,7 @@ import {
     seriesDelta,
     shownPeriod,
 } from '@/lib/channelMetrics';
+import { POSTING_ACTIVITY_STAT_ICONS, type PostingActivityStat, postingActivityMonths, postingActivityOffset } from '@/lib/postingActivity';
 import {
     periodFigure,
     type ShareChannel,
@@ -29,12 +30,13 @@ import {
     type ShareShape,
     type ShareTile,
 } from '@/lib/shareCard';
-import { formatCountChange, formatNumberCompact } from '@/lib/utils';
+import { formatCountChange, formatFullNumber, formatNumberCompact } from '@/lib/utils';
 import type {
     AccountIdentityData,
     ChannelMetricSeries,
     FollowerAccount,
     FollowersChartMode,
+    PostingActivity,
     PostsChartMode,
     PublicationPeriod,
     SeriesMetric,
@@ -140,6 +142,7 @@ const shareOption = (
     lines: [],
     series: [],
     chartMode: 'current',
+    heatmap: null,
     ...option,
 });
 
@@ -387,5 +390,63 @@ export const postsShareOption = (
         points: postsPoints(posts, mode, colors),
         shape: POSTS_SHAPES[mode],
         caption: metricCaption({ metric: label, value: figure, range }),
+    });
+};
+
+/** A number of days as the posting activity card prints it: "9 days". */
+const streakDays = (count: number): string => transChoice('analytics.posting_activity.days', count);
+
+/**
+ * The post text for the posting activity, a sentence that fits the moment:
+ * a streak at its record, a streak still under it, or no streak today.
+ */
+const postingActivityCaption = (activity: PostingActivity): string => {
+    const replacements = {
+        days: streakDays(activity.current_streak),
+        best: streakDays(activity.best_streak),
+        posts: formatFullNumber(activity.total),
+    };
+
+    if (activity.current_streak === 0) {
+        return transChoice('analytics.share.caption_posting_activity.no_streak', activity.total, replacements);
+    }
+
+    if (activity.current_streak === activity.best_streak) {
+        return transChoice('analytics.share.caption_posting_activity.record_streak', activity.total, replacements);
+    }
+
+    return transChoice('analytics.share.caption_posting_activity.on_streak', activity.total, replacements);
+};
+
+/** A number of the posting activity card, which always has a value. */
+const activityTile = (stat: PostingActivityStat, figure: string): ShareTile => ({
+    label: trans(`analytics.posting_activity.${stat}`),
+    figure,
+    missing: false,
+    change: null,
+    icon: POSTING_ACTIVITY_STAT_ICONS[stat],
+});
+
+/** The posting activity card: the streaks and posts as the card prints them, and the year's grid. */
+export const postingActivityShareOption = (activity: PostingActivity): ShareMetricOption => {
+    const offset = postingActivityOffset(activity.days);
+    const tiles = [
+        activityTile('current_streak', streakDays(activity.current_streak)),
+        activityTile('best_streak', streakDays(activity.best_streak)),
+        activityTile('total', formatFullNumber(activity.total)),
+    ];
+
+    return shareOption({
+        key: 'posting_activity',
+        label: trans('analytics.posting_activity.title'),
+        shape: 'heatmap',
+        tiles,
+        heatmap: {
+            counts: activity.days.map((day) => day.count),
+            maxCount: activity.max_count,
+            offset,
+            months: postingActivityMonths(activity.days, offset),
+        },
+        caption: postingActivityCaption(activity),
     });
 };

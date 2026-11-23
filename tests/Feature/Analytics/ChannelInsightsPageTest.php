@@ -6,6 +6,7 @@ use App\Actions\Analytics\ListChannelPublicationPerformance;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Analytics\PublicationAvailability;
+use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -453,4 +454,27 @@ test('a publication the network deleted stays in the table without its link', fu
             ->where('publications.data.1.id', $deleted->id)
             ->where('publications.data.1.permalink', null)
             ->etc());
+});
+
+test('the channel page defers its own posting activity and applies its post type filter', function () {
+    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
+    $yesterday = now('UTC')->subDay()->setTime(12, 0)->toDateTimeString();
+    channelInsightsPublication($this->instagram, $yesterday, attributes: ['content_type' => PublicationContentType::Story]);
+    channelInsightsPublication($this->instagram, $yesterday, attributes: ['content_type' => PublicationContentType::Image]);
+    channelInsightsPublication($other, $yesterday);
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.insights', ['account' => $this->instagram]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->missing('postingActivity')
+            ->loadDeferredProps(fn (Assert $reload) => $reload
+                ->where('postingActivity.total', 2)
+                ->where('postingActivity.current_streak', 1)
+                ->has('postingActivity.days', 365)));
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.insights', ['account' => $this->instagram, 'types' => ['instagram_story']]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->loadDeferredProps(fn (Assert $reload) => $reload
+                ->where('postingActivity.total', 1)));
 });
