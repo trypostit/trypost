@@ -187,6 +187,7 @@ return [
         'no_posting_times' => '没有发布时间',
         'no_results' => '没有符合搜索的频道。',
         'connection_lost' => '此频道已断开连接',
+        'permissions_missing' => '此频道需要新的权限',
         'settings' => '设置',
         'more_actions' => '更多操作',
     ],
@@ -289,5 +290,21 @@ return [
         'blue' => '已认证',
         'business' => '已认证机构',
         'government' => '政府账号',
+    ],
+
+    'permissions' => [
+        'on_channel' => ':channel：:message',
+        'publish' => [
+            'message' => 'TryPost 暂时无法通过此频道发布到 :network。请重新连接并允许 TryPost 发布。',
+            'member_message' => 'TryPost 暂时无法通过此频道发布到 :network。需要工作区管理员重新连接。',
+        ],
+        'insights' => [
+            'message' => '要显示此频道的数据，请重新连接并允许 TryPost 读取 :network 上的数据。',
+            'member_message' => '要显示此频道的数据，需要工作区管理员重新连接。',
+        ],
+        'thread_replies' => [
+            'message' => '要在 :network 上发布回复，请重新连接此频道并允许 TryPost 发布。',
+            'member_message' => '要在 :network 上发布回复，需要工作区管理员重新连接此频道。',
+        ],
     ],
 ];

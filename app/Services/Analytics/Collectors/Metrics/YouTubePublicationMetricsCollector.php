@@ -7,12 +7,13 @@ namespace App\Services\Analytics\Collectors\Metrics;
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricUnit;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Support\Analytics\SyncCadence;
-use App\Support\Analytics\YouTubeScopes;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -36,7 +37,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, YouTubeScopes::READ);
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $statistics = $this->statistics($account, $publication, $date);
         $report = $this->report($account, $publication, $date);
 
@@ -129,7 +130,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
      */
     private function report(SocialAccount $account, AnalyticsPublication $publication, CarbonImmutable $date): array
     {
-        if ($account->missingScope(YouTubeScopes::ANALYTICS) !== null) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostInsightsExtended)) {
             return [];
         }
 

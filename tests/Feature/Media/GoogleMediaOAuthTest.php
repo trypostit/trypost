@@ -295,6 +295,7 @@ test('a token without the source scope is refused and nothing is kept', function
 })->with([
     'drive without drive.file' => ['google_drive', 'openid email'],
     'photos with only the drive scope' => ['google_photos', GOOGLE_MEDIA_DRIVE_SCOPE],
+    'drive with a comma inside the granted scope' => ['google_drive', GOOGLE_MEDIA_DRIVE_SCOPE.','.GOOGLE_MEDIA_PHOTOS_SCOPE],
 ]);
 
 test('a failed code exchange renders a failed popup', function () {

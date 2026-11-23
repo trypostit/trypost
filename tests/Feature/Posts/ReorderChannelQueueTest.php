@@ -7,6 +7,7 @@ use App\Actions\Post\Queue\ReorderChannelQueue;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -134,7 +135,7 @@ test('duplicate ids are rejected by the request and by the action', function () 
         ->assertUnprocessable()
         ->assertJsonValidationErrors('post_ids.0');
 
-    expect(fn () => ReorderChannelQueue::handle($this->channel, $ids))
+    expect(fn () => ReorderChannelQueue::handle($this->channel, $ids, $this->user))
         ->toThrow(ValidationException::class, __('posts.errors.queue_order_stale'));
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
@@ -232,3 +233,27 @@ test('a member who needs approval cannot reorder the queue', function () {
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
 });
+
+test('only posts changing slots need permission and support for their replies', function (bool $enabled) {
+    $channel = $this->channel;
+    gateFeature($channel->platform, GatedFeature::ThreadReplies, ['write.comments']);
+    if (! $enabled) {
+        config(["trypost.platforms.{$channel->platform->value}.scopes" => ['w_member_social']]);
+    }
+    $channel->update(['scopes' => ['w_member_social']]);
+    $this->c->update(['meta' => ['thread_replies' => [['text' => 'Comment', 'media' => []]]]]);
+    $before = reorderTimes($this->a, $this->b, $this->c);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->c->id, $this->a->id]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['post_ids' => $enabled
+            ? __('channels.permissions.thread_replies.message', ['network' => $channel->platform->label()])
+            : __('posts.form.thread.unsupported')]);
+
+    expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
+
+    $this->put(route('app.channels.queue.order', $channel), ['post_ids' => [$this->b->id, $this->a->id, $this->c->id]])
+        ->assertSessionHasNoErrors();
+    expect($this->b->fresh()->scheduled_at->toIso8601String())->toBe($before[$this->a->id]);
+})->with(['scope missing from grant' => true, 'feature disabled in configuration' => false]);

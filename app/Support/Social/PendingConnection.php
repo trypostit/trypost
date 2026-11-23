@@ -7,6 +7,7 @@ namespace App\Support\Social;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
@@ -41,6 +42,7 @@ final class PendingConnection
             'workspace_id' => $workspace->id,
             'reconnect_id' => $reconnectId,
             'switching_account' => $switchingAccount,
+            'requested_scopes' => ChannelPermissions::scopesForConsent($platform),
             'return' => self::returnTarget($returnPath),
             'identities' => null,
             'expires_at' => null,
@@ -67,6 +69,12 @@ final class PendingConnection
     public function platform(): ?Platform
     {
         return Platform::tryFrom((string) data_get($this->data, 'platform'));
+    }
+
+    /** @return list<string>|null Null for a connection started before the requested scopes were saved. */
+    public function requestedScopes(): ?array
+    {
+        return data_get($this->data, 'requested_scopes');
     }
 
     public function workspaceId(): ?string

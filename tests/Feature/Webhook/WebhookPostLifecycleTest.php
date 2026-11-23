@@ -178,7 +178,7 @@ test('scheduling a post through UpdatePost includes labels and meta from the sam
         'label_ids' => [$label->id],
         'content_type' => ContentType::LinkedInPost->value,
         'meta' => ['document_title' => 'TryPost launch deck'],
-    ]);
+    ], $this->user);
 
     Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post, $label, $account) {
         return $job->eventType === EventType::PostScheduled->value
@@ -216,7 +216,7 @@ test('unscheduling a post through UpdatePost queues a post.unscheduled webhook',
 
     UpdatePost::execute($this->workspace, $post, [
         'status' => PostStatus::Draft->value,
-    ]);
+    ], $this->user);
 
     Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post) {
         return $job->eventType === EventType::PostUnscheduled->value
@@ -238,7 +238,7 @@ test('saving a draft that was never scheduled does not queue post.unscheduled', 
     UpdatePost::execute($this->workspace, $post, [
         'status' => PostStatus::Draft->value,
         'content' => 'Still a draft, edited',
-    ]);
+    ], $this->user);
 
     Queue::assertNotPushed(DispatchWebhook::class);
 });

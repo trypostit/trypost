@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'Sem horários',
         'no_results' => 'Nenhum canal corresponde à sua busca.',
         'connection_lost' => 'Este canal perdeu a conexão',
+        'permissions_missing' => 'Este canal precisa de novas permissões',
         'settings' => 'Configurações',
         'more_actions' => 'Mais ações',
     ],
@@ -289,5 +290,21 @@ return [
         'blue' => 'Verificado',
         'business' => 'Organização verificada',
         'government' => 'Conta governamental',
+    ],
+
+    'permissions' => [
+        'on_channel' => ':channel: :message',
+        'publish' => [
+            'message' => 'O TryPost ainda não pode publicar no :network por este canal. Reconecte-o e permita que o TryPost publique.',
+            'member_message' => 'O TryPost ainda não pode publicar no :network por este canal. Um admin do workspace precisa reconectá-lo.',
+        ],
+        'insights' => [
+            'message' => 'Para mostrar os insights deste canal, reconecte-o e permita que o TryPost leia os insights no :network.',
+            'member_message' => 'Para mostrar os insights deste canal, um admin do workspace precisa reconectá-lo.',
+        ],
+        'thread_replies' => [
+            'message' => 'Para publicar respostas no :network, reconecte este canal e permita que o TryPost as publique.',
+            'member_message' => 'Para publicar respostas no :network, um admin do workspace precisa reconectar este canal.',
+        ],
     ],
 ];

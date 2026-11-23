@@ -138,14 +138,15 @@ test('a requester does not see another member\'s request when it was edited by s
             ->has('posts.data', 0));
 });
 
-test('a requester deep link to someone else\'s pending post reveals nothing', function () {
+test('a requester deep link to someone else\'s pending post reveals nothing', function (string $link) {
     $foreign = approvalsTabPost($this->channel, $this->otherRequester);
 
     $this->actingAs($this->requester)
-        ->get(route('app.posts.index', ['notes' => $foreign->id]))
+        ->get(route('app.posts.index', [$link => $foreign->id]))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('tab', 'queue')
             ->where('counts.approvals', 0)
+            ->where('openPostDetails', null)
             ->where('hasData', false)
             ->has('posts.data', 0));
-});
+})->with(['notes', 'post']);

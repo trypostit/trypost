@@ -47,7 +47,7 @@ class ReorderQueueTool extends Tool
         ]);
 
         try {
-            ReorderChannelQueue::handle($account, data_get($validated, 'post_ids'));
+            ReorderChannelQueue::handle($account, data_get($validated, 'post_ids'), $request->user());
         } catch (QueueBusyException) {
             return Response::error(__('posts.errors.queue_busy'));
         }

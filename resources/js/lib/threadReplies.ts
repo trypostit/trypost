@@ -1,7 +1,11 @@
 import { blank, filled, isEmpty } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
-import { ContentType, type ContentTypeValue } from '@/types/content-type';
-import type { MediaItem } from '@/types/media';
+import {
+    ContentType,
+    type ContentTypeValue,
+    type PostFormTranslationKey,
+    STANDALONE_CONTENT_TYPES,
+} from '@/types/content-type';
 import {
     isReplyPollPlatform,
     isThreadPlatform,
@@ -11,19 +15,7 @@ import {
 } from '@/types/network-options';
 import type { PlatformValue } from '@/types/platform';
 import type { Poll } from '@/types/poll';
-
-/**
- * One post of a thread after the first. `key` only lives in the composer: it
- * keeps an upload attached to its reply while replies are added or removed
- * above it, and the server drops it. On X and Mastodon a reply may carry a
- * poll instead of media, its text being the question.
- */
-export type ThreadReply = {
-    key: string;
-    text: string;
-    media: MediaItem[];
-    poll?: Partial<Poll>;
-};
+import type { ThreadReply } from '@/types/thread-reply';
 
 export const newThreadReply = (): ThreadReply => ({
     key: uuid(),
@@ -148,31 +140,40 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
-const THREAD_GHOST_POST_KEY = 'posts.form.thread.ghost_post';
-export const THREAD_REPLIES_PERMISSION_KEY = 'posts.form.thread.replies_permission';
-
 /**
- * Why a post's thread cannot go out, as `ThreadReplies::violation()` says on
- * the server: a Threads ghost post stands alone, and a channel connected
- * without the replies permission reconnects first (`repliesAllowed` from its
- * platform config).
+ * Why the network cannot accept replies for this post type. `repliesEnabled`
+ * is whether the network asks for the permissions its replies need.
  */
-export const threadBlockKey = (
-    contentType: ContentTypeValue | null | undefined,
-    meta: Record<string, any> | null | undefined,
-    repliesAllowed: boolean | undefined,
-): string | null => {
+export const threadUnsupportedKey = (
+    platform: PlatformValue,
+    contentType: ContentTypeValue | null,
+    repliesEnabled: boolean,
+): PostFormTranslationKey | null => {
+    if (threadMaxReplies(platform) === 0) {
+        return 'posts.form.thread.unsupported';
+    }
+
+    if (!repliesEnabled) {
+        return 'posts.form.thread.unsupported';
+    }
+
+    if (!filled(contentType)) {
+        return null;
+    }
+
+    return STANDALONE_CONTENT_TYPES[contentType] ?? null;
+};
+
+/** A post with stored replies reports the same availability error as `ThreadReplies::violation()`. */
+export const threadUnavailableKey = (
+    platform: PlatformValue,
+    contentType: ContentTypeValue | null,
+    meta: Record<string, any> | null,
+    repliesEnabled: boolean,
+): PostFormTranslationKey | null => {
     if (blank(threadRepliesOf(meta))) {
         return null;
     }
 
-    if (contentType === ContentType.ThreadsGhostPost) {
-        return THREAD_GHOST_POST_KEY;
-    }
-
-    if (repliesAllowed === false) {
-        return THREAD_REPLIES_PERMISSION_KEY;
-    }
-
-    return null;
+    return threadUnsupportedKey(platform, contentType, repliesEnabled);
 };

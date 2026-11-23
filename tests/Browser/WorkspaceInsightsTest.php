@@ -417,14 +417,14 @@ test('dashboard refreshes when the first analytics snapshot arrives after openin
         ->assertNoConsoleLogs();
 });
 
-test('import progress disappears after the queued backfill finishes without navigating away', function () {
+test('import progress disappears when a running backfill stops without navigating away', function (SyncStatus $status) {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
-    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     $state = AnalyticsSyncState::factory()->create([
         ...AnalyticsSyncState::identityFor($account),
         'social_account_id' => $account->id,
@@ -437,13 +437,20 @@ test('import progress disappears after the queued backfill finishes without navi
     waitFor($page, '@analytics-import-coverage');
     $page->assertVisible('@analytics-import-coverage');
 
-    $state->update(['status' => SyncStatus::Complete]);
+    if ($status === SyncStatus::Paused) {
+        config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
+        $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+        expect($state->refresh()->status)->toBe(SyncStatus::Paused);
+    } else {
+        $state->update(['status' => $status]);
+    }
+
     waitForGone($page, '@analytics-import-coverage');
 
     $page->assertMissing('@analytics-import-coverage')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
-});
+})->with(['completed' => SyncStatus::Complete, 'paused' => SyncStatus::Paused]);
 
 test('follower chart localizes tooltip values and names accounts without usernames', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);

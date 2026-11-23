@@ -2,17 +2,24 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\UpdatePost;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Uri;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 
 function seedUnsavedChangesReel(): Post
@@ -404,9 +411,9 @@ function unsavedChangesListPath(): string
     return (string) parse_url(route('app.posts.index'), PHP_URL_PATH);
 }
 
-function openUnsavedChangesFromList(Post $post, ?string $from = null, string $readyTestId = 'instagram-share-to-feed'): mixed
+function openUnsavedChangesFromList(Post $post, ?string $from = null, string $readyTestId = 'instagram-share-to-feed', string $tab = 'drafts'): mixed
 {
-    $list = route('app.posts.index', ['tab' => 'drafts']);
+    $list = route('app.posts.index', ['tab' => $tab]);
     $page = $from === null
         ? visit($list)->resize(1280, 900)
         : visit($from)->resize(1280, 900)->navigate($list);
@@ -417,27 +424,373 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
     return $page;
 }
 
-test('saving a thread to reconnect its threads channel leaves for the sign-in instead of stepping back', function () {
-    $post = seedUnsavedChangesReel();
-    $account = $post->socialAccount;
-    $account->update([
-        'platform' => Platform::Threads,
-        'scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights'],
+/**
+ * A Mastodon post whose channel lacks a reply scope Mastodon is set to ask for
+ * here, so its thread is held back with the save-and-reconnect link (the
+ * Mastodon connect start is a page of the app, so the visit lands in it).
+ */
+function seedHeldBackMastodonThread(int $channels = 1): Post
+{
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    gateFeature(Platform::Mastodon, GatedFeature::ThreadReplies, ['write:replies'], ['message' => 'posts.form.thread.unsupported', 'member_message' => 'posts.form.thread.reply_empty']);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $accounts = SocialAccount::factory()->mastodon()->count($channels)->create(['workspace_id' => $workspace->id]);
+    $accounts->first()->update(['scopes' => ['write:statuses', 'write:replies']]);
+    $accounts->last()->update(['scopes' => ['write:statuses']]);
+    $post = Post::factory()->forAccount($accounts->last(), ContentType::MastodonPost)->create([
+        'user_id' => $user->id,
+        'content' => 'Held back',
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
     ]);
-    $post->update(['platform' => Platform::Threads, 'content_type' => ContentType::ThreadsPost]);
-    config(['trypost.platforms.threads.oauth_url' => (string) Uri::of(route('app.posts.index'))->withPath('threads-sign-in')]);
-    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'), 'thread-start');
+    test()->actingAs($user);
 
+    return $post;
+}
+
+test('saving a held-back thread to reconnect its channel leaves for the connect page instead of stepping back', function (bool $fromList, bool $edited) {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()->startOfHour()]);
+    $page = $fromList
+        ? openUnsavedChangesFromList($post, route('app.settings.preferences'), "channel-permission-warning-{$post->social_account_id}-reconnect", 'queue')
+        : visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@channel-permission-warning-{$post->social_account_id}-reconnect");
+    $page->assertSeeIn("@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.unsupported'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    if ($edited) {
+        $page->click("@composer-caption-{$post->social_account_id}")
+            ->type("@composer-caption-{$post->social_account_id}", 'Edited before reconnecting');
+    }
+
+    $page->click("@channel-permission-warning-{$post->social_account_id}-reconnect");
+    waitForPath($page, route('app.social.mastodon.connect', absolute: false));
+
+    expect($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id)
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft)
+        ->and(Str::contains($post->fresh()->content, 'Edited before reconnecting'))->toBe($edited);
+})->with(['opened from the list' => true, 'opened by its edit link' => false])
+    ->with(['untouched' => false, 'with unsaved edits' => true]);
+
+test('save and reconnect leaves for the connect page with no page load still waiting for the server', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()->startOfHour()]);
+    $reconnect = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'), Str::after($reconnect, '@'), 'queue');
+    waitFor($page, $reconnect);
+    $page->script(<<<'JS'
+        (() => {
+            let inFlight = 0;
+            const loadsPage = ({ detail }) => detail.visit.method === 'get';
+            window.addEventListener('inertia:start', (event) => {
+                if (loadsPage(event)) {
+                    inFlight++;
+                }
+            }, true);
+            window.addEventListener('inertia:finish', (event) => {
+                if (loadsPage(event)) {
+                    inFlight--;
+                }
+            }, true);
+            window.addEventListener('beforeunload', () => {
+                sessionStorage.setItem('visitsInFlightOnLeaving', String(inFlight));
+            });
+        })()
+    JS);
+
+    $page->click($reconnect);
+    waitForPath($page, route('app.social.mastodon.connect', absolute: false));
+
+    expect($page->script("sessionStorage.getItem('visitsInFlightOnLeaving')"))->toBe('0')
+        ->and($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('saving only the caption keeps replies changed in another session', function (bool $hadReplies) {
+    $post = seedHeldBackMastodonThread();
+
+    if (! $hadReplies) {
+        $post->update(['meta' => []]);
+    }
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    $caption = "@composer-caption-{$post->social_account_id}";
+    waitFor($page, $caption);
+    $page->fill($caption, 'Caption edit only');
+    $post->update(['meta' => ['thread_replies' => [['text' => 'Added in a second session', 'media' => []]]]]);
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $saved = $post->fresh();
+    expect($saved->content)->toBe('Caption edit only')
+        ->and(data_get($saved->meta, 'thread_replies.0.text'))->toBe('Added in a second session');
+    $page->assertNoJavaScriptErrors();
+})->with(['thread added' => false, 'thread edited' => true]);
+
+test('reconnecting a finalized post or saving it from a direct link shows its read-only details and warning', function (bool $fromDrafts, bool $reconnect) {
+    $post = seedHeldBackMastodonThread();
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $page = $fromDrafts
+        ? openUnsavedChangesFromList($post, null, Str::after($link, '@'))
+        : visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, $link);
+    $caption = "@composer-caption-{$post->social_account_id}";
+    $page->click($caption)->fill($caption, 'Unsaved caption');
+    $post->update(['status' => PostStatus::Publishing]);
+    if ($reconnect) {
+        $page->script(<<<'JS'
+            (() => {
+                const open = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                    if (method.toUpperCase() === 'GET' && new URL(url, location.href).searchParams.has('post')) {
+                        XMLHttpRequest.prototype.open = open;
+                        const send = this.send.bind(this);
+                        this.send = (...args) => { window.resumePublishList = () => send(...args); };
+                    }
+                    return open.call(this, method, url, ...rest);
+                };
+            })()
+        JS);
+    }
+
+    $page->click($reconnect ? $link : '@composer-save-draft');
+    waitFor($page, "@post-details-{$post->id}");
+    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    if ($reconnect) {
+        waitForCondition($page, "typeof window.resumePublishList === 'function'");
+        waitForGone($page, '@post-composer-dialog');
+        $page->script('window.resumePublishList()');
+        waitFor($page, "@post-publishing-{$post->id}");
+    }
+
+    $page->assertMissing('@post-composer-dialog')
+        ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.publishing'))
+        ->assertSeeIn("@thread-view-post-{$post->id}-0", 'Held back')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->content)->toBe('Held back')
+        ->and($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
+})->with([
+    'reconnect from an edit link' => [false, true],
+    'reconnect from drafts' => [true, true],
+    'save draft from an edit link' => [false, false],
+]);
+
+test('reconnecting a finalized post opens its details even outside the visible list', function (bool $filtered) {
+    $post = seedHeldBackMastodonThread();
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $query = ['tab' => 'drafts'];
+    if ($filtered) {
+        $query['untagged'] = 1;
+    }
+    $page = visit(route('app.posts.index', $query))->resize(1280, 900);
+    waitFor($page, "@post-edit-{$post->id}");
+    $page->click("@post-edit-{$post->id}");
+    waitFor($page, $link);
+
+    $admin = workspaceMember($post->workspace, 'admin');
+    $update = ['status' => PostStatus::Publishing->value, 'content' => 'Published from the other session', 'meta' => ['thread_replies' => null]];
+    if ($filtered) {
+        $label = WorkspaceLabel::factory()->create(['workspace_id' => $post->workspace_id]);
+        $update['label_ids'] = [$label->id];
+    } else {
+        Post::factory()->forAccount($post->socialAccount)->publishing()->count(config('app.pagination.default'))->create([
+            'user_id' => $post->user_id,
+            'scheduled_at' => now()->subMinute(),
+        ]);
+    }
+    Queue::fake([PublishPost::class]);
+    UpdatePost::execute($post->workspace, $post->fresh(), $update, $admin);
+
+    $page->click($link);
+    waitFor($page, "@post-details-{$post->id}");
+    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing("@post-card-{$post->id}")
+        ->assertSeeIn("@post-details-{$post->id}", 'Published from the other session')
+        ->assertNoJavaScriptErrors();
+    expect($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
+    if ($filtered) {
+        expect($page->script("new URLSearchParams(location.search).get('untagged')"))->toBe('1');
+    }
+})->with(['another admin adds a label' => true, 'outside the publishing page size' => false]);
+
+test('save and reconnect leaves a new approval request intact when the editor is stale', function () {
+    $post = seedHeldBackMastodonThread();
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $other = Post::factory()->forAccount($post->socialAccount)->draft()->create([
+        'user_id' => $post->user_id,
+        'content' => 'Another draft',
+        'meta' => $post->meta,
+    ]);
+    $page = openUnsavedChangesFromList($post, null, Str::after($link, '@'));
+    $caption = "@composer-caption-{$post->social_account_id}";
+    $page->click($caption)->fill($caption, 'Unsaved caption');
+
+    $requester = workspaceMember($post->workspace);
+    $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $requester->id]);
+    $page->click($link);
+    waitForGoneOrShown($page, '@post-composer-dialog', '@composer-errors');
+
+    expect($post->fresh())->status->toBe(PostStatus::PendingApproval)
+        ->approval_requested_by->toBe($requester->id)
+        ->content->toBe('Held back');
+
+    $page->assertVisible('@post-composer-dialog')
+        ->assertSeeIn('@composer-errors', __('posts.form.reconnect.pending_approval'))
+        ->assertValue("@composer-caption-{$post->social_account_id}", 'Unsaved caption')
+        ->assertMissing($link);
+
+    $page->click('@composer-close');
+    waitFor($page, '@unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForGone($page, '@post-composer-dialog');
+    waitFor($page, "@post-edit-{$other->id}");
+    $page->click("@post-edit-{$other->id}");
+    waitFor($page, $link);
+    $page->assertValue("@composer-caption-{$other->social_account_id}", 'Another draft')
+        ->assertMissing('@composer-errors')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a member who cannot manage channels is told an admin needs to reconnect, with no link', function () {
+    $post = seedHeldBackMastodonThread();
+    $member = workspaceMember($post->workspace);
+    $post->update(['user_id' => $member->id]);
+    test()->actingAs($member);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, "@channel-permission-warning-{$post->social_account_id}", __('posts.form.thread.reply_empty'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->assertMissing("@channel-permission-warning-{$post->social_account_id}-reconnect")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a channel lacking the publish scope names its network in the warning and the blocked schedule button', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->socialAccount->update(['scopes' => ['write:replies']]);
+    $message = __('channels.permissions.publish.message', ['network' => Platform::Mastodon->label()]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, "@channel-permission-warning-{$post->social_account_id}", $message);
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    expect(Str::squish($page->text("@channel-permission-warning-{$post->social_account_id}")))
+        ->toBe("{$message} ".__('posts.form.reconnect.save'));
+    $page->hover('@composer-submit');
+    waitForText($page, '@composer-blocked-tooltip', $message);
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a network whose connect does not ask for the replies scope offers no thread in the composer', function (bool $requested) {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['meta' => []]);
+    $post->socialAccount->update(['scopes' => ['write:statuses', 'write:replies']]);
+
+    if (! $requested) {
+        config(['trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media']]);
+    }
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-caption-{$post->social_account_id}");
+
+    if ($requested) {
+        waitFor($page, '@thread-start');
+    } else {
+        letPageRun($page, 1000);
+        $page->assertMissing('@thread-start');
+    }
+
+    $page->assertNoJavaScriptErrors();
+})->with(['asked for' => true, 'left out' => false]);
+
+test('a stored thread on a network whose connect does not ask for the replies scope is held back with a warning, and the preview drops its replies', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->socialAccount->update(['scopes' => ['write:statuses', 'write:replies']]);
+    config(['trypost.platforms.mastodon.scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media']]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForText($page, "@thread-unavailable-warning-{$post->social_account_id}", __('posts.form.thread.unsupported', ['network' => Platform::Mastodon->label()]));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->assertMissing('@thread-start')
+        ->assertMissing('@preview-thread')
+        ->assertMissing("@channel-permission-warning-{$post->social_account_id}")
+        ->keys("@composer-caption-{$post->social_account_id}", 'Shift+Enter')
+        ->assertMissing('@thread-reply-collapsed-1')
+        ->click('@thread-reply-collapsed-0')
+        ->keys('@thread-reply-0', 'Shift+Enter')
+        ->assertMissing('@thread-reply-1')
+        ->assertMissing('@thread-add-reply')
+        ->assertMissing("@composer-{$post->social_account_id}-poll")
+        ->click('@thread-reply-remove-0')
+        ->assertNoJavaScriptErrors();
+    waitForGone($page, '@thread-replies');
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') !== 'true'");
+});
+
+test('a card of two channels warns about the one that lacks the reply scope and reconnects that one', function () {
+    $post = seedHeldBackMastodonThread(channels: 2);
+    $blockedChannel = $post->socialAccount;
+    $other = $post->workspace->socialAccounts()->whereKeyNot($blockedChannel->id)->value('id');
+    $page = visit(route('app.posts.create'))->resize(1280, 900);
+    waitForOpen($page, '@post-composer-dialog');
+
+    foreach ([$other, $blockedChannel->id] as $accountId) {
+        $page->click('@composer-add-account');
+        waitFor($page, "@composer-account-option-{$accountId}");
+        $page->click("@composer-account-option-{$accountId}")
+            ->click('@composer-header');
+        waitForGone($page, "@composer-account-option-{$accountId}");
+    }
+
+    waitFor($page, '@thread-start');
     $page->click('@thread-start');
     waitFor($page, '@thread-reply-0');
     $page->fill('@thread-reply-0', 'Second post');
-    waitFor($page, '@threads-thread-reconnect');
-    $page->click('@threads-thread-reconnect');
-    waitForPath($page, '/threads-sign-in/oauth/authorize');
+    waitFor($page, "@channel-permission-warning-{$other}-reconnect");
+    $page->assertSeeIn("@channel-permission-warning-{$other}", $blockedChannel->display_name);
+    expect(Str::squish($page->text("@channel-permission-warning-{$other}")))
+        ->toBe("{$blockedChannel->display_name}: ".__('posts.form.thread.unsupported').' '.__('posts.form.reconnect.save'));
+    $requests = $page->script(<<<JS
+        (() => {
+            const reconnect = document.querySelector('[data-testid="channel-permission-warning-{$other}-reconnect"]');
+            let requests = 0;
+            const countSave = ({ detail }) => {
+                if (detail.visit.method === 'post') {
+                    requests++;
+                }
+            };
+            document.addEventListener('inertia:before', countSave);
+            reconnect.click();
+            reconnect.click();
+            document.removeEventListener('inertia:before', countSave);
 
-    expect($post->fresh())
+            return requests;
+        })()
+    JS);
+    expect($requests)->toBe(1);
+    waitForCondition($page, "new URLSearchParams(location.search).get('reconnect') === '{$blockedChannel->id}'");
+
+    $page->assertNoJavaScriptErrors();
+    expect($blockedChannel->posts()->whereKeyNot($post->id)->sole())
         ->status->toBe(PostStatus::Draft)
         ->meta->thread_replies->toEqual([['text' => 'Second post', 'media' => []]]);
+});
+
+test('a post waiting for approval never offers save-and-reconnect, so saving cannot take it out of review', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $post->user_id]);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@channel-permission-warning-{$post->social_account_id}");
+
+    $page->assertMissing("@channel-permission-warning-{$post->social_account_id}-reconnect")
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+    expect($post->fresh()->status)->toBe(PostStatus::PendingApproval);
 });
 
 test('the browser back button on an edited post asks first, keeps the edit on cancel and goes back on discard', function () {
@@ -1033,9 +1386,9 @@ test('saving an edited post that was published meanwhile closes it and back does
     $post->forceFill(['status' => PostStatus::Published, 'published_at' => now()])->save();
     $page->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
-    waitForCondition($page, "!location.search.includes('edit=')");
+    waitForCondition($page, "location.search === '?tab=drafts'");
     $page->back();
-    $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')

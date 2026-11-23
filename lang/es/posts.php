@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Publicación :number del hilo',
             'unsupported' => 'Los hilos de publicaciones no están disponibles en esta red.',
             'ghost_post' => 'Un post fantasma no puede tener respuestas. Quita las respuestas o cambia el tipo a Hilo.',
-            'replies_permission' => 'Para publicar un hilo en Threads, vuelve a conectar este canal y permite que TryPost publique respuestas.',
-            'replies_permission_admin' => 'Para publicar un hilo en Threads, un administrador del workspace debe volver a conectar este canal y permitir que TryPost publique respuestas.',
-            'save_and_reconnect' => 'Guardar y reconectar',
-            'reconnect_blocked' => 'Esta publicación aún no se puede guardar. Espera a que terminen las subidas y corrige lo resaltado, luego inténtalo de nuevo.',
-            'reconnect_pending' => 'Esta publicación está esperando aprobación. Apruébala o muévela a borradores antes de volver a conectar el canal.',
             'reply_empty' => 'Una respuesta del hilo está vacía.',
             'reply_too_long' => 'Una respuesta supera el límite de :limit caracteres en :over.',
             'too_many' => '{1} Esta publicación admite solo un comentario.|[0,*] Esta publicación admite hasta :max respuestas.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Tu comentario supera el límite de :limit caracteres por :over.',
             'comment_empty' => 'Tu comentario está vacío.',
             'comment_attachments' => 'Los comentarios de LinkedIn no admiten archivos multimedia.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Guardar borrador y reconectar',
+            'blocked' => 'Esta publicación aún no se puede guardar. Espera a que terminen las subidas y corrige lo resaltado, luego inténtalo de nuevo.',
+            'pending_approval' => 'Este post está pendiente de aprobación. Revisa la solicitud antes de volver a conectar el canal.',
         ],
 
         'pinterest' => [

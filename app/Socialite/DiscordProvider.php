@@ -40,7 +40,7 @@ class DiscordProvider extends AbstractProvider implements ProviderInterface
     protected function getCodeFields($state = null): array
     {
         return array_merge(parent::getCodeFields($state), [
-            'permissions' => (string) config('trypost.platforms.discord.permissions'),
+            'permissions' => (string) config('trypost.platforms.discord.bot_permissions'),
             'integration_type' => 0,
         ]);
     }

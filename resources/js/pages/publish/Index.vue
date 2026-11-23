@@ -13,7 +13,15 @@ import {
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, provide, ref, shallowRef, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    provide,
+    ref,
+    shallowRef,
+    watch,
+    type ComponentPublicInstance,
+} from 'vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -34,6 +42,7 @@ import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.v
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
 import DayHeading from '@/components/publish/DayHeading.vue';
+import LinkedPostDetails from '@/components/publish/LinkedPostDetails.vue';
 import NewPostButton from '@/components/publish/NewPostButton.vue';
 import PostListSkeleton from '@/components/publish/PostListSkeleton.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
@@ -54,21 +63,22 @@ import {
     postCardLabelsKey,
     schedulePostCard,
 } from '@/composables/usePostCardActions';
-import type {
-    ComposerInitialDraft,
-    ComposerInitialPost,
-    PostComposition,
-} from '@/composables/usePostComposition';
 import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
 import type { QueueSlotTarget } from '@/composables/useSortableQueue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { filled } from '@/lib/helpers';
 import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { postAttemptAt } from '@/lib/postCard';
 import { grid, settings } from '@/routes/app/channels';
 import { PostStatus, ScheduleMode } from '@/types/post';
+import type {
+    ComposerInitialDraft,
+    ComposerInitialPost,
+    PostComposition,
+} from '@/types/post-composition';
 import type { TimezoneOption } from '@/types/posting-schedule';
 import type {
     PostCard,
@@ -76,12 +86,12 @@ import type {
     PublishChannel,
     PublishCounts,
     PublishQueue,
-    QueueItem,
-    QueueView,
     PublishScope,
     PublishSocialAccount,
     PublishTab,
     QueueDay,
+    QueueItem,
+    QueueView,
     ScrollPostCards,
 } from '@/types/publish';
 
@@ -103,6 +113,7 @@ interface Props {
         channels: string[];
     };
     filterAccounts: PublishSocialAccount[];
+    openPostDetails: PostCard | null;
     openComposer?: boolean;
     openComposerAssistant?: boolean;
     editPost?: PostCard | null;
@@ -146,7 +157,14 @@ const applyFilters = (): void => {
             preserveState: true,
             preserveScroll: true,
             replace: true,
-            only: ['posts', 'queue', 'counts', 'hasData', 'filters'],
+            only: [
+                'posts',
+                'queue',
+                'counts',
+                'hasData',
+                'filters',
+                'openPostDetails',
+            ],
             reset: ['posts'],
         },
     );
@@ -205,9 +223,7 @@ const groupQueueItems = (items: QueueItem[]): QueueDay[] => {
     return [...groups].map(([key, items]) => ({ date: key, items }));
 };
 
-const hasMorePosts = computed(
-    () => page.scrollProps?.posts?.nextPage != null,
-);
+const hasMorePosts = computed(() => page.scrollProps?.posts?.nextPage != null);
 
 const lastLoadedPostAt = computed<number | null>(() => {
     const times = (props.posts?.data ?? [])
@@ -411,44 +427,60 @@ const QUEUE_RELOAD = {
 
 const reordering = ref(false);
 
-const reorderQueue = (channelId: string, orderedPostIds: string[]): void => {
-    const previous = localQueue.value;
+const resetQueue = (): void => {
+    localQueue.value = queueSource.value;
+};
 
+const rollbackQueue = (message: string): void => {
+    resetQueue();
+    toast.error(message, { testId: 'queue-reorder-error-toast' });
+};
+
+const queueRequestFailed = (): false => {
+    rollbackQueue(trans('posts.errors.queue_busy'));
+
+    return false;
+};
+
+const queueVisitOptions = {
+    ...QUEUE_RELOAD,
+    preserveScroll: true,
+    preserveState: true,
+    onError: (errors: Record<string, string>) => {
+        const [message] = Object.values(errors);
+
+        if (filled(message)) {
+            rollbackQueue(message);
+
+            return;
+        }
+
+        queueRequestFailed();
+    },
+    onNetworkError: queueRequestFailed,
+    onHttpException: queueRequestFailed,
+    onCancel: resetQueue,
+    onFinish: () => {
+        reordering.value = false;
+    },
+};
+
+const reorderQueue = (channelId: string, orderedPostIds: string[]): void => {
     if (reordering.value) {
         return;
     }
 
     reordering.value = true;
-
-    const rollback = (message: string): void => {
-        localQueue.value = queueSource.value;
-        toast.error(message, { testId: 'queue-reorder-error-toast' });
-    };
-
-    localQueue.value = withChannelOrder(previous, channelId, orderedPostIds);
+    localQueue.value = withChannelOrder(
+        localQueue.value,
+        channelId,
+        orderedPostIds,
+    );
 
     router.put(
         reorderChannelQueue.url(channelId),
         { post_ids: orderedPostIds },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            ...QUEUE_RELOAD,
-            onFinish: () => {
-                reordering.value = false;
-            },
-            onError: (errors) =>
-                rollback(
-                    errors.post_ids ??
-                        errors.queue ??
-                        trans('posts.errors.queue_busy'),
-                ),
-            onHttpException: () => {
-                rollback(trans('posts.errors.queue_busy'));
-
-                return false;
-            },
-        },
+        queueVisitOptions,
     );
 };
 
@@ -477,7 +509,9 @@ const withPostInSlot = (
 
     return {
         days: groupQueueItems([
-            ...items.filter((item) => item.post_id !== postId && !isTarget(item)),
+            ...items.filter(
+                (item) => item.post_id !== postId && !isTarget(item),
+            ),
             ...freed,
             {
                 type: 'post',
@@ -504,37 +538,33 @@ const moveToSlot = (postId: string, slot: QueueSlotTarget): void => {
 
     reordering.value = true;
 
-    const rollback = (message: string): void => {
-        localQueue.value = queueSource.value;
-        toast.error(message, { testId: 'queue-reorder-error-toast' });
-    };
-
     localQueue.value = withPostInSlot(localQueue.value, postId, slot);
 
     router.put(
         moveChannelPostToSlot.url(slot.channelId),
         { post_id: postId, slot_at: slot.at },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            ...QUEUE_RELOAD,
-            onFinish: () => {
-                reordering.value = false;
-            },
-            onError: (errors) =>
-                rollback(
-                    errors.slot_at ??
-                        errors.queue ??
-                        trans('posts.errors.queue_busy'),
-                ),
-            onHttpException: () => {
-                rollback(trans('posts.errors.queue_busy'));
-
-                return false;
-            },
-        },
+        queueVisitOptions,
     );
 };
+
+/**
+ * The list body the `InfiniteScroll` reads its items from, kept after it
+ * leaves the page. Inertia 3.8 reads it again 250 ms after a card leaves (a
+ * debounced observer it does not cancel on unmount); when that card was the
+ * last one, the empty state has replaced the list by then, so a selector finds
+ * nothing and the read throws. The last element it had reads as empty instead.
+ */
+let postsBody: HTMLElement | null = null;
+
+const rememberPostsBody = (
+    element: Element | ComponentPublicInstance | null,
+): void => {
+    if (element instanceof HTMLElement) {
+        postsBody = element;
+    }
+};
+
+const postsBodyElement = (): HTMLElement | null => postsBody;
 
 const hasChannels = computed(
     () => props.channel !== null || props.filterAccounts.length > 0,
@@ -601,7 +631,15 @@ const refresh = (): void => {
     }
 
     router.reload({
-        only: ['queue', 'posts', 'counts', 'hasData', 'channels'],
+        only: [
+            'queue',
+            'posts',
+            'counts',
+            'hasData',
+            'channels',
+            'openPostDetails',
+            'tab',
+        ],
         reset: ['posts'],
     });
 };
@@ -716,6 +754,20 @@ const returnToOpeningPage = (): void => {
     );
 };
 
+/** Updates merge meta. Omit untouched replies and send null when the editor removed them. */
+const metaForUpdate = (
+    original: ComposerInitialPost['meta'],
+    edited: ComposerInitialPost['meta'],
+): ComposerInitialPost['meta'] => {
+    const { thread_replies: replies, ...meta } = edited;
+
+    if (JSON.stringify(replies) === JSON.stringify(original.thread_replies)) {
+        return meta;
+    }
+
+    return { ...meta, thread_replies: replies ?? null };
+};
+
 const submitComposition = (
     composition: PostComposition,
     _createAnother?: boolean,
@@ -725,24 +777,28 @@ const submitComposition = (
     const editPost = props.editPost;
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
-    let saved = false;
+    let closed = false;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
+        only: [] as string[],
         onSuccess: () => {
-            saved = true;
+            closed = true;
             composerOpen.value = false;
             onSaved?.();
         },
         onFinish: () => {
             composerSubmitting.value = false;
 
-            if (saved && returnsBack && !leavesApp) {
+            if (closed && returnsBack && !leavesApp) {
                 returnToOpeningPage();
             }
         },
     };
+    if (leavesApp) {
+        options.only = ['errors', 'openPostDetails'];
+    }
     if (!initialPost.value) {
         const data: Record<string, any> = {
             ...composition,
@@ -757,19 +813,49 @@ const submitComposition = (
         content: destination.content ?? composition.content,
         media: destination.media ?? composition.media,
         content_type: destination.content_type,
-        meta: destination.meta,
+        meta: metaForUpdate(initialPost.value.meta, destination.meta),
         label_ids: composition.label_ids,
         ...(composition.queue
             ? { queue: composition.queue }
             : { scheduled_at: composition.scheduled_at }),
     };
+    if (leavesApp) {
+        data.save_for_reconnect = true;
+    }
     router.put(updatePost.url(editPost.id), data, {
         ...options,
+        onError: (errors) => {
+            if (filled(errors.pending_approval)) {
+                router.replaceProp(
+                    'editPost.status',
+                    PostStatus.PendingApproval,
+                );
+                return;
+            }
+            if (!filled(errors.post)) {
+                return;
+            }
+
+            const detailsId = new URLSearchParams(window.location.search).get(
+                'post',
+            );
+            if (detailsId !== editPost.id) {
+                return;
+            }
+
+            closed = true;
+            if (leavesApp) {
+                // The partial response already shows the warning and details. Refresh the list behind them.
+                composerOpen.value = false;
+                router.reload();
+            }
+        },
         onSuccess: () => {
             options.onSuccess();
 
             if (
                 !returnsBack &&
+                !leavesApp &&
                 new URLSearchParams(window.location.search).has('edit')
             ) {
                 router.visit(listUrl(), {
@@ -844,7 +930,9 @@ const submitComposition = (
                                 "
                             />
                             <NewPostButton
-                                :social-account-ids="channel ? [channel.id] : []"
+                                :social-account-ids="
+                                    channel ? [channel.id] : []
+                                "
                             />
                         </div>
                     </AppHeaderActions>
@@ -861,7 +949,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template v-if="canManageAccounts" #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             data-testid="publish-welcome-connect"
                             @click="openConnectDialog()"
@@ -891,7 +981,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             :data-testid="`publish-empty-new-post-${tab}`"
                             @click="newPost"
@@ -931,11 +1023,12 @@ const submitComposition = (
                 >
                     <InfiniteScroll
                         data="posts"
-                        items-element="#posts-body"
+                        :items-element="postsBodyElement"
                         preserve-url
                     >
                         <div
                             id="posts-body"
+                            :ref="rememberPostsBody"
                             class="mx-auto flex w-full max-w-[900px] flex-col px-4 pt-6 pb-12 md:px-12"
                         >
                             <QueueTimeline
@@ -985,11 +1078,12 @@ const submitComposition = (
                 >
                     <InfiniteScroll
                         data="posts"
-                        items-element="#posts-body"
+                        :items-element="postsBodyElement"
                         preserve-url
                     >
                         <div
                             id="posts-body"
+                            :ref="rememberPostsBody"
                             class="mx-auto flex w-full max-w-[900px] flex-col gap-10 px-4 pt-6 pb-12 md:px-12"
                         >
                             <section
@@ -1032,6 +1126,12 @@ const submitComposition = (
                 </div>
             </Deferred>
         </div>
+        <LinkedPostDetails
+            v-if="openPostDetails"
+            :key="openPostDetails.id"
+            :post="openPostDetails"
+            :timezone="timezone"
+        />
         <InviteMemberDialog
             v-if="canManageTeam"
             v-model:open="inviteMemberDialogOpen"

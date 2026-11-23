@@ -2,25 +2,12 @@ import { blank, filled } from '@/lib/helpers';
 import { postPollResults } from '@/lib/poll';
 import {
     isBlankThreadReply,
-    type ThreadReply,
     threadRepliesOf,
 } from '@/lib/threadReplies';
-import type {
-    PublicationPoll,
-    PublicationThreadPoll,
-} from '@/types/analytics';
-import type { MediaItem } from '@/types/media';
+import type { PublicationThreadPoll } from '@/types/analytics';
 import { isThreadPlatform } from '@/types/network-options';
 import type { PostCard } from '@/types/publish';
-
-/** One post of a thread as the post card and its details show it, with its own poll. */
-export type ThreadPost = {
-    text: string;
-    media: MediaItem[];
-    poll: PublicationPoll | null;
-    /** Added to the poll's test id: none for the first post, `-reply-{n}` for a reply. */
-    pollTestSuffix: string;
-};
+import type { ThreadPost, ThreadReply } from '@/types/thread-reply';
 
 const replyPostOf = (
     reply: ThreadReply,

@@ -19,6 +19,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -107,7 +108,7 @@ abstract class AbstractLinkedInPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

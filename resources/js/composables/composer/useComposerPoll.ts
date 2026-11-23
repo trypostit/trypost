@@ -1,12 +1,7 @@
-import type {
-    ComposerAccount,
-    DestinationDraft,
-    NetworkGroup,
-    usePostComposition,
-} from '@/composables/usePostComposition';
+import type { usePostComposition } from '@/composables/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
 import { newPoll } from '@/lib/poll';
-import { type ThreadReply, withReplyPoll } from '@/lib/threadReplies';
+import { withReplyPoll } from '@/lib/threadReplies';
 import {
     type ContentTypeValue,
     MEDIALESS_CONTENT_TYPE_REASONS,
@@ -18,6 +13,12 @@ import {
     THREAD_REPLY_POLL_CONTENT_TYPES,
 } from '@/types/network-options';
 import type { Poll, PollLimits } from '@/types/poll';
+import type {
+    ComposerAccount,
+    DestinationDraft,
+    NetworkGroup,
+} from '@/types/post-composition';
+import type { ThreadReply } from '@/types/thread-reply';
 
 /** What the composer gives the card polls: each card's destination and the override that changes it. */
 type ComposerCards = Pick<
@@ -29,12 +30,13 @@ type ComposerCards = Pick<
 type CardMeta = Record<string, any>;
 
 /** What the composer's thread gives the reply polls: the reply being edited, the replies, a reply's text limit, and whether a reply's file is still uploading. */
-export interface ComposerThread {
+interface ComposerThread {
     activeReply: (group: NetworkGroup) => ThreadReply | undefined;
     replies: (group: NetworkGroup) => ThreadReply[];
     setReplies: (group: NetworkGroup, replies: ThreadReply[]) => void;
     replyLimit: (group: NetworkGroup) => number | null;
     uploading: (group: NetworkGroup, reply: ThreadReply) => boolean;
+    supportsReplies: (group: NetworkGroup) => boolean;
 }
 
 /**
@@ -286,6 +288,10 @@ export const useComposerPoll = (
             return false;
         }
 
+        if (!thread.supportsReplies(group)) {
+            return false;
+        }
+
         return filled(groupPollLimits(group));
     };
 
@@ -314,6 +320,10 @@ export const useComposerPoll = (
     };
 
     const addReplyPoll = (group: NetworkGroup): void => {
+        if (!replyPollAvailable(group)) {
+            return;
+        }
+
         const reply = thread.activeReply(group);
         const limits = groupPollLimits(group);
 

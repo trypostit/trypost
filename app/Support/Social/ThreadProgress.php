@@ -6,6 +6,7 @@ namespace App\Support\Social;
 
 use App\Models\Post;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Collection;
 
 /**
  * Segments of a thread already live on the network, kept in
@@ -24,21 +25,23 @@ final class ThreadProgress
      */
     public static function hash(string $text, array $mediaIds = [], ?array $poll = null): string
     {
-        return sha1((string) json_encode(blank($poll) ? [$text, $mediaIds] : [$text, $mediaIds, $poll]));
+        $segment = [$text, $mediaIds];
+
+        if (filled($poll)) {
+            $segment[] = $poll;
+        }
+
+        return sha1((string) json_encode($segment));
     }
 
     /**
-     * The hash of the root already live. The root is the target's identity, so a
-     * resume keeps it even when the same text would now hash differently.
-     *
      * @param  array<string, mixed>|null  $context
      */
-    public static function rootHash(?array $context): ?string
+    public static function hasPublishedRoot(?array $context): bool
     {
-        $root = data_get($context, self::KEY.'.0');
-        $hash = data_get($root, 'hash');
+        $root = self::publishedSegmentAt($context, 0);
 
-        return is_string($hash) && is_string(data_get($root, 'id')) ? $hash : null;
+        return $root !== null && filled($root['hash']);
     }
 
     /**
@@ -48,35 +51,34 @@ final class ThreadProgress
      */
     public static function failureMessage(Post $post, string $message, ?array $context): string
     {
-        $published = count((array) data_get($context, self::KEY, []));
-        $total = 1 + (ThreadReplies::supports($post->platform) ? count(ThreadReplies::of($post->meta)) : 0);
+        $published = self::publishedSegments($context)->count();
+        $total = 1 + count(ThreadReplies::of($post->meta));
 
-        return $published > 0 && $published < $total
-            ? __('posts.errors.thread_incomplete', ['published' => $published, 'total' => $total, 'error' => $message])
-            : $message;
+        if ($published > 0 && $published < $total) {
+            return __('posts.errors.thread_incomplete', [
+                'published' => $published,
+                'total' => $total,
+                'error' => $message,
+            ]);
+        }
+
+        return $message;
     }
 
     /**
-     * The stored segments that still match the current ones, in order. The
-     * first segment whose text changed ends the resumable part.
+     * Keep the root already live, even if its text would now hash differently.
+     * Resume replies only up to the first one that changed.
      *
      * @param  array<string, mixed>|null  $context
-     * @param  list<string>  $hashes
-     * @return list<array<string, mixed>>
+     * @param  list<string>  $replyHashes
+     * @return list<array{hash: string, id: string, ...}>
      */
-    public static function resumable(?array $context, array $hashes): array
+    public static function resumable(?array $context, array $replyHashes): array
     {
-        $kept = [];
-
-        foreach (array_values((array) data_get($context, self::KEY, [])) as $index => $entry) {
-            if (! is_array($entry) || ($hashes[$index] ?? null) !== data_get($entry, 'hash') || ! is_string(data_get($entry, 'id'))) {
-                break;
-            }
-
-            $kept[] = $entry;
-        }
-
-        return $kept;
+        return self::publishedSegments($context)
+            ->takeWhile(fn (array $segment, int $position): bool => $position === 0
+                || $segment['hash'] === ($replyHashes[$position - 1] ?? null))
+            ->all();
     }
 
     /**
@@ -87,5 +89,38 @@ final class ThreadProgress
         $post->writePublication([
             'error_context' => [...($post->error_context ?? []), self::KEY => $posted],
         ]);
+    }
+
+    /**
+     * The persisted JSON can contain an incomplete entry. Only a continuous
+     * run of checkpoints from the root records how far the thread got.
+     *
+     * @param  array<string, mixed>|null  $context
+     * @return Collection<int, array{hash: string, id: string, ...}>
+     */
+    private static function publishedSegments(?array $context): Collection
+    {
+        $published = collect();
+
+        while (($segment = self::publishedSegmentAt($context, $published->count())) !== null) {
+            $published->push($segment);
+        }
+
+        return $published;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $context
+     * @return array{hash: string, id: string, ...}|null
+     */
+    private static function publishedSegmentAt(?array $context, int $index): ?array
+    {
+        $segment = $context[self::KEY][$index] ?? null;
+
+        if (is_string($segment['hash'] ?? null) && is_string($segment['id'] ?? null)) {
+            return $segment;
+        }
+
+        return null;
     }
 }

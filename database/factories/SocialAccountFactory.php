@@ -43,7 +43,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedIn,
-            'scopes' => Platform::LinkedIn->requiredPublishScopes(),
+            'scopes' => ['openid', 'profile', 'email', 'w_member_social'],
         ]);
     }
 
@@ -51,7 +51,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::LinkedInPage,
-            'scopes' => Platform::LinkedInPage->requiredPublishScopes(),
+            'scopes' => ['openid', 'profile', 'email', 'w_organization_social'],
         ]);
     }
 
@@ -120,7 +120,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::GoogleBusiness,
-            'scopes' => Platform::GoogleBusiness->requiredPublishScopes(),
+            'scopes' => ['https://www.googleapis.com/auth/business.manage'],
             'meta' => [
                 'location_id' => 'accounts/123456789/locations/987654321',
                 'account_name' => 'accounts/123456789',
@@ -134,7 +134,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Bluesky,
-            'scopes' => Platform::Bluesky->requiredPublishScopes(),
+            'scopes' => [],
             'token_expires_at' => now()->addHours(2),
             'meta' => [
                 'service' => 'https://bsky.social',
@@ -148,7 +148,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Mastodon,
-            'scopes' => Platform::Mastodon->requiredPublishScopes(),
+            'scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'],
             'token_expires_at' => null, // Mastodon tokens don't expire
             'meta' => [
                 'instance' => 'https://mastodon.social',
@@ -162,7 +162,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Telegram,
-            'scopes' => Platform::Telegram->requiredPublishScopes(),
+            'scopes' => [],
             'token_expires_at' => null, // the shared bot token never expires
             'access_token' => '',
             'refresh_token' => '',
@@ -179,7 +179,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Discord,
-            'scopes' => Platform::Discord->requiredPublishScopes(),
+            'scopes' => [],
             'token_expires_at' => null, // posting uses the global bot token
             'access_token' => '',
             'refresh_token' => '',

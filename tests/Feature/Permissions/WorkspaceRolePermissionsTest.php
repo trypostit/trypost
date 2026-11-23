@@ -65,7 +65,7 @@ test('every workspace member can open the details of a draft post', function (st
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('tab', 'drafts')
-            ->where('openPostDetailsId', $this->post->id)
+            ->where('openPostDetails.id', $this->post->id)
             ->loadDeferredProps(fn ($reload) => $reload
                 ->where('posts.data.0.id', $this->post->id))
         );

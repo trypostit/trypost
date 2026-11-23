@@ -38,16 +38,6 @@ class InstagramFacebookController extends MetaController
      */
     private const INSTAGRAM_LOOKUPS_PER_ROUND = 20;
 
-    protected array $scopes = [
-        'public_profile',
-        'pages_show_list',
-        'pages_read_engagement',
-        'business_management',
-        'instagram_basic',
-        'instagram_content_publish',
-        'instagram_manage_insights',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -60,7 +50,7 @@ class InstagramFacebookController extends MetaController
 
         $driver = Socialite::driver($this->driver)
             ->usingGraphVersion($this->graphVersion())
-            ->setScopes($this->scopes)
+            ->setScopes($this->consentScopes())
             ->redirectUrl(route('app.social.instagram-facebook.callback'));
 
         $driver = $this->switchingAccount($request)

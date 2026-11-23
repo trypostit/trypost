@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
@@ -147,6 +148,19 @@ test('a mastodon reply can be a poll under mastodon rules on the web, api and mc
     assertPollParityPassed($surface, $response);
     expect($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual($poll);
 })->with(['web', 'api', 'mcp']);
+
+test('editing a draft caption keeps its reply poll when replies are disabled', function (string $surface, ContentType $type) {
+    $poll = ['options' => ['Yes', 'No'], 'duration_minutes' => 60];
+    $post = pollParityPost($type, ['thread_replies' => [['text' => 'Join us?', 'poll' => $poll]]]);
+    config(["trypost.platforms.{$type->platform()->value}.permissions.thread_replies.scopes" => ['replies:write']]);
+
+    $response = pollParityUpdate($surface, $post, ['content' => 'Updated caption']);
+
+    assertPollParityPassed($surface, $response);
+    $post->refresh();
+    expect($post->content)->toBe('Updated caption')
+        ->and(data_get($post->meta, 'thread_replies.0.poll'))->toEqual($poll);
+})->with(['web', 'api', 'mcp'])->with([ContentType::XPost, ContentType::MastodonPost]);
 
 test('a bluesky reply drops a poll on the web, api and mcp', function (string $surface) {
     $post = pollParityPost(ContentType::BlueskyPost);
@@ -511,6 +525,6 @@ test('a threads account connected before the replies permission saves a thread a
         'scheduled_at' => now()->addDay()->toIso8601String(),
     ]);
 
-    assertPollParityRefused($surface, $response, ['meta.thread_replies' => __('posts.form.thread.replies_permission')]);
+    assertPollParityRefused($surface, $response, ['meta.thread_replies' => __('channels.permissions.thread_replies.message', ['network' => Platform::Threads->label()])]);
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp']);

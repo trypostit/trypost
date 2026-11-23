@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Services\Social\Meta\GrantedPermissions;
 use App\Services\Social\Meta\ManagedPageList;
+use App\Support\ChannelPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Http;
 
@@ -57,9 +59,24 @@ abstract class MetaController extends SocialController
      */
     protected function grantedScopes(string $userToken): array|RedirectResponse
     {
-        $granted = GrantedPermissions::for($this->graphApi(), $userToken, $this->scopes);
+        $requested = $this->pendingForThisNetwork()?->requestedScopes();
+        if ($requested === null) {
+            $permissions = GrantedPermissions::forLegacyConsent($this->graphApi(), $userToken, $this->deadline());
+        } else {
+            $permissions = GrantedPermissions::for($this->graphApi(), $userToken);
+        }
 
-        return $this->refusalForMissingPublishScopes($granted) ?? $granted;
+        $granted = $permissions->granted($requested);
+
+        if (blank(ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish))) {
+            return $granted;
+        }
+
+        if ($permissions->refusesAnyRequirement(ChannelPermissions::scopes($this->platform, GatedFeature::Publish))) {
+            return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+        }
+
+        return $this->redirectForMissingPublishPermission([]);
     }
 
     /**

@@ -112,7 +112,7 @@ test('reordering a post keeps the submitted order in its media and in its rows',
         MediaItem::fromMedia($added)->toArray(),
         MediaItem::fromMedia($first)->toArray(),
         MediaItem::fromMedia($second)->toArray(),
-    ]]);
+    ]], $this->user);
 
     $expected = [$third->id, $added->id, $first->id, $second->id];
     $post->refresh();
@@ -145,7 +145,7 @@ test('updating a post releases the removed row and its file after commit and kee
 
     UpdatePost::execute($this->workspace, $post->fresh(), [
         'media' => [[...MediaItem::fromMedia($kept)->toArray(), 'meta' => ['alt_text' => 'A dog']]],
-    ]);
+    ], $this->user);
 
     expect($post->fresh()->ownedMedia->pluck('id')->all())->toBe([$kept->id])
         ->and(Media::query()->find($released->id))->toBeNull()
@@ -245,14 +245,14 @@ test('the composition validator accepts owned rows and uploads of the workspace 
         'destinations' => syncOwnedMediaDestinations($this->channels->take(1)),
     ];
 
-    $resolved = PostCompositionValidator::validate($this->workspace, $composition([
+    $resolved = PostCompositionValidator::validate($this->workspace, $this->user, $composition([
         MediaItem::fromMedia($owned)->toArray(),
         MediaItem::fromMedia($upload)->toArray(),
     ]));
 
     expect(array_column($resolved['destinations'][0]['media'], 'id'))->toBe([$owned->id, $upload->id]);
 
-    expect(fn () => PostCompositionValidator::validate($this->workspace, $composition([
+    expect(fn () => PostCompositionValidator::validate($this->workspace, $this->user, $composition([
         [...MediaItem::fromMedia($owned)->toArray(), 'path' => 'medias/other.jpg'],
     ])))->toThrow(ValidationException::class);
 });
@@ -275,7 +275,7 @@ test('attaching from urls ends with rows owned by the post', function () {
     Http::fake(['https://93.184.216.34/photo.png' => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200, ['Content-Type' => 'image/png'])]);
     $post = CreatePosts::execute($this->workspace, $this->user, syncOwnedMediaComposition($this->channels->take(1), []))->sole();
 
-    $result = app(MediaAttacher::class)->attachFromUrls($post, [['url' => 'https://93.184.216.34/photo.png', 'alt' => 'A pixel']]);
+    $result = app(MediaAttacher::class)->attachFromUrls($post, [['url' => 'https://93.184.216.34/photo.png', 'alt' => 'A pixel']], $this->user);
 
     expect($post->ownedMedia()->pluck('id')->all())->toBe([data_get($result, 'attached.0.id')])
         ->and(data_get($post->fresh()->media, '0.meta.alt_text'))->toBe('A pixel')
@@ -426,7 +426,7 @@ test('an edit swaps the owned item for its temporary upload at the same index an
                 MediaItem::fromMedia($first)->toArray(),
                 [...MediaItem::fromMedia($edited)->toArray(), 'meta' => data_get($submittedOriginal, 'meta')],
             ],
-        ]);
+        ], $this->user);
 
         expect(Media::query()->find($original->id))->toBeNull();
         Storage::assertExists($original->path);

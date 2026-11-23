@@ -83,6 +83,22 @@ class AnalyticsSyncState extends Model
         ];
     }
 
+    public function scopeLegacyLimitedBackfill(Builder $query): Builder
+    {
+        return $query->forCollector(SyncCollector::PublicationBackfill)
+            ->where('status', SyncStatus::ProviderLimited)
+            ->where('last_error_category', 'provider_limited')
+            ->whereNull('checkpoint->had_provider_limit')
+            ->where(fn (Builder $grant): Builder => $grant
+                ->whereNull('checkpoint->missing_history_grant')
+                ->orWhere('checkpoint->missing_history_grant', true));
+    }
+
+    public function scopePendingOrRunning(Builder $query): Builder
+    {
+        return $query->whereIn('status', [SyncStatus::Pending, SyncStatus::Running]);
+    }
+
     public function scopeTerminal(Builder $query): Builder
     {
         return $query->whereIn('status', [

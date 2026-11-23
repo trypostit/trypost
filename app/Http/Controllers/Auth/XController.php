@@ -17,14 +17,6 @@ class XController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::X;
 
-    protected array $scopes = [
-        'tweet.read',
-        'tweet.write',
-        'users.read',
-        'media.write',
-        'offline.access',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -33,12 +25,12 @@ class XController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes);
+        return $this->redirectToProvider($request, $this->driver);
     }
 
     public function callback(Request $request): RedirectResponse
     {
-        return $this->handleCallback($request, $this->driver, $this->scopes);
+        return $this->handleCallback($request, $this->driver);
     }
 
     protected function afterConnected(SocialAccount $account): void

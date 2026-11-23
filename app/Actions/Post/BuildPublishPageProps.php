@@ -85,8 +85,12 @@ class BuildPublishPageProps
         $openPostNotesId = RequestIds::uuid($request->query('notes'));
         $openPostDetailsId = RequestIds::uuid($request->query('post'));
         $focusedPostId = $openPostNotesId ?? $openPostDetailsId;
+        $focusScope = $basePosts;
+        if ($openPostDetailsId !== null && $channel === null) {
+            $focusScope = $workspace->posts();
+        }
 
-        $resolveTab = fn (mixed $requested, ?string $focusedId): string => self::tab($requested, $focusedId ? (clone $basePosts)->whereKey($focusedId)->visiblePendingApprovalsFor($requester)->value('status') : null);
+        $resolveTab = fn (mixed $requested, ?string $focusedId): string => self::tab($requested, $focusedId ? (clone $focusScope)->whereKey($focusedId)->visiblePendingApprovalsFor($requester)->value('status') : null);
 
         $tab = $resolveTab($request->query('tab'), $focusedPostId);
 
@@ -138,7 +142,7 @@ class BuildPublishPageProps
             'openComposer' => $editPost !== null,
             'openComposerAssistant' => $request->boolean('assistant'),
             ...BuildPostNotesProps::handle($request, $workspace),
-            'openPostDetailsId' => $openPostDetailsId,
+            'openPostDetails' => fn (): ?array => self::postDetails($focusScope, $openPostDetailsId, $requester),
             'authUserId' => $user->id,
             'editPost' => $editPost,
         ];
@@ -245,6 +249,33 @@ class BuildPublishPageProps
             'drafts' => $byStatus->get(PostStatus::Draft->value, 0),
             'sent' => collect(self::SENT_STATUSES)->sum(fn (PostStatus $status): int => $byStatus->get($status->value, 0)),
         ];
+    }
+
+    /**
+     * A details link opens its post independently of list filters and pagination.
+     * Keep the channel and workspace scope, including which approval requests the viewer can see.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function postDetails(HasMany $basePosts, ?string $id, ?User $requester): ?array
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        $posts = self::cardQuery(clone $basePosts, [], false)
+            ->visiblePendingApprovalsFor($requester)
+            ->whereKey($id)
+            ->get();
+
+        if ($posts->isEmpty()) {
+            return null;
+        }
+
+        self::decorate($posts);
+        self::attachMetrics($posts);
+
+        return PostCardResource::make($posts->first())->resolve();
     }
 
     /**

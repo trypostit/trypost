@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'Geen tijden',
         'no_results' => 'Geen kanalen gevonden voor je zoekopdracht.',
         'connection_lost' => 'Dit kanaal heeft de verbinding verloren',
+        'permissions_missing' => 'Dit kanaal heeft nieuwe rechten nodig',
         'settings' => 'Instellingen',
         'more_actions' => 'Meer acties',
     ],
@@ -289,5 +290,21 @@ return [
         'blue' => 'Geverifieerd',
         'business' => 'Geverifieerde organisatie',
         'government' => 'Overheidsaccount',
+    ],
+
+    'permissions' => [
+        'on_channel' => ':channel: :message',
+        'publish' => [
+            'message' => 'TryPost kan via dit kanaal nog niet op :network publiceren. Koppel het opnieuw en sta TryPost toe te publiceren.',
+            'member_message' => 'TryPost kan via dit kanaal nog niet op :network publiceren. Een workspacebeheerder moet het opnieuw koppelen.',
+        ],
+        'insights' => [
+            'message' => 'Om de statistieken van dit kanaal te tonen, koppel je het opnieuw en sta je TryPost toe de statistieken op :network te lezen.',
+            'member_message' => 'Om de statistieken van dit kanaal te tonen, moet een workspacebeheerder het opnieuw koppelen.',
+        ],
+        'thread_replies' => [
+            'message' => 'Om reacties op :network te publiceren, koppel je dit kanaal opnieuw en sta je TryPost toe ze te plaatsen.',
+            'member_message' => 'Om reacties op :network te publiceren, moet een workspacebeheerder dit kanaal opnieuw koppelen.',
+        ],
     ],
 ];

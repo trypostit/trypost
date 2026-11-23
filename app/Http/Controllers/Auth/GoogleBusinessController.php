@@ -21,12 +21,6 @@ class GoogleBusinessController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::GoogleBusiness;
 
-    protected array $scopes = [
-        'https://www.googleapis.com/auth/userinfo.profile',
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/business.manage',
-    ];
-
     public function __construct(private readonly GoogleBusinessPublisher $publisher) {}
 
     public function connect(Request $request): Response
@@ -37,7 +31,7 @@ class GoogleBusinessController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes, [
+        return $this->redirectToProvider($request, $this->driver, [
             'access_type' => 'offline',
             'prompt' => $this->switchingAccount($request) ? 'select_account consent' : 'consent',
         ]);
@@ -50,7 +44,7 @@ class GoogleBusinessController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
             $refusal = $this->refusalForMissingPublishScopes($scopes);
 
             if ($refusal !== null) {
@@ -135,7 +129,7 @@ class GoogleBusinessController extends SocialController
             'token_expires_at' => data_get($oauth, 'expires_in')
                 ? now()->addSeconds((int) data_get($oauth, 'expires_in'))
                 : null,
-            'scopes' => data_get($oauth, 'scopes', $this->scopes),
+            'scopes' => data_get($oauth, 'scopes', $this->consentScopes()),
             'meta' => [
                 'location_id' => data_get($location, 'id'),
                 'account_name' => data_get($location, 'account_name'),

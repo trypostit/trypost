@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Zincirin :number. gönderisi',
             'unsupported' => 'Gönderi zincirleri bu ağda kullanılamaz.',
             'ghost_post' => 'Hayalet gönderinin yanıtı olamaz. Yanıtları kaldırın veya türü Flood olarak değiştirin.',
-            'replies_permission' => 'Threads\'te bir zincir yayınlamak için bu kanalı yeniden bağlayın ve TryPost\'un yanıt paylaşmasına izin verin.',
-            'replies_permission_admin' => 'Threads\'te bir zincir yayınlamak için bir çalışma alanı yöneticisinin bu kanalı yeniden bağlaması ve TryPost\'un yanıt paylaşmasına izin vermesi gerekir.',
-            'save_and_reconnect' => 'Kaydet ve bağla',
-            'reconnect_blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
-            'reconnect_pending' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce onaylayın veya taslaklara taşıyın.',
             'reply_empty' => 'Zincirdeki bir yanıt boş.',
             'reply_too_long' => 'Bir yanıt :limit karakter sınırını :over aşıyor.',
             'too_many' => '{1} Bu gönderiye yalnızca bir yorum eklenebilir.|[0,*] Bu gönderiye en fazla :max yanıt eklenebilir.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Yorumunuz :limit karakter sınırını :over karakter aşıyor.',
             'comment_empty' => 'Yorumunuz boş.',
             'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Taslağı kaydet ve yeniden bağla',
+            'blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
+            'pending_approval' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce isteği incele.',
         ],
 
         'pinterest' => [

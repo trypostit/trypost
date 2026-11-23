@@ -2,8 +2,8 @@
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PostDetailsMedia from '@/components/publish/PostDetailsMedia.vue';
 import PostPollResults from '@/components/publish/PostPollResults.vue';
-import type { ThreadPost } from '@/lib/postThread';
 import type { PublishSocialAccount } from '@/types/publish';
+import type { ThreadPost } from '@/types/thread-reply';
 
 defineProps<{
     account: PublishSocialAccount;

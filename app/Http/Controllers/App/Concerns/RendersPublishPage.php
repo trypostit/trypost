@@ -71,7 +71,7 @@ trait RendersPublishPage
      * with its tab, time zone and filters, minus the composer and notes context.
      * Null when the request came from any other page.
      *
-     * @param  array<string, string>  $extraQuery
+     * @param  array<string, string|null>  $extraQuery
      */
     private function publishPageReturnUrl(array $extraQuery = []): ?string
     {
@@ -79,7 +79,7 @@ trait RendersPublishPage
     }
 
     /**
-     * @param  array<string, string>  $extraQuery
+     * @param  array<string, string|null>  $extraQuery
      */
     private function publishPageUrl(?RoutingRoute $route, array $extraQuery): ?string
     {
@@ -105,7 +105,7 @@ trait RendersPublishPage
      * that matches no route of the app, or cannot be read, returns to the home page.
      *
      * @param  list<string>  $except
-     * @param  array<string, string>  $extraQuery
+     * @param  array<string, string|null>  $extraQuery
      */
     private function previousUrl(?RoutingRoute $route, array $except = [], array $extraQuery = []): string
     {

@@ -25,7 +25,7 @@ test('instagram-facebook authorize url reopens the page selection', function () 
 
     expect(urldecode((string) $response->headers->get('Location')))
         ->toStartWith('https://www.facebook.com/')
-        ->toContain('auth_type=rerequest');
+        ->toContain('auth_type=rerequest', 'business_management');
 });
 
 test('instagram-facebook connect redirects to oauth provider', function () {
@@ -122,7 +122,11 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
 });
 
 test('instagram-facebook callback connects page when first accounts response is empty', function () {
-    startSocialConnect($this->workspace->id, Platform::InstagramFacebook);
+    config(['trypost.platforms.instagram-facebook.scopes' => ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish']]);
+
+    $redirect = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.connect'));
+    $redirect->assertRedirect();
+    expect(urldecode((string) $redirect->headers->get('Location')))->not->toContain('business_management');
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
     $socialiteUser->token = 'test-user-token';
@@ -142,7 +146,6 @@ test('instagram-facebook callback connects page when first accounts response is 
 
     Http::fake([
         "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
-        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'fb_user', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::sequence()
             ->push([
@@ -169,7 +172,7 @@ test('instagram-facebook callback connects page when first accounts response is 
         ], 200),
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.social.instagram-facebook.callback'));
+    $response = $this->get(route('app.social.instagram-facebook.callback'));
 
     $response->assertRedirect(route('app.social.connect.show', Platform::InstagramFacebook));
     finishSocialConnect(Platform::InstagramFacebook)->assertRedirect();

@@ -143,7 +143,7 @@ test('removing a reply media deletes its row and appending to the root keeps the
     UpdatePost::execute($this->workspace, $post->fresh(), [
         'status' => PostStatus::Draft->value,
         'meta' => ['thread_replies' => [['text' => 'Two', 'media' => []]]],
-    ]);
+    ], $this->user);
 
     expect(Media::query()->whereKey($replyImage->id)->exists())->toBeFalse()
         ->and(Media::query()->whereKey($rootImage->id)->exists())->toBeTrue();

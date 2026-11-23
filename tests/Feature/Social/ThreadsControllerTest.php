@@ -339,3 +339,11 @@ test('threads reconnect that authorizes another account says so instead of conne
     expect($this->workspace->socialAccounts()->count())->toBe(1)
         ->and($account->fresh()->platform_user_id)->toBe('123456789');
 });
+
+test('threads connect asks for the scopes the install configures', function () {
+    config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish']]);
+
+    $location = $this->actingAs($this->user)->get(route('app.social.threads.connect'))->headers->get('Location');
+
+    expect(Uri::of($location)->query()->get('scope'))->toBe('threads_basic,threads_content_publish');
+});

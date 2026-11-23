@@ -228,13 +228,13 @@ test('a post sent to a slot past the queue window becomes custom at that slot', 
         ->and($post->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
 });
 
-test('a post sent to a slot after it started publishing shows the finalized banner and keeps its time', function () {
+test('a post sent to a slot after it started publishing says it is publishing and keeps its time', function (int $claimedOnRead) {
     $post = rescheduleCustom($this->channel, $this->user);
     $at = $post->scheduled_at->toIso8601String();
     $retrievals = 0;
 
-    Post::retrieved(function (Post $retrieved) use ($post, &$retrievals): void {
-        if ($retrieved->id === $post->id && ++$retrievals === 3) {
+    Post::retrieved(function (Post $retrieved) use ($post, $claimedOnRead, &$retrievals): void {
+        if ($retrieved->id === $post->id && ++$retrievals === $claimedOnRead) {
             Post::query()->whereKey($post->id)->toBase()->update(['status' => PostStatus::Publishing->value]);
         }
     });
@@ -242,14 +242,17 @@ test('a post sent to a slot after it started publishing shows the finalized bann
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-07T09:00:00Z', 'queue_slot' => true])
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('flash.banner', __('posts.flash.cannot_edit_finalized'));
+        ->assertSessionHas('flash.banner', __('posts.edit.publishing_overlay_title'));
 
     $post->refresh();
 
     expect($post->status)->toBe(PostStatus::Publishing)
         ->and($post->schedule_mode)->toBe(ScheduleMode::Custom)
         ->and($post->scheduled_at->toIso8601String())->toBe($at);
-});
+})->with([
+    'before the queue checks the post' => 2,
+    'after the queue checks the post' => 3,
+]);
 
 test('a draft sent to a slot stays a draft with that date', function () {
     $draft = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-06 10:00', 'UTC')]);
@@ -579,7 +582,7 @@ test('reschedule of a pending post is refused and keeps the request as it is', f
         ->and($post->approval_requested_by)->toBe($member->id);
 })->with(['requester', 'approver']);
 
-test('reschedule of a failed or publishing post does nothing', function (PostStatus $status) {
+test('reschedule of a failed or publishing post does nothing', function (PostStatus $status, string $message) {
     $post = reschedulePost($this->channel, $this->user, [
         'status' => $status,
         'scheduled_at' => CarbonImmutable::parse('2026-10-05 07:00', 'UTC'),
@@ -588,13 +591,16 @@ test('reschedule of a failed or publishing post does nothing', function (PostSta
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
         ->assertRedirect()
-        ->assertSessionHas('flash.banner', __('posts.flash.cannot_edit_finalized'));
+        ->assertSessionHas('flash.banner', __($message));
 
     $post->refresh();
 
     expect($post->status)->toBe($status)
         ->and($post->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-05 07:00', 'UTC')->toIso8601String());
-})->with([PostStatus::Failed, PostStatus::Publishing]);
+})->with([
+    'failed' => [PostStatus::Failed, 'posts.flash.cannot_edit_finalized'],
+    'publishing' => [PostStatus::Publishing, 'posts.edit.publishing_overlay_title'],
+]);
 
 test('reschedule of a scheduled post due within a minute or overdue is refused', function (string $due) {
     $post = rescheduleCustom($this->channel, $this->user, now()->modify($due)->toDateTimeString());

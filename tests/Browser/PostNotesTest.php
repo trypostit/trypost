@@ -189,20 +189,20 @@ test('hovering a mention shows who it is, yourself included: photo, name and the
     waitForText($page, '@note-mention-card-name', 'Ana Souza');
     waitForState($page, '@note-mention-card-time', "{$tokyoTimes}.some((time) => element.textContent.includes(time + ' local time'))");
 
-    $page->hover('@note-body');
+    $page->click('@note-input');
     waitForGone($page, '@note-mention-card');
     $page->hover('[data-testid=note-mention]:nth-child(2)');
     waitForText($page, '@note-mention-card-name', 'Bia Lima');
     waitFor($page, '@note-mention-card-time');
     $page->assertMissing('@note-mention-card img');
 
-    $page->hover('@note-body');
+    $page->click('@note-input');
     waitForGone($page, '@note-mention-card');
     $page->hover('[data-testid=note-mention]:nth-child(3)');
     waitForText($page, '@note-mention-card-name', 'Caio Former');
     $page->assertMissing('@note-mention-card-time');
 
-    $page->hover('@note-body');
+    $page->click('@note-input');
     waitForGone($page, '@note-mention-card');
     $page->hover('[data-testid=note-mention]:nth-child(4)');
     waitForText($page, '@note-mention-card-name', 'Paulo Castellano');
@@ -587,7 +587,6 @@ test('a note repeated by an older page after a new one disappears when deleted, 
     waitForOpen($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
     $page->click('@emoji-picker-option');
     waitForText($page, '@note-error-toast', __('notes.errors.not_reacted'));
-    $page->keys('@emoji-picker-option', 'Escape');
     waitForGone($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
 
     $page->hover($goneNote)->click("{$goneNote} [data-testid=note-actions]");
@@ -737,7 +736,7 @@ test('editing the last note of a long thread scrolls its Save button into view',
     waitForCount($page, '@note-item', 10);
 
     $last = "[data-note-id=\"{$notes->last()->id}\"]";
-    $page->hover($last)->click("{$last} [data-testid=note-actions]");
+    $page->keys("{$last} [data-testid=note-actions]", 'Enter');
     waitFor($page, '@note-edit');
     $page->click('@note-edit');
     waitForState($page, '@note-edit-save', "(() => { const list = document.querySelector('[data-testid=notes-list]').getBoundingClientRect(); const save = element.getBoundingClientRect(); return save.top >= list.top - 1 && save.bottom <= list.bottom + 1; })()");

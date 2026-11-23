@@ -63,7 +63,8 @@ test('the post details deep link receives the latest saved post metrics', functi
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('publish/Index')
-            ->where('openPostDetailsId', $post->id)
+            ->where('openPostDetails.id', $post->id)
+            ->where('openPostDetails.metrics.metrics.saves.value', 6)
             ->loadDeferredProps(fn (Assert $reload) => $reload
                 ->where('posts.data.0.metrics.metrics.saves.value', 6)
                 ->etc())

@@ -4,8 +4,8 @@ import { computed } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import type { ComposerAccount } from '@/composables/usePostComposition';
 import { filterBySearch } from '@/lib/search';
+import type { ComposerAccount } from '@/types/post-composition';
 
 const props = defineProps<{
     accounts: ComposerAccount[];

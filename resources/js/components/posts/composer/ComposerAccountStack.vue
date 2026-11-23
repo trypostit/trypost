@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import type { ComposerAccount } from '@/composables/usePostComposition';
+import type { ComposerAccount } from '@/types/post-composition';
 
 defineProps<{
     accounts: ComposerAccount[];

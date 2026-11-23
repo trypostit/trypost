@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\X\ProblemType;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
@@ -20,7 +21,7 @@ class XPublicationMetricsCollector extends AbstractPublicationMetricsCollector
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, 'tweet.read', 'users.read');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $fields = ['public_metrics'];
 
         if ($publication->provider_published_at->greaterThan(CarbonImmutable::now('UTC')->subDays(30))) {

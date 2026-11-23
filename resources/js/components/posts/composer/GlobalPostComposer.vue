@@ -10,9 +10,9 @@ import {
     openPostComposer,
     postComposerRequest,
 } from '@/composables/useGlobalPostComposer';
-import type { PostComposition } from '@/composables/usePostComposition';
 import { store as storePost } from '@/routes/app/posts';
 import type { SharedData } from '@/types';
+import type { PostComposition } from '@/types/post-composition';
 
 const page = usePage<SharedData>();
 const composerData = useComposerData();
@@ -69,11 +69,17 @@ const submitComposition = (
     composition: PostComposition,
     createAnother: boolean,
     onSaved?: () => void,
+    leavesApp = false,
 ): void => {
+    if (submitting.value) {
+        return;
+    }
+
     submitting.value = true;
     const payload: Record<string, any> = { ...composition };
-    router.post(storePost.url(), payload, {
+    const options = {
         preserveScroll: true,
+        only: [] as string[],
         onSuccess: () => {
             clearComposerAutosave(
                 page.props.auth?.user?.id,
@@ -86,7 +92,11 @@ const submitComposition = (
         onFinish: () => {
             submitting.value = false;
         },
-    });
+    };
+    if (leavesApp) {
+        options.only = ['errors'];
+    }
+    router.post(storePost.url(), payload, options);
 };
 </script>
 

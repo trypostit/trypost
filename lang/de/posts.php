@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Beitrag :number im Thread',
             'unsupported' => 'Beitragsthreads sind in diesem Netzwerk nicht verfügbar.',
             'ghost_post' => 'Ein Ghost-Post kann keine Antworten haben. Entferne die Antworten oder wechsle den Typ zu Thread.',
-            'replies_permission' => 'Um einen Thread auf Threads zu veröffentlichen, verbinde diesen Kanal erneut und erlaube TryPost, Antworten zu posten.',
-            'replies_permission_admin' => 'Um einen Thread auf Threads zu veröffentlichen, muss ein Workspace-Admin diesen Kanal erneut verbinden und TryPost erlauben, Antworten zu posten.',
-            'save_and_reconnect' => 'Neu verbinden',
-            'reconnect_blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
-            'reconnect_pending' => 'Dieser Beitrag wartet auf Freigabe. Gib ihn frei oder verschiebe ihn in die Entwürfe, bevor du den Kanal erneut verbindest.',
             'reply_empty' => 'Eine Antwort im Thread ist leer.',
             'reply_too_long' => 'Eine Antwort überschreitet das Limit von :limit Zeichen um :over.',
             'too_many' => '{1} Dieser Beitrag nimmt nur einen Kommentar an.|[0,*] Dieser Beitrag nimmt bis zu :max Antworten an.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Dein Kommentar überschreitet das Limit von :limit Zeichen um :over.',
             'comment_empty' => 'Dein Kommentar ist leer.',
             'comment_attachments' => 'LinkedIn-Kommentare können keine Medien enthalten.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Entwurf speichern und neu verbinden',
+            'blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
+            'pending_approval' => 'Dieser Post wartet auf Freigabe. Prüfe die Anfrage, bevor du den Kanal erneut verbindest.',
         ],
 
         'pinterest' => [

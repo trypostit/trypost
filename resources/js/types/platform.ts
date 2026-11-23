@@ -1,3 +1,4 @@
+import type { GatedFeatureValue, MissingPermissions } from '@/types/channel-permission';
 import type { PollLimits } from '@/types/poll';
 
 export const Platform = {
@@ -19,6 +20,23 @@ export const Platform = {
 } as const;
 
 export type PlatformValue = (typeof Platform)[keyof typeof Platform];
+
+/** The per-channel publishing config sent by PlatformConfigResource. */
+export interface PlatformConfig {
+    id: string;
+    platform: PlatformValue;
+    maxContentLength: number;
+    maxHashtags: number | null;
+    maxImages: number;
+    allowedMediaTypes: string[];
+    supportsTextOnly: boolean;
+    requiresContent: boolean;
+    publishConfig: PublishConfig;
+    missingPermissions: MissingPermissions;
+    disabledFeatures: GatedFeatureValue[];
+}
+
+export type PlatformConfigs = Partial<Record<string, PlatformConfig>>;
 
 /** What `Platform::publishConfig()` serves for an account: each network fills only its own keys. */
 export interface PublishConfig {

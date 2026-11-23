@@ -2,87 +2,21 @@ import { computed, ref } from 'vue';
 
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
-import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import { Platform, type PlatformValue } from '@/types/platform';
 import {
     PostStatus,
     type QueuePositionValue,
-    type ScheduleModeValue,
 } from '@/types/post';
-import type { PostingSchedule } from '@/types/posting-schedule';
-import type { VerifiedBadge } from '@/types/social-account';
-import type { SocialAccountStatusValue } from '@/types/social-account-status';
-
-export interface ComposerAccount {
-    id: string;
-    platform: PlatformValue;
-    display_name: string;
-    username: string;
-    display_label: string;
-    handle_label: string;
-    avatar_url: string | null;
-    verified_badge?: VerifiedBadge | null;
-    status?: SocialAccountStatusValue | null;
-    has_posting_schedule?: boolean;
-    timezone?: string;
-    posting_schedule?: PostingSchedule | null;
-}
-
-export interface DestinationDraft {
-    social_account_id: string;
-    content_type: ContentTypeValue;
-    meta: Record<string, any>;
-    content?: string;
-    media?: MediaItem[];
-}
-
-export interface PostComposition {
-    content: string;
-    media: MediaItem[];
-    scheduled_at: string | null;
-    queue?: QueuePositionValue | null;
-    queue_slot?: string;
-    status:
-        | typeof PostStatus.Draft
-        | typeof PostStatus.Scheduled
-        | typeof PostStatus.Publishing;
-    label_ids: string[];
-    destinations: DestinationDraft[];
-}
-
-export interface ComposerInitialPost {
-    content: string;
-    media: MediaItem[];
-    scheduled_at: string | null;
-    status: string;
-    schedule_mode?: ScheduleModeValue | null;
-    queue_position?: QueuePositionValue | null;
-    social_account_id: string;
-    content_type?: ContentTypeValue;
-    meta: Record<string, any>;
-    label_ids: string[];
-}
-
-export interface ComposerInitialDraft {
-    content: string;
-    media: MediaItem[];
-    scheduled_at: string | null;
-    label_ids: string[];
-}
-
-export type DestinationOverride = Partial<
-    Pick<DestinationDraft, 'content' | 'media' | 'content_type' | 'meta'>
->;
-
-type Override = DestinationOverride;
-
-export interface NetworkGroup {
-    key: string;
-    platform: PlatformValue;
-    accounts: ComposerAccount[];
-    anchor: ComposerAccount;
-}
+import type {
+    ComposerAccount,
+    ComposerInitialDraft,
+    ComposerInitialPost,
+    DestinationDraft,
+    DestinationOverride,
+    NetworkGroup,
+    PostComposition,
+} from '@/types/post-composition';
 
 /** Platforms whose settings hold account-owned values (board, channel, creator); they never fan out. */
 export const ACCOUNT_SCOPED_SETTINGS: readonly string[] = [
@@ -108,7 +42,7 @@ export const usePostComposition = (
     const selectedAccountIds = ref<string[]>(
         initial ? [initial.social_account_id] : [],
     );
-    const overrides = ref<Record<string, Override>>(
+    const overrides = ref<Record<string, DestinationOverride>>(
         initial
             ? {
                   [initial.social_account_id]: {
@@ -173,12 +107,12 @@ export const usePostComposition = (
     const groupFor = (key: string | null): NetworkGroup | undefined =>
         networkGroups.value.find((group) => group.key === key);
 
-    const ownsKey = (accountId: string, key: keyof Override): boolean =>
+    const ownsKey = (accountId: string, key: keyof DestinationOverride): boolean =>
         owns(overrides.value[accountId] ?? {}, key);
 
     const firstOwner = (
         group: NetworkGroup,
-        key: keyof Override,
+        key: keyof DestinationOverride,
     ): ComposerAccount | undefined =>
         group.accounts.find((account) => ownsKey(account.id, key));
 
@@ -188,17 +122,17 @@ export const usePostComposition = (
             selectedAccountIds.value.some((id) => ownsKey(id, 'content')),
     );
 
-    const writeOverride = (accountId: string, patch: Override): void => {
+    const writeOverride = (accountId: string, patch: DestinationOverride): void => {
         overrides.value = {
             ...overrides.value,
             [accountId]: { ...(overrides.value[accountId] ?? {}), ...patch },
         };
     };
 
-    const setGroupOverride = <K extends keyof Override>(
+    const setGroupOverride = <K extends keyof DestinationOverride>(
         key: string,
         field: K,
-        value: Override[K],
+        value: DestinationOverride[K],
         accountId: string | null = null,
     ): void => {
         const group = groupFor(key);
@@ -213,7 +147,7 @@ export const usePostComposition = (
             const target =
                 group.accounts.find((account) => account.id === accountId) ??
                 group.anchor;
-            writeOverride(target.id, { meta: value } as Override);
+            writeOverride(target.id, { meta: value } as DestinationOverride);
 
             return;
         }
@@ -230,12 +164,12 @@ export const usePostComposition = (
         }
 
         group.accounts.forEach((account) =>
-            writeOverride(account.id, { [field]: value } as Override),
+            writeOverride(account.id, { [field]: value } as DestinationOverride),
         );
     };
 
     const unifyGroup = (group: NetworkGroup): void => {
-        const fields: (keyof Override)[] = [
+        const fields: (keyof DestinationOverride)[] = [
             'content',
             'media',
             'content_type',
@@ -250,7 +184,7 @@ export const usePostComposition = (
             const source = owner ? (next[owner.id] ?? {}) : null;
 
             group.accounts.forEach((account) => {
-                const own: Override = { ...(next[account.id] ?? {}) };
+                const own: DestinationOverride = { ...(next[account.id] ?? {}) };
                 if (source && owns(source, field)) {
                     Object.assign(own, {
                         [field]:

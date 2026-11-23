@@ -51,11 +51,28 @@ test('resume keeps the longest matching prefix', function () {
         ['hash' => 'h2', 'id' => '3'],
     ]];
 
-    expect(ThreadProgress::resumable($stored, ['h0', 'h1', 'h2', 'h3']))->toHaveCount(3)
-        ->and(ThreadProgress::resumable($stored, ['h0', 'changed', 'h2']))->toBe([['hash' => 'h0', 'id' => '1']])
-        ->and(ThreadProgress::resumable($stored, ['other']))->toBe([])
-        ->and(ThreadProgress::resumable(null, ['h0']))->toBe([]);
+    expect(ThreadProgress::resumable($stored, ['h1', 'h2', 'h3']))->toHaveCount(3)
+        ->and(ThreadProgress::resumable($stored, ['changed', 'h2']))->toBe([['hash' => 'h0', 'id' => '1']])
+        ->and(ThreadProgress::resumable($stored, []))->toBe([['hash' => 'h0', 'id' => '1']])
+        ->and(ThreadProgress::resumable(null, ['h1']))->toBe([]);
 });
+
+test('a thread resumes only up to the first missing position', function () {
+    $root = ['hash' => 'h0', 'id' => '1'];
+    $reply = ['hash' => 'h2', 'id' => '3'];
+    $context = [ThreadProgress::KEY => [0 => $root, 2 => $reply]];
+
+    expect(ThreadProgress::resumable($context, ['h1', 'h2']))->toBe([$root])
+        ->and(ThreadProgress::resumable([ThreadProgress::KEY => [2 => $reply]], ['h1', 'h2']))->toBe([]);
+});
+
+test('a published root needs its remote id and a recorded hash', function (array $root, bool $published) {
+    expect(ThreadProgress::hasPublishedRoot([ThreadProgress::KEY => [$root]]))->toBe($published);
+})->with([
+    'complete root' => [['hash' => 'h0', 'id' => '1'], true],
+    'missing remote id' => [['hash' => 'h0'], false],
+    'blank hash' => [['hash' => ' ', 'id' => '1'], false],
+]);
 
 test('a segment without a poll keeps the checkpoint hash it had before polls, and a poll changes it', function () {
     $poll = ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60];
@@ -121,3 +138,31 @@ test('a reply publishes as its network post type and takes that type media rules
         ->and(ThreadReplies::mediaErrors(Platform::X, ['thread_replies' => ['Two', ['text' => 'Three', 'media' => array_fill(0, 5, $image)]]], null))
         ->toBe(['thread_replies.1.media' => __('posts.form.warnings.max_files_exceeded', ['max' => 4, 'current' => 5])]);
 });
+
+test('how many replies a network takes comes from its replies setting', function () {
+    config(['trypost.platforms.bluesky.replies.max' => 3]);
+
+    expect(ThreadReplies::maxReplies(Platform::Bluesky))->toBe(3)
+        ->and(ThreadReplies::maxReplies(Platform::Telegram))->toBe(0);
+});
+
+test('a post type that stands alone refuses replies with its own message', function () {
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.reply_empty']]);
+
+    expect(ThreadReplies::violation(Platform::X, ContentType::XPoll, ['thread_replies' => ['second']]))
+        ->toBe(['thread_replies', __('posts.form.thread.reply_empty')])
+        ->and(ThreadReplies::violation(Platform::X, ContentType::XPost, ['thread_replies' => ['second']]))->toBeNull()
+        ->and(ThreadReplies::violation(Platform::X, ContentType::XPoll, []))->toBeNull();
+});
+
+test('an omitted content type still validates replies against the default post type', function () {
+    config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPost->value => 'posts.form.thread.reply_empty']]);
+
+    expect(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['second']]))
+        ->toBe(['thread_replies', __('posts.form.thread.reply_empty')]);
+});
+
+test('every network that chains replies sets how many it takes, and none sets more than the ceiling', function (Platform $platform) {
+    expect(ThreadReplies::maxReplies($platform) > 0)->toBe(filled(ThreadReplies::replyContentType($platform)))
+        ->and(ThreadReplies::maxReplies($platform))->toBeLessThanOrEqual(ThreadReplies::MAX_REPLIES);
+})->with(Platform::cases());

@@ -320,3 +320,16 @@ test('a fresh bundle reflects the new channel time zone', function () {
         ->assertJsonPath("composer.accounts.{$this->pinterest->id}.timezone", 'Asia/Tokyo')
         ->assertJsonPath('composerKey', ComposerResource::key($this->workspace));
 });
+
+test('the live composer refreshes its permissions when the configured scopes change', function () {
+    $staleKey = ComposerResource::key($this->workspace);
+    config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('app.posts.composer.live', ['key' => $staleKey]))
+        ->assertOk()
+        ->assertJsonPath("composer.accounts.{$this->tiktok->id}.platform_config.disabledFeatures", [
+            'followers', 'post_insights', 'post_history',
+        ])
+        ->assertJsonPath('composerKey', ComposerResource::key($this->workspace));
+});

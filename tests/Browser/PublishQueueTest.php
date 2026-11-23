@@ -689,6 +689,37 @@ test('dropping a post on a slot taken meanwhile is rolled back and reported', fu
     $page->assertNoJavaScriptErrors();
 });
 
+test('a network failure restores the original queue slot and reports the failed move', function () {
+    [$user, , $channel] = publishQueueSetup();
+    publishQueuePost($user, $channel);
+    $slot = $channel->posting_schedule->nextSlots(now()->addMinute(), $channel->timezone, 3)[2];
+    $when = $slot->addMinutes(90);
+    $post = publishQueueCustomPost($user, $channel, $when);
+    $key = publishQueueSlotKey($channel, $slot);
+    $this->actingAs($user);
+    $page = publishQueueVisitWithCleanStorage(route('app.channels.publish', $channel));
+    waitFor($page, "@post-drag-handle-{$post->id}");
+    waitFor($page, "@queue-slot-{$key}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, ...args) {
+                open.call(this, method, ...args);
+                if (method.toUpperCase() === 'PUT' && String(args[0]).endsWith('/queue/slot')) {
+                    this.send = () => {
+                        this.dispatchEvent(new ProgressEvent('error'));
+                    };
+                }
+            };
+        })()
+        JS);
+    $page->drag("@post-card-{$post->id}", "@queue-slot-{$key}");
+    waitForText($page, '@queue-reorder-error-toast', __('posts.errors.queue_busy'));
+
+    expect($post->fresh()->scheduled_at->equalTo($when))->toBeTrue();
+    $page->assertVisible("@queue-slot-{$key}")->assertNoJavaScriptErrors();
+});
+
 test('dragging a queued post onto a later free slot keeps it there and leaves the others in place', function () {
     [$user, , $channel] = publishQueueSetup();
     $first = publishQueuePost($user, $channel);
@@ -846,6 +877,29 @@ test('a google business post waiting for review says google is reviewing it', fu
         ->assertNotPresent("@post-publishing-progress-{$inReview->id}")
         ->assertDontSeeIn("@post-publishing-{$inReview->id}", __('posts.publish.publishing_on', ['network' => $channel->platform->label()]))
         ->assertNoJavaScriptErrors();
+});
+
+test('linked post details follow publication updates without reopening after dismissal', function () {
+    [$user, $workspace, $channel] = publishQueueSetup();
+    $post = Post::factory()->forAccount($channel)->publishing()->create(['user_id' => $user->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['post' => $post->id]));
+    $details = "@post-details-{$post->id}";
+    $status = "@post-details-status-{$post->id}";
+    waitForText($page, $status, __('posts.status.publishing'));
+
+    $post->markAsPublished();
+    $updated = "window.Pusher.instances[0].channels.channels['private-workspace.{$workspace->id}'].emit('post.platform.status.updated', { post_id: '{$post->id}' })";
+    $page->script($updated);
+    waitForText($page, $status, __('posts.status.published'));
+    $page->keys($details, 'Escape');
+    waitForGone($page, $details);
+
+    $post->update(['content' => 'Updated from the network']);
+    $page->script($updated);
+    waitForText($page, "@post-card-{$post->id}", 'Updated from the network');
+    $page->assertMissing($details)->assertNoJavaScriptErrors();
 });
 
 test('a publishing post sits in its own queue group and moves to sent once it settles', function () {

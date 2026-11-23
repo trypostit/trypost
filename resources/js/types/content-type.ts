@@ -29,7 +29,9 @@ export const ContentType = {
 
 export type ContentTypeValue = (typeof ContentType)[keyof typeof ContentType];
 
-const CONTENT_TYPE_VALUES: ReadonlySet<string> = new Set(Object.values(ContentType));
+const CONTENT_TYPE_VALUES: ReadonlySet<string> = new Set(
+    Object.values(ContentType),
+);
 
 /** Whether a value read as text (a radio, a URL) is one of the content types. */
 export const isContentType = (value: string): value is ContentTypeValue =>
@@ -42,12 +44,26 @@ export const CAPTIONLESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /** Content types that carry no media, with why a card holding media cannot switch to one (`maxMediaCount()` 0 on the server). */
-export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<Partial<Record<ContentTypeValue, string>>> = {
+export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<
+    Partial<Record<ContentTypeValue, string>>
+> = {
     [ContentType.ThreadsGhostPost]: 'posts.form.threads.ghost_post_attachments',
     [ContentType.XPoll]: 'posts.form.poll.attachments',
     [ContentType.MastodonPoll]: 'posts.form.poll.attachments',
     [ContentType.ThreadsPoll]: 'posts.form.poll.attachments',
     [ContentType.LinkedInComment]: 'posts.form.thread.comment_attachments',
+};
+
+export type PostFormTranslationKey = `posts.form.${string}`;
+
+/**
+ * Post types that take no thread replies on a network that otherwise does,
+ * with why (each network's `replies.standalone_types` on the server).
+ */
+export const STANDALONE_CONTENT_TYPES: {
+    readonly [Type in ContentTypeValue]?: PostFormTranslationKey;
+} = {
+    [ContentType.ThreadsGhostPost]: 'posts.form.thread.ghost_post',
 };
 
 /** Content types that are a poll (`ContentType::isPoll()` on the server): the post text is the question and there is no media. */
@@ -58,7 +74,9 @@ export const POLL_CONTENT_TYPES: ReadonlySet<ContentTypeValue> = new Set([
 ]);
 
 /** Each network's poll with the plain post it goes back to when its poll is removed. */
-export const POLL_POST_CONTENT_TYPES: Readonly<Partial<Record<ContentTypeValue, ContentTypeValue>>> = {
+export const POLL_POST_CONTENT_TYPES: Readonly<
+    Partial<Record<ContentTypeValue, ContentTypeValue>>
+> = {
     [ContentType.XPoll]: ContentType.XPost,
     [ContentType.MastodonPoll]: ContentType.MastodonPost,
     [ContentType.ThreadsPoll]: ContentType.ThreadsPost,

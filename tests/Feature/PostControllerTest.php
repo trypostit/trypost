@@ -1283,13 +1283,29 @@ test('the post details deep link opens a published post on the sent tab', functi
         ->assertInertia(fn ($page) => $page
             ->component('publish/Index', false)
             ->where('tab', 'sent')
-            ->where('openPostDetailsId', $post->id)
+            ->where('openPostDetails.id', $post->id)
             ->where('openPostNotesId', null)
             ->loadDeferredProps(fn ($reload) => $reload
                 ->has('posts.data', 1)
                 ->where('posts.data.0.id', $post->id)
                 ->where('posts.data.0.social_account_id', $this->socialAccount->id))
         );
+});
+
+test('post details respect the channel page scope while the all channels list keeps its filters', function () {
+    $post = Post::factory()->forAccount($this->socialAccount)->published()->create(['user_id' => $this->user->id]);
+    $otherChannel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    $this->actingAs($this->user);
+
+    $this->get(route('app.posts.index', ['post' => $post->id, 'channels' => [$otherChannel->id]]))
+        ->assertInertia(fn ($page) => $page
+            ->where('tab', 'sent')
+            ->where('filters.channels', [$otherChannel->id])
+            ->where('openPostDetails.id', $post->id)
+            ->loadDeferredProps(fn ($reload) => $reload->has('posts.data', 0)));
+
+    $this->get(route('app.channels.publish', [$otherChannel, 'post' => $post->id, 'tab' => 'sent']))
+        ->assertInertia(fn ($page) => $page->where('openPostDetails', null)->has('posts.data', 0));
 });
 
 test('the post details deep link exposes the content type of the post', function () {
@@ -1309,6 +1325,7 @@ test('the post details deep link exposes the content type of the post', function
         ->get(route('app.posts.index', ['post' => $post->id]))
         ->assertInertia(fn ($page) => $page
             ->component('publish/Index', false)
+            ->where('openPostDetails.content_type', ContentType::FacebookReel->value)
             ->loadDeferredProps(fn ($reload) => $reload
                 ->where('posts.data.0.content_type', ContentType::FacebookReel->value))
         );
@@ -1325,7 +1342,7 @@ test('the post details deep link picks the tab of the post status', function (Po
         ->get(route('app.posts.index', ['post' => $post->id]))
         ->assertInertia(fn ($page) => $page
             ->where('tab', $tab)
-            ->where('openPostDetailsId', $post->id)
+            ->where('openPostDetails.id', $post->id)
         );
 })->with([
     'draft' => [PostStatus::Draft, 'drafts'],
@@ -1372,7 +1389,7 @@ test('the post details deep link does not expose a post from another workspace',
     $this->actingAs($this->user)
         ->get(route('app.posts.index', ['post' => $post->id, 'tab' => 'sent']))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('hasData', false)->has('posts.data', 0));
+        ->assertInertia(fn ($page) => $page->where('openPostDetails', null)->where('hasData', false)->has('posts.data', 0));
 });
 
 test('update post goes back to the queue after publishing without opening the post details', function () {

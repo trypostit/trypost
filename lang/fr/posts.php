@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Publication :number du fil',
             'unsupported' => 'Les fils de publications ne sont pas disponibles sur ce réseau.',
             'ghost_post' => 'Un post fantôme ne peut pas avoir de réponses. Retirez les réponses ou passez le type à Fil.',
-            'replies_permission' => 'Pour publier un fil sur Threads, reconnectez ce canal et autorisez TryPost à publier des réponses.',
-            'replies_permission_admin' => 'Pour publier un fil sur Threads, un administrateur de l\'espace de travail doit reconnecter ce canal et autoriser TryPost à publier des réponses.',
-            'save_and_reconnect' => 'Reconnecter',
-            'reconnect_blocked' => 'Cette publication ne peut pas encore être enregistrée. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
-            'reconnect_pending' => 'Cette publication attend une approbation. Approuvez-la ou passez-la en brouillon avant de reconnecter le canal.',
             'reply_empty' => 'Une réponse du fil est vide.',
             'reply_too_long' => 'Une réponse dépasse la limite de :limit caractères de :over.',
             'too_many' => '{1} Cette publication n’accepte qu’un commentaire.|[0,*] Cette publication accepte jusqu’à :max réponses.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Votre commentaire dépasse la limite de :limit caractères de :over.',
             'comment_empty' => 'Votre commentaire est vide.',
             'comment_attachments' => 'Les commentaires LinkedIn ne peuvent pas contenir de médias.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Enregistrer le brouillon et reconnecter',
+            'blocked' => 'Cette publication ne peut pas encore être enregistrée. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
+            'pending_approval' => 'Ce post est en attente d’approbation. Examinez la demande avant de reconnecter le canal.',
         ],
 
         'pinterest' => [

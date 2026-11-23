@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Support\ThreadReplies;
 use Symfony\Component\Process\ExecutableFinder;
@@ -32,5 +33,48 @@ test('the composer threads every network the way the server does', function () {
         ]];
     })->all();
 
-    expect($composer)->toBe($server);
+    expect($composer['platforms'])->toBe($server)
+        ->and($composer['standalone_types'])->toBe(collect(Platform::cases())->flatMap(fn (Platform $platform): array => config("trypost.platforms.{$platform->value}.replies.standalone_types", []))->all())
+        ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
+        ->and($composer['standalone_key'])->toBeNull()
+        ->and($composer['replies_off_key'])->toBe('posts.form.thread.unsupported')
+        ->and($composer['unsupported_story_keys'])->toBe(['posts.form.thread.unsupported', 'posts.form.thread.unsupported'])
+        ->and($composer['permission_keys'])->toBe(serverPermissionKeys());
 });
+
+/**
+ * What the server refuses for each of the harness's cases: the first feature
+ * (`GatedFeature::cases()` order) the post uses and the channel lacks, shown
+ * with the harness's copy for it, the member's when the user cannot reconnect.
+ *
+ * @return array<string, string|null>
+ */
+function serverPermissionKeys(): array
+{
+    $thread = ['thread_replies' => [['text' => 'Second', 'media' => []]]];
+    $copy = [
+        GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
+        GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
+        GatedFeature::Publish->value => ['publish', 'publish member'],
+    ];
+    $cases = [
+        'allowed' => [$thread, [], true],
+        'not_used' => [[], [GatedFeature::ThreadReplies], true],
+        'publish_before_replies' => [$thread, [GatedFeature::ThreadReplies, GatedFeature::Publish], true],
+        'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
+        'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
+        'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
+    ];
+
+    return collect($cases)->map(function (array $case) use ($copy): ?string {
+        [$meta, $missing, $canReconnect] = $case;
+        $feature = collect(GatedFeature::cases())
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta) && collect($missing)->contains($feature));
+
+        if (blank($feature)) {
+            return null;
+        }
+
+        return data_get($copy, "{$feature->value}.".($canReconnect ? 0 : 1));
+    })->all();
+}

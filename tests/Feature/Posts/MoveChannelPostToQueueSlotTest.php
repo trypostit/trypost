@@ -87,6 +87,22 @@ test('a custom post dropped on a free slot becomes a queue post at that slot', f
         ->and($this->b->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-05T12:00:00+00:00');
 });
 
+test('moving to a slot leaves a post in drafts when another request took it off the schedule', function () {
+    $post = moveToSlotCustomPost($this->channel, $this->user);
+
+    Post::retrieved(function (Post $loaded) use ($post): void {
+        if ($loaded->is($post) && $loaded->status === PostStatus::Scheduled) {
+            Post::query()->whereKey($post->id)->update(['status' => PostStatus::Draft, 'scheduled_at' => null, 'schedule_mode' => null]);
+        }
+    });
+
+    $this->actingAs($this->user)
+        ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $post->id, 'slot_at' => '2026-10-06T12:00:00Z'])
+        ->assertSessionHasErrors(['slot_at' => __('posts.errors.queue_order_stale')]);
+
+    expect($post->fresh())->status->toBe(PostStatus::Draft)->scheduled_at->toBeNull();
+});
+
 test('a queued post dropped on a later free slot moves there and leaves the others in place', function () {
     $this->actingAs($this->user)
         ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $this->a->id, 'slot_at' => '2026-10-05T18:00:00Z'])
@@ -254,4 +270,15 @@ test('a queued post moved by a member who needs approval goes to approval withou
     expect($this->a->fresh()->status)->toBe(PostStatus::PendingApproval)
         ->and($this->a->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-06T12:00:00+00:00')
         ->and($this->b->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-05T12:00:00+00:00');
+});
+
+test('a queued post on a channel without the publish scope is not moved to a slot and the refusal names the network', function () {
+    $this->channel->update(['scopes' => ['an.unrelated.scope']]);
+    $before = $this->a->scheduled_at;
+
+    $this->actingAs($this->user)
+        ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $this->a->id, 'slot_at' => now('UTC')->addDay()->setTime(18, 0)->toIso8601String()])
+        ->assertSessionHasErrors(['social_account_id' => __('channels.permissions.publish.message', ['network' => $this->channel->platform->label()])]);
+
+    expect($this->a->fresh()->scheduled_at->equalTo($before))->toBeTrue();
 });

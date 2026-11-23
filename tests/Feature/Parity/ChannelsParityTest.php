@@ -40,8 +40,22 @@ test('listing channels returns the same accounts on the api and mcp, including t
     TryPostServer::actingAs($this->user)->tool(ListSocialAccountsTool::class)->assertOk()->assertStructuredContent(parityMcpPage('social_accounts', $apiResponse));
 
     expect(collect($api)->pluck('id')->sort()->values()->all())->toBe(collect([$first->id, $second->id])->sort()->values()->all())
-        ->and(array_keys($api[0]))->toEqual(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal', 'max_content_length', 'long_posts', 'verified_badge'])
+        ->and(array_keys($api[0]))->toEqual(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal', 'max_content_length', 'long_posts', 'verified_badge', 'missing_permissions'])
         ->and(collect($api)->firstWhere('id', $first->id)['timezone'])->toBe('America/Sao_Paulo');
+});
+
+test('the api and mcp list what a channel cannot do until it is reconnected', function () {
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+    ]);
+
+    auth()->forgetGuards();
+    $apiResponse = $this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.index'))->assertOk();
+    auth()->forgetGuards();
+
+    TryPostServer::actingAs($this->user)->tool(ListSocialAccountsTool::class)->assertOk()->assertStructuredContent(parityMcpPage('social_accounts', $apiResponse));
+    expect(collect($apiResponse->json('data'))->firstWhere('id', $account->id)['missing_permissions'])->toBe(['post_insights']);
 });
 
 test('the api exposes exactly the channel list, boards, instagram audio, discord channels, insights, posting schedule and queue routes', function () {

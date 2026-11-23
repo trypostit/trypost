@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\MissingPermissionException;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -1343,7 +1344,7 @@ test('a threads thread on an account without the replies permission fails before
     Http::fake();
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
-        ->toThrow(ContentLimitException::class, __('posts.form.thread.replies_permission'));
+        ->toThrow(MissingPermissionException::class, __('channels.permissions.thread_replies.message', ['network' => Platform::Threads->label()]));
     Http::assertNothingSent();
 });
 

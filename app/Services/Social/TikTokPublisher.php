@@ -18,6 +18,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -72,7 +73,7 @@ class TikTokPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

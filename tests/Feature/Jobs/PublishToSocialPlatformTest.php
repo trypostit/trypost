@@ -8,9 +8,11 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Enums\Webhook\EventType;
 use App\Events\PostStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -21,6 +23,7 @@ use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
@@ -31,6 +34,7 @@ use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\BlueskyPublisher;
@@ -1343,7 +1347,7 @@ test('terminal TikTok account guards keep derivatives while a publish_id can be 
         ->and($platform->error_context['tiktok_publish_id'] ?? null)->toBe("publish-{$guard}");
 
     if ($guard === 'missing_scopes') {
-        expect($platform->error_message)->toBe('Missing permissions: video.publish. Please reconnect your account.')
+        expect($platform->error_message)->toBe(__('channels.permissions.publish.message', ['network' => Platform::TikTok->label()]))
             ->and($platform->error_context['category'] ?? null)->toBe('permission')
             ->and($platform->error_context['missing_scopes'] ?? null)->toBe(['video.publish']);
 
@@ -1977,9 +1981,36 @@ test('publish to social platform fails when scopes are missing', function () {
 
     $this->post->refresh();
     expect($this->post->publish_status)->toBe(PlatformStatus::Failed);
-    expect($this->post->error_message)->toContain('Missing permissions');
+    expect($this->post->error_message)->toBe(__('channels.permissions.publish.message', ['network' => $this->post->platform->label()]));
     expect($this->post->error_context['category'])->toBe('permission');
     expect($this->post->error_context['missing_scopes'])->toContain('w_member_social');
+});
+
+test('a post failed for a missing publish grant emails the workspace and sends post.failed without calling the network', function () {
+    Queue::fake([SendNotification::class, DispatchWebhook::class]);
+    Http::fake();
+    Webhook::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'events' => [EventType::PostFailed->value],
+    ]);
+    $this->socialAccount->update(['scopes' => ['openid', 'profile']]);
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    expect($this->post->fresh())
+        ->status->toBe(PostStatus::Failed)
+        ->error_context->category->toBe(ErrorCategory::Permission->value);
+    Queue::assertPushed(
+        SendNotification::class,
+        fn (SendNotification $job): bool => $job->type === Type::PostFailed && $job->mailable instanceof PostPublishFailed,
+    );
+    Queue::assertPushed(
+        DispatchWebhook::class,
+        fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostFailed->value
+            && data_get($job->payload, 'id') === $this->post->id
+            && data_get($job->payload, 'error_message') === __('channels.permissions.publish.message', ['network' => $this->post->platform->label()]),
+    );
+    Http::assertNothingSent();
 });
 
 test('publish to social platform saves error context on token expired', function () {
@@ -2403,6 +2434,36 @@ test('a mastodon thread that fails midway is visible and its retry never posts a
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'status') === 'Three' && data_get($request->data(), 'in_reply_to_id') === '2');
 });
 
+test('a thread retry still reports live segments when replies are disabled', function () {
+    Event::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update(['content' => 'Root']);
+    $target = publishJobRetarget($this->post, $account, ['meta' => ['thread_replies' => ['Reply']]]);
+    $instance = data_get($account->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
+        ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
+        ->push(['error' => 'Validation failed'], 422)]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    config(['trypost.platforms.mastodon.permissions.thread_replies.scopes' => ['write:replies']]);
+    Bus::fake([PublishToSocialPlatform::class]);
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+        ->assertSuccessful();
+    (new PublishToSocialPlatform($target->fresh()))->handle();
+
+    $failed = $target->fresh();
+    expect($failed->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.form.thread.unsupported'),
+        ]))
+        ->and(collect(data_get($failed->error_context, 'thread_progress'))->pluck('id')->all())->toBe(['1']);
+    Http::assertSentCount(2);
+});
+
 test('the reply ids are written in the same update that publishes the target', function () {
     Event::fake();
     $publisher = Mockery::mock(LinkedInPublisher::class);
@@ -2635,4 +2696,22 @@ test('a linkedin comment still refused after five minutes fails the publish with
             'error' => __('posts.errors.platform_unavailable_exhausted'),
         ]));
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
+});
+
+test('a thread on a channel without the replies scope fails as a permission before anything goes out', function () {
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
+    $account = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content' => 'First post',
+        'meta' => ['thread_replies' => [['text' => 'Second post', 'media' => []]]],
+    ]);
+    Http::fake();
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    $post->refresh();
+    expect($post->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($post->error_message)->toBe(__('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]))
+        ->and($post->error_context['category'] ?? null)->toBe('permission');
+    Http::assertNothingSent();
 });

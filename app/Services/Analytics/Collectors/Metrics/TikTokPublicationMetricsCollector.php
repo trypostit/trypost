@@ -6,6 +6,7 @@ namespace App\Services\Analytics\Collectors\Metrics;
 
 use App\Dto\Analytics\PublicationMetricObservation;
 use App\Enums\Analytics\MetricKey;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use Carbon\CarbonImmutable;
@@ -15,7 +16,7 @@ class TikTokPublicationMetricsCollector extends AbstractPublicationMetricsCollec
     public function collect(AnalyticsPublication $publication, CarbonImmutable $date): PublicationMetricObservation
     {
         $account = $this->account($publication);
-        AnalyticsCollectionException::unlessGranted($account, 'video.list');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::PostInsights);
         $videoId = $this->publicVideoId($publication);
 
         $response = $this->post($account,

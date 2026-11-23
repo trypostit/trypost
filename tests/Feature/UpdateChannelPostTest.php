@@ -39,7 +39,7 @@ test('editing one Instagram post changes its type, media and caption without cha
         'content' => 'Legenda do Reel',
         'media' => [MediaItem::fromMedia($video)->toArray()],
         'content_type' => ContentType::InstagramReel->value,
-    ]);
+    ], $user);
 
     expect($posts[0]->fresh()->content)->toBe('Legenda do Reel')
         ->and($posts[0]->fresh()->status)->toBe(PostStatus::Scheduled)
@@ -66,7 +66,7 @@ test('an incompatible type and media leaves the edited post unchanged', function
         'content' => 'Depois',
         'media' => [MediaItem::fromMedia($image)->toArray()],
         'content_type' => ContentType::InstagramReel->value,
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect($post->fresh()->content)->toBe('Antes')
         ->and($post->fresh()->status)->toBe(PostStatus::Draft)
@@ -85,12 +85,12 @@ test('the selected social account cannot change during edit', function () {
     expect(fn () => UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Draft->value,
         'social_account_id' => $accounts[1]->id,
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect(fn () => UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Draft->value,
         'platforms' => [['social_account_id' => $accounts[1]->id]],
-    ]))->toThrow(ValidationException::class);
+    ], $user))->toThrow(ValidationException::class);
 
     expect($post->fresh()->social_account_id)->toBe($accounts[0]->id);
 });
@@ -109,7 +109,7 @@ test('a settled post cannot use the independent editor', function () {
     expect(UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Draft->value,
         'content_type' => ContentType::InstagramStory->value,
-    ])['action'])->toBe(PostAction::Finalized)
+    ], $user)['action'])->toBe(PostAction::Finalized)
         ->and($post->fresh()->content_type)->toBe(ContentType::InstagramFeed);
 });
 
@@ -127,7 +127,7 @@ test('an edit stores only known meta keys and keeps the system-written ones', fu
     UpdatePost::execute($workspace, $post, [
         'status' => 'draft',
         'meta' => ['bogus_key' => 'zzz', 'aspect_ratio' => '1:1', 'is_ai_generated' => true, 'reactions' => []],
-    ]);
+    ], $user);
 
     expect($post->fresh()->meta)->toEqual([
         'is_ai_generated' => true,

@@ -9,6 +9,7 @@ use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Actions\Post\ImportExternalPosts;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Jobs\Post\ImportExternalPostMedia;
 use App\Models\AnalyticsSyncState;
@@ -16,6 +17,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use App\Support\Analytics\AnalyticsJobLog;
 use App\Support\Analytics\AnalyticsRateLimits;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -88,6 +90,12 @@ abstract class AbstractPublicationSync implements ShouldQueue
             return;
         }
 
+        if (! ChannelPermissions::permits($channel, GatedFeature::PostHistory)) {
+            $sync->pause($this->syncStateId, $channel->id);
+
+            return;
+        }
+
         $capture = $sync->begin(
             $this->syncStateId,
             restartTerminal: $this->restartTerminal(),
@@ -135,19 +143,20 @@ abstract class AbstractPublicationSync implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        $state = AnalyticsSyncState::query()->find($this->syncStateId);
         $account = SocialAccount::query()->find($this->socialAccountId);
 
         if ($account) {
             app(AnalyticsJobLog::class)->record($account, $this->collector()->value, 'cursor:queue_failed', $this->attempts(), 'queue_failed');
         }
 
-        if ($state && $state->social_account_id === $this->socialAccountId && ! $state->isTerminal()) {
-            $state->update([
+        AnalyticsSyncState::query()
+            ->whereKey($this->syncStateId)
+            ->where('social_account_id', $this->socialAccountId)
+            ->pendingOrRunning()
+            ->update([
                 'status' => SyncStatus::Failed,
                 'last_error_category' => 'queue_failed',
             ]);
-        }
     }
 
     private function recordFailure(

@@ -11,6 +11,7 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
@@ -50,7 +51,7 @@ class PostCompositionValidator
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */
-    public static function validate(Workspace $workspace, array $composition, array $existingMedia = []): array
+    public static function validate(Workspace $workspace, User $actor, array $composition, array $existingMedia = []): array
     {
         Validator::make($composition, [
             'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
@@ -151,8 +152,9 @@ class PostCompositionValidator
             PostPlatformMetaRules::messages('destinations.*.meta'),
             PostPlatformMetaRules::attributes('destinations.*.meta'),
         );
-        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace): void {
+        $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace, $actor): void {
             $seen = [];
+            $canManageAccounts = null;
 
             foreach ($composition['destinations'] as $index => $destination) {
                 $accountId = $destination['social_account_id'];
@@ -229,6 +231,15 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $questionViolation);
                 } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
+                }
+
+                $blockedFeature = ChannelPermissions::featureBlockingPost($account, data_get($destination, 'meta', []));
+                if (filled($blockedFeature)) {
+                    $canManageAccounts ??= $actor->can('manageAccounts', $workspace);
+                    $validator->errors()->add(
+                        "{$key}.{$blockedFeature->postValidationField()}",
+                        ChannelPermissions::reconnectMessage($account->platform, $blockedFeature, $canManageAccounts),
+                    );
                 }
 
                 $metaViolation = PostPlatformMetaRules::requiredMetaViolation($account, $destination['meta'] ?? [], $contentType)

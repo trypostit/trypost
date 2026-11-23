@@ -18,6 +18,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\Mastodon\MastodonApi;
 use App\Support\Social\MastodonPoll;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -34,7 +35,7 @@ class MastodonPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

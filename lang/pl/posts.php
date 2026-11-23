@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Post :number w wątku',
             'unsupported' => 'Wątki postów nie są dostępne w tej sieci.',
             'ghost_post' => 'Post-duch nie może mieć odpowiedzi. Usuń odpowiedzi lub zmień typ na Wątek.',
-            'replies_permission' => 'Aby opublikować wątek w Threads, połącz ponownie ten kanał i zezwól TryPost na publikowanie odpowiedzi.',
-            'replies_permission_admin' => 'Aby opublikować wątek w Threads, administrator workspace\'u musi ponownie połączyć ten kanał i zezwolić TryPost na publikowanie odpowiedzi.',
-            'save_and_reconnect' => 'Zapisz i połącz',
-            'reconnect_blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
-            'reconnect_pending' => 'Ten post czeka na zatwierdzenie. Zatwierdź go lub przenieś do szkiców przed ponownym połączeniem kanału.',
             'reply_empty' => 'Odpowiedź w wątku jest pusta.',
             'reply_too_long' => 'Odpowiedź przekracza limit :limit znaków o :over.',
             'too_many' => '{1} Ten post przyjmuje tylko jeden komentarz.|[0,*] Ten post przyjmuje maksymalnie :max odpowiedzi.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Komentarz przekracza limit :limit znaków o :over.',
             'comment_empty' => 'Komentarz jest pusty.',
             'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Zapisz szkic i połącz ponownie',
+            'blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
+            'pending_approval' => 'Ten post czeka na zatwierdzenie. Rozpatrz prośbę przed ponownym połączeniem kanału.',
         ],
 
         'pinterest' => [

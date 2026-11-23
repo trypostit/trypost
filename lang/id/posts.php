@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Postingan ke-:number di thread',
             'unsupported' => 'Thread tidak tersedia di platform ini.',
             'ghost_post' => 'Ghost post tidak bisa punya balasan. Hapus balasannya atau ubah jenisnya ke Thread.',
-            'replies_permission' => 'Untuk memublikasikan utas di Threads, hubungkan kembali kanal ini dan izinkan TryPost memposting balasan.',
-            'replies_permission_admin' => 'Untuk memublikasikan utas di Threads, admin workspace perlu menghubungkan kembali kanal ini dan mengizinkan TryPost memposting balasan.',
-            'save_and_reconnect' => 'Simpan & hubungkan',
-            'reconnect_blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
-            'reconnect_pending' => 'Postingan ini menunggu persetujuan. Setujui atau pindahkan ke draf sebelum menghubungkan kembali kanal.',
             'reply_empty' => 'Ada balasan di thread yang kosong.',
             'reply_too_long' => 'Ada balasan yang melebihi batas :limit karakter sebanyak :over.',
             'too_many' => '{1} Postingan ini hanya bisa diberi satu komentar.|[0,*] Postingan ini bisa diberi maksimal :max balasan.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Komentar kamu melebihi batas :limit karakter sebanyak :over.',
             'comment_empty' => 'Komentar kamu kosong.',
             'comment_attachments' => 'Komentar LinkedIn tidak bisa memuat media.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Simpan draf & hubungkan kembali',
+            'blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
+            'pending_approval' => 'Postingan ini menunggu persetujuan. Tinjau permintaannya sebelum menghubungkan kembali kanal.',
         ],
 
         'pinterest' => [

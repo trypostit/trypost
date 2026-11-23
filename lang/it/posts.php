@@ -531,11 +531,6 @@ return [
             'reply_label' => 'Post :number del thread',
             'unsupported' => 'I thread di post non sono disponibili su questa rete.',
             'ghost_post' => 'Un post fantasma non può avere risposte. Rimuovi le risposte o cambia il tipo in Thread.',
-            'replies_permission' => 'Per pubblicare un thread su Threads, ricollega questo canale e consenti a TryPost di pubblicare risposte.',
-            'replies_permission_admin' => 'Per pubblicare un thread su Threads, un amministratore del workspace deve ricollegare questo canale e consentire a TryPost di pubblicare risposte.',
-            'save_and_reconnect' => 'Salva e ricollega',
-            'reconnect_blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
-            'reconnect_pending' => 'Questo post è in attesa di approvazione. Approvalo o spostalo nelle bozze prima di ricollegare il canale.',
             'reply_empty' => 'Una risposta del thread è vuota.',
             'reply_too_long' => 'Una risposta supera il limite di :limit caratteri di :over.',
             'too_many' => '{1} Questo post accetta un solo commento.|[0,*] Questo post accetta fino a :max risposte.',
@@ -546,6 +541,12 @@ return [
             'comment_too_long' => 'Il tuo commento supera il limite di :limit caratteri di :over.',
             'comment_empty' => 'Il tuo commento è vuoto.',
             'comment_attachments' => 'I commenti su LinkedIn non possono contenere media.',
+        ],
+
+        'reconnect' => [
+            'save' => 'Salva bozza e ricollega',
+            'blocked' => 'Questo post non può ancora essere salvato. Attendi la fine dei caricamenti e correggi ciò che è evidenziato, poi riprova.',
+            'pending_approval' => 'Questo post è in attesa di approvazione. Esamina la richiesta prima di ricollegare il canale.',
         ],
 
         'pinterest' => [

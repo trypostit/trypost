@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use App\Services\Social\Meta\GraphPaginator;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -189,6 +190,24 @@ test('graph paginator throws when a later request cannot connect', function () {
 
     GraphPaginator::all("{$graphApi}/me/accounts", [
         'access_token' => 'secret-token',
+    ]);
+})->throws(IncompleteMetaGraphPaginationException::class);
+
+test('graph paginator keeps the token out of the logged connection error', function () {
+    $graphApi = 'https://graph.facebook.com/v25.0';
+    $url = "{$graphApi}/me/accounts?access_token=secret-token&limit=100";
+
+    Log::shouldReceive('error')->once()->withArgs(function (string $message, array $context) {
+        return $message === 'Meta Graph pagination connection failed'
+            && ! str_contains((string) data_get($context, 'error'), 'secret-token')
+            && str_contains((string) data_get($context, 'error'), 'access_token=[REDACTED]');
+    });
+
+    Http::fake(fn () => throw new ConnectionException("cURL error 56: Recv failure: Connection reset by peer for {$url}"));
+
+    GraphPaginator::all("{$graphApi}/me/accounts", [
+        'access_token' => 'secret-token',
+        'limit' => 100,
     ]);
 })->throws(IncompleteMetaGraphPaginationException::class);
 

@@ -13,23 +13,23 @@ import ThreadsSettings from '@/components/posts/editor/ThreadsSettings.vue';
 import TikTokSettings from '@/components/posts/editor/TikTokSettings.vue';
 import YouTubeSettings from '@/components/posts/editor/YouTubeSettings.vue';
 import { useComposerLiveState } from '@/composables/useComposerData';
-import type {
-    ComposerAccount,
-    DestinationDraft,
-} from '@/composables/usePostComposition';
 import { isVideo } from '@/lib/mediaType';
 import type { PinterestBoardsPayload } from '@/types';
 import type { ChannelTikTokCreatorInfo } from '@/types/channel';
 import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { Platform } from '@/types/platform';
+import { Platform, type PlatformConfig } from '@/types/platform';
+import type {
+    ComposerAccount,
+    DestinationDraft,
+} from '@/types/post-composition';
 
 const props = withDefaults(
     defineProps<{
         account: ComposerAccount;
         destination: DestinationDraft & { content: string; media: MediaItem[] };
         platformIndex: number;
-        platformConfig?: Record<string, any> | null;
+        platformConfig?: PlatformConfig | null;
         pinterestBoards?: PinterestBoardsPayload | null;
         tiktokCreatorInfo?: ChannelTikTokCreatorInfo | null;
         disabled?: boolean;

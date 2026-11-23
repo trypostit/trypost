@@ -27,7 +27,9 @@ export const THREAD_PLATFORMS = [
 
 export type ThreadPlatform = (typeof THREAD_PLATFORMS)[number];
 
-const THREAD_PLATFORM_SET: ReadonlySet<PlatformValue> = new Set(THREAD_PLATFORMS);
+const THREAD_PLATFORM_SET: ReadonlySet<PlatformValue> = new Set(
+    THREAD_PLATFORMS,
+);
 
 /** Whether a network chains thread replies. */
 export const isThreadPlatform = (

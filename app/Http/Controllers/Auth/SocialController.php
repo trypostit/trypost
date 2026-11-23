@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Post\DeleteChannelPosts;
 use App\Actions\Post\Queue\ReflowChannelQueue;
 use App\Enums\Repurpose\Status as RepurposeStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\Post\QueueBusyException;
@@ -20,6 +21,8 @@ use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
+use App\Support\ChannelPermissions;
+use App\Support\OAuthScopes;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +41,7 @@ class SocialController extends Controller
 
     private const array CANCELLED_CONSENT_ERRORS = ['access_denied', 'user_cancelled_login', 'user_cancelled_authorize'];
 
-    private const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
+    protected const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
 
     /** The platform's API host, keyed in config by the enum value. */
     protected function graphApi(): string
@@ -221,16 +224,33 @@ class SocialController extends Controller
      * since an unknown grant is not a refusal.
      *
      * @param  array<int, string>|string|null  $reported
-     * @param  array<int, string>  $requested
      * @return array<int, string>
      */
-    protected function reportedScopes(array|string|null $reported, array $requested): array
+    protected function reportedScopes(array|string|null $reported): array
     {
-        $scopes = array_values(array_unique(array_filter(
-            preg_split('/[\s,]+/', implode(' ', (array) $reported)) ?: [],
-        )));
+        $scopes = collect(OAuthScopes::parse(OAuthScopes::spaceSeparated((array) $reported)))
+            ->filter()
+            ->uniqueStrict()
+            ->values()
+            ->all();
 
-        return $scopes === [] ? array_values($requested) : $scopes;
+        return $scopes === [] ? $this->consentScopes() : $scopes;
+    }
+
+    /** @return list<string> */
+    protected function consentScopes(): array
+    {
+        return $this->pendingForThisNetwork()?->requestedScopes() ?? [];
+    }
+
+    protected function commaSeparatedConsentScopes(): string
+    {
+        return OAuthScopes::commaSeparated($this->consentScopes());
+    }
+
+    protected function spaceSeparatedConsentScopes(): string
+    {
+        return OAuthScopes::spaceSeparated($this->consentScopes());
     }
 
     /**
@@ -241,11 +261,36 @@ class SocialController extends Controller
      */
     protected function refusalForMissingPublishScopes(array $granted): ?RedirectResponse
     {
-        if (array_diff($this->platform->requiredPublishScopes(), $granted) === []) {
+        if (blank(ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish))) {
             return null;
         }
 
-        return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+        return $this->redirectForMissingPublishPermission($granted);
+    }
+
+    /**
+     * Consent sessions started before requested scopes were saved can restart
+     * when the provider returns no grant.
+     *
+     * @param  list<string>  $granted
+     */
+    protected function redirectForMissingPublishPermission(array $granted): RedirectResponse
+    {
+        $pending = $this->pendingForThisNetwork();
+
+        if (filled($granted) || $pending === null || $pending->requestedScopes() !== null) {
+            return $this->failConnection(self::MISSING_PUBLISH_PERMISSION);
+        }
+
+        if ($pending->workspaceId() !== request()->user()->current_workspace_id) {
+            return $this->failConnection(ConnectFlowException::SESSION_EXPIRED);
+        }
+
+        $url = $this->startUrl($pending, $pending->isSwitchingAccount());
+
+        return $url === null
+            ? $this->failConnection(ConnectFlowException::SESSION_EXPIRED)
+            : redirect()->to($url);
     }
 
     protected function rememberConnectSession(Request $request, Workspace $workspace): void
@@ -402,7 +447,7 @@ class SocialController extends Controller
     /** Work a network needs once its account is stored, outside the transaction. */
     protected function afterConnected(SocialAccount $account): void {}
 
-    protected function redirectToProvider(Request $request, string $driver, array $scopes, array $parameters = []): SymfonyResponse
+    protected function redirectToProvider(Request $request, string $driver, array $parameters = []): SymfonyResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -410,23 +455,20 @@ class SocialController extends Controller
 
         return Inertia::location(
             Socialite::driver($driver)
-                ->scopes($scopes)
+                ->scopes($this->consentScopes())
                 ->with($parameters)
                 ->redirect()
                 ->getTargetUrl()
         );
     }
 
-    /**
-     * @param  array<int, string>  $requestedScopes
-     */
-    protected function handleCallback(Request $request, string $driver, array $requestedScopes): RedirectResponse
+    protected function handleCallback(Request $request, string $driver): RedirectResponse
     {
         $workspace = $this->connectWorkspace($request);
 
         try {
             $socialUser = Socialite::driver($driver)->user();
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $requestedScopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(
@@ -456,7 +498,7 @@ class SocialController extends Controller
         }
     }
 
-    private function pendingForThisNetwork(): ?PendingConnection
+    protected function pendingForThisNetwork(): ?PendingConnection
     {
         $pending = PendingConnection::current();
 

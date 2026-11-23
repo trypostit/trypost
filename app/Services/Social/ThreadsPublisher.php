@@ -15,6 +15,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\ThreadsPoll;
 use Illuminate\Http\Client\ConnectionException;
@@ -42,7 +43,7 @@ class ThreadsPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         if ($post->content_type === ContentType::ThreadsGhostPost && $post->mediaItems->isNotEmpty()) {
             throw new ThreadsPublishException(

@@ -7,7 +7,9 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use App\Support\Social\XPoll;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
@@ -19,7 +21,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
 
     public function page(SocialAccount $account, ?string $cursor, CarbonImmutable $cutoff): PublicationPage
     {
-        if ($account->missingScope('tweet.read', 'users.read') !== null) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

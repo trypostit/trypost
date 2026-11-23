@@ -467,20 +467,23 @@ test('a post created, published or deleted elsewhere reaches the open board and 
 });
 
 test('a column loads its next posts as it scrolls', function () {
-    config()->set('app.pagination.default', 2);
-    Post::factory()->forAccount($this->channel)->draft()->count(4)->create(['user_id' => $this->user->id]);
+    config()->set('app.pagination.default', 8);
+    Post::factory()->forAccount($this->channel)->draft()->count(17)->create(['user_id' => $this->user->id]);
 
     $this->actingAs($this->user);
 
     $page = visit(route('app.posts.board'))->resize(1280, 900);
-    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 2);
-    waitForText($page, '@board-column-count-draft', '5');
+    $cards = '@board-column-draft [data-testid^="board-card-open-"]';
+    waitForCount($page, $cards, 8);
+    waitForText($page, '@board-column-count-draft', '18');
+    letPageRun($page, 500);
+    waitForCount($page, $cards, 8);
 
     $scrollDown = "document.querySelector('[data-testid=\"board-column-scroll-draft\"]').scrollTop = 100000";
     $page->script($scrollDown);
-    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 4);
+    waitForCount($page, $cards, 16);
     $page->script($scrollDown);
-    waitForCount($page, '@board-column-draft [data-testid^="board-card-open-"]', 5);
+    waitForCount($page, $cards, 18);
 
     $page->assertNoJavaScriptErrors();
 });

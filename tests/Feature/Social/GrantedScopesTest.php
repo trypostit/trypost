@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Dto\MediaItem;
+use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\Media;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\GoogleBusinessPublisher;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -48,6 +54,142 @@ function grantedScopesFakeSocialite(string $driver, SocialiteUser $user): void
 
     Socialite::shouldReceive('driver')->with($driver)->andReturn($provider);
 }
+
+dataset('meta publish permissions', [
+    'Facebook' => [Platform::Facebook, 'pages_manage_posts'],
+    'Instagram via Facebook' => [Platform::InstagramFacebook, 'instagram_content_publish'],
+]);
+
+function prepareLegacyMetaCallback(Platform $platform): void
+{
+    startSocialConnect(test()->workspace, $platform);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    test()->actingAs(test()->owner);
+
+    $driver = Mockery::mock();
+    $driver->shouldReceive('usingGraphVersion', 'redirectUrl')->andReturnSelf();
+    $driver->shouldReceive('user')->andReturn(grantedScopesSocialiteUser('facebook-user', []));
+    Socialite::shouldReceive('driver')->with('facebook')->andReturn($driver);
+
+    $graph = config("trypost.platforms.{$platform->value}.graph_api");
+    Http::fake([
+        "{$graph}/me?*" => Http::response(['id' => 'facebook-user']),
+        "{$graph}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page-one', 'name' => 'Page One', 'access_token' => 'page-token',
+            'instagram_business_account' => ['id' => 'ig-one'],
+        ]]]),
+        "{$graph}/ig-one*" => Http::response(['id' => 'ig-one', 'username' => 'brand', 'name' => 'Brand']),
+    ]);
+}
+
+test('a pre-deploy Meta callback stores only explicitly granted scopes when publishing was approved', function (Platform $platform, string $publishScope) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => Http::response(['data' => [
+        ['permission' => 'pages_show_list', 'status' => 'granted'],
+        ['permission' => $publishScope, 'status' => 'granted'],
+        ['permission' => 'business_management', 'status' => 'declined'],
+    ]])]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+    finishSocialConnect($platform)->assertRedirect();
+
+    expect($this->workspace->socialAccounts()->sole()->scopes)->toBe(['pages_show_list', $publishScope]);
+    expect(Http::recorded(fn (Request $request): bool => str_contains($request->url(), '/me/permissions')))->toHaveCount(1);
+})->with('meta publish permissions');
+
+test('a pre-deploy Meta callback refuses an explicitly declined or expired publishing permission', function (Platform $platform, string $publishScope, string $status) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => Http::response(['data' => [['permission' => $publishScope, 'status' => $status]]])]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with('meta publish permissions')->with(['declined', 'expired']);
+
+test('a pre-deploy Meta callback restarts consent when the publishing grant is unknown', function (Platform $platform, string $publishScope, string $response) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => match ($response) {
+        'partial' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]]),
+        'unknown status' => Http::response(['data' => [['permission' => $publishScope, 'status' => 'unrecognized']]]),
+        'http failure' => Http::response([], 503),
+        'connection failure' => Http::failedConnection(),
+    }]);
+    $restart = route("app.social.{$platform->value}.connect", ['return_to' => PendingConnection::current()->returnPath()]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect($restart);
+
+    expect(socialConnectFailure())->toBeNull();
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with('meta publish permissions')->with(['partial', 'unknown status', 'http failure', 'connection failure']);
+
+test('a pre-deploy Meta callback reads the next page before persisting the history grant', function (Platform $platform, string $publishScope) {
+    prepareLegacyMetaCallback($platform);
+    $next = config("trypost.platforms.{$platform->value}.graph_api").'/me/permissions?after=page-two';
+    Http::fake([
+        $next => Http::response(['data' => [['permission' => 'pages_read_engagement', 'status' => 'granted']]]),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => $publishScope, 'status' => 'granted']],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+    finishSocialConnect($platform)->assertRedirect();
+
+    expect($this->workspace->socialAccounts()->sole()->scopes)->toBe([$publishScope, 'pages_read_engagement']);
+})->with('meta publish permissions');
+
+test('a pre-deploy Meta callback honors an explicit refusal on a later permissions page', function () {
+    prepareLegacyMetaCallback(Platform::Facebook);
+    $next = config('trypost.platforms.facebook.graph_api').'/me/permissions?after=page-two';
+    Http::fake([
+        $next => Http::response(['data' => [['permission' => 'pages_manage_posts', 'status' => 'expired']]]),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => 'pages_read_engagement', 'status' => 'granted']],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $this->get(route('app.social.facebook.callback'))->assertRedirect(route('app.social.connect.show', Platform::Facebook));
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+});
+
+test('an incomplete legacy Meta permissions walk keeps explicit refusals and never stores a partial grant', function (string $status, bool $outOfTime) {
+    prepareLegacyMetaCallback(Platform::Facebook);
+    $next = config('trypost.platforms.facebook.graph_api').'/me/permissions?after=page-two';
+    if ($outOfTime) {
+        config(['trypost.meta_page_walk_seconds' => 0]);
+    }
+    Http::fake([
+        $next => Http::response([], 503),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => 'pages_manage_posts', 'status' => $status]],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $restart = route('app.social.facebook.connect', ['return_to' => PendingConnection::current()->returnPath()]);
+    $response = $this->get(route('app.social.facebook.callback'));
+    if ($status === 'declined') {
+        $response->assertRedirect(route('app.social.connect.show', Platform::Facebook));
+        expect(socialConnectFailure())->toBe('publish_permission_missing');
+    } else {
+        $response->assertRedirect($restart);
+        expect(socialConnectFailure())->toBeNull();
+    }
+    if ($outOfTime) {
+        Http::assertNotSent(fn (Request $request): bool => $request->url() === $next);
+    } else {
+        Http::assertSent(fn (Request $request): bool => $request->url() === $next);
+    }
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with(['granted', 'declined'])->with(['budget exhausted' => true, 'second page fails' => false]);
 
 /**
  * Each network: the callback route, how its provider reports a grant, the
@@ -143,7 +285,6 @@ dataset('granted scopes', [
     'youtube' => ['youtube', [
         'https://www.googleapis.com/auth/youtube.upload',
         'https://www.googleapis.com/auth/youtube.readonly',
-        'https://www.googleapis.com/auth/youtube.force-ssl',
         'https://www.googleapis.com/auth/yt-analytics.readonly',
     ], 'https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/yt-analytics.readonly'],
     'google business' => ['google business', [
@@ -165,7 +306,7 @@ function grantedScopesCallback(string $network, array $granted): array
     return $definition;
 }
 
-test('a login that granted every scope connects with the granted scopes stored', function (string $network, array $granted) {
+test('a login that granted the required and optional scopes connects with the granted scopes stored', function (string $network, array $granted) {
     $definition = grantedScopesCallback($network, $granted);
 
     $this->actingAs($this->owner)
@@ -210,6 +351,31 @@ test('a login that left out an optional scope connects and records it as missing
         ->not->toContain($optional);
 })->with('granted scopes');
 
+test('a YouTube grant with an alternative upload scope connects and schedules a short', function (string $scope) {
+    $grant = ['https://www.googleapis.com/auth/'.$scope];
+    $definition = grantedScopesCallback('youtube', $grant);
+    $this->actingAs($this->owner)->get(route($definition['route'], ['code' => 'code-1']))
+        ->assertRedirect(route('app.social.connect.show', Platform::YouTube));
+    expect(socialConnectFailure())->toBeNull();
+    assertFinishedOnChannel(finishSocialConnect(Platform::YouTube));
+    $channel = SocialAccount::query()->sole();
+    expect($channel->scopes)->toEqualCanonicalizing($grant)
+        ->and(ChannelPermissions::missing($channel))->toBe([]);
+
+    $video = Media::factory()->video()->temporaryUpload($this->workspace)->create([
+        'meta' => ['duration' => 20, 'width' => 1080, 'height' => 1920],
+    ]);
+    $this->post(route('app.posts.store'), [
+        'status' => 'scheduled',
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'content' => 'New short',
+        'media' => [MediaItem::fromMedia($video)->toArray()],
+        'destinations' => [['social_account_id' => $channel->id, 'content_type' => ContentType::YouTubeShort->value]],
+    ])->assertSessionHasNoErrors();
+
+    expect(Post::query()->whereBelongsTo($channel, 'socialAccount')->sole()->status)->toBe(Status::Scheduled);
+})->with(['youtube.force-ssl', 'youtube', 'youtubepartner']);
+
 test('a reconnect that left out the publish scope keeps the account as it was', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -231,6 +397,57 @@ test('a reconnect that left out the publish scope keeps the account as it was', 
         ->access_token->toBe('old-token')
         ->scopes->toBe(['https://www.googleapis.com/auth/youtube.upload']);
 });
+
+test('a pre-deploy consent session with no reported grant restarts consent and then connects', function () {
+    grantedScopesCallback('threads', []);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    $start = route('app.social.threads.connect', ['return_to' => PendingConnection::current()->returnPath()]);
+
+    $this->actingAs($this->owner)
+        ->get(route('app.social.threads.callback', ['code' => 'first', 'state' => 'issued-state']))
+        ->assertRedirect($start);
+    expect(SocialAccount::query()->exists())->toBeFalse();
+
+    $this->get($start)->assertRedirectContains('/oauth/authorize');
+    $this->get(route('app.social.threads.callback', ['code' => 'second', 'state' => session('threads_oauth_state')]))
+        ->assertRedirect(route('app.social.connect.show', Platform::Threads));
+    finishSocialConnect(Platform::Threads)->assertRedirect();
+
+    expect(SocialAccount::query()->sole()->scopes)->toBe(['threads_basic', 'threads_content_publish', 'threads_manage_insights', 'threads_manage_replies']);
+});
+
+test('a pre-deploy consent session never restarts a reconnect in a different workspace', function () {
+    grantedScopesCallback('tiktok', []);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    $other = Workspace::factory()->create(['account_id' => $this->owner->account_id, 'user_id' => $this->owner->id]);
+    $this->owner->update(['current_workspace_id' => $other->id]);
+
+    $this->actingAs($this->owner)->get(route('app.social.tiktok.callback'))
+        ->assertRedirect(route('app.social.connect.show', Platform::TikTok));
+
+    expect(socialConnectFailure())->toBe('session_expired')
+        ->and(SocialAccount::query()->exists())->toBeFalse();
+});
+
+test('a pre-deploy consent session honors the grant the provider reports', function (array $grant, bool $publishable) {
+    grantedScopesCallback('tiktok', $grant);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+
+    $this->actingAs($this->owner)->get(route('app.social.tiktok.callback'))->assertRedirect(route('app.social.connect.show', Platform::TikTok));
+
+    if ($publishable) {
+        finishSocialConnect(Platform::TikTok)->assertRedirect();
+        expect(SocialAccount::query()->sole()->scopes)->toBe($grant);
+
+        return;
+    }
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing')
+        ->and(SocialAccount::query()->exists())->toBeFalse();
+})->with([
+    'publish granted' => [['user.info.basic', 'video.publish'], true],
+    'publish declined' => [['user.info.basic'], false],
+]);
 
 test('a network that reports no scopes keeps the requested ones', function () {
     grantedScopesCallback('threads', []);

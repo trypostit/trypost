@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api;
 
+use App\Support\ChannelPermissions;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,6 +27,7 @@ class SocialAccountResource extends JsonResource
             'max_content_length' => $this->maxContentLength(),
             'long_posts' => $this->hasXLongPosts(),
             'verified_badge' => $this->verified_badge,
+            'missing_permissions' => collect(ChannelPermissions::missing($this->resource))->keys()->all(),
         ];
     }
 }
