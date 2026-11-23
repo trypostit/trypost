@@ -56,22 +56,14 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        $needsCommentConfirmation = $commentWasPending && blank(data_get($previousContext, ThreadProgress::KEY.'.1.id'));
+        $commentId = data_get($previousContext, [ThreadProgress::KEY, 1, 'id']);
+        $needsCommentConfirmation = $commentWasPending && blank($commentId);
         $retryContext = $this->contextForRetry(
             $previousContext,
             keepPendingComment: $commentWasPending && ! $needsCommentConfirmation,
         );
 
-        $this->table(
-            ['Post ID', 'Platform', 'Account', 'Last error', 'Mode'],
-            [[
-                $post->id,
-                $post->platform->value,
-                $post->display_username ?? '—',
-                $post->error_message ?? '—',
-                filled($retryContext) ? 'Resume' : 'New',
-            ]],
-        );
+        $this->showRetrySummary($post, resuming: filled($retryContext));
 
         $confirmation = match ($needsCommentConfirmation) {
             true => 'Did you check Instagram and confirm the first comment is missing?',
@@ -99,6 +91,20 @@ class RetryFailedPost extends Command
         Log::info('Failed post queued for manual retry', ['post_id' => $post->id]);
 
         return self::SUCCESS;
+    }
+
+    private function showRetrySummary(Post $post, bool $resuming): void
+    {
+        $this->table(
+            ['Post ID', 'Platform', 'Account', 'Last error', 'Mode'],
+            [[
+                $post->id,
+                $post->platform->value,
+                $post->display_username ?? '—',
+                $post->error_message ?? '—',
+                $resuming ? 'Resume' : 'New',
+            ]],
+        );
     }
 
     private function isRetryable(Post $post): bool
@@ -147,35 +153,21 @@ class RetryFailedPost extends Command
      */
     private function contextForRetry(?array $context, bool $keepPendingComment): ?array
     {
-        $kept = [];
         $thread = data_get($context, ThreadProgress::KEY);
+        $threadProgress = is_array($thread) ? $thread : [];
+        $canResumeRemote = ErrorCategory::tryFromContext($context)?->isResumable() === true;
+        $tiktokPublishId = $canResumeRemote ? PublishCheckpoint::tiktokPublishId($context) : null;
+        $instagramWorkflow = $canResumeRemote ? PublishCheckpoint::instagramWorkflow($context) : null;
+        $tiktokPaths = $tiktokPublishId === null ? [] : PublishCheckpoint::tiktokDerivativePaths($context);
 
-        if (is_array($thread) && filled($thread)) {
-            $kept[ThreadProgress::KEY] = $thread;
-        }
+        $checkpoints = Arr::whereNotNull([
+            ThreadProgress::KEY => filled($threadProgress) ? $threadProgress : null,
+            PublishCheckpoint::TIKTOK_PUBLISH_ID => $tiktokPublishId,
+            PublishCheckpoint::INSTAGRAM_WORKFLOW => $instagramWorkflow,
+            PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS => filled($tiktokPaths) ? $tiktokPaths : null,
+            PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => $keepPendingComment ? true : null,
+        ]);
 
-        if (ErrorCategory::tryFromContext($context)?->isResumable() === true) {
-            $publishId = PublishCheckpoint::tiktokPublishId($context);
-            $kept = [
-                ...$kept,
-                ...Arr::whereNotNull([
-                    PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId,
-                    PublishCheckpoint::INSTAGRAM_WORKFLOW => PublishCheckpoint::instagramWorkflow($context),
-                ]),
-            ];
-
-            if ($publishId !== null) {
-                $paths = PublishCheckpoint::tiktokDerivativePaths($context);
-                if (filled($paths)) {
-                    $kept[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $paths;
-                }
-            }
-        }
-
-        if ($keepPendingComment) {
-            $kept[PublishCheckpoint::INSTAGRAM_COMMENT_PENDING] = true;
-        }
-
-        return filled($kept) ? $kept : null;
+        return filled($checkpoints) ? $checkpoints : null;
     }
 }
