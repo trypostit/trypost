@@ -240,11 +240,13 @@ export const replyTooLongKey = (platform: PlatformValue): string => {
 };
 
 export const startThreadKey = (platform: PlatformValue): string => {
-    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
+    const type = threadReplyPostType(platform);
+
+    if (type === ContentType.InstagramComment) {
         return 'posts.form.thread.first_comment';
     }
 
-    if (repliesAreComments(platform)) {
+    if (type === ContentType.LinkedInComment) {
         return 'posts.form.thread.add_comment';
     }
 

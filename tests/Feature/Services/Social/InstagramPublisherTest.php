@@ -1194,7 +1194,7 @@ test('instagram publisher explains a container error reported as an error subcod
     'padded subcode' => ' 2207026 ',
 ]);
 
-test('instagram publisher never reads a subcode out of a container status sentence', function (string $status, ?string $code) {
+test('instagram publisher maps only a bare subcode in a container status', function (string $status, ?string $code) {
     $this->post->update([
         'media' => [[
             'id' => 'test-media-id',
@@ -1221,6 +1221,8 @@ test('instagram publisher never reads a subcode out of a container status senten
         });
 })->with([
     'subcode in a sentence' => ['Error: Media upload has failed with error code 2207026', null],
+    'scientific notation' => ['2.207026e6', null],
+    'decimal notation' => ['2207026.0', null],
     'unmapped bare subcode' => ['2207999', '2207999'],
 ]);
 

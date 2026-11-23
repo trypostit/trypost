@@ -94,12 +94,12 @@ class InstagramPublisher
 
         $media = $this->post->mediaItems;
 
-        if ($media->isEmpty()) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram requires at least one image or video.',
-                category: ErrorCategory::MediaFormat,
-            );
-        }
+        throw_if(
+            $media->isEmpty(),
+            InstagramPublishException::class,
+            userMessage: 'Instagram requires at least one image or video.',
+            category: ErrorCategory::MediaFormat,
+        );
 
         $firstMedia = $media->first();
         $contentType = $this->post->content_type;
@@ -121,12 +121,13 @@ class InstagramPublisher
      */
     private function publishFirstComment(array $root, string $text, string $accessToken): array
     {
-        if (data_get($root, 'container_id_only') === true) {
-            throw new InstagramPublishException(
+        throw_if(
+            data_get($root, 'container_id_only') === true,
+            fn (): InstagramPublishException => new InstagramPublishException(
                 userMessage: __('posts.errors.instagram.comment_media_unconfirmed'),
                 category: ErrorCategory::ServerError,
-            );
-        }
+            ),
+        );
 
         $context = $this->post->error_context ?? [];
         if (PublishCheckpoint::instagramCommentIsUnconfirmed($context)) {
@@ -162,9 +163,7 @@ class InstagramPublisher
 
         $commentId = $this->stringId($response->json('id'));
 
-        if (blank($commentId)) {
-            throw $this->unconfirmedComment($response);
-        }
+        throw_if(blank($commentId), fn (): InstagramPublishException => $this->unconfirmedComment($response));
 
         return ['id' => $commentId];
     }
@@ -660,7 +659,7 @@ class InstagramPublisher
             throw $this->pendingContainerException($containerId, $workflow, $statusResponse->status());
         }
 
-        $statusCode = (string) ($statusResponse->json()['status_code'] ?? '');
+        $statusCode = (string) $statusResponse->json('status_code');
         $status = ContainerStatus::tryFrom($statusCode);
 
         return match ($status) {
@@ -714,11 +713,9 @@ class InstagramPublisher
             ];
         }
 
-        $permalink = data_get($permalinkResponse->json(), 'permalink');
-
         return [
             'id' => $mediaId,
-            'url' => $this->stringId($permalink),
+            'url' => $this->stringId($permalinkResponse->json('permalink')),
         ];
     }
 
@@ -782,14 +779,15 @@ class InstagramPublisher
     private function mediaProcessingFailedException(Response $response): InstagramPublishException
     {
         $body = $this->redactResponseBody($response->body());
+        $status = $response->json('status');
 
         Log::error('Instagram media processing failed', [
-            'status_code' => data_get($response->json(), 'status_code'),
-            'status' => data_get($response->json(), 'status'),
+            'status_code' => $response->json('status_code'),
+            'status' => $status,
             'body' => $body,
         ]);
 
-        return InstagramPublishException::fromContainerStatus(data_get($response->json(), 'status'), $body);
+        return InstagramPublishException::fromContainerStatus($status, $body);
     }
 
     /**
@@ -820,7 +818,7 @@ class InstagramPublisher
         }
 
         return $this->requireGraphId(
-            data_get($response->json(), 'id'),
+            $response->json('id'),
             "Instagram {$label} creation failed: No container ID returned",
         );
     }

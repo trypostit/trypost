@@ -84,7 +84,11 @@ final class PublishCheckpoint
     {
         $workflow = data_get($context, self::INSTAGRAM_WORKFLOW);
 
-        return is_array($workflow) && $workflow !== [] ? $workflow : null;
+        if (! is_array($workflow)) {
+            return null;
+        }
+
+        return filled($workflow) ? $workflow : null;
     }
 
     /** @param  array<string, mixed>|null  $context */

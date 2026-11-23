@@ -55,9 +55,9 @@ class PostPlatformMetaRules
      */
     public const SCHEDULING_REQUIREMENTS = 'Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text), a poll (content_type x_poll, mastodon_poll or threads_poll) meta.poll with at least 2 options plus text as its question, and on X and Mastodon duration_minutes (a reply poll in meta.thread_replies on X or Mastodon needs the same, its text being the question; on Threads a reply poll needs only its options and text); list-content-types-tool lists the TikTok, Pinterest and Discord ones per platform as required_meta. A scheduled or published post also needs text or media; a poll needs text and takes no media.';
 
-    /** Thread reply instructions shared by MCP tools that create or edit posts. */
     private const string INSTAGRAM_FIRST_COMMENT_DOCUMENTATION = 'Instagram feed posts and reels take one text-only first comment up to 2,200 characters in meta.thread_replies. Stories do not take comments. The Instagram channel needs the comments permission for its login method.';
 
+    /** Thread reply instructions shared by MCP tools that create or edit posts. */
     public const string THREAD_REPLIES_DOCUMENTATION = 'To publish a thread on X, Bluesky, Mastodon or Threads, put the follow-up posts in meta.thread_replies: up to '.ThreadReplies::MAX_REPLIES.' replies published under the post, each {text, media} with up to 4 media items (10 on Threads) given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network; on Threads a threads_ghost_post takes no replies, and an account connected before TryPost asked for the replies permission must reconnect before a thread can be scheduled or published. On LinkedIn (profile or page), meta.thread_replies takes one text-only reply, published as a comment from the same author, e.g. [{"text": "Read more: https://..."}]. '.self::INSTAGRAM_FIRST_COMMENT_DOCUMENTATION;
 
     /** An Instagram username, with or without its leading @. */
@@ -257,7 +257,7 @@ class PostPlatformMetaRules
      */
     public static function documentation(): string
     {
-        return implode(' ', [
+        return Arr::join([
             'Per-platform metadata. A thread on X, Bluesky, Mastodon or Threads, or a comment on LinkedIn or Instagram, is meta.thread_replies (see below).',
             'TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish; call get-tiktok-creator-info-tool first and pick one of its privacy_level_options, and keep allow_comments/allow_duet/allow_stitch false when it reports them disabled) + flags allow_comments, disclose (commercial content), brand_content_toggle (paid partnership), brand_organic_toggle (your own brand); on tiktok_video also allow_duet, allow_stitch and is_aigc (AI-generated content label), on tiktok_photo also auto_add_music. SELF_ONLY cannot be combined with brand_content_toggle.',
             'Mastodon: spoiler_text (content warning, ≤500; counts toward the 500-character post limit).',
@@ -275,7 +275,7 @@ class PostPlatformMetaRules
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
             self::INSTAGRAM_FIRST_COMMENT_DOCUMENTATION,
             'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items (10 on Threads) ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon, Threads and X; on LinkedIn (profile and page) a post takes one reply, published as a comment from the same profile or page, text only, up to 3000 characters; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts, Threads 500). On X, Mastodon and Threads a reply may instead be a poll: {text, poll} with poll under the same rules as that network\'s meta.poll, no media, and the reply text as its question (required; on X up to '.XPoll::QUESTION_MAX_LENGTH.' characters).',
-        ]);
+        ], ' ');
     }
 
     /**

@@ -180,13 +180,17 @@ class InstagramPublishException extends SocialPublishException
 
     private static function containerSubcode(mixed $status): ?int
     {
-        if (! is_string($status)) {
-            return is_int($status) ? $status : null;
+        if (is_int($status)) {
+            return $status;
         }
 
-        $status = Str::trim($status);
+        if (! is_string($status)) {
+            return null;
+        }
 
-        return Str::isMatch('/\A[0-9]+\z/', $status) ? (int) $status : null;
+        $digits = Str::trim($status);
+
+        return ctype_digit($digits) ? (int) $digits : null;
     }
 
     public function platform(): string

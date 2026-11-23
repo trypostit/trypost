@@ -1251,11 +1251,9 @@ const replyLimit = (account: ComposerAccount): number | null => {
     return limit - contentWarningLength(account);
 };
 const threadReplyLimit = (group: NetworkGroup): number | null => {
-    const limits = group.accounts
-        .map(replyLimit)
-        .filter((limit): limit is number => limit !== null);
+    const limits = group.accounts.map(replyLimit).filter(filled);
 
-    return limits.length ? Math.min(...limits) : null;
+    return transform(limits, (values) => Math.min(...values));
 };
 const setThreadReplies = (
     group: NetworkGroup,

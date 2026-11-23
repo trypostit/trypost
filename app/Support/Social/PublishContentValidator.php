@@ -47,9 +47,7 @@ final class PublishContentValidator
 
         $error = Arr::first(ThreadReplies::pollMediaErrors($post->platform, $post->meta));
 
-        if (filled($error)) {
-            throw new ContentLimitException($post->platform, $error);
-        }
+        throw_if(filled($error), ContentLimitException::class, $post->platform, $error);
     }
 
     /** Measure the text the reader sees after the publisher handles markup, links and entities. */

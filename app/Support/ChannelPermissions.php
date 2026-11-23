@@ -168,7 +168,7 @@ class ChannelPermissions
 
         $features = collect(GatedFeature::cases());
 
-        if ($type !== null && ! ThreadReplies::supportsPostType($account->platform, $type)) {
+        if (filled($type) && ! ThreadReplies::supportsPostType($account->platform, $type)) {
             $features = $features->reject(fn (GatedFeature $feature): bool => $feature === GatedFeature::ThreadReplies);
         }
 
