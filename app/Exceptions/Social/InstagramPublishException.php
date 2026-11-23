@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use App\Services\Social\Meta\GraphError;
 use Illuminate\Http\Client\Response;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
 class InstagramPublishException extends SocialPublishException
 {
     private const int MEDIA_NOT_READY_SUBCODE = 2207027;
+
+    private const string UNKNOWN_ERROR_MESSAGE = 'An unknown Instagram error occurred.';
 
     /**
      * Subcodes Instagram documents as caused by the user's media, caption,
@@ -43,15 +46,17 @@ class InstagramPublishException extends SocialPublishException
      */
     public static function isDocumentedRejection(Response $response): bool
     {
-        $mapped = self::forSubcode(self::numericSubcode($response->json('error.error_subcode')));
+        $subcode = self::numericSubcode($response->json('error.error_subcode'));
 
-        if ($mapped === null) {
-            return false;
-        }
+        return transform(
+            self::forSubcode($subcode),
+            function (array $error): bool {
+                [, $category] = $error;
 
-        [, $category] = $mapped;
-
-        return $category !== ErrorCategory::ServerError;
+                return $category !== ErrorCategory::ServerError;
+            },
+            false,
+        );
     }
 
     public static function isRateLimit(Response $response): bool
@@ -67,22 +72,20 @@ class InstagramPublishException extends SocialPublishException
 
         if ($errorCode === 190) {
             throw new TokenExpiredException(
-                message: $response->json('error.message', 'An unknown Instagram error occurred.'),
+                message: $response->json('error.message', self::UNKNOWN_ERROR_MESSAGE),
                 platformErrorCode: (string) $errorCode,
             );
         }
 
-        $platformErrorCode = $response->json('error.error_subcode');
-        [$message, $category, $causedByUser] = self::classifyResponse($response, self::numericSubcode($platformErrorCode));
-
-        if ($platformErrorCode === null && $category === ErrorCategory::RateLimit) {
-            $platformErrorCode = $errorCode;
-        }
+        $subcode = $response->json('error.error_subcode');
+        [$message, $category, $causedByUser] = self::classifyResponse($response, self::numericSubcode($subcode));
+        $rateLimitCode = $category === ErrorCategory::RateLimit ? $errorCode : null;
+        $platformErrorCode = filled($subcode) ? $subcode : $rateLimitCode;
 
         return (new static(
             userMessage: $message,
             category: $category,
-            platformErrorCode: $platformErrorCode === null ? null : (string) $platformErrorCode,
+            platformErrorCode: transform($platformErrorCode, strval(...)),
             rawResponse: $response->body(),
         ))->withNetworkReset($response)
             ->asNetworkRejectionIf($causedByUser);
@@ -93,7 +96,7 @@ class InstagramPublishException extends SocialPublishException
     {
         $documentedError = self::forSubcode($subcode);
 
-        if ($documentedError !== null) {
+        if (filled($documentedError)) {
             return [...$documentedError, self::isUserRejectionSubcode($subcode)];
         }
 
@@ -106,7 +109,7 @@ class InstagramPublishException extends SocialPublishException
         }
 
         $message = $response->json('error.error_user_msg')
-            ?? $response->json('error.message', 'An unknown Instagram error occurred.');
+            ?? $response->json('error.message', self::UNKNOWN_ERROR_MESSAGE);
 
         return [$message, ErrorCategory::Unknown, false];
     }
@@ -170,28 +173,24 @@ class InstagramPublishException extends SocialPublishException
         return (new self(
             userMessage: $message,
             category: $category,
-            platformErrorCode: transform($subcode, fn (int $code): string => (string) $code),
+            platformErrorCode: transform($subcode, strval(...)),
             rawResponse: $rawResponse,
         ))->asNetworkRejectionIf(self::isUserRejectionSubcode($subcode));
     }
 
     private static function containerSubcode(mixed $status): ?int
     {
-        if (is_int($status)) {
-            return $status;
-        }
-
         if (! is_string($status)) {
-            return null;
+            return is_int($status) ? $status : null;
         }
 
         $status = Str::trim($status);
 
-        return ctype_digit($status) ? (int) $status : null;
+        return Str::isMatch('/\A[0-9]+\z/', $status) ? (int) $status : null;
     }
 
     public function platform(): string
     {
-        return 'instagram';
+        return Platform::Instagram->value;
     }
 }
