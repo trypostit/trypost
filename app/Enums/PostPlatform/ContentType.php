@@ -14,6 +14,7 @@ use App\Support\Social\Poll;
 use App\Support\Social\ThreadsPoll;
 use App\Support\Social\XPoll;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 enum ContentType: string
@@ -87,7 +88,7 @@ enum ContentType: string
      */
     public function isCaptionless(): bool
     {
-        return in_array($this, [self::FacebookStory, self::InstagramStory], true);
+        return collect([self::FacebookStory, self::InstagramStory])->containsStrict($this);
     }
 
     /**
@@ -120,37 +121,28 @@ enum ContentType: string
 
     public function isComment(): bool
     {
-        return in_array($this, [self::InstagramComment, self::LinkedInComment], true);
+        return collect([self::InstagramComment, self::LinkedInComment])->containsStrict($this);
     }
 
     public function label(): string
     {
         return match ($this) {
             self::InstagramFeed => 'Feed Post',
-            self::InstagramReel => 'Reel',
-            self::InstagramStory => 'Story',
-            self::LinkedInPost, self::LinkedInPagePost => 'Post',
+            self::InstagramReel, self::FacebookReel => 'Reel',
+            self::InstagramStory, self::FacebookStory => 'Story',
+            self::LinkedInPost, self::LinkedInPagePost, self::FacebookPost, self::XPost,
+            self::BlueskyPost, self::MastodonPost, self::TelegramPost, self::GoogleBusinessPost => 'Post',
             self::InstagramComment, self::LinkedInComment => 'Comment',
-            self::FacebookPost => 'Post',
-            self::FacebookReel => 'Reel',
-            self::FacebookStory => 'Story',
             self::TikTokVideo => 'Video',
             self::TikTokPhoto => 'Photo carousel',
             self::YouTubeShort => 'Short',
-            self::XPost => 'Post',
-            self::XPoll => 'Poll',
+            self::XPoll, self::ThreadsPoll, self::MastodonPoll => 'Poll',
             self::ThreadsPost => 'Thread',
             self::ThreadsGhostPost => 'Ghost post',
-            self::ThreadsPoll => 'Poll',
             self::PinterestPin => 'Pin',
             self::PinterestVideoPin => 'Video Pin',
             self::PinterestCarousel => 'Carousel',
-            self::BlueskyPost => 'Post',
-            self::MastodonPost => 'Post',
-            self::MastodonPoll => 'Poll',
-            self::TelegramPost => 'Post',
             self::DiscordMessage => 'Message',
-            self::GoogleBusinessPost => 'Post',
         };
     }
 
@@ -241,14 +233,11 @@ enum ContentType: string
     {
         $limit = $account?->maxContentLength() ?? $platform->maxContentLength();
 
-        if (blank($type) || ! $type->isCompatibleWith($platform)) {
-            return $limit;
+        if ($type === self::XPoll && $type->isCompatibleWith($platform)) {
+            return min($limit, XPoll::QUESTION_MAX_LENGTH);
         }
 
-        return match ($type) {
-            self::XPoll => min($limit, XPoll::QUESTION_MAX_LENGTH),
-            default => $limit,
-        };
+        return $limit;
     }
 
     public function maxMediaCount(): int
@@ -577,7 +566,8 @@ enum ContentType: string
      */
     public function supportsVideoCover(): bool
     {
-        return in_array($this, [self::InstagramFeed, self::InstagramReel, self::TikTokVideo, self::PinterestVideoPin], true);
+        return collect([self::InstagramFeed, self::InstagramReel, self::TikTokVideo, self::PinterestVideoPin])
+            ->containsStrict($this);
     }
 
     /**
@@ -587,7 +577,7 @@ enum ContentType: string
      */
     public function supportsCustomVideoCover(): bool
     {
-        return in_array($this, [self::InstagramReel, self::YouTubeShort], true);
+        return collect([self::InstagramReel, self::YouTubeShort])->containsStrict($this);
     }
 
     /**
@@ -595,7 +585,7 @@ enum ContentType: string
      */
     public function autoFitsImage(): bool
     {
-        return in_array($this, [self::InstagramStory, self::FacebookStory], true);
+        return collect([self::InstagramStory, self::FacebookStory])->containsStrict($this);
     }
 
     /**
@@ -675,8 +665,7 @@ enum ContentType: string
     }
 
     /**
-     * Content-type row for REST / MCP listings (agents + API clients).
-     * Keep in sync with mediaRules() capability fields — do not omit mins.
+     * Content-type row for REST and MCP, using the editor's media rules.
      *
      * @return array{
      *     value: string,
@@ -717,27 +706,29 @@ enum ContentType: string
      */
     public function toListingArray(SocialPlatform $platform): array
     {
+        $mediaRules = $this->mediaRules();
         $takesThreadReplies = $this->takesThreadReplies($platform);
-        $rules = $this->mediaRules();
 
         return [
             'value' => $this->value,
             'label' => $this->label(),
             'description' => $this->description(),
-            'max_media_count' => $this->maxMediaCount(),
-            'min_media_count' => $this->minMediaCount(),
-            'requires_media' => $this->requiresMedia(),
-            'accept_images' => $this->supportsImage(),
-            'accept_videos' => $this->supportsVideo(),
-            'accept_documents' => $this->supportsDocument(),
-            'accepts_gif' => $this->acceptsGif(),
-            'accepts_mov' => $this->acceptsMov(),
-            'forbids_mixed_media' => ! $this->supportsMixedMedia(),
-            'max_video_duration_sec' => $this->maxVideoDurationSec(),
-            'max_image_bytes' => $this->maxImageBytes(),
-            'max_video_bytes' => $this->maxVideoBytes(),
-            'max_document_bytes' => $this->maxDocumentBytes(),
-            ...array_intersect_key($rules, array_flip([
+            'max_media_count' => $mediaRules['max_files'],
+            'min_media_count' => $mediaRules['min_files'] ?? 0,
+            'requires_media' => $mediaRules['requires_media'],
+            ...Arr::only($mediaRules, [
+                'accept_images',
+                'accept_videos',
+                'accept_documents',
+                'accepts_gif',
+                'accepts_mov',
+                'forbids_mixed_media',
+            ]),
+            'max_video_duration_sec' => $mediaRules['max_video_duration_sec'],
+            ...Arr::only($mediaRules, [
+                'max_image_bytes',
+                'max_video_bytes',
+                'max_document_bytes',
                 'aspect_ratio_min',
                 'aspect_ratio_max',
                 'video_aspect_ratio_min',
@@ -752,9 +743,9 @@ enum ContentType: string
                 'supports_user_tags',
                 'supports_video_cover',
                 'supports_custom_video_cover',
-            ])),
+            ]),
             'captionless' => $this->isCaptionless(),
-            'document_must_be_alone' => $this->supportsDocument(),
+            'document_must_be_alone' => $mediaRules['accept_documents'],
             'supports_thread_replies' => $takesThreadReplies,
             'max_thread_replies' => $takesThreadReplies ? ThreadReplies::maxReplies($platform) : null,
         ];
@@ -766,7 +757,7 @@ enum ContentType: string
     public static function mediaRulesForFrontend(): array
     {
         return collect(self::cases())
-            ->mapWithKeys(fn (self $type) => [$type->value => $type->mediaRules()])
+            ->mapWithKeys(fn (self $type): array => [$type->value => $type->mediaRules()])
             ->all();
     }
 
@@ -794,11 +785,7 @@ enum ContentType: string
      */
     private static function capToHardLimit(?int $platformBytes, MediaType $type): ?int
     {
-        if ($platformBytes === null) {
-            return null;
-        }
-
-        return min($platformBytes, $type->maxSizeInBytes());
+        return transform($platformBytes, fn (int $bytes): int => min($bytes, $type->maxSizeInBytes()));
     }
 
     public function supportsVideo(): bool
@@ -879,10 +866,7 @@ enum ContentType: string
      */
     public function supportsCaption(): bool
     {
-        return match ($this) {
-            self::InstagramStory, self::FacebookStory => false,
-            default => true,
-        };
+        return ! $this->isCaptionless();
     }
 
     public function requiresMedia(): bool
@@ -937,7 +921,7 @@ enum ContentType: string
      */
     public function isCompatibleWith(SocialPlatform $platform): bool
     {
-        return collect($this->compatiblePlatforms())->contains($platform);
+        return collect($this->compatiblePlatforms())->containsStrict($platform);
     }
 
     /**
@@ -948,10 +932,7 @@ enum ContentType: string
      */
     public static function forPlatform(SocialPlatform $platform): array
     {
-        return array_filter(
-            self::cases(),
-            fn (self $type) => $type->isCompatibleWith($platform)
-        );
+        return Arr::where(self::cases(), fn (self $type): bool => $type->isCompatibleWith($platform));
     }
 
     /**
@@ -983,7 +964,7 @@ enum ContentType: string
      */
     public static function derivesFromMedia(SocialPlatform $platform): bool
     {
-        return in_array($platform, [SocialPlatform::Pinterest, SocialPlatform::TikTok], true);
+        return collect([SocialPlatform::Pinterest, SocialPlatform::TikTok])->containsStrict($platform);
     }
 
     /**
@@ -996,10 +977,14 @@ enum ContentType: string
      */
     public static function forMedia(SocialPlatform $platform, array $media): self
     {
+        if (! self::derivesFromMedia($platform)) {
+            return self::defaultFor($platform);
+        }
+
         $items = collect($media)
             ->filter(fn (mixed $item): bool => is_array($item))
-            ->map(fn (array $item): MediaItem => MediaItem::fromArray($item));
-        $hasVideo = $items->contains(fn (MediaItem $item): bool => $item->isVideo());
+            ->map(MediaItem::fromArray(...));
+        $hasVideo = $items->contains->isVideo();
 
         return match ($platform) {
             SocialPlatform::Pinterest => match (true) {
@@ -1007,7 +992,10 @@ enum ContentType: string
                 $items->count() > 1 => self::PinterestCarousel,
                 default => self::PinterestPin,
             },
-            SocialPlatform::TikTok => $items->isNotEmpty() && ! $hasVideo ? self::TikTokPhoto : self::TikTokVideo,
+            SocialPlatform::TikTok => match (true) {
+                $items->isEmpty(), $hasVideo => self::TikTokVideo,
+                default => self::TikTokPhoto,
+            },
             default => self::defaultFor($platform),
         };
     }
