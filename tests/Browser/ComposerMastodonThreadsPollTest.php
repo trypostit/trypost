@@ -137,6 +137,28 @@ test('a threads post starts a thread whose reply turns into a poll, shown under 
     $page->assertNoJavaScriptErrors();
 });
 
+test('removing the poll from a threads post keeps its replies and switches to a plain post', function () {
+    $replies = [['text' => 'Second post', 'media' => []]];
+    $post = seedPollComposerPost(ContentType::ThreadsPoll, [
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces']], 'thread_replies' => $replies],
+    ]);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+    waitFor($page, '@threads-poll-choice-0');
+
+    $page->click('@threads-poll-remove');
+    waitForGone($page, '@threads-poll-choice-0');
+    $page->assertAttribute("@composer-type-{$id}-threads_post", 'aria-checked', 'true')
+        ->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $post->refresh();
+    expect($post->content_type)->toBe(ContentType::ThreadsPost)
+        ->and($post->meta)->not->toHaveKey('poll')
+        ->and($post->meta['thread_replies'])->toBe($replies);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a mastodon poll stays behind the content warning in the preview', function () {
     $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
     $page = openPollComposer($post);

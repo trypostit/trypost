@@ -714,7 +714,7 @@ test('threads publisher can publish image with null content', function () {
     expect($result['id'])->toBe('media-123');
 });
 
-test('threads publisher throws exception when all carousel items fail', function () {
+test('threads publisher stops creating carousel items when Threads rejects the first one', function () {
     $mediaItems = [];
     for ($i = 0; $i < 3; $i++) {
         $mediaItems[] = [
@@ -739,7 +739,8 @@ test('threads publisher throws exception when all carousel items fail', function
     ]);
 
     expect(fn () => $this->publisher->publish($this->post))
-        ->toThrow(Exception::class, 'Failed to create any carousel items');
+        ->toThrow(ThreadsPublishException::class);
+    Http::assertSentCount(1);
 });
 
 test('threads publisher sends capped alt text on single image container', function () {
@@ -1251,21 +1252,23 @@ test('a threads thread publishes each reply under the post before it, with the t
         ->and(threadsContainersSent()->pluck('topic_tag')->all())->toBe(['laravel', null, null]);
 });
 
-test('a threads reply carries its own image', function () {
+test('a threads reply carries its own single media item', function (array $media, array $expected) {
     $this->post->update([
         'content' => 'First',
-        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [threadsImage('m')]]]],
+        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [$media]]]],
     ]);
     fakeThreadsThreadFlow();
 
     $this->publisher->publish($this->post->fresh());
 
-    expect(threadsContainersSent()->last())->toMatchArray([
-        'media_type' => 'IMAGE',
-        'image_url' => 'https://example.com/m.jpg',
-        'reply_to_id' => 'post-1',
-    ]);
-});
+    expect(threadsContainersSent()->last())->toMatchArray([...$expected, 'reply_to_id' => 'post-1']);
+})->with([
+    'image' => [threadsImage('m'), ['media_type' => 'IMAGE', 'image_url' => 'https://example.com/m.jpg']],
+    'video' => [
+        ['id' => 'm', 'type' => 'video', 'path' => 'm.mp4', 'url' => 'https://example.com/m.mp4', 'mime_type' => 'video/mp4'],
+        ['media_type' => 'VIDEO', 'video_url' => 'https://example.com/m.mp4'],
+    ],
+]);
 
 test('a threads reply with several images is a carousel under the post before it', function () {
     $this->post->update([
@@ -1290,6 +1293,31 @@ test('a threads reply with several images is a carousel under the post before it
         ]);
 });
 
+test('a threads carousel reply is not published with missing media when one item fails', function (array $body, int $status) {
+    $this->post->update([
+        'content' => 'First',
+        'meta' => ['thread_replies' => [['text' => 'Look', 'media' => [threadsImage('a'), threadsImage('b'), threadsImage('c')]]]],
+    ]);
+    fakeThreadsThreadFlow(
+        Http::response(['id' => 'container-1']),
+        Http::response(['id' => 'container-child-a']),
+        Http::response($body, $status),
+        Http::response(['id' => 'container-child-c']),
+        Http::response(['id' => 'container-carousel']),
+    );
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(ThreadsPublishException::class);
+
+    $published = Http::recorded(fn ($request): bool => Str::endsWith($request->url(), '/threads_publish'));
+
+    expect($published)->toHaveCount(1)
+        ->and(data_get($this->post->fresh()->error_context, ThreadProgress::KEY.'.*.id'))->toBe(['post-1'])
+        ->and(threadsContainersSent())->toHaveCount(3);
+})->with([
+    'rejected item' => [['error' => ['message' => 'Invalid parameter', 'code' => 100]], 400],
+    'missing container id' => [[], 200],
+]);
+
 test('a threads reply poll is a text reply carrying its choices', function () {
     $this->post->update([
         'content' => 'First',
@@ -1308,16 +1336,20 @@ test('a threads reply poll is a text reply carrying its choices', function () {
 test('a threads thread resumes after the posts already live', function () {
     $this->post->update([
         'content' => 'First',
-        'meta' => ['thread_replies' => ['Second']],
+        'meta' => ['thread_replies' => ['Second', 'Third']],
     ]);
-    ThreadProgress::remember($this->post, [['hash' => ThreadProgress::hash('First'), 'id' => 'post-1', 'url' => 'https://www.threads.net/@testuser/post/A']]);
+    ThreadProgress::remember($this->post, [
+        ['hash' => ThreadProgress::hash('First'), 'id' => 'previous-root', 'url' => 'https://www.threads.net/@testuser/post/A'],
+        ['hash' => ThreadProgress::hash('Second'), 'id' => 'previous-reply'],
+    ]);
     fakeThreadsThreadFlow();
 
     $result = $this->publisher->publish($this->post->fresh());
 
     expect(threadsContainersSent())->toHaveCount(1)
-        ->and(threadsContainersSent()->first())->toMatchArray(['text' => 'Second', 'reply_to_id' => 'post-1'])
-        ->and($result['thread_reply_ids'])->toBe(['post-1']);
+        ->and(threadsContainersSent()->first())->toMatchArray(['text' => 'Third', 'reply_to_id' => 'previous-reply'])
+        ->and($result['id'])->toBe('previous-root')
+        ->and($result['thread_reply_ids'])->toBe(['previous-reply', 'post-1']);
 });
 
 test('a threads reply refused by threads keeps the live post checkpointed for the retry', function () {
@@ -1351,6 +1383,20 @@ test('a threads thread on an account without the replies permission fails before
 test('a single threads post on an account without the replies permission still publishes', function () {
     connectedBeforeRepliesPermission($this->socialAccount);
     fakeThreadsContainerFlow();
+
+    expect($this->publisher->publish($this->post->fresh())['id'])->toBe('post-1');
+});
+
+test('omitting the replies scope from the install config blocks thread replies but allows single posts', function () {
+    config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $this->post->update(['meta' => ['thread_replies' => ['Second']]]);
+    fakeThreadsContainerFlow();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
+    Http::assertNothingSent();
+
+    $this->post->update(['meta' => []]);
 
     expect($this->publisher->publish($this->post->fresh())['id'])->toBe('post-1');
 });

@@ -245,31 +245,28 @@ class ThreadsPublisher
 
             if ($containerResponse->failed()) {
                 Log::error('Threads carousel item creation failed', [
+                    'status' => $containerResponse->status(),
                     'body' => $this->redactResponseBody($containerResponse->body()),
                 ]);
 
-                continue;
+                $this->handleApiError($containerResponse);
             }
 
-            $childId = $containerResponse->json()['id'] ?? null;
+            $childId = (string) $containerResponse->json('id');
 
-            if (! $childId) {
+            if (blank($childId)) {
                 Log::error('Threads carousel item creation returned no ID', ['body' => $this->redactResponseBody($containerResponse->body())]);
 
-                continue;
+                throw new ThreadsPublishException(
+                    userMessage: 'Threads did not accept a carousel item. Please try again.',
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             // Wait for media processing (both images and videos)
             $this->waitForMediaProcessing($childId, $accessToken);
 
             $childContainers[] = $childId;
-        }
-
-        if (empty($childContainers)) {
-            throw new ThreadsPublishException(
-                userMessage: 'Failed to create any carousel items',
-                category: ErrorCategory::ServerError,
-            );
         }
 
         // Step 2: Create carousel container

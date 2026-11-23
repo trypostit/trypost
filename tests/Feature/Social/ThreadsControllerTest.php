@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
+use App\Support\ThreadReplies;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Uri;
 
@@ -19,6 +22,8 @@ beforeEach(function () {
 });
 
 test('threads connect redirects to oauth', function () {
+    config(['trypost.platforms.threads' => data_get(trypostConfigWith(['THREADS_SCOPES' => '']), 'platforms.threads')]);
+
     $response = $this->actingAs($this->user)
         ->get(route('app.social.threads.connect'));
 
@@ -341,9 +346,12 @@ test('threads reconnect that authorizes another account says so instead of conne
 });
 
 test('threads connect asks for the scopes the install configures', function () {
-    config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish']]);
+    $scopes = 'threads_basic,threads_content_publish,threads_manage_insights';
+    config(['trypost.platforms.threads' => data_get(trypostConfigWith(['THREADS_SCOPES' => $scopes]), 'platforms.threads')]);
 
     $location = $this->actingAs($this->user)->get(route('app.social.threads.connect'))->headers->get('Location');
 
-    expect(Uri::of($location)->query()->get('scope'))->toBe('threads_basic,threads_content_publish');
+    expect(Uri::of($location)->query()->get('scope'))->toBe($scopes)
+        ->and(ThreadReplies::supports(Platform::Threads))->toBeFalse()
+        ->and(ChannelPermissions::disabledFeatures(Platform::Threads))->toBe([GatedFeature::ThreadReplies->value]);
 });
