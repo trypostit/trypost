@@ -74,16 +74,16 @@ class ThreadReplies
 
     public static function supportsPostType(Platform $platform, ContentType $type): bool
     {
-        if (! self::supports($platform)) {
-            return false;
-        }
-
-        return blank(self::standaloneMessage($platform, $type));
+        return blank(self::unsupportedKey($platform, $type));
     }
 
-    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
-    public static function standaloneMessage(Platform $platform, ContentType $type): ?string
+    /** The reason a post cannot take replies on the network, as a translation key. */
+    public static function unsupportedKey(Platform $platform, ContentType $type): ?string
     {
+        if (! self::supports($platform)) {
+            return 'posts.form.thread.unsupported';
+        }
+
         return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
     }
 
@@ -244,14 +244,10 @@ class ThreadReplies
             return null;
         }
 
-        if (! self::supports($platform)) {
-            return ['thread_replies', __('posts.form.thread.unsupported')];
-        }
+        $unsupported = self::unsupportedKey($platform, $type);
 
-        $standalone = self::standaloneMessage($platform, $type);
-
-        if (filled($standalone)) {
-            return ['thread_replies', __($standalone)];
+        if (filled($unsupported)) {
+            return ['thread_replies', __($unsupported)];
         }
 
         if (count($replies) > self::maxReplies($platform)) {

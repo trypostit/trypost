@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -166,25 +167,36 @@ class ChannelPermissions
             return null;
         }
 
-        return self::firstPostFeatureRequiringReconnect(
-            $account,
-            $meta,
-            checkReplyPermission: ThreadReplies::supportsPostType($account->platform, $type),
-        );
+        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type): bool {
+            if (! $feature->isRequiredToPublish($meta)) {
+                return false;
+            }
+
+            if ($feature === GatedFeature::ThreadReplies && ! ThreadReplies::supportsPostType($account->platform, $type)) {
+                return false;
+            }
+
+            return self::requiresReconnect($account, $feature);
+        });
     }
 
-    /** @param array<string, mixed>|null $meta */
-    public static function ensureScheduledPostCanChange(SocialAccount $channel, ?array $meta, User $actor, ?string $field = null): void
+    public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
-        $blocked = self::firstPostFeatureRequiringReconnect($channel, $meta, checkReplyPermission: true);
+        $type = $post->content_type ?? ContentType::forMedia($channel->platform, $post->media ?? []);
+        $blocked = self::featureBlockingPost($channel, $post->meta, $type);
         if (filled($blocked)) {
             throw ValidationException::withMessages([
                 $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
             ]);
         }
 
-        if (GatedFeature::ThreadReplies->isRequiredToPublish($meta) && ! ThreadReplies::supports($channel->platform)) {
-            throw ValidationException::withMessages([$field ?? GatedFeature::ThreadReplies->postValidationField() => __('posts.form.thread.unsupported')]);
+        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta)) {
+            return;
+        }
+
+        $unsupported = ThreadReplies::unsupportedKey($channel->platform, $type);
+        if (filled($unsupported)) {
+            throw ValidationException::withMessages([$field ?? GatedFeature::ThreadReplies->postValidationField() => __($unsupported)]);
         }
     }
 
@@ -197,18 +209,6 @@ class ChannelPermissions
         $key = $canManageAccounts ? 'message' : 'member_message';
 
         return __(data_get($messages, $key), ['network' => $platform->label()]);
-    }
-
-    /** @param array<string, mixed>|null $meta */
-    private static function firstPostFeatureRequiringReconnect(SocialAccount $account, ?array $meta, bool $checkReplyPermission): ?GatedFeature
-    {
-        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $checkReplyPermission): bool {
-            if ($feature === GatedFeature::ThreadReplies && ! $checkReplyPermission) {
-                return false;
-            }
-
-            return $feature->isRequiredToPublish($meta) && self::requiresReconnect($account, $feature);
-        });
     }
 
     /**

@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\AppendPostMedia;
+use App\Actions\Post\Queue\ReorderChannelQueue;
 use App\Dto\MediaItem;
+use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -12,6 +15,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     Storage::fake();
@@ -87,6 +91,35 @@ test('approval rechecks an instagram comment grant that was revoked while awaiti
 
     expect($post->fresh()->status)->toBe(Status::PendingApproval);
 })->with(['web', 'api', 'mcp']);
+
+test('changing a queued instagram story reports its comment format restriction before a missing grant', function (string $action, string $errorField) {
+    $scopes = ['instagram_business_basic', 'instagram_business_content_publish'];
+    config(['trypost.platforms.instagram.scopes' => [...$scopes, 'instagram_business_manage_comments']]);
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id, 'scopes' => $scopes]);
+    $first = Post::factory()->forAccount($account)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'schedule_mode' => ScheduleMode::Queue,
+    ]);
+    $story = Post::factory()->forAccount($account, ContentType::InstagramStory)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'schedule_mode' => ScheduleMode::Queue,
+        'scheduled_at' => $first->scheduled_at->copy()->addHour(),
+        'meta' => ['thread_replies' => ['A saved first comment']],
+    ]);
+
+    $change = match ($action) {
+        'attach' => fn () => AppendPostMedia::ensureAcceptsMedia($story, $this->user),
+        'reorder' => fn () => ReorderChannelQueue::handle($account, [$story->id, $first->id], $this->user),
+    };
+
+    expect($change)->toThrow(fn (ValidationException $exception) => expect($exception->errors())
+        ->toBe([$errorField => [__('posts.form.thread.instagram_story')]]));
+    expect($story->fresh()->scheduled_at->equalTo($story->scheduled_at))->toBeTrue()
+        ->and($first->fresh()->scheduled_at->equalTo($first->scheduled_at))->toBeTrue();
+})->with([
+    'attach media' => ['attach', 'meta.thread_replies'],
+    'reorder queue' => ['reorder', 'post_ids'],
+]);
 
 test('an instagram story with a comment reports the format restriction before the missing comment grant', function (string $surface) {
     $account = SocialAccount::factory()->instagram()->create([

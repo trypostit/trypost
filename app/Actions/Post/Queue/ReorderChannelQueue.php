@@ -47,7 +47,7 @@ class ReorderChannelQueue
                         continue;
                     }
 
-                    ChannelPermissions::ensureScheduledPostCanChange($channel, $post->meta, $actor, 'post_ids');
+                    ChannelPermissions::ensureScheduledPostCanChange($channel, $post, $actor, 'post_ids');
                     ReflowChannelQueue::updateIfScheduled($post, ['scheduled_at' => $slot]);
                 }
             });
