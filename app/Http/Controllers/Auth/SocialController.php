@@ -498,7 +498,7 @@ class SocialController extends Controller
         }
     }
 
-    private function pendingForThisNetwork(): ?PendingConnection
+    protected function pendingForThisNetwork(): ?PendingConnection
     {
         $pending = PendingConnection::current();
 

@@ -53,9 +53,14 @@ class MastodonController extends SocialController
             'instance' => 'required|url',
         ]);
 
-        $workspace = $request->user()->currentWorkspace;
+        $pending = $this->pendingForThisNetwork();
 
-        $this->authorize('manageAccounts', $workspace);
+        if ($pending === null) {
+            $workspace = $request->user()->currentWorkspace;
+            $this->authorize('manageAccounts', $workspace);
+        } else {
+            $workspace = $this->connectWorkspace($request);
+        }
 
         $instance = rtrim($request->instance, '/');
 
@@ -66,8 +71,10 @@ class MastodonController extends SocialController
         }
 
         try {
-            if (PendingConnection::current()?->platform() !== $this->platform) {
+            if ($pending === null) {
                 $this->rememberConnectSession($request, $workspace);
+            } elseif ($pending->requestedScopes() === null) {
+                PendingConnection::start($this->platform, $workspace, $pending->reconnectId(), $pending->returnPath(), $pending->isSwitchingAccount());
             }
 
             $scopes = $this->spaceSeparatedConsentScopes();

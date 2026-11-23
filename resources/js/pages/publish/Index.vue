@@ -85,12 +85,12 @@ import type {
     PublishChannel,
     PublishCounts,
     PublishQueue,
-    QueueItem,
-    QueueView,
     PublishScope,
     PublishSocialAccount,
     PublishTab,
     QueueDay,
+    QueueItem,
+    QueueView,
     ScrollPostCards,
 } from '@/types/publish';
 
@@ -214,9 +214,7 @@ const groupQueueItems = (items: QueueItem[]): QueueDay[] => {
     return [...groups].map(([key, items]) => ({ date: key, items }));
 };
 
-const hasMorePosts = computed(
-    () => page.scrollProps?.posts?.nextPage != null,
-);
+const hasMorePosts = computed(() => page.scrollProps?.posts?.nextPage != null);
 
 const lastLoadedPostAt = computed<number | null>(() => {
     const times = (props.posts?.data ?? [])
@@ -464,7 +462,11 @@ const reorderQueue = (channelId: string, orderedPostIds: string[]): void => {
     }
 
     reordering.value = true;
-    localQueue.value = withChannelOrder(localQueue.value, channelId, orderedPostIds);
+    localQueue.value = withChannelOrder(
+        localQueue.value,
+        channelId,
+        orderedPostIds,
+    );
 
     router.put(
         reorderChannelQueue.url(channelId),
@@ -498,7 +500,9 @@ const withPostInSlot = (
 
     return {
         days: groupQueueItems([
-            ...items.filter((item) => item.post_id !== postId && !isTarget(item)),
+            ...items.filter(
+                (item) => item.post_id !== postId && !isTarget(item),
+            ),
             ...freed,
             {
                 type: 'post',
@@ -798,11 +802,28 @@ const submitComposition = (
             ? { queue: composition.queue }
             : { scheduled_at: composition.scheduled_at }),
     };
+    if (leavesApp) {
+        data.save_for_reconnect = true;
+    }
     router.put(updatePost.url(editPost.id), data, {
         ...options,
         onError: (errors) => {
-            if (filled(errors.post)) {
-                closed = true;
+            if (filled(errors.pending_approval)) {
+                router.replaceProp(
+                    'editPost.status',
+                    PostStatus.PendingApproval,
+                );
+                return;
+            }
+            if (!filled(errors.post)) {
+                return;
+            }
+
+            closed = true;
+            const url = new URL(window.location.href);
+            if (leavesApp && url.searchParams.get('post') === editPost.id) {
+                // The reconnect save fetched only errors. Load the post's read-only details.
+                router.visit(url.href, { replace: true });
             }
         },
         onSuccess: () => {
@@ -885,7 +906,9 @@ const submitComposition = (
                                 "
                             />
                             <NewPostButton
-                                :social-account-ids="channel ? [channel.id] : []"
+                                :social-account-ids="
+                                    channel ? [channel.id] : []
+                                "
                             />
                         </div>
                     </AppHeaderActions>
@@ -902,7 +925,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template v-if="canManageAccounts" #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             data-testid="publish-welcome-connect"
                             @click="openConnectDialog()"
@@ -932,7 +957,9 @@ const submitComposition = (
                     <PublishEmptyIllustration />
                 </template>
                 <template #action>
-                    <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div
+                        class="flex flex-wrap items-center justify-center gap-2"
+                    >
                         <Button
                             :data-testid="`publish-empty-new-post-${tab}`"
                             @click="newPost"

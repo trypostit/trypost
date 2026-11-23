@@ -182,7 +182,10 @@ class PostController extends Controller
         if ($action === PostAction::Finalized) {
             $message = __('posts.flash.cannot_edit_finalized');
 
-            return redirect($this->originPageUrl(['post' => $post->id]))
+            $details = ['post' => $post->id];
+            $url = $this->publishPageReturnUrl([...$details, 'tab' => null]);
+
+            return redirect($url ?? route('app.posts.index', $details))
                 ->with('flash.banner', $message)
                 ->with('flash.bannerStyle', 'danger')
                 ->withErrors(['post' => $message]);

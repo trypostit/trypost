@@ -293,7 +293,7 @@ class AppServiceProvider extends ServiceProvider
         Socialite::extend('google-business', function ($app) {
             $config = $app['config']['services.google-business'];
 
-            return Socialite::buildProvider(GoogleProvider::class, $config);
+            return Socialite::buildProvider(GoogleProvider::class, $config)->setScopes([]);
         });
 
         // Instagram Business Login

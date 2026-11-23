@@ -197,6 +197,10 @@ class BootstrapAccountAnalytics implements ShouldQueue
             $checkpoint['cursor'] = $collector === SyncCollector::PublicationDiscovery ? null : $cursor;
             $checkpoint['revision'] = (int) data_get($checkpoint, 'revision', 0) + 1;
 
+            if ($status === SyncStatus::Paused && $state->status === SyncStatus::ProviderLimited && $account->platform === Platform::X) {
+                $checkpoint['seen_count'] = 0;
+            }
+
             if ($collector === SyncCollector::PublicationBackfill && filled($cursor) && $state->oldest_reached_at !== null) {
                 $checkpoint['resumed_after_disconnect'] = true;
             }
@@ -218,7 +222,7 @@ class BootstrapAccountAnalytics implements ShouldQueue
             return SyncStatus::Pending;
         }
 
-        if ($this->shouldRetryLegacyTikTokBackfill($state, $account)) {
+        if ($this->shouldRetryLegacyBackfill($state, $account)) {
             return SyncStatus::Paused;
         }
 
@@ -229,14 +233,15 @@ class BootstrapAccountAnalytics implements ShouldQueue
      * Prefer the saved grant at disconnect. When an older checkpoint lacks it,
      * retry an ambiguous limit only if the backfill never reached a publication.
      */
-    private function shouldRetryLegacyTikTokBackfill(AnalyticsSyncState $state, SocialAccount $account): bool
+    private function shouldRetryLegacyBackfill(AnalyticsSyncState $state, SocialAccount $account): bool
     {
-        if ($account->platform !== Platform::TikTok || $state->collector !== SyncCollector::PublicationBackfill
-            || $state->status !== SyncStatus::ProviderLimited || $state->last_error_category !== 'provider_limited') {
+        if ($state->collector !== SyncCollector::PublicationBackfill || $state->status !== SyncStatus::ProviderLimited
+            || $state->last_error_category !== 'provider_limited' || data_get($state->checkpoint, 'had_provider_limit')
+            || blank(ChannelPermissions::scopes($account->platform, GatedFeature::PostHistory))) {
             return false;
         }
 
         return data_get($state->checkpoint, 'missing_history_grant')
-            ?? ($state->oldest_reached_at === null && $state->high_watermark_at === null);
+            ?? ($state->oldest_reached_at === null && $state->high_watermark_at === null && ! data_get($state->checkpoint, 'seen_count'));
     }
 }

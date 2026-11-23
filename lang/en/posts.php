@@ -545,6 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Save draft & reconnect',
             'blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
+            'pending_approval' => 'This post is waiting for approval. Review the request before reconnecting the channel.',
         ],
 
         'pinterest' => [

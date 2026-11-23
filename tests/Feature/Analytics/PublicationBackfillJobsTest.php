@@ -1364,9 +1364,9 @@ test('restoring private history during a Mastodon backfill recovers earlier priv
         ->toEqualCanonicalizing(['100', '200', '300', '400']);
 });
 
-test('reconnecting a deleted TikTok channel retries a legacy scope refusal and preserves a known provider limit', function (array $oldScopes, bool $retries) {
+test('reconnecting a deleted channel retries a legacy scope refusal and preserves a known provider limit', function (string $platform, array $oldScopes, bool $retries) {
     Bus::fake();
-    $old = SocialAccount::factory()->tiktok()->create(['scopes' => $oldScopes]);
+    $old = SocialAccount::factory()->{$platform}()->create(['scopes' => $oldScopes]);
     $state = AnalyticsSyncState::factory()->create([
         ...AnalyticsSyncState::identityFor($old),
         'social_account_id' => $old->id,
@@ -1374,7 +1374,7 @@ test('reconnecting a deleted TikTok channel retries a legacy scope refusal and p
         'last_error_category' => 'provider_limited',
     ]);
     $old->delete();
-    $account = SocialAccount::factory()->tiktok()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
 
     (new BootstrapAccountAnalytics($account->id))->handle();
 
@@ -1382,8 +1382,9 @@ test('reconnecting a deleted TikTok channel retries a legacy scope refusal and p
     Bus::assertDispatchedTimes(BackfillAccountPublications::class, $retries ? 1 : 0);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $retries ? 0 : 1);
 })->with([
-    'history was denied' => [['video.publish'], true],
-    'history was granted' => [['video.list'], false],
+    'TikTok history was denied' => ['tiktok', ['video.publish'], true],
+    'TikTok history was granted' => ['tiktok', ['video.list'], false],
+    'Pinterest history was granted' => ['pinterest', ['boards:read', 'pins:read'], false],
 ]);
 
 test('a legacy orphaned TikTok limit without a saved grant is retried only for an empty history', function (bool $imported) {
@@ -1403,3 +1404,154 @@ test('a legacy orphaned TikTok limit without a saved grant is retried only for a
     Bus::assertDispatchedTimes(BackfillAccountPublications::class, $imported ? 0 : 1);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $imported ? 1 : 0);
 })->with(['empty history' => false, 'previously imported history' => true]);
+
+test('restoring Mastodon private discovery imports a status older than the newest public post', function (?string $legacyStatus) {
+    Bus::fake();
+    $this->freezeTime();
+    $account = SocialAccount::factory()->mastodon()->create();
+    $originalScopes = $account->scopes;
+    $safeWatermark = now()->subDays(5);
+    $publicPost = ['id' => '400', 'created_at' => now()->subDay()->toIso8601String(), 'visibility' => 'public'];
+    $privatePost = ['id' => '300', 'created_at' => now()->subDays(3)->toIso8601String(), 'visibility' => 'private'];
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => $safeWatermark,
+    ]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => $safeWatermark,
+    ]);
+    $endpoint = $account->mastodon_instance.'/api/v1/accounts/'.$account->platform_user_id.'/statuses';
+    Http::preventStrayRequests();
+    Http::fake([$endpoint.'*' => function (Request $request) use ($endpoint, $publicPost, $privatePost) {
+        if (! $request->hasHeader('Authorization')) {
+            return Http::response([$publicPost]);
+        }
+
+        if (data_get($request->data(), 'max_id') === '400') {
+            return Http::response([$privatePost]);
+        }
+
+        return Http::response([$publicPost], 200, ['Link' => '<'.$endpoint.'?max_id=400>; rel="next"']);
+    }]);
+
+    $account->update(['scopes' => ['read:accounts', 'write:statuses']]);
+    $job = new DiscoverAccountPublications($account->id, $state->id);
+    app()->call([$job, 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Partial)
+        ->and(Post::query()->imported()->pluck('platform_post_id')->all())->toBe(['400']);
+
+    if ($legacyStatus === 'partial') {
+        $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1], 'high_watermark_at' => $publicPost['created_at']]);
+    }
+
+    if ($legacyStatus === 'rate_limited') {
+        $state->update([
+            'checkpoint' => ['cursor' => '250', 'revision' => 2, 'public_history_only' => true],
+            'high_watermark_at' => $publicPost['created_at'],
+            'status' => SyncStatus::Running,
+            'last_error_category' => 'rate_limited',
+        ]);
+    }
+
+    app()->call([$job, 'handle']);
+    $account->update(['scopes' => $originalScopes]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+    app()->call([Bus::dispatched(DiscoverAccountPublications::class)->sole(), 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+    app()->call([Bus::dispatched(DiscoverAccountPublications::class)->last(), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and($state->fresh()->high_watermark_at->equalTo($publicPost['created_at']))->toBeTrue()
+        ->and(Post::query()->imported()->pluck('platform_post_id')->all())->toEqualCanonicalizing(['400', '300']);
+})->with([
+    'public discovery' => [null],
+    'completed public run before upgrade' => ['partial'],
+    'rate-limited public page before upgrade' => ['rate_limited'],
+]);
+
+test('a reconnected Pinterest channel imports older pins after a legacy history refusal', function (bool $deletedBeforeUpgrade) {
+    Bus::fake();
+    $this->freezeTime();
+    $old = SocialAccount::factory()->pinterest()->create(['scopes' => ['pins:write', 'boards:read']]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'oldest_reached_at' => $deletedBeforeUpgrade ? null : now()->subDays(2),
+    ]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'high_watermark_at' => now()->subDay(),
+    ]);
+    $old->delete();
+    if ($deletedBeforeUpgrade) {
+        $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1]]);
+    }
+    $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [
+        ['id' => '123', 'created_at' => now()->subDays(7)->toIso8601String(), 'media' => ['media_type' => 'image']],
+    ]])]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([Bus::dispatched(BackfillAccountPublications::class)->sole(), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
+})->with(['grant saved at disconnect' => false, 'deleted before upgrade' => true]);
+
+test('Pinterest keeps a confirmed provider limit after losing its history scope and reconnecting', function (bool $recreate) {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $scopes = $account->scopes;
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [['id' => 'undated']]])]);
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+
+    $account->update(['scopes' => ['pins:write']]);
+    if ($recreate) {
+        $account->delete();
+        $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $account->workspace_id, 'platform_user_id' => $account->platform_user_id]);
+    } else {
+        $account->update(['scopes' => $scopes]);
+    }
+
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class);
+})->with(['same channel' => false, 'deleted and reconnected' => true]);
+
+test('a reconnected X channel resets the timeline count only for a legacy history refusal', function (bool $missingGrant) {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create();
+    $checkpoint = ['cursor' => null, 'revision' => 1, 'seen_count' => 230];
+    if ($missingGrant) {
+        $checkpoint['missing_history_grant'] = true;
+    }
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => null,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => $checkpoint,
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->checkpoint['seen_count'])->toBe($missingGrant ? 0 : 230);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $missingGrant ? 1 : 0);
+})->with(['known history refusal' => true, 'timeline rows already read' => false]);

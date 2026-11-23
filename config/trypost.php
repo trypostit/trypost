@@ -724,7 +724,12 @@ return [
         ],
         'google_business' => [
             'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('GOOGLE_BUSINESS_SCOPES', 'https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/business.manage'),
+            // Google's UserInfo flow starts with openid and accepts profile or email for identity.
+            'scopes' => [
+                'openid',
+                ...ConfigEnvironment::oauthScopes('GOOGLE_BUSINESS_SCOPES', 'profile,email,https://www.googleapis.com/auth/userinfo.profile,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/business.manage'),
+            ],
+            'required_scopes' => ['openid', ['profile', 'https://www.googleapis.com/auth/userinfo.profile', 'email', 'https://www.googleapis.com/auth/userinfo.email']],
             'permissions' => [
                 'publish' => ['scopes' => ['https://www.googleapis.com/auth/business.manage']],
             ],

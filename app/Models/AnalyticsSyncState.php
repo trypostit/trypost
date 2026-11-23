@@ -87,7 +87,8 @@ class AnalyticsSyncState extends Model
     {
         return $query->forCollector(SyncCollector::PublicationBackfill)
             ->where('status', SyncStatus::ProviderLimited)
-            ->where('last_error_category', 'provider_limited');
+            ->where('last_error_category', 'provider_limited')
+            ->whereNull('checkpoint->had_provider_limit');
     }
 
     public function scopePendingOrRunning(Builder $query): Builder

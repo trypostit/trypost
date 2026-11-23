@@ -7,12 +7,15 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Mockery\MockInterface;
 
@@ -425,6 +428,7 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
  */
 function seedHeldBackMastodonThread(int $channels = 1): Post
 {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     gateFeature(Platform::Mastodon, GatedFeature::ThreadReplies, ['write:replies'], ['message' => 'posts.form.thread.unsupported', 'member_message' => 'posts.form.thread.reply_empty']);
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
@@ -522,20 +526,64 @@ test('saving only the caption keeps replies changed in another session', functio
     $page->assertNoJavaScriptErrors();
 })->with(['thread added' => false, 'thread edited' => true]);
 
-test('save and reconnect reports a post finalized meanwhile and stays in the app', function () {
+test('save and reconnect shows read-only details for a post finalized meanwhile', function (bool $fromDrafts) {
     $post = seedHeldBackMastodonThread();
-    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
-    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $page = $fromDrafts
+        ? openUnsavedChangesFromList($post, null, Str::after($link, '@'))
+        : visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, $link);
-    $page->fill("@composer-caption-{$post->social_account_id}", 'Unsaved caption');
+    $caption = "@composer-caption-{$post->social_account_id}";
+    $page->click($caption)->fill($caption, 'Unsaved caption');
     $post->update(['status' => PostStatus::Publishing]);
     $page->click($link);
     waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
 
+    waitFor($page, "@post-details-{$post->id}");
+    $page->assertMissing('@post-composer-dialog')
+        ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.publishing'))
+        ->assertSeeIn("@thread-view-post-{$post->id}-0", 'Held back')
+        ->assertNoJavaScriptErrors();
     expect($post->fresh()->content)->toBe('Held back')
         ->and($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
-    $page->assertNoJavaScriptErrors();
+})->with(['opened by edit link' => false, 'opened from drafts' => true]);
+
+test('save and reconnect leaves a new approval request intact when the editor is stale', function () {
+    $post = seedHeldBackMastodonThread();
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $other = Post::factory()->forAccount($post->socialAccount)->draft()->create([
+        'user_id' => $post->user_id,
+        'content' => 'Another draft',
+        'meta' => $post->meta,
+    ]);
+    $page = openUnsavedChangesFromList($post, null, Str::after($link, '@'));
+    $caption = "@composer-caption-{$post->social_account_id}";
+    $page->click($caption)->fill($caption, 'Unsaved caption');
+
+    $requester = workspaceMember($post->workspace);
+    $post->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $requester->id]);
+    $page->click($link);
+    waitForGoneOrShown($page, '@post-composer-dialog', '@composer-errors');
+
+    expect($post->fresh())->status->toBe(PostStatus::PendingApproval)
+        ->approval_requested_by->toBe($requester->id)
+        ->content->toBe('Held back');
+
+    $page->assertVisible('@post-composer-dialog')
+        ->assertSeeIn('@composer-errors', __('posts.form.reconnect.pending_approval'))
+        ->assertValue("@composer-caption-{$post->social_account_id}", 'Unsaved caption')
+        ->assertMissing($link);
+
+    $page->click('@composer-close');
+    waitFor($page, '@unsaved-changes-discard');
+    $page->click('@unsaved-changes-discard');
+    waitForGone($page, '@post-composer-dialog');
+    waitFor($page, "@post-edit-{$other->id}");
+    $page->click("@post-edit-{$other->id}");
+    waitFor($page, $link);
+    $page->assertValue("@composer-caption-{$other->social_account_id}", 'Another draft')
+        ->assertMissing('@composer-errors')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a member who cannot manage channels is told an admin needs to reconnect, with no link', function () {

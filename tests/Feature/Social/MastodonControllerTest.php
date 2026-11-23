@@ -8,6 +8,7 @@ use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\PendingConnection;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -68,6 +69,61 @@ test('mastodon registers and authorizes with the scopes the install configures, 
 
     expect(Str::of(Uri::of($location)->query()->get('scope'))->split('/[\s+]+/')->all())->toBe(['read:accounts', 'read:statuses', 'write:statuses', 'write:media']);
     Http::assertSent(fn (ClientRequest $request): bool => $request['scopes'] === 'read:accounts read:statuses write:statuses write:media');
+});
+
+test('a stale Inertia form registers the Mastodon app with its scopes and reconnects the original channel', function () {
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $this->workspace->id]);
+    $returnTo = route('app.posts.index', absolute: false);
+    $this->actingAs($this->user)->get(route('app.social.mastodon.connect', ['return_to' => $returnTo, 'reconnect' => $account->id, 'switch' => '1']))->assertOk();
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+
+    $other = Workspace::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->user->account_id]);
+    $this->user->update(['current_workspace_id' => $other->id]);
+    $scopes = ['read:accounts', 'write:statuses', 'write:media'];
+    config(['trypost.platforms.mastodon.scopes' => $scopes]);
+    Http::fake([
+        'https://mastodon.social/api/v1/apps' => Http::response(['client_id' => 'example-client', 'client_secret' => 'example-secret']),
+        'https://mastodon.social/oauth/token' => Http::response(['access_token' => 'new-access-token']),
+        'https://mastodon.social/api/v1/accounts/verify_credentials' => Http::response(['id' => $account->platform_user_id, 'username' => 'tester', 'acct' => 'tester']),
+    ]);
+
+    $redirect = $this->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.social'], [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => 'previous-deployment',
+    ])->assertConflict();
+    $location = $redirect->headers->get('X-Inertia-Location');
+    expect($location)->toStartWith('https://mastodon.social/oauth/authorize?');
+    $query = Uri::of($location)->query();
+    expect(Str::of($query->get('scope'))->split('/[\s+]+/')->all())->toBe($scopes)
+        ->and($query->get('force_login'))->toBe('true');
+    Http::assertSent(fn (ClientRequest $request): bool => $request->url() === 'https://mastodon.social/api/v1/apps' && $request['scopes'] === implode(' ', $scopes));
+    expect(PendingConnection::current())
+        ->requestedScopes()->toBe($scopes)
+        ->workspaceId()->toBe($this->workspace->id)
+        ->reconnectId()->toBe($account->id)
+        ->returnPath()->toBe($returnTo)
+        ->isSwitchingAccount()->toBeTrue();
+
+    config(['trypost.platforms.mastodon.scopes' => [...$scopes, 'read:statuses']]);
+    $this->get(route('app.social.mastodon.callback', ['code' => 'example-code', 'state' => $query->get('state')]))
+        ->assertRedirect(route('app.social.connect.show', Platform::Mastodon));
+    finishSocialConnect(Platform::Mastodon)->assertRedirect(route('app.channels.publish', $account));
+    expect($account->refresh())->scopes->toBe($scopes)->access_token->toBe('new-access-token');
+    expect($other->socialAccounts()->exists())->toBeFalse();
+});
+
+test('mastodon checks permission in the workspace where the instance form opened before registering', function () {
+    $foreign = Workspace::factory()->create();
+    startSocialConnect($foreign, Platform::Mastodon);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    Http::fake();
+
+    $this->actingAs($this->user)
+        ->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.social'])
+        ->assertRedirect(route('app.social.connect.show', Platform::Mastodon));
+
+    expect(socialConnectFailure())->toBe('workspace_not_found');
+    Http::assertNothingSent();
 });
 
 test('user cannot connect to invalid mastodon instance', function () {
@@ -385,6 +441,8 @@ test('a token without reported scopes keeps only the scopes sent to Mastodon at 
     $this->actingAs($this->user);
     $scopes = ['read:accounts', 'write:statuses', 'write:media'];
     config(['trypost.platforms.mastodon.scopes' => $scopes]);
+    $this->get(route('app.social.mastodon.connect'))->assertOk();
+    config(['trypost.platforms.mastodon.scopes' => [...$scopes, 'read:statuses']]);
     Http::fake([
         'https://mastodon.social/api/v1/apps' => Http::response(['client_id' => 'example-client', 'client_secret' => 'example-secret']),
         'https://mastodon.social/oauth/token' => Http::response(['access_token' => 'example-token']),
@@ -394,7 +452,6 @@ test('a token without reported scopes keeps only the scopes sent to Mastodon at 
     $query = Uri::of($redirect->headers->get('Location'))->query();
     expect(Str::of($query->get('scope'))->split('/[\s+]+/')->all())->toBe($scopes);
 
-    config(['trypost.platforms.mastodon.scopes' => [...$scopes, 'read:statuses']]);
     $this->get(route('app.social.mastodon.callback', ['code' => 'example-code', 'state' => $query->get('state')]))->assertRedirect(route('app.social.connect.show', Platform::Mastodon));
     finishSocialConnect(Platform::Mastodon)->assertRedirect();
     $account = $this->workspace->socialAccounts()->where('platform_user_id', '987')->sole();

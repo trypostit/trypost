@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
 use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class AdvanceAnalyticsSyncState
@@ -54,10 +55,10 @@ class AdvanceAnalyticsSyncState
             ->update($restart);
     }
 
-    /** Keep the evidence for a legacy TikTok limit before disconnect removes the account and its scopes. */
+    /** Keep the evidence for a legacy history limit before disconnect removes the account and its scopes. */
     public function rememberDisconnectedHistoryGrant(SocialAccount $account): void
     {
-        if ($account->platform !== Platform::TikTok || blank($account->scopes)) {
+        if (blank($account->scopes) || blank(ChannelPermissions::scopes($account->platform, GatedFeature::PostHistory))) {
             return;
         }
 
@@ -193,6 +194,13 @@ class AdvanceAnalyticsSyncState
                 $partialReason = MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
             }
 
+            $privateWatermark = data_get($checkpoint, 'private_history_watermark_at');
+            if ($isDiscovery && $partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL) {
+                $privateWatermark ??= ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->toIso8601String();
+            } elseif ($finished) {
+                $privateWatermark = null;
+            }
+
             $status = match (true) {
                 $xTimelineLimited, $hadProviderLimit && $finished => SyncStatus::ProviderLimited,
                 filled($partialReason) && $finished => SyncStatus::Partial,
@@ -212,8 +220,9 @@ class AdvanceAnalyticsSyncState
                     ...($partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL && $status === SyncStatus::Running
                         ? ['public_history_only' => true]
                         : []),
+                    ...($privateWatermark !== null ? ['private_history_watermark_at' => $privateWatermark] : []),
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
-                    ...($hadProviderLimit && $status === SyncStatus::Running ? ['had_provider_limit' => true] : []),
+                    ...($hadProviderLimit && (! $isDiscovery || ! $finished) ? ['had_provider_limit' => true] : []),
                     ...($status === SyncStatus::Running && data_get($checkpoint, 'invalid_cursor_resets')
                         ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
                         : []),
@@ -288,6 +297,7 @@ class AdvanceAnalyticsSyncState
                     'revision' => $capturedRevision,
                     ...(array_key_exists('seen_count', $state->checkpoint ?? []) ? ['seen_count' => 0] : []),
                     ...(! empty(data_get($state->checkpoint, 'had_provider_limit')) ? ['had_provider_limit' => true] : []),
+                    ...Arr::only($state->checkpoint ?? [], ['private_history_watermark_at']),
                     'invalid_cursor_resets' => $resets + 1,
                 ],
                 'last_error_category' => 'invalid_cursor',
@@ -331,6 +341,7 @@ class AdvanceAnalyticsSyncState
      *     cursor: mixed,
      *     revision: int,
      *     public_history_only?: true,
+     *     private_history_watermark_at?: string,
      *     seen_count?: int,
      *     resumed_after_disconnect?: true,
      *     had_provider_limit?: true,
@@ -348,13 +359,18 @@ class AdvanceAnalyticsSyncState
             'revision' => (int) data_get($previous, 'revision', 0) + 1,
         ];
 
+        $privateWatermark = $this->privateDiscoveryWatermark($state);
+        if ($privateWatermark !== null) {
+            $checkpoint['private_history_watermark_at'] = $privateWatermark;
+        }
+
         $hasPublicHistoryCursor = filled($cursor) && (data_get($previous, 'public_history_only')
             || $state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL);
-        if ($hasPublicHistoryCursor) {
-            if ($state->socialAccount?->canReadMastodonStatuses()) {
-                $checkpoint['cursor'] = null;
-            } else {
+        if ($hasPublicHistoryCursor || $privateWatermark !== null) {
+            if (! $state->socialAccount?->canReadMastodonStatuses()) {
                 $checkpoint['public_history_only'] = true;
+            } elseif ($hasPublicHistoryCursor) {
+                $checkpoint['cursor'] = null;
             }
         }
 
@@ -383,6 +399,35 @@ class AdvanceAnalyticsSyncState
         return $checkpoint;
     }
 
+    /** A legacy public-only run could advance past private posts. Replay from the last complete backfill when it saved no private watermark. */
+    private function privateDiscoveryWatermark(AnalyticsSyncState $state): ?string
+    {
+        if ($state->collector !== SyncCollector::PublicationDiscovery) {
+            return null;
+        }
+
+        $saved = data_get($state->checkpoint, 'private_history_watermark_at');
+        if ($saved !== null) {
+            return $saved;
+        }
+
+        if ($state->last_error_category !== MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL
+            && ! data_get($state->checkpoint, 'public_history_only')) {
+            return null;
+        }
+
+        $backfill = AnalyticsSyncState::query()
+            ->where('social_account_id', $state->social_account_id)
+            ->forCollector(SyncCollector::PublicationBackfill)
+            ->first();
+
+        if ($backfill?->status === SyncStatus::Complete && $backfill->high_watermark_at !== null) {
+            return $backfill->high_watermark_at->toIso8601String();
+        }
+
+        return ($backfill?->target_since ?? CarbonImmutable::now('UTC')->subDays(365))->toIso8601String();
+    }
+
     private function cutoffForRun(AnalyticsSyncState $state): CarbonImmutable
     {
         if ($state->collector === SyncCollector::PublicationBackfill) {
@@ -391,7 +436,13 @@ class AdvanceAnalyticsSyncState
 
         $overlapHours = max(0, (int) config('trypost.analytics.discovery_overlap_hours'));
 
-        return ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->subHours($overlapHours);
+        $watermark = $state->high_watermark_at ?? CarbonImmutable::now('UTC');
+        $privateWatermark = data_get($state->checkpoint, 'private_history_watermark_at');
+        if ($privateWatermark !== null && ! data_get($state->checkpoint, 'public_history_only')) {
+            $watermark = CarbonImmutable::parse($privateWatermark, 'UTC');
+        }
+
+        return $watermark->subHours($overlapHours);
     }
 
     private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): AnalyticsSyncState

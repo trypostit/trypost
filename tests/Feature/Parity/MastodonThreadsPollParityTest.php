@@ -148,6 +148,19 @@ test('a mastodon reply can be a poll under mastodon rules on the web, api and mc
     expect($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual($poll);
 })->with(['web', 'api', 'mcp']);
 
+test('editing a draft caption keeps its reply poll when replies are disabled', function (string $surface, ContentType $type) {
+    $poll = ['options' => ['Yes', 'No'], 'duration_minutes' => 60];
+    $post = pollParityPost($type, ['thread_replies' => [['text' => 'Join us?', 'poll' => $poll]]]);
+    config(["trypost.platforms.{$type->platform()->value}.permissions.thread_replies.scopes" => ['replies:write']]);
+
+    $response = pollParityUpdate($surface, $post, ['content' => 'Updated caption']);
+
+    assertPollParityPassed($surface, $response);
+    $post->refresh();
+    expect($post->content)->toBe('Updated caption')
+        ->and(data_get($post->meta, 'thread_replies.0.poll'))->toEqual($poll);
+})->with(['web', 'api', 'mcp'])->with([ContentType::XPost, ContentType::MastodonPost]);
+
 test('a bluesky reply drops a poll on the web, api and mcp', function (string $surface) {
     $post = pollParityPost(ContentType::BlueskyPost);
 

@@ -192,6 +192,10 @@ class UpdatePost
                 return null;
             }
 
+            if ($post->status === PostStatus::PendingApproval && data_get($data, 'save_for_reconnect')) {
+                throw ValidationException::withMessages(['pending_approval' => __('posts.form.reconnect.pending_approval')]);
+            }
+
             $meta = PostPlatformMetaRules::normalize(array_filter(
                 PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
                 fn (mixed $value): bool => $value !== null,

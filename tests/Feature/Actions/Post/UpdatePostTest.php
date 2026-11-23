@@ -123,6 +123,25 @@ test('an edit does not land on a post the scheduler claimed after it was loaded'
         ->and($post->fresh()->content)->toBe('Original');
 });
 
+test('saving for reconnect refuses an approval requested after the post was loaded', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $requester = workspaceMember($workspace);
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id, 'content' => 'Original']);
+    $post->fresh()->update(['status' => PostStatus::PendingApproval, 'approval_requested_by' => $requester->id]);
+
+    expect(fn () => UpdatePost::execute($workspace, $post, [
+        'status' => PostStatus::Draft->value,
+        'content' => 'Edited',
+        'save_for_reconnect' => true,
+    ], $user))->toThrow(ValidationException::class, __('posts.form.reconnect.pending_approval'));
+
+    expect($post->fresh())->status->toBe(PostStatus::PendingApproval)
+        ->approval_requested_by->toBe($requester->id)
+        ->content->toBe('Original');
+});
+
 test('a second publish now after the post settled is a no-op', function () {
     Queue::fake();
     $user = User::factory()->create();

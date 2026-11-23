@@ -545,6 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Enregistrer le brouillon et reconnecter',
             'blocked' => 'Cette publication ne peut pas encore être enregistrée. Attendez la fin des envois et corrigez ce qui est signalé, puis réessayez.',
+            'pending_approval' => 'Ce post est en attente d’approbation. Examinez la demande avant de reconnecter le canal.',
         ],
 
         'pinterest' => [

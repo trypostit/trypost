@@ -121,14 +121,14 @@ class ThreadReplies
     }
 
     /**
-     * The poll rules a reply of this network follows, or null when its
-     * replies cannot be polls (a network without polls, or without threads).
+     * The network's reply poll format also applies to stored drafts
+     * while the installation has replies disabled.
      *
      * @return class-string<Poll>|null
      */
     public static function replyPoll(?Platform $platform): ?string
     {
-        if (! self::supports($platform)) {
+        if (self::replyContentType($platform) === null) {
             return null;
         }
 

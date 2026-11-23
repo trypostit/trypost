@@ -81,6 +81,17 @@ test('saving a draft from the all channels page keeps the tab and filters but dr
         ->assertRedirect(route('app.posts.index', ['tab' => 'drafts', 'channels' => [$this->channel->id]]));
 });
 
+test('a reconnect save that lost the edit opens the current post on its channel with the original filters', function () {
+    $post = publishRedirectPost($this->channel, PostStatus::Publishing);
+    $filters = ['tz' => 'UTC', 'untagged' => 1];
+
+    $this->actingAs($this->user)
+        ->from(route('app.channels.publish', [$this->channel, ...$filters, 'tab' => 'drafts', 'edit' => $post->id]))
+        ->put(route('app.posts.update', $post), [...publishRedirectUpdatePayload($post, 'draft'), 'save_for_reconnect' => true])
+        ->assertRedirect(route('app.channels.publish', [$this->channel, ...$filters, 'post' => $post->id]))
+        ->assertSessionHasErrors(['post' => __('posts.flash.cannot_edit_finalized')]);
+});
+
 test('saving an edit from another page of the app returns to that page as it was', function (string $status, string $origin) {
     $post = publishRedirectPost($this->channel);
     $from = publishRedirectOrigin($origin, $this->channel);

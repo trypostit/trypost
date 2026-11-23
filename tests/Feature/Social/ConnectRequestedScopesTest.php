@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\PendingConnection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 
@@ -44,7 +45,7 @@ test('connect asks for required scopes even when the env leaves them out', funct
     'facebook' => [Platform::Facebook, 'app.social.facebook.connect', ['pages_manage_posts', 'pages_show_list', 'pages_read_engagement'], 'read_insights'],
     'youtube' => [Platform::YouTube, 'app.social.youtube.connect', ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'], 'https://www.googleapis.com/auth/yt-analytics.readonly'],
     'pinterest' => [Platform::Pinterest, 'app.social.pinterest.connect', ['pins:write', 'boards:read', 'boards:write', 'user_accounts:read'], 'pins:read'],
-    'google business' => [Platform::GoogleBusiness, 'app.social.google-business.connect', ['https://www.googleapis.com/auth/business.manage'], 'https://www.googleapis.com/auth/userinfo.email'],
+    'google business' => [Platform::GoogleBusiness, 'app.social.google-business.connect', ['openid', 'profile', 'https://www.googleapis.com/auth/business.manage'], 'https://www.googleapis.com/auth/userinfo.email'],
     'instagram' => [Platform::Instagram, 'app.social.instagram.connect', ['instagram_business_basic', 'instagram_business_content_publish'], 'instagram_business_manage_insights'],
     'instagram through facebook' => [Platform::InstagramFacebook, 'app.social.instagram-facebook.connect', ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'], 'instagram_manage_insights'],
     'threads' => [Platform::Threads, 'app.social.threads.connect', ['threads_basic', 'threads_content_publish'], 'threads_manage_insights'],
@@ -52,4 +53,21 @@ test('connect asks for required scopes even when the env leaves them out', funct
     'linkedin profile' => [Platform::LinkedIn, 'app.social.linkedin.connect', ['openid', 'profile', 'email', 'w_member_social'], 'w_organization_social', ['trypost.platforms.linkedin-page.enabled' => false]],
     'linkedin page' => [Platform::LinkedInPage, 'app.social.linkedin.connect', ['openid', 'profile', 'email', 'w_organization_social', 'rw_organization_admin'], 'w_member_social', ['trypost.platforms.linkedin.enabled' => false]],
     'discord' => [Platform::Discord, 'app.social.discord.connect', ['bot', 'identify', 'guilds']],
+]);
+
+test('google business asks for its configured scopes and the identity and publishing permissions', function (string $configured, array $expected) {
+    config(['trypost.platforms.google_business.scopes' => data_get(trypostConfigWith(['GOOGLE_BUSINESS_SCOPES' => $configured]), 'platforms.google_business.scopes')]);
+
+    $redirect = $this->actingAs($this->user)->get(route('app.social.google-business.connect'));
+    $scopes = connectRedirectScopes($redirect->headers->get('Location'));
+
+    expect($scopes)->toBe($expected);
+    expect(PendingConnection::current()->requestedScopes())->toBe($scopes);
+})->with([
+    'default including email' => ['', ['openid', 'profile', 'email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/business.manage']],
+    'email and identity scopes omitted' => ['https://www.googleapis.com/auth/business.manage', ['openid', 'https://www.googleapis.com/auth/business.manage', 'profile']],
+    'profile alias configured without publishing access' => ['profile', ['openid', 'profile', 'https://www.googleapis.com/auth/business.manage']],
+    'profile URL without email' => ['openid https://www.googleapis.com/auth/userinfo.profile', ['openid', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/business.manage']],
+    'email without profile' => ['email', ['openid', 'email', 'https://www.googleapis.com/auth/business.manage']],
+    'email URL without profile' => ['https://www.googleapis.com/auth/userinfo.email', ['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/business.manage']],
 ]);

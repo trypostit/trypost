@@ -545,6 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Entwurf speichern und neu verbinden',
             'blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
+            'pending_approval' => 'Dieser Post wartet auf Freigabe. Prüfe die Anfrage, bevor du den Kanal erneut verbindest.',
         ],
 
         'pinterest' => [

@@ -545,6 +545,7 @@ return [
         'reconnect' => [
             'save' => 'Salvar rascunho e reconectar',
             'blocked' => 'Este post ainda não pode ser salvo. Aguarde os uploads terminarem e corrija o que está destacado, depois tente de novo.',
+            'pending_approval' => 'Este post está aguardando aprovação. Revise a solicitação antes de reconectar o canal.',
         ],
 
         'pinterest' => [
