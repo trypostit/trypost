@@ -41,7 +41,7 @@ class SocialController extends Controller
 
     private const array CANCELLED_CONSENT_ERRORS = ['access_denied', 'user_cancelled_login', 'user_cancelled_authorize'];
 
-    private const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
+    protected const string MISSING_PUBLISH_PERMISSION = 'publish_permission_missing';
 
     /** The platform's API host, keyed in config by the enum value. */
     protected function graphApi(): string

@@ -55,6 +55,75 @@ function grantedScopesFakeSocialite(string $driver, SocialiteUser $user): void
     Socialite::shouldReceive('driver')->with($driver)->andReturn($provider);
 }
 
+dataset('meta publish permissions', [
+    'Facebook' => [Platform::Facebook, 'pages_manage_posts'],
+    'Instagram via Facebook' => [Platform::InstagramFacebook, 'instagram_content_publish'],
+]);
+
+function prepareLegacyMetaCallback(Platform $platform): void
+{
+    startSocialConnect(test()->workspace, $platform);
+    session()->forget(PendingConnection::SESSION_KEY.'.requested_scopes');
+    test()->actingAs(test()->owner);
+
+    $driver = Mockery::mock();
+    $driver->shouldReceive('usingGraphVersion', 'redirectUrl')->andReturnSelf();
+    $driver->shouldReceive('user')->andReturn(grantedScopesSocialiteUser('facebook-user', []));
+    Socialite::shouldReceive('driver')->with('facebook')->andReturn($driver);
+
+    $graph = config("trypost.platforms.{$platform->value}.graph_api");
+    Http::fake([
+        "{$graph}/me?*" => Http::response(['id' => 'facebook-user']),
+        "{$graph}/me/accounts*" => Http::response(['data' => [[
+            'id' => 'page-one', 'name' => 'Page One', 'access_token' => 'page-token',
+            'instagram_business_account' => ['id' => 'ig-one'],
+        ]]]),
+        "{$graph}/ig-one*" => Http::response(['id' => 'ig-one', 'username' => 'brand', 'name' => 'Brand']),
+    ]);
+}
+
+test('a pre-deploy Meta callback stores only explicitly granted scopes when publishing was approved', function (Platform $platform, string $publishScope) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => Http::response(['data' => [
+        ['permission' => 'pages_show_list', 'status' => 'granted'],
+        ['permission' => $publishScope, 'status' => 'granted'],
+        ['permission' => 'business_management', 'status' => 'declined'],
+    ]])]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+    finishSocialConnect($platform)->assertRedirect();
+
+    expect($this->workspace->socialAccounts()->sole()->scopes)->toBe(['pages_show_list', $publishScope]);
+})->with('meta publish permissions');
+
+test('a pre-deploy Meta callback refuses an explicitly declined or expired publishing permission', function (Platform $platform, string $publishScope, string $status) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => Http::response(['data' => [['permission' => $publishScope, 'status' => $status]]])]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with('meta publish permissions')->with(['declined', 'expired']);
+
+test('a pre-deploy Meta callback restarts consent when the publishing grant is unknown', function (Platform $platform, string $publishScope, string $response) {
+    prepareLegacyMetaCallback($platform);
+    Http::fake(['*/me/permissions*' => match ($response) {
+        'partial' => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]]),
+        'unknown status' => Http::response(['data' => [['permission' => $publishScope, 'status' => 'unrecognized']]]),
+        'http failure' => Http::response([], 503),
+        'connection failure' => Http::failedConnection(),
+    }]);
+    $restart = route("app.social.{$platform->value}.connect", ['return_to' => PendingConnection::current()->returnPath()]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect($restart);
+
+    expect(socialConnectFailure())->toBeNull();
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with('meta publish permissions')->with(['partial', 'unknown status', 'http failure', 'connection failure']);
+
 /**
  * Each network: the callback route, how its provider reports a grant, the
  * scopes stored for it, and the session/fakes the callback needs.
