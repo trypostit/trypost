@@ -176,8 +176,8 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.social_account_id", __('posts.errors.queue_requires_schedule'));
                 }
 
-                $contentType = ContentType::resolve($destination['content_type']);
-                if (filled($contentType) && ! $contentType->isCompatibleWith($account->platform)) {
+                $contentType = ContentType::from($destination['content_type']);
+                if (! $contentType->isCompatibleWith($account->platform)) {
                     $validator->errors()->add("{$key}.content_type", trans('validation.in', ['attribute' => 'content type']));
                 }
 
@@ -204,7 +204,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.meta.{$field}", $message);
                 }
 
-                $pollWithMedia = $contentType?->isPoll() === true && filled(data_get($destination, 'media'));
+                $pollWithMedia = $contentType->isPoll() && filled(data_get($destination, 'media'));
 
                 if ($pollWithMedia) {
                     $validator->errors()->add("{$key}.media", trans('posts.errors.media_not_accepted'));
@@ -226,7 +226,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", $contentValidator->errors()->first('content'));
                 }
 
-                $questionViolation = transform($contentType?->poll(), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
+                $questionViolation = transform($contentType->poll(), fn (string $poll): ?string => $poll::questionViolation(data_get($destination, 'content')));
                 if (filled($questionViolation)) {
                     $validator->errors()->add("{$key}.content", $questionViolation);
                 } elseif (blank(data_get($destination, 'content')) && blank(data_get($destination, 'media'))) {
