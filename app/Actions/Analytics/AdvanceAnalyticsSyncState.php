@@ -31,17 +31,26 @@ class AdvanceAnalyticsSyncState
 
     /**
      * Before permission pauses existed, a history request missing its scope
-     * finished as provider_limited. Reopen it when that grant is restored.
+     * finished as provider_limited. Preserve a known provider limit on losing
+     * the grant, and reopen a permission-limited backfill on regaining it.
      *
      * @param  list<string>  $previousScopes
      */
-    public function restoreHistoryGrant(SocialAccount $account, array $previousScopes): void
+    public function historyGrantChanged(SocialAccount $account, array $previousScopes): void
     {
-        if (blank($previousScopes) || blank($account->scopes) || ! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
+        if (blank($previousScopes) || blank($account->scopes)) {
             return;
         }
 
         if (blank(ChannelPermissions::missingFrom($previousScopes, $account->platform, GatedFeature::PostHistory))) {
+            if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
+                $this->rememberLegacyHistoryLimit($account, missingHistoryGrant: false);
+            }
+
+            return;
+        }
+
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return;
         }
 
@@ -62,7 +71,12 @@ class AdvanceAnalyticsSyncState
             return;
         }
 
-        DB::transaction(function () use ($account): void {
+        $this->rememberLegacyHistoryLimit($account, ChannelPermissions::lacks($account, GatedFeature::PostHistory));
+    }
+
+    private function rememberLegacyHistoryLimit(SocialAccount $account, bool $missingHistoryGrant): void
+    {
+        DB::transaction(function () use ($account, $missingHistoryGrant): void {
             $state = $account->analyticsSyncStates()
                 ->legacyLimitedBackfill()
                 ->whereNull('checkpoint->missing_history_grant')
@@ -71,7 +85,7 @@ class AdvanceAnalyticsSyncState
             if ($state !== null) {
                 $state->update(['checkpoint' => [
                     ...($state->checkpoint ?? []),
-                    'missing_history_grant' => ChannelPermissions::lacks($account, GatedFeature::PostHistory),
+                    'missing_history_grant' => $missingHistoryGrant,
                 ]]);
             }
         });

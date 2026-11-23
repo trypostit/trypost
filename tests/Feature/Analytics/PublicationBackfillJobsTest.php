@@ -1486,7 +1486,7 @@ test('restoring Mastodon private discovery imports a status older than the newes
     'rate-limited public page before upgrade' => ['rate_limited'],
 ]);
 
-test('a reconnected Pinterest channel imports older pins after a legacy history refusal', function (bool $deletedBeforeUpgrade) {
+test('a reconnected Pinterest channel imports older pins after a legacy history refusal', function (bool $delete, bool $deletedBeforeUpgrade) {
     Bus::fake();
     $this->freezeTime();
     $old = SocialAccount::factory()->pinterest()->create(['scopes' => ['pins:write', 'boards:read']]);
@@ -1503,11 +1503,17 @@ test('a reconnected Pinterest channel imports older pins after a legacy history 
         'collector' => SyncCollector::PublicationDiscovery,
         'high_watermark_at' => now()->subDay(),
     ]);
-    $old->delete();
-    if ($deletedBeforeUpgrade) {
-        $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1]]);
+    $account = $old;
+    if ($delete) {
+        $old->delete();
+        if ($deletedBeforeUpgrade) {
+            $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1]]);
+        }
+        $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+    } else {
+        $account->update(['scopes' => [...$account->scopes, 'pins:read']]);
     }
-    $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+
     Http::preventStrayRequests();
     Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [
         ['id' => '123', 'created_at' => now()->subDays(7)->toIso8601String(), 'media' => ['media_type' => 'image']],
@@ -1518,9 +1524,13 @@ test('a reconnected Pinterest channel imports older pins after a legacy history 
 
     expect($state->fresh()->status)->toBe(SyncStatus::Complete)
         ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
-})->with(['grant saved at disconnect' => false, 'deleted before upgrade' => true]);
+})->with([
+    'same channel' => [false, false],
+    'grant saved at disconnect' => [true, false],
+    'deleted before upgrade' => [true, true],
+]);
 
-test('Pinterest keeps a confirmed provider limit after losing its history scope and reconnecting', function (bool $recreate) {
+test('Pinterest keeps a confirmed provider limit after losing its history scope and reconnecting', function (bool $legacy, bool $recreate) {
     Bus::fake();
     $account = SocialAccount::factory()->pinterest()->create();
     $scopes = $account->scopes;
@@ -1531,7 +1541,14 @@ test('Pinterest keeps a confirmed provider limit after losing its history scope 
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
     expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
 
+    if ($legacy) {
+        // Main kept the cursor and revision but dropped the provider limit on its final page.
+        $state->update(['checkpoint' => ['cursor' => null, 'revision' => $state->fresh()->checkpoint['revision']]]);
+    }
+
     $account->update(['scopes' => ['pins:write']]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
     if ($recreate) {
         $account->delete();
         $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $account->workspace_id, 'platform_user_id' => $account->platform_user_id]);
@@ -1544,7 +1561,8 @@ test('Pinterest keeps a confirmed provider limit after losing its history scope 
     expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
     Bus::assertNotDispatched(BackfillAccountPublications::class);
     Bus::assertDispatched(DiscoverAccountPublications::class);
-})->with(['same channel' => false, 'deleted and reconnected' => true]);
+})->with(['current checkpoint' => false, 'pre-deploy checkpoint' => true])
+    ->with(['same channel' => false, 'deleted and reconnected' => true]);
 
 test('a reconnected X channel resets the timeline count only for a legacy history refusal', function (bool $missingGrant) {
     Bus::fake();

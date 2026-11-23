@@ -55,7 +55,7 @@ class SocialAccountObserver
         app(RepurposeAccountSync::class)->accountChanged($socialAccount);
 
         if ($socialAccount->wasChanged('scopes')) {
-            app(AdvanceAnalyticsSyncState::class)->restoreHistoryGrant($socialAccount, $socialAccount->getOriginal('scopes') ?? []);
+            app(AdvanceAnalyticsSyncState::class)->historyGrantChanged($socialAccount, $socialAccount->getOriginal('scopes') ?? []);
         }
 
         if ($socialAccount->wasChanged('access_token')) {
