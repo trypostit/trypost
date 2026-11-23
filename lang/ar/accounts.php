@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'الموقع غير موجود.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'طلب حذف البيانات',
+        'pending_title' => 'نحن نحذف بياناتك',
+        'completed_title' => 'تم حذف بياناتك',
+        'pending_description' => 'استلمنا طلبك في :date ونحذف البيانات التي خزّناها عنك. ستعرض هذه الصفحة متى ينتهي ذلك.',
+        'completed_description' => 'في :date حذفنا البيانات التي خزّناها عنك.',
+        'confirmation_code' => 'رمز التأكيد',
+    ],
 ];

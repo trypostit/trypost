@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Sede non trovata.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Richiesta di eliminazione dei dati',
+        'pending_title' => 'Stiamo eliminando i tuoi dati',
+        'completed_title' => 'I tuoi dati sono stati eliminati',
+        'pending_description' => 'Abbiamo ricevuto la tua richiesta il :date e stiamo eliminando i dati che abbiamo salvato su di te. Questa pagina mostra quando è finito.',
+        'completed_description' => 'Il :date abbiamo eliminato i dati che avevamo salvato su di te.',
+        'confirmation_code' => 'Codice di conferma',
+    ],
 ];

@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Standort nicht gefunden.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Antrag auf Datenlöschung',
+        'pending_title' => 'Wir löschen deine Daten',
+        'completed_title' => 'Deine Daten wurden gelöscht',
+        'pending_description' => 'Wir haben deinen Antrag am :date erhalten und löschen die Daten, die wir über dich gespeichert haben. Diese Seite zeigt, wann es erledigt ist.',
+        'completed_description' => 'Am :date haben wir die Daten gelöscht, die wir über dich gespeichert hatten.',
+        'confirmation_code' => 'Bestätigungscode',
+    ],
 ];

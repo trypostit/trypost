@@ -55,6 +55,7 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
     $socialiteUser->token = 'test-user-token';
+    $socialiteUser->id = 'fb_user';
 
     Socialite::shouldReceive('driver')
         ->with('facebook')
@@ -116,7 +117,8 @@ test('instagram-facebook callback follows accounts pagination and shows picker',
     $response->assertRedirect(route('app.social.connect.show', Platform::InstagramFacebook));
     expect(PendingConnection::current()->identities())->toHaveCount(2)
         ->and(data_get(PendingConnection::current()->identities(), '0.platform_user_id'))->toBe('ig_1')
-        ->and(data_get(PendingConnection::current()->identities(), '1.platform_user_id'))->toBe('ig_2');
+        ->and(data_get(PendingConnection::current()->identities(), '1.platform_user_id'))->toBe('ig_2')
+        ->and(data_get(PendingConnection::current()->identities(), '0.attributes.meta.user_id'))->toBe('fb_user');
 
     Http::assertSentCount(7); // /me + /me/permissions + 2 accounts pages + /me/businesses + 2 IG lookups
 });

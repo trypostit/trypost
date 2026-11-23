@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Local não encontrado.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Solicitação de exclusão de dados',
+        'pending_title' => 'Estamos excluindo seus dados',
+        'completed_title' => 'Seus dados foram excluídos',
+        'pending_description' => 'Recebemos sua solicitação em :date e estamos excluindo os dados que guardamos sobre você. Esta página mostra quando terminar.',
+        'completed_description' => 'Em :date excluímos os dados que guardávamos sobre você.',
+        'confirmation_code' => 'Código de confirmação',
+    ],
 ];

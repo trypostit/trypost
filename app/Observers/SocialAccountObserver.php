@@ -11,6 +11,7 @@ use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Jobs\PostHog\TrackSocialAccountConnectionLost;
+use App\Jobs\RevokeGoogleGrant;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
@@ -41,6 +42,8 @@ class SocialAccountObserver
     {
         $this->syncUsageAndIdentify($socialAccount);
         $this->forgetPinterestBoards($socialAccount);
+
+        rescue(fn () => RevokeGoogleGrant::forRemoved($socialAccount));
     }
 
     public function deleting(SocialAccount $socialAccount): void

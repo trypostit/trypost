@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'ビジネス拠点が見つかりません。',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'データ削除リクエスト',
+        'pending_title' => 'データを削除しています',
+        'completed_title' => 'データを削除しました',
+        'pending_description' => ':date にリクエストを受け付け、保存しているあなたのデータを削除しています。完了するとこのページに表示されます。',
+        'completed_description' => ':date に、保存していたあなたのデータを削除しました。',
+        'confirmation_code' => '確認コード',
+    ],
 ];

@@ -196,4 +196,13 @@ return [
             'location_not_found' => 'Nie znaleziono lokalizacji.',
         ],
     ],
+
+    'data_deletion' => [
+        'page_title' => 'Prośba o usunięcie danych',
+        'pending_title' => 'Usuwamy Twoje dane',
+        'completed_title' => 'Twoje dane zostały usunięte',
+        'pending_description' => 'Otrzymaliśmy Twoją prośbę :date i usuwamy zapisane o Tobie dane. Na tej stronie zobaczysz, kiedy to się zakończy.',
+        'completed_description' => 'Dnia :date usunęliśmy zapisane o Tobie dane.',
+        'confirmation_code' => 'Kod potwierdzenia',
+    ],
 ];
