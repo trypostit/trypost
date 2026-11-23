@@ -119,7 +119,7 @@ class GraphPaginator
         $message = $reason ?? ($e ? 'Meta Graph pagination connection failed' : 'Meta Graph pagination request failed');
         $context = array_filter([
             'url' => TokenRedactor::redact($url),
-            'error' => $e?->getMessage(),
+            'error' => TokenRedactor::redact($e?->getMessage()),
             'status' => $response?->status(),
             'body' => $response ? TokenRedactor::redact($response->body()) : null,
             'fetched' => $fetched > 0 ? $fetched : null,
