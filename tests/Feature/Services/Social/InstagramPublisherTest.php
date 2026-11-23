@@ -20,11 +20,13 @@ use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\InstagramPublisher;
 use App\Support\ChannelPermissions;
+use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -60,6 +62,245 @@ beforeEach(function () {
 test('instagram publisher throws exception without media', function () {
     expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Instagram requires at least one image or video');
+});
+
+test('instagram creates a first comment only after the published media id is known', function (Platform $platform, array $scopes, ContentType $type, array $files) {
+    $this->socialAccount->update(['platform' => $platform, 'scopes' => $scopes]);
+    $this->post->update([
+        'platform' => $platform,
+        'content_type' => $type,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'media' => collect($files)->map(fn (string $file): array => [
+            'id' => $file,
+            'url' => "https://example.com/{$file}",
+            'path' => "media/{$file}",
+            'mime_type' => Str::endsWith($file, '.mp4') ? 'video/mp4' : 'image/jpeg',
+            'original_filename' => $file,
+        ])->all(),
+    ]);
+
+    $graph = $platform->graphApiUrl();
+    $containers = Http::sequence();
+    if (count($files) > 1) {
+        $containers->push(['id' => 'child-one'])->push(['id' => 'child-two']);
+    }
+    $containers->push(['id' => 'container']);
+
+    Http::fake([
+        "{$graph}/ig_123456789/media" => $containers,
+        "{$graph}/child-*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/container?*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/ig_123456789/media_publish" => Http::response(['id' => 'published-media']),
+        "{$graph}/published-media/comments" => Http::response(['id' => 'first-comment']),
+        "{$graph}/published-media?*" => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+    ]);
+
+    expect($this->publisher->publish($this->post->fresh()))->toBe([
+        'id' => 'published-media',
+        'url' => 'https://www.instagram.com/p/PUBLISHED/',
+        'thread_reply_ids' => ['first-comment'],
+    ]);
+    $writes = Http::recorded(fn (Request $request): bool => $request->method() === 'POST')->pluck('0')->values();
+    expect($writes->slice(-2)->map(fn (Request $request): string => $request->url())->values()->all())->toBe([
+        "{$graph}/ig_123456789/media_publish", "{$graph}/published-media/comments",
+    ]);
+    expect($writes->last()->data())->toMatchArray([
+        'message' => 'More details in the bio',
+        'access_token' => $this->socialAccount->access_token,
+    ]);
+})->with([
+    'instagram feed' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'], ContentType::InstagramFeed, ['photo.jpg']],
+    'facebook carousel' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish', 'instagram_manage_comments'], ContentType::InstagramFeed, ['one.jpg', 'two.jpg']],
+    'instagram reel' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'], ContentType::InstagramReel, ['reel.mp4']],
+]);
+
+test('a known first comment rejection resumes from the confirmed instagram media without publishing it again', function () {
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->update([
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => ['instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container',
+            'media_id' => 'published-media',
+        ]],
+    ]);
+
+    Http::fake([
+        '*/published-media?*' => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+        '*/published-media/comments' => Http::sequence()
+            ->push(['error' => ['code' => 100, 'message' => 'Comments are disabled']], 400)
+            ->push(['id' => 'first-comment']),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(InstagramPublishException::class, 'Comments are disabled');
+    expect(ThreadProgress::hasPublishedRoot($this->post->fresh()->error_context))->toBeTrue();
+    expect($this->publisher->publish($this->post->fresh()))->toMatchArray(['id' => 'published-media', 'thread_reply_ids' => ['first-comment']]);
+    Http::assertSentCount(3);
+});
+
+test('retrying an instagram first comment without a published media id never republishes the root', function () {
+    Queue::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Pending,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'media' => [[
+            'id' => 'first-comment-photo',
+            'path' => 'media/photo.jpg',
+            'url' => 'https://example.com/photo.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'photo.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+        'error_context' => ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container']],
+    ])->save();
+    Http::fake(['*/container?*' => Http::response(['status_code' => 'PUBLISHED'])]);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->status)->toBe(PostStatus::Failed);
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+        ->assertSuccessful();
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed->status)->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toContain(__('posts.errors.instagram.comment_media_unconfirmed'))
+        ->and(ThreadProgress::hasPublishedRoot($failed->error_context))->toBeTrue();
+    Http::assertSentCount(1);
+});
+
+test('instagram refuses a first comment that is blank after sanitizing before publishing the media', function (string $text) {
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->update(['meta' => ['thread_replies' => [$text]]]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.comment_empty'));
+    Http::assertNothingSent();
+})->with(['empty markup' => '<br>', 'encoded whitespace' => '&nbsp;']);
+
+test('an unconfirmed instagram comment becomes an incomplete publication without automatic replay', function (string $outcome) {
+    Queue::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Pending,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => ['instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container',
+            'media_id' => 'published-media',
+        ]],
+    ])->save();
+
+    $comment = match ($outcome) {
+        'connection' => Http::failedConnection(),
+        'server error' => Http::response(['error' => ['code' => 2, 'message' => 'Unavailable']], 503),
+        'graph error' => Http::response(['error' => ['code' => 2, 'message' => 'Unavailable']], 400),
+        'gateway error' => Http::response('Upstream did not respond', 400),
+        'missing id' => Http::response([]),
+    };
+    Http::fake([
+        '*/published-media?*' => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+        '*/published-media/comments' => $comment,
+    ]);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    $failed = $this->post->fresh();
+    expect($failed)->status->toBe(PostStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 2,
+            'error' => __('posts.errors.instagram.comment_unconfirmed'),
+        ]))
+        ->and(ThreadProgress::hasPublishedRoot($failed->error_context))->toBeTrue();
+    Http::assertSentCount(2);
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+})->with(['connection', 'server error', 'graph error', 'gateway error', 'missing id']);
+
+test('a successful media publish with no id resumes the existing instagram container', function () {
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->update([
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container']],
+    ]);
+    Http::fake([
+        '*/container?*' => Http::response(['status_code' => 'FINISHED']),
+        '*/media_publish' => Http::response([]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(function (PlatformUnavailableException $exception): void {
+        expect(data_get($exception->context, 'instagram_workflow.container_id'))->toBe('container');
+    });
+    Http::assertSentCount(2);
+});
+
+test('a redelivered job does not repeat an instagram comment write interrupted before its response', function () {
+    Queue::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Publishing,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => [
+            'thread_progress' => [['hash' => 'root', 'id' => 'published-media']],
+            'instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container', 'media_id' => 'published-media'],
+            'instagram_comment_pending' => true,
+        ],
+    ])->save();
+    Http::fake(['*/published-media/comments' => Http::response(['id' => 'duplicate-comment'])]);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->status)->toBe(PostStatus::Failed)
+        ->and($this->post->fresh()->error_message)->toContain(__('posts.errors.instagram.comment_unconfirmed'));
+    Http::assertNothingSent();
+});
+
+test('a first comment rejected for an expired instagram token uses the refreshed token without republishing media', function () {
+    $this->socialAccount->update([
+        'access_token' => 'expired-comment-token',
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'],
+    ]);
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Pending,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => ['instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container',
+            'media_id' => 'published-media',
+        ]],
+    ])->save();
+
+    Http::fake([
+        '*/published-media?*' => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+        '*/published-media/comments' => Http::sequence()
+            ->push(['error' => ['code' => 190, 'message' => 'Invalid OAuth access token']], 400)
+            ->push(['id' => 'first-comment']),
+        '*/me?*' => Http::sequence()
+            ->push(['error' => ['code' => 190, 'message' => 'Invalid OAuth access token']], 400)
+            ->push(['id' => 'ig_123456789', 'user_id' => 'ig_123456789']),
+        '*/refresh_access_token?*' => Http::response(['access_token' => 'refreshed-comment-token', 'expires_in' => 5184000]),
+    ]);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    $published = $this->post->fresh();
+    $tokens = Http::recorded(fn (Request $request): bool => Str::endsWith($request->url(), '/published-media/comments'))
+        ->pluck('0')->map(fn (Request $request): string => data_get($request->data(), 'access_token'))->values()->all();
+
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->platform_post_id)->toBe('published-media')
+        ->and($published->thread_reply_ids)->toBe(['first-comment'])
+        ->and($published->error_context)->toBeNull()
+        ->and($tokens)->toBe(['expired-comment-token', 'refreshed-comment-token']);
+    Http::assertNotSent(fn (Request $request): bool => Str::endsWith($request->url(), '/media_publish'));
 });
 
 test('instagram publisher can publish single image', function () {
@@ -265,6 +506,7 @@ test('instagram publisher sends no collaborators on a story that still has them 
 
 test('a story carrying thread replies is refused before anything is sent, though a story sends no text', function () {
     Http::fake();
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
     $this->post->update([
         'content_type' => ContentType::InstagramStory,
         'meta' => ['thread_replies' => [['text' => 'First comment', 'media' => []]]],
@@ -278,7 +520,7 @@ test('a story carrying thread replies is refused before anything is sent, though
     ]);
 
     expect(fn () => $this->publisher->publish($this->post))
-        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.instagram_story'));
 
     Http::assertNothingSent();
 });

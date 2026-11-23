@@ -15,12 +15,14 @@ export const YouTubeLicense = {
 export const YOUTUBE_TITLE_MAX = 100;
 export const THREADS_TOPIC_TAG_MAX = 50;
 
-/** Networks that chain thread replies (`ThreadReplies::supports()` on the server). */
+/** Networks that accept thread replies or comments (`ThreadReplies::supports()` on the server). */
 export const THREAD_PLATFORMS = [
     Platform.Bluesky,
     Platform.Mastodon,
     Platform.X,
     Platform.Threads,
+    Platform.Instagram,
+    Platform.InstagramFacebook,
     Platform.LinkedIn,
     Platform.LinkedInPage,
 ] as const;
@@ -62,6 +64,8 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<
     [Platform.Mastodon]: ContentType.MastodonPost,
     [Platform.X]: ContentType.XPost,
     [Platform.Threads]: ContentType.ThreadsPost,
+    [Platform.Instagram]: ContentType.InstagramComment,
+    [Platform.InstagramFacebook]: ContentType.InstagramComment,
     [Platform.LinkedIn]: ContentType.LinkedInComment,
     [Platform.LinkedInPage]: ContentType.LinkedInComment,
 };
@@ -75,12 +79,14 @@ export const THREAD_REPLY_POLL_CONTENT_TYPES: Readonly<
     [Platform.Threads]: ContentType.ThreadsPoll,
 };
 
-/** How many replies a thread takes: a thread, or one comment on LinkedIn (`ThreadReplies::maxReplies()`). */
+/** How many replies or comments each platform takes (`ThreadReplies::maxReplies()`). */
 export const THREAD_MAX_REPLIES: Readonly<Record<ThreadPlatform, number>> = {
     [Platform.Bluesky]: 24,
     [Platform.Mastodon]: 24,
     [Platform.X]: 24,
     [Platform.Threads]: 24,
+    [Platform.Instagram]: 1,
+    [Platform.InstagramFacebook]: 1,
     [Platform.LinkedIn]: 1,
     [Platform.LinkedInPage]: 1,
 };

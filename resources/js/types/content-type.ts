@@ -2,6 +2,7 @@ export const ContentType = {
     InstagramFeed: 'instagram_feed',
     InstagramStory: 'instagram_story',
     InstagramReel: 'instagram_reel',
+    InstagramComment: 'instagram_comment',
     LinkedInPost: 'linkedin_post',
     LinkedInPagePost: 'linkedin_page_post',
     LinkedInComment: 'linkedin_comment',
@@ -50,6 +51,7 @@ export const MEDIALESS_CONTENT_TYPE_REASONS: Readonly<
     [ContentType.XPoll]: 'posts.form.poll.attachments',
     [ContentType.MastodonPoll]: 'posts.form.poll.attachments',
     [ContentType.ThreadsPoll]: 'posts.form.poll.attachments',
+    [ContentType.InstagramComment]: 'posts.form.thread.comment_attachments',
     [ContentType.LinkedInComment]: 'posts.form.thread.comment_attachments',
 };
 
@@ -62,6 +64,7 @@ export type PostFormTranslationKey = `posts.form.${string}`;
 export const STANDALONE_CONTENT_TYPES: {
     readonly [Type in ContentTypeValue]?: PostFormTranslationKey;
 } = {
+    [ContentType.InstagramStory]: 'posts.form.thread.instagram_story',
     [ContentType.ThreadsGhostPost]: 'posts.form.thread.ghost_post',
 };
 

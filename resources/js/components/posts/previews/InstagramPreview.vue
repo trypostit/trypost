@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import InstagramPreviewComment from '@/components/posts/previews/InstagramPreviewComment.vue';
 import PostMediaPreview from '@/components/posts/previews/PostMediaPreview.vue';
 import PreviewAvatar from '@/components/posts/previews/PreviewAvatar.vue';
 import PreviewStoryHeader from '@/components/posts/previews/PreviewStoryHeader.vue';
@@ -23,11 +24,22 @@ import {
     providePreviewSoundtrack,
     soundtrackLabel,
 } from '@/composables/composer/useReelSoundtrack';
+import { filled } from '@/lib/helpers';
+import { threadRepliesOf } from '@/lib/threadReplies';
+import { htmlToPlainText } from '@/lib/utils';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
-
 const props = defineProps<PreviewProps>();
+const firstComment = computed(() => {
+    const reply = threadRepliesOf(props.meta).at(0);
+
+    if (!filled(reply)) {
+        return '';
+    }
+
+    return htmlToPlainText(reply.text);
+});
 
 const feedAspectPadding = computed((): number => {
     const { width = 0, height = 0 } = props.media[0]?.meta ?? {};
@@ -82,7 +94,10 @@ const caption = computed((): string =>
                 class="flex items-center gap-2 font-semibold"
                 data-testid="instagram-preview-username"
             >
-                <PreviewAvatar :account="socialAccount" class="size-8 text-xs" />
+                <PreviewAvatar
+                    :account="socialAccount"
+                    class="size-8 text-xs"
+                />
                 <span class="truncate">{{ socialAccount.handle_label }}</span>
             </div>
             <p v-if="content" class="truncate">{{ content }}</p>
@@ -94,6 +109,11 @@ const caption = computed((): string =>
                 <IconMusic class="size-3.5 shrink-0" />
                 <span class="truncate">{{ audioLabel }}</span>
             </p>
+            <InstagramPreviewComment
+                v-if="filled(firstComment)"
+                :author="socialAccount.handle_label"
+                :text="firstComment"
+            />
         </template>
         <template #corner>
             <PreviewAvatar
@@ -116,9 +136,7 @@ const caption = computed((): string =>
         </template>
         <template #footer>
             <div class="flex items-center gap-3">
-                <span
-                    class="h-10 flex-1 rounded-full border border-white/70"
-                />
+                <span class="h-10 flex-1 rounded-full border border-white/70" />
                 <IconHeart class="size-6" stroke-width="1.75" />
                 <IconSend class="size-6" stroke-width="1.75" />
             </div>
@@ -133,7 +151,11 @@ const caption = computed((): string =>
             class="flex items-center gap-2.5 px-3 py-2.5 font-semibold"
             data-testid="instagram-preview-username"
         >
-            <PreviewAvatar :account="socialAccount" square class="size-8 text-xs" />
+            <PreviewAvatar
+                :account="socialAccount"
+                square
+                class="size-8 text-xs"
+            />
             <span class="min-w-0 flex-1 truncate">{{
                 socialAccount.handle_label
             }}</span>
@@ -186,6 +208,11 @@ const caption = computed((): string =>
                     }}</span></template
                 >
             </p>
+            <InstagramPreviewComment
+                v-if="filled(firstComment)"
+                :author="socialAccount.handle_label"
+                :text="firstComment"
+            />
         </div>
     </article>
 </template>

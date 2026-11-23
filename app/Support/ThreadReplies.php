@@ -43,6 +43,7 @@ class ThreadReplies
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
             Platform::Threads => ContentType::ThreadsPost,
+            Platform::Instagram, Platform::InstagramFacebook => ContentType::InstagramComment,
             Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
@@ -300,15 +301,17 @@ class ThreadReplies
             return self::pollReplyViolation($poll, $reply, $account, $reserved);
         }
 
+        $type = self::replyContentType($platform);
+
         if (filled(Str::trim($reply['text']))) {
-            return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
+            return self::lengthViolation($reply['text'], $platform, $account, $type, $reserved);
         }
 
         if (filled($reply['media'])) {
             return null;
         }
 
-        if (self::replyContentType($platform) === ContentType::LinkedInComment) {
+        if ($type?->isComment()) {
             return [null, __('posts.form.thread.comment_empty')];
         }
 
@@ -343,6 +346,10 @@ class ThreadReplies
     private static function lengthViolation(string $text, Platform $platform, ?SocialAccount $account, ?ContentType $type, int $reserved): ?array
     {
         $display = app(ContentSanitizer::class)->displayText($text, $platform);
+        if ($type?->isComment() && blank(Str::trim($display))) {
+            return [null, __('posts.form.thread.comment_empty')];
+        }
+
         $over = ContentType::overflowFor($account, $platform, $type, $display, $reserved);
 
         if ($over === 0) {
@@ -351,7 +358,7 @@ class ThreadReplies
 
         $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
 
-        if ($type === ContentType::LinkedInComment) {
+        if ($type?->isComment()) {
             return [null, __('posts.form.thread.comment_too_long', ['limit' => $limit, 'over' => $over])];
         }
 

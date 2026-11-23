@@ -1,4 +1,4 @@
-import { blank, filled, isEmpty } from '@/lib/helpers';
+import { blank, filled, isEmpty, isString } from '@/lib/helpers';
 import { uuid } from '@/lib/uuid';
 import {
     ContentType,
@@ -33,18 +33,23 @@ export const isBlankThreadReply = ({
     text,
     media,
     poll,
-}: ThreadReply): boolean =>
-    isEmpty(text) && blank(media) && blank(poll);
+}: ThreadReply): boolean => isEmpty(text) && blank(media) && blank(poll);
 
-/** A reply as the server stores it; `key` only exists in a draft the composer saved. */
-type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
+/** Stored JSON can contain legacy text or an object; `key` only exists in composer drafts. */
+type StoredThreadReply = string | Partial<ThreadReply>;
 
 /** A stored reply as the composer edits it, keyed by its position when it has no key yet. */
-const fromStored = (
-    { key, text, media, poll }: StoredThreadReply,
-    index: number,
-): ThreadReply =>
-    withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll);
+const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
+    const storedKey = `stored-${index}`;
+
+    if (isString(reply)) {
+        return { key: storedKey, text: reply, media: [] };
+    }
+
+    const { key = storedKey, text = '', media = [], poll } = reply;
+
+    return withReplyPoll({ key, text, media }, poll);
+};
 
 /** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
@@ -113,8 +118,20 @@ export const threadMaxReplies = (platform: PlatformValue): number => {
     return THREAD_MAX_REPLIES[platform];
 };
 
-export const repliesAreComments = (platform: PlatformValue): boolean =>
-    threadReplyPostType(platform) === ContentType.LinkedInComment;
+const COMMENT_CONTENT_TYPES: readonly ContentTypeValue[] = [
+    ContentType.InstagramComment,
+    ContentType.LinkedInComment,
+];
+
+export const repliesAreComments = (platform: PlatformValue): boolean => {
+    const type = threadReplyPostType(platform);
+
+    if (!filled(type)) {
+        return false;
+    }
+
+    return COMMENT_CONTENT_TYPES.includes(type);
+};
 
 export const replyTooLongKey = (platform: PlatformValue): string => {
     if (repliesAreComments(platform)) {
@@ -125,6 +142,10 @@ export const replyTooLongKey = (platform: PlatformValue): string => {
 };
 
 export const startThreadKey = (platform: PlatformValue): string => {
+    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
+        return 'posts.form.thread.first_comment';
+    }
+
     if (repliesAreComments(platform)) {
         return 'posts.form.thread.add_comment';
     }

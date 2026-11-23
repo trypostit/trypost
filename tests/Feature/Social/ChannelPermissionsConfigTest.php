@@ -61,12 +61,14 @@ test('each network needs exactly these scopes for each feature', function () {
         ],
         Platform::Instagram->value => [
             'publish' => ['instagram_business_content_publish'],
+            'thread_replies' => ['instagram_business_manage_comments', 'instagram_business_basic'],
             'followers' => ['instagram_business_basic'],
             'post_insights' => ['instagram_business_basic', 'instagram_business_manage_insights'],
             'post_history' => ['instagram_business_basic'],
         ],
         Platform::InstagramFacebook->value => [
             'publish' => ['instagram_content_publish'],
+            'thread_replies' => ['instagram_manage_comments', 'instagram_basic', 'pages_read_engagement'],
             'followers' => ['instagram_basic', 'pages_read_engagement'],
             'post_insights' => ['instagram_basic', 'instagram_manage_insights', 'pages_read_engagement'],
             'post_history' => ['instagram_basic'],
@@ -103,3 +105,20 @@ test('a network scopes env is read comma or space separated, and a blank one fal
         ->toBe(data_get(trypostConfigWith(['X_SCOPES' => '']), 'platforms.x.scopes'))
         ->toContain('tweet.write', 'offline.access');
 });
+
+test('instagram first comments are optional on each connection path', function (Platform $platform, string $env, string $basic, string $publish, string $comments) {
+    $key = "trypost.platforms.{$platform->value}";
+    config([$key => data_get(trypostConfigWith([$env => '']), "platforms.{$platform->value}")]);
+
+    expect(ChannelPermissions::requestedScopes($platform))->toContain($basic, $publish, $comments)
+        ->and(ChannelPermissions::missingFrom([$basic, $publish], $platform, GatedFeature::Publish))->toBe([]);
+
+    config([$key => data_get(trypostConfigWith([$env => "$basic,$publish"]), "platforms.{$platform->value}")]);
+
+    expect(ChannelPermissions::requestedScopes($platform))->not->toContain($comments)
+        ->and(ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies))->toBeFalse()
+        ->and(ChannelPermissions::enabled($platform, GatedFeature::Publish))->toBeTrue();
+})->with([
+    'instagram login' => [Platform::Instagram, 'INSTAGRAM_SCOPES', 'instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'],
+    'facebook login' => [Platform::InstagramFacebook, 'INSTAGRAM_FACEBOOK_SCOPES', 'instagram_basic', 'instagram_content_publish', 'instagram_manage_comments'],
+]);

@@ -22,6 +22,7 @@ enum ContentType: string
     case InstagramFeed = 'instagram_feed';
     case InstagramReel = 'instagram_reel';
     case InstagramStory = 'instagram_story';
+    case InstagramComment = 'instagram_comment';
 
     // LinkedIn — one type per account kind; the publish format (single image,
     // multi-image, video, or PDF document) is inferred from the attached media.
@@ -101,7 +102,7 @@ enum ContentType: string
             self::XPoll => XPoll::class,
             self::MastodonPoll => MastodonPoll::class,
             self::ThreadsPoll => ThreadsPoll::class,
-            self::InstagramFeed, self::InstagramReel, self::InstagramStory,
+            self::InstagramFeed, self::InstagramReel, self::InstagramStory, self::InstagramComment,
             self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment,
             self::FacebookPost, self::FacebookReel, self::FacebookStory,
             self::TikTokVideo, self::TikTokPhoto, self::YouTubeShort, self::XPost,
@@ -117,6 +118,11 @@ enum ContentType: string
         return filled($this->poll());
     }
 
+    public function isComment(): bool
+    {
+        return in_array($this, [self::InstagramComment, self::LinkedInComment], true);
+    }
+
     public function label(): string
     {
         return match ($this) {
@@ -124,7 +130,7 @@ enum ContentType: string
             self::InstagramReel => 'Reel',
             self::InstagramStory => 'Story',
             self::LinkedInPost, self::LinkedInPagePost => 'Post',
-            self::LinkedInComment => 'Comment',
+            self::InstagramComment, self::LinkedInComment => 'Comment',
             self::FacebookPost => 'Post',
             self::FacebookReel => 'Reel',
             self::FacebookStory => 'Story',
@@ -160,7 +166,7 @@ enum ContentType: string
     public function platform(): SocialPlatform
     {
         return match ($this) {
-            self::InstagramFeed, self::InstagramReel, self::InstagramStory => SocialPlatform::Instagram,
+            self::InstagramFeed, self::InstagramReel, self::InstagramStory, self::InstagramComment => SocialPlatform::Instagram,
             self::LinkedInPost, self::LinkedInComment => SocialPlatform::LinkedIn,
             self::LinkedInPagePost => SocialPlatform::LinkedInPage,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => SocialPlatform::Facebook,
@@ -251,7 +257,7 @@ enum ContentType: string
             self::InstagramFeed => 10,
             self::InstagramReel, self::InstagramStory => 1,
             self::LinkedInPost, self::LinkedInPagePost => 10,
-            self::LinkedInComment => 0,
+            self::InstagramComment, self::LinkedInComment => 0,
             self::FacebookPost => 10,
             self::FacebookReel, self::FacebookStory => 1,
             self::TikTokVideo => 1,
@@ -528,7 +534,7 @@ enum ContentType: string
             self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => ['1:1', '4:5', '1.91:1'],
             self::BlueskyPost, self::MastodonPost, self::MastodonPoll => ['1:1', '16:9'],
             self::GoogleBusinessPost => ['4:3', '1:1'],
-            self::TelegramPost, self::DiscordMessage, self::LinkedInComment => self::defaultCropPresets(),
+            self::TelegramPost, self::DiscordMessage, self::InstagramComment, self::LinkedInComment => self::defaultCropPresets(),
         };
     }
 
@@ -709,8 +715,10 @@ enum ContentType: string
      *     max_thread_replies: int|null
      * }
      */
-    public function toListingArray(): array
+    public function toListingArray(?SocialPlatform $platform = null): array
     {
+        $platform ??= $this->platform();
+        $takesThreadReplies = $this->takesThreadReplies($platform);
         $rules = $this->mediaRules();
 
         return [
@@ -748,8 +756,8 @@ enum ContentType: string
             ])),
             'captionless' => $this->isCaptionless(),
             'document_must_be_alone' => $this->supportsDocument(),
-            'supports_thread_replies' => $this->takesThreadReplies(),
-            'max_thread_replies' => $this->takesThreadReplies() ? ThreadReplies::maxReplies($this->platform()) : null,
+            'supports_thread_replies' => $takesThreadReplies,
+            'max_thread_replies' => $takesThreadReplies ? ThreadReplies::maxReplies($platform) : null,
         ];
     }
 
@@ -799,7 +807,7 @@ enum ContentType: string
         return match ($this) {
             self::InstagramFeed, self::InstagramReel, self::InstagramStory => true,
             self::LinkedInPost, self::LinkedInPagePost => true,
-            self::LinkedInComment => false,
+            self::InstagramComment, self::LinkedInComment => false,
             self::FacebookPost, self::FacebookReel, self::FacebookStory => true,
             self::TikTokVideo => true,
             self::TikTokPhoto => false,
@@ -830,7 +838,7 @@ enum ContentType: string
             self::ThreadsGhostPost => false,
             self::XPoll, self::MastodonPoll, self::ThreadsPoll => false,
             self::PinterestVideoPin => false,
-            self::LinkedInComment => false,
+            self::InstagramComment, self::LinkedInComment => false,
             default => true,
         };
     }
@@ -881,7 +889,7 @@ enum ContentType: string
     public function requiresMedia(): bool
     {
         return match ($this) {
-            self::LinkedInPost, self::LinkedInPagePost, self::LinkedInComment => false,
+            self::LinkedInPost, self::LinkedInPagePost, self::InstagramComment, self::LinkedInComment => false,
             self::XPost, self::XPoll => false,
             self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => false,
             self::BlueskyPost => false,
@@ -896,19 +904,24 @@ enum ContentType: string
 
     /**
      * Platforms this content_type can be assigned to. Most content types are
-     * tied to a single platform; Instagram-family types (feed/carousel/reel/
-     * story) work for both `Instagram` (Basic Display) and `InstagramFacebook`
-     * (Business via Facebook Page) accounts.
+     * tied to a single platform. Instagram feed, reel and story work for
+     * both login variants. Comment types are used only for replies.
      *
      * @return array<SocialPlatform>
      */
     public function compatiblePlatforms(): array
     {
-        return match (true) {
-            $this === self::LinkedInComment => [],
-            $this->platform() === SocialPlatform::Instagram => [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook],
-            default => [$this->platform()],
-        };
+        if ($this->isComment()) {
+            return [];
+        }
+
+        $platform = $this->platform();
+
+        if ($platform === SocialPlatform::Instagram) {
+            return [SocialPlatform::Instagram, SocialPlatform::InstagramFacebook];
+        }
+
+        return [$platform];
     }
 
     /**
@@ -1058,8 +1071,10 @@ enum ContentType: string
      * Whether a post of this type takes thread replies: its network chains
      * them and the type does not stand alone (`replies.standalone_types`).
      */
-    public function takesThreadReplies(): bool
+    public function takesThreadReplies(?SocialPlatform $platform = null): bool
     {
-        return ThreadReplies::supportsPostType($this->platform(), $this);
+        $platform ??= $this->platform();
+
+        return $this->isCompatibleWith($platform) && ThreadReplies::supportsPostType($platform, $this);
     }
 }

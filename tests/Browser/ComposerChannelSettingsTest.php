@@ -1224,7 +1224,7 @@ test('the x card offers the ai-generated switch with its explanation and saves i
     expect($post->fresh()->meta)->toEqual(['is_ai_generated' => true]);
 });
 
-test('a story with a stored thread can be saved to the schedule after removing its replies', function (Platform $platform, ContentType $type) {
+test('a story with a stored thread can be saved to the schedule after removing its replies', function (Platform $platform, ContentType $type, string $warningKey) {
     fakeChannelSettingsApis();
     $photo = [[
         'id' => (string) Str::uuid(),
@@ -1245,7 +1245,7 @@ test('a story with a stored thread can be saved to the schedule after removing i
     $warning = "@thread-unavailable-warning-{$post->social_account_id}";
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForText($page, $warning, __('posts.form.thread.unsupported'));
+    waitForText($page, $warning, __($warningKey));
     waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
     $page->assertMissing('@preview-thread')
         ->assertVisible('@thread-reply-collapsed-0')
@@ -1263,8 +1263,8 @@ test('a story with a stored thread can be saved to the schedule after removing i
         ->and(data_get($saved->meta, 'thread_replies'))->toBeNull();
     $page->assertNoJavaScriptErrors();
 })->with([
-    'Instagram' => [Platform::Instagram, ContentType::InstagramStory],
-    'Facebook' => [Platform::Facebook, ContentType::FacebookStory],
+    'Instagram' => [Platform::Instagram, ContentType::InstagramStory, 'posts.form.thread.instagram_story'],
+    'Facebook' => [Platform::Facebook, ContentType::FacebookStory, 'posts.form.thread.unsupported'],
 ]);
 
 test('shift enter opens the next post of an x thread and backspace on an empty post folds it back', function () {

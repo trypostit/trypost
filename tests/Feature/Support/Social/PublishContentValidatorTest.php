@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\MissingPermissionException;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -41,3 +42,39 @@ test('a caption exceeding the publishing limit is refused', function () {
             'provided' => 4000,
         ]));
 });
+
+test('a missing instagram comment grant blocks the comment and allows publishing without it', function (Platform $platform, string $publish) {
+    $account = SocialAccount::factory()->create(['platform' => $platform, 'scopes' => [$publish]]);
+    $post = Post::factory()->forAccount($account)->create([
+        'content_type' => ContentType::InstagramFeed,
+        'meta' => ['thread_replies' => ['Read more in the bio']],
+    ]);
+
+    expect(fn () => PublishContentValidator::validate($post))->toThrow(MissingPermissionException::class);
+
+    config(["trypost.platforms.{$platform->value}.scopes" => [$publish]]);
+
+    expect(fn () => PublishContentValidator::validate($post))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
+
+    $post->meta = [];
+
+    expect(fn () => PublishContentValidator::validate($post))->not->toThrow(Exception::class);
+})->with([
+    'instagram login' => [Platform::Instagram, 'instagram_business_content_publish'],
+    'facebook login' => [Platform::InstagramFacebook, 'instagram_content_publish'],
+]);
+
+test('a partial instagram grant missing a prerequisite cannot publish a first comment', function (Platform $platform, array $scopes) {
+    $account = SocialAccount::factory()->create(['platform' => $platform, 'scopes' => $scopes]);
+    $post = Post::factory()->forAccount($account)->create(['meta' => ['thread_replies' => ['Read more in the bio']]]);
+
+    expect(fn () => PublishContentValidator::validate($post))->toThrow(MissingPermissionException::class);
+
+    $post->meta = [];
+    expect(fn () => PublishContentValidator::validate($post))->not->toThrow(Exception::class);
+})->with([
+    'instagram basic' => [Platform::Instagram, ['instagram_business_content_publish', 'instagram_business_manage_comments']],
+    'facebook basic' => [Platform::InstagramFacebook, ['instagram_content_publish', 'instagram_manage_comments', 'pages_read_engagement']],
+    'facebook page engagement' => [Platform::InstagramFacebook, ['instagram_content_publish', 'instagram_manage_comments', 'instagram_basic']],
+]);

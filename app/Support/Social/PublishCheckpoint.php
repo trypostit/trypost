@@ -25,6 +25,8 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    public const string INSTAGRAM_COMMENT_PENDING = 'instagram_comment_pending';
+
     public const string X_MEDIA = 'x_media';
 
     /**

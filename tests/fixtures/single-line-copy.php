@@ -203,6 +203,7 @@ return [
     'posts.form.instagram.trial_reel.off' => 6,
     'posts.form.mastodon.content_warning' => 20,
     'posts.form.thread.add_comment' => 17,
+    'posts.form.thread.first_comment' => 30,
     'posts.form.thread.start' => 17,
     'posts.form.threads.topic' => 9,
     'posts.form.tiktok.privacy_level' => 13,

@@ -205,6 +205,7 @@ import type {
 import { GatedFeature } from '@/types/channel-permission';
 import {
     CAPTIONLESS_CONTENT_TYPES,
+    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
     POLL_CONTENT_TYPES,
 } from '@/types/content-type';
@@ -1285,13 +1286,20 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     setThreadReplies(group, [newThreadReply(), ...threadReplies(group)]);
     threadActive.value = 0;
 };
+const replyTextFor = (reply: ThreadReply, platform: PlatformValue): string => {
+    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
+        return htmlToPlainText(reply.text);
+    }
+
+    return contentFor(reply.text, platform);
+};
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);
 
     if (filled(reply)) {
         return transform(
             replyTextLimit(group, reply),
-            (limit) => limit - displayLength(contentFor(reply.text, group.platform)),
+            (limit) => limit - displayLength(replyTextFor(reply, group.platform)),
         );
     }
 
@@ -1628,15 +1636,12 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
     if (replyContentType) {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
-            const over =
-                limit === null
-                    ? 0
-                    : displayLength(contentFor(reply.text, account.platform)) -
-                      limit;
-            const replyMediaWarning = reply.media.length
+            const text = replyTextFor(reply, account.platform);
+            const over = limit === null ? 0 : displayLength(text) - limit;
+            const replyMediaWarning = filled(reply.media)
                 ? getMediaValidationWarning(replyContentType, reply.media)
                 : null;
-            if (isBlankText(reply.text) && !reply.media.length) {
+            if (isBlankText(text) && blank(reply.media)) {
                 issues.push({
                     key: replyEmptyKey(account.platform),
                     params: {},

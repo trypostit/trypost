@@ -9,6 +9,24 @@ use App\Support\Social\ThreadProgress;
 use App\Support\ThreadReplies;
 use Illuminate\Support\Str;
 
+test('instagram feed posts and reels take one text comment and stories take none', function (Platform $platform) {
+    $comment = ['thread_replies' => [Str::repeat('é', 2200)]];
+
+    expect(ThreadReplies::violation($platform, ContentType::InstagramFeed, $comment))->toBeNull()
+        ->and(ThreadReplies::violation($platform, ContentType::InstagramReel, $comment))->toBeNull()
+        ->and(ThreadReplies::violation($platform, ContentType::InstagramStory, $comment))
+        ->toBe(['thread_replies', __('posts.form.thread.instagram_story')])
+        ->and(ThreadReplies::violation($platform, ContentType::InstagramFeed, ['thread_replies' => ['One', 'Two']]))
+        ->toBe(['thread_replies', trans_choice('posts.form.thread.too_many', 1, ['max' => 1])])
+        ->and(ThreadReplies::violation($platform, ContentType::InstagramFeed, ['thread_replies' => [' ']]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.comment_empty')])
+        ->and(ThreadReplies::violation($platform, ContentType::InstagramFeed, ['thread_replies' => [Str::repeat('é', 2201)]]))
+        ->toBe(['thread_replies.0', __('posts.form.thread.comment_too_long', ['limit' => 2200, 'over' => 1])]);
+
+    expect(ThreadReplies::mediaErrors($platform, ['thread_replies' => [['text' => 'Photo', 'media' => [['id' => 'image']]]]], null))
+        ->toBe(['thread_replies.0.media' => __('posts.form.warnings.max_files_exceeded', ['max' => 0, 'current' => 1])]);
+})->with([Platform::Instagram, Platform::InstagramFacebook]);
+
 test('thread replies are checked per network', function (Platform $platform, array $replies, ?string $field, array $meta = []) {
     $violation = PostPlatformMetaRules::requiredMetaViolation($platform, [...$meta, 'thread_replies' => $replies]);
 
