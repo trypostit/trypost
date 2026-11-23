@@ -25,6 +25,7 @@ use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -352,6 +353,33 @@ test('manual retry uses the instagram comment checkpoint to choose the confirmat
             && Str::endsWith($request->url(), '/published-media/comments'));
     }
 })->with(['confirmed checkpoint' => true, 'unconfirmed checkpoint' => false]);
+
+test('manual retry leaves a newer instagram checkpoint intact when the failure changes after it is loaded', function () {
+    Queue::fake();
+    $this->post->forceFill([
+        'status' => PostStatus::Failed,
+        'publish_status' => PublishStatus::Failed,
+        'error_context' => ['category' => ErrorCategory::ContentPolicy->value],
+    ])->save();
+    $newContext = [
+        'category' => ErrorCategory::Timeout->value,
+        PublishCheckpoint::INSTAGRAM_WORKFLOW => ['stage' => 'final_container', 'container_id' => 'new-container'],
+    ];
+    Event::listen('eloquent.retrieved: '.Post::class, function (Post $loaded) use ($newContext): void {
+        if ($loaded->is($this->post) && $loaded->error_context === ['category' => ErrorCategory::ContentPolicy->value]) {
+            $this->post->writePublication(['error_context' => $newContext]);
+        }
+    });
+
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+        ->assertFailed();
+
+    $post = $this->post->fresh();
+    expect($post->status)->toBe(PostStatus::Failed)
+        ->and($post->error_context)->toEqual($newContext);
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+});
 
 test('an instagram comment rate limit retries the comment without republishing the media', function (array $body, int $status) {
     Queue::fake();

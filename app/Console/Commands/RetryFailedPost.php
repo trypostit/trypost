@@ -14,6 +14,7 @@ use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -46,13 +47,20 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context);
+        $previousContext = $post->error_context;
+        $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($previousContext);
 
-        if ($commentWasPending && ! ThreadProgress::hasPublishedRoot($post->error_context)) {
+        if ($commentWasPending && ! ThreadProgress::hasPublishedRoot($previousContext)) {
             $this->error(__('posts.errors.instagram.comment_media_unconfirmed'));
 
             return self::FAILURE;
         }
+
+        $needsCommentConfirmation = $commentWasPending && blank(data_get($previousContext, ThreadProgress::KEY.'.1.id'));
+        $retryContext = $this->contextForRetry(
+            $previousContext,
+            keepPendingComment: $commentWasPending && ! $needsCommentConfirmation,
+        );
 
         $this->table(
             ['Post ID', 'Platform', 'Account', 'Last error', 'Mode'],
@@ -61,11 +69,10 @@ class RetryFailedPost extends Command
                 $post->platform->value,
                 $post->display_username ?? '—',
                 $post->error_message ?? '—',
-                $this->resumableContext($post->error_context) === null ? 'New' : 'Resume',
+                filled($retryContext) ? 'Resume' : 'New',
             ]],
         );
 
-        $needsCommentConfirmation = $commentWasPending && blank(data_get($post->error_context, ThreadProgress::KEY.'.1.id'));
         $confirmation = match ($needsCommentConfirmation) {
             true => 'Did you check Instagram and confirm the first comment is missing?',
             false => 'Queue a publish attempt for this post?',
@@ -75,9 +82,7 @@ class RetryFailedPost extends Command
             return $needsCommentConfirmation ? self::FAILURE : self::SUCCESS;
         }
 
-        $originalContext = $this->prepareRetry($post, $needsCommentConfirmation);
-
-        if ($originalContext === false) {
+        if (! $this->prepareRetry($post, $retryContext)) {
             $this->warn('The post changed while the command was running; nothing was retried.');
 
             return self::FAILURE;
@@ -86,7 +91,7 @@ class RetryFailedPost extends Command
         $post->refresh();
 
         if ($post->platform === SocialPlatform::TikTok && blank(PublishCheckpoint::tiktokPublishId($post->error_context))) {
-            $this->tiktokPhotoDerivativeCleaner->cleanup($originalContext, $post->id);
+            $this->tiktokPhotoDerivativeCleaner->cleanup($previousContext, $post->id);
         }
 
         PublishToSocialPlatform::dispatch($post);
@@ -104,30 +109,19 @@ class RetryFailedPost extends Command
     }
 
     /**
-     * Returns the error context the failure left, or false when the post is
-     * no longer retryable.
-     *
-     * @return array<string, mixed>|null|false
+     * @param  array<string, mixed>|null  $retryContext
      */
-    private function prepareRetry(Post $post, bool $confirmedCommentMissing): array|null|false
+    private function prepareRetry(Post $post, ?array $retryContext): bool
     {
-        return DB::transaction(function () use ($post, $confirmedCommentMissing): array|null|false {
+        return DB::transaction(function () use ($post, $retryContext): bool {
             $locked = Post::query()->lockForUpdate()->find($post->id);
 
             if (! $locked || ! $this->isRetryable($locked)) {
                 return false;
             }
 
-            $originalContext = $locked->error_context;
-            $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($originalContext);
-
-            if (($confirmedCommentMissing || $commentWasPending) && $originalContext !== $post->error_context) {
+            if ($locked->error_context !== $post->error_context) {
                 return false;
-            }
-
-            $retryContext = $this->resumableContext($originalContext);
-            if ($commentWasPending && ! $confirmedCommentMissing) {
-                $retryContext = [...($retryContext ?? []), PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true];
             }
 
             $locked->writePublication([
@@ -140,7 +134,7 @@ class RetryFailedPost extends Command
             ]);
             $locked->update(['status' => PostStatus::Publishing]);
 
-            return $originalContext;
+            return true;
         });
     }
 
@@ -151,35 +145,37 @@ class RetryFailedPost extends Command
      * @param  array<string, mixed>|null  $context
      * @return array<string, mixed>|null
      */
-    private function resumableContext(?array $context): ?array
+    private function contextForRetry(?array $context, bool $keepPendingComment): ?array
     {
         $kept = [];
         $thread = data_get($context, ThreadProgress::KEY);
 
-        if (is_array($thread) && $thread !== []) {
+        if (is_array($thread) && filled($thread)) {
             $kept[ThreadProgress::KEY] = $thread;
         }
 
-        if (ErrorCategory::tryFromContext($context)?->isResumable() !== true) {
-            return $kept === [] ? null : $kept;
-        }
+        if (ErrorCategory::tryFromContext($context)?->isResumable() === true) {
+            $publishId = PublishCheckpoint::tiktokPublishId($context);
+            $kept = [
+                ...$kept,
+                ...Arr::whereNotNull([
+                    PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId,
+                    PublishCheckpoint::INSTAGRAM_WORKFLOW => PublishCheckpoint::instagramWorkflow($context),
+                ]),
+            ];
 
-        $publishId = PublishCheckpoint::tiktokPublishId($context);
-        $workflow = PublishCheckpoint::instagramWorkflow($context);
-
-        if ($publishId !== null) {
-            $kept[PublishCheckpoint::TIKTOK_PUBLISH_ID] = $publishId;
-            $paths = PublishCheckpoint::tiktokDerivativePaths($context);
-
-            if ($paths !== []) {
-                $kept[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $paths;
+            if ($publishId !== null) {
+                $paths = PublishCheckpoint::tiktokDerivativePaths($context);
+                if (filled($paths)) {
+                    $kept[PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS] = $paths;
+                }
             }
         }
 
-        if ($workflow !== null) {
-            $kept[PublishCheckpoint::INSTAGRAM_WORKFLOW] = $workflow;
+        if ($keepPendingComment) {
+            $kept[PublishCheckpoint::INSTAGRAM_COMMENT_PENDING] = true;
         }
 
-        return $kept === [] ? null : $kept;
+        return filled($kept) ? $kept : null;
     }
 }

@@ -7,6 +7,7 @@ namespace App\Exceptions\Social;
 use App\Exceptions\TokenExpiredException;
 use App\Services\Social\Meta\GraphError;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Str;
 
 class InstagramPublishException extends SocialPublishException
 {
@@ -32,7 +33,7 @@ class InstagramPublishException extends SocialPublishException
      */
     public static function isMediaNotReady(Response $response): bool
     {
-        return (int) $response->json('error.error_subcode') === self::MEDIA_NOT_READY_SUBCODE;
+        return self::numericSubcode($response->json('error.error_subcode')) === self::MEDIA_NOT_READY_SUBCODE;
     }
 
     /**
@@ -42,51 +43,38 @@ class InstagramPublishException extends SocialPublishException
      */
     public static function isDocumentedRejection(Response $response): bool
     {
-        $subcode = $response->json('error.error_subcode');
-        $mapped = self::forSubcode(is_numeric($subcode) ? (int) $subcode : null);
+        $mapped = self::forSubcode(self::numericSubcode($response->json('error.error_subcode')));
 
-        return $mapped !== null && $mapped[1] !== ErrorCategory::ServerError;
+        if ($mapped === null) {
+            return false;
+        }
+
+        [, $category] = $mapped;
+
+        return $category !== ErrorCategory::ServerError;
     }
 
     public static function isRateLimit(Response $response): bool
     {
-        return $response->tooManyRequests() || in_array($response->json('error.code'), GraphError::RATE_LIMIT_CODES, true);
+        return $response->tooManyRequests()
+            || collect(GraphError::RATE_LIMIT_CODES)->containsStrict($response->json('error.code'));
     }
 
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
-        $body = $response->json();
-        $rawResponse = $response->body();
-
-        $errorCode = data_get($body, 'error.code');
-        $errorSubcode = data_get($body, 'error.error_subcode');
-        $errorUserMsg = data_get($body, 'error.error_user_msg');
-        $errorMessage = data_get($body, 'error.message', 'An unknown Instagram error occurred.');
+        $errorCode = $response->json('error.code');
 
         if ($errorCode === 190) {
             throw new TokenExpiredException(
-                message: $errorMessage,
-                platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
+                message: $response->json('error.message', 'An unknown Instagram error occurred.'),
+                platformErrorCode: (string) $errorCode,
             );
         }
 
-        $subcode = is_numeric($errorSubcode) ? (int) $errorSubcode : null;
-        $mapped = self::forSubcode($subcode);
+        $platformErrorCode = $response->json('error.error_subcode');
+        [$message, $category, $causedByUser] = self::classifyResponse($response, self::numericSubcode($platformErrorCode));
 
-        $message = $errorUserMsg ?? $errorMessage;
-        $category = ErrorCategory::Unknown;
-        $causedByUser = in_array($errorCode, GraphError::ACCOUNT_RATE_LIMIT_CODES, true);
-
-        if ($mapped !== null) {
-            [$message, $category] = $mapped;
-            $causedByUser = in_array($subcode, self::USER_REJECTION_SUBCODES, true);
-        } elseif (self::isRateLimit($response)) {
-            $message = 'Too many API calls. Please try again later.';
-            $category = ErrorCategory::RateLimit;
-        }
-
-        $platformErrorCode = $errorSubcode;
         if ($platformErrorCode === null && $category === ErrorCategory::RateLimit) {
             $platformErrorCode = $errorCode;
         }
@@ -95,8 +83,42 @@ class InstagramPublishException extends SocialPublishException
             userMessage: $message,
             category: $category,
             platformErrorCode: $platformErrorCode === null ? null : (string) $platformErrorCode,
-            rawResponse: $rawResponse,
-        ))->withNetworkReset($response)->asNetworkRejectionIf($causedByUser);
+            rawResponse: $response->body(),
+        ))->withNetworkReset($response)
+            ->asNetworkRejectionIf($causedByUser);
+    }
+
+    /** @return array{string, ErrorCategory, bool} */
+    private static function classifyResponse(Response $response, ?int $subcode): array
+    {
+        $documentedError = self::forSubcode($subcode);
+
+        if ($documentedError !== null) {
+            return [...$documentedError, self::isUserRejectionSubcode($subcode)];
+        }
+
+        if (self::isRateLimit($response)) {
+            return [
+                'Too many API calls. Please try again later.',
+                ErrorCategory::RateLimit,
+                collect(GraphError::ACCOUNT_RATE_LIMIT_CODES)->containsStrict($response->json('error.code')),
+            ];
+        }
+
+        $message = $response->json('error.error_user_msg')
+            ?? $response->json('error.message', 'An unknown Instagram error occurred.');
+
+        return [$message, ErrorCategory::Unknown, false];
+    }
+
+    private static function numericSubcode(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    private static function isUserRejectionSubcode(?int $subcode): bool
+    {
+        return collect(self::USER_REJECTION_SUBCODES)->containsStrict($subcode);
     }
 
     /**
@@ -120,7 +142,7 @@ class InstagramPublishException extends SocialPublishException
             2207052 => ['Could not fetch media from URL. Please try again.', ErrorCategory::ServerError],
             2207006 => ['Media not found. Please upload again.', ErrorCategory::ServerError],
             2207008 => ['Media container expired. Please try again in a few minutes.', ErrorCategory::ServerError],
-            2207027 => ['Media is not ready for publishing. Please wait and try again.', ErrorCategory::ServerError],
+            self::MEDIA_NOT_READY_SUBCODE => ['Media is not ready for publishing. Please wait and try again.', ErrorCategory::ServerError],
             2207001 => ['Instagram server error. Please try again.', ErrorCategory::ServerError],
             2207010 => ['Caption is too long (max 2,200 characters, 30 hashtags, 20 @mentions).', ErrorCategory::ContentPolicy],
             2207028 => ['Carousel needs between 2 and 10 photos/videos.', ErrorCategory::ContentPolicy],
@@ -141,15 +163,31 @@ class InstagramPublishException extends SocialPublishException
      */
     public static function fromContainerStatus(mixed $status, ?string $rawResponse): self
     {
-        $subcode = is_int($status) || (is_string($status) && ctype_digit(trim($status))) ? (int) $status : null;
-        $mapped = self::forSubcode($subcode);
+        $subcode = self::containerSubcode($status);
+        [$message, $category] = self::forSubcode($subcode)
+            ?? [__('posts.errors.instagram.processing_failed'), ErrorCategory::Unknown];
 
         return (new self(
-            userMessage: $mapped[0] ?? __('posts.errors.instagram.processing_failed'),
-            category: $mapped[1] ?? ErrorCategory::Unknown,
-            platformErrorCode: $subcode !== null ? (string) $subcode : null,
+            userMessage: $message,
+            category: $category,
+            platformErrorCode: transform($subcode, fn (int $code): string => (string) $code),
             rawResponse: $rawResponse,
-        ))->asNetworkRejectionIf(in_array($subcode, self::USER_REJECTION_SUBCODES, true));
+        ))->asNetworkRejectionIf(self::isUserRejectionSubcode($subcode));
+    }
+
+    private static function containerSubcode(mixed $status): ?int
+    {
+        if (is_int($status)) {
+            return $status;
+        }
+
+        if (! is_string($status)) {
+            return null;
+        }
+
+        $status = Str::trim($status);
+
+        return ctype_digit($status) ? (int) $status : null;
     }
 
     public function platform(): string
