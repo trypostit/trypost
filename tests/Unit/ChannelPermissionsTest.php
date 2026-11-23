@@ -195,7 +195,7 @@ test('a feature whose scopes the connect does not ask for is off: no warning and
     config(['trypost.platforms.threads.scopes' => ['threads_basic', 'threads_content_publish']]);
     $account = SocialAccount::factory()->make(['platform' => Platform::Threads, 'scopes' => ['threads_basic', 'threads_content_publish']]);
 
-    expect(ChannelPermissions::disabledFeatures(Platform::Threads))->toBe(['followers', 'post_insights'])
+    expect(ChannelPermissions::disabledFeatures(Platform::Threads))->toBe(['thread_replies', 'followers', 'post_insights'])
         ->and(ChannelPermissions::permits($account, GatedFeature::PostInsights))->toBeFalse()
         ->and(ChannelPermissions::permits($account, GatedFeature::PostHistory))->toBeTrue()
         ->and(ChannelPermissions::missing($account))->toBe([]);
