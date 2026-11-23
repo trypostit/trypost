@@ -41,12 +41,12 @@ test('connect asks for required scopes even when the env leaves them out', funct
     }
 })->with([
     'x' => [Platform::X, 'app.social.x.connect', ['tweet.read', 'tweet.write', 'users.read', 'media.write', 'offline.access']],
-    'facebook' => [Platform::Facebook, 'app.social.facebook.connect', ['pages_manage_posts', 'pages_show_list', 'pages_read_engagement', 'business_management'], 'read_insights'],
+    'facebook' => [Platform::Facebook, 'app.social.facebook.connect', ['pages_manage_posts', 'pages_show_list', 'pages_read_engagement'], 'read_insights'],
     'youtube' => [Platform::YouTube, 'app.social.youtube.connect', ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'], 'https://www.googleapis.com/auth/yt-analytics.readonly'],
     'pinterest' => [Platform::Pinterest, 'app.social.pinterest.connect', ['pins:write', 'boards:read', 'boards:write', 'user_accounts:read'], 'pins:read'],
     'google business' => [Platform::GoogleBusiness, 'app.social.google-business.connect', ['https://www.googleapis.com/auth/business.manage'], 'https://www.googleapis.com/auth/userinfo.email'],
     'instagram' => [Platform::Instagram, 'app.social.instagram.connect', ['instagram_business_basic', 'instagram_business_content_publish'], 'instagram_business_manage_insights'],
-    'instagram through facebook' => [Platform::InstagramFacebook, 'app.social.instagram-facebook.connect', ['pages_show_list', 'pages_read_engagement', 'business_management', 'instagram_basic', 'instagram_content_publish'], 'instagram_manage_insights'],
+    'instagram through facebook' => [Platform::InstagramFacebook, 'app.social.instagram-facebook.connect', ['pages_show_list', 'pages_read_engagement', 'instagram_basic', 'instagram_content_publish'], 'instagram_manage_insights'],
     'threads' => [Platform::Threads, 'app.social.threads.connect', ['threads_basic', 'threads_content_publish'], 'threads_manage_insights'],
     'tiktok' => [Platform::TikTok, 'app.social.tiktok.connect', ['user.info.basic', 'video.publish'], 'video.upload'],
     'linkedin profile' => [Platform::LinkedIn, 'app.social.linkedin.connect', ['openid', 'profile', 'email', 'w_member_social'], 'w_organization_social', ['trypost.platforms.linkedin-page.enabled' => false]],

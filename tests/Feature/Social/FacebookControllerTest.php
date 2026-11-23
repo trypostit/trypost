@@ -25,7 +25,7 @@ test('facebook authorize url reopens the page selection', function () {
 
     expect(urldecode((string) $response->headers->get('Location')))
         ->toStartWith('https://www.facebook.com/')
-        ->toContain('auth_type=rerequest');
+        ->toContain('auth_type=rerequest', 'business_management');
 });
 
 test('facebook connect redirects to oauth provider', function () {
@@ -50,7 +50,11 @@ test('facebook connect redirects to oauth provider', function () {
 });
 
 test('facebook oauth callback creates account with single page', function () {
-    startSocialConnect($this->workspace->id, Platform::Facebook);
+    config(['trypost.platforms.facebook.scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    $redirect = $this->actingAs($this->user)->get(route('app.social.facebook.connect'));
+    $redirect->assertRedirect();
+    expect(urldecode((string) $redirect->headers->get('Location')))->not->toContain('business_management');
 
     $socialiteUser = Mockery::mock(SocialiteUser::class);
     $socialiteUser->shouldReceive('getId')->andReturn('facebook_user_123');
@@ -65,7 +69,6 @@ test('facebook oauth callback creates account with single page', function () {
     Http::fake([
         "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
-        "{$graphApi}/me/businesses*" => Http::response(['data' => []], 200),
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
                 [
@@ -79,7 +82,7 @@ test('facebook oauth callback creates account with single page', function () {
         ], 200),
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.social.facebook.callback'));
+    $response = $this->get(route('app.social.facebook.callback'));
 
     $response->assertRedirect(route('app.social.connect.show', Platform::Facebook));
 
