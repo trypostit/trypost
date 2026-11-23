@@ -467,6 +467,40 @@ test('saving a held-back thread to reconnect its channel leaves for the connect 
 })->with(['opened from the list' => true, 'opened by its edit link' => false])
     ->with(['untouched' => false, 'with unsaved edits' => true]);
 
+test('save and reconnect leaves for the connect page with no page load still waiting for the server', function () {
+    $post = seedHeldBackMastodonThread();
+    $post->update(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()->startOfHour()]);
+    $reconnect = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'), Str::after($reconnect, '@'), 'queue');
+    waitFor($page, $reconnect);
+    $page->script(<<<'JS'
+        (() => {
+            let inFlight = 0;
+            const loadsPage = ({ detail }) => detail.visit.method === 'get';
+            window.addEventListener('inertia:start', (event) => {
+                if (loadsPage(event)) {
+                    inFlight++;
+                }
+            }, true);
+            window.addEventListener('inertia:finish', (event) => {
+                if (loadsPage(event)) {
+                    inFlight--;
+                }
+            }, true);
+            window.addEventListener('beforeunload', () => {
+                sessionStorage.setItem('visitsInFlightOnLeaving', String(inFlight));
+            });
+        })()
+    JS);
+
+    $page->click($reconnect);
+    waitForPath($page, route('app.social.mastodon.connect', absolute: false));
+
+    expect($page->script("sessionStorage.getItem('visitsInFlightOnLeaving')"))->toBe('0')
+        ->and($page->script("new URLSearchParams(location.search).get('reconnect')"))->toBe($post->social_account_id);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('saving only the caption keeps replies changed in another session', function (bool $hadReplies) {
     $post = seedHeldBackMastodonThread();
 

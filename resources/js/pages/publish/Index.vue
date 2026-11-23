@@ -761,6 +761,7 @@ const submitComposition = (
     const options = {
         preserveScroll: true,
         replace: true,
+        only: [] as string[],
         onSuccess: () => {
             closed = true;
             composerOpen.value = false;
@@ -774,6 +775,9 @@ const submitComposition = (
             }
         },
     };
+    if (leavesApp) {
+        options.only = ['errors'];
+    }
     if (!initialPost.value) {
         const data: Record<string, any> = {
             ...composition,

@@ -69,6 +69,7 @@ const submitComposition = (
     composition: PostComposition,
     createAnother: boolean,
     onSaved?: () => void,
+    leavesApp = false,
 ): void => {
     if (submitting.value) {
         return;
@@ -76,8 +77,9 @@ const submitComposition = (
 
     submitting.value = true;
     const payload: Record<string, any> = { ...composition };
-    router.post(storePost.url(), payload, {
+    const options = {
         preserveScroll: true,
+        only: [] as string[],
         onSuccess: () => {
             clearComposerAutosave(
                 page.props.auth?.user?.id,
@@ -90,7 +92,11 @@ const submitComposition = (
         onFinish: () => {
             submitting.value = false;
         },
-    });
+    };
+    if (leavesApp) {
+        options.only = ['errors'];
+    }
+    router.post(storePost.url(), payload, options);
 };
 </script>
 
