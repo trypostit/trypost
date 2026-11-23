@@ -681,7 +681,7 @@ test('the drop uses the display zone', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('a post published meanwhile goes back and the reason is shown', function () {
+test('a post that started publishing during a drag goes back and shows its current status', function (PostStatus $status, string $message) {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
     $key = $day->format('Y-m-d');
@@ -692,21 +692,24 @@ test('a post published meanwhile goes back and the reason is shown', function ()
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$post->id}");
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
-    $post->forceFill(['status' => PostStatus::Published, 'published_at' => $at])->save();
+    $post->forceFill(['status' => $status, 'published_at' => $status === PostStatus::Published ? $at : null])->save();
     calendarDragWatchAnnouncer($page);
 
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@flash-banner-toast');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    $page->assertSeeIn('@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    $page->assertSeeIn('@flash-banner-toast', __($message));
     expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0)
         ->and(array_slice(calendarDragAnnouncements($page), -1))->toBe([__('calendar.reschedule.announce.returned')])
         ->and(collect(calendarDragAnnouncements($page))->filter(fn (string $text): bool => $text === __('calendar.reschedule.announce.returned'))->count())->toBe(1);
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
-});
+})->with([
+    'publishing' => [PostStatus::Publishing, 'posts.edit.publishing_overlay_title'],
+    'published' => [PostStatus::Published, 'posts.flash.cannot_edit_finalized'],
+]);
 
 test('a time that passed meanwhile is refused with the reason', function () {
     [$user, $channel] = calendarDragSetup();

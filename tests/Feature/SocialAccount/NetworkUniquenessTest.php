@@ -6,6 +6,7 @@ use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
@@ -17,6 +18,7 @@ use App\Models\AnalyticsSyncState;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
@@ -353,7 +355,7 @@ test('reconnecting through the other variant moves pending posts onto the new pl
         ->and($pending->fresh()->platform)->toBe(Platform::InstagramFacebook)
         ->and($pending->fresh()->content_type)->toBe(ContentType::InstagramReel)
         ->and(array_diff(
-            $pending->fresh()->platform->requiredPublishScopes(),
+            ChannelPermissions::scopes($pending->fresh()->platform, GatedFeature::Publish),
             $account->fresh()->scopes,
         ))->toBe([]);
 });
@@ -457,7 +459,7 @@ test('a variant move carries a retrying post, which still has a publish ahead of
 
     expect($retrying->fresh()->platform)->toBe(Platform::InstagramFacebook)
         ->and(array_diff(
-            $retrying->fresh()->platform->requiredPublishScopes(),
+            ChannelPermissions::scopes($retrying->fresh()->platform, GatedFeature::Publish),
             $account->fresh()->scopes,
         ))->toBe([]);
 });

@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'LinkedIn 评论不能包含媒体。',
         ],
 
+        'reconnect' => [
+            'save' => '保存草稿并重新连接',
+            'blocked' => '此帖子暂时无法保存。请等待上传完成并修正标出的内容，然后重试。',
+            'pending_approval' => '此帖子正在等待审批。请先处理审批请求，再重新连接频道。',
+        ],
+
         'pinterest' => [
             'select_board' => '选择一个图板',
             'boards_truncated' => '部分图板未能加载。如果没有看到你的图板，请打开 Pinterest 后重试。',

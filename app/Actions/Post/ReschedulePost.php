@@ -11,6 +11,7 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostApproval;
+use App\Support\PostStatusRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
@@ -54,9 +55,16 @@ class ReschedulePost
                 try {
                     return MoveChannelPostToQueueSlot::handle($post->socialAccount, $post->id, $slotAt, $actor);
                 } catch (ValidationException $exception) {
-                    throw Arr::has($exception->errors(), 'slot_at')
-                        ? ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.slot_taken')])
-                        : $exception;
+                    if (! Arr::has($exception->errors(), 'slot_at')) {
+                        throw $exception;
+                    }
+
+                    $current = $post->fresh();
+                    if ($current !== null && PostStatusRules::blocksEditing($current)) {
+                        return ['post' => $current, 'action' => PostAction::Finalized];
+                    }
+
+                    throw ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.slot_taken')]);
                 }
             }
 

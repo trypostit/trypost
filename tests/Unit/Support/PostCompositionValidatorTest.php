@@ -25,7 +25,7 @@ test('a destination inherits shared fields unless its override is explicitly emp
         ],
     ];
 
-    $resolved = PostCompositionValidator::validate($workspace, $composition);
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, $composition);
 
     expect($resolved['destinations'][0]['content'])->toBe('Shared')
         ->and($resolved['destinations'][1]['content'])->toBe('')
@@ -39,7 +39,7 @@ test('duplicate social accounts are rejected by account ID', function () {
     $destination = ['social_account_id' => $account->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => []];
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [],
             'destinations' => [$destination, $destination],
         ]);
@@ -54,7 +54,7 @@ test('foreign workspace accounts cannot be selected', function () {
     $foreign = SocialAccount::factory()->instagram()->create();
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [],
             'destinations' => [[
                 'social_account_id' => $foreign->id,
@@ -73,7 +73,7 @@ test('a content type from another network is rejected', function () {
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [],
             'destinations' => [[
                 'social_account_id' => $account->id,
@@ -92,7 +92,7 @@ test('scheduling a media-required format without media is rejected', function ()
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(),
             'content' => 'Hello', 'media' => [],
             'destinations' => [[
@@ -114,7 +114,7 @@ test('scheduled network settings and sanitized caption limits are validated per 
     $asset = Media::factory()->temporaryUpload($workspace)->create();
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(),
             'content' => str_repeat('x', 281), 'media' => [MediaItem::fromMedia($asset)->toArray()],
             'destinations' => [
@@ -136,7 +136,7 @@ test('a destination cannot reference another workspace asset', function () {
     $foreignAsset = Media::factory()->temporaryUpload($otherWorkspace)->create();
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [MediaItem::fromMedia($foreignAsset)->toArray()],
             'destinations' => [[
                 'social_account_id' => $account->id,
@@ -158,7 +158,7 @@ test('a destination cannot replace an owned asset path with another path', funct
     $spoofed['path'] = 'media/another-workspace/private.jpg';
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [$spoofed],
             'destinations' => [[
                 'social_account_id' => $account->id,
@@ -180,7 +180,7 @@ test('a destination cannot replace an owned asset URL', function () {
     $spoofed['url'] = 'https://untrusted.example/image.jpg';
 
     try {
-        PostCompositionValidator::validate($workspace, [
+        PostCompositionValidator::validate($workspace, $workspace->owner, [
             'status' => 'draft', 'content' => 'Hello', 'media' => [$spoofed],
             'destinations' => [[
                 'social_account_id' => $account->id,
@@ -199,7 +199,7 @@ test('an owned image with valid network settings can be scheduled', function () 
     $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $workspace->id]);
     $asset = Media::factory()->temporaryUpload($workspace)->create();
 
-    $resolved = PostCompositionValidator::validate($workspace, [
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, [
         'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'Pin caption', 'media' => [MediaItem::fromMedia($asset)->toArray()],
         'destinations' => [[
@@ -227,7 +227,7 @@ test('owned media metadata comes from the asset while per-post alt text and user
         'user_tags' => [['username' => 'trypost', 'x' => 0.5, 'y' => 0.25]],
     ];
 
-    $resolved = PostCompositionValidator::validate($workspace, [
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, [
         'status' => 'draft', 'content' => 'Hello', 'media' => [$spoofed],
         'destinations' => [[
             'social_account_id' => $account->id,
@@ -253,7 +253,7 @@ test('the X length check uses the sanitized and defused caption', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
 
-    $resolved = PostCompositionValidator::validate($workspace, [
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, [
         'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(),
         'content' => 'https://example.com '.str_repeat('x', 265), 'media' => [],
         'destinations' => [[
@@ -299,12 +299,12 @@ test('media already on the post may change its alt text and people tags, in any 
             'user_tags' => [['username' => 'trypost', 'x' => 0.5, 'y' => 0.5]],
         ],
     ];
-    $resolved = PostCompositionValidator::validate($workspace, $composition($edited), [$existing]);
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, $composition($edited), [$existing]);
 
     expect($resolved['destinations'][0]['media'][0]['meta'])->toEqual($edited['meta']);
 
     $moved = [...$edited, 'url' => 'https://cdn.test/other.jpg'];
-    expect(fn () => PostCompositionValidator::validate($workspace, $composition($moved), [$existing]))
+    expect(fn () => PostCompositionValidator::validate($workspace, $workspace->owner, $composition($moved), [$existing]))
         ->toThrow(ValidationException::class);
 });
 
@@ -318,12 +318,12 @@ test('an instagram story schedules with more than five hashtags while a feed pos
         'destinations' => [['social_account_id' => $account->id, 'content_type' => $type->value, 'meta' => []]],
     ];
 
-    $resolved = PostCompositionValidator::validate($workspace, $composition(ContentType::InstagramStory));
+    $resolved = PostCompositionValidator::validate($workspace, $workspace->owner, $composition(ContentType::InstagramStory));
 
     expect($resolved['destinations'][0]['content'])->toBe('Launch #a #b #c #d #e #f');
 
     try {
-        PostCompositionValidator::validate($workspace, $composition(ContentType::InstagramFeed));
+        PostCompositionValidator::validate($workspace, $workspace->owner, $composition(ContentType::InstagramFeed));
         test()->fail('Six hashtags were accepted on a feed post.');
     } catch (ValidationException $exception) {
         expect($exception->errors())->toHaveKey('destinations.0.content');

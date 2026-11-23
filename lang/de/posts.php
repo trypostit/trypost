@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'LinkedIn-Kommentare können keine Medien enthalten.',
         ],
 
+        'reconnect' => [
+            'save' => 'Entwurf speichern und neu verbinden',
+            'blocked' => 'Dieser Beitrag kann noch nicht gespeichert werden. Warte, bis die Uploads fertig sind, und behebe die markierten Stellen. Versuche es dann erneut.',
+            'pending_approval' => 'Dieser Post wartet auf Freigabe. Prüfe die Anfrage, bevor du den Kanal erneut verbindest.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Pinnwand auswählen',
             'boards_truncated' => 'Einige Pinnwände konnten nicht geladen werden. Fehlt deine, öffne Pinterest und versuche es erneut.',

@@ -1,7 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 
 import { useWorkspaceStorage } from '@/composables/useBrowserStorage';
-import type { ComposerAccount } from '@/composables/usePostComposition';
+import type { ComposerAccount } from '@/types/post-composition';
 
 /**
  * The channels the last post of this workspace was sent to, offered as a

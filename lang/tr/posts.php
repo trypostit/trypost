@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'LinkedIn yorumları medya içeremez.',
         ],
 
+        'reconnect' => [
+            'save' => 'Taslağı kaydet ve yeniden bağla',
+            'blocked' => 'Bu gönderi henüz kaydedilemiyor. Yüklemelerin bitmesini bekleyin ve vurgulananları düzeltin, sonra tekrar deneyin.',
+            'pending_approval' => 'Bu gönderi onay bekliyor. Kanalı yeniden bağlamadan önce isteği incele.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Bir pano seçin',
             'boards_truncated' => 'Bazı panolar yüklenemedi. Sizinki eksikse Pinterest’i açıp tekrar deneyin.',

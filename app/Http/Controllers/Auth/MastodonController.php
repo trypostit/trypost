@@ -23,8 +23,6 @@ class MastodonController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Mastodon;
 
-    private const SCOPES = 'read:accounts read:statuses write:statuses write:media';
-
     /**
      * The instance step, before the redirect to the instance's consent screen.
      */
@@ -55,9 +53,14 @@ class MastodonController extends SocialController
             'instance' => 'required|url',
         ]);
 
-        $workspace = $request->user()->currentWorkspace;
+        $pending = $this->pendingForThisNetwork();
 
-        $this->authorize('manageAccounts', $workspace);
+        if ($pending === null) {
+            $workspace = $request->user()->currentWorkspace;
+            $this->authorize('manageAccounts', $workspace);
+        } else {
+            $workspace = $this->connectWorkspace($request);
+        }
 
         $instance = rtrim($request->instance, '/');
 
@@ -68,11 +71,19 @@ class MastodonController extends SocialController
         }
 
         try {
+            if ($pending === null) {
+                $this->rememberConnectSession($request, $workspace);
+            } elseif ($pending->requestedScopes() === null) {
+                PendingConnection::start($this->platform, $workspace, $pending->reconnectId(), $pending->returnPath(), $pending->isSwitchingAccount());
+            }
+
+            $scopes = $this->spaceSeparatedConsentScopes();
+
             // Register app on the instance
             $appResponse = Http::post(MastodonApi::url($instance, 'apps'), [
                 'client_name' => config('app.name'),
                 'redirect_uris' => route('app.social.mastodon.callback'),
-                'scopes' => self::SCOPES,
+                'scopes' => $scopes,
                 'website' => config('app.url'),
             ]);
 
@@ -97,16 +108,12 @@ class MastodonController extends SocialController
                 'mastodon_oauth_state' => $state,
             ]);
 
-            if (PendingConnection::current()?->platform() !== $this->platform) {
-                $this->rememberConnectSession($request, $workspace);
-            }
-
             // Redirect to OAuth
             $params = http_build_query([
                 'client_id' => $app['client_id'],
                 'response_type' => 'code',
                 'redirect_uri' => route('app.social.mastodon.callback'),
-                'scope' => self::SCOPES,
+                'scope' => $scopes,
                 'state' => $state,
                 'force_login' => PendingConnection::current()?->isSwitchingAccount() ? 'true' : null,
             ]);
@@ -179,7 +186,7 @@ class MastodonController extends SocialController
 
             $profile = $profileResponse->json();
 
-            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), explode(' ', self::SCOPES));
+            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'));
 
             return $this->refusalForMissingPublishScopes($grantedScopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

@@ -40,9 +40,9 @@ class MediaAttacher
      *
      * @throws ValidationException
      */
-    public function attachFromUrls(Post $post, array $urls, ?User $actor = null): array
+    public function attachFromUrls(Post $post, array $urls, User $actor): array
     {
-        AppendPostMedia::ensureAcceptsMedia($post, 'urls');
+        AppendPostMedia::ensureAcceptsMedia($post, $actor, 'urls');
 
         $attached = [];
         $failed = [];
@@ -64,7 +64,7 @@ class MediaAttacher
         }
 
         if ($attached !== []) {
-            AppendPostMedia::execute($post, $attached, $actor);
+            AppendPostMedia::attachRequestUploads($post, $attached, $actor);
             $owned = collect($post->media ?? [])->keyBy('id');
             $attached = array_map(fn (array $item): array => $owned->get(data_get($item, 'id'), $item), $attached);
         }

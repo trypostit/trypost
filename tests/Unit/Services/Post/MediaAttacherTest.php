@@ -36,7 +36,7 @@ test('attaches a media item downloaded from a public url', function () {
 
     $result = app(MediaAttacher::class)->attachFromUrls($this->post, [
         ['url' => 'https://93.184.216.34/photo.png'],
-    ]);
+    ], $this->user);
 
     expect($result['failed'])->toBeEmpty()
         ->and($result['attached'])->toHaveCount(1);
@@ -50,7 +50,7 @@ test('blocks a private-network url and never requests it', function () {
 
     $result = app(MediaAttacher::class)->attachFromUrls($this->post, [
         ['url' => 'http://127.0.0.1/evil.jpg'],
-    ]);
+    ], $this->user);
 
     expect($result['attached'])->toBeEmpty()
         ->and($result['failed'])->toBe(['http://127.0.0.1/evil.jpg']);
@@ -72,7 +72,7 @@ test('attempts the internal fetch when allow_private_network is enabled', functi
 
     $result = app(MediaAttacher::class)->attachFromUrls($this->post, [
         ['url' => 'http://127.0.0.1/internal.png'],
-    ]);
+    ], $this->user);
 
     expect($result['failed'])->toBeEmpty()
         ->and($result['attached'])->toHaveCount(1);
@@ -85,7 +85,7 @@ test('downloads are requested uncompressed and a compressed body is rejected wit
     Http::fake(['https://93.184.216.34/photo.png' => Http::response($body, 200, ['Content-Type' => 'image/png', 'Content-Encoding' => 'gzip'])]);
     $before = glob(sys_get_temp_dir().'/media_*') ?: [];
 
-    $result = app(MediaAttacher::class)->attachFromUrls($this->post, [['url' => 'https://93.184.216.34/photo.png']]);
+    $result = app(MediaAttacher::class)->attachFromUrls($this->post, [['url' => 'https://93.184.216.34/photo.png']], $this->user);
 
     $leftovers = array_filter(
         array_diff(glob(sys_get_temp_dir().'/media_*') ?: [], $before),
@@ -104,7 +104,7 @@ test('a url that redirects is refused and the redirect target is never requested
         'https://93.184.216.35/*' => Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png')),
     ]);
 
-    $result = app(MediaAttacher::class)->attachFromUrls($this->post, [['url' => 'https://93.184.216.34/photo.png']]);
+    $result = app(MediaAttacher::class)->attachFromUrls($this->post, [['url' => 'https://93.184.216.34/photo.png']], $this->user);
 
     expect($result['attached'])->toBeEmpty()
         ->and($result['failed'])->toBe(['https://93.184.216.34/photo.png'])

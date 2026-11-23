@@ -22,7 +22,7 @@ class ChannelQueueController extends Controller
         $this->ensureCurrentWorkspace($request, $account);
         $this->authorize('publishDirectly', $request->user()->currentWorkspace);
 
-        ReorderChannelQueue::handle($account, $request->validated('post_ids'));
+        ReorderChannelQueue::handle($account, $request->validated('post_ids'), $request->user());
 
         return back();
     }

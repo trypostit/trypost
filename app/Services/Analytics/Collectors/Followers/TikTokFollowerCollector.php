@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Analytics\Collectors\Followers;
 
 use App\Dto\Analytics\AccountDailyObservation;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -13,7 +14,7 @@ class TikTokFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {
-        AnalyticsCollectionException::unlessGranted($account, 'user.info.stats');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::Followers);
 
         $response = $this->get(
             $account,

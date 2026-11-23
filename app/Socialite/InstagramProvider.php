@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Socialite;
 
+use App\Support\OAuthScopes;
 use GuzzleHttp\RequestOptions;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\ProviderInterface;
@@ -25,7 +26,7 @@ class InstagramProvider extends AbstractProvider implements ProviderInterface
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUrl,
             'response_type' => 'code',
-            'scope' => implode(',', $this->getScopes()),
+            'scope' => OAuthScopes::commaSeparated($this->getScopes()),
             'state' => $state,
             'force_reauth' => 'true',
         ]);
@@ -75,7 +76,7 @@ class InstagramProvider extends AbstractProvider implements ProviderInterface
 
         return $this->exchangeForLongLivedToken([
             ...$data,
-            'scope' => implode(',', (array) data_get($data, 'permissions', [])),
+            'scope' => OAuthScopes::commaSeparated((array) data_get($data, 'permissions', [])),
         ]);
     }
 

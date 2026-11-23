@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'Brak godzin',
         'no_results' => 'Żaden kanał nie pasuje do wyszukiwania.',
         'connection_lost' => 'Ten kanał utracił połączenie',
+        'permissions_missing' => 'Ten kanał wymaga nowych uprawnień',
         'settings' => 'Ustawienia',
         'more_actions' => 'Więcej działań',
     ],
@@ -289,5 +290,21 @@ return [
         'blue' => 'Zweryfikowane',
         'business' => 'Zweryfikowana organizacja',
         'government' => 'Konto rządowe',
+    ],
+
+    'permissions' => [
+        'on_channel' => ':channel: :message',
+        'publish' => [
+            'message' => 'TryPost nie może jeszcze publikować w :network przez ten kanał. Połącz go ponownie i zezwól TryPost na publikowanie.',
+            'member_message' => 'TryPost nie może jeszcze publikować w :network przez ten kanał. Administrator workspace\'u musi połączyć go ponownie.',
+        ],
+        'insights' => [
+            'message' => 'Aby pokazać statystyki tego kanału, połącz go ponownie i zezwól TryPost na odczyt statystyk w :network.',
+            'member_message' => 'Aby pokazać statystyki tego kanału, administrator workspace\'u musi połączyć go ponownie.',
+        ],
+        'thread_replies' => [
+            'message' => 'Aby publikować odpowiedzi w :network, połącz ponownie ten kanał i zezwól TryPost na ich publikowanie.',
+            'member_message' => 'Aby publikować odpowiedzi w :network, administrator workspace\'u musi ponownie połączyć ten kanał.',
+        ],
     ],
 ];

@@ -27,7 +27,7 @@ class ChannelQueueController extends Controller
 
     public function reorder(ReorderChannelQueueRequest $request, SocialAccount $account): EmptyResponse
     {
-        ReorderChannelQueue::handle($account, $request->validated('post_ids'));
+        ReorderChannelQueue::handle($account, $request->validated('post_ids'), $request->user());
 
         return response()->noContent();
     }

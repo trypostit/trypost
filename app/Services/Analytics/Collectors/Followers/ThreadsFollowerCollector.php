@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Analytics\Collectors\Followers;
 
 use App\Dto\Analytics\AccountDailyObservation;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -13,7 +14,7 @@ class ThreadsFollowerCollector extends AbstractFollowerCollector
 {
     public function collect(SocialAccount $account, CarbonImmutable $date): AccountDailyObservation
     {
-        AnalyticsCollectionException::unlessGranted($account, 'threads_basic', 'threads_manage_insights');
+        AnalyticsCollectionException::unlessPermitted($account, GatedFeature::Followers);
 
         $response = $this->get(
             $account,

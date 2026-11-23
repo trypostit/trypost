@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'Komentar LinkedIn tidak bisa memuat media.',
         ],
 
+        'reconnect' => [
+            'save' => 'Simpan draf & hubungkan kembali',
+            'blocked' => 'Postingan ini belum bisa disimpan. Tunggu unggahan selesai dan perbaiki yang ditandai, lalu coba lagi.',
+            'pending_approval' => 'Postingan ini menunggu persetujuan. Tinjau permintaannya sebelum menghubungkan kembali kanal.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Pilih papan',
             'boards_truncated' => 'Beberapa papan gagal dimuat. Kalau papanmu tidak muncul, buka Pinterest dan coba lagi.',

@@ -745,3 +745,22 @@ test('a repurpose refuses music on an instagram login reel destination when it i
 
     expect($draft->fresh()->status)->toBe(Status::Draft);
 });
+
+test('a destination whose channel lacks the publish scope never holds the repurpose back from resuming', function () {
+    [$workspace, $user, $source] = healthWorkspace();
+    $destination = healthDestination($workspace);
+    SocialAccount::query()->whereKey($destination['social_account_id'])->update(['scopes' => json_encode(['user.info.basic'])]);
+    $source->update(['status' => AccountStatus::TokenExpired]);
+
+    $repurpose = Repurpose::factory()->for($workspace)->create([
+        'source_social_account_id' => $source->id,
+        'status' => Status::Paused,
+        'paused_reason' => PauseReason::SourceUnavailable,
+        'activated_at' => now()->subDays(2),
+        'destinations' => [$destination],
+    ]);
+
+    $source->update(['status' => AccountStatus::Connected]);
+
+    expect($repurpose->fresh()->status)->toBe(Status::Active);
+});

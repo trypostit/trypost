@@ -187,6 +187,7 @@ return [
         'no_posting_times' => 'لا توجد أوقات نشر',
         'no_results' => 'لا توجد قنوات تطابق بحثك.',
         'connection_lost' => 'فقدت هذه القناة الاتصال',
+        'permissions_missing' => 'تحتاج هذه القناة إلى أذونات جديدة',
         'settings' => 'الإعدادات',
         'more_actions' => 'إجراءات أخرى',
     ],
@@ -289,5 +290,21 @@ return [
         'blue' => 'موثّق',
         'business' => 'مؤسسة موثّقة',
         'government' => 'حساب حكومي',
+    ],
+
+    'permissions' => [
+        'on_channel' => ':channel: :message',
+        'publish' => [
+            'message' => 'لا يستطيع TryPost النشر على :network عبر هذه القناة بعد. أعد ربطها واسمح لـ TryPost بالنشر.',
+            'member_message' => 'لا يستطيع TryPost النشر على :network عبر هذه القناة بعد. يجب أن يعيد مسؤول مساحة العمل ربطها.',
+        ],
+        'insights' => [
+            'message' => 'لعرض إحصاءات هذه القناة، أعد ربطها واسمح لـ TryPost بقراءة الإحصاءات على :network.',
+            'member_message' => 'لعرض إحصاءات هذه القناة، يجب أن يعيد مسؤول مساحة العمل ربطها.',
+        ],
+        'thread_replies' => [
+            'message' => 'لنشر الردود على :network، أعد ربط هذه القناة واسمح لـ TryPost بنشرها.',
+            'member_message' => 'لنشر الردود على :network، يجب أن يعيد مسؤول مساحة العمل ربط هذه القناة.',
+        ],
     ],
 ];

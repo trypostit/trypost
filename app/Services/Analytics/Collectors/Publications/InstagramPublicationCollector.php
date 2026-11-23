@@ -7,9 +7,11 @@ namespace App\Services\Analytics\Collectors\Publications;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 
 /**
@@ -30,7 +32,7 @@ class InstagramPublicationCollector extends AbstractMetaPublicationCollector
         ?string $cursor,
         CarbonImmutable $cutoff,
     ): PublicationPage {
-        if ($account->missingScope($account->platform === Platform::InstagramFacebook ? 'instagram_basic' : 'instagram_business_basic') !== null) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

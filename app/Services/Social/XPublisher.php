@@ -17,6 +17,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\XPoll;
 use Illuminate\Http\Client\ConnectionException;
@@ -61,7 +62,7 @@ class XPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

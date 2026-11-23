@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Analytics;
 
+use App\Actions\Analytics\AdvanceAnalyticsSyncState;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\DiscoverAccountPublications;
+use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -19,7 +24,7 @@ use Illuminate\Database\Eloquent\Builder;
 #[Description('Dispatch incremental publication discovery and recover stale account backfills')]
 class DispatchPublicationDiscovery extends Command
 {
-    public function handle(): int
+    public function handle(AdvanceAnalyticsSyncState $sync): int
     {
         $staleBefore = CarbonImmutable::now('UTC')->subHours(2);
 
@@ -33,13 +38,21 @@ class DispatchPublicationDiscovery extends Command
             ->when($except !== [], fn (Builder $query): Builder => $query->whereNotIn('platform', $except))
             ->with(['analyticsSyncStates', 'workspace.account.subscriptions'])
             ->lazyById(100)
-            ->each(function (SocialAccount $channel) use ($staleBefore): void {
+            ->each(function (SocialAccount $channel) use ($staleBefore, $sync): void {
                 if (! $channel->workspace->account->hasAppAccess()) {
                     return;
                 }
 
                 $backfill = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
+
+                if (! ChannelPermissions::permits($channel, GatedFeature::PostHistory)) {
+                    if ($backfill?->status === SyncStatus::Pending || $backfill?->status === SyncStatus::Running) {
+                        $sync->pause($backfill->id, $channel->id);
+                    }
+
+                    return;
+                }
 
                 if (! $backfill) {
                     BootstrapAccountAnalytics::dispatch($channel->id);
@@ -55,11 +68,9 @@ class DispatchPublicationDiscovery extends Command
                     return;
                 }
 
-                $staleBackfill = ($backfill->status === SyncStatus::Pending
-                    || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
-                    && $backfill->updated_at?->lessThan($staleBefore);
-
-                if ($staleBackfill) {
+                if ($backfill->status === SyncStatus::Paused
+                    || $this->shouldResumeStaleBackfill($backfill, $staleBefore)
+                    || $this->shouldRestartMastodonBackfill($backfill, $channel)) {
                     BootstrapAccountAnalytics::dispatch($channel->id);
 
                     return;
@@ -74,5 +85,26 @@ class DispatchPublicationDiscovery extends Command
             });
 
         return self::SUCCESS;
+    }
+
+    private function shouldResumeStaleBackfill(AnalyticsSyncState $backfill, CarbonImmutable $staleBefore): bool
+    {
+        if (! $backfill->updated_at?->lessThan($staleBefore)) {
+            return false;
+        }
+
+        if ($backfill->status === SyncStatus::Pending) {
+            return true;
+        }
+
+        return $backfill->status === SyncStatus::Running
+            && in_array($backfill->last_error_category, [null, MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL], true);
+    }
+
+    private function shouldRestartMastodonBackfill(AnalyticsSyncState $backfill, SocialAccount $channel): bool
+    {
+        return $backfill->status === SyncStatus::Partial
+            && $backfill->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL
+            && $channel->canReadMastodonStatuses();
     }
 }

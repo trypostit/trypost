@@ -8,11 +8,15 @@ use App\Dto\Analytics\PublicationPage;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class AdvanceAnalyticsSyncState
@@ -26,60 +30,121 @@ class AdvanceAnalyticsSyncState
     ) {}
 
     /**
+     * Before permission pauses existed, a history request missing its scope
+     * finished as provider_limited. Preserve a known provider limit on losing
+     * the grant, and reopen a permission-limited backfill on regaining it.
+     *
+     * @param  list<string>  $previousScopes
+     */
+    public function historyGrantChanged(SocialAccount $account, array $previousScopes): void
+    {
+        if (blank($previousScopes) || blank($account->scopes)) {
+            return;
+        }
+
+        if (blank(ChannelPermissions::missingFrom($previousScopes, $account->platform, GatedFeature::PostHistory))) {
+            if (ChannelPermissions::lacks($account, GatedFeature::PostHistory)) {
+                $this->rememberLegacyHistoryLimit($account, missingHistoryGrant: false);
+            }
+
+            return;
+        }
+
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
+            return;
+        }
+
+        $restart = ['status' => SyncStatus::Pending, 'last_error_category' => null];
+        if ($account->platform === Platform::X) {
+            $restart['checkpoint->seen_count'] = 0;
+        }
+
+        $account->analyticsSyncStates()
+            ->legacyLimitedBackfill()
+            ->update($restart);
+    }
+
+    /** Keep the evidence for a legacy history limit before disconnect removes the account and its scopes. */
+    public function rememberDisconnectedHistoryGrant(SocialAccount $account): void
+    {
+        if (blank($account->scopes) || blank(ChannelPermissions::scopes($account->platform, GatedFeature::PostHistory))) {
+            return;
+        }
+
+        $this->rememberLegacyHistoryLimit($account, ChannelPermissions::lacks($account, GatedFeature::PostHistory));
+    }
+
+    private function rememberLegacyHistoryLimit(SocialAccount $account, bool $missingHistoryGrant): void
+    {
+        DB::transaction(function () use ($account, $missingHistoryGrant): void {
+            $state = $account->analyticsSyncStates()
+                ->legacyLimitedBackfill()
+                ->whereNull('checkpoint->missing_history_grant')
+                ->lockForUpdate()
+                ->first();
+            if ($state !== null) {
+                $state->update(['checkpoint' => [
+                    ...($state->checkpoint ?? []),
+                    'missing_history_grant' => $missingHistoryGrant,
+                ]]);
+            }
+        });
+    }
+
+    /** Preserve the cursor and invalidate any in-flight page's checkpoint revision. */
+    public function pause(string $stateId, string $socialAccountId): void
+    {
+        DB::transaction(function () use ($stateId, $socialAccountId): void {
+            $state = AnalyticsSyncState::query()
+                ->where('social_account_id', $socialAccountId)
+                ->pendingOrRunning()
+                ->lockForUpdate()
+                ->find($stateId);
+
+            if (blank($state)) {
+                return;
+            }
+
+            $checkpoint = $state->checkpoint ?? [];
+            $state->update([
+                'status' => SyncStatus::Paused,
+                'checkpoint' => [
+                    ...$checkpoint,
+                    'revision' => (int) data_get($checkpoint, 'revision', 0) + 1,
+                ],
+                'last_error_category' => null,
+            ]);
+        });
+    }
+
+    /**
      * @return array{cursor: ?string, revision: int, cutoff: CarbonImmutable}|null
      */
     public function begin(string $stateId, bool $restartTerminal = false, ?string $socialAccountId = null): ?array
     {
-        return DB::transaction(function () use ($restartTerminal, $socialAccountId, $stateId): ?array {
+        return DB::transaction(function () use ($stateId, $restartTerminal, $socialAccountId): ?array {
             $state = AnalyticsSyncState::query()->lockForUpdate()->find($stateId);
 
-            if (! $state
+            if ($state === null
                 || ($socialAccountId !== null && $state->social_account_id !== $socialAccountId)
                 || ($state->isTerminal() && ! $restartTerminal)) {
                 return null;
             }
 
-            $checkpoint = $state->checkpoint ?? [];
-            $revision = ((int) data_get($checkpoint, 'revision', 0)) + 1;
-            $cursor = $restartTerminal && $state->isTerminal()
-                ? null
-                : data_get($checkpoint, 'cursor');
-            $seenCount = $restartTerminal && $state->isTerminal()
-                ? 0
-                : (int) data_get($checkpoint, 'seen_count', 0);
+            $checkpoint = $this->checkpointForRun($state, $restartTerminal);
 
             $state->update([
                 'status' => SyncStatus::Running,
-                'checkpoint' => [
-                    'cursor' => $cursor,
-                    'revision' => $revision,
-                    ...($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X
-                        ? ['seen_count' => $seenCount]
-                        : []),
-                    ...(data_get($checkpoint, 'resumed_after_disconnect')
-                        ? ['resumed_after_disconnect' => true]
-                        : []),
-                    ...(data_get($checkpoint, 'had_provider_limit')
-                        ? ['had_provider_limit' => true]
-                        : []),
-                    ...(! $restartTerminal && data_get($checkpoint, 'invalid_cursor_resets')
-                        ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
-                        : []),
-                    ...(! ($restartTerminal && $state->isTerminal()) && data_get($checkpoint, 'run_high_watermark_at')
-                        ? ['run_high_watermark_at' => data_get($checkpoint, 'run_high_watermark_at')]
-                        : []),
-                ],
+                'checkpoint' => $checkpoint,
                 'last_error_category' => null,
             ]);
 
-            $cutoff = $state->collector === SyncCollector::PublicationBackfill
-                ? ($state->target_since ?? CarbonImmutable::now('UTC')->subDays(365))
-                : ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->subHours(max(0, (int) config('trypost.analytics.discovery_overlap_hours')));
+            $cursor = $checkpoint['cursor'];
 
             return [
                 'cursor' => is_string($cursor) && $cursor !== '' ? $cursor : null,
-                'revision' => $revision,
-                'cutoff' => $cutoff->toImmutable(),
+                'revision' => $checkpoint['revision'],
+                'cutoff' => $this->cutoffForRun($state),
             ];
         });
     }
@@ -129,9 +194,9 @@ class AdvanceAnalyticsSyncState
             );
             $reachedTarget = $state->collector === SyncCollector::PublicationBackfill
                 && $page->canStopAtTarget
-                && $oldest
+                && $pageOldest
                 && $state->target_since
-                && $oldest->lessThanOrEqualTo($state->target_since);
+                && $pageOldest->lessThanOrEqualTo($state->target_since);
             $isXBackfill = $state->collector === SyncCollector::PublicationBackfill
                 && $account->platform === Platform::X;
             $seenCount = (int) data_get($checkpoint, 'seen_count', 0) + ($page->providerRowCount ?? count($page->publications));
@@ -142,9 +207,25 @@ class AdvanceAnalyticsSyncState
             $hadProviderLimit = $page->providerLimited || data_get($checkpoint, 'had_provider_limit');
             $finished = $page->providerExhausted || $reachedTarget;
 
+            $partialReason = $page->partialReason;
+            if (data_get($checkpoint, 'public_history_only')) {
+                $partialReason = MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
+            }
+
+            if ($account->platform === Platform::Mastodon) {
+                $checkpoint['public_history_only'] = $partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
+            }
+
+            $privateWatermark = data_get($checkpoint, 'private_history_watermark_at');
+            if ($isDiscovery && $partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL) {
+                $privateWatermark ??= ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->toIso8601String();
+            } elseif ($finished) {
+                $privateWatermark = null;
+            }
+
             $status = match (true) {
                 $xTimelineLimited, $hadProviderLimit && $finished => SyncStatus::ProviderLimited,
-                filled($page->partialReason) && $finished => SyncStatus::Partial,
+                filled($partialReason) && $finished => SyncStatus::Partial,
                 $finished => SyncStatus::Complete,
                 default => SyncStatus::Running,
             };
@@ -158,8 +239,10 @@ class AdvanceAnalyticsSyncState
                 'checkpoint' => [
                     'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
                     'revision' => $capturedRevision,
+                    ...Arr::only($checkpoint, ['public_history_only']),
+                    ...($privateWatermark !== null ? ['private_history_watermark_at' => $privateWatermark] : []),
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
-                    ...($hadProviderLimit && $status === SyncStatus::Running ? ['had_provider_limit' => true] : []),
+                    ...($hadProviderLimit && (! $isDiscovery || ! $finished) ? ['had_provider_limit' => true] : []),
                     ...($status === SyncStatus::Running && data_get($checkpoint, 'invalid_cursor_resets')
                         ? ['invalid_cursor_resets' => (int) data_get($checkpoint, 'invalid_cursor_resets')]
                         : []),
@@ -173,7 +256,7 @@ class AdvanceAnalyticsSyncState
                 'last_error_category' => match (true) {
                     $hadProviderLimit => 'provider_limited',
                     $xTimelineLimited => 'x_timeline_limit',
-                    default => $page->partialReason,
+                    default => $partialReason,
                 },
             ]);
 
@@ -234,6 +317,7 @@ class AdvanceAnalyticsSyncState
                     'revision' => $capturedRevision,
                     ...(array_key_exists('seen_count', $state->checkpoint ?? []) ? ['seen_count' => 0] : []),
                     ...(! empty(data_get($state->checkpoint, 'had_provider_limit')) ? ['had_provider_limit' => true] : []),
+                    ...Arr::only($state->checkpoint ?? [], ['private_history_watermark_at', 'public_history_only']),
                     'invalid_cursor_resets' => $resets + 1,
                 ],
                 'last_error_category' => 'invalid_cursor',
@@ -270,6 +354,137 @@ class AdvanceAnalyticsSyncState
 
             return $this->initializeDiscovery($account, $state->high_watermark_at)->id;
         });
+    }
+
+    /**
+     * @return array{
+     *     cursor: mixed,
+     *     revision: int,
+     *     public_history_only?: bool,
+     *     private_history_watermark_at?: string,
+     *     seen_count?: int,
+     *     resumed_after_disconnect?: true,
+     *     had_provider_limit?: true,
+     *     invalid_cursor_resets?: int,
+     *     run_high_watermark_at?: mixed
+     * }
+     */
+    private function checkpointForRun(AnalyticsSyncState $state, bool $restartTerminal): array
+    {
+        $previous = $state->checkpoint ?? [];
+        $restarting = $restartTerminal && $state->isTerminal();
+        $cursor = $restarting ? null : data_get($previous, 'cursor');
+        $checkpoint = [
+            'cursor' => $cursor,
+            'revision' => (int) data_get($previous, 'revision', 0) + 1,
+        ];
+
+        $network = $state->network ?? $state->socialAccount?->platform->network();
+        if ($network === Platform::Mastodon->network()) {
+            $wasPublic = $this->mayHaveReadPublicHistory($state);
+            $publicOnly = ! $state->socialAccount?->canReadMastodonStatuses();
+            $checkpoint['public_history_only'] = $publicOnly;
+            if ($wasPublic && ! $publicOnly) {
+                $checkpoint['cursor'] = null;
+            }
+
+            $privateWatermark = $this->privateDiscoveryWatermark($state, $wasPublic);
+            if ($privateWatermark !== null) {
+                $checkpoint['private_history_watermark_at'] = $privateWatermark;
+            }
+        }
+
+        if ($state->collector === SyncCollector::PublicationBackfill && $network === Platform::X->network()) {
+            $checkpoint['seen_count'] = $restarting ? 0 : (int) data_get($previous, 'seen_count', 0);
+        }
+
+        if (data_get($previous, 'resumed_after_disconnect')) {
+            $checkpoint['resumed_after_disconnect'] = true;
+        }
+
+        if (data_get($previous, 'had_provider_limit')) {
+            $checkpoint['had_provider_limit'] = true;
+        }
+
+        $cursorResets = data_get($previous, 'invalid_cursor_resets');
+        if (! $restartTerminal && $cursorResets) {
+            $checkpoint['invalid_cursor_resets'] = (int) $cursorResets;
+        }
+
+        $runHighWatermark = data_get($previous, 'run_high_watermark_at');
+        if (! $restarting && $runHighWatermark) {
+            $checkpoint['run_high_watermark_at'] = $runHighWatermark;
+        }
+
+        return $checkpoint;
+    }
+
+    /**
+     * Older Mastodon checkpoints lost their visibility when the next page failed.
+     * An interrupted run with no marker may have skipped private posts, even if
+     * the public posts it saw have since been deleted or read with a new grant.
+     */
+    private function mayHaveReadPublicHistory(AnalyticsSyncState $state): bool
+    {
+        $publicOnly = data_get($state->checkpoint, 'public_history_only');
+        if ($publicOnly !== null) {
+            return $publicOnly;
+        }
+
+        if ($state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL) {
+            return true;
+        }
+
+        if ($state->collector === SyncCollector::PublicationBackfill) {
+            return filled(data_get($state->checkpoint, 'cursor'));
+        }
+
+        return $state->status !== SyncStatus::Complete && (int) data_get($state->checkpoint, 'revision', 0) > 0;
+    }
+
+    /** Replay from the last complete backfill when a public discovery run saved no private watermark. */
+    private function privateDiscoveryWatermark(AnalyticsSyncState $state, bool $wasPublic): ?string
+    {
+        if ($state->collector !== SyncCollector::PublicationDiscovery) {
+            return null;
+        }
+
+        $saved = data_get($state->checkpoint, 'private_history_watermark_at');
+        if ($saved !== null) {
+            return $saved;
+        }
+
+        if (! $wasPublic) {
+            return null;
+        }
+
+        $backfill = AnalyticsSyncState::query()
+            ->where('social_account_id', $state->social_account_id)
+            ->forCollector(SyncCollector::PublicationBackfill)
+            ->first();
+
+        if ($backfill?->status === SyncStatus::Complete && $backfill->high_watermark_at !== null) {
+            return $backfill->high_watermark_at->toIso8601String();
+        }
+
+        return ($backfill?->target_since ?? CarbonImmutable::now('UTC')->subDays(365))->toIso8601String();
+    }
+
+    private function cutoffForRun(AnalyticsSyncState $state): CarbonImmutable
+    {
+        if ($state->collector === SyncCollector::PublicationBackfill) {
+            return $state->target_since ?? CarbonImmutable::now('UTC')->subDays(365);
+        }
+
+        $overlapHours = max(0, (int) config('trypost.analytics.discovery_overlap_hours'));
+
+        $watermark = $state->high_watermark_at ?? CarbonImmutable::now('UTC');
+        $privateWatermark = data_get($state->checkpoint, 'private_history_watermark_at');
+        if ($privateWatermark !== null && ! data_get($state->checkpoint, 'public_history_only')) {
+            $watermark = CarbonImmutable::parse($privateWatermark, 'UTC');
+        }
+
+        return $watermark->subHours($overlapHours);
     }
 
     private function initializeDiscovery(SocialAccount $account, ?CarbonImmutable $highWatermark): AnalyticsSyncState

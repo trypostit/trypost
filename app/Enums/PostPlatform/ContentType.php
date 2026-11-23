@@ -748,8 +748,8 @@ enum ContentType: string
             ])),
             'captionless' => $this->isCaptionless(),
             'document_must_be_alone' => $this->supportsDocument(),
-            'supports_thread_replies' => ThreadReplies::supports($this->platform()),
-            'max_thread_replies' => ThreadReplies::supports($this->platform()) ? ThreadReplies::maxReplies($this->platform()) : null,
+            'supports_thread_replies' => $this->takesThreadReplies(),
+            'max_thread_replies' => $this->takesThreadReplies() ? ThreadReplies::maxReplies($this->platform()) : null,
         ];
     }
 
@@ -1052,5 +1052,14 @@ enum ContentType: string
             },
             default => self::defaultFor($platform),
         };
+    }
+
+    /**
+     * Whether a post of this type takes thread replies: its network chains
+     * them and the type does not stand alone (`replies.standalone_types`).
+     */
+    public function takesThreadReplies(): bool
+    {
+        return ThreadReplies::supportsPostType($this->platform(), $this);
     }
 }

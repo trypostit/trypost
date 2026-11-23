@@ -196,11 +196,12 @@ test('mastodon pages account statuses with authenticated private history', funct
         && $request->hasHeader('Authorization', 'Bearer '.$account->access_token));
 });
 
-test('mastodon imports public history as partial when an existing token lacks read statuses', function () {
+test('mastodon imports public history as partial when private history is unavailable', function (array $granted, array $requested) {
     Http::fake(['*' => Http::response([])]);
+    config(['trypost.platforms.mastodon.scopes' => $requested]);
     $account = SocialAccount::factory()->mastodon()->create([
         'platform_user_id' => '42',
-        'scopes' => ['read:accounts', 'write:statuses', 'write:media'],
+        'scopes' => $granted,
         'meta' => ['instance' => 'https://mastodon.example'],
     ]);
 
@@ -213,8 +214,12 @@ test('mastodon imports public history as partial when an existing token lacks re
     expect($page->providerExhausted)->toBeTrue()
         ->and($page->providerLimited)->toBeFalse()
         ->and($page->partialReason)->toBe('mastodon_reconnect_for_private_history');
+    Http::assertSentCount(1);
     Http::assertSent(fn (Request $request): bool => ! $request->hasHeader('Authorization'));
-});
+})->with([
+    'missing grant' => [['read:accounts', 'write:statuses', 'write:media'], ['read:statuses']],
+    'scope disabled with an older grant' => [['read', 'write'], ['read:accounts', 'write:statuses', 'write:media']],
+]);
 
 test('mastodon parent read scope authorizes complete private history', function () {
     Http::fake(['*' => Http::response([])]);

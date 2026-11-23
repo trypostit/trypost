@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'Komentarze na LinkedIn nie mogą zawierać multimediów.',
         ],
 
+        'reconnect' => [
+            'save' => 'Zapisz szkic i połącz ponownie',
+            'blocked' => 'Tego posta nie można jeszcze zapisać. Poczekaj na zakończenie przesyłania i popraw zaznaczone elementy, a potem spróbuj ponownie.',
+            'pending_approval' => 'Ten post czeka na zatwierdzenie. Rozpatrz prośbę przed ponownym połączeniem kanału.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Wybierz tablicę',
             'boards_truncated' => 'Nie udało się wczytać niektórych tablic. Jeśli brakuje twojej, otwórz Pinterest i spróbuj ponownie.',

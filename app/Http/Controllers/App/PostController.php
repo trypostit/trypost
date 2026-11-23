@@ -180,10 +180,15 @@ class PostController extends Controller
         $action = data_get($result, 'action');
 
         if ($action === PostAction::Finalized) {
-            session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
-            session()->flash('flash.bannerStyle', 'danger');
+            $message = __('posts.flash.cannot_edit_finalized');
 
-            return back();
+            $details = ['post' => $post->id];
+            $url = $this->publishPageReturnUrl([...$details, 'tab' => null]);
+
+            return redirect($url ?? route('app.posts.index', $details))
+                ->with('flash.banner', $message)
+                ->with('flash.bannerStyle', 'danger')
+                ->withErrors(['post' => $message]);
         }
 
         $tab = match (true) {

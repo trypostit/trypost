@@ -14,6 +14,7 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Exceptions\Post\QueueBusyException;
 use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\User;
@@ -32,24 +33,37 @@ use Illuminate\Validation\ValidationException;
 class UpdatePost
 {
     /**
-     * `$actor` is the user making the change; system callers pass none and are never gated.
      * A pending post is changed under its approval lock (see PostApproval::whilePending()).
      * `queue_slot` (an instant, set only by MoveChannelPostToQueueSlot under the channel lock)
      * stores a single-channel post in queue mode at that slot without reflowing the queue.
      *
      * @return array{post: Post, action: PostAction|null}
      */
-    public static function execute(Workspace $workspace, Post $post, array $data, ?User $actor = null): array
+    public static function execute(Workspace $workspace, Post $post, array $data, User $actor): array
     {
-        return $post->status === PostStatus::PendingApproval
-            ? PostApproval::whilePending($post, fn (): array => self::apply($workspace, $post, $data, $actor))
-            : self::apply($workspace, $post, $data, $actor);
+        $apply = fn (): ?array => self::apply($workspace, $post, $data, $actor);
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $result = $post->status === PostStatus::PendingApproval
+                ? PostApproval::whilePending($post, $apply)
+                : $apply();
+
+            if ($result !== null) {
+                return $result;
+            }
+
+            if (filled(data_get($data, 'queue_slot'))) {
+                throw ValidationException::withMessages(['slot_at' => __('posts.errors.queue_order_stale')]);
+            }
+        }
+
+        throw new QueueBusyException;
     }
 
     /**
-     * @return array{post: Post, action: PostAction|null}
+     * @return array{post: Post, action: PostAction|null}|null
      */
-    private static function apply(Workspace $workspace, Post $post, array $data, ?User $actor): array
+    private static function apply(Workspace $workspace, Post $post, array $data, User $actor): ?array
     {
         if (PostStatusRules::blocksEditing($post)) {
             return ['post' => $post, 'action' => PostAction::Finalized];
@@ -89,7 +103,9 @@ class UpdatePost
         }
 
         return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $data): array {
-            if (self::finalizedMeanwhile($post)) {
+            $post->refreshForUpdate();
+
+            if (PostStatusRules::blocksEditing($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
 
@@ -114,9 +130,9 @@ class UpdatePost
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{post: Post, action: PostAction|null}
+     * @return array{post: Post, action: PostAction|null}|null
      */
-    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, ?User $actor): array
+    private static function updateChannelPost(Workspace $workspace, Post $post, array $data, User $actor): ?array
     {
         $position = filled(data_get($data, 'queue')) ? QueuePosition::from(data_get($data, 'queue')) : null;
         $channel = $post->socialAccount;
@@ -151,10 +167,6 @@ class UpdatePost
 
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
-        $meta = PostPlatformMetaRules::normalize(array_filter(
-            PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
-            fn (mixed $value): bool => $value !== null,
-        ));
         $scheduledAt = match (true) {
             $keepsPending => $post->scheduled_at?->toIso8601String(),
             $position !== null => null,
@@ -175,25 +187,34 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, [
-            'status' => $status,
-            'queue' => $keepsPending ? null : $position?->value,
-            'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
-            'media' => data_get($data, 'media') ?? $post->media ?? [],
-            'scheduled_at' => $keepsPending ? null : $scheduledAt,
-            'label_ids' => data_get($data, 'label_ids') ?? $post->labels()->pluck('workspace_labels.id')->all(),
-            'destinations' => [[
-                'social_account_id' => $post->social_account_id,
-                'content_type' => data_get($data, 'content_type')
-                    ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
-                'meta' => $meta,
-            ]],
-        ], $post->media ?? []));
-
-        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
-            if (self::finalizedMeanwhile($post)) {
-                return ['post' => $post, 'action' => PostAction::Finalized];
+        $write = fn (): ?array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($workspace, $post, $channel, $data, $status, $keepsPending, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): ?array {
+            if (! self::lockCurrentSchedule($post)) {
+                return null;
             }
+
+            if ($post->status === PostStatus::PendingApproval && data_get($data, 'save_for_reconnect')) {
+                throw ValidationException::withMessages(['pending_approval' => __('posts.form.reconnect.pending_approval')]);
+            }
+
+            $meta = PostPlatformMetaRules::normalize(array_filter(
+                PostMeta::merge($post->meta ?? [], data_get($data, 'meta') ?? []),
+                fn (mixed $value): bool => $value !== null,
+            ));
+
+            $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, $actor, [
+                'status' => $status,
+                'queue' => $keepsPending ? null : $position?->value,
+                'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
+                'media' => data_get($data, 'media') ?? $post->media ?? [],
+                'scheduled_at' => $keepsPending ? null : $scheduledAt,
+                'label_ids' => data_get($data, 'label_ids') ?? $post->labels()->pluck('workspace_labels.id')->all(),
+                'destinations' => [[
+                    'social_account_id' => $post->social_account_id,
+                    'content_type' => data_get($data, 'content_type')
+                        ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
+                    'meta' => $meta,
+                ]],
+            ], $post->media ?? []));
 
             $slotLost = $approvesHolder && ! ReflowChannelQueue::isFreeSlot($channel->refresh(), $post->scheduled_at, $post->id);
             $position = $slotLost ? QueuePosition::Next : $position;
@@ -245,32 +266,29 @@ class UpdatePost
     }
 
     /**
-     * Re-reads the post under a row lock inside the write transaction, so a post the
-     * scheduler claimed or another request settled after it was loaded is left alone.
+     * The schedule determines which approval and queue locks the edit needs. If it
+     * changed while acquiring them, release the locks and plan the edit again
+     * from the refreshed row. Content-only changes can be merged immediately.
      */
-    private static function finalizedMeanwhile(Post $post): bool
+    private static function lockCurrentSchedule(Post $post): bool
     {
-        $locked = Post::query()->whereKey($post->id)->lockForUpdate()->firstOrFail();
+        $fields = ['status', 'schedule_mode', 'scheduled_at', 'approval_queue_position'];
+        $schedule = $post->only($fields);
+        $post->refreshForUpdate();
 
-        if (! PostStatusRules::blocksEditing($locked)) {
-            return false;
-        }
-
-        $post->setRawAttributes($locked->getAttributes(), true);
-
-        return true;
+        return $post->only($fields) == $schedule;
     }
 
     /**
      * @return array{post: Post, action: PostAction|null}
      */
-    private static function finish(Post $post, PostStatus $previousStatus, PostStatus $storedStatus, ?CarbonInterface $occurrence, ?User $actor): array
+    private static function finish(Post $post, PostStatus $previousStatus, PostStatus $storedStatus, ?CarbonInterface $occurrence, User $actor): array
     {
-        if ($actor !== null && PostApproval::isRequest($previousStatus, $storedStatus)) {
+        if (PostApproval::isRequest($previousStatus, $storedStatus)) {
             NotifyApprovalRequested::execute(collect([$post]), $actor);
         }
 
-        if ($actor !== null && PostApproval::isApproval($previousStatus, $storedStatus)) {
+        if (PostApproval::isApproval($previousStatus, $storedStatus)) {
             NotifyApprovalDecision::execute($post, ApprovalDecision::Approved, $actor, $post->approvalRequester());
         }
 

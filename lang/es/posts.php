@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'Los comentarios de LinkedIn no admiten archivos multimedia.',
         ],
 
+        'reconnect' => [
+            'save' => 'Guardar borrador y reconectar',
+            'blocked' => 'Esta publicación aún no se puede guardar. Espera a que terminen las subidas y corrige lo resaltado, luego inténtalo de nuevo.',
+            'pending_approval' => 'Este post está pendiente de aprobación. Revisa la solicitud antes de volver a conectar el canal.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Selecciona un tablero',
             'boards_truncated' => 'No se pudieron cargar algunos tableros. Si falta el tuyo, abre Pinterest e inténtalo de nuevo.',

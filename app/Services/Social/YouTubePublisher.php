@@ -17,6 +17,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\HostsProcessedImages;
+use App\Support\Social\PublishContentValidator;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
 use Google\Client as GoogleClient;
@@ -45,7 +46,7 @@ class YouTubePublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $metadataViolation = YouTubeMetadata::violation($post->meta);
 

@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'LinkedIn comments can\'t include media.',
         ],
 
+        'reconnect' => [
+            'save' => 'Save draft & reconnect',
+            'blocked' => 'This post can\'t be saved yet. Wait for uploads to finish and fix what\'s highlighted, then try again.',
+            'pending_approval' => 'This post is waiting for approval. Review the request before reconnecting the channel.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Select a board',
             'boards_truncated' => 'Some boards could not be loaded. If yours is missing, open Pinterest and try again.',

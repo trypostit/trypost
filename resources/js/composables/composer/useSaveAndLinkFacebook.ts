@@ -2,17 +2,16 @@ import { trans } from 'laravel-vue-i18n';
 import { toast } from 'vue-sonner';
 
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
-import type { PostComposition } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { PostStatus } from '@/types/post';
+import type { SubmitPostComposition } from '@/types/post-composition';
 
 interface SaveAndLinkFacebookOptions {
     /** The status the edited post had when it opened, if it was saved. */
     status: () => string | undefined;
     /** Whether the composer is set to publish now rather than at a time or in the queue. */
     publishesNow: () => boolean;
-    /** Saves the post; false when it cannot be saved yet. */
-    submit: (status: PostComposition['status'], onSaved: () => void) => boolean;
+    submit: SubmitPostComposition;
 }
 
 /**

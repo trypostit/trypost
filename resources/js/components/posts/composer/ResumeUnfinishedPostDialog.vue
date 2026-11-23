@@ -9,7 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import type { ComposerAccount } from '@/composables/usePostComposition';
+import type { ComposerAccount } from '@/types/post-composition';
 
 defineProps<{
     open: boolean;

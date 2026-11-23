@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Plan\Slug;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -18,6 +19,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
+use App\Support\ChannelPermissions;
 use App\Support\Social\PendingConnection;
 use App\Support\Social\Poll;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1311,4 +1313,21 @@ function trypostConfigWith(array $environment): array
             }
         }
     }
+}
+
+/**
+ * Puts a feature behind scopes on a network for a test: its `permissions`
+ * entry (with optional copy keys), and those scopes added to the scopes the
+ * network's connect asks for, so the feature is on and only the channel's
+ * grant decides (`ChannelPermissions`).
+ *
+ * @param  list<string>  $scopes
+ * @param  array{message?: string, member_message?: string}  $copy
+ */
+function gateFeature(Platform $platform, GatedFeature $feature, array $scopes, array $copy = []): void
+{
+    config([
+        "trypost.platforms.{$platform->value}.permissions.{$feature->value}" => ['scopes' => $scopes, ...$copy],
+        "trypost.platforms.{$platform->value}.scopes" => [...ChannelPermissions::requestedScopes($platform), ...$scopes],
+    ]);
 }

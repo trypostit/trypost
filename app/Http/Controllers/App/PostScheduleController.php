@@ -8,6 +8,7 @@ use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\ScheduleAction;
+use App\Enums\Post\Status as PostStatus;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Controllers\Concerns\FlashesToast;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
@@ -44,7 +45,7 @@ class PostScheduleController extends Controller
 
         if ($action === PostAction::Finalized) {
             return back()
-                ->with('flash.banner', __('posts.flash.cannot_edit_finalized'))
+                ->with('flash.banner', $this->scheduleBlockedMessage($result['post']))
                 ->with('flash.bannerStyle', 'danger');
         }
 
@@ -61,5 +62,14 @@ class PostScheduleController extends Controller
         }
 
         return back();
+    }
+
+    private function scheduleBlockedMessage(Post $post): string
+    {
+        if ($post->status === PostStatus::Publishing) {
+            return __('posts.edit.publishing_overlay_title');
+        }
+
+        return PostStatusRules::editBlockedMessage();
     }
 }

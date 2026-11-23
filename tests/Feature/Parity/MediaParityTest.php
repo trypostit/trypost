@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\UpdatePost;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\Post\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
@@ -421,4 +423,85 @@ test('an oversized file gets the same translated message through every upload ro
     auth()->forgetGuards();
     $this->post(data_get($issued, 'upload_url'), ['media' => $file()], ['Accept' => 'application/json'])
         ->assertJsonValidationErrors(['media' => $message]);
+});
+
+test('refusing a scheduled attachment avoids downloading or storing the file', function (string $surface) {
+    $post = mediaParityPost($this);
+    $post->socialAccount->update(['scopes' => ['openid']]);
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $message = __('channels.permissions.publish.message', ['network' => Platform::LinkedIn->label()]);
+    $urls = [['url' => 'https://example.com/pixel.png']];
+    Http::fake(['example.com/*' => Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200, ['Content-Type' => 'image/png'])]);
+
+    match ($surface) {
+        'api' => $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.attach-media-from-url', $post), ['urls' => $urls])
+            ->assertUnprocessable()->assertJsonValidationErrors(['social_account_id' => $message]),
+        'mcp' => TryPostServer::actingAs($this->user)->tool(AttachMediaFromUrlTool::class, ['post_id' => $post->id, 'urls' => $urls])->assertHasErrors([$message]),
+        'file' => $this->withHeaders(parityApi($this->token))->post(route('api.posts.store-media', $post), ['media' => UploadedFile::fake()->image('pixel.png')])
+            ->assertUnprocessable()->assertJsonValidationErrors(['social_account_id' => $message]),
+    };
+
+    Http::assertNothingSent();
+    expect(Media::temporaryUploads()->exists())->toBeFalse()
+        ->and(Storage::allFiles())->toBeEmpty();
+})->with(['api', 'mcp', 'file']);
+
+test('an attachment refused after its download releases only the new temporary upload', function () {
+    $post = mediaParityPost($this);
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $existing = mediaParityUpload($this);
+    Http::fake(['example.com/*' => function () use ($post) {
+        $post->socialAccount->update(['scopes' => ['openid']]);
+
+        return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200, ['Content-Type' => 'image/png']);
+    }]);
+
+    $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.attach-media-from-url', $post), [
+        'urls' => [['url' => 'https://example.com/pixel.png']],
+    ])->assertUnprocessable()->assertJsonValidationErrors('social_account_id');
+
+    expect(Media::temporaryUploads()->pluck('id')->all())->toBe([$existing->id])
+        ->and($post->fresh()->media)->toBeEmpty();
+    expect(Storage::allFiles())->toBe([$existing->path]);
+});
+
+test('a scheduled post missing its publish grant refuses an attachment and keeps the upload available', function (string $surface) {
+    $post = mediaParityPost($this);
+    $post->socialAccount->update(['scopes' => ['openid']]);
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $upload = mediaParityUpload($this);
+    $message = __('channels.permissions.publish.message', ['network' => Platform::LinkedIn->label()]);
+
+    if ($surface === 'api') {
+        $this->withHeaders(parityApi($this->token))
+            ->postJson(route('api.posts.attach-media-from-upload', $post), ['upload_token' => $upload->upload_token])
+            ->assertUnprocessable()->assertJsonValidationErrors(['social_account_id' => $message]);
+    } else {
+        TryPostServer::actingAs($this->user)
+            ->tool(AttachMediaFromUploadTool::class, ['post_id' => $post->id, 'upload_token' => $upload->upload_token])
+            ->assertHasErrors([$message]);
+    }
+
+    expect($post->fresh()->media)->toBeEmpty()
+        ->and($upload->fresh()->post_id)->toBeNull();
+
+    $post->update(['status' => Status::Draft, 'scheduled_at' => null]);
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $post), ['upload_token' => $upload->upload_token])->assertOk();
+    expect($upload->fresh()->post_id)->toBe($post->id);
+})->with(['api', 'mcp']);
+
+test('a caption edit keeps the media attached after the post was loaded', function () {
+    $post = mediaParityPost($this);
+    $upload = mediaParityUpload($this);
+
+    $this->withHeaders(parityApi($this->token))
+        ->postJson(route('api.posts.attach-media-from-upload', $post), ['upload_token' => $upload->upload_token])->assertOk();
+
+    UpdatePost::execute($this->workspace, $post, ['content' => 'Updated caption'], $this->user);
+
+    expect($post->fresh()->content)->toBe('Updated caption')
+        ->and(data_get($post->fresh()->media, '0.id'))->toBe($upload->id)
+        ->and($upload->fresh()?->post_id)->toBe($post->id);
+    Storage::assertExists($upload->path);
 });

@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'LinkedIn 댓글에는 미디어를 첨부할 수 없습니다.',
         ],
 
+        'reconnect' => [
+            'save' => '초안 저장 후 재연결',
+            'blocked' => '이 게시물은 아직 저장할 수 없습니다. 업로드가 끝날 때까지 기다리고 강조 표시된 부분을 수정한 뒤 다시 시도하세요.',
+            'pending_approval' => '이 게시물은 승인을 기다리고 있습니다. 채널을 다시 연결하기 전에 승인 요청을 검토하세요.',
+        ],
+
         'pinterest' => [
             'select_board' => '보드 선택',
             'boards_truncated' => '일부 보드를 불러오지 못했습니다. 내 보드가 없다면 Pinterest를 연 뒤 다시 시도하세요.',

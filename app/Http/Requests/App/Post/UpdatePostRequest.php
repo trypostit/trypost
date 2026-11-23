@@ -52,6 +52,7 @@ class UpdatePostRequest extends FormRequest
 
         return [
             'status' => ['required', 'string', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
+            'save_for_reconnect' => ['sometimes', 'boolean'],
             'content' => [
                 'nullable',
                 'string',

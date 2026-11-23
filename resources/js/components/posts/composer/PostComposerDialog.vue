@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Link, useHttp, usePage } from '@inertiajs/vue3';
 import {
-    IconAlertTriangle,
     IconArrowLeft,
     IconArrowRight,
     IconArrowsMaximize,
@@ -69,7 +68,9 @@ import ComposerTemplatesPanel from '@/components/posts/composer/ComposerTemplate
 import MediaEditorDialog, {
     type MediaEditChange,
 } from '@/components/posts/composer/MediaEditorDialog.vue';
+import PostComposerPermissionWarning from '@/components/posts/composer/PostComposerPermissionWarning.vue';
 import ResumeUnfinishedPostDialog from '@/components/posts/composer/ResumeUnfinishedPostDialog.vue';
+import ThreadUnavailableWarning from '@/components/posts/composer/ThreadUnavailableWarning.vue';
 import ChannelMediaWarnings from '@/components/posts/editor/ChannelMediaWarnings.vue';
 import GoogleBusinessTopicTypeRadios from '@/components/posts/editor/GoogleBusinessTopicTypeRadios.vue';
 import PollField from '@/components/posts/editor/PollField.vue';
@@ -96,11 +97,13 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import WarningLine from '@/components/WarningLine.vue';
 import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
+import { useSaveAndReconnect } from '@/composables/composer/useSaveAndReconnect';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
@@ -144,16 +147,15 @@ import {
 import {
     ACCOUNT_SCOPED_SETTINGS,
     usePostComposition,
-    type ComposerAccount,
-    type ComposerInitialDraft,
-    type ComposerInitialPost,
-    type NetworkGroup,
-    type PostComposition,
 } from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import {
+    channelPermissionKey,
+    featureIsEnabled,
+} from '@/lib/channelPermissions';
 import {
     characterCount,
     displayLength,
@@ -184,10 +186,11 @@ import {
     replyTooLongKey,
     startThreadKey,
     threadMaxReplies,
-    type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
     threadReplyPostType,
+    threadUnavailableKey,
+    threadUnsupportedKey,
 } from '@/lib/threadReplies';
 import { htmlToPlainText } from '@/lib/utils';
 import { userTimezone } from '@/preferences';
@@ -199,6 +202,7 @@ import type {
     SharedData,
     User,
 } from '@/types';
+import { GatedFeature } from '@/types/channel-permission';
 import {
     CAPTIONLESS_CONTENT_TYPES,
     MEDIALESS_CONTENT_TYPE_REASONS,
@@ -206,14 +210,24 @@ import {
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import {
-    isThreadPlatform,
-} from '@/types/network-options';
-import { Platform, type PlatformValue } from '@/types/platform';
+    Platform,
+    type PlatformConfigs,
+    type PlatformValue,
+} from '@/types/platform';
 import {
     PostStatus,
     ScheduleMode,
     type QueuePositionValue,
 } from '@/types/post';
+import type {
+    ComposerAccount,
+    ComposerInitialDraft,
+    ComposerInitialPost,
+    NetworkGroup,
+    PostComposition,
+    SubmitPostComposition,
+} from '@/types/post-composition';
+import type { ThreadReply } from '@/types/thread-reply';
 import type { TikTokPrivacyLevelValue } from '@/types/tiktok-privacy';
 
 const props = withDefaults(
@@ -230,7 +244,7 @@ const props = withDefaults(
         initialAccountIds?: string[];
         initialQueueSlot?: string | null;
         submitting?: boolean;
-        platformConfigs?: Record<string, any>;
+        platformConfigs?: PlatformConfigs;
         pinterestBoards?: Record<string, PinterestBoardsPayload>;
         tiktokCreatorInfos?: Record<
             string,
@@ -270,6 +284,7 @@ const emit = defineEmits<{
         composition: PostComposition,
         createAnother: boolean,
         onSaved?: () => void,
+        leavesApp?: boolean,
     ): void;
 }>();
 
@@ -498,12 +513,13 @@ const {
     composition,
     (account) => pollLimitsOf(props.platformConfigs[account.id]?.publishConfig),
     {
-    activeReply: (group) => activeReply(group),
-    replies: (group) => threadReplies(group),
-    setReplies: (group, replies) => setThreadReplies(group, replies),
-    replyLimit: (group) => threadReplyLimit(group),
-    uploading: (group, reply) =>
-        Boolean(replyUploaderFor(group, reply)?.busy.value),
+        activeReply: (group) => activeReply(group),
+        replies: (group) => threadReplies(group),
+        setReplies: (group, replies) => setThreadReplies(group, replies),
+        replyLimit: (group) => threadReplyLimit(group),
+        uploading: (group, reply) =>
+            Boolean(replyUploaderFor(group, reply)?.busy.value),
+        supportsReplies: (group) => supportsThread(group),
     },
 );
 /**
@@ -1187,8 +1203,42 @@ const threadReplies = (group: NetworkGroup): ThreadReply[] =>
     threadRepliesOf(groupDestination(group).meta);
 const activeReply = (group: NetworkGroup): ThreadReply | undefined =>
     threadReplies(group)[threadActive.value];
+const hasThreadReplies = (group: NetworkGroup): boolean =>
+    filled(threadReplies(group));
 const supportsThread = (group: NetworkGroup): boolean =>
-    isThreadPlatform(group.platform);
+    blank(
+        threadUnsupportedKey(
+            group.platform,
+            groupDestination(group).content_type,
+            groupRepliesEnabled(group),
+        ),
+    );
+
+const canStartThreadFromCaption = (group: NetworkGroup): boolean => {
+    if (repliesAreComments(group.platform)) {
+        return false;
+    }
+
+    return supportsThread(group);
+};
+/** Whether replies are on for the card's network (`disabledFeatures` of its platform config). */
+const groupRepliesEnabled = (group: NetworkGroup): boolean =>
+    accountRepliesEnabled(group.anchor);
+const accountRepliesEnabled = (account: ComposerAccount): boolean =>
+    featureIsEnabled(
+        props.platformConfigs[account.id],
+        GatedFeature.ThreadReplies,
+    );
+/** Use zero to prevent adding replies while keeping stored replies editable. */
+const groupReplyLimit = (group: NetworkGroup): number => {
+    if (!supportsThread(group)) {
+        return 0;
+    }
+
+    return threadMaxReplies(group.platform);
+};
+const canAddThreadReply = (group: NetworkGroup): boolean =>
+    threadReplies(group).length < groupReplyLimit(group);
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
@@ -1216,12 +1266,11 @@ const setThreadReplies = (
     );
 };
 const addThreadReply = (group: NetworkGroup): void => {
-    const replies = threadReplies(group);
-
-    if (replies.length >= threadMaxReplies(group.platform)) {
+    if (!canAddThreadReply(group)) {
         return;
     }
 
+    const replies = threadReplies(group);
     setThreadReplies(group, [...replies, newThreadReply()]);
     threadActive.value = replies.length;
 };
@@ -1229,13 +1278,11 @@ const focusFirstReply = (): void => {
     threadActive.value = 0;
 };
 const startThreadFromCaption = (group: NetworkGroup): void => {
-    const replies = threadReplies(group);
-
-    if (replies.length >= threadMaxReplies(group.platform)) {
+    if (!canAddThreadReply(group)) {
         return;
     }
 
-    setThreadReplies(group, [newThreadReply(), ...replies]);
+    setThreadReplies(group, [newThreadReply(), ...threadReplies(group)]);
     threadActive.value = 0;
 };
 const activeRemaining = (group: NetworkGroup): number | null => {
@@ -1556,6 +1603,27 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
         });
     }
+    for (const key of [
+        threadUnavailableKey(
+            account.platform,
+            contentType,
+            destination.meta,
+            accountRepliesEnabled(account),
+        ),
+        channelPermissionKey(
+            props.platformConfigs[account.id],
+            destination.meta,
+            canManageAccounts.value,
+        ),
+    ]) {
+        if (filled(key)) {
+            issues.push({
+                key,
+                params: { network: getPlatformLabel(account.platform) },
+                contentType,
+            });
+        }
+    }
     const replyContentType = threadReplyPostType(account.platform);
     if (replyContentType) {
         const limit = replyLimit(account);
@@ -1620,6 +1688,22 @@ const blockingIssue = computed(() => {
 
     return null;
 });
+/** Whether the card's channel takes text only while the post carries media. */
+const hasTextOnlyWarning = (group: NetworkGroup): boolean => {
+    const issueKeys = destinationIssues(group.anchor).map((issue) => issue.key);
+
+    return issueKeys.includes('posts.form.warnings.text_only');
+};
+/** Whether the card's text has more hashtags than its network allows. */
+const exceedsHashtags = (group: NetworkGroup): boolean => {
+    const remaining = groupHashtagsRemaining(group);
+
+    if (!filled(remaining)) {
+        return false;
+    }
+
+    return remaining < 0;
+};
 const metaRequirement = (account: ComposerAccount): string | null => {
     const destination = composition.resolvedDestination(account);
     const result = evaluatePlatformMeta(
@@ -1921,10 +2005,29 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
     cropTarget.value = null;
 };
 
-const submit = (
-    status: PostComposition['status'],
-    onSaved?: () => void,
-): boolean => {
+/** Whether the save reopens an empty composer: never for an edit, or for a save that leaves the app. */
+const createsAnother = (leavesApp: boolean): boolean => {
+    if (leavesApp) {
+        return false;
+    }
+
+    if (filled(props.postId)) {
+        return false;
+    }
+
+    return createAnother.value;
+};
+/**
+ * Saves the post. `onSaved` runs once it is saved; `leavesApp` says it sends
+ * the user out of the app (a channel's sign-in), so the page does not step
+ * back through history after the save, which would cancel that visit, and
+ * `onSaved` waits for the unsaved-changes guard to drop its history entry.
+ */
+const submit: SubmitPostComposition = (
+    status,
+    onSaved,
+    leavesApp = false,
+) => {
     if (
         !canSubmit.value ||
         (status !== PostStatus.Draft && hasBlockingIssues.value)
@@ -1944,10 +2047,23 @@ const submit = (
     }
     rememberAccounts(composition.selectedAccountIds.value);
     autosave.flush();
-    emit('submit', payload, createAnother.value && !props.postId, () => {
-        unsavedChanges.markSaved();
-        onSaved?.();
-    });
+    emit(
+        'submit',
+        payload,
+        createsAnother(leavesApp),
+        () => {
+            unsavedChanges.markSaved();
+
+            if (leavesApp) {
+                unsavedChanges.leave(() => onSaved?.());
+
+                return;
+            }
+
+            onSaved?.();
+        },
+        leavesApp,
+    );
 
     return true;
 };
@@ -1961,6 +2077,12 @@ const saveAndLinkFacebook = useSaveAndLinkFacebook({
     publishesNow: () => scheduleMode.value === 'now',
     submit,
 });
+
+const saveAndReconnect = useSaveAndReconnect(submit);
+/** A post waiting for approval is decided on first, so saving never takes it out of review. */
+const isPendingApproval = computed(
+    (): boolean => props.initialPost?.status === PostStatus.PendingApproval,
+);
 
 const submitSelectedSchedule = (): void => {
     submit(
@@ -2800,11 +2922,8 @@ const onDialogOpenChange = (value: boolean): void => {
                                     threadReplies(group)[threadActive] !== undefined
                                 "
                                 :active-reply="threadActive"
-                                :threadable="
-                                    supportsThread(group) &&
-                                    !repliesAreComments(group.platform)
-                                "
-                                :threaded="threadReplies(group).length > 0"
+                                :threadable="canStartThreadFromCaption(group)"
+                                :threaded="hasThreadReplies(group)"
                                 @expand-caption="deselectThread"
                                 @start-thread="startThreadFromCaption(group)"
                                 @next-post="focusFirstReply"
@@ -2847,59 +2966,51 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                 </template>
                                 <template #warnings>
-                                    <div
+                                    <WarningLine
                                         v-if="metaRequirement(group.anchor)"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-meta-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{ $t(metaRequirement(group.anchor)!) }}
-                                    </div>
-                                    <div
+                                    </WarningLine>
+                                    <ThreadUnavailableWarning
+                                        :platform="group.platform"
+                                        :replies-enabled="groupRepliesEnabled(group)"
+                                        :content-type="
+                                            groupDestination(group).content_type
+                                        "
+                                        :meta="groupDestination(group).meta"
+                                        :test-id="`thread-unavailable-warning-${group.anchor.id}`"
+                                    />
+                                    <PostComposerPermissionWarning
+                                        :accounts="group.accounts"
+                                        :platform-configs="platformConfigs"
+                                        :meta="groupDestination(group).meta"
+                                        :disabled="submitting"
+                                        :reconnectable="!isPendingApproval"
+                                        :test-id="`channel-permission-warning-${group.anchor.id}`"
+                                        @reconnect="saveAndReconnect"
+                                    />
+                                    <WarningLine
                                         v-if="setMediaWarning(group.anchor)"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
                                         :data-testid="`composer-media-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{
                                             $t(
                                                 `posts.form.warnings.${setMediaWarning(group.anchor)!.key}`,
                                                 setMediaWarning(group.anchor)!.params,
                                             )
                                         }}
-                                    </div>
-                                    <div
-                                        v-if="
-                                            destinationIssues(group.anchor).some(
-                                                (issue) =>
-                                                    issue.key ===
-                                                    'posts.form.warnings.text_only',
-                                            )
-                                        "
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
+                                    </WarningLine>
+                                    <WarningLine
+                                        v-if="hasTextOnlyWarning(group)"
                                         :data-testid="`composer-text-only-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 shrink-0 text-warning"
-                                        />
                                         {{ $t('posts.form.warnings.text_only') }}
-                                    </div>
-                                    <div
-                                        v-if="(groupHashtagsRemaining(group) ?? 0) < 0"
-                                        role="status"
-                                        class="flex items-center gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
+                                    </WarningLine>
+                                    <WarningLine
+                                        v-if="exceedsHashtags(group)"
                                         :data-testid="`composer-hashtag-warning-${group.anchor.id}`"
                                     >
-                                        <IconAlertTriangle
-                                            class="size-4 text-warning"
-                                        />
                                         {{
                                             $t(
                                                 'posts.form.hashtags_exceed_platform',
@@ -2915,7 +3026,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 },
                                             )
                                         }}
-                                    </div>
+                                    </WarningLine>
                                     <ChannelMediaWarnings
                                         :platform="group.platform"
                                         :content-type="
@@ -3050,13 +3161,13 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                 </template>
                                 <template
-                                    v-if="threadReplies(group).length"
+                                    v-if="hasThreadReplies(group)"
                                     #replies
                                 >
                                     <ThreadRepliesField
                                         v-model:active="threadActive"
                                         :toolbar-target="`composer-${group.anchor.id}-reply-toolbar`"
-                                        :max="threadMaxReplies(group.platform)"
+                                        :max="groupReplyLimit(group)"
                                         :comment="repliesAreComments(group.platform)"
                                         :model-value="threadReplies(group)"
                                         :platform="group.platform"
@@ -3205,9 +3316,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                         >
                                             {{ activeRemaining(group) }}
                                         </CharacterCounter>
-                                        <template v-if="supportsThread(group)">
+                                        <template v-if="canAddThreadReply(group)">
                                             <Button
-                                                v-if="!threadReplies(group).length"
+                                                v-if="!hasThreadReplies(group)"
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
@@ -3221,12 +3332,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                     $t(startThreadKey(group.platform))
                                                 }}</span>
                                             </Button>
-                                            <Tooltip
-                                                v-else-if="
-                                                    threadReplies(group).length <
-                                                    threadMaxReplies(group.platform)
-                                                "
-                                            >
+                                            <Tooltip v-else>
                                                 <TooltipTrigger as-child>
                                                     <Button
                                                         type="button"
@@ -3303,10 +3409,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                                 :platform-index="
                                                     selectedAccounts.indexOf(account)
                                                 "
-                                                :platform-config="
-                                                    platformConfigs[account.id] ??
-                                                    null
-                                                "
+                                                :platform-config="platformConfigs[account.id]"
                                                 :pinterest-boards="
                                                     pinterestBoards[account.id] ??
                                                     null
@@ -3334,10 +3437,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         :platform-index="
                                             selectedAccounts.indexOf(group.anchor)
                                         "
-                                        :platform-config="
-                                            platformConfigs[group.anchor.id] ??
-                                            null
-                                        "
+                                        :platform-config="platformConfigs[group.anchor.id]"
                                         @update:meta="
                                             composition.setGroupOverride(
                                                 group.key,
@@ -3445,6 +3545,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                             platformConfigs[group.anchor.id]
                                                 ?.publishConfig
                                         "
+                                        :replies-enabled="groupRepliesEnabled(group)"
                                         :active-post="threadActive"
                                     />
                                 </section>
@@ -3472,6 +3573,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         platformConfigs[previewAccount.id]
                                             ?.publishConfig
                                     "
+                                    :replies-enabled="accountRepliesEnabled(previewAccount)"
                                     :active-post="threadActive"
                                 />
                             </div>

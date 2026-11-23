@@ -19,17 +19,6 @@ class TikTokController extends SocialController
 
     protected SocialPlatform $platform = SocialPlatform::TikTok;
 
-    /**
-     * Requested scopes come from config so self-hosters whose TikTok app lacks
-     * a product (Display API is no longer offered to new apps, taking
-     * user.info.profile/stats and video.list with it) can trim the list via
-     * TIKTOK_SCOPES instead of hitting a "scope" error on the consent screen.
-     */
-    private function scopes(): array
-    {
-        return (array) config('trypost.platforms.tiktok.scopes');
-    }
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -38,7 +27,7 @@ class TikTokController extends SocialController
 
         $this->authorize('manageAccounts', $workspace);
 
-        return $this->redirectToProvider($request, $this->driver, $this->scopes(), [
+        return $this->redirectToProvider($request, $this->driver, [
             'disable_auto_auth' => 1,
         ]);
     }
@@ -49,10 +38,10 @@ class TikTokController extends SocialController
 
         try {
             $socialUser = Socialite::driver($this->driver)
-                ->scopes($this->scopes())
+                ->scopes($this->consentScopes())
                 ->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes());
+            $scopes = $this->reportedScopes($socialUser->approvedScopes);
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

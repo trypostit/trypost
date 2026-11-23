@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -42,6 +43,46 @@ dataset('thread networks', [
     'bluesky' => [Platform::Bluesky, 300],
     'mastodon' => [Platform::Mastodon, 500],
     'x' => [Platform::X, 280],
+]);
+
+test('a partial API edit validates LinkedIn comments against a draft scheduled by an overlapping request', function (array $comments, bool $valid) {
+    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $post = Post::factory()->forAccount($channel)->draft()->create([
+        'user_id' => $this->user->id,
+        'content' => 'Original',
+        'meta' => [],
+    ]);
+    $scheduledAt = now()->addDay()->startOfMinute();
+    $scheduled = false;
+
+    Post::retrieved(function (Post $bound) use ($post, $scheduledAt, &$scheduled): void {
+        if ($scheduled || ! $bound->is($post)) {
+            return;
+        }
+
+        $scheduled = true;
+        UpdatePost::execute($this->workspace, $post, ['status' => 'scheduled', 'scheduled_at' => $scheduledAt->toIso8601String()], $this->user);
+    });
+
+    $response = $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.update', $post), [
+        'meta' => ['thread_replies' => $comments],
+    ]);
+    $post->refresh();
+    expect($post->status)->toBe(Status::Scheduled)
+        ->and($post->scheduled_at->equalTo($scheduledAt))->toBeTrue();
+
+    if ($valid) {
+        $response->assertOk();
+        expect(data_get($post->meta, 'thread_replies.0.text'))->toBe($comments[0]);
+
+        return;
+    }
+
+    $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies']);
+    expect($post->meta)->not->toHaveKey('thread_replies');
+})->with([
+    'one comment is saved' => [['First comment'], true],
+    'two comments are rejected with 422' => [['First comment', 'Second comment'], false],
 ]);
 
 test('thread replies sent as strings are stored as text objects through api and mcp', function () {

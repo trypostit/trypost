@@ -24,15 +24,6 @@ class FacebookController extends MetaController
 
     protected SocialPlatform $platform = SocialPlatform::Facebook;
 
-    protected array $scopes = [
-        'public_profile',
-        'pages_show_list',
-        'pages_read_engagement',
-        'pages_manage_posts',
-        'read_insights',
-        'business_management',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -45,7 +36,7 @@ class FacebookController extends MetaController
 
         $driver = Socialite::driver($this->driver)
             ->usingGraphVersion($this->graphVersion())
-            ->setScopes($this->scopes);
+            ->setScopes($this->consentScopes());
 
         $driver = $this->switchingAccount($request)
             ? $driver->with(['auth_type' => self::SWITCH_ACCOUNT_AUTH_TYPE])

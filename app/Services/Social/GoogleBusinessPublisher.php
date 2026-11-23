@@ -19,6 +19,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\GoogleBusinessResourceName;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use App\Support\Social\PublishContentValidator;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +35,7 @@ class GoogleBusinessPublisher
         $state = null;
 
         try {
-            $this->validateContentLength($post);
+            PublishContentValidator::validate($post);
 
             $account = $post->socialAccount;
 

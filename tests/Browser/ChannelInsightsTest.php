@@ -365,3 +365,42 @@ test('the per post table shows the post media from our bucket, a video by its co
         ->assertScript("document.querySelector('[data-testid=\"insights-posts-row-{$this->mostViews->id}\"] img').getAttribute('src')", 'https://cdn.trypost.test/medias/a.jpg')
         ->assertNoJavaScriptErrors();
 });
+
+test('a channel without the insights permission is told above its report how to grant it', function () {
+    $this->instagram->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish']]);
+
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@channel-permission-notice');
+
+    $page->assertSeeIn('@channel-permission-notice', __('channels.permissions.insights.message', ['network' => Platform::Instagram->label()]))
+        ->assertVisible('@channel-permission-notice-reconnect')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a channel with every permission shows no permission notice', function () {
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@insights-range-7d');
+
+    $page->assertMissing('@channel-permission-notice')->assertNoJavaScriptErrors();
+});
+
+test('a member is told an admin needs to grant the insights permission, with no link', function () {
+    $this->instagram->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish']]);
+    $this->actingAs(workspaceMember($this->instagram->workspace));
+
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@channel-permission-notice');
+
+    $page->assertSeeIn('@channel-permission-notice', __('channels.permissions.insights.member_message', ['network' => Platform::Instagram->label()]))
+        ->assertMissing('@channel-permission-notice-reconnect')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a channel missing only the publish scope shows no insights notice', function () {
+    $this->instagram->update(['scopes' => ['instagram_business_basic', 'instagram_business_manage_insights']]);
+
+    $page = visit(route('app.channels.insights', ['account' => $this->instagram]));
+    waitFor($page, '@insights-range-7d');
+
+    $page->assertMissing('@channel-permission-notice')->assertNoJavaScriptErrors();
+});

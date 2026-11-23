@@ -8,7 +8,9 @@ use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\FacebookMediaKey;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Throwable;
 
@@ -23,7 +25,7 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector
         ?string $cursor,
         CarbonImmutable $cutoff,
     ): PublicationPage {
-        if ($account->missingScope('pages_read_engagement') !== null) {
+        if (! ChannelPermissions::permits($account, GatedFeature::PostHistory)) {
             return PublicationPage::scopeMissing();
         }
 

@@ -19,18 +19,18 @@ import YouTubePreview from '@/components/posts/previews/YouTubePreview.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import { mediaRuleFor } from '@/lib/contentTypeMediaRules';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import {
     repliesAreComments,
-    type ThreadReply,
     threadRepliesOf,
     threadReplyContentType,
+    threadUnsupportedKey,
 } from '@/lib/threadReplies';
 import { withCoversFor } from '@/lib/videoFrame';
 import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
-import { isThreadPlatform } from '@/types/network-options';
 import type { PlatformValue, PublishConfig } from '@/types/platform';
+import type { ThreadReply } from '@/types/thread-reply';
 
 interface Props {
     platform: PlatformValue;
@@ -45,9 +45,11 @@ interface Props {
     activePost?: number;
     /** The account's `publishConfig` (`Platform::publishConfig()`). */
     publishConfig?: PublishConfig | null;
+    /** Whether the network's connect asks for the scope replies need; off, the preview shows none, as the server publishes none. */
+    repliesEnabled?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { repliesEnabled: true });
 
 const { contentFor } = useXLinkDefuser();
 
@@ -69,8 +71,36 @@ const takesCoverImage = computed((): boolean => {
 
 const previewMedia = computed((): MediaItem[] => withCoversFor(props.media, takesCoverImage.value));
 
+const showsThread = computed(() =>
+    blank(
+        threadUnsupportedKey(
+            props.platform,
+            props.contentType ?? null,
+            props.repliesEnabled,
+        ),
+    ),
+);
+
+const previewMeta = computed((): Record<string, any> | undefined => {
+    const meta = props.meta;
+
+    if (showsThread.value) {
+        return meta;
+    }
+
+    if (!filled(meta)) {
+        return meta;
+    }
+
+    return Object.fromEntries(Object.entries(meta).filter(([key]) => key !== 'thread_replies'));
+});
+
 const shownReplies = computed((): { reply: ThreadReply; index: number }[] => {
-    if (!isThreadPlatform(props.platform) || repliesAreComments(props.platform)) {
+    if (!showsThread.value) {
+        return [];
+    }
+
+    if (repliesAreComments(props.platform)) {
         return [];
     }
 
@@ -182,7 +212,7 @@ const previewComponent = computed(() => {
                 :content="previewContent"
                 :media="previewMedia"
                 :content-type="contentType"
-                :meta="meta"
+                :meta="previewMeta"
                 :posted-at="postedAt"
                 :publish-config="publishConfig"
                 :thread-position="threadReplies.length ? 'first' : undefined"

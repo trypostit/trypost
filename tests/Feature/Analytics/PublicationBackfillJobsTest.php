@@ -26,11 +26,13 @@ use App\Services\Analytics\Collectors\Publications\AbstractPublicationHistoryCol
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
@@ -142,6 +144,8 @@ test('daily discovery does not retry a backfill rejected for missing permission'
 test('daily discovery recovers stale bootstraps, bootstraps channels never bootstrapped and leaves delayed retries alone', function () {
     $stalePending = SocialAccount::factory()->instagram()->create();
     $staleRunning = SocialAccount::factory()->instagram()->create();
+    $publicMastodon = SocialAccount::factory()->mastodon()->create(['scopes' => ['read:accounts', 'write:statuses']]);
+    $recentMastodon = SocialAccount::factory()->mastodon()->create();
     $recentPending = SocialAccount::factory()->instagram()->create();
     $rateLimited = SocialAccount::factory()->instagram()->create();
     $awaitingRollout = SocialAccount::factory()->instagram()->create();
@@ -150,6 +154,8 @@ test('daily discovery recovers stale bootstraps, bootstraps channels never boots
     foreach ([
         [$stalePending, SyncStatus::Pending, null, 3],
         [$staleRunning, SyncStatus::Running, null, 3],
+        [$publicMastodon, SyncStatus::Running, 'mastodon_reconnect_for_private_history', 3],
+        [$recentMastodon, SyncStatus::Running, 'mastodon_reconnect_for_private_history', 1],
         [$recentPending, SyncStatus::Pending, null, 1],
         [$rateLimited, SyncStatus::Running, 'rate_limited', 3],
         [$readyForDiscovery, SyncStatus::Complete, null, 3],
@@ -176,7 +182,7 @@ test('daily discovery recovers stale bootstraps, bootstraps channels never boots
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
 
     expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())
-        ->toBe(collect([$stalePending->id, $staleRunning->id, $awaitingRollout->id])->sort()->values()->all());
+        ->toBe(collect([$stalePending->id, $staleRunning->id, $publicMastodon->id, $awaitingRollout->id])->sort()->values()->all());
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $readyForDiscovery->id);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 1);
     Bus::assertNotDispatched(BackfillAccountPublications::class);
@@ -198,6 +204,32 @@ test('bootstrap creates separate backfill and discovery states and dispatches th
         ->and($backfill->target_since?->toDateString())->toBe('2025-09-23')
         ->and($discovery->status)->toBe(SyncStatus::Pending);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $backfill->id);
+});
+
+test('discovery restarts a public-only Mastodon backfill when its existing grant can read privately again', function () {
+    $publicScopes = ['read:accounts', 'write:statuses', 'write:media'];
+    $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read', 'write']]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Partial,
+        'last_error_category' => 'mastodon_reconnect_for_private_history',
+    ]);
+    Bus::fake();
+
+    config(['trypost.platforms.mastodon.scopes' => $publicScopes]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+
+    config(['trypost.platforms.mastodon.scopes' => [...$publicScopes, 'read:statuses']]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($backfill->fresh()->status)->toBe(SyncStatus::Pending);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $backfill->id);
 });
 
 test('bootstrap resumes a failed backfill from its last committed cursor', function () {
@@ -354,6 +386,72 @@ test('a backfill job persists one page then advances its cursor and dispatches c
         ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => 'next-page', 'revision' => 1])
         ->and($state->fresh()->status)->toBe(SyncStatus::Running);
     Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->socialAccountId === $account->id && $job->syncStateId === $state->id);
+});
+
+test('a paused history backfill retains its cursor and resumes once the scope is available', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [['id' => 'older-post', 'create_time' => now()->subMonth()->timestamp]],
+                'has_more' => false,
+            ],
+            'error' => ['code' => 'ok'],
+        ]),
+    ]);
+    $scopes = ['user.info.basic', 'video.publish', 'video.upload'];
+    $account = SocialAccount::factory()->create([
+        'platform' => Platform::TikTok,
+        'scopes' => [...$scopes, 'video.list'],
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Running,
+        'checkpoint' => ['cursor' => '1234', 'revision' => 2],
+        'last_success_at' => null,
+        'last_error_category' => 'rate_limited',
+    ]);
+    $job = new BackfillAccountPublications($account->id, $state->id);
+    Bus::fake();
+
+    config(['trypost.platforms.tiktok.scopes' => $scopes]);
+    app()->call([$job, 'handle']);
+    Http::assertNothingSent();
+    $job->failed(new RuntimeException('Late queue failure'));
+    expect($state->fresh())
+        ->status->toBe(SyncStatus::Paused)
+        ->checkpoint->toBe(['cursor' => '1234', 'revision' => 3])
+        ->last_error_category->toBeNull()
+        ->last_success_at->toBeNull();
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+
+    config(['trypost.platforms.tiktok.scopes' => [...$scopes, 'video.list']]);
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $account->id);
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    Bus::assertDispatched(BackfillAccountPublications::class, fn ($job): bool => $job->syncStateId === $state->id);
+
+    app()->call([$job, 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(AnalyticsPublication::query()->where('remote_id', 'older-post')->exists())->toBeTrue();
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'cursor') === 1234);
+});
+
+test('bootstrapping an account without history permissions leaves its backfill paused without dispatching it', function () {
+    config(['trypost.platforms.tiktok.scopes' => ['user.info.basic', 'video.publish', 'video.upload']]);
+    $account = SocialAccount::factory()->tiktok()->create();
+    Bus::fake();
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    $backfill = $account->analyticsSyncStates()->forCollector(SyncCollector::PublicationBackfill)->sole();
+    expect($backfill->status)->toBe(SyncStatus::Paused);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
 });
 
 test('a publication page resolves the account identity once for every post', function () {
@@ -1190,4 +1288,374 @@ test('the discovery command can run only x or everything but x', function () {
     Bus::fake();
     $this->artisan('analytics:dispatch-publication-discovery', ['--except-platform' => ['x']])->assertSuccessful();
     expect(Bus::dispatched(DiscoverAccountPublications::class)->pluck('socialAccountId')->all())->toBe([$instagram->id]);
+});
+
+test('a reconnect resumes a legacy provider-limited backfill only when it restores the history grant', function (array $oldScopes, array $newScopes, bool $resumes) {
+    Bus::fake();
+    $account = SocialAccount::factory()->tiktok()->create(['scopes' => $oldScopes]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+    ]);
+
+    $account->update(['scopes' => $newScopes]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe($resumes ? SyncStatus::Pending : SyncStatus::ProviderLimited);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $resumes ? 1 : 0);
+})->with([
+    'history restored' => [['video.publish'], ['video.publish', 'video.list'], true],
+    'only an unrelated permission added' => [['video.list'], ['video.list', 'video.publish'], false],
+    'reported grant cleared' => [['video.publish'], [], false],
+]);
+
+test('a restored X history grant restarts its timeline count and keeps the checkpoint revision', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create(['scopes' => ['tweet.write']]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => ['cursor' => null, 'revision' => 3, 'seen_count' => 243],
+    ]);
+
+    $account->update(['scopes' => ['tweet.write', 'tweet.read', 'users.read']]);
+
+    expect($state->fresh()->checkpoint)->toMatchArray(['seen_count' => 0, 'revision' => 3]);
+});
+
+test('restoring private history during a Mastodon backfill recovers earlier private posts', function (bool $legacyRateLimit) {
+    Bus::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read:accounts', 'write:statuses']]);
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    $endpoint = $account->mastodon_instance.'/api/v1/accounts/'.$account->platform_user_id.'/statuses';
+    $status = fn (string $id, int $days): array => ['id' => $id, 'created_at' => now()->subDays($days)->toIso8601String()];
+    Http::preventStrayRequests();
+    Http::fake([$endpoint.'*' => function (Request $request) use ($endpoint, $status) {
+        if (filled(data_get($request->data(), 'max_id'))) {
+            return Http::response([$status('100', 60)]);
+        }
+
+        $statuses = [$status('400', 1)];
+        if ($request->hasHeader('Authorization')) {
+            $statuses[] = [...$status('300', 25), 'visibility' => 'private'];
+        }
+        $statuses[] = $status('200', 50);
+
+        return Http::response($statuses, 200, ['Link' => '<'.$endpoint.'?max_id=200>; rel="next"']);
+    }]);
+
+    $job = new BackfillAccountPublications($account->id, $state->id);
+    app()->call([$job, 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+
+    if ($legacyRateLimit) {
+        AnalyticsPublication::whereBelongsTo($account, 'socialAccount')->update(['provider_metadata' => null]);
+        $state->update([
+            'checkpoint' => ['cursor' => '200', 'revision' => 2],
+            'last_error_category' => 'rate_limited',
+        ]);
+    }
+
+    $account->update(['scopes' => ['read:accounts', 'read:statuses', 'write:statuses']]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+    for ($page = 0; $page < 3 && ! $state->fresh()->isTerminal(); $page++) {
+        app()->call([$job, 'handle']);
+    }
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(AnalyticsPublication::whereBelongsTo($account, 'socialAccount')->pluck('remote_id')->all())
+        ->toEqualCanonicalizing(['100', '200', '300', '400']);
+})->with(['current checkpoint' => false, 'rate-limited checkpoint before upgrade' => true]);
+
+test('reconnecting a deleted channel retries a legacy scope refusal and preserves a known provider limit', function (string $platform, array $oldScopes, bool $retries) {
+    Bus::fake();
+    $old = SocialAccount::factory()->{$platform}()->create(['scopes' => $oldScopes]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+    ]);
+    $old->delete();
+    $account = SocialAccount::factory()->{$platform}()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->social_account_id)->toBe($account->id);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $retries ? 1 : 0);
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $retries ? 0 : 1);
+})->with([
+    'TikTok history was denied' => ['tiktok', ['video.publish'], true],
+    'TikTok history was granted' => ['tiktok', ['video.list'], false],
+    'Pinterest history was granted' => ['pinterest', ['boards:read', 'pins:read'], false],
+]);
+
+test('a legacy orphaned TikTok limit without a saved grant is retried only for an empty history', function (bool $imported) {
+    Bus::fake();
+    $account = SocialAccount::factory()->tiktok()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => null,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'oldest_reached_at' => $imported ? now()->subMonth() : null,
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->social_account_id)->toBe($account->id);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $imported ? 0 : 1);
+    Bus::assertDispatchedTimes(DiscoverAccountPublications::class, $imported ? 1 : 0);
+})->with(['empty history' => false, 'previously imported history' => true]);
+
+test('restoring Mastodon private discovery imports a status older than the newest public post', function (?string $legacyStatus) {
+    Bus::fake();
+    $this->freezeTime();
+    $account = SocialAccount::factory()->mastodon()->create();
+    $originalScopes = $account->scopes;
+    $safeWatermark = now()->subDays(5);
+    $publicPost = ['id' => '400', 'created_at' => now()->subDay()->toIso8601String(), 'visibility' => 'public'];
+    $privatePost = ['id' => '300', 'created_at' => now()->subDays(3)->toIso8601String(), 'visibility' => 'private'];
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => $safeWatermark,
+    ]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'status' => SyncStatus::Complete,
+        'high_watermark_at' => $safeWatermark,
+    ]);
+    $endpoint = $account->mastodon_instance.'/api/v1/accounts/'.$account->platform_user_id.'/statuses';
+    Http::preventStrayRequests();
+    Http::fake([$endpoint.'*' => function (Request $request) use ($endpoint, $publicPost, $privatePost) {
+        if (! $request->hasHeader('Authorization')) {
+            return Http::response([$publicPost]);
+        }
+
+        if (data_get($request->data(), 'max_id') === '400') {
+            return Http::response([$privatePost]);
+        }
+
+        return Http::response([$publicPost], 200, ['Link' => '<'.$endpoint.'?max_id=400>; rel="next"']);
+    }]);
+
+    $account->update(['scopes' => ['read:accounts', 'write:statuses']]);
+    $job = new DiscoverAccountPublications($account->id, $state->id);
+    app()->call([$job, 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Partial)
+        ->and(Post::query()->imported()->pluck('platform_post_id')->all())->toBe(['400']);
+
+    if ($legacyStatus === 'partial') {
+        $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1], 'high_watermark_at' => $publicPost['created_at']]);
+    }
+
+    if ($legacyStatus === 'rate_limited') {
+        $state->update([
+            'checkpoint' => ['cursor' => '250', 'revision' => 2, 'run_high_watermark_at' => $publicPost['created_at']],
+            'high_watermark_at' => $publicPost['created_at'],
+            'status' => SyncStatus::Running,
+            'last_error_category' => 'rate_limited',
+        ]);
+    }
+
+    if ($legacyStatus !== 'rate_limited') {
+        app()->call([$job, 'handle']);
+    }
+    $account->update(['scopes' => $originalScopes]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+    app()->call([Bus::dispatched(DiscoverAccountPublications::class)->sole(), 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+    app()->call([Bus::dispatched(DiscoverAccountPublications::class)->last(), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and($state->fresh()->high_watermark_at->equalTo($publicPost['created_at']))->toBeTrue()
+        ->and(Post::query()->imported()->pluck('platform_post_id')->all())->toEqualCanonicalizing(['400', '300']);
+})->with([
+    'public discovery' => [null],
+    'completed public run before upgrade' => ['partial'],
+    'rate-limited public page before upgrade' => ['rate_limited'],
+]);
+
+test('a reconnected Pinterest channel imports older pins after a legacy history refusal', function (bool $delete, bool $deletedBeforeUpgrade) {
+    Bus::fake();
+    $this->freezeTime();
+    $old = SocialAccount::factory()->pinterest()->create(['scopes' => ['pins:write', 'boards:read']]);
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'oldest_reached_at' => $deletedBeforeUpgrade ? null : now()->subDays(2),
+    ]);
+    AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'collector' => SyncCollector::PublicationDiscovery,
+        'high_watermark_at' => now()->subDay(),
+    ]);
+    $account = $old;
+    if ($delete) {
+        $old->delete();
+        if ($deletedBeforeUpgrade) {
+            $state->update(['checkpoint' => ['cursor' => null, 'revision' => 1]]);
+        }
+        $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id]);
+    } else {
+        $account->update(['scopes' => [...$account->scopes, 'pins:read']]);
+    }
+
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [
+        ['id' => '123', 'created_at' => now()->subDays(7)->toIso8601String(), 'media' => ['media_type' => 'image']],
+    ]])]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([Bus::dispatched(BackfillAccountPublications::class)->sole(), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
+})->with([
+    'same channel' => [false, false],
+    'grant saved at disconnect' => [true, false],
+    'deleted before upgrade' => [true, true],
+]);
+
+test('Pinterest keeps a confirmed provider limit after losing its history scope and reconnecting', function (bool $legacy, bool $recreate) {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $scopes = $account->scopes;
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [['id' => 'undated']]])]);
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+
+    if ($legacy) {
+        // Main kept the cursor and revision but dropped the provider limit on its final page.
+        $state->update(['checkpoint' => ['cursor' => null, 'revision' => $state->fresh()->checkpoint['revision']]]);
+    }
+
+    $account->update(['scopes' => ['pins:write']]);
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    if ($recreate) {
+        $account->delete();
+        $account = SocialAccount::factory()->pinterest()->create(['workspace_id' => $account->workspace_id, 'platform_user_id' => $account->platform_user_id]);
+    } else {
+        $account->update(['scopes' => $scopes]);
+    }
+
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class);
+})->with(['current checkpoint' => false, 'pre-deploy checkpoint' => true])
+    ->with(['same channel' => false, 'deleted and reconnected' => true]);
+
+test('a reconnected X channel resets the timeline count only for a legacy history refusal', function (bool $missingGrant) {
+    Bus::fake();
+    $account = SocialAccount::factory()->x()->create();
+    $checkpoint = ['cursor' => null, 'revision' => 1, 'seen_count' => 230];
+    if ($missingGrant) {
+        $checkpoint['missing_history_grant'] = true;
+    }
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => null,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => $checkpoint,
+    ]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    expect($state->fresh()->checkpoint['seen_count'])->toBe($missingGrant ? 0 : 230);
+    Bus::assertDispatchedTimes(BackfillAccountPublications::class, $missingGrant ? 1 : 0);
+})->with(['known history refusal' => true, 'timeline rows already read' => false]);
+
+test('a legacy Pinterest provider limit survives reconnecting without history and later granting it', function (bool $deleteAgain) {
+    Bus::fake();
+    $old = SocialAccount::factory()->pinterest()->create();
+    $fullGrant = $old->scopes;
+    $identity = ['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id];
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => ['cursor' => null, 'revision' => 1],
+    ]);
+
+    $old->delete();
+    $account = SocialAccount::factory()->pinterest()->create([...$identity, 'scopes' => ['pins:write', 'boards:read']]);
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    if ($deleteAgain) {
+        $account->delete();
+        $account = SocialAccount::factory()->pinterest()->create($identity);
+    } else {
+        $account->update(['scopes' => $fullGrant]);
+    }
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class);
+})->with(['reauthorized' => false, 'deleted and recreated again' => true]);
+
+test('a Pinterest limit on an earlier page survives a failed page and bootstrap retry', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    $endpoint = config('trypost.platforms.pinterest.api').'/pins?*';
+    Http::preventStrayRequests();
+    Http::fake([$endpoint => Http::sequence()
+        ->push(['items' => [['id' => 'undated']], 'bookmark' => 'page-two'])
+        ->pushStatus(503)
+        ->push(['items' => [['id' => '123', 'created_at' => now()->subDay()->toIso8601String()]]])]);
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+    app()->call([new BackfillAccountPublications($account->id, $state->id, transientRetries: maxTransientAnalyticsRetries()), 'handle']);
+    expect($state->fresh()->last_error_category)->toBe('queue_failed');
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
+});
+
+test('retrying a partial Pinterest backfill starts at the first page and measures the provider limit again', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Partial,
+        'last_error_category' => 'invalid_cursor_repeated',
+        'checkpoint' => ['cursor' => 'expired', 'revision' => 4, 'had_provider_limit' => true, 'invalid_cursor_resets' => 1],
+    ]);
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [
+        ['id' => '123', 'created_at' => now()->subDay()->toIso8601String()],
+    ]])]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([Bus::dispatched(BackfillAccountPublications::class)->sole(), 'handle']);
+
+    Http::assertSent(fn (Request $request): bool => ! array_key_exists('bookmark', $request->data()));
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
 });

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Analytics;
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\SocialAccount;
 use App\Support\Analytics\RetryAfter;
+use App\Support\ChannelPermissions;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Http\Client\Response;
@@ -44,17 +46,20 @@ class AnalyticsCollectionException extends Exception
 
     /**
      * Refuses a read before any request when the account's stored grant lacks
-     * a scope it needs, recorded as the permission refusal the network would answer.
-     *
-     * @param  string|list<string>  ...$requirements
+     * a scope the feature needs on its network (`ChannelPermissions`),
+     * recorded as the permission refusal the network would answer.
      *
      * @throws self
      */
-    public static function unlessGranted(SocialAccount $account, string|array ...$requirements): void
+    public static function unlessPermitted(SocialAccount $account, GatedFeature $feature): void
     {
-        $missing = $account->missingScope(...$requirements);
+        if (! ChannelPermissions::enabled($account->platform, $feature)) {
+            throw new self('permission', "TryPost does not ask for the scopes {$feature->value} needs");
+        }
 
-        if ($missing !== null) {
+        $missing = ChannelPermissions::missingScope($account, $feature);
+
+        if (filled($missing)) {
             throw new self('permission', "account grant lacks the {$missing} scope");
         }
     }

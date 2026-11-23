@@ -3,6 +3,7 @@ import type {
     MetricsUnavailableReason,
     PublicationAnalyticsDetail,
 } from '@/types/analytics';
+import type { MissingPermissions } from '@/types/channel-permission';
 import type { ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import type { PlatformValue } from '@/types/platform';
@@ -39,6 +40,8 @@ export interface PublishSocialAccount {
     has_posting_schedule?: boolean;
     timezone?: string;
     status?: SocialAccountStatusValue | null;
+    /** The features the channel lacks a scope for (`ChannelPermissions::missing()`). */
+    missing_permissions?: MissingPermissions;
 }
 
 export interface PublishChannel extends PublishSocialAccount {

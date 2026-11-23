@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -19,15 +20,16 @@ use Illuminate\Support\Str;
 
 /**
  * Replies that follow a post as a thread (`meta.thread_replies`), on the
- * networks that let an app reply to its own post with the scopes we hold.
- * Each reply is `{text, media}`; its media belongs to that reply and follows
- * the rules of the network's reply content type. A reply stored as a bare
- * string is a text-only reply. On X and Mastodon a reply may carry a poll
- * instead of media (`{text, media, poll}`), following that network's `Poll`
- * rules with the reply text as its question.
+ * networks that let an app reply to its own post (each network's `replies`
+ * setting in `config/trypost.php`). Each reply is `{text, media}`; its media
+ * belongs to that reply and follows the rules of the network's reply content
+ * type. A reply stored as a bare string is a text-only reply. On X and
+ * Mastodon a reply may carry a poll instead of media (`{text, media, poll}`),
+ * following that network's `Poll` rules with the reply text as its question.
  */
 class ThreadReplies
 {
+    /** The most replies any network takes; each network's own cap is its `replies.max` setting. */
     public const int MAX_REPLIES = 24;
 
     /**
@@ -45,18 +47,42 @@ class ThreadReplies
         };
     }
 
+    /**
+     * Whether the network takes replies: its `replies.max` setting, and, when
+     * replies need a scope, the connect asks for it (`ChannelPermissions::enabled()`).
+     */
     public static function supports(?Platform $platform): bool
     {
-        return self::replyContentType($platform) !== null;
+        if (self::maxReplies($platform) === 0) {
+            return false;
+        }
+
+        return ChannelPermissions::enabled($platform, GatedFeature::ThreadReplies);
     }
 
+    /** How many replies follow a post on the network (its `replies.max` setting). */
     public static function maxReplies(?Platform $platform): int
     {
-        return match ($platform) {
-            Platform::Bluesky, Platform::Mastodon, Platform::X => self::MAX_REPLIES,
-            Platform::LinkedIn, Platform::LinkedInPage => 1,
-            default => 0,
-        };
+        if (blank($platform)) {
+            return 0;
+        }
+
+        return (int) config("trypost.platforms.{$platform->value}.replies.max", 0);
+    }
+
+    public static function supportsPostType(Platform $platform, ContentType $type): bool
+    {
+        if (! self::supports($platform)) {
+            return false;
+        }
+
+        return blank(self::standaloneMessage($platform, $type));
+    }
+
+    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
+    public static function standaloneMessage(Platform $platform, ContentType $type): ?string
+    {
+        return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
     }
 
     /**
@@ -95,14 +121,14 @@ class ThreadReplies
     }
 
     /**
-     * The poll rules a reply of this network follows, or null when its
-     * replies cannot be polls (a network without polls, or without threads).
+     * The network's reply poll format also applies to stored drafts
+     * while the installation has replies disabled.
      *
      * @return class-string<Poll>|null
      */
     public static function replyPoll(?Platform $platform): ?string
     {
-        if (! self::supports($platform)) {
+        if (self::replyContentType($platform) === null) {
             return null;
         }
 
@@ -203,21 +229,27 @@ class ThreadReplies
      * Each reply is measured like the post itself: sanitized text plus what the
      * network counts besides it (the Mastodon content warning every reply repeats),
      * against the account's limit when the account is known (X long posts).
-     * A reply needs text or media.
+     * A reply needs text or media, and the post a type that takes replies. The
+     * scope a network may ask for replies is `ChannelPermissions`'.
      *
      * @return array{0: string, 1: string}|null
      */
-    public static function violation(Platform|SocialAccount|null $target, mixed $meta): ?array
+    public static function violation(Platform $platform, ContentType $type, mixed $meta, ?SocialAccount $account = null): ?array
     {
-        $platform = $target instanceof SocialAccount ? $target->platform : $target;
         $replies = self::of($meta);
 
-        if ($replies === []) {
+        if (blank($replies)) {
             return null;
         }
 
-        if ($platform === null || ! self::supports($platform)) {
+        if (! self::supports($platform)) {
             return ['thread_replies', __('posts.form.thread.unsupported')];
+        }
+
+        $standalone = self::standaloneMessage($platform, $type);
+
+        if (filled($standalone)) {
+            return ['thread_replies', __($standalone)];
         }
 
         if (count($replies) > self::maxReplies($platform)) {
@@ -225,8 +257,6 @@ class ThreadReplies
         }
 
         $reserved = $platform->reservedLength(is_array($meta) ? $meta : null);
-        $account = $target instanceof SocialAccount ? $target : null;
-
         foreach ($replies as $index => $reply) {
             $violation = self::replyViolation($reply, $platform, $account, $reserved);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Media\Sources;
 
 use App\Enums\Media\Source;
+use App\Support\OAuthScopes;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use RuntimeException;
@@ -74,7 +75,7 @@ class GoogleMediaOAuth
         return [
             'access_token' => $accessToken,
             'expires_in' => (int) $response->json('expires_in', 0),
-            'scopes' => array_values(array_filter(explode(' ', (string) $response->json('scope', '')))),
+            'scopes' => OAuthScopes::parseSpaceSeparated((string) $response->json('scope', '')),
         ];
     }
 }

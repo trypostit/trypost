@@ -20,12 +20,6 @@ class ThreadsController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Threads;
 
-    protected array $scopes = [
-        'threads_basic',
-        'threads_content_publish',
-        'threads_manage_insights',
-    ];
-
     public function connect(Request $request): Response
     {
         $this->ensurePlatformEnabled();
@@ -42,7 +36,7 @@ class ThreadsController extends SocialController
         $params = http_build_query([
             'client_id' => config('services.threads.client_id'),
             'redirect_uri' => config('services.threads.redirect'),
-            'scope' => implode(',', $this->scopes),
+            'scope' => $this->commaSeparatedConsentScopes(),
             'response_type' => 'code',
             'state' => $state,
         ]);
@@ -164,7 +158,6 @@ class ThreadsController extends SocialController
 
         return $this->reportedScopes(
             $response?->successful() ? $response->json('data.scopes') : null,
-            $this->scopes,
         );
     }
 }

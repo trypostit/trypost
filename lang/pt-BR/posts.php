@@ -542,6 +542,12 @@ return [
             'comment_attachments' => 'Comentários no LinkedIn não aceitam mídia.',
         ],
 
+        'reconnect' => [
+            'save' => 'Salvar rascunho e reconectar',
+            'blocked' => 'Este post ainda não pode ser salvo. Aguarde os uploads terminarem e corrija o que está destacado, depois tente de novo.',
+            'pending_approval' => 'Este post está aguardando aprovação. Revise a solicitação antes de reconectar o canal.',
+        ],
+
         'pinterest' => [
             'select_board' => 'Selecione um quadro',
             'boards_truncated' => 'Alguns boards não puderam ser carregados. Se o seu não aparecer, abra o Pinterest e tente de novo.',

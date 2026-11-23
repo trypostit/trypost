@@ -12,6 +12,7 @@ import InsightsSyncStatus from '@/components/analytics/InsightsSyncStatus.vue';
 import PostingActivityCard from '@/components/analytics/PostingActivityCard.vue';
 import ImportCoverage from '@/components/analytics/workspace/ImportCoverage.vue';
 import SummaryCards from '@/components/analytics/workspace/SummaryCards.vue';
+import ChannelInsightsPermissionNotice from '@/components/channels/ChannelInsightsPermissionNotice.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
@@ -32,7 +33,15 @@ import type {
     SummaryMetric,
 } from '@/types/analytics';
 import { channelName } from '@/types/channel';
+import { GatedFeature } from '@/types/channel-permission';
 import type { PublishChannel } from '@/types/publish';
+
+/** The analytics features whose missing scope this page warns about. */
+const INSIGHTS_FEATURES = [
+    GatedFeature.Followers,
+    GatedFeature.PostInsights,
+    GatedFeature.PostHistory,
+];
 
 const props = defineProps<{
     channel: PublishChannel;
@@ -233,6 +242,12 @@ watch(selectedTypes, applyFilters, { deep: true });
                     </div>
                 </div>
             </header>
+
+            <ChannelInsightsPermissionNotice
+                v-if="supported"
+                :channel="channel"
+                :features="INSIGHTS_FEATURES"
+            />
 
             <EmptyState
                 v-if="!supported"

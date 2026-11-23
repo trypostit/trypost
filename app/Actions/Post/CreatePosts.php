@@ -42,7 +42,7 @@ class CreatePosts
         ?Closure $afterCreate = null,
         array $legacyMedia = [],
     ): Collection {
-        $resolved = PostCompositionValidator::validate($workspace, $composition, $legacyMedia);
+        $resolved = PostCompositionValidator::validate($workspace, $user, $composition, $legacyMedia);
         $groupId = (string) Str::uuid7();
         $pending = PostApproval::isRequired($workspace, $user, (string) data_get($resolved, 'status'));
         $status = $pending ? PostStatus::PendingApproval->value : data_get($resolved, 'status');

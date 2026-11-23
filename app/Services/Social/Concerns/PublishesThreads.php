@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Social\ThreadProgress;
 use App\Support\ThreadReplies;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 trait PublishesThreads
@@ -35,14 +36,15 @@ trait PublishesThreads
             ],
             ThreadReplies::supports($post->platform) ? ThreadReplies::of($post->meta) : [],
         );
-        $hashes = [
-            ThreadProgress::rootHash($post->error_context) ?? $rootHash,
-            ...array_map(fn (array $reply): string => ThreadProgress::hash($reply['text'], $reply['media']->map(fn (MediaItem $item): string => $item->id)->all(), $reply['poll']), $replies),
-        ];
-        $posted = ThreadProgress::resumable($post->error_context, $hashes);
+        $replyHashes = array_map(fn (array $reply): string => ThreadProgress::hash(
+            $reply['text'],
+            $reply['media']->map(fn (MediaItem $item): string => $item->id)->all(),
+            $reply['poll'],
+        ), $replies);
+        $posted = ThreadProgress::resumable($post->error_context, $replyHashes);
 
         if ($posted === []) {
-            $posted[] = self::threadSegment($hashes[0], $postRoot());
+            $posted[] = self::threadSegment($rootHash, $postRoot());
 
             if ($replies !== []) {
                 ThreadProgress::remember($post, $posted);
@@ -56,7 +58,7 @@ trait PublishesThreads
                 continue;
             }
 
-            $posted[] = self::threadSegment($hashes[$position], $postReply($reply['text'], $reply['media'], $posted[$position - 1], $posted[0], $reply['poll']));
+            $posted[] = self::threadSegment($replyHashes[$index], $postReply($reply['text'], $reply['media'], $posted[$position - 1], $posted[0], $reply['poll']));
 
             ThreadProgress::remember($post, $posted);
         }
@@ -67,9 +69,11 @@ trait PublishesThreads
 
         $root = ['id' => (string) $posted[0]['id'], 'url' => $posted[0]['url'] ?? null];
 
-        return $replies === []
-            ? $root
-            : [...$root, 'thread_reply_ids' => array_map(fn (array $segment): string => (string) $segment['id'], array_slice($posted, 1))];
+        if ($replies === []) {
+            return $root;
+        }
+
+        return [...$root, 'thread_reply_ids' => Arr::pluck(array_slice($posted, 1), 'id')];
     }
 
     /**

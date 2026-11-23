@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\SocialAccount\GatedFeature;
+use App\Enums\SocialAccount\Platform;
+use App\Http\Resources\App\PlatformConfigResource;
+use App\Models\SocialAccount;
+
+test('a channel carries the copy of each feature whose scope it lacks, for the composer', function () {
+    gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write'], ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']);
+    $without = SocialAccount::factory()->create(['platform' => Platform::X, 'scopes' => ['tweet.write', 'tweet.read', 'users.read']]);
+    $with = SocialAccount::factory()->create(['platform' => Platform::X, 'scopes' => ['tweet.write', 'tweet.read', 'users.read', 'tweet.moderate.write']]);
+
+    expect(PlatformConfigResource::make($without)->resolve()['missingPermissions'])
+        ->toEqual((object) ['thread_replies' => ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']])
+        ->and(PlatformConfigResource::make($with)->resolve()['missingPermissions'])->toEqual((object) []);
+});
+
+test('a channel carries the features its network has off, for the composer to hide', function () {
+    config(['trypost.platforms.x.permissions.thread_replies' => ['scopes' => ['tweet.moderate.write']]]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    expect(PlatformConfigResource::make($account)->resolve()['disabledFeatures'])->toBe(['thread_replies']);
+});

@@ -607,7 +607,8 @@ test('a rejected token refresh is classified as an authentication failure', func
         || str_contains($request->url(), '/reports'));
 });
 
-test('mastodon reads a public status without a token that lacks read scope', function (array $scopes, bool $authenticated) {
+test('mastodon uses an authenticated status read only if the scope is enabled and granted', function (array $scopes, array $requested, bool $authenticated) {
+    config(['trypost.platforms.mastodon.scopes' => $requested]);
     Http::fake(['https://mastodon.social/api/v1/statuses/*' => Http::response([
         'id' => '117304063461175259',
         'visibility' => 'public',
@@ -634,8 +635,9 @@ test('mastodon reads a public status without a token that lacks read scope', fun
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/api/v1/statuses/')
         && $request->hasHeader('Authorization') !== $authenticated);
 })->with([
-    'publish-only token' => [['read:accounts', 'write:statuses', 'write:media'], false],
-    'token with read:statuses' => [['read:accounts', 'read:statuses', 'write:statuses', 'write:media'], true],
+    'publish-only token' => [['read:accounts', 'write:statuses', 'write:media'], ['read:statuses'], false],
+    'token with read:statuses' => [['read:accounts', 'read:statuses', 'write:statuses', 'write:media'], ['read:statuses'], true],
+    'scope disabled with an older grant' => [['read', 'write'], ['read:accounts', 'write:statuses', 'write:media'], false],
 ]);
 
 test('mastodon keeps the poll result from the status it already reads', function (bool $expired, ?int $hiddenVotes, int $storedVotes, string $status) {

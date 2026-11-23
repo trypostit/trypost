@@ -162,5 +162,14 @@ export const useUnsavedChanges = (
         }
     });
 
-    return { confirming, guard, discard, keepEditing };
+    /**
+     * Runs `then` once the doubled history entry is gone (at once when there
+     * is none), so a visit `then` starts out of the app is never cancelled by
+     * the guard stepping back after a save.
+     */
+    const leave = (then: () => void): void => {
+        releaseBack(then);
+    };
+
+    return { confirming, guard, discard, keepEditing, leave };
 };

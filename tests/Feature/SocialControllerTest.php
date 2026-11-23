@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\SendNotification;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\ChannelPermissions;
 use App\Support\PostingSchedule;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Support\Facades\DB;
@@ -252,7 +254,7 @@ test('a connected instagram-facebook account is still returned so it surfaces un
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::InstagramFacebook,
-        'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
+        'scopes' => ChannelPermissions::scopes(Platform::InstagramFacebook, GatedFeature::Publish),
     ]);
 
     $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));

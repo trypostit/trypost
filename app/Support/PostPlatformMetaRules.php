@@ -275,8 +275,11 @@ class PostPlatformMetaRules
     /**
      * Adds the validation error for meta that becomes mandatory once a post is
      * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
+     * A feature the channel lacks a scope for is refused by
+     * `PostCompositionValidator`, which every post scheduled or published
+     * through `CreatePosts` or `UpdatePost` goes through.
      */
-    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta', ?ContentType $contentType = null): void
+    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, ?ContentType $contentType = null): void
     {
         $violation = self::requiredMetaViolation($target, $meta, $contentType);
 
@@ -285,7 +288,7 @@ class PostPlatformMetaRules
         }
 
         [$field, $message] = $violation;
-        $key = "{$prefix}.{$field}";
+        $key = "meta.{$field}";
 
         if (! $validator->errors()->has($key)) {
             $validator->errors()->add($key, $message);
@@ -422,11 +425,22 @@ class PostPlatformMetaRules
      */
     public static function requiredMetaViolation(Platform|SocialAccount|null $target, mixed $meta, ?ContentType $type = null): ?array
     {
-        $platform = $target instanceof SocialAccount ? $target->platform : $target;
-        $threadViolation = ThreadReplies::violation($target, $meta);
+        $account = null;
+        $platform = $target;
 
-        if ($threadViolation !== null) {
-            return $threadViolation;
+        if ($target instanceof SocialAccount) {
+            $account = $target;
+            $platform = $target->platform;
+        }
+
+        if (filled($platform)) {
+            $threadViolation = ThreadReplies::violation($platform, $type ?? ContentType::defaultFor($platform), $meta, $account);
+
+            if (filled($threadViolation)) {
+                return $threadViolation;
+            }
+        } elseif (filled(ThreadReplies::of($meta))) {
+            return ['thread_replies', __('posts.form.thread.unsupported')];
         }
 
         $topicType = TopicType::fromMeta(data_get($meta, 'topic_type'));

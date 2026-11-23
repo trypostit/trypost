@@ -197,7 +197,7 @@ test('analytics enums expose stable persisted values', function (string $enum, a
     'metric time basis' => [MetricTimeBasis::class, ['lifetime', 'range', 'rolling_90_days', 'snapshot']],
     'metric availability' => [MetricAvailability::class, ['available', 'unsupported', 'unavailable', 'delayed', 'privacy_limited']],
     'sync collector' => [SyncCollector::class, ['publication_backfill', 'publication_discovery']],
-    'sync status' => [SyncStatus::class, ['pending', 'running', 'complete', 'partial', 'provider_limited', 'failed']],
+    'sync status' => [SyncStatus::class, ['pending', 'running', 'paused', 'complete', 'partial', 'provider_limited', 'failed']],
     'metric key' => [MetricKey::class, [
         'reactions', 'comments', 'replies', 'shares', 'reposts', 'quotes', 'saves', 'bookmarks',
         'views', 'video_views', 'impressions', 'reach', 'engagements', 'total_interactions',

@@ -328,30 +328,6 @@ enum Platform: string
     }
 
     /**
-     * @return array<string>
-     */
-    public function requiredPublishScopes(): array
-    {
-        return match ($this) {
-            self::Instagram => ['instagram_business_content_publish'],
-            self::InstagramFacebook => ['instagram_content_publish'],
-            self::Facebook => ['pages_manage_posts'],
-            self::TikTok => ['video.publish'],
-            self::YouTube => ['https://www.googleapis.com/auth/youtube.upload'],
-            self::LinkedIn => ['w_member_social'],
-            self::LinkedInPage => ['w_organization_social'],
-            self::X => ['tweet.write'],
-            self::Threads => ['threads_content_publish'],
-            self::Pinterest => ['pins:write'],
-            self::Bluesky => [],
-            self::Mastodon => ['write:statuses'],
-            self::Telegram => [],
-            self::Discord => [],
-            self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
-        };
-    }
-
-    /**
      * Whether a repurpose may publish to this platform. A repurpose always
      * carries a video, so a platform whose posts cannot carry one never can.
      */

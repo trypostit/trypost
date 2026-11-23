@@ -289,7 +289,7 @@ test('unscheduling a post delivers the log id on the webhook envelope', function
 
     UpdatePost::execute($this->workspace, $post, [
         'status' => PostStatus::Draft->value,
-    ]);
+    ], $this->user);
 
     $log = WebhookLog::query()->where('webhook_id', $this->webhook->id)->first();
 

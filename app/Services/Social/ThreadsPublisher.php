@@ -13,6 +13,7 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use App\Support\Social\PublishContentValidator;
 use App\Support\Social\ThreadsPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -45,7 +46,7 @@ class ThreadsPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $content = app(ContentSanitizer::class)->forPost($post);
 

@@ -13,6 +13,7 @@ use App\Models\Post;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Social\PublishContentValidator;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -33,7 +34,7 @@ class DiscordPublisher
 
     public function publish(Post $post): array
     {
-        $this->validateContentLength($post);
+        PublishContentValidator::validate($post);
 
         $account = $post->socialAccount;
         $guildId = (string) $account->platform_user_id;

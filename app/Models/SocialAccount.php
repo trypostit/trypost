@@ -11,6 +11,7 @@ use App\Casts\PostingScheduleCast;
 use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
@@ -19,6 +20,7 @@ use App\Mail\AccountDisconnected;
 use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
+use App\Support\ChannelPermissions;
 use App\Support\GoogleBusinessResourceName;
 use App\Support\Timezone;
 use Database\Factories\SocialAccountFactory;
@@ -469,32 +471,11 @@ class SocialAccount extends Model
      */
     public function canReadMastodonStatuses(): bool
     {
-        return count(array_intersect(['read', 'read:statuses'], $this->scopes ?? [])) > 0;
-    }
-
-    /**
-     * The first requirement the stored grant does not meet, each requirement
-     * being a scope or a list of alternative scopes. An account with no stored
-     * grant (a network without scopes, or a row stored before grants were
-     * recorded) is not known to lack any.
-     *
-     * @param  string|list<string>  ...$requirements
-     */
-    public function missingScope(string|array ...$requirements): ?string
-    {
-        if (blank($this->scopes)) {
-            return null;
+        if ($this->platform !== SocialPlatform::Mastodon || blank($this->scopes)) {
+            return false;
         }
 
-        foreach ($requirements as $requirement) {
-            $alternatives = (array) $requirement;
-
-            if (array_intersect($alternatives, $this->scopes) === []) {
-                return $alternatives[0];
-            }
-        }
-
-        return null;
+        return ChannelPermissions::permits($this, GatedFeature::PrivatePostRead);
     }
 
     /**
