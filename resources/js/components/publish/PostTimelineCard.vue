@@ -246,10 +246,6 @@ const timePassed = computed(
         dayjs(props.post.scheduled_at).isBefore(dayjs()),
 );
 
-const openPostDetailsId = computed(
-    () => (page.props.openPostDetailsId as string | null | undefined) ?? null,
-);
-
 const preview = computed(() => props.post.content?.trim() ?? '');
 
 const visuals = computed(() =>
@@ -360,7 +356,6 @@ const {
     runMenuAction,
 } = usePostCardMenuActions(() => props.post, {
     timezone: () => timezone.value,
-    detailsOpen: openPostDetailsId.value === props.post.id,
 });
 
 watch(detailsOpen, (open) => emit('details', open));

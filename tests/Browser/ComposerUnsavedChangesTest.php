@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\UpdatePost;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -9,10 +10,12 @@ use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PublishPost;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 use App\Services\Social\Discord\DiscordClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -526,7 +529,7 @@ test('saving only the caption keeps replies changed in another session', functio
     $page->assertNoJavaScriptErrors();
 })->with(['thread added' => false, 'thread edited' => true]);
 
-test('save and reconnect shows read-only details for a post finalized meanwhile', function (bool $fromDrafts) {
+test('saving a post finalized meanwhile shows its read-only details and warning', function (bool $fromDrafts, bool $reconnect) {
     $post = seedHeldBackMastodonThread();
     $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
     $page = $fromDrafts
@@ -536,17 +539,79 @@ test('save and reconnect shows read-only details for a post finalized meanwhile'
     $caption = "@composer-caption-{$post->social_account_id}";
     $page->click($caption)->fill($caption, 'Unsaved caption');
     $post->update(['status' => PostStatus::Publishing]);
-    $page->click($link);
-    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    if ($reconnect) {
+        $page->script(<<<'JS'
+            (() => {
+                const open = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                    if (method.toUpperCase() === 'GET' && new URL(url, location.href).searchParams.has('post')) {
+                        XMLHttpRequest.prototype.open = open;
+                        const send = this.send.bind(this);
+                        this.send = (...args) => { window.resumePublishList = () => send(...args); };
+                    }
+                    return open.call(this, method, url, ...rest);
+                };
+            })()
+        JS);
+    }
 
+    $page->click($reconnect ? $link : '@composer-save-draft');
     waitFor($page, "@post-details-{$post->id}");
+    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    if ($reconnect) {
+        waitForCondition($page, "typeof window.resumePublishList === 'function'");
+        waitForGone($page, '@post-composer-dialog');
+        $page->script('window.resumePublishList()');
+        waitFor($page, "@post-publishing-{$post->id}");
+    }
+
     $page->assertMissing('@post-composer-dialog')
         ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.publishing'))
         ->assertSeeIn("@thread-view-post-{$post->id}-0", 'Held back')
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->content)->toBe('Held back')
         ->and($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
-})->with(['opened by edit link' => false, 'opened from drafts' => true]);
+})->with(['opened by edit link' => false, 'opened from drafts' => true])
+    ->with(['save and reconnect' => true, 'save draft' => false]);
+
+test('reconnecting a finalized post opens its details even outside the visible list', function (bool $filtered) {
+    $post = seedHeldBackMastodonThread();
+    $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
+    $query = ['tab' => 'drafts'];
+    if ($filtered) {
+        $query['untagged'] = 1;
+    }
+    $page = visit(route('app.posts.index', $query))->resize(1280, 900);
+    waitFor($page, "@post-edit-{$post->id}");
+    $page->click("@post-edit-{$post->id}");
+    waitFor($page, $link);
+
+    $admin = workspaceMember($post->workspace, 'admin');
+    $update = ['status' => PostStatus::Publishing->value, 'content' => 'Published from the other session', 'meta' => ['thread_replies' => null]];
+    if ($filtered) {
+        $label = WorkspaceLabel::factory()->create(['workspace_id' => $post->workspace_id]);
+        $update['label_ids'] = [$label->id];
+    } else {
+        Post::factory()->forAccount($post->socialAccount)->publishing()->count(config('app.pagination.default'))->create([
+            'user_id' => $post->user_id,
+            'scheduled_at' => now()->subMinute(),
+        ]);
+    }
+    Queue::fake([PublishPost::class]);
+    UpdatePost::execute($post->workspace, $post->fresh(), $update, $admin);
+
+    $page->click($link);
+    waitFor($page, "@post-details-{$post->id}");
+    waitForText($page, '@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    $page->assertMissing('@post-composer-dialog')
+        ->assertMissing("@post-card-{$post->id}")
+        ->assertSeeIn("@post-details-{$post->id}", 'Published from the other session')
+        ->assertNoJavaScriptErrors();
+    expect($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
+    if ($filtered) {
+        expect($page->script("new URLSearchParams(location.search).get('untagged')"))->toBe('1');
+    }
+})->with(['another admin adds a label' => true, 'outside the publishing page size' => false]);
 
 test('save and reconnect leaves a new approval request intact when the editor is stale', function () {
     $post = seedHeldBackMastodonThread();

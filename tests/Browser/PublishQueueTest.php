@@ -879,6 +879,29 @@ test('a google business post waiting for review says google is reviewing it', fu
         ->assertNoJavaScriptErrors();
 });
 
+test('linked post details follow publication updates without reopening after dismissal', function () {
+    [$user, $workspace, $channel] = publishQueueSetup();
+    $post = Post::factory()->forAccount($channel)->publishing()->create(['user_id' => $user->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['post' => $post->id]));
+    $details = "@post-details-{$post->id}";
+    $status = "@post-details-status-{$post->id}";
+    waitForText($page, $status, __('posts.status.publishing'));
+
+    $post->markAsPublished();
+    $updated = "window.Pusher.instances[0].channels.channels['private-workspace.{$workspace->id}'].emit('post.platform.status.updated', { post_id: '{$post->id}' })";
+    $page->script($updated);
+    waitForText($page, $status, __('posts.status.published'));
+    $page->keys($details, 'Escape');
+    waitForGone($page, $details);
+
+    $post->update(['content' => 'Updated from the network']);
+    $page->script($updated);
+    waitForText($page, "@post-card-{$post->id}", 'Updated from the network');
+    $page->assertMissing($details)->assertNoJavaScriptErrors();
+});
+
 test('a publishing post sits in its own queue group and moves to sent once it settles', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
     $scheduled = publishQueuePost($user, $channel);

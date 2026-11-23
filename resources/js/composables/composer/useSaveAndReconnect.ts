@@ -18,8 +18,8 @@ type ReconnectedAccount = Pick<ComposerAccount, 'id' | 'platform'>;
  * by a permission the channel lacks (`PostComposerPermissionWarning`) is kept while
  * the user grants it. The save says it leaves the app, so the page does not
  * step back through history after it, which would cancel the visit to the
- * network's sign-in, and reloads only the errors, so the page saved after it
- * loads no deferred props and no request of it is still running when the
+ * network's sign-in. Its partial response includes errors and, for an edit,
+ * the details of a post finalized meanwhile. No deferred props load when the
  * sign-in stores its pending connection in the session. A network that
  * reconnects in place (Telegram's dialog; none of them gates a feature today)
  * has no sign-in to visit, so the post stays open in the composer instead. A

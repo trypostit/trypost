@@ -42,6 +42,7 @@ import PostComposerDialog from '@/components/posts/composer/PostComposerDialog.v
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
 import DayHeading from '@/components/publish/DayHeading.vue';
+import LinkedPostDetails from '@/components/publish/LinkedPostDetails.vue';
 import NewPostButton from '@/components/publish/NewPostButton.vue';
 import PostListSkeleton from '@/components/publish/PostListSkeleton.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
@@ -112,6 +113,7 @@ interface Props {
         channels: string[];
     };
     filterAccounts: PublishSocialAccount[];
+    openPostDetails: PostCard | null;
     openComposer?: boolean;
     openComposerAssistant?: boolean;
     editPost?: PostCard | null;
@@ -155,7 +157,14 @@ const applyFilters = (): void => {
             preserveState: true,
             preserveScroll: true,
             replace: true,
-            only: ['posts', 'queue', 'counts', 'hasData', 'filters'],
+            only: [
+                'posts',
+                'queue',
+                'counts',
+                'hasData',
+                'filters',
+                'openPostDetails',
+            ],
             reset: ['posts'],
         },
     );
@@ -622,7 +631,15 @@ const refresh = (): void => {
     }
 
     router.reload({
-        only: ['queue', 'posts', 'counts', 'hasData', 'channels'],
+        only: [
+            'queue',
+            'posts',
+            'counts',
+            'hasData',
+            'channels',
+            'openPostDetails',
+            'tab',
+        ],
         reset: ['posts'],
     });
 };
@@ -760,27 +777,27 @@ const submitComposition = (
     const editPost = props.editPost;
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
-    let closed = false;
+    let saved = false;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         only: [] as string[],
         onSuccess: () => {
-            closed = true;
+            saved = true;
             composerOpen.value = false;
             onSaved?.();
         },
         onFinish: () => {
             composerSubmitting.value = false;
 
-            if (closed && returnsBack && !leavesApp) {
+            if (saved && returnsBack && !leavesApp) {
                 returnToOpeningPage();
             }
         },
     };
     if (leavesApp) {
-        options.only = ['errors'];
+        options.only = ['errors', 'openPostDetails'];
     }
     if (!initialPost.value) {
         const data: Record<string, any> = {
@@ -819,11 +836,11 @@ const submitComposition = (
                 return;
             }
 
-            closed = true;
             const url = new URL(window.location.href);
             if (leavesApp && url.searchParams.get('post') === editPost.id) {
-                // The reconnect save fetched only errors. Load the post's read-only details.
-                router.visit(url.href, { replace: true });
+                // The partial response already shows the warning and details. Refresh the list behind them.
+                composerOpen.value = false;
+                router.reload();
             }
         },
         onSuccess: () => {
@@ -1102,6 +1119,12 @@ const submitComposition = (
                 </div>
             </Deferred>
         </div>
+        <LinkedPostDetails
+            v-if="openPostDetails"
+            :key="openPostDetails.id"
+            :post="openPostDetails"
+            :timezone="timezone"
+        />
         <InviteMemberDialog
             v-if="canManageTeam"
             v-model:open="inviteMemberDialogOpen"
