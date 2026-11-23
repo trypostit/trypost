@@ -1329,7 +1329,7 @@ test('a restored X history grant restarts its timeline count and keeps the check
     expect($state->fresh()->checkpoint)->toMatchArray(['seen_count' => 0, 'revision' => 3]);
 });
 
-test('restoring private history during a Mastodon backfill recovers earlier private posts', function () {
+test('restoring private history during a Mastodon backfill recovers earlier private posts', function (bool $legacyRateLimit) {
     Bus::fake();
     $account = SocialAccount::factory()->mastodon()->create(['scopes' => ['read:accounts', 'write:statuses']]);
     $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
@@ -1341,10 +1341,11 @@ test('restoring private history during a Mastodon backfill recovers earlier priv
             return Http::response([$status('100', 60)]);
         }
 
-        $statuses = [$status('400', 1), $status('200', 50)];
+        $statuses = [$status('400', 1)];
         if ($request->hasHeader('Authorization')) {
             $statuses[] = [...$status('300', 25), 'visibility' => 'private'];
         }
+        $statuses[] = $status('200', 50);
 
         return Http::response($statuses, 200, ['Link' => '<'.$endpoint.'?max_id=200>; rel="next"']);
     }]);
@@ -1352,6 +1353,14 @@ test('restoring private history during a Mastodon backfill recovers earlier priv
     $job = new BackfillAccountPublications($account->id, $state->id);
     app()->call([$job, 'handle']);
     expect($state->fresh()->status)->toBe(SyncStatus::Running);
+
+    if ($legacyRateLimit) {
+        AnalyticsPublication::whereBelongsTo($account, 'socialAccount')->update(['provider_metadata' => null]);
+        $state->update([
+            'checkpoint' => ['cursor' => '200', 'revision' => 2],
+            'last_error_category' => 'rate_limited',
+        ]);
+    }
 
     $account->update(['scopes' => ['read:accounts', 'read:statuses', 'write:statuses']]);
     (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
@@ -1362,7 +1371,7 @@ test('restoring private history during a Mastodon backfill recovers earlier priv
     expect($state->fresh()->status)->toBe(SyncStatus::Complete)
         ->and(AnalyticsPublication::whereBelongsTo($account, 'socialAccount')->pluck('remote_id')->all())
         ->toEqualCanonicalizing(['100', '200', '300', '400']);
-});
+})->with(['current checkpoint' => false, 'rate-limited checkpoint before upgrade' => true]);
 
 test('reconnecting a deleted channel retries a legacy scope refusal and preserves a known provider limit', function (string $platform, array $oldScopes, bool $retries) {
     Bus::fake();
@@ -1452,14 +1461,16 @@ test('restoring Mastodon private discovery imports a status older than the newes
 
     if ($legacyStatus === 'rate_limited') {
         $state->update([
-            'checkpoint' => ['cursor' => '250', 'revision' => 2, 'public_history_only' => true],
+            'checkpoint' => ['cursor' => '250', 'revision' => 2, 'run_high_watermark_at' => $publicPost['created_at']],
             'high_watermark_at' => $publicPost['created_at'],
             'status' => SyncStatus::Running,
             'last_error_category' => 'rate_limited',
         ]);
     }
 
-    app()->call([$job, 'handle']);
+    if ($legacyStatus !== 'rate_limited') {
+        app()->call([$job, 'handle']);
+    }
     $account->update(['scopes' => $originalScopes]);
     (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
     app()->call([Bus::dispatched(DiscoverAccountPublications::class)->sole(), 'handle']);
@@ -1555,3 +1566,78 @@ test('a reconnected X channel resets the timeline count only for a legacy histor
     expect($state->fresh()->checkpoint['seen_count'])->toBe($missingGrant ? 0 : 230);
     Bus::assertDispatchedTimes(BackfillAccountPublications::class, $missingGrant ? 1 : 0);
 })->with(['known history refusal' => true, 'timeline rows already read' => false]);
+
+test('a legacy Pinterest provider limit survives reconnecting without history and later granting it', function (bool $deleteAgain) {
+    Bus::fake();
+    $old = SocialAccount::factory()->pinterest()->create();
+    $fullGrant = $old->scopes;
+    $identity = ['workspace_id' => $old->workspace_id, 'platform_user_id' => $old->platform_user_id];
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($old),
+        'social_account_id' => $old->id,
+        'status' => SyncStatus::ProviderLimited,
+        'last_error_category' => 'provider_limited',
+        'checkpoint' => ['cursor' => null, 'revision' => 1],
+    ]);
+
+    $old->delete();
+    $account = SocialAccount::factory()->pinterest()->create([...$identity, 'scopes' => ['pins:write', 'boards:read']]);
+    (new BootstrapAccountAnalytics($account->id))->handle();
+
+    if ($deleteAgain) {
+        $account->delete();
+        $account = SocialAccount::factory()->pinterest()->create($identity);
+    } else {
+        $account->update(['scopes' => $fullGrant]);
+    }
+    (new BootstrapAccountAnalytics($account->id, refreshOnTerminal: true))->handle();
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited);
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
+    Bus::assertDispatched(DiscoverAccountPublications::class);
+})->with(['reauthorized' => false, 'deleted and recreated again' => true]);
+
+test('a Pinterest limit on an earlier page survives a failed page and bootstrap retry', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $state = AnalyticsSyncState::factory()->create([...AnalyticsSyncState::identityFor($account), 'social_account_id' => $account->id]);
+    $endpoint = config('trypost.platforms.pinterest.api').'/pins?*';
+    Http::preventStrayRequests();
+    Http::fake([$endpoint => Http::sequence()
+        ->push(['items' => [['id' => 'undated']], 'bookmark' => 'page-two'])
+        ->pushStatus(503)
+        ->push(['items' => [['id' => '123', 'created_at' => now()->subDay()->toIso8601String()]]])]);
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+    app()->call([new BackfillAccountPublications($account->id, $state->id, transientRetries: maxTransientAnalyticsRetries()), 'handle']);
+    expect($state->fresh()->last_error_category)->toBe('queue_failed');
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
+});
+
+test('retrying a partial Pinterest backfill starts at the first page and measures the provider limit again', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->pinterest()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Partial,
+        'last_error_category' => 'invalid_cursor_repeated',
+        'checkpoint' => ['cursor' => 'expired', 'revision' => 4, 'had_provider_limit' => true, 'invalid_cursor_resets' => 1],
+    ]);
+    Http::preventStrayRequests();
+    Http::fake([config('trypost.platforms.pinterest.api').'/pins?*' => Http::response(['items' => [
+        ['id' => '123', 'created_at' => now()->subDay()->toIso8601String()],
+    ]])]);
+
+    (new BootstrapAccountAnalytics($account->id))->handle();
+    app()->call([Bus::dispatched(BackfillAccountPublications::class)->sole(), 'handle']);
+
+    Http::assertSent(fn (Request $request): bool => ! array_key_exists('bookmark', $request->data()));
+    expect($state->fresh()->status)->toBe(SyncStatus::Complete)
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('123');
+});

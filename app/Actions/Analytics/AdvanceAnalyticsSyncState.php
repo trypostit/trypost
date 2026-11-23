@@ -63,7 +63,11 @@ class AdvanceAnalyticsSyncState
         }
 
         DB::transaction(function () use ($account): void {
-            $state = $account->analyticsSyncStates()->legacyLimitedBackfill()->lockForUpdate()->first();
+            $state = $account->analyticsSyncStates()
+                ->legacyLimitedBackfill()
+                ->whereNull('checkpoint->missing_history_grant')
+                ->lockForUpdate()
+                ->first();
             if ($state !== null) {
                 $state->update(['checkpoint' => [
                     ...($state->checkpoint ?? []),
@@ -194,6 +198,10 @@ class AdvanceAnalyticsSyncState
                 $partialReason = MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
             }
 
+            if ($account->platform === Platform::Mastodon) {
+                $checkpoint['public_history_only'] = $partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL;
+            }
+
             $privateWatermark = data_get($checkpoint, 'private_history_watermark_at');
             if ($isDiscovery && $partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL) {
                 $privateWatermark ??= ($state->high_watermark_at ?? CarbonImmutable::now('UTC'))->toIso8601String();
@@ -217,9 +225,7 @@ class AdvanceAnalyticsSyncState
                 'checkpoint' => [
                     'cursor' => $status === SyncStatus::Running ? $page->nextCursor : null,
                     'revision' => $capturedRevision,
-                    ...($partialReason === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL && $status === SyncStatus::Running
-                        ? ['public_history_only' => true]
-                        : []),
+                    ...Arr::only($checkpoint, ['public_history_only']),
                     ...($privateWatermark !== null ? ['private_history_watermark_at' => $privateWatermark] : []),
                     ...($isXBackfill ? ['seen_count' => $seenCount] : []),
                     ...($hadProviderLimit && (! $isDiscovery || ! $finished) ? ['had_provider_limit' => true] : []),
@@ -297,7 +303,7 @@ class AdvanceAnalyticsSyncState
                     'revision' => $capturedRevision,
                     ...(array_key_exists('seen_count', $state->checkpoint ?? []) ? ['seen_count' => 0] : []),
                     ...(! empty(data_get($state->checkpoint, 'had_provider_limit')) ? ['had_provider_limit' => true] : []),
-                    ...Arr::only($state->checkpoint ?? [], ['private_history_watermark_at']),
+                    ...Arr::only($state->checkpoint ?? [], ['private_history_watermark_at', 'public_history_only']),
                     'invalid_cursor_resets' => $resets + 1,
                 ],
                 'last_error_category' => 'invalid_cursor',
@@ -340,7 +346,7 @@ class AdvanceAnalyticsSyncState
      * @return array{
      *     cursor: mixed,
      *     revision: int,
-     *     public_history_only?: true,
+     *     public_history_only?: bool,
      *     private_history_watermark_at?: string,
      *     seen_count?: int,
      *     resumed_after_disconnect?: true,
@@ -359,22 +365,22 @@ class AdvanceAnalyticsSyncState
             'revision' => (int) data_get($previous, 'revision', 0) + 1,
         ];
 
-        $privateWatermark = $this->privateDiscoveryWatermark($state);
-        if ($privateWatermark !== null) {
-            $checkpoint['private_history_watermark_at'] = $privateWatermark;
-        }
-
-        $hasPublicHistoryCursor = filled($cursor) && (data_get($previous, 'public_history_only')
-            || $state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL);
-        if ($hasPublicHistoryCursor || $privateWatermark !== null) {
-            if (! $state->socialAccount?->canReadMastodonStatuses()) {
-                $checkpoint['public_history_only'] = true;
-            } elseif ($hasPublicHistoryCursor) {
+        $network = $state->network ?? $state->socialAccount?->platform->network();
+        if ($network === Platform::Mastodon->network()) {
+            $wasPublic = $this->mayHaveReadPublicHistory($state);
+            $publicOnly = ! $state->socialAccount?->canReadMastodonStatuses();
+            $checkpoint['public_history_only'] = $publicOnly;
+            if ($wasPublic && ! $publicOnly) {
                 $checkpoint['cursor'] = null;
+            }
+
+            $privateWatermark = $this->privateDiscoveryWatermark($state, $wasPublic);
+            if ($privateWatermark !== null) {
+                $checkpoint['private_history_watermark_at'] = $privateWatermark;
             }
         }
 
-        if ($state->collector === SyncCollector::PublicationBackfill && $state->socialAccount?->platform === Platform::X) {
+        if ($state->collector === SyncCollector::PublicationBackfill && $network === Platform::X->network()) {
             $checkpoint['seen_count'] = $restarting ? 0 : (int) data_get($previous, 'seen_count', 0);
         }
 
@@ -399,8 +405,31 @@ class AdvanceAnalyticsSyncState
         return $checkpoint;
     }
 
-    /** A legacy public-only run could advance past private posts. Replay from the last complete backfill when it saved no private watermark. */
-    private function privateDiscoveryWatermark(AnalyticsSyncState $state): ?string
+    /**
+     * Older Mastodon checkpoints lost their visibility when the next page failed.
+     * An interrupted run with no marker may have skipped private posts, even if
+     * the public posts it saw have since been deleted or read with a new grant.
+     */
+    private function mayHaveReadPublicHistory(AnalyticsSyncState $state): bool
+    {
+        $publicOnly = data_get($state->checkpoint, 'public_history_only');
+        if ($publicOnly !== null) {
+            return $publicOnly;
+        }
+
+        if ($state->last_error_category === MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL) {
+            return true;
+        }
+
+        if ($state->collector === SyncCollector::PublicationBackfill) {
+            return filled(data_get($state->checkpoint, 'cursor'));
+        }
+
+        return $state->status !== SyncStatus::Complete && (int) data_get($state->checkpoint, 'revision', 0) > 0;
+    }
+
+    /** Replay from the last complete backfill when a public discovery run saved no private watermark. */
+    private function privateDiscoveryWatermark(AnalyticsSyncState $state, bool $wasPublic): ?string
     {
         if ($state->collector !== SyncCollector::PublicationDiscovery) {
             return null;
@@ -411,8 +440,7 @@ class AdvanceAnalyticsSyncState
             return $saved;
         }
 
-        if ($state->last_error_category !== MastodonPublicationCollector::PRIVATE_HISTORY_PARTIAL
-            && ! data_get($state->checkpoint, 'public_history_only')) {
+        if (! $wasPublic) {
             return null;
         }
 

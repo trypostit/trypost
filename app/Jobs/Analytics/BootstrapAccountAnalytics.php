@@ -129,31 +129,20 @@ class BootstrapAccountAnalytics implements ShouldQueue
 
     private function retryBackfill(AnalyticsSyncState $backfill, Platform $platform, bool $canRestartPartial): void
     {
-        $resumeFailed = $backfill->status === SyncStatus::Failed;
-        $restartPartial = $canRestartPartial
-            && $backfill->status === SyncStatus::Partial
-            && $backfill->last_error_category !== self::PRIOR_CHECKPOINT_UNAVAILABLE;
+        if ($backfill->status === SyncStatus::Failed) {
+            $backfill->update(['status' => SyncStatus::Pending]);
 
-        if (! $resumeFailed && ! $restartPartial) {
             return;
         }
 
-        $previous = $backfill->checkpoint ?? [];
-        $checkpoint = [
-            'cursor' => $resumeFailed ? data_get($previous, 'cursor') : null,
-            'revision' => (int) data_get($previous, 'revision', 0),
-        ];
+        if (! $canRestartPartial || $backfill->status !== SyncStatus::Partial
+            || $backfill->last_error_category === self::PRIOR_CHECKPOINT_UNAVAILABLE) {
+            return;
+        }
 
+        $checkpoint = ['cursor' => null, 'revision' => (int) data_get($backfill->checkpoint, 'revision', 0)];
         if ($platform === Platform::X) {
-            $checkpoint['seen_count'] = $resumeFailed ? (int) data_get($previous, 'seen_count', 0) : 0;
-        }
-
-        if ($resumeFailed && data_get($previous, 'public_history_only')) {
-            $checkpoint['public_history_only'] = true;
-        }
-
-        if ($resumeFailed && data_get($previous, 'resumed_after_disconnect')) {
-            $checkpoint['resumed_after_disconnect'] = true;
+            $checkpoint['seen_count'] = 0;
         }
 
         $backfill->update([
