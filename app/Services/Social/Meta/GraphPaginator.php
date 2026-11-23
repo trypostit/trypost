@@ -6,6 +6,7 @@ namespace App\Services\Social\Meta;
 
 use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use App\Services\Social\TokenRedactor;
+use Generator;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -36,7 +37,22 @@ class GraphPaginator
      */
     public static function all(string $url, array $query = [], ?float $deadline = null): array
     {
-        $items = collect();
+        $items = [];
+        foreach (self::pages($url, $query, $deadline) as $page) {
+            array_push($items, ...$page);
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return Generator<int, list<array<string, mixed>>>
+     *
+     * @throws IncompleteMetaGraphPaginationException
+     */
+    public static function pages(string $url, array $query = [], ?float $deadline = null): Generator
+    {
         $fetched = 0;
         $seen = [];
         $allowedHost = Uri::of($url)->host();
@@ -68,7 +84,7 @@ class GraphPaginator
             }
 
             $fetched++;
-            $items = $items->concat($response->collect('data'));
+            yield $response->collect('data')->values()->all();
             $candidate = $response->json('paging.next');
 
             if (! is_string($candidate) || blank($candidate)) {
@@ -83,8 +99,6 @@ class GraphPaginator
 
             $next = $candidate;
         }
-
-        return $items->values()->all();
     }
 
     /** Classify and log a failed response a caller read itself, rather than walked here. */

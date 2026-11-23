@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Meta;
 
+use App\Exceptions\Social\IncompleteMetaGraphPaginationException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -17,7 +18,7 @@ class GrantedPermissions
     private const REFUSED = ['declined', 'expired'];
 
     /** @param array<string, string> $statuses */
-    private function __construct(private readonly array $statuses) {}
+    private function __construct(private readonly array $statuses, private readonly bool $complete = true) {}
 
     public static function for(string $graphApi, string $userToken): self
     {
@@ -33,10 +34,37 @@ class GrantedPermissions
             return new self([]);
         }
 
-        return new self($response->collect('data')
+        return new self(self::statuses($response->collect('data')->all()));
+    }
+
+    /**
+     * Every explicitly reported grant is needed to recover a login with no scope
+     * snapshot. A failed walk still carries the refusals on pages already read.
+     */
+    public static function forLegacyConsent(string $graphApi, string $userToken, float $deadline): self
+    {
+        $statuses = [];
+        try {
+            foreach (GraphPaginator::pages("{$graphApi}/me/permissions", ['access_token' => $userToken], $deadline) as $page) {
+                $statuses = array_replace($statuses, self::statuses($page));
+            }
+        } catch (IncompleteMetaGraphPaginationException) {
+            return new self($statuses, complete: false);
+        }
+
+        return new self($statuses);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $permissions
+     * @return array<string, string>
+     */
+    private static function statuses(array $permissions): array
+    {
+        return collect($permissions)
             ->filter(fn ($permission): bool => filled(data_get($permission, 'permission')))
             ->pluck('status', 'permission')
-            ->all());
+            ->all();
     }
 
     /**
@@ -49,6 +77,10 @@ class GrantedPermissions
     public function granted(?array $requested): array
     {
         if ($requested === null) {
+            if (! $this->complete) {
+                return [];
+            }
+
             return array_keys($this->statuses, 'granted', true);
         }
 

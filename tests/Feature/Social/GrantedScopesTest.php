@@ -94,6 +94,7 @@ test('a pre-deploy Meta callback stores only explicitly granted scopes when publ
     finishSocialConnect($platform)->assertRedirect();
 
     expect($this->workspace->socialAccounts()->sole()->scopes)->toBe(['pages_show_list', $publishScope]);
+    expect(Http::recorded(fn (Request $request): bool => str_contains($request->url(), '/me/permissions')))->toHaveCount(1);
 })->with('meta publish permissions');
 
 test('a pre-deploy Meta callback refuses an explicitly declined or expired publishing permission', function (Platform $platform, string $publishScope, string $status) {
@@ -123,6 +124,72 @@ test('a pre-deploy Meta callback restarts consent when the publishing grant is u
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
     $this->assertDatabaseCount('social_accounts', 0);
 })->with('meta publish permissions')->with(['partial', 'unknown status', 'http failure', 'connection failure']);
+
+test('a pre-deploy Meta callback reads the next page before persisting the history grant', function (Platform $platform, string $publishScope) {
+    prepareLegacyMetaCallback($platform);
+    $next = config("trypost.platforms.{$platform->value}.graph_api").'/me/permissions?after=page-two';
+    Http::fake([
+        $next => Http::response(['data' => [['permission' => 'pages_read_engagement', 'status' => 'granted']]]),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => $publishScope, 'status' => 'granted']],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $this->get(route("app.social.{$platform->value}.callback"))->assertRedirect(route('app.social.connect.show', $platform));
+    finishSocialConnect($platform)->assertRedirect();
+
+    expect($this->workspace->socialAccounts()->sole()->scopes)->toBe([$publishScope, 'pages_read_engagement']);
+})->with('meta publish permissions');
+
+test('a pre-deploy Meta callback honors an explicit refusal on a later permissions page', function () {
+    prepareLegacyMetaCallback(Platform::Facebook);
+    $next = config('trypost.platforms.facebook.graph_api').'/me/permissions?after=page-two';
+    Http::fake([
+        $next => Http::response(['data' => [['permission' => 'pages_manage_posts', 'status' => 'expired']]]),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => 'pages_read_engagement', 'status' => 'granted']],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $this->get(route('app.social.facebook.callback'))->assertRedirect(route('app.social.connect.show', Platform::Facebook));
+
+    expect(socialConnectFailure())->toBe('publish_permission_missing');
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+});
+
+test('an incomplete legacy Meta permissions walk keeps explicit refusals and never stores a partial grant', function (string $status, bool $outOfTime) {
+    prepareLegacyMetaCallback(Platform::Facebook);
+    $next = config('trypost.platforms.facebook.graph_api').'/me/permissions?after=page-two';
+    if ($outOfTime) {
+        config(['trypost.meta_page_walk_seconds' => 0]);
+    }
+    Http::fake([
+        $next => Http::response([], 503),
+        '*/me/permissions*' => Http::response([
+            'data' => [['permission' => 'pages_manage_posts', 'status' => $status]],
+            'paging' => ['next' => $next],
+        ]),
+    ]);
+
+    $restart = route('app.social.facebook.connect', ['return_to' => PendingConnection::current()->returnPath()]);
+    $response = $this->get(route('app.social.facebook.callback'));
+    if ($status === 'declined') {
+        $response->assertRedirect(route('app.social.connect.show', Platform::Facebook));
+        expect(socialConnectFailure())->toBe('publish_permission_missing');
+    } else {
+        $response->assertRedirect($restart);
+        expect(socialConnectFailure())->toBeNull();
+    }
+    if ($outOfTime) {
+        Http::assertNotSent(fn (Request $request): bool => $request->url() === $next);
+    } else {
+        Http::assertSent(fn (Request $request): bool => $request->url() === $next);
+    }
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/me/accounts'));
+    $this->assertDatabaseCount('social_accounts', 0);
+})->with(['granted', 'declined'])->with(['budget exhausted' => true, 'second page fails' => false]);
 
 /**
  * Each network: the callback route, how its provider reports a grant, the

@@ -59,8 +59,14 @@ abstract class MetaController extends SocialController
      */
     protected function grantedScopes(string $userToken): array|RedirectResponse
     {
-        $permissions = GrantedPermissions::for($this->graphApi(), $userToken);
-        $granted = $permissions->granted($this->pendingForThisNetwork()?->requestedScopes());
+        $requested = $this->pendingForThisNetwork()?->requestedScopes();
+        if ($requested === null) {
+            $permissions = GrantedPermissions::forLegacyConsent($this->graphApi(), $userToken, $this->deadline());
+        } else {
+            $permissions = GrantedPermissions::for($this->graphApi(), $userToken);
+        }
+
+        $granted = $permissions->granted($requested);
 
         if (blank(ChannelPermissions::missingFrom($granted, $this->platform, GatedFeature::Publish))) {
             return $granted;

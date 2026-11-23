@@ -65,9 +65,13 @@ test('facebook oauth callback creates account with single page', function () {
         ->andReturn(Mockery::mock()->shouldReceive('usingGraphVersion')->andReturnSelf()->shouldReceive('user')->andReturn($socialiteUser)->getMock());
 
     $graphApi = config('trypost.platforms.facebook.graph_api');
+    $nextPermissions = "{$graphApi}/me/permissions?after=page-two";
 
     Http::fake([
-        "{$graphApi}/me/permissions*" => Http::response(['data' => [['permission' => 'pages_show_list', 'status' => 'granted']]], 200),
+        "{$graphApi}/me/permissions*" => Http::response([
+            'data' => [['permission' => 'pages_show_list', 'status' => 'granted']],
+            'paging' => ['next' => $nextPermissions],
+        ]),
         "{$graphApi}/me?*" => Http::response(['id' => 'facebook_user_123', 'name' => 'User'], 200),
         "{$graphApi}/me/accounts*" => Http::response([
             'data' => [
@@ -85,6 +89,7 @@ test('facebook oauth callback creates account with single page', function () {
     $response = $this->get(route('app.social.facebook.callback'));
 
     $response->assertRedirect(route('app.social.connect.show', Platform::Facebook));
+    Http::assertNotSent(fn ($request): bool => $request->url() === $nextPermissions);
 
     finishSocialConnect(Platform::Facebook)->assertRedirect();
 
