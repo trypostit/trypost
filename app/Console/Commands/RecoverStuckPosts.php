@@ -43,14 +43,14 @@ class RecoverStuckPosts extends Command
                     $this->tiktokPhotoDerivativeCleaner->cleanupUnlessPublishInFlight($post->error_context, $post->id);
                     $this->googleBusinessDerivativeCleaner->cleanup($post);
 
-                    $message = 'posts.errors.publishing_timed_out';
-                    if (PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context)) {
-                        $message = 'posts.errors.instagram.comment_unconfirmed';
-                    }
+                    $messageKey = match (PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context)) {
+                        true => 'posts.errors.instagram.comment_unconfirmed',
+                        false => 'posts.errors.publishing_timed_out',
+                    };
 
                     $post->writePublication([
                         'publish_status' => PublishStatus::Failed,
-                        'error_message' => __($message),
+                        'error_message' => __($messageKey),
                         'error_context' => [
                             ...($post->error_context ?? []),
                             'category' => ErrorCategory::Timeout->value,
