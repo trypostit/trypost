@@ -20,8 +20,7 @@ use Illuminate\Support\Facades\Log;
 class RetryFailedPost extends Command
 {
     protected $signature = 'posts:retry
-        {post : ID of the failed post to retry}
-        {--confirmed-comment-missing : Retry an unconfirmed Instagram comment after checking that it is absent}';
+        {post : ID of the failed post to retry}';
 
     protected $description = 'Retry a failed post, resuming an in-flight remote publish when a checkpoint exists';
 
@@ -47,17 +46,9 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        $commentUnconfirmed = PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context);
-        $confirmedCommentMissing = $commentUnconfirmed && $this->option('confirmed-comment-missing') === true;
+        $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context);
 
-        if ($commentUnconfirmed && ! $confirmedCommentMissing) {
-            $this->error(__('posts.errors.instagram.comment_unconfirmed'));
-            $this->line('If the comment is absent, retry with --confirmed-comment-missing.');
-
-            return self::FAILURE;
-        }
-
-        if ($confirmedCommentMissing && ! ThreadProgress::hasPublishedRoot($post->error_context)) {
+        if ($commentWasPending && ! ThreadProgress::hasPublishedRoot($post->error_context)) {
             $this->error(__('posts.errors.instagram.comment_media_unconfirmed'));
 
             return self::FAILURE;
@@ -74,11 +65,17 @@ class RetryFailedPost extends Command
             ]],
         );
 
-        if (! $this->confirm('Queue a publish attempt for this post?')) {
-            return self::SUCCESS;
+        $needsCommentConfirmation = $commentWasPending && blank(data_get($post->error_context, ThreadProgress::KEY.'.1.id'));
+        $confirmation = match ($needsCommentConfirmation) {
+            true => 'Did you check Instagram and confirm the first comment is missing?',
+            false => 'Queue a publish attempt for this post?',
+        };
+
+        if (! $this->confirm($confirmation)) {
+            return $needsCommentConfirmation ? self::FAILURE : self::SUCCESS;
         }
 
-        $originalContext = $this->prepareRetry($post, $confirmedCommentMissing);
+        $originalContext = $this->prepareRetry($post, $needsCommentConfirmation);
 
         if ($originalContext === false) {
             $this->warn('The post changed while the command was running; nothing was retried.');
@@ -121,22 +118,24 @@ class RetryFailedPost extends Command
                 return false;
             }
 
-            if ($confirmedCommentMissing && $locked->error_context !== $post->error_context) {
-                return false;
-            }
-
-            if (! $confirmedCommentMissing && PublishCheckpoint::instagramCommentIsUnconfirmed($locked->error_context)) {
-                return false;
-            }
-
             $originalContext = $locked->error_context;
+            $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($originalContext);
+
+            if (($confirmedCommentMissing || $commentWasPending) && $originalContext !== $post->error_context) {
+                return false;
+            }
+
+            $retryContext = $this->resumableContext($originalContext);
+            if ($commentWasPending && ! $confirmedCommentMissing) {
+                $retryContext = [...($retryContext ?? []), PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true];
+            }
 
             $locked->writePublication([
                 'publish_status' => PublishStatus::Pending,
                 'platform_post_id' => null,
                 'platform_url' => null,
                 'error_message' => null,
-                'error_context' => $this->resumableContext($originalContext),
+                'error_context' => $retryContext,
                 'published_at' => null,
             ]);
             $locked->update(['status' => PostStatus::Publishing]);

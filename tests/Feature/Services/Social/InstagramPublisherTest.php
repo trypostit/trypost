@@ -291,19 +291,30 @@ test('manual retry refuses an unconfirmed instagram comment after an interrupted
     expect($failed->status)->toBe(PostStatus::Failed);
     expect(Artisan::call('posts:retry', ['post' => $failed->id, '--no-interaction' => true]))->toBe(1);
 
+    $this->artisan('posts:retry', ['post' => $failed->id])
+        ->expectsConfirmation('Did you check Instagram and confirm the first comment is missing?', 'no')
+        ->assertFailed();
+
     expect($failed->fresh()->error_message)->toContain(__('posts.errors.instagram.comment_unconfirmed'))
         ->and($failed->fresh()->error_context)->toHaveKey(PublishCheckpoint::INSTAGRAM_COMMENT_PENDING, true);
     Queue::assertNotPushed(PublishToSocialPlatform::class);
     Http::assertNothingSent();
 })->with(['worker failure', 'stale publication']);
 
-test('an operator can resume the comment after verifying that instagram did not publish it', function () {
+test('manual retry uses the instagram comment checkpoint to choose the confirmation and resume', function (bool $commentAlreadyPublished) {
     Queue::fake();
     $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $comment = 'More details in the bio';
+    $progress = [['hash' => 'root', 'id' => 'published-media']];
+
+    if ($commentAlreadyPublished) {
+        $progress[] = ['hash' => ThreadProgress::hash($comment), 'id' => 'first-comment'];
+    }
+
     $this->post->forceFill([
         'status' => PostStatus::Failed,
         'publish_status' => PublishStatus::Failed,
-        'meta' => ['thread_replies' => ['More details in the bio']],
+        'meta' => ['thread_replies' => [$comment]],
         'media' => [[
             'id' => 'first-comment-photo',
             'path' => 'media/photo.jpg',
@@ -313,14 +324,18 @@ test('an operator can resume the comment after verifying that instagram did not 
             'meta' => ['width' => 1080, 'height' => 1080],
         ]],
         'error_context' => [
-            ThreadProgress::KEY => [['hash' => 'root', 'id' => 'published-media']],
+            ThreadProgress::KEY => $progress,
             PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
         ],
     ])->save();
     Http::fake(['*/published-media/comments' => Http::response(['id' => 'first-comment'])]);
 
-    $this->artisan('posts:retry', ['post' => $this->post->id, '--confirmed-comment-missing' => true])
-        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
+    $confirmation = match ($commentAlreadyPublished) {
+        true => 'Queue a publish attempt for this post?',
+        false => 'Did you check Instagram and confirm the first comment is missing?',
+    };
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation($confirmation, 'yes')
         ->assertSuccessful();
     Queue::pushed(PublishToSocialPlatform::class)->sole()->handle();
 
@@ -329,10 +344,14 @@ test('an operator can resume the comment after verifying that instagram did not 
         ->and($published->status)->toBe(PostStatus::Published)
         ->and($published->platform_post_id)->toBe('published-media')
         ->and($published->thread_reply_ids)->toBe(['first-comment']);
-    Http::assertSentCount(1);
-    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
-        && Str::endsWith($request->url(), '/published-media/comments'));
-});
+    if ($commentAlreadyPublished) {
+        Http::assertNothingSent();
+    } else {
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+            && Str::endsWith($request->url(), '/published-media/comments'));
+    }
+})->with(['confirmed checkpoint' => true, 'unconfirmed checkpoint' => false]);
 
 test('an instagram comment rate limit retries the comment without republishing the media', function (array $body, int $status) {
     Queue::fake();
