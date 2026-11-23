@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Dites-en plus',
             'reply_label' => 'Publication :number du fil',
             'unsupported' => 'Les fils de publications ne sont pas disponibles sur ce réseau.',
+            'ghost_post' => 'Un post fantôme ne peut pas avoir de réponses. Retirez les réponses ou passez le type à Fil.',
             'reply_empty' => 'Une réponse du fil est vide.',
             'reply_too_long' => 'Une réponse dépasse la limite de :limit caractères de :over.',
             'too_many' => '{1} Cette publication n’accepte qu’un commentaire.|[0,*] Cette publication accepte jusqu’à :max réponses.',

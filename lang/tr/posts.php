@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Daha fazla anlat',
             'reply_label' => 'Zincirin :number. gönderisi',
             'unsupported' => 'Gönderi zincirleri bu ağda kullanılamaz.',
+            'ghost_post' => 'Hayalet gönderinin yanıtı olamaz. Yanıtları kaldırın veya türü Flood olarak değiştirin.',
             'reply_empty' => 'Zincirdeki bir yanıt boş.',
             'reply_too_long' => 'Bir yanıt :limit karakter sınırını :over aşıyor.',
             'too_many' => '{1} Bu gönderiye yalnızca bir yorum eklenebilir.|[0,*] Bu gönderiye en fazla :max yanıt eklenebilir.',

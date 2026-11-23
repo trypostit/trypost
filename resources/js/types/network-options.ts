@@ -20,13 +20,16 @@ export const THREAD_PLATFORMS = [
     Platform.Bluesky,
     Platform.Mastodon,
     Platform.X,
+    Platform.Threads,
     Platform.LinkedIn,
     Platform.LinkedInPage,
 ] as const;
 
 export type ThreadPlatform = (typeof THREAD_PLATFORMS)[number];
 
-const THREAD_PLATFORM_SET: ReadonlySet<PlatformValue> = new Set(THREAD_PLATFORMS);
+const THREAD_PLATFORM_SET: ReadonlySet<PlatformValue> = new Set(
+    THREAD_PLATFORMS,
+);
 
 /** Whether a network chains thread replies. */
 export const isThreadPlatform = (
@@ -34,7 +37,11 @@ export const isThreadPlatform = (
 ): platform is ThreadPlatform => THREAD_PLATFORM_SET.has(platform);
 
 /** Networks whose thread replies can be polls (`ThreadReplies::replyPoll()` on the server). */
-export const REPLY_POLL_PLATFORMS = [Platform.Mastodon, Platform.X] as const;
+export const REPLY_POLL_PLATFORMS = [
+    Platform.Mastodon,
+    Platform.X,
+    Platform.Threads,
+] as const;
 
 export type ReplyPollPlatform = (typeof REPLY_POLL_PLATFORMS)[number];
 
@@ -54,6 +61,7 @@ export const THREAD_REPLY_CONTENT_TYPES: Readonly<
     [Platform.Bluesky]: ContentType.BlueskyPost,
     [Platform.Mastodon]: ContentType.MastodonPost,
     [Platform.X]: ContentType.XPost,
+    [Platform.Threads]: ContentType.ThreadsPost,
     [Platform.LinkedIn]: ContentType.LinkedInComment,
     [Platform.LinkedInPage]: ContentType.LinkedInComment,
 };
@@ -64,6 +72,7 @@ export const THREAD_REPLY_POLL_CONTENT_TYPES: Readonly<
 > = {
     [Platform.Mastodon]: ContentType.MastodonPoll,
     [Platform.X]: ContentType.XPoll,
+    [Platform.Threads]: ContentType.ThreadsPoll,
 };
 
 /** How many replies a thread takes: a thread, or one comment on LinkedIn (`ThreadReplies::maxReplies()`). */
@@ -71,6 +80,7 @@ export const THREAD_MAX_REPLIES: Readonly<Record<ThreadPlatform, number>> = {
     [Platform.Bluesky]: 24,
     [Platform.Mastodon]: 24,
     [Platform.X]: 24,
+    [Platform.Threads]: 24,
     [Platform.LinkedIn]: 1,
     [Platform.LinkedInPage]: 1,
 };

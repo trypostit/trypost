@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Diga mais',
             'reply_label' => 'Post :number da sequência',
             'unsupported' => 'Sequências de posts não estão disponíveis nesta rede.',
+            'ghost_post' => 'Um post temporário não pode ter respostas. Remova as respostas ou mude o tipo para Thread.',
             'reply_empty' => 'Uma resposta da sequência está vazia.',
             'reply_too_long' => 'Uma resposta passa do limite de :limit caracteres em :over.',
             'too_many' => '{1} Este post aceita só um comentário.|[0,*] Este post aceita até :max respostas.',

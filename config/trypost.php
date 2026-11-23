@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Support\Analytics\YouTubeScopes;
 use App\Support\ConfigEnvironment;
 use App\Support\ThreadReplies;
@@ -639,10 +640,11 @@ return [
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('THREADS_SCOPES', 'threads_basic,threads_content_publish,threads_manage_insights'),
+            'scopes' => ConfigEnvironment::oauthScopes('THREADS_SCOPES', 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies'),
             'required_scopes' => ['threads_basic'],
             'permissions' => [
                 'publish' => ['scopes' => ['threads_content_publish']],
+                'thread_replies' => ['scopes' => ['threads_manage_replies']],
                 'followers' => ['scopes' => ['threads_basic', 'threads_manage_insights']],
                 'post_insights' => ['scopes' => ['threads_basic', 'threads_manage_insights']],
                 'post_history' => ['scopes' => ['threads_basic']],
@@ -651,6 +653,12 @@ return [
             // graph.threads.net (no version) is the auth/refresh host.
             'auth_api' => ConfigEnvironment::baseUrl('THREADS_AUTH_API', 'https://graph.threads.net'),
             'oauth_url' => ConfigEnvironment::baseUrl('THREADS_OAUTH_URL', 'https://threads.net'),
+            'replies' => [
+                'max' => ThreadReplies::MAX_REPLIES,
+                'standalone_types' => [
+                    ContentType::ThreadsGhostPost->value => 'posts.form.thread.ghost_post',
+                ],
+            ],
         ],
         'pinterest' => [
             'enabled' => env('PINTEREST_ENABLED', true),

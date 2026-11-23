@@ -104,7 +104,7 @@ class SocialAccountFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'platform' => Platform::Threads,
-            'scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights'],
+            'scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights', 'threads_manage_replies'],
         ]);
     }
 

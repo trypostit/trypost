@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Mehr sagen',
             'reply_label' => 'Beitrag :number im Thread',
             'unsupported' => 'Beitragsthreads sind in diesem Netzwerk nicht verfügbar.',
+            'ghost_post' => 'Ein Ghost-Post kann keine Antworten haben. Entferne die Antworten oder wechsle den Typ zu Thread.',
             'reply_empty' => 'Eine Antwort im Thread ist leer.',
             'reply_too_long' => 'Eine Antwort überschreitet das Limit von :limit Zeichen um :over.',
             'too_many' => '{1} Dieser Beitrag nimmt nur einen Kommentar an.|[0,*] Dieser Beitrag nimmt bis zu :max Antworten an.',

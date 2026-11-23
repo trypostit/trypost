@@ -980,6 +980,88 @@ test('a bluesky thread starts from the toolbar and stacks its replies under the 
     expect($post->fresh()->meta)->toEqual(['thread_replies' => [['text' => 'Third post', 'media' => []]]]);
 });
 
+test('a threads ghost post offers no thread', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_ghost_post");
+    waitForGone($page, '@thread-start');
+
+    $page->click("@composer-type-{$id}-threads_post");
+    waitFor($page, '@thread-start');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a threads thread switched to a ghost post is held back with a warning until it is a thread again', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+
+    $page->click("@composer-type-{$id}-threads_ghost_post");
+    waitForText($page, "@thread-unavailable-warning-{$id}", __('posts.form.thread.ghost_post'));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+    $page->assertMissing('@thread-add-reply')
+        ->assertMissing('@composer-errors');
+
+    $page->click("@composer-type-{$id}-threads_post");
+    waitForGone($page, "@thread-unavailable-warning-{$id}");
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') !== 'true'");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a threads thread on an account connected before the replies permission asks to reconnect and stays a draft', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $post->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->assertMissing("@channel-permission-warning-{$id}")
+        ->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+
+    waitForText($page, "@channel-permission-warning-{$id}", __('channels.permissions.thread_replies.message', ['network' => Platform::Threads->label()]));
+    waitForState($page, '@composer-submit', "element.getAttribute('aria-disabled') === 'true'");
+
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Second post', 'media' => []]]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a member who cannot manage channels is told an admin needs to reconnect, with no button', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
+    $post->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $member = workspaceMember($post->workspace);
+    $post->update(['user_id' => $member->id]);
+    test()->actingAs($member);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Second post');
+
+    $warning = "@channel-permission-warning-{$post->social_account_id}";
+    waitForText($page, $warning, __('channels.permissions.thread_replies.member_message', ['network' => Platform::Threads->label()]));
+    $page->assertMissing("{$warning}-reconnect")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a thread reply of invisible characters is empty like on the server', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);

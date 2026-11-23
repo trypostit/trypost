@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Dì di più',
             'reply_label' => 'Post :number del thread',
             'unsupported' => 'I thread di post non sono disponibili su questa rete.',
+            'ghost_post' => 'Un post fantasma non può avere risposte. Rimuovi le risposte o cambia il tipo in Thread.',
             'reply_empty' => 'Una risposta del thread è vuota.',
             'reply_too_long' => 'Una risposta supera il limite di :limit caratteri di :over.',
             'too_many' => '{1} Questo post accetta un solo commento.|[0,*] Questo post accetta fino a :max risposte.',

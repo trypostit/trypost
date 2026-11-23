@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Napisz więcej',
             'reply_label' => 'Post :number w wątku',
             'unsupported' => 'Wątki postów nie są dostępne w tej sieci.',
+            'ghost_post' => 'Post-duch nie może mieć odpowiedzi. Usuń odpowiedzi lub zmień typ na Wątek.',
             'reply_empty' => 'Odpowiedź w wątku jest pusta.',
             'reply_too_long' => 'Odpowiedź przekracza limit :limit znaków o :over.',
             'too_many' => '{1} Ten post przyjmuje tylko jeden komentarz.|[0,*] Ten post przyjmuje maksymalnie :max odpowiedzi.',

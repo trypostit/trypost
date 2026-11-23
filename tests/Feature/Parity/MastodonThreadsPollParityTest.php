@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
@@ -436,3 +437,94 @@ test('a mastodon poll switch that is not true or false is refused on the web and
     $response->assertUnprocessable()->assertJsonValidationErrors(["meta.poll.{$switch}"]);
     expect($post->fresh()->meta)->toBe([]);
 })->with(['web', 'api'])->with(['multiple', 'hide_totals']);
+
+test('a threads post schedules a thread with text replies on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => ['Two', ['text' => 'Three']]],
+    ]);
+
+    assertPollParityPassed($surface, $response);
+
+    $stored = $post->fresh();
+
+    expect($stored->status)->toBe(Status::Scheduled)
+        ->and($stored->meta['thread_replies'])->toEqual([['text' => 'Two', 'media' => []], ['text' => 'Three', 'media' => []]]);
+})->with(['web', 'api', 'mcp']);
+
+test('a threads reply over 500 characters cannot be scheduled on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => [Str::repeat('a', 501)]],
+    ]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies.0' => __('posts.form.thread.reply_too_long', ['limit' => 500, 'over' => 1])]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('a threads reply can be a poll that keeps only its choices on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => [['text' => 'Which one?', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 60, 'multiple' => true]]]],
+    ]);
+
+    assertPollParityPassed($surface, $response);
+    expect($post->fresh()->meta['thread_replies'][0]['poll'])->toEqual(['options' => ['Yes', 'No']]);
+})->with(['web', 'api', 'mcp']);
+
+test('a threads reply poll with a repeated choice is refused even as a draft on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+
+    $response = pollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [['text' => 'Which one?', 'poll' => ['options' => ['Yes', ' yes']]]]]]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies.0.poll.options' => __('posts.form.poll.options_distinct')]);
+})->with(['web', 'api', 'mcp']);
+
+test('a threads ghost post with replies cannot be scheduled on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsGhostPost);
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'meta' => ['thread_replies' => ['Two']],
+    ]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies' => __('posts.form.thread.ghost_post')]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('publishing a stored threads ghost post with replies is refused on mcp', function () {
+    $post = pollParityPost(ContentType::ThreadsGhostPost, ['thread_replies' => [['text' => 'Two', 'media' => []]]]);
+
+    TryPostServer::actingAs(test()->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('posts.form.thread.ghost_post')]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+});
+
+test('a threads account connected before the replies permission saves a thread as a draft but cannot schedule it on the web, api and mcp', function (string $surface) {
+    $post = pollParityPost(ContentType::ThreadsPost);
+    $post->socialAccount->update(['scopes' => ['threads_basic', 'threads_content_publish', 'threads_manage_insights']]);
+    $thread = ['meta' => ['thread_replies' => ['Two']]];
+
+    assertPollParityPassed($surface, pollParityUpdate($surface, $post, $thread));
+
+    $response = pollParityUpdate($surface, $post, [
+        ...$thread,
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]);
+
+    assertPollParityRefused($surface, $response, ['meta.thread_replies' => __('channels.permissions.thread_replies.message', ['network' => Platform::Threads->label()])]);
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);

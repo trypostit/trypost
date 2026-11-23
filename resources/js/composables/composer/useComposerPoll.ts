@@ -4,6 +4,7 @@ import { newPoll } from '@/lib/poll';
 import { withReplyPoll } from '@/lib/threadReplies';
 import {
     type ContentTypeValue,
+    isPollContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
     POLL_CONTENT_TYPES,
     POLL_POST_CONTENT_TYPES,
@@ -114,10 +115,8 @@ export const useComposerPoll = (
      * Whether two metas hold the same values in the same key order. A meta
      * stored empty arrives as `[]` (PHP's empty array) and counts as `{}`.
      */
-    const sameMeta = (
-        first: CardMeta,
-        second: CardMeta,
-    ): boolean => JSON.stringify({ ...first }) === JSON.stringify({ ...second });
+    const sameMeta = (first: CardMeta, second: CardMeta): boolean =>
+        JSON.stringify({ ...first }) === JSON.stringify({ ...second });
 
     /** Takes a card's saved meta out of `saved`, so it is used once. */
     const takeSaved = (
@@ -131,10 +130,7 @@ export const useComposerPoll = (
     };
 
     /** The card's last poll back on its meta: the very same object when nothing else changed. */
-    const restorePoll = (
-        previous: CardMeta,
-        current: CardMeta,
-    ): CardMeta => {
+    const restorePoll = (previous: CardMeta, current: CardMeta): CardMeta => {
         const { poll, ...previousMeta } = previous;
 
         if (sameMeta(previousMeta, current)) {
@@ -145,10 +141,7 @@ export const useComposerPoll = (
     };
 
     /** Picking Poll: the card's last poll comes back, else a new one starts. */
-    const metaWithPoll = (
-        group: NetworkGroup,
-        current: CardMeta,
-    ): CardMeta => {
+    const metaWithPoll = (group: NetworkGroup, current: CardMeta): CardMeta => {
         metaBeforePoll.set(group.key, current);
         const previous = takeSaved(metaBeforeOtherType, group);
 
@@ -156,7 +149,10 @@ export const useComposerPoll = (
             return restorePoll(previous, current);
         }
 
-        return { ...current, poll: transform(groupPollLimits(group), newPoll, {}) };
+        return {
+            ...current,
+            poll: transform(groupPollLimits(group), newPoll, {}),
+        };
     };
 
     /** Picking another type: the poll goes, and the meta from before it comes back when nothing else changed. */
@@ -219,11 +215,10 @@ export const useComposerPoll = (
 
     /** The card's Remove poll: back to the network's plain post, and picking Poll again starts a new one. */
     const removeGroupPoll = (group: NetworkGroup): void => {
-        const postType =
-            POLL_POST_CONTENT_TYPES[destination(group).content_type];
+        const contentType = destination(group).content_type;
 
-        if (filled(postType)) {
-            setGroupContentType(group, postType);
+        if (isPollContentType(contentType)) {
+            setGroupContentType(group, POLL_POST_CONTENT_TYPES[contentType]);
         }
 
         forgetGroupPoll(group);

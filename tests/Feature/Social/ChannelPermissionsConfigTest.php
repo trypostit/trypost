@@ -73,6 +73,7 @@ test('each network needs exactly these scopes for each feature', function () {
         ],
         Platform::Threads->value => [
             'publish' => ['threads_content_publish'],
+            'thread_replies' => ['threads_manage_replies'],
             'followers' => ['threads_basic', 'threads_manage_insights'],
             'post_insights' => ['threads_basic', 'threads_manage_insights'],
             'post_history' => ['threads_basic'],

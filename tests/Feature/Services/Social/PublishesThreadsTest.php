@@ -146,7 +146,7 @@ test('a post without replies writes no checkpoint', function () {
 });
 
 test('replies on a network without threads are never posted', function () {
-    $this->post->update(['platform' => Platform::Threads, 'content_type' => ContentType::ThreadsPost]);
+    $this->post->update(['platform' => Platform::Telegram, 'content_type' => ContentType::TelegramPost]);
 
     $result = threadPublisher()->run($this->post->fresh(), fn (): array => ['id' => 'r'], fn (): array => ['id' => 'never']);
 

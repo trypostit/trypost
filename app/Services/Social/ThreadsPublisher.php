@@ -11,18 +11,22 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishContentValidator;
+use App\Support\Social\ThreadProgress;
 use App\Support\Social\ThreadsPoll;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
 class ThreadsPublisher
 {
-    use HasSocialHttpClient;
+    use HasSocialHttpClient, PublishesThreads;
 
     private const int MEDIA_PUBLICATION_MAX_ATTEMPTS = 3;
 
@@ -31,13 +35,6 @@ class ThreadsPublisher
     private const int MEDIA_READY_GRACE_SECONDS = 2;
 
     private string $baseUrl;
-
-    /**
-     * Extra parameters for the post's own container (never carousel children).
-     *
-     * @var array<string, mixed>
-     */
-    private array $containerOptions = [];
 
     public function __construct()
     {
@@ -48,6 +45,13 @@ class ThreadsPublisher
     {
         PublishContentValidator::validate($post);
 
+        if ($post->content_type === ContentType::ThreadsGhostPost && $post->mediaItems->isNotEmpty()) {
+            throw new ThreadsPublishException(
+                userMessage: __('posts.form.warnings.text_only'),
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
@@ -56,23 +60,50 @@ class ThreadsPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
+
+        return $this->publishThread(
+            $post,
+            $rootHash,
+            fn (): array => $this->publishSegment($account, $content, $post->mediaItems, $this->containerOptions($post, $content)),
+            fn (string $text, Collection $media, array $parent, array $root, ?array $poll): array => $this->publishReply($account, $text, $media, $parent, $poll),
+        );
+    }
+
+    /**
+     * A reply of the thread, under the post before it, with its own poll.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $parent
+     * @param  array<string, mixed>|null  $poll
+     * @return array{id: string, url: ?string}
+     */
+    private function publishReply(SocialAccount $account, string $text, Collection $media, array $parent, ?array $poll): array
+    {
+        $options = ['reply_to_id' => (string) data_get($parent, 'id')];
+
+        if (filled($poll)) {
+            $options['poll_attachment'] = $this->pollAttachment($text, $media->isNotEmpty(), ['poll' => $poll]);
+        }
+
+        return $this->publishSegment($account, $text, $media, $options);
+    }
+
+    /**
+     * One post of the thread: text, a single image or video, or a carousel,
+     * with the options of its own container.
+     *
+     * @param  Collection<int, MediaItem>  $media
+     * @param  array<string, mixed>  $options
+     * @return array{id: string, url: ?string}
+     */
+    private function publishSegment(SocialAccount $account, ?string $content, Collection $media, array $options): array
+    {
         $userId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $media = $post->mediaItems;
-
-        if ($post->content_type === ContentType::ThreadsGhostPost && $media->isNotEmpty()) {
-            throw new ThreadsPublishException(
-                userMessage: __('posts.form.warnings.text_only'),
-                category: ErrorCategory::MediaFormat,
-            );
-        }
-
-        $this->containerOptions = $this->containerOptions($post, $content);
-
-        // Text only post
         if ($media->isEmpty()) {
-            if (empty($content)) {
+            if (blank($content)) {
                 throw new ThreadsPublishException(
                     userMessage: 'Threads text posts require content. Please add text to your post.',
                     category: ErrorCategory::MediaFormat,
@@ -80,29 +111,31 @@ class ThreadsPublisher
             }
 
             return $this->publishMediaWithRetry(
-                fn (): array => $this->publishTextPost($userId, $accessToken, $content),
+                fn (): array => $this->publishTextPost($userId, $accessToken, $content, $options),
             );
         }
 
         if ($media->count() === 1) {
             return $this->publishMediaWithRetry(
-                fn (): array => $this->publishSingleMedia($userId, $accessToken, $content, $media->first()),
+                fn (): array => $this->publishSingleMedia($userId, $accessToken, $content, $media->first(), $options),
             );
         }
 
-        // Multiple media - carousel
         return $this->publishMediaWithRetry(
-            fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media),
+            fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media, $options),
         );
     }
 
-    private function publishTextPost(string $userId, string $accessToken, string $content): array
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function publishTextPost(string $userId, string $accessToken, string $content, array $options): array
     {
         // Step 1: Create container
         $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
             'media_type' => 'TEXT',
             'text' => $content,
-            ...$this->containerOptions,
+            ...$options,
             'access_token' => $accessToken,
         ]);
 
@@ -128,14 +161,17 @@ class ThreadsPublisher
         return $this->publishContainer($userId, $accessToken, $containerId);
     }
 
-    private function publishSingleMedia(string $userId, string $accessToken, ?string $content, MediaItem $media): array
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function publishSingleMedia(string $userId, string $accessToken, ?string $content, MediaItem $media, array $options): array
     {
         $kind = $media->isVideo() ? 'video' : 'image';
 
         $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
             ...$this->mediaParams($media),
             'text' => $content,
-            ...$this->containerOptions,
+            ...$options,
             'access_token' => $accessToken,
         ]);
 
@@ -191,7 +227,11 @@ class ThreadsPublisher
         return ['media_type' => 'IMAGE', 'image_url' => $media->url];
     }
 
-    private function publishCarousel(string $userId, string $accessToken, ?string $content, $mediaCollection): array
+    /**
+     * @param  Collection<int, MediaItem>  $mediaCollection
+     * @param  array<string, mixed>  $options
+     */
+    private function publishCarousel(string $userId, string $accessToken, ?string $content, Collection $mediaCollection, array $options): array
     {
         // Step 1: Create containers for each media item
         $childContainers = [];
@@ -205,18 +245,22 @@ class ThreadsPublisher
 
             if ($containerResponse->failed()) {
                 Log::error('Threads carousel item creation failed', [
+                    'status' => $containerResponse->status(),
                     'body' => $this->redactResponseBody($containerResponse->body()),
                 ]);
 
-                continue;
+                $this->handleApiError($containerResponse);
             }
 
-            $childId = $containerResponse->json()['id'] ?? null;
+            $childId = (string) $containerResponse->json('id');
 
-            if (! $childId) {
+            if (blank($childId)) {
                 Log::error('Threads carousel item creation returned no ID', ['body' => $this->redactResponseBody($containerResponse->body())]);
 
-                continue;
+                throw new ThreadsPublishException(
+                    userMessage: 'Threads did not accept a carousel item. Please try again.',
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             // Wait for media processing (both images and videos)
@@ -225,19 +269,12 @@ class ThreadsPublisher
             $childContainers[] = $childId;
         }
 
-        if (empty($childContainers)) {
-            throw new ThreadsPublishException(
-                userMessage: 'Failed to create any carousel items',
-                category: ErrorCategory::ServerError,
-            );
-        }
-
         // Step 2: Create carousel container
         $carouselResponse = $this->socialHttp()->post("{$this->baseUrl}/{$userId}/threads", [
             'media_type' => 'CAROUSEL',
             'text' => $content,
             'children' => implode(',', $childContainers),
-            ...$this->containerOptions,
+            ...$options,
             'access_token' => $accessToken,
         ]);
 
@@ -399,26 +436,26 @@ class ThreadsPublisher
         }
 
         if ($post->content_type === ContentType::ThreadsPoll) {
-            return [...$this->postOptions($post), 'poll_attachment' => $this->pollAttachment($post, $content)];
+            return [...$this->postOptions($post), 'poll_attachment' => $this->pollAttachment($content, $post->mediaItems->isNotEmpty(), $post->meta)];
         }
 
         return $this->postOptions($post);
     }
 
     /**
-     * A poll goes on a text post only, with its question and choices, sent as
-     * a JSON string as the Threads docs show it (like Instagram's nested
-     * parameters).
+     * A poll goes on a text post or reply only, with its question and choices,
+     * sent as a JSON string as the Threads docs show it (like Instagram's
+     * nested parameters).
      */
-    private function pollAttachment(Post $post, ?string $content): string
+    private function pollAttachment(?string $content, bool $hasMedia, ?array $meta): string
     {
-        $violation = ThreadsPoll::publishViolation($content, $post->mediaItems->isNotEmpty(), $post->meta);
+        $violation = ThreadsPoll::publishViolation($content, $hasMedia, $meta);
 
         if (filled($violation)) {
             throw new ThreadsPublishException(userMessage: $violation, category: ErrorCategory::ContentPolicy);
         }
 
-        return (string) json_encode(ThreadsPoll::payload($post->meta));
+        return (string) json_encode(ThreadsPoll::payload($meta));
     }
 
     /**

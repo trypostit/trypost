@@ -23,8 +23,8 @@ use Illuminate\Support\Str;
  * networks that let an app reply to its own post (each network's `replies`
  * setting in `config/trypost.php`). Each reply is `{text, media}`; its media
  * belongs to that reply and follows the rules of the network's reply content
- * type. A reply stored as a bare string is a text-only reply. On X and
- * Mastodon a reply may carry a poll instead of media (`{text, media, poll}`),
+ * type. A reply stored as a bare string is a text-only reply. On X, Mastodon
+ * and Threads a reply may carry a poll instead of media (`{text, media, poll}`),
  * following that network's `Poll` rules with the reply text as its question.
  */
 class ThreadReplies
@@ -42,6 +42,7 @@ class ThreadReplies
             Platform::Bluesky => ContentType::BlueskyPost,
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
+            Platform::Threads => ContentType::ThreadsPost,
             Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };

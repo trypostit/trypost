@@ -111,6 +111,54 @@ test('a threads poll has choices only, no length, and schedules', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a threads post starts a thread whose reply turns into a poll, shown under the post', function () {
+    $post = seedPollComposerPost(ContentType::ThreadsPost);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    $page->fill('@thread-reply-0', 'Tabs or spaces?');
+    waitFor($page, "@composer-{$id}-poll");
+    $page->click("@composer-{$id}-poll");
+    waitFor($page, '@thread-reply-0-poll-choice-0');
+
+    $page->assertMissing('@thread-reply-0-poll-days')
+        ->fill('@thread-reply-0-poll-choice-0', 'Tabs')
+        ->fill('@thread-reply-0-poll-choice-1', 'Spaces');
+    waitForText($page, '@preview-thread-reply-0 @threads-preview-poll', 'Spaces');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    expect($post->fresh()->meta['thread_replies'])->toEqual([
+        ['text' => 'Tabs or spaces?', 'media' => [], 'poll' => ['options' => ['Tabs', 'Spaces']]],
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('removing the poll from a threads post keeps its replies and switches to a plain post', function () {
+    $replies = [['text' => 'Second post', 'media' => []]];
+    $post = seedPollComposerPost(ContentType::ThreadsPoll, [
+        'meta' => ['poll' => ['options' => ['Tabs', 'Spaces']], 'thread_replies' => $replies],
+    ]);
+    $id = $post->social_account_id;
+    $page = openPollComposer($post);
+    waitFor($page, '@threads-poll-choice-0');
+
+    $page->click('@threads-poll-remove');
+    waitForGone($page, '@threads-poll-choice-0');
+    $page->assertAttribute("@composer-type-{$id}-threads_post", 'aria-checked', 'true')
+        ->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $post->refresh();
+    expect($post->content_type)->toBe(ContentType::ThreadsPost)
+        ->and($post->meta)->not->toHaveKey('poll')
+        ->and($post->meta['thread_replies'])->toBe($replies);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a mastodon poll stays behind the content warning in the preview', function () {
     $post = seedPollComposerPost(ContentType::MastodonPoll, ['meta' => ['poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]);
     $page = openPollComposer($post);
