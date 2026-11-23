@@ -529,7 +529,7 @@ test('saving only the caption keeps replies changed in another session', functio
     $page->assertNoJavaScriptErrors();
 })->with(['thread added' => false, 'thread edited' => true]);
 
-test('saving a post finalized meanwhile shows its read-only details and warning', function (bool $fromDrafts, bool $reconnect) {
+test('reconnecting a finalized post or saving it from a direct link shows its read-only details and warning', function (bool $fromDrafts, bool $reconnect) {
     $post = seedHeldBackMastodonThread();
     $link = "@channel-permission-warning-{$post->social_account_id}-reconnect";
     $page = $fromDrafts
@@ -571,8 +571,11 @@ test('saving a post finalized meanwhile shows its read-only details and warning'
         ->assertNoJavaScriptErrors();
     expect($post->fresh()->content)->toBe('Held back')
         ->and($page->script("new URLSearchParams(location.search).get('post')"))->toBe($post->id);
-})->with(['opened by edit link' => false, 'opened from drafts' => true])
-    ->with(['save and reconnect' => true, 'save draft' => false]);
+})->with([
+    'reconnect from an edit link' => [false, true],
+    'reconnect from drafts' => [true, true],
+    'save draft from an edit link' => [false, false],
+]);
 
 test('reconnecting a finalized post opens its details even outside the visible list', function (bool $filtered) {
     $post = seedHeldBackMastodonThread();

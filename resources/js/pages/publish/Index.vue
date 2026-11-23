@@ -777,21 +777,21 @@ const submitComposition = (
     const editPost = props.editPost;
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
-    let saved = false;
+    let closed = false;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         only: [] as string[],
         onSuccess: () => {
-            saved = true;
+            closed = true;
             composerOpen.value = false;
             onSaved?.();
         },
         onFinish: () => {
             composerSubmitting.value = false;
 
-            if (saved && returnsBack && !leavesApp) {
+            if (closed && returnsBack && !leavesApp) {
                 returnToOpeningPage();
             }
         },
@@ -836,8 +836,15 @@ const submitComposition = (
                 return;
             }
 
-            const url = new URL(window.location.href);
-            if (leavesApp && url.searchParams.get('post') === editPost.id) {
+            const detailsId = new URLSearchParams(window.location.search).get(
+                'post',
+            );
+            if (detailsId !== editPost.id) {
+                return;
+            }
+
+            closed = true;
+            if (leavesApp) {
                 // The partial response already shows the warning and details. Refresh the list behind them.
                 composerOpen.value = false;
                 router.reload();

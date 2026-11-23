@@ -587,7 +587,6 @@ test('a note repeated by an older page after a new one disappears when deleted, 
     waitForOpen($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
     $page->click('@emoji-picker-option');
     waitForText($page, '@note-error-toast', __('notes.errors.not_reacted'));
-    $page->keys('@emoji-picker-option', 'Escape');
     waitForGone($page, '[data-slot=popover-content]:has(@emoji-picker-option)');
 
     $page->hover($goneNote)->click("{$goneNote} [data-testid=note-actions]");
