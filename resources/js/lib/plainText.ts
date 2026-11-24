@@ -44,23 +44,36 @@ const isDecodable = (codePoint: number): boolean => {
     );
 };
 
-const decodeNumericReference = (
-    reference: string,
-    codePoint: number,
-): string => {
-    if (!isDecodable(codePoint)) {
-        return reference;
+const referencedCodePoint = (
+    hex: string | undefined,
+    decimal: string | undefined,
+): number | null => {
+    if (filled(hex)) {
+        return parseInt(hex, 16);
     }
 
-    return String.fromCodePoint(codePoint);
+    if (filled(decimal)) {
+        return parseInt(decimal, 10);
+    }
+
+    return null;
 };
 
 /**
- * A known name decodes to one or two characters. The browser also reads the
- * known start of an unknown name (`&notit;` as `¬it;`, three or more
- * characters), which PHP leaves as written.
+ * The browser decodes what PHP decodes, except a numeric reference PHP keeps
+ * (`&#128;`, which the browser reads as `€`) and the known start of an unknown
+ * name (`&notit;` as `¬it;`, three or more characters): those stay as written.
  */
-const decodeNamedReference = (reference: string): string => {
+const decodeReference = (
+    reference: string,
+    hex: string | undefined,
+    decimal: string | undefined,
+): string => {
+    const codePoint = referencedCodePoint(hex, decimal);
+    if (filled(codePoint) && !isDecodable(codePoint)) {
+        return reference;
+    }
+
     const decoder = document.createElement('textarea');
     decoder.innerHTML = reference;
 
@@ -69,22 +82,6 @@ const decodeNamedReference = (reference: string): string => {
     }
 
     return decoder.value;
-};
-
-const decodeReference = (
-    reference: string,
-    hex: string | undefined,
-    decimal: string | undefined,
-): string => {
-    if (filled(hex)) {
-        return decodeNumericReference(reference, parseInt(hex, 16));
-    }
-
-    if (filled(decimal)) {
-        return decodeNumericReference(reference, parseInt(decimal, 10));
-    }
-
-    return decodeNamedReference(reference);
 };
 
 /**
