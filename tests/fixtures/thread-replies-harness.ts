@@ -71,6 +71,12 @@ console.log(
         gated_features: Object.values(GatedFeature),
         standalone_key: threadUnavailableKey('x', 'x_post', thread, true),
         replies_off_key: threadUnavailableKey('x', 'x_post', thread, false),
+        comments_off_key: threadUnavailableKey(
+            'instagram-facebook',
+            'instagram_feed',
+            thread,
+            false,
+        ),
         unsupported_story_keys: [
             threadUnavailableKey('instagram', 'instagram_story', thread, true),
             threadUnavailableKey('facebook', 'facebook_story', thread, true),

@@ -55,7 +55,7 @@ test('the api and mcp list what a channel cannot do until it is reconnected', fu
     auth()->forgetGuards();
 
     TryPostServer::actingAs($this->user)->tool(ListSocialAccountsTool::class)->assertOk()->assertStructuredContent(parityMcpPage('social_accounts', $apiResponse));
-    expect(collect($apiResponse->json('data'))->firstWhere('id', $account->id)['missing_permissions'])->toBe(['post_insights']);
+    expect(collect($apiResponse->json('data'))->firstWhere('id', $account->id)['missing_permissions'])->toBe(['thread_replies', 'post_insights']);
 });
 
 test('the api exposes exactly the channel list, boards, instagram audio, discord channels, insights, posting schedule and queue routes', function () {

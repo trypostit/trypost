@@ -58,6 +58,16 @@ test('post writing tools explain how to publish a thread', function (string $too
     expect(mcpToolDescription($tool))->toContain('thread_replies')->toContain('X, Bluesky, Mastodon or Threads');
 })->with('post writing tools');
 
+test('post writing tools explain how to publish a first comment on instagram', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('Instagram feed posts and reels', 'one text-only first comment', 'Stories do not take comments');
+    expect(mcpToolText($tool))->toContain('Instagram feed posts and reels take one text-only first comment up to 2,200 characters');
+})->with('post writing tools');
+
+test('instagram first comments are advertised while discovering post formats', function () {
+    expect(mcpServerInstructions())->toContain('one comment (LinkedIn, Instagram feed posts and reels)')
+        ->and(mcpToolDescription(ListContentTypesTool::class))->toContain('one comment on LinkedIn and on Instagram feed posts and reels');
+});
+
 test('post writing tools say content is plain text', function (string $tool) {
     expect(mcpToolText($tool))->toContain('plain text')->not->toContain('<strong>')->not->toContain('or HTML');
 })->with('post writing tools');

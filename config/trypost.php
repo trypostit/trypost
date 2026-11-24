@@ -612,10 +612,11 @@ return [
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_SCOPES', 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights'),
+            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_SCOPES', 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments'),
             'required_scopes' => ['instagram_business_basic'],
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_business_content_publish']],
+                'thread_replies' => ['scopes' => ['instagram_business_manage_comments', 'instagram_business_basic']],
                 'followers' => ['scopes' => ['instagram_business_basic']],
                 'post_insights' => ['scopes' => ['instagram_business_basic', 'instagram_business_manage_insights']],
                 'post_history' => ['scopes' => ['instagram_business_basic']],
@@ -625,18 +626,31 @@ return [
             'auth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
             'oauth_url' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_URL', 'https://www.instagram.com'),
             'oauth_api' => ConfigEnvironment::baseUrl('INSTAGRAM_OAUTH_API', 'https://api.instagram.com'),
+            'replies' => [
+                'max' => 1,
+                'standalone_types' => [
+                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
+                ],
+            ],
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights'),
+            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_comments'),
             'required_scopes' => ['pages_show_list', 'pages_read_engagement', 'instagram_basic'],
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_content_publish']],
+                'thread_replies' => ['scopes' => ['instagram_manage_comments', 'instagram_basic', 'pages_read_engagement']],
                 'followers' => ['scopes' => ['instagram_basic', 'pages_read_engagement']],
                 'post_insights' => ['scopes' => ['instagram_basic', 'instagram_manage_insights', 'pages_read_engagement']],
                 'post_history' => ['scopes' => ['instagram_basic']],
             ],
             'graph_api' => ConfigEnvironment::baseUrl('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            'replies' => [
+                'max' => 1,
+                'standalone_types' => [
+                    ContentType::InstagramStory->value => 'posts.form.thread.instagram_story',
+                ],
+            ],
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),

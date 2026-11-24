@@ -1,0 +1,13 @@
+[
+    "<b>Launch</b> &amp; links",
+    "<p>Launch</p><ul><li>First<br>Second</li><li>Third</li></ul>",
+    "First<br class=\"legacy\">Second",
+    "<p>a<p>b",
+    "<div>One</div><h2>Two</h2><blockquote>Three</blockquote>",
+    "I <3 TryPost and price < 10 > 5",
+    "&amp;lt; &lt;b&gt; &AMP;",
+    "A &copy; &copycat; &notit;",
+    "&#x1F389; &#65; &#X41; &#9; &#12; &#13; &#0; &#127; &#128;",
+    "&#xD800; &#xFDD0; &#xFFFE; &#x1FFFF; &#x10FFFF; &#x110000;",
+    "  \n\n\n\nx\n\n\n\ny  "
+]

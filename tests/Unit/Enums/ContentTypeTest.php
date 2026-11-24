@@ -76,7 +76,7 @@ test('media rules for frontend expose the full editor rule set keyed by content 
 });
 
 test('listing array mirrors media capability fields for api and mcp', function () {
-    $listing = ContentType::PinterestCarousel->toListingArray();
+    $listing = ContentType::PinterestCarousel->toListingArray(Platform::Pinterest);
 
     expect($listing)->toMatchArray([
         'value' => 'pinterest_carousel',
@@ -87,7 +87,7 @@ test('listing array mirrors media capability fields for api and mcp', function (
         'accept_videos' => false,
     ]);
 
-    expect(ContentType::InstagramReel->toListingArray()['accept_images'])->toBeFalse();
+    expect(ContentType::InstagramReel->toListingArray(Platform::Instagram)['accept_images'])->toBeFalse();
 });
 
 test('media rules reuse enum capability helpers', function () {
@@ -567,6 +567,17 @@ test('a linkedin comment is a reply type no post can take', function () {
         ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
 });
 
+test('an instagram comment is a text-only reply type no post can take', function (Platform $platform) {
+    expect(ContentType::forPlatform($platform))->not->toContain(ContentType::InstagramComment)
+        ->and(ContentType::InstagramComment->isCompatibleWith($platform))->toBeFalse()
+        ->and(ContentType::InstagramComment->isComment())->toBeTrue()
+        ->and(ContentType::InstagramComment->maxMediaCount())->toBe(0)
+        ->and(ContentType::InstagramComment->supportsImage())->toBeFalse()
+        ->and(ContentType::InstagramComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::InstagramComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::InstagramComment->requiresMedia())->toBeFalse();
+})->with([Platform::Instagram, Platform::InstagramFacebook]);
+
 test('an instagram account connected through facebook gets the same post types as instagram', function () {
     expect(ContentType::forPlatform(Platform::InstagramFacebook))->toBe(ContentType::forPlatform(Platform::Instagram))
         ->and(array_values(ContentType::forPlatform(Platform::Instagram)))->toBe([ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::InstagramStory]);
@@ -581,7 +592,7 @@ test('a type without images lists no alt text and a type without video accepts n
         expect($type->acceptsMov())->toBeFalse();
     }
 
-    expect($type->toListingArray())->toMatchArray([
+    expect($type->toListingArray($type->platform()))->toMatchArray([
         'accepts_mov' => $type->acceptsMov(),
         'supports_alt_text' => $type->supportsImageAltText(),
         'supports_video_alt_text' => $type->supportsVideoAltText(),

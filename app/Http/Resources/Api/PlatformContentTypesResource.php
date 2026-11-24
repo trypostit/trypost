@@ -34,15 +34,12 @@ class PlatformContentTypesResource extends JsonResource
             'alt_text_max_length' => $platform->altTextMaxLength(),
             'required_meta' => PostPlatformMetaRules::requiredMetaKeys($platform),
             'recommended_content_length' => $platform->recommendedAiContentLength(),
-            'allowed_media_types' => array_map(
-                fn ($type) => $type->value,
-                $platform->allowedMediaTypes(),
-            ),
+            'allowed_media_types' => collect($platform->allowedMediaTypes())->map->value->all(),
             'default_content_type' => ContentType::defaultFor($platform)->value,
-            'content_types' => array_map(
-                fn (ContentType $type) => $type->toListingArray(),
-                array_values(ContentType::forPlatform($platform)),
-            ),
+            'content_types' => collect(ContentType::forPlatform($platform))
+                ->values()
+                ->map(fn (ContentType $type): array => $type->toListingArray($platform))
+                ->all(),
         ];
     }
 }

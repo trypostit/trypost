@@ -11,12 +11,14 @@ import { isShiftEnter } from '@/lib/keyboard';
 import {
     isBlankThreadReply,
     insertThreadReply,
+    replyDisplayText,
 } from '@/lib/threadReplies';
+import type { PlatformValue } from '@/types/platform';
 import type { ThreadReply } from '@/types/thread-reply';
 
 const props = withDefaults(
     defineProps<{
-        platform: string;
+        platform: PlatformValue;
         limit: number;
         /** A reply poll's question cap, kept even on an account with long posts. */
         pollLimit?: number;
@@ -60,7 +62,8 @@ const limitFor = (reply: ThreadReply): number => {
 };
 
 const remaining = (reply: ThreadReply): number =>
-    limitFor(reply) - displayLength(contentFor(reply.text, props.platform));
+    limitFor(reply) -
+    displayLength(replyDisplayText(reply.text, props.platform, contentFor));
 
 const setReply = (index: number, value: string): void => {
     replies.value = replies.value.map((reply, position) =>

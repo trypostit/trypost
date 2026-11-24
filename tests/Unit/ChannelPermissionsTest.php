@@ -31,26 +31,26 @@ test('a channel without the scope a feature needs is held back from it and told 
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
     $with = xAccountGranting(['tweet.write', 'tweet.read', 'users.read', 'tweet.moderate.write']);
 
-    expect(ChannelPermissions::featureBlockingPost($without, $thread))
+    expect(ChannelPermissions::featureBlockingPost($without, $thread, ContentType::XPost))
         ->toBe(GatedFeature::ThreadReplies)
         ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::ThreadReplies))->toBe(__('posts.form.thread.reply_empty'))
         ->and(ChannelPermissions::missing($without))
         ->toBe(['thread_replies' => ['message' => 'posts.form.thread.reply_empty', 'member_message' => 'posts.form.thread.unsupported']])
-        ->and(ChannelPermissions::featureBlockingPost($with, $thread))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($with, $thread, ContentType::XPost))->toBeNull()
         ->and(ChannelPermissions::missing($with))->toBe([]);
 });
 
 test('a post that does not use the feature is never held back by its scope', function () {
     $without = xAccountGranting(['tweet.write', 'tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::featureBlockingPost($without, ['thread_replies' => []]))->toBeNull()
-        ->and(ChannelPermissions::featureBlockingPost($without, null))->toBeNull();
+    expect(ChannelPermissions::featureBlockingPost($without, ['thread_replies' => []], ContentType::XPost))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($without, null, ContentType::XPost))->toBeNull();
 });
 
 test('a channel lacking the publish scope is refused on the channel, with the network named', function () {
     $account = xAccountGranting(['tweet.read', 'users.read']);
 
-    expect(ChannelPermissions::featureBlockingPost($account, []))
+    expect(ChannelPermissions::featureBlockingPost($account, [], ContentType::XPost))
         ->toBe(GatedFeature::Publish)
         ->and(GatedFeature::Publish->postValidationField())->toBe('social_account_id')
         ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::Publish))
@@ -61,12 +61,12 @@ test('without its own copy a thread refusal names the network, and publishing co
     gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
     $thread = ['thread_replies' => ['second']];
 
-    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), $thread))
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), $thread, ContentType::XPost))
         ->toBe(GatedFeature::ThreadReplies)
         ->and(GatedFeature::ThreadReplies->postValidationField())->toBe('meta.thread_replies')
         ->and(ChannelPermissions::reconnectMessage(Platform::X, GatedFeature::ThreadReplies))
         ->toBe(__('channels.permissions.thread_replies.message', ['network' => Platform::X->label()]))
-        ->and(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.read']), $thread))->toBe(GatedFeature::Publish);
+        ->and(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.read']), $thread, ContentType::XPost))->toBe(GatedFeature::Publish);
 });
 
 test('a member who cannot reconnect the channel is told who can', function () {
@@ -93,8 +93,8 @@ test('unknown scopes, an unknown channel and a network that gates nothing hold n
     $thread = ['thread_replies' => ['second']];
     $telegram = SocialAccount::factory()->make(['platform' => Platform::Telegram, 'scopes' => ['anything']]);
 
-    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(null), $thread))->toBeNull()
-        ->and(ChannelPermissions::featureBlockingPost(null, $thread))->toBeNull()
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(null), $thread, ContentType::XPost))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost(null, $thread, ContentType::XPost))->toBeNull()
         ->and(ChannelPermissions::scopes(Platform::Telegram, GatedFeature::Publish))->toBe([])
         ->and(ChannelPermissions::missing($telegram))->toBe([]);
 });
@@ -122,7 +122,7 @@ test('a channel is never told to reconnect for an optional read or a scope TryPo
 });
 
 test('a channel missing only analytics scopes is never held back from a post', function () {
-    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), []))->toBeNull();
+    expect(ChannelPermissions::featureBlockingPost(xAccountGranting(['tweet.write']), [], ContentType::XPost))->toBeNull();
 });
 
 test('a publisher refuses a feature its channel lacks as a permission, before anything goes out', function () {
@@ -172,8 +172,8 @@ test('every locale names the network wherever english does', function () {
 test('a post type that stands alone lists no thread replies', function () {
     config(['trypost.platforms.x.replies.standalone_types' => [ContentType::XPoll->value => 'posts.form.thread.reply_empty']]);
 
-    expect(ContentType::XPoll->takesThreadReplies())->toBeFalse()
-        ->and(ContentType::XPost->takesThreadReplies())->toBeTrue();
+    expect(ContentType::XPoll->takesThreadReplies(Platform::X))->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies(Platform::X))->toBeTrue();
 });
 
 test('publishing is always asked for, even when the env list leaves its scope out', function () {
@@ -182,7 +182,7 @@ test('publishing is always asked for, even when the env list leaves its scope ou
 
     expect(ChannelPermissions::requestedScopes(Platform::TikTok))->toBe(['user.info.basic', 'video.upload', 'video.publish'])
         ->and(ChannelPermissions::disabledFeatures(Platform::TikTok))->not->toContain(GatedFeature::Publish->value)
-        ->and(ChannelPermissions::featureBlockingPost($account, []))->toBe(GatedFeature::Publish);
+        ->and(ChannelPermissions::featureBlockingPost($account, [], ContentType::TikTokVideo))->toBe(GatedFeature::Publish);
 });
 
 test('a publish requirement met by any of its alternatives adds nothing to the request', function () {
@@ -205,7 +205,7 @@ test('replies are off on a network whose connect does not ask for their scope', 
     config(['trypost.platforms.x.scopes' => ['tweet.read', 'tweet.write', 'users.read']]);
 
     expect(ThreadReplies::supports(Platform::X))->toBeFalse()
-        ->and(ContentType::XPost->takesThreadReplies())->toBeFalse()
+        ->and(ContentType::XPost->takesThreadReplies(Platform::X))->toBeFalse()
         ->and(PostPlatformMetaRules::requiredMetaViolation(Platform::X, ['thread_replies' => ['second']], ContentType::XPost))
         ->toBe(['thread_replies', __('posts.form.thread.unsupported')]);
 

@@ -12,24 +12,29 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\InstagramCommentSkippedException;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\HostsProcessedImages;
+use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\Meta\GraphError;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\PublishContentValidator;
+use App\Support\Social\ThreadProgress;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class InstagramPublisher
 {
     use HasSocialHttpClient;
     use HostsProcessedImages;
+    use PublishesThreads;
 
     private string $baseUrl;
 
@@ -48,6 +53,12 @@ class InstagramPublisher
 
     private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
 
+    /** The result key of a post published without its first comment (`InstagramCommentSkippedException`). */
+    public const string COMMENT_SKIPPED = 'instagram_comment_skipped';
+
+    /**
+     * @return array{id: string, url: ?string, thread_reply_ids?: list<string>, instagram_comment_skipped?: true}
+     */
     public function publish(Post $post): array
     {
         $this->post = $post;
@@ -62,26 +73,48 @@ class InstagramPublisher
 
         $instagramId = $account->platform_user_id;
         $accessToken = $account->access_token;
-
         $content = app(ContentSanitizer::class)->forPost($post);
+        $mediaIds = $post->mediaItems->pluck('id')->all();
+        $rootHash = ThreadProgress::hash($content ?? '', $mediaIds);
 
-        $pendingWorkflow = PublishCheckpoint::instagramWorkflow($post->error_context);
+        try {
+            return $this->publishThread(
+                $post,
+                $rootHash,
+                fn (): array => $this->publishMedia($instagramId, $accessToken, $content),
+                fn (string $text, Collection $media, array $parent, array $root): array => $this->publishFirstComment($root, $text, $accessToken),
+            );
+        } catch (InstagramCommentSkippedException $skipped) {
+            return [
+                'id' => $skipped->root['id'],
+                'url' => data_get($skipped->root, 'url'),
+                self::COMMENT_SKIPPED => true,
+            ];
+        }
+    }
+
+    /**
+     * @return array{id: string, url: ?string, container_id_only?: true}
+     */
+    private function publishMedia(string $instagramId, string $accessToken, ?string $content): array
+    {
+        $pendingWorkflow = PublishCheckpoint::instagramWorkflow($this->post->error_context);
 
         if ($pendingWorkflow !== null) {
             return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
         }
 
-        $media = $post->mediaItems;
+        $media = $this->post->mediaItems;
 
-        if ($media->isEmpty()) {
-            throw new InstagramPublishException(
-                userMessage: 'Instagram requires at least one image or video.',
-                category: ErrorCategory::MediaFormat,
-            );
-        }
+        throw_if(
+            $media->isEmpty(),
+            InstagramPublishException::class,
+            userMessage: 'Instagram requires at least one image or video.',
+            category: ErrorCategory::MediaFormat,
+        );
 
         $firstMedia = $media->first();
-        $contentType = $post->content_type;
+        $contentType = $this->post->content_type;
 
         return match ($contentType) {
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
@@ -94,7 +127,81 @@ class InstagramPublisher
         };
     }
 
-    private function publishFeed(string $instagramId, string $accessToken, ?string $content, $media): array
+    /**
+     * @param  array{id: string, container_id_only?: true}  $root
+     * @return array{id: string}
+     */
+    private function publishFirstComment(array $root, string $text, string $accessToken): array
+    {
+        throw_if(data_get($root, 'container_id_only') === true, InstagramCommentSkippedException::class, $root);
+
+        $context = $this->post->error_context ?? [];
+        if (PublishCheckpoint::instagramCommentIsUnconfirmed($context)) {
+            throw $this->unconfirmedComment();
+        }
+
+        // A redelivered job must treat a comment in flight as unconfirmed.
+        $this->post->writePublication([
+            'error_context' => [...$context, PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true],
+        ]);
+
+        $mediaId = $root['id'];
+        try {
+            $response = $this->socialHttp()
+                ->retry(1, throw: false)
+                ->asForm()
+                ->post("{$this->baseUrl}/{$mediaId}/comments", [
+                    'message' => $text,
+                    'access_token' => $accessToken,
+                ]);
+        } catch (ConnectionException) {
+            throw $this->unconfirmedComment();
+        }
+
+        if ($this->commentResponseIsUnconfirmed($response)) {
+            throw $this->unconfirmedComment($response);
+        }
+
+        if ($response->failed()) {
+            $this->post->writePublication(['error_context' => $context]);
+            $this->handleApiError($response);
+        }
+
+        $commentId = $this->stringId($response->json('id'));
+
+        throw_if(blank($commentId), fn (): InstagramPublishException => $this->unconfirmedComment($response));
+
+        return ['id' => $commentId];
+    }
+
+    private function commentResponseIsUnconfirmed(Response $response): bool
+    {
+        if ($response->serverError() || $response->requestTimeout()) {
+            return true;
+        }
+
+        if (! $response->failed()) {
+            return false;
+        }
+
+        if (InstagramPublishException::isRateLimit($response) || InstagramPublishException::isDocumentedRejection($response)) {
+            return false;
+        }
+
+        return GraphError::isTransientFailure($response);
+    }
+
+    private function unconfirmedComment(?Response $response = null): InstagramPublishException
+    {
+        return new InstagramPublishException(
+            userMessage: __('posts.errors.instagram.comment_unconfirmed'),
+            category: ErrorCategory::ServerError,
+            rawResponse: $response?->body(),
+        );
+    }
+
+    /** @param  Collection<int, MediaItem>  $media */
+    private function publishFeed(string $instagramId, string $accessToken, ?string $content, Collection $media): array
     {
         if ($media->count() > 1) {
             return $this->publishCarousel($instagramId, $accessToken, $content, $media);
@@ -109,7 +216,7 @@ class InstagramPublisher
         return $this->publishSingleImage($instagramId, $accessToken, $content, $firstMedia);
     }
 
-    private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, $media): array
+    private function publishSingleImage(string $instagramId, string $accessToken, ?string $content, MediaItem $media): array
     {
         $params = [
             'image_url' => $media->url,
@@ -130,7 +237,7 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishReel(string $instagramId, string $accessToken, ?string $content, $media): array
+    private function publishReel(string $instagramId, string $accessToken, ?string $content, MediaItem $media): array
     {
         $containerId = $this->createContainer($instagramId, [
             'video_url' => $media->url,
@@ -146,7 +253,7 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishStory(string $instagramId, string $accessToken, $media): array
+    private function publishStory(string $instagramId, string $accessToken, MediaItem $media): array
     {
         $isVideo = $media->isVideo();
 
@@ -172,7 +279,8 @@ class InstagramPublisher
         return $this->finishContainer($instagramId, $accessToken, $containerId);
     }
 
-    private function publishCarousel(string $instagramId, string $accessToken, ?string $content, $mediaCollection): array
+    /** @param  Collection<int, MediaItem>  $mediaCollection */
+    private function publishCarousel(string $instagramId, string $accessToken, ?string $content, Collection $mediaCollection): array
     {
         // Step 1: Create containers for each media item
         $childContainers = [];
@@ -516,10 +624,11 @@ class InstagramPublisher
             $this->handleApiError($publishResponse);
         }
 
-        $mediaId = $this->requireGraphId(
-            $publishResponse->json()['id'] ?? null,
-            'Instagram publish failed: no media ID returned',
-        );
+        $mediaId = $this->stringId($publishResponse->json('id'));
+
+        if (blank($mediaId)) {
+            throw $this->pendingContainerException($containerId, $workflow, $publishResponse->status());
+        }
 
         $this->rememberPublishedMedia($containerId, $mediaId);
 
@@ -556,7 +665,7 @@ class InstagramPublisher
             throw $this->pendingContainerException($containerId, $workflow, $statusResponse->status());
         }
 
-        $statusCode = (string) ($statusResponse->json()['status_code'] ?? '');
+        $statusCode = (string) $statusResponse->json('status_code');
         $status = ContainerStatus::tryFrom($statusCode);
 
         return match ($status) {
@@ -610,11 +719,9 @@ class InstagramPublisher
             ];
         }
 
-        $permalink = data_get($permalinkResponse->json(), 'permalink');
-
         return [
             'id' => $mediaId,
-            'url' => $this->stringId($permalink),
+            'url' => $this->stringId($permalinkResponse->json('permalink')),
         ];
     }
 
@@ -623,13 +730,14 @@ class InstagramPublisher
      * and taking data.0 can bind a different post from the same account, so
      * keep the container id until media_publish has checkpointed a media_id.
      *
-     * @return array{id: string, url: string|null}
+     * @return array{id: string, url: null, container_id_only: true}
      */
     private function alreadyPublishedContainer(string $containerId): array
     {
         return [
             'id' => $containerId,
             'url' => null,
+            'container_id_only' => true,
         ];
     }
 
@@ -677,14 +785,15 @@ class InstagramPublisher
     private function mediaProcessingFailedException(Response $response): InstagramPublishException
     {
         $body = $this->redactResponseBody($response->body());
+        $status = $response->json('status');
 
         Log::error('Instagram media processing failed', [
-            'status_code' => data_get($response->json(), 'status_code'),
-            'status' => data_get($response->json(), 'status'),
+            'status_code' => $response->json('status_code'),
+            'status' => $status,
             'body' => $body,
         ]);
 
-        return InstagramPublishException::fromContainerStatus(data_get($response->json(), 'status'), $body);
+        return InstagramPublishException::fromContainerStatus($status, $body);
     }
 
     /**
@@ -715,7 +824,7 @@ class InstagramPublisher
         }
 
         return $this->requireGraphId(
-            data_get($response->json(), 'id'),
+            $response->json('id'),
             "Instagram {$label} creation failed: No container ID returned",
         );
     }

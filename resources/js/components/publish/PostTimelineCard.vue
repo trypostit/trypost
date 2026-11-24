@@ -31,6 +31,7 @@ import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
+import PostCommentWarningPopover from '@/components/publish/PostCommentWarningPopover.vue';
 import PostCoverWarningPopover from '@/components/publish/PostCoverWarningPopover.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -462,6 +463,10 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
             <PostCoverWarningPopover
                 v-if="youTubeThumbnailWarning"
                 :warning="youTubeThumbnailWarning"
+                :test-key="post.id"
+            />
+            <PostCommentWarningPopover
+                v-if="post.instagram_comment_skipped"
                 :test-key="post.id"
             />
             <PostFailurePopover

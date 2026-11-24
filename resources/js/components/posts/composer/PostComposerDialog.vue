@@ -166,7 +166,7 @@ import {
     resolveGoogleBusinessTopicType,
 } from '@/lib/googleBusiness';
 import { countHashtags } from '@/lib/hashtags';
-import { blank, filled, transform } from '@/lib/helpers';
+import { blank, filled, isNumber, transform } from '@/lib/helpers';
 import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
 import {
@@ -181,6 +181,7 @@ import { pollLimitsOf } from '@/lib/poll';
 import {
     newThreadReply,
     repliesAreComments,
+    replyDisplayText,
     replyEmptyKey,
     replyErrorOf,
     replyTooLongKey,
@@ -1242,16 +1243,16 @@ const canAddThreadReply = (group: NetworkGroup): boolean =>
 const replyLimit = (account: ComposerAccount): number | null => {
     const limit = props.platformConfigs[account.id]?.maxContentLength;
 
-    return typeof limit === 'number' && limit > 0
-        ? limit - contentWarningLength(account)
-        : null;
+    if (!isNumber(limit) || limit <= 0) {
+        return null;
+    }
+
+    return limit - contentWarningLength(account);
 };
 const threadReplyLimit = (group: NetworkGroup): number | null => {
-    const limits = group.accounts
-        .map(replyLimit)
-        .filter((limit): limit is number => limit !== null);
+    const limits = group.accounts.map(replyLimit).filter(filled);
 
-    return limits.length ? Math.min(...limits) : null;
+    return transform(limits, (values) => Math.min(...values));
 };
 const setThreadReplies = (
     group: NetworkGroup,
@@ -1291,7 +1292,9 @@ const activeRemaining = (group: NetworkGroup): number | null => {
     if (filled(reply)) {
         return transform(
             replyTextLimit(group, reply),
-            (limit) => limit - displayLength(contentFor(reply.text, group.platform)),
+            (limit) => limit - displayLength(
+                    replyDisplayText(reply.text, group.platform, contentFor),
+                ),
         );
     }
 
@@ -1612,6 +1615,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         ),
         channelPermissionKey(
             props.platformConfigs[account.id],
+            contentType,
             destination.meta,
             canManageAccounts.value,
         ),
@@ -1628,15 +1632,16 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
     if (replyContentType) {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
-            const over =
-                limit === null
-                    ? 0
-                    : displayLength(contentFor(reply.text, account.platform)) -
-                      limit;
-            const replyMediaWarning = reply.media.length
-                ? getMediaValidationWarning(replyContentType, reply.media)
-                : null;
-            if (isBlankText(reply.text) && !reply.media.length) {
+            const text = replyDisplayText(
+                reply.text,
+                account.platform,
+                contentFor,
+            );
+            const over = transform(limit, (max) => displayLength(text) - max, 0);
+            const replyMediaWarning = transform(reply.media, (media) =>
+                getMediaValidationWarning(replyContentType, media),
+            );
+            if (isBlankText(text) && blank(reply.media)) {
                 issues.push({
                     key: replyEmptyKey(account.platform),
                     params: {},
@@ -2983,6 +2988,9 @@ const onDialogOpenChange = (value: boolean): void => {
                                     />
                                     <PostComposerPermissionWarning
                                         :accounts="group.accounts"
+                                        :content-type="
+                                            groupDestination(group).content_type
+                                        "
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
                                         :disabled="submitting"

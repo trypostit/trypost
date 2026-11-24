@@ -12,6 +12,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
 
@@ -42,9 +43,14 @@ class RecoverStuckPosts extends Command
                     $this->tiktokPhotoDerivativeCleaner->cleanupUnlessPublishInFlight($post->error_context, $post->id);
                     $this->googleBusinessDerivativeCleaner->cleanup($post);
 
+                    $messageKey = match (PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context)) {
+                        true => 'posts.errors.instagram.comment_unconfirmed',
+                        false => 'posts.errors.publishing_timed_out',
+                    };
+
                     $post->writePublication([
                         'publish_status' => PublishStatus::Failed,
-                        'error_message' => __('posts.errors.publishing_timed_out'),
+                        'error_message' => __($messageKey),
                         'error_context' => [
                             ...($post->error_context ?? []),
                             'category' => ErrorCategory::Timeout->value,

@@ -25,6 +25,8 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    public const string INSTAGRAM_COMMENT_PENDING = 'instagram_comment_pending';
+
     public const string X_MEDIA = 'x_media';
 
     /**
@@ -82,7 +84,26 @@ final class PublishCheckpoint
     {
         $workflow = data_get($context, self::INSTAGRAM_WORKFLOW);
 
-        return is_array($workflow) && $workflow !== [] ? $workflow : null;
+        if (! is_array($workflow)) {
+            return null;
+        }
+
+        return filled($workflow) ? $workflow : null;
+    }
+
+    /**
+     * A first comment was sent and Instagram never confirmed it: it is still
+     * pending and no comment id was checkpointed after the post.
+     *
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function instagramCommentIsUnconfirmed(?array $context): bool
+    {
+        if (data_get($context, self::INSTAGRAM_COMMENT_PENDING) !== true) {
+            return false;
+        }
+
+        return blank(data_get($context, [ThreadProgress::KEY, 1, 'id']));
     }
 
     /**

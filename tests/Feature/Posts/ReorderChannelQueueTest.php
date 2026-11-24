@@ -249,7 +249,7 @@ test('only posts changing slots need permission and support for their replies', 
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['post_ids' => $enabled
             ? __('channels.permissions.thread_replies.message', ['network' => $channel->platform->label()])
-            : __('posts.form.thread.unsupported')]);
+            : __('posts.form.thread.comment_unsupported')]);
 
     expect(reorderTimes($this->a, $this->b, $this->c))->toBe($before);
 

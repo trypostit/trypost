@@ -21,15 +21,21 @@ test('the composer threads every network the way the server does', function () {
 
     $composer = json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
     $server = collect(Platform::cases())->mapWithKeys(function (Platform $platform): array {
-        $comments = ThreadReplies::replyContentType($platform) === ContentType::LinkedInComment;
+        $type = ThreadReplies::replyContentType($platform);
+        $comments = $type?->isComment();
+        $startKey = match ($type) {
+            ContentType::InstagramComment => 'posts.form.thread.first_comment',
+            ContentType::LinkedInComment => 'posts.form.thread.add_comment',
+            default => 'posts.form.thread.start',
+        };
 
         return [$platform->value => [
-            'reply_content_type' => ThreadReplies::replyContentType($platform)?->value,
+            'reply_content_type' => $type?->value,
             'reply_poll_content_type' => transform(ThreadReplies::replyPoll($platform), fn (string $poll): string => $poll::contentType()->value),
             'max_replies' => ThreadReplies::maxReplies($platform),
             'empty_key' => $comments ? 'posts.form.thread.comment_empty' : 'posts.form.thread.reply_empty',
             'too_long_key' => $comments ? 'posts.form.thread.comment_too_long' : 'posts.form.thread.reply_too_long',
-            'start_key' => $comments ? 'posts.form.thread.add_comment' : 'posts.form.thread.start',
+            'start_key' => $startKey,
         ]];
     })->all();
 
@@ -38,7 +44,8 @@ test('the composer threads every network the way the server does', function () {
         ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
         ->and($composer['standalone_key'])->toBeNull()
         ->and($composer['replies_off_key'])->toBe('posts.form.thread.unsupported')
-        ->and($composer['unsupported_story_keys'])->toBe(['posts.form.thread.unsupported', 'posts.form.thread.unsupported'])
+        ->and($composer['comments_off_key'])->toBe('posts.form.thread.comment_unsupported')
+        ->and($composer['unsupported_story_keys'])->toBe(['posts.form.thread.instagram_story', 'posts.form.thread.unsupported'])
         ->and($composer['permission_keys'])->toBe(serverPermissionKeys());
 });
 

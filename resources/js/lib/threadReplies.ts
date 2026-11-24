@@ -1,4 +1,5 @@
-import { blank, filled, isEmpty } from '@/lib/helpers';
+import { blank, filled, isEmpty, isString } from '@/lib/helpers';
+import { plainText } from '@/lib/plainText';
 import { uuid } from '@/lib/uuid';
 import {
     ContentType,
@@ -33,23 +34,47 @@ export const isBlankThreadReply = ({
     text,
     media,
     poll,
-}: ThreadReply): boolean =>
-    isEmpty(text) && blank(media) && blank(poll);
+}: ThreadReply): boolean => isEmpty(text) && blank(media) && blank(poll);
 
-/** A reply as the server stores it; `key` only exists in a draft the composer saved. */
-type StoredThreadReply = Omit<ThreadReply, 'key'> & { key?: string };
+/** Stored JSON can contain legacy text or an object; `key` only exists in composer drafts. */
+type StoredThreadReply = string | Partial<ThreadReply>;
+type StoredThreadMeta = Record<string, unknown> & {
+    thread_replies?: StoredThreadReply[] | null;
+};
 
 /** A stored reply as the composer edits it, keyed by its position when it has no key yet. */
-const fromStored = (
-    { key, text, media, poll }: StoredThreadReply,
-    index: number,
-): ThreadReply =>
-    withReplyPoll({ key: key ?? `stored-${index}`, text, media }, poll);
+const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
+    const storedKey = `stored-${index}`;
+
+    if (isString(reply)) {
+        return { key: storedKey, text: reply, media: [] };
+    }
+
+    const { key = storedKey, text, media, poll } = reply;
+
+    return withReplyPoll({ key, text: text ?? '', media: media ?? [] }, poll);
+};
 
 /** The replies of a post's thread, read from its meta. */
 export const threadRepliesOf = (
-    meta: Record<string, any> | null | undefined,
+    meta: StoredThreadMeta | null | undefined,
 ): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
+
+/**
+ * A reply's text as its network counts it: an Instagram comment as the
+ * publisher sends it, any other reply through the composer's `contentFor`.
+ */
+export const replyDisplayText = (
+    text: string,
+    platform: PlatformValue,
+    contentFor: (content: string, platform: PlatformValue) => string,
+): string => {
+    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
+        return plainText(text);
+    }
+
+    return contentFor(text, platform);
+};
 
 /** The reply as a poll, which carries no media, or as a plain post without one. */
 export const withReplyPoll = (
@@ -113,8 +138,20 @@ export const threadMaxReplies = (platform: PlatformValue): number => {
     return THREAD_MAX_REPLIES[platform];
 };
 
-export const repliesAreComments = (platform: PlatformValue): boolean =>
-    threadReplyPostType(platform) === ContentType.LinkedInComment;
+const COMMENT_CONTENT_TYPES: readonly ContentTypeValue[] = [
+    ContentType.InstagramComment,
+    ContentType.LinkedInComment,
+];
+
+export const repliesAreComments = (platform: PlatformValue): boolean => {
+    const type = threadReplyPostType(platform);
+
+    if (!filled(type)) {
+        return false;
+    }
+
+    return COMMENT_CONTENT_TYPES.includes(type);
+};
 
 export const replyTooLongKey = (platform: PlatformValue): string => {
     if (repliesAreComments(platform)) {
@@ -125,7 +162,13 @@ export const replyTooLongKey = (platform: PlatformValue): string => {
 };
 
 export const startThreadKey = (platform: PlatformValue): string => {
-    if (repliesAreComments(platform)) {
+    const type = threadReplyPostType(platform);
+
+    if (type === ContentType.InstagramComment) {
+        return 'posts.form.thread.first_comment';
+    }
+
+    if (type === ContentType.LinkedInComment) {
         return 'posts.form.thread.add_comment';
     }
 
@@ -140,6 +183,15 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
+/** The key for a network that takes no replies, in its own words: comments or a thread (`ThreadReplies::repliesOffKey()`). */
+const repliesOffKey = (platform: PlatformValue): PostFormTranslationKey => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_unsupported';
+    }
+
+    return 'posts.form.thread.unsupported';
+};
+
 /**
  * Why the network cannot accept replies for this post type. `repliesEnabled`
  * is whether the network asks for the permissions its replies need.
@@ -150,11 +202,11 @@ export const threadUnsupportedKey = (
     repliesEnabled: boolean,
 ): PostFormTranslationKey | null => {
     if (threadMaxReplies(platform) === 0) {
-        return 'posts.form.thread.unsupported';
+        return repliesOffKey(platform);
     }
 
     if (!repliesEnabled) {
-        return 'posts.form.thread.unsupported';
+        return repliesOffKey(platform);
     }
 
     if (!filled(contentType)) {
@@ -168,7 +220,7 @@ export const threadUnsupportedKey = (
 export const threadUnavailableKey = (
     platform: PlatformValue,
     contentType: ContentTypeValue | null,
-    meta: Record<string, any> | null,
+    meta: StoredThreadMeta | null,
     repliesEnabled: boolean,
 ): PostFormTranslationKey | null => {
     if (blank(threadRepliesOf(meta))) {

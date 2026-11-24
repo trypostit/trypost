@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\GatedFeature;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Platform\ListContentTypesTool;
+use App\Support\ChannelPermissions;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -57,9 +60,32 @@ test('content types say where thread replies are supported and how many', functi
     expect(contentTypesListingType($platforms, 'x', 'x_post'))
         ->toMatchArray(['supports_thread_replies' => true, 'max_thread_replies' => 24])
         ->and(contentTypesListingType($platforms, 'bluesky', 'bluesky_post')['supports_thread_replies'])->toBeTrue()
-        ->and(contentTypesListingType($platforms, 'instagram', 'instagram_feed'))
+        ->and(contentTypesListingType($platforms, 'instagram', 'instagram_story'))
         ->toMatchArray(['supports_thread_replies' => false, 'max_thread_replies' => null]);
 });
+
+test('instagram comment capability is listed per login variant and only for feed and reel', function (string $enabled, string $disabled) {
+    config([
+        "trypost.platforms.{$enabled}.scopes" => ChannelPermissions::missingFrom([], Platform::from($enabled), GatedFeature::ThreadReplies),
+        "trypost.platforms.{$disabled}.scopes" => [],
+    ]);
+
+    $platforms = contentTypesListingApi($this);
+    $supported = ['supports_thread_replies' => true, 'max_thread_replies' => 1];
+    $unsupported = ['supports_thread_replies' => false, 'max_thread_replies' => null];
+
+    expect(contentTypesListingType($platforms, $enabled, 'instagram_feed'))->toMatchArray($supported)
+        ->and(contentTypesListingType($platforms, $enabled, 'instagram_reel'))->toMatchArray($supported)
+        ->and(contentTypesListingType($platforms, $enabled, 'instagram_story'))->toMatchArray($unsupported)
+        ->and(contentTypesListingType($platforms, $disabled, 'instagram_feed'))->toMatchArray($unsupported)
+        ->and(collect($platforms)->pluck('content_types')->flatten(1)->pluck('value'))->not->toContain('instagram_comment');
+
+    TryPostServer::actingAs($this->user)->tool(ListContentTypesTool::class, [])
+        ->assertOk()->assertStructuredContent(fn ($json) => $json->where('platforms', $platforms));
+})->with([
+    'instagram login enabled' => ['instagram', 'instagram-facebook'],
+    'facebook login enabled' => ['instagram-facebook', 'instagram'],
+]);
 
 test('a linkedin post lists one thread reply and the comment type is never listed', function () {
     $platforms = contentTypesListingApi($this);

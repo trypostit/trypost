@@ -326,7 +326,10 @@ test('a channel that lacks a permission a feature needs says so and offers to re
         'workspace_id' => $user->current_workspace_id,
         'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
     ]);
-    $granted = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id]);
+    $granted = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_insights', 'instagram_business_manage_comments'],
+    ]);
     $this->actingAs($user);
 
     $page = visit(route('app.workspace.channels'));

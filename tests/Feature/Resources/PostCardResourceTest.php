@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Services\Social\InstagramPublisher;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -30,6 +31,7 @@ function postCardAsBefore(Post $post): array
             'failed_at' => data_get($post->error_context, 'failed_at'),
         ],
         'youtube_thumbnail_warning' => null,
+        'instagram_comment_skipped' => false,
     ];
 
     $card['user'] = $post->user === null ? null : [
@@ -73,7 +75,7 @@ test('a card without its relations loaded leaves them out', function () {
     $card = PostCardResource::make($post->fresh())->resolve();
 
     expect($card)->not->toHaveKeys(['social_account', 'user', 'labels'])
-        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null]);
+        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null, 'instagram_comment_skipped' => false]);
 });
 
 test('a rejected post keeps its failure when its context has no category', function () {
@@ -86,4 +88,14 @@ test('a rejected post keeps its failure when its context has no category', funct
 
     expect($card['failure'])->toBe(['category' => null, 'failed_at' => null])
         ->and($card['youtube_thumbnail_warning'])->toBe('forbidden');
+});
+
+test('an instagram post published without its first comment shows the warning, not a failure', function () {
+    $post = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
+    $post->writePublication(['error_context' => [InstagramPublisher::COMMENT_SKIPPED => true]]);
+
+    $card = PostCardResource::make($post->fresh())->resolve();
+
+    expect($card['failure'])->toBeNull()
+        ->and($card['instagram_comment_skipped'])->toBeTrue();
 });

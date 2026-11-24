@@ -80,7 +80,7 @@ class AppendPostMedia
         }
 
         if ($post->status === PostStatus::Scheduled && $post->socialAccount !== null) {
-            ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->meta, $actor);
+            ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post, $actor);
         }
     }
 }

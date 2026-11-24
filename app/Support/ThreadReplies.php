@@ -43,6 +43,7 @@ class ThreadReplies
             Platform::Mastodon => ContentType::MastodonPost,
             Platform::X => ContentType::XPost,
             Platform::Threads => ContentType::ThreadsPost,
+            Platform::Instagram, Platform::InstagramFacebook => ContentType::InstagramComment,
             Platform::LinkedIn, Platform::LinkedInPage => ContentType::LinkedInComment,
             default => null,
         };
@@ -73,17 +74,27 @@ class ThreadReplies
 
     public static function supportsPostType(Platform $platform, ContentType $type): bool
     {
-        if (! self::supports($platform)) {
-            return false;
-        }
-
-        return blank(self::standaloneMessage($platform, $type));
+        return blank(self::unsupportedKey($platform, $type));
     }
 
-    /** The lang key of a post type that takes no replies on the network (its `replies.standalone_types`), else null. */
-    public static function standaloneMessage(Platform $platform, ContentType $type): ?string
+    /** The reason a post cannot take replies on the network, as a translation key. */
+    public static function unsupportedKey(Platform $platform, ContentType $type): ?string
     {
+        if (! self::supports($platform)) {
+            return self::repliesOffKey($platform);
+        }
+
         return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
+    }
+
+    /** The translation key for a network that takes no replies, in its own words: comments or a thread. */
+    private static function repliesOffKey(Platform $platform): string
+    {
+        if (self::replyContentType($platform)?->isComment()) {
+            return 'posts.form.thread.comment_unsupported';
+        }
+
+        return 'posts.form.thread.unsupported';
     }
 
     /**
@@ -243,14 +254,10 @@ class ThreadReplies
             return null;
         }
 
-        if (! self::supports($platform)) {
-            return ['thread_replies', __('posts.form.thread.unsupported')];
-        }
+        $unsupported = self::unsupportedKey($platform, $type);
 
-        $standalone = self::standaloneMessage($platform, $type);
-
-        if (filled($standalone)) {
-            return ['thread_replies', __($standalone)];
+        if (filled($unsupported)) {
+            return ['thread_replies', __($unsupported)];
         }
 
         if (count($replies) > self::maxReplies($platform)) {
@@ -300,15 +307,17 @@ class ThreadReplies
             return self::pollReplyViolation($poll, $reply, $account, $reserved);
         }
 
+        $type = self::replyContentType($platform);
+
         if (filled(Str::trim($reply['text']))) {
-            return self::lengthViolation($reply['text'], $platform, $account, self::replyContentType($platform), $reserved);
+            return self::lengthViolation($reply['text'], $platform, $account, $type, $reserved);
         }
 
         if (filled($reply['media'])) {
             return null;
         }
 
-        if (self::replyContentType($platform) === ContentType::LinkedInComment) {
+        if ($type?->isComment()) {
             return [null, __('posts.form.thread.comment_empty')];
         }
 
@@ -343,6 +352,10 @@ class ThreadReplies
     private static function lengthViolation(string $text, Platform $platform, ?SocialAccount $account, ?ContentType $type, int $reserved): ?array
     {
         $display = app(ContentSanitizer::class)->displayText($text, $platform);
+        if ($type?->isComment() && blank(Str::trim($display))) {
+            return [null, __('posts.form.thread.comment_empty')];
+        }
+
         $over = ContentType::overflowFor($account, $platform, $type, $display, $reserved);
 
         if ($over === 0) {
@@ -351,7 +364,7 @@ class ThreadReplies
 
         $limit = ContentType::maxContentLengthFor($account, $platform, $type) - $reserved;
 
-        if ($type === ContentType::LinkedInComment) {
+        if ($type?->isComment()) {
             return [null, __('posts.form.thread.comment_too_long', ['limit' => $limit, 'over' => $over])];
         }
 

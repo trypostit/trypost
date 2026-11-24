@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -80,7 +82,7 @@ class ChannelPermissions
         }
 
         return collect([Platform::LinkedIn, Platform::LinkedInPage])
-            ->filter(fn (Platform $identity): bool => $identity->isEnabled())
+            ->filter->isEnabled()
             ->flatMap(self::requestedScopes(...))
             ->unique()
             ->values()
@@ -107,7 +109,7 @@ class ChannelPermissions
     {
         return collect(GatedFeature::cases())
             ->reject(fn (GatedFeature $feature): bool => self::enabled($platform, $feature))
-            ->map(fn (GatedFeature $feature): string => $feature->value)
+            ->map->value
             ->values()
             ->all();
     }
@@ -115,7 +117,7 @@ class ChannelPermissions
     /** Whether TryPost may use the feature on the channel: it is on and the grant holds its scopes. */
     public static function permits(SocialAccount $account, GatedFeature $feature): bool
     {
-        return self::isGrantedWhenEnabled($account, $feature) === true;
+        return self::enabled($account->platform, $feature) && ! self::lacks($account, $feature);
     }
 
     /** Whether the account's stored grant lacks a scope of the feature (`missingScope()`). */
@@ -149,7 +151,7 @@ class ChannelPermissions
     {
         return collect(GatedFeature::cases())
             ->reject(fn (GatedFeature $feature): bool => $feature->isOptionalRead())
-            ->filter(fn (GatedFeature $feature): bool => self::blocks($account, $feature))
+            ->filter(fn (GatedFeature $feature): bool => self::requiresReconnect($account, $feature))
             ->mapWithKeys(fn (GatedFeature $feature): array => [$feature->value => self::messages($account->platform, $feature)])
             ->all();
     }
@@ -159,28 +161,42 @@ class ChannelPermissions
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public static function featureBlockingPost(?SocialAccount $account, ?array $meta): ?GatedFeature
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type): ?GatedFeature
     {
         if (blank($account)) {
             return null;
         }
 
-        return collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => $feature->isRequiredToPublish($meta) && self::blocks($account, $feature));
+        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type): bool {
+            if (! $feature->isRequiredToPublish($meta)) {
+                return false;
+            }
+
+            if ($feature === GatedFeature::ThreadReplies && ! ThreadReplies::supportsPostType($account->platform, $type)) {
+                return false;
+            }
+
+            return self::requiresReconnect($account, $feature);
+        });
     }
 
-    /** @param array<string, mixed>|null $meta */
-    public static function ensureScheduledPostCanChange(SocialAccount $channel, ?array $meta, User $actor, ?string $field = null): void
+    public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
-        $blocked = self::featureBlockingPost($channel, $meta);
-        if ($blocked !== null) {
+        $type = ContentType::forPost($post, $channel->platform);
+        $blocked = self::featureBlockingPost($channel, $post->meta, $type);
+        if (filled($blocked)) {
             throw ValidationException::withMessages([
                 $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
             ]);
         }
 
-        if (GatedFeature::ThreadReplies->isRequiredToPublish($meta) && ! ThreadReplies::supports($channel->platform)) {
-            throw ValidationException::withMessages([$field ?? GatedFeature::ThreadReplies->postValidationField() => __('posts.form.thread.unsupported')]);
+        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta)) {
+            return;
+        }
+
+        $unsupported = ThreadReplies::unsupportedKey($channel->platform, $type);
+        if (filled($unsupported)) {
+            throw ValidationException::withMessages([$field ?? GatedFeature::ThreadReplies->postValidationField() => __($unsupported)]);
         }
     }
 
@@ -200,19 +216,9 @@ class ChannelPermissions
      * behind the channel's warnings and a post's refusal, so the composer and
      * the server agree. A feature that is off asks nobody to reconnect.
      */
-    private static function blocks(SocialAccount $account, GatedFeature $feature): bool
+    private static function requiresReconnect(SocialAccount $account, GatedFeature $feature): bool
     {
-        return self::isGrantedWhenEnabled($account, $feature) === false;
-    }
-
-    /** Whether the grant covers the feature, or null when the feature is off. */
-    private static function isGrantedWhenEnabled(SocialAccount $account, GatedFeature $feature): ?bool
-    {
-        if (! self::enabled($account->platform, $feature)) {
-            return null;
-        }
-
-        return ! self::lacks($account, $feature);
+        return self::enabled($account->platform, $feature) && self::lacks($account, $feature);
     }
 
     /**

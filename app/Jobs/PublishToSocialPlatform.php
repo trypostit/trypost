@@ -218,6 +218,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             null => $this->post->markPublicationPublished($platformPostId, $platformUrl),
         };
 
+        if (data_get($result, InstagramPublisher::COMMENT_SKIPPED) === true) {
+            $this->post->writePublication(['error_context' => [...($this->post->error_context ?? []), InstagramPublisher::COMMENT_SKIPPED => true]]);
+        }
+
         if ($this->post->awaitsTikTokVideoId()) {
             ResolveTikTokVideoId::dispatch($this->post)
                 ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))
@@ -521,6 +525,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         };
 
         $failureContext = [...$previousContext, ...($context ?? [])];
+
+        if (PublishCheckpoint::instagramCommentIsUnconfirmed($failureContext)) {
+            $message = __('posts.errors.instagram.comment_unconfirmed');
+        }
 
         $this->post->markPublicationFailed(
             ThreadProgress::failureMessage($this->post, $message, $failureContext),
