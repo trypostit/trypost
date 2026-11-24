@@ -139,6 +139,20 @@ test('the instagram comment counter counts non-breaking spaces like the publishe
     $page->assertNoJavaScriptErrors();
 });
 
+test('the instagram comment field measures the text instagram receives, as the composer does', function () {
+    $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start')->fill('@thread-reply-0', Str::repeat('&amp;', 450));
+
+    letPageRun($page, 500);
+    $page->assertAttributeMissing('@thread-reply-0', 'aria-invalid');
+
+    $page->fill('@thread-reply-0', Str::repeat('a', 2201));
+    waitForState($page, '@thread-reply-0', "element.getAttribute('aria-invalid') === 'true'");
+    $page->assertNoJavaScriptErrors();
+});
+
 test('the instagram first comment reconnect action is shown only to workspace users who can use it', function (bool $canReconnect) {
     $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
     $post->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish']]);
