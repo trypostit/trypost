@@ -23,14 +23,14 @@ beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
 });
 
-test('instagram first comments can be saved as a draft before a reconnect and then scheduled', function (string $surface, Platform $platform, array $publishScopes, string $commentScope) {
+test('instagram first comments can be saved as a draft before a reconnect and then scheduled', function (string $surface, Platform $platform, array $publishScopes, string $commentScope, ContentType $type) {
     config(["trypost.platforms.{$platform->value}.scopes" => [...$publishScopes, $commentScope]]);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => $platform,
         'scopes' => $publishScopes,
     ]);
-    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $this->user->id]);
+    $post = Post::factory()->forAccount($account, $type)->draft()->create(['user_id' => $this->user->id]);
     $comment = ['text' => 'More details in the bio', 'media' => []];
 
     $response = pollParityUpdate($surface, $post, ['meta' => ['thread_replies' => [$comment]]]);
@@ -40,7 +40,11 @@ test('instagram first comments can be saved as a draft before a reconnect and th
     };
     expect(data_get($post->fresh()->meta, 'thread_replies'))->toBe([$comment]);
 
-    $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    $upload = Media::factory()->temporaryUpload($this->workspace)->stored();
+    if ($type === ContentType::InstagramReel) {
+        $upload = $upload->video()->state(['meta' => ['width' => 1080, 'height' => 1920, 'duration' => 20]]);
+    }
+    $upload = $upload->create();
     $schedule = [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
@@ -63,11 +67,14 @@ test('instagram first comments can be saved as a draft before a reconnect and th
         'web', 'api' => $response->assertSessionHasNoErrors(),
     };
 
-    expect($post->fresh())->status->toBe(Status::Scheduled)->content_type->toBe(ContentType::InstagramFeed)
+    expect($post->fresh())->status->toBe(Status::Scheduled)->content_type->toBe($type)
         ->and(data_get($post->fresh()->meta, 'thread_replies'))->toBe([$comment]);
 })->with(['web', 'api', 'mcp'])->with([
     'instagram login' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish'], 'instagram_business_manage_comments'],
     'facebook login' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish'], 'instagram_manage_comments'],
+])->with([
+    'feed' => [ContentType::InstagramFeed],
+    'reel' => [ContentType::InstagramReel],
 ]);
 
 test('approval rechecks an instagram comment grant that was revoked while awaiting approval', function (string $surface) {
@@ -122,10 +129,12 @@ test('changing a queued instagram story reports its comment format restriction b
     'reorder queue' => ['reorder', 'post_ids'],
 ]);
 
-test('an instagram story with a comment reports the format restriction before the missing comment grant', function (string $surface) {
-    $account = SocialAccount::factory()->instagram()->create([
+test('an instagram story with a comment reports the format restriction before the missing comment grant', function (string $surface, Platform $platform, array $publishScopes, string $commentScope) {
+    config(["trypost.platforms.{$platform->value}.scopes" => [...$publishScopes, $commentScope]]);
+    $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
+        'platform' => $platform,
+        'scopes' => $publishScopes,
     ]);
     $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->draft()->create(['user_id' => $this->user->id]);
     $upload = Media::factory()->temporaryUpload($this->workspace)->stored()->create(['meta' => ['width' => 1080, 'height' => 1920]]);
@@ -143,7 +152,10 @@ test('an instagram story with a comment reports the format restriction before th
         'mcp' => $response->assertHasErrors([$message]),
         'web', 'api' => $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies' => $message]),
     };
-})->with(['web', 'api', 'mcp']);
+})->with(['web', 'api', 'mcp'])->with([
+    'instagram login' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish'], 'instagram_business_manage_comments'],
+    'facebook login' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish'], 'instagram_manage_comments'],
+]);
 
 test('every surface refuses a second instagram comment, a comment with media and a comment over 2,200 characters', function (string $surface, string $case) {
     $account = SocialAccount::factory()->create([

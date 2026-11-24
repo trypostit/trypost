@@ -72,6 +72,8 @@ test('the instagram composer saves one text comment and shows it inside the post
     $reopened->assertNoJavaScriptErrors();
 })->with([
     'instagram login feed' => [Platform::Instagram, ContentType::InstagramFeed],
+    'instagram login reel' => [Platform::Instagram, ContentType::InstagramReel],
+    'facebook login feed' => [Platform::InstagramFacebook, ContentType::InstagramFeed],
     'facebook login reel' => [Platform::InstagramFacebook, ContentType::InstagramReel],
 ]);
 

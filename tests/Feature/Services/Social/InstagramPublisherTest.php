@@ -114,9 +114,13 @@ test('instagram creates a first comment only after the published media id is kno
         'access_token' => $this->socialAccount->access_token,
     ]);
 })->with([
-    'instagram feed' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'], ContentType::InstagramFeed, ['photo.jpg']],
-    'facebook carousel' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish', 'instagram_manage_comments'], ContentType::InstagramFeed, ['one.jpg', 'two.jpg']],
-    'instagram reel' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'], ContentType::InstagramReel, ['reel.mp4']],
+    'instagram login' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']],
+    'facebook login' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish', 'instagram_manage_comments']],
+])->with([
+    'feed image' => [ContentType::InstagramFeed, ['photo.jpg']],
+    'feed carousel' => [ContentType::InstagramFeed, ['one.jpg', 'two.jpg']],
+    'feed video' => [ContentType::InstagramFeed, ['clip.mp4']],
+    'reel' => [ContentType::InstagramReel, ['reel.mp4']],
 ]);
 
 test('a known first comment rejection resumes from the confirmed instagram media without publishing it again', function () {
