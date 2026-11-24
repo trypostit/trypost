@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'تعذّر على Instagram معالجة هذا الملف. جرّب ملفًا آخر.',
             'comment_unconfirmed' => 'لم يؤكد Instagram التعليق. تحقّق من المنشور على Instagram قبل المحاولة مجددًا.',
-            'comment_media_unconfirmed' => 'نشر Instagram المنشور من دون إرجاع معرّفه. أضف التعليق في Instagram.',
         ],
         'content_too_long' => 'يحتوي هذا المنشور على :provided حرفًا، لكن :platform يسمح بـ :max.',
         'unrecognized_error' => 'أعاد :platform خطأً لم نتمكن من تحديده. حاول مرة أخرى.',

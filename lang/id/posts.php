@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram gagal memproses media ini. Coba file lain.',
             'comment_unconfirmed' => 'Instagram belum mengonfirmasi komentar. Periksa postingan di Instagram sebelum mencoba lagi.',
-            'comment_media_unconfirmed' => 'Instagram menerbitkan postingan tanpa mengembalikan ID-nya. Tambahkan komentar di Instagram.',
         ],
         'content_too_long' => 'Postingan ini berisi :provided karakter, tapi :platform hanya mengizinkan :max.',
         'unrecognized_error' => ':platform mengembalikan error yang tidak bisa kami identifikasi. Coba lagi.',

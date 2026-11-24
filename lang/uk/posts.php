@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram не зміг обробити цей файл. Спробуйте інший.',
             'comment_unconfirmed' => 'Instagram не підтвердив коментар. Перевірте публікацію в Instagram, перш ніж спробувати ще раз.',
-            'comment_media_unconfirmed' => 'Instagram опублікував допис без повернення його ідентифікатора. Додайте коментар в Instagram.',
         ],
         'content_too_long' => 'У цьому дописі :provided символів, а :platform дозволяє :max.',
         'unrecognized_error' => ':platform повернув помилку, яку нам не вдалося визначити. Спробуйте ще раз.',

@@ -48,30 +48,25 @@ class RetryFailedPost extends Command
         }
 
         $previousContext = $post->error_context;
-        $commentWasPending = PublishCheckpoint::instagramCommentIsUnconfirmed($previousContext);
+        $commentUnconfirmed = PublishCheckpoint::instagramCommentIsUnconfirmed($previousContext);
 
-        if ($commentWasPending && ! ThreadProgress::hasPublishedRoot($previousContext)) {
-            $this->error(__('posts.errors.instagram.comment_media_unconfirmed'));
+        if ($commentUnconfirmed && ! ThreadProgress::hasPublishedRoot($previousContext)) {
+            $this->error(__('posts.errors.instagram.comment_unconfirmed'));
 
             return self::FAILURE;
         }
 
-        $commentId = data_get($previousContext, [ThreadProgress::KEY, 1, 'id']);
-        $needsCommentConfirmation = $commentWasPending && blank($commentId);
-        $retryContext = $this->contextForRetry(
-            $previousContext,
-            keepPendingComment: $commentWasPending && ! $needsCommentConfirmation,
-        );
+        $retryContext = $this->contextForRetry($previousContext);
 
         $this->showRetrySummary($post, resuming: filled($retryContext));
 
-        $confirmation = match ($needsCommentConfirmation) {
+        $confirmation = match ($commentUnconfirmed) {
             true => 'Did you check Instagram and confirm the first comment is missing?',
             false => 'Queue a publish attempt for this post?',
         };
 
         if (! $this->confirm($confirmation)) {
-            return $needsCommentConfirmation ? self::FAILURE : self::SUCCESS;
+            return $commentUnconfirmed ? self::FAILURE : self::SUCCESS;
         }
 
         if (! $this->prepareRetry($post, $retryContext)) {
@@ -151,7 +146,7 @@ class RetryFailedPost extends Command
      * @param  array<string, mixed>|null  $context
      * @return array<string, mixed>|null
      */
-    private function contextForRetry(?array $context, bool $keepPendingComment): ?array
+    private function contextForRetry(?array $context): ?array
     {
         $thread = data_get($context, ThreadProgress::KEY);
         $threadProgress = is_array($thread) ? $thread : [];
@@ -165,7 +160,6 @@ class RetryFailedPost extends Command
             PublishCheckpoint::TIKTOK_PUBLISH_ID => $tiktokPublishId,
             PublishCheckpoint::INSTAGRAM_WORKFLOW => $instagramWorkflow,
             PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS => filled($tiktokPaths) ? $tiktokPaths : null,
-            PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => $keepPendingComment ? true : null,
         ]);
 
         return filled($checkpoints) ? $checkpoints : null;

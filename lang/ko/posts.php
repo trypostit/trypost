@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram에서 이 미디어를 처리하지 못했습니다. 다른 파일을 사용해 보세요.',
             'comment_unconfirmed' => 'Instagram에서 댓글을 확인하지 못했습니다. 다시 시도하기 전에 Instagram에서 게시물을 확인하세요.',
-            'comment_media_unconfirmed' => 'Instagram에 게시물이 올라갔지만 ID를 받지 못했습니다. Instagram에서 댓글을 추가하세요.',
         ],
         'content_too_long' => '이 게시물은 :provided자이지만 :platform에서는 최대 :max자까지 허용됩니다.',
         'unrecognized_error' => ':platform에서 확인할 수 없는 오류가 발생했습니다. 다시 시도하세요.',

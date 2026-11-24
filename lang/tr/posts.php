@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram bu medyayı işleyemedi. Başka bir dosya deneyin.',
             'comment_unconfirmed' => 'Instagram yorumu onaylamadı. Tekrar denemeden önce gönderiyi Instagram’da kontrol et.',
-            'comment_media_unconfirmed' => 'Instagram gönderiyi yayınladı, ancak kimliğini döndürmedi. Yorumu Instagram’da ekle.',
         ],
         'content_too_long' => 'Bu gönderi :provided karakter, ancak :platform en fazla :max karaktere izin veriyor.',
         'unrecognized_error' => ':platform tanımlayamadığımız bir hata döndürdü. Lütfen tekrar deneyin.',

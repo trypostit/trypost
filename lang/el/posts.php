@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Το Instagram δεν μπόρεσε να επεξεργαστεί αυτό το αρχείο. Δοκίμασε άλλο.',
             'comment_unconfirmed' => 'Το Instagram δεν επιβεβαίωσε το σχόλιο. Έλεγξε την ανάρτηση στο Instagram πριν δοκιμάσεις ξανά.',
-            'comment_media_unconfirmed' => 'Το Instagram δημοσίευσε την ανάρτηση χωρίς να επιστρέψει το αναγνωριστικό της. Πρόσθεσε το σχόλιο στο Instagram.',
         ],
         'content_too_long' => 'Αυτή η ανάρτηση έχει :provided χαρακτήρες, αλλά το :platform επιτρέπει :max.',
         'unrecognized_error' => 'Το :platform επέστρεψε ένα σφάλμα που δεν μπορέσαμε να αναγνωρίσουμε. Δοκίμασε ξανά.',

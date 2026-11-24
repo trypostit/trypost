@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram kon dit bestand niet verwerken. Probeer een ander bestand.',
             'comment_unconfirmed' => 'Instagram heeft de reactie niet bevestigd. Controleer je bericht op Instagram voordat je het opnieuw probeert.',
-            'comment_media_unconfirmed' => 'Instagram heeft je bericht gepubliceerd zonder een ID terug te sturen. Voeg de reactie toe op Instagram.',
         ],
         'content_too_long' => 'Deze post heeft :provided tekens, maar :platform staat er :max toe.',
         'unrecognized_error' => ':platform gaf een fout die we niet konden herkennen. Probeer het opnieuw.',

@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram non è riuscito a elaborare questo file. Prova con un altro.',
             'comment_unconfirmed' => 'Instagram non ha confermato il commento. Controlla il post su Instagram prima di riprovare.',
-            'comment_media_unconfirmed' => 'Instagram ha pubblicato il post senza restituirne l’ID. Aggiungi il commento su Instagram.',
         ],
         'content_too_long' => 'Questo post ha :provided caratteri, ma :platform ne consente :max.',
         'unrecognized_error' => ':platform ha restituito un errore che non siamo riusciti a identificare. Riprova.',

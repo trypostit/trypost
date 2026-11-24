@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram 无法处理此媒体，请换一个文件。',
             'comment_unconfirmed' => 'Instagram 未确认评论。请先在 Instagram 查看帖子，再重试。',
-            'comment_media_unconfirmed' => 'Instagram 已发布帖子，但未返回帖子 ID。请在 Instagram 添加评论。',
         ],
         'content_too_long' => '此帖子有 :provided 个字符，但 :platform 最多允许 :max 个。',
         'unrecognized_error' => ':platform 返回了无法识别的错误，请重试。',

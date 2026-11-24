@@ -532,7 +532,7 @@ return [
             'unsupported' => 'Threads of posts are not available on this network.',
             'comment_unsupported' => 'Comments are not available on this network.',
             'ghost_post' => 'A ghost post can\'t have replies. Remove the replies or switch the post type to Thread.',
-            'instagram_story' => 'Stories don’t support a first comment. Remove the comment or change the post type.',
+            'instagram_story' => 'Stories don\'t support a first comment. Remove the comment or change the post type.',
             'reply_empty' => 'A reply in the thread is empty.',
             'reply_too_long' => 'A reply exceeds the :limit-character limit by :over.',
             'too_many' => '{1} Only one comment can follow this post.|[0,*] Up to :max replies can follow this post.',
@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram could not process this media. Try another file.',
             'comment_unconfirmed' => 'Instagram didn\'t confirm the comment. Check the post on Instagram before trying again.',
-            'comment_media_unconfirmed' => 'Instagram published the post without returning its ID. Add the comment on Instagram.',
         ],
         'content_too_long' => 'This post has :provided characters, but :platform allows :max.',
         'unrecognized_error' => ':platform returned an error we could not identify. Please try again.',

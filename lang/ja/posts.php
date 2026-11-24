@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram でこのメディアを処理できませんでした。別のファイルをお試しください。',
             'comment_unconfirmed' => 'Instagram でコメントを確認できませんでした。再試行する前に Instagram で投稿を確認してください。',
-            'comment_media_unconfirmed' => 'Instagram で投稿は公開されましたが、ID が返されませんでした。Instagram でコメントを追加してください。',
         ],
         'content_too_long' => 'この投稿は :provided 文字ですが、:platform の上限は :max 文字です。',
         'unrecognized_error' => ':platform で特定できないエラーが発生しました。もう一度お試しください。',

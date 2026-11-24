@@ -299,6 +299,41 @@ test('manual retry refuses an unconfirmed instagram comment after an interrupted
     Http::assertNothingSent();
 })->with(['worker failure', 'stale publication']);
 
+test('a stuck instagram post whose comment was already checkpointed times out instead of asking to check the comment', function () {
+    $this->post->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => PublishStatus::Publishing,
+        'updated_at' => now()->subHours(2),
+        'publication_updated_at' => now()->subHours(2),
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => [
+            ThreadProgress::KEY => [['hash' => 'root', 'id' => 'published-media'], ['hash' => 'comment', 'id' => 'first-comment']],
+            PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true,
+        ],
+    ])->save();
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    expect($this->post->fresh()->error_message)->toBe(__('posts.errors.publishing_timed_out'));
+});
+
+test('manual retry refuses an unconfirmed instagram comment whose post was never checkpointed', function () {
+    Queue::fake();
+    $this->post->forceFill([
+        'status' => PostStatus::Failed,
+        'publish_status' => PublishStatus::Failed,
+        'meta' => ['thread_replies' => ['More details in the bio']],
+        'error_context' => [PublishCheckpoint::INSTAGRAM_COMMENT_PENDING => true],
+    ])->save();
+
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsOutputToContain(__('posts.errors.instagram.comment_unconfirmed'))
+        ->assertFailed();
+
+    expect($this->post->fresh()->status)->toBe(PostStatus::Failed);
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+});
+
 test('manual retry uses the instagram comment checkpoint to choose the confirmation and resume', function (bool $commentAlreadyPublished) {
     Queue::fake();
     $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);

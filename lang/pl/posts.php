@@ -976,7 +976,6 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram nie mógł przetworzyć tego pliku. Spróbuj innego.',
             'comment_unconfirmed' => 'Instagram nie potwierdził komentarza. Sprawdź post na Instagramie przed ponowną próbą.',
-            'comment_media_unconfirmed' => 'Instagram opublikował post bez zwrócenia jego identyfikatora. Dodaj komentarz na Instagramie.',
         ],
         'content_too_long' => 'Ten post ma :provided znaków, a :platform pozwala na :max.',
         'unrecognized_error' => ':platform zwrócił błąd, którego nie udało się rozpoznać. Spróbuj ponownie.',

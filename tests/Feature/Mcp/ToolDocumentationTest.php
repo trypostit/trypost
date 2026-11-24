@@ -65,7 +65,7 @@ test('post writing tools explain how to publish a first comment on instagram', f
 
 test('instagram first comments are advertised while discovering post formats', function () {
     expect(mcpServerInstructions())->toContain('one comment (LinkedIn, Instagram feed posts and reels)')
-        ->and(mcpToolDescription(ListContentTypesTool::class))->toContain('one on LinkedIn and on Instagram feed posts and reels');
+        ->and(mcpToolDescription(ListContentTypesTool::class))->toContain('one comment on LinkedIn and on Instagram feed posts and reels');
 });
 
 test('post writing tools say content is plain text', function (string $tool) {
