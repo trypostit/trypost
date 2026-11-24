@@ -7,6 +7,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @include('partials.gtm')
+        @include('partials.affonso')
 
         {{-- Resolves the "system" theme before the first paint and follows the
              OS setting while the page is open. Explicit themes are rendered by

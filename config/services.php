@@ -130,6 +130,12 @@ return [
         'id' => env('GTM_ID'),
     ],
 
+    'affonso' => [
+        'id' => env('AFFONSO_ID'),
+        'cookie_duration' => (int) env('AFFONSO_COOKIE_DURATION', 30),
+        'script_url' => env('AFFONSO_SCRIPT_URL', 'https://cdn.affonso.io/js/pixel.min.js'),
+    ],
+
     'posthog' => [
         'enabled' => (bool) env('POSTHOG_ENABLED', false),
         'api_key' => env('POSTHOG_API_KEY'),
