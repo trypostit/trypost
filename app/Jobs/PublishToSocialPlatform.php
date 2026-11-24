@@ -218,6 +218,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             null => $this->post->markPublicationPublished($platformPostId, $platformUrl),
         };
 
+        if (data_get($result, InstagramPublisher::COMMENT_SKIPPED) === true) {
+            $this->post->recordInstagramCommentSkipped();
+        }
+
         if ($this->post->awaitsTikTokVideoId()) {
             ResolveTikTokVideoId::dispatch($this->post)
                 ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))

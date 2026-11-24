@@ -60,6 +60,13 @@ test('thread replies are checked per network', function (Platform $platform, arr
     'empty list ignored' => [Platform::Telegram, [], null],
 ]);
 
+test('instagram without the comments permission names comments, not a thread', function () {
+    config(['trypost.platforms.instagram-facebook.scopes' => ['instagram_basic', 'instagram_content_publish']]);
+
+    expect(ThreadReplies::violation(Platform::InstagramFacebook, ContentType::InstagramFeed, ['thread_replies' => ['First comment']]))
+        ->toBe(['thread_replies', __('posts.form.thread.comment_unsupported')]);
+});
+
 test('a thread violation comes before the network own required meta', function () {
     expect(PostPlatformMetaRules::requiredMetaViolation(Platform::Pinterest, ['thread_replies' => ['second']]))
         ->toBe(['thread_replies', __('posts.form.thread.unsupported')]);

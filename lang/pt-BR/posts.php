@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Diga mais',
             'reply_label' => 'Post :number da sequência',
             'unsupported' => 'Sequências de posts não estão disponíveis nesta rede.',
+            'comment_unsupported' => 'Comentários não estão disponíveis nesta rede.',
             'ghost_post' => 'Um post temporário não pode ter respostas. Remova as respostas ou mude o tipo para Thread.',
             'instagram_story' => 'Stories não aceitam primeiro comentário. Remova o comentário ou mude o tipo de post.',
             'reply_empty' => 'Uma resposta da sequência está vazia.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Novo',
         'add_post_in_slot' => 'Adicionar post',
         'more_times' => 'Mais horários',
+        'instagram_comment_warning' => [
+            'badge' => 'Atenção',
+            'title' => 'Primeiro comentário não adicionado',
+            'description' => 'O Instagram não devolveu o ID deste post, então o TryPost não conseguiu adicionar seu primeiro comentário. Adicione no Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Atenção',
             'title' => 'Capa não aplicada',

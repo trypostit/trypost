@@ -182,7 +182,7 @@ class ChannelPermissions
 
     public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
-        $type = $post->content_type ?? ContentType::forMedia($channel->platform, $post->media ?? []);
+        $type = $post->contentTypeOn($channel->platform);
         $blocked = self::featureBlockingPost($channel, $post->meta, $type);
         if (filled($blocked)) {
             throw ValidationException::withMessages([

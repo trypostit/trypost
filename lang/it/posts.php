@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Dì di più',
             'reply_label' => 'Post :number del thread',
             'unsupported' => 'I thread di post non sono disponibili su questa rete.',
+            'comment_unsupported' => 'I commenti non sono disponibili su questa rete.',
             'ghost_post' => 'Un post fantasma non può avere risposte. Rimuovi le risposte o cambia il tipo in Thread.',
             'instagram_story' => 'Le storie non supportano il primo commento. Rimuovi il commento o cambia il tipo di post.',
             'reply_empty' => 'Una risposta del thread è vuota.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Nuovo',
         'add_post_in_slot' => 'Aggiungi post',
         'more_times' => 'Altri orari',
+        'instagram_comment_warning' => [
+            'badge' => 'Avviso',
+            'title' => 'Primo commento non aggiunto',
+            'description' => 'Instagram non ha restituito l\'ID di questo post, quindi TryPost non ha potuto aggiungere il tuo primo commento. Aggiungilo su Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Avviso',
             'title' => 'Copertina non applicata',

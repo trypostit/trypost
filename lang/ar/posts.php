@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'قل المزيد',
             'reply_label' => 'المنشور :number في السلسلة',
             'unsupported' => 'سلاسل المنشورات غير متاحة على هذه الشبكة.',
+            'comment_unsupported' => 'التعليقات غير متاحة على هذه الشبكة.',
             'ghost_post' => 'لا يمكن أن يحتوي المنشور الشبحي على ردود. احذف الردود أو غيّر النوع إلى سلسلة.',
             'instagram_story' => 'القصص لا تدعم التعليق الأول. احذف التعليق أو غيّر نوع المنشور.',
             'reply_empty' => 'أحد الردود في السلسلة فارغ.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'جديد',
         'add_post_in_slot' => 'إضافة منشور',
         'more_times' => 'المزيد من الأوقات',
+        'instagram_comment_warning' => [
+            'badge' => 'تنبيه',
+            'title' => 'لم تتم إضافة التعليق الأول',
+            'description' => 'لم يُرجع Instagram معرّف هذا المنشور، لذلك لم يتمكن TryPost من إضافة تعليقك الأول. أضفه على Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'تنبيه',
             'title' => 'لم يُطبَّق الغلاف',

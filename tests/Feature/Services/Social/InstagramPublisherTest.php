@@ -144,7 +144,7 @@ test('a known first comment rejection resumes from the confirmed instagram media
     Http::assertSentCount(3);
 });
 
-test('retrying an instagram first comment without a published media id never republishes the root', function () {
+test('an instagram post live without its media id publishes without the first comment and warns', function () {
     Queue::fake();
     $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
     $this->post->forceFill([
@@ -165,18 +165,15 @@ test('retrying an instagram first comment without a published media id never rep
 
     (new PublishToSocialPlatform($this->post))->handle();
 
-    expect($this->post->fresh()->status)->toBe(PostStatus::Failed);
-    $this->artisan('posts:retry', ['post' => $this->post->id])
-        ->expectsConfirmation('Queue a publish attempt for this post?', 'yes')
-        ->assertSuccessful();
-
-    (new PublishToSocialPlatform($this->post->fresh()))->handle();
-
-    $failed = $this->post->fresh();
-    expect($failed->status)->toBe(PostStatus::Failed)
-        ->and($failed->error_message)->toContain(__('posts.errors.instagram.comment_media_unconfirmed'))
-        ->and(ThreadProgress::hasPublishedRoot($failed->error_context))->toBeTrue();
+    $published = $this->post->fresh();
+    expect($published->status)->toBe(PostStatus::Published)
+        ->and($published->publish_status)->toBe(PublishStatus::Published)
+        ->and($published->platform_post_id)->toBe('container')
+        ->and($published->thread_reply_ids)->toBeNull()
+        ->and($published->error_message)->toBeNull()
+        ->and($published->instagramCommentSkipped())->toBeTrue();
     Http::assertSentCount(1);
+    Http::assertNotSent(fn (Request $request): bool => Str::contains($request->url(), '/comments'));
 });
 
 test('instagram refuses a first comment that is blank after sanitizing before publishing the media', function (string $text) {

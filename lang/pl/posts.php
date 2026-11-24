@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Napisz więcej',
             'reply_label' => 'Post :number w wątku',
             'unsupported' => 'Wątki postów nie są dostępne w tej sieci.',
+            'comment_unsupported' => 'Komentarze nie są dostępne w tej sieci.',
             'ghost_post' => 'Post-duch nie może mieć odpowiedzi. Usuń odpowiedzi lub zmień typ na Wątek.',
             'instagram_story' => 'Relacje nie obsługują pierwszego komentarza. Usuń komentarz lub zmień typ posta.',
             'reply_empty' => 'Odpowiedź w wątku jest pusta.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Nowy',
         'add_post_in_slot' => 'Dodaj post',
         'more_times' => 'Więcej godzin',
+        'instagram_comment_warning' => [
+            'badge' => 'Uwaga',
+            'title' => 'Nie dodano pierwszego komentarza',
+            'description' => 'Instagram nie zwrócił identyfikatora tego posta, więc TryPost nie mógł dodać pierwszego komentarza. Dodaj go na Instagramie.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uwaga',
             'title' => 'Nie zastosowano okładki',

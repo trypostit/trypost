@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Daha fazla anlat',
             'reply_label' => 'Zincirin :number. gönderisi',
             'unsupported' => 'Gönderi zincirleri bu ağda kullanılamaz.',
+            'comment_unsupported' => 'Bu ağda yorumlar kullanılamaz.',
             'ghost_post' => 'Hayalet gönderinin yanıtı olamaz. Yanıtları kaldırın veya türü Flood olarak değiştirin.',
             'instagram_story' => 'Hikâyeler ilk yorumu desteklemez. Yorumu kaldırın veya gönderi türünü değiştirin.',
             'reply_empty' => 'Zincirdeki bir yanıt boş.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Yeni',
         'add_post_in_slot' => 'Gönderi ekle',
         'more_times' => 'Daha fazla saat',
+        'instagram_comment_warning' => [
+            'badge' => 'Uyarı',
+            'title' => 'İlk yorum eklenmedi',
+            'description' => 'Instagram bu gönderinin kimliğini döndürmedi, bu yüzden TryPost ilk yorumunuzu ekleyemedi. Yorumu Instagram\'da ekleyin.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uyarı',
             'title' => 'Kapak uygulanmadı',

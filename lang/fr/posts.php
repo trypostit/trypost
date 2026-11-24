@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Dites-en plus',
             'reply_label' => 'Publication :number du fil',
             'unsupported' => 'Les fils de publications ne sont pas disponibles sur ce réseau.',
+            'comment_unsupported' => 'Les commentaires ne sont pas disponibles sur ce réseau.',
             'ghost_post' => 'Un post fantôme ne peut pas avoir de réponses. Retirez les réponses ou passez le type à Fil.',
             'instagram_story' => 'Les stories ne prennent pas en charge le premier commentaire. Supprimez le commentaire ou changez le type de publication.',
             'reply_empty' => 'Une réponse du fil est vide.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Nouveau',
         'add_post_in_slot' => 'Ajouter un post',
         'more_times' => 'Plus d\'horaires',
+        'instagram_comment_warning' => [
+            'badge' => 'Attention',
+            'title' => 'Premier commentaire non ajouté',
+            'description' => 'Instagram n\'a pas renvoyé l\'identifiant de cette publication, donc TryPost n\'a pas pu ajouter votre premier commentaire. Ajoutez-le sur Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Attention',
             'title' => 'Couverture non appliquée',

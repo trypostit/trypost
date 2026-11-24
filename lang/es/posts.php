@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Di algo más',
             'reply_label' => 'Publicación :number del hilo',
             'unsupported' => 'Los hilos de publicaciones no están disponibles en esta red.',
+            'comment_unsupported' => 'Los comentarios no están disponibles en esta red.',
             'ghost_post' => 'Un post fantasma no puede tener respuestas. Quita las respuestas o cambia el tipo a Hilo.',
             'instagram_story' => 'Las historias no admiten un primer comentario. Quita el comentario o cambia el tipo de publicación.',
             'reply_empty' => 'Una respuesta del hilo está vacía.',
@@ -1074,6 +1075,11 @@ return [
         'new_in_slot' => 'Nuevo',
         'add_post_in_slot' => 'Añadir post',
         'more_times' => 'Más horarios',
+        'instagram_comment_warning' => [
+            'badge' => 'Aviso',
+            'title' => 'Primer comentario no añadido',
+            'description' => 'Instagram no devolvió el ID de esta publicación, así que TryPost no pudo añadir tu primer comentario. Añádelo en Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Aviso',
             'title' => 'Portada no aplicada',

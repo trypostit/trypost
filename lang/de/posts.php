@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Mehr sagen',
             'reply_label' => 'Beitrag :number im Thread',
             'unsupported' => 'Beitragsthreads sind in diesem Netzwerk nicht verfügbar.',
+            'comment_unsupported' => 'Kommentare sind in diesem Netzwerk nicht verfügbar.',
             'ghost_post' => 'Ein Ghost-Post kann keine Antworten haben. Entferne die Antworten oder wechsle den Typ zu Thread.',
             'instagram_story' => 'Stories unterstützen keinen ersten Kommentar. Entferne den Kommentar oder ändere den Beitragstyp.',
             'reply_empty' => 'Eine Antwort im Thread ist leer.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Neu',
         'add_post_in_slot' => 'Post hinzufügen',
         'more_times' => 'Weitere Zeiten',
+        'instagram_comment_warning' => [
+            'badge' => 'Hinweis',
+            'title' => 'Erster Kommentar nicht hinzugefügt',
+            'description' => 'Instagram hat die ID dieses Beitrags nicht zurückgegeben, daher konnte TryPost deinen ersten Kommentar nicht hinzufügen. Füge ihn auf Instagram hinzu.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Hinweis',
             'title' => 'Vorschaubild nicht übernommen',

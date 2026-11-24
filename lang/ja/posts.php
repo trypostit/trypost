@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => '続きを書く',
             'reply_label' => 'スレッドの投稿 :number',
             'unsupported' => 'このネットワークでは投稿のスレッドを利用できません。',
+            'comment_unsupported' => 'このネットワークではコメントを利用できません。',
             'ghost_post' => 'ゴースト投稿には返信を付けられません。返信を削除するか、種類を「スレッド」に変更してください。',
             'instagram_story' => 'ストーリーズには最初のコメントを追加できません。コメントを削除するか、投稿タイプを変更してください。',
             'reply_empty' => 'スレッド内の返信が空です。',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => '新規',
         'add_post_in_slot' => '投稿を追加',
         'more_times' => 'その他の時間',
+        'instagram_comment_warning' => [
+            'badge' => '注意',
+            'title' => '最初のコメントは追加されませんでした',
+            'description' => 'Instagram がこの投稿の ID を返さなかったため、TryPost は最初のコメントを追加できませんでした。Instagram で追加してください。',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => 'カバーが適用されませんでした',

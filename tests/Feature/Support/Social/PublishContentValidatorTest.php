@@ -70,7 +70,7 @@ test('a missing instagram comment grant blocks the comment and allows publishing
     config(["trypost.platforms.{$platform->value}.scopes" => [$publish]]);
 
     expect(fn () => PublishContentValidator::validate($post))
-        ->toThrow(ContentLimitException::class, __('posts.form.thread.unsupported'));
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.comment_unsupported'));
 
     $post->meta = [];
 

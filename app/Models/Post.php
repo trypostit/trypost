@@ -456,6 +456,14 @@ class Post extends Model
     }
 
     /**
+     * The post's type on the network, or the one its media implies when it has none.
+     */
+    public function contentTypeOn(Platform $platform): ContentType
+    {
+        return $this->content_type ?? ContentType::forMedia($platform, $this->media ?? []);
+    }
+
+    /**
      * The post has a destination: a channel, or the snapshot of one that was deleted.
      */
     public function hasDestination(): bool
@@ -514,6 +522,24 @@ class Post extends Model
     public function recordYouTubeThumbnailWarning(ThumbnailWarning $warning): void
     {
         $this->writePublication(['error_context' => [...($this->error_context ?? []), 'youtube_thumbnail_warning' => $warning->value]]);
+    }
+
+    /**
+     * Whether this live Instagram post went out without its first comment,
+     * because Instagram returned no media id to comment on.
+     */
+    public function instagramCommentSkipped(): bool
+    {
+        return data_get($this->error_context, 'instagram_comment_skipped') === true;
+    }
+
+    /**
+     * The post stays published: the warning sits next to the publication
+     * result, which publishing again clears.
+     */
+    public function recordInstagramCommentSkipped(): void
+    {
+        $this->writePublication(['error_context' => [...($this->error_context ?? []), 'instagram_comment_skipped' => true]]);
     }
 
     /**

@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Tulis lanjutannya',
             'reply_label' => 'Postingan ke-:number di thread',
             'unsupported' => 'Thread tidak tersedia di platform ini.',
+            'comment_unsupported' => 'Komentar tidak tersedia di platform ini.',
             'ghost_post' => 'Ghost post tidak bisa punya balasan. Hapus balasannya atau ubah jenisnya ke Thread.',
             'instagram_story' => 'Story tidak mendukung komentar pertama. Hapus komentar atau ubah jenis postingan.',
             'reply_empty' => 'Ada balasan di thread yang kosong.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Baru',
         'add_post_in_slot' => 'Tambahkan postingan',
         'more_times' => 'Waktu lainnya',
+        'instagram_comment_warning' => [
+            'badge' => 'Perhatian',
+            'title' => 'Komentar pertama tidak ditambahkan',
+            'description' => 'Instagram tidak mengembalikan ID postingan ini, jadi TryPost tidak bisa menambahkan komentar pertamamu. Tambahkan di Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Perhatian',
             'title' => 'Sampul tidak diterapkan',

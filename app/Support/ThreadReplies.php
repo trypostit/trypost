@@ -81,10 +81,20 @@ class ThreadReplies
     public static function unsupportedKey(Platform $platform, ContentType $type): ?string
     {
         if (! self::supports($platform)) {
-            return 'posts.form.thread.unsupported';
+            return self::repliesOffKey($platform);
         }
 
         return config("trypost.platforms.{$platform->value}.replies.standalone_types.{$type->value}");
+    }
+
+    /** The translation key for a network that takes no replies, in its own words: comments or a thread. */
+    private static function repliesOffKey(Platform $platform): string
+    {
+        if (self::replyContentType($platform)?->isComment()) {
+            return 'posts.form.thread.comment_unsupported';
+        }
+
+        return 'posts.form.thread.unsupported';
     }
 
     /**

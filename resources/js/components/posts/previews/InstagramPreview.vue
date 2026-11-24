@@ -25,7 +25,8 @@ import {
     soundtrackLabel,
 } from '@/composables/composer/useReelSoundtrack';
 import { filled, transform } from '@/lib/helpers';
-import { instagramCommentText, threadRepliesOf } from '@/lib/threadReplies';
+import { plainText } from '@/lib/plainText';
+import { threadRepliesOf } from '@/lib/threadReplies';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 
@@ -33,7 +34,7 @@ const props = defineProps<PreviewProps>();
 const firstComment = computed((): string => {
     const [comment] = threadRepliesOf(props.meta);
 
-    return transform(comment, ({ text }) => instagramCommentText(text), '');
+    return transform(comment, ({ text }) => plainText(text), '');
 });
 
 const feedAspectPadding = computed((): number => {

@@ -230,6 +230,7 @@ return [
     'posts.publish.actions.share_link' => 29,
     'posts.publish.deleted_on_network.badge' => 10,
     'posts.publish.youtube_thumbnail_warning.badge' => 9,
+    'posts.publish.instagram_comment_warning.badge' => 9,
     'posts.publish.in_google_review' => 28,
     'posts.publish.no_time' => 13,
     'posts.publish.pending_slot.next' => 14,

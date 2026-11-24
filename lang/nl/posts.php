@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Vertel meer',
             'reply_label' => 'Bericht :number van de thread',
             'unsupported' => 'Threads van berichten zijn niet beschikbaar op dit netwerk.',
+            'comment_unsupported' => 'Reacties zijn niet beschikbaar op dit netwerk.',
             'ghost_post' => 'Een ghost-post kan geen reacties hebben. Verwijder de reacties of kies het type Thread.',
             'instagram_story' => 'Stories ondersteunen geen eerste reactie. Verwijder de reactie of wijzig het berichttype.',
             'reply_empty' => 'Een antwoord in de thread is leeg.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'Nieuw',
         'add_post_in_slot' => 'Post toevoegen',
         'more_times' => 'Meer tijden',
+        'instagram_comment_warning' => [
+            'badge' => 'Let op',
+            'title' => 'Eerste reactie niet toegevoegd',
+            'description' => 'Instagram gaf de ID van dit bericht niet terug, dus TryPost kon je eerste reactie niet toevoegen. Voeg die toe op Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Let op',
             'title' => 'Omslag niet toegepast',

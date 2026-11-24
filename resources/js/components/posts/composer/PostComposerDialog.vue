@@ -179,9 +179,9 @@ import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
 import { pollLimitsOf } from '@/lib/poll';
 import {
-    instagramCommentText,
     newThreadReply,
     repliesAreComments,
+    replyDisplayText,
     replyEmptyKey,
     replyErrorOf,
     replyTooLongKey,
@@ -206,7 +206,6 @@ import type {
 import { GatedFeature } from '@/types/channel-permission';
 import {
     CAPTIONLESS_CONTENT_TYPES,
-    ContentType,
     MEDIALESS_CONTENT_TYPE_REASONS,
     POLL_CONTENT_TYPES,
 } from '@/types/content-type';
@@ -1287,20 +1286,15 @@ const startThreadFromCaption = (group: NetworkGroup): void => {
     setThreadReplies(group, [newThreadReply(), ...threadReplies(group)]);
     threadActive.value = 0;
 };
-const replyTextFor = (reply: ThreadReply, platform: PlatformValue): string => {
-    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
-        return instagramCommentText(reply.text);
-    }
-
-    return contentFor(reply.text, platform);
-};
 const activeRemaining = (group: NetworkGroup): number | null => {
     const reply = activeReply(group);
 
     if (filled(reply)) {
         return transform(
             replyTextLimit(group, reply),
-            (limit) => limit - displayLength(replyTextFor(reply, group.platform)),
+            (limit) => limit - displayLength(
+                    replyDisplayText(reply.text, group.platform, contentFor),
+                ),
         );
     }
 
@@ -1638,7 +1632,11 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
     if (replyContentType) {
         const limit = replyLimit(account);
         for (const reply of threadRepliesOf(destination.meta)) {
-            const text = replyTextFor(reply, account.platform);
+            const text = replyDisplayText(
+                reply.text,
+                account.platform,
+                contentFor,
+            );
             const over = transform(limit, (max) => displayLength(text) - max, 0);
             const replyMediaWarning = transform(reply.media, (media) =>
                 getMediaValidationWarning(replyContentType, media),

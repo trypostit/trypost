@@ -12,6 +12,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\InstagramCommentSkippedException;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Models\Post;
@@ -52,8 +53,11 @@ class InstagramPublisher
 
     private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
 
+    /** The result key of a post published without its first comment (`InstagramCommentSkippedException`). */
+    public const string COMMENT_SKIPPED = 'instagram_comment_skipped';
+
     /**
-     * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
+     * @return array{id: string, url: ?string, thread_reply_ids?: list<string>, instagram_comment_skipped?: true}
      */
     public function publish(Post $post): array
     {
@@ -73,12 +77,20 @@ class InstagramPublisher
         $mediaIds = $post->mediaItems->pluck('id')->all();
         $rootHash = ThreadProgress::hash($content ?? '', $mediaIds);
 
-        return $this->publishThread(
-            $post,
-            $rootHash,
-            fn (): array => $this->publishMedia($instagramId, $accessToken, $content),
-            fn (string $text, Collection $media, array $parent, array $root): array => $this->publishFirstComment($root, $text, $accessToken),
-        );
+        try {
+            return $this->publishThread(
+                $post,
+                $rootHash,
+                fn (): array => $this->publishMedia($instagramId, $accessToken, $content),
+                fn (string $text, Collection $media, array $parent, array $root): array => $this->publishFirstComment($root, $text, $accessToken),
+            );
+        } catch (InstagramCommentSkippedException $skipped) {
+            return [
+                'id' => $skipped->root['id'],
+                'url' => data_get($skipped->root, 'url'),
+                self::COMMENT_SKIPPED => true,
+            ];
+        }
     }
 
     /**
@@ -121,13 +133,7 @@ class InstagramPublisher
      */
     private function publishFirstComment(array $root, string $text, string $accessToken): array
     {
-        throw_if(
-            data_get($root, 'container_id_only') === true,
-            fn (): InstagramPublishException => new InstagramPublishException(
-                userMessage: __('posts.errors.instagram.comment_media_unconfirmed'),
-                category: ErrorCategory::ServerError,
-            ),
-        );
+        throw_if(data_get($root, 'container_id_only') === true, InstagramCommentSkippedException::class, $root);
 
         $context = $this->post->error_context ?? [];
         if (PublishCheckpoint::instagramCommentIsUnconfirmed($context)) {

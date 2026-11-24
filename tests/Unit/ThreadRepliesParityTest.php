@@ -44,6 +44,7 @@ test('the composer threads every network the way the server does', function () {
         ->and($composer['gated_features'])->toBe(array_column(GatedFeature::cases(), 'value'))
         ->and($composer['standalone_key'])->toBeNull()
         ->and($composer['replies_off_key'])->toBe('posts.form.thread.unsupported')
+        ->and($composer['comments_off_key'])->toBe('posts.form.thread.comment_unsupported')
         ->and($composer['unsupported_story_keys'])->toBe(['posts.form.thread.instagram_story', 'posts.form.thread.unsupported'])
         ->and($composer['permission_keys'])->toBe(serverPermissionKeys());
 });

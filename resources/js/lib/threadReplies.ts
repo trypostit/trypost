@@ -1,5 +1,5 @@
-import { characterCount, displayText } from '@/lib/characters';
 import { blank, filled, isEmpty, isString } from '@/lib/helpers';
+import { plainText } from '@/lib/plainText';
 import { uuid } from '@/lib/uuid';
 import {
     ContentType,
@@ -50,9 +50,9 @@ const fromStored = (reply: StoredThreadReply, index: number): ThreadReply => {
         return { key: storedKey, text: reply, media: [] };
     }
 
-    const { key = storedKey, text = '', media = [], poll } = reply;
+    const { key = storedKey, text, media, poll } = reply;
 
-    return withReplyPoll({ key, text, media }, poll);
+    return withReplyPoll({ key, text: text ?? '', media: media ?? [] }, poll);
 };
 
 /** The replies of a post's thread, read from its meta. */
@@ -60,98 +60,20 @@ export const threadRepliesOf = (
     meta: StoredThreadMeta | null | undefined,
 ): ThreadReply[] => (meta?.thread_replies ?? []).map(fromStored);
 
-const COMMENT_LINE_BREAK_SELECTOR =
-    'br, p, li, div, h1, h2, h3, h4, h5, h6, blockquote';
-const HTML_REFERENCES = /&(?:[a-z][a-z0-9]*|#(?:x[0-9a-f]+|[0-9]+));/gi;
-const UNICODE_MAX = 0x10ffff;
-const UNICODE_PLANE_SIZE = 0x10000;
-const FIRST_NONCHARACTER_IN_PLANE = 0xfffe;
-
-/** Numeric references that PHP's HTML5 decoder leaves as written. */
-const INVALID_HTML_REFERENCE_RANGES: ReadonlyArray<readonly [number, number]> =
-    [
-        [0x00, 0x08],
-        [0x0b, 0x0b],
-        [0x0d, 0x1f],
-        [0x7f, 0x9f],
-        [0xd800, 0xdfff],
-        [0xfdd0, 0xfdef],
-    ];
-
-const decodeNumericReference = (entity: string): string => {
-    const digits = entity.slice(2, -1).toLowerCase();
-    const codePoint = Number(digits.replace('x', '0x'));
-
-    if (codePoint > UNICODE_MAX) {
-        return entity;
+/**
+ * A reply's text as its network counts it: an Instagram comment as the
+ * publisher sends it, any other reply through the composer's `contentFor`.
+ */
+export const replyDisplayText = (
+    text: string,
+    platform: PlatformValue,
+    contentFor: (content: string, platform: PlatformValue) => string,
+): string => {
+    if (threadReplyPostType(platform) === ContentType.InstagramComment) {
+        return plainText(text);
     }
 
-    if (codePoint % UNICODE_PLANE_SIZE >= FIRST_NONCHARACTER_IN_PLANE) {
-        return entity;
-    }
-
-    if (
-        INVALID_HTML_REFERENCE_RANGES.some(
-            ([start, end]) => codePoint >= start && codePoint <= end,
-        )
-    ) {
-        return entity;
-    }
-
-    return String.fromCodePoint(codePoint);
-};
-
-const commentWithoutMarkup = (text: string): string => {
-    if (!text.includes('<')) {
-        return text;
-    }
-
-    const template = document.createElement('template');
-    // Keep references and literal angle brackets intact while stripping legacy markup.
-    template.innerHTML = text
-        .replaceAll('&', '&amp;')
-        .replace(/<(?!\/?[a-z][^<>]*>)/gi, '&lt;');
-
-    for (const item of template.content.querySelectorAll('li')) {
-        item.prepend('- ');
-    }
-
-    for (const block of template.content.querySelectorAll(
-        COMMENT_LINE_BREAK_SELECTOR,
-    )) {
-        if (block.tagName === 'BR' && block.hasAttributes()) {
-            continue;
-        }
-
-        block.after('\n');
-    }
-
-    return template.content.textContent ?? '';
-};
-
-/** Displays the plain text used by Laravel's ContentSanitizer for Instagram comments. */
-export const instagramCommentText = (text: string): string => {
-    let decoder: HTMLTextAreaElement | undefined;
-    const decoded = commentWithoutMarkup(text).replace(
-        HTML_REFERENCES,
-        (entity) => {
-            if (entity.startsWith('&#')) {
-                return decodeNumericReference(entity);
-            }
-
-            decoder ??= document.createElement('textarea');
-            decoder.innerHTML = entity;
-
-            // A valid named reference decodes fully to one or two characters.
-            if (characterCount(decoder.value) <= 2) {
-                return decoder.value;
-            }
-
-            return entity;
-        },
-    );
-
-    return displayText(decoded);
+    return contentFor(text, platform);
 };
 
 /** The reply as a poll, which carries no media, or as a plain post without one. */
@@ -261,6 +183,15 @@ export const replyEmptyKey = (platform: PlatformValue): string => {
     return 'posts.form.thread.reply_empty';
 };
 
+/** The key for a network that takes no replies, in its own words: comments or a thread (`ThreadReplies::repliesOffKey()`). */
+const repliesOffKey = (platform: PlatformValue): PostFormTranslationKey => {
+    if (repliesAreComments(platform)) {
+        return 'posts.form.thread.comment_unsupported';
+    }
+
+    return 'posts.form.thread.unsupported';
+};
+
 /**
  * Why the network cannot accept replies for this post type. `repliesEnabled`
  * is whether the network asks for the permissions its replies need.
@@ -271,11 +202,11 @@ export const threadUnsupportedKey = (
     repliesEnabled: boolean,
 ): PostFormTranslationKey | null => {
     if (threadMaxReplies(platform) === 0) {
-        return 'posts.form.thread.unsupported';
+        return repliesOffKey(platform);
     }
 
     if (!repliesEnabled) {
-        return 'posts.form.thread.unsupported';
+        return repliesOffKey(platform);
     }
 
     if (!filled(contentType)) {

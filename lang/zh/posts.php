@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => '说点什么',
             'reply_label' => '帖子串中的第 :number 条',
             'unsupported' => '此网络不支持帖子串。',
+            'comment_unsupported' => '此网络不支持评论。',
             'ghost_post' => '幽灵帖子不能有回复。请删除回复，或将类型改为串文。',
             'instagram_story' => '快拍不支持首条评论。请删除评论或更改帖子类型。',
             'reply_empty' => '帖子串中的一条回复为空。',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => '新建',
         'add_post_in_slot' => '添加帖子',
         'more_times' => '更多时间',
+        'instagram_comment_warning' => [
+            'badge' => '注意',
+            'title' => '未添加首条评论',
+            'description' => 'Instagram 未返回此帖子的 ID，因此 TryPost 无法添加你的首条评论。请在 Instagram 上添加。',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => '封面未应用',

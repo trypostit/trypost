@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => 'Say more',
             'reply_label' => 'Post :number of the thread',
             'unsupported' => 'Threads of posts are not available on this network.',
+            'comment_unsupported' => 'Comments are not available on this network.',
             'ghost_post' => 'A ghost post can\'t have replies. Remove the replies or switch the post type to Thread.',
             'instagram_story' => 'Stories don’t support a first comment. Remove the comment or change the post type.',
             'reply_empty' => 'A reply in the thread is empty.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => 'New',
         'add_post_in_slot' => 'Add a post',
         'more_times' => 'More times',
+        'instagram_comment_warning' => [
+            'badge' => 'Warning',
+            'title' => 'First comment not added',
+            'description' => 'Instagram didn\'t return this post\'s ID, so TryPost couldn\'t add your first comment. Add it on Instagram.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Warning',
             'title' => 'Cover not applied',

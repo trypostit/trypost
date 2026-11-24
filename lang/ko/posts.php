@@ -530,6 +530,7 @@ return [
             'reply_placeholder' => '더 말하기',
             'reply_label' => '스레드의 게시물 :number',
             'unsupported' => '이 네트워크에서는 게시물 스레드를 사용할 수 없습니다.',
+            'comment_unsupported' => '이 네트워크에서는 댓글을 사용할 수 없습니다.',
             'ghost_post' => '고스트 게시물에는 답글을 달 수 없습니다. 답글을 삭제하거나 유형을 스레드로 바꾸세요.',
             'instagram_story' => '스토리에는 첫 댓글을 추가할 수 없습니다. 댓글을 삭제하거나 게시물 유형을 변경하세요.',
             'reply_empty' => '스레드의 답글이 비어 있습니다.',
@@ -1073,6 +1074,11 @@ return [
         'new_in_slot' => '신규',
         'add_post_in_slot' => '게시물 추가',
         'more_times' => '더 많은 시간',
+        'instagram_comment_warning' => [
+            'badge' => '주의',
+            'title' => '첫 댓글이 추가되지 않았습니다',
+            'description' => 'Instagram이 이 게시물의 ID를 반환하지 않아 TryPost가 첫 댓글을 추가하지 못했습니다. Instagram에서 추가하세요.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '주의',
             'title' => '커버가 적용되지 않음',
