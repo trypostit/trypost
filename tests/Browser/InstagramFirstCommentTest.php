@@ -202,8 +202,8 @@ test('the composer applies first comment support separately for the two instagra
     $draft = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
     $instagram = $draft->socialAccount;
     $facebookScopes = data_get(trypostConfigWith(['INSTAGRAM_FACEBOOK_SCOPES' => '']), 'platforms.instagram-facebook.scopes');
-    if ($facebookEnabled) {
-        $facebookScopes[] = 'instagram_manage_comments';
+    if (! $facebookEnabled) {
+        $facebookScopes = collect($facebookScopes)->diff(['instagram_manage_comments'])->values()->all();
     }
     config(['trypost.platforms.instagram-facebook.scopes' => $facebookScopes]);
     $facebook = SocialAccount::factory()->create([
@@ -245,4 +245,4 @@ test('the composer applies first comment support separately for the two instagra
         $facebook->id => $facebookComment,
     ]);
     $page->assertNoJavaScriptErrors();
-})->with(['enabled explicitly' => true, 'disabled by default' => false]);
+})->with(['enabled by default' => true, 'turned off in the env' => false]);

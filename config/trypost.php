@@ -635,7 +635,7 @@ return [
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights'),
+            'scopes' => ConfigEnvironment::oauthScopes('INSTAGRAM_FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,business_management,instagram_basic,instagram_content_publish,instagram_manage_insights,instagram_manage_comments'),
             'required_scopes' => ['pages_show_list', 'pages_read_engagement', 'instagram_basic'],
             'permissions' => [
                 'publish' => ['scopes' => ['instagram_content_publish']],
