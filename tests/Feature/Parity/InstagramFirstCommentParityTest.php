@@ -198,3 +198,16 @@ test('every surface refuses a second instagram comment, a comment with media and
     };
     expect($post->fresh()->status)->toBe(Status::Draft);
 })->with(['web', 'api', 'mcp'])->with(['second comment', 'media', 'too long']);
+
+test('no surface stores a post as an instagram comment', function (string $surface, Platform $platform) {
+    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => $platform]);
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->draft()->create(['user_id' => $this->user->id]);
+
+    $response = pollParityUpdate($surface, $post, ['content_type' => ContentType::InstagramComment->value]);
+
+    match ($surface) {
+        'mcp' => $response->assertHasErrors(),
+        'web', 'api' => $response->assertUnprocessable()->assertJsonValidationErrors(['content_type']),
+    };
+    expect($post->fresh()->content_type)->toBe(ContentType::InstagramFeed);
+})->with(['web', 'api', 'mcp'])->with([Platform::Instagram, Platform::InstagramFacebook]);

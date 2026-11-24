@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Services\Post\PostPreviewer;
 use App\Services\Social\ContentSanitizer;
+use App\Support\ChannelPermissions;
 use App\Support\Social\MastodonPoll;
 
 test('previews thread replies with the network sanitizer', function () {
@@ -33,6 +36,36 @@ test('a linkedin preview shows its comment with the linkedin sanitizer', functio
         ['text' => app(ContentSanitizer::class)->sanitize('<p>Read more at <strong>example.com</strong></p>', Platform::LinkedIn), 'media' => []],
     ]);
 });
+
+test('an instagram preview shows the first comment of a feed post or reel as the plain text instagram receives', function (Platform $platform, ContentType $type) {
+    config(["trypost.platforms.{$platform->value}.scopes" => ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]);
+    $account = SocialAccount::factory()->create(['platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'content' => 'Root',
+        'meta' => ['thread_replies' => ['<p>Link in <strong>bio</strong> &amp; more</p>']],
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh())['thread_replies'])->toEqual([
+        ['text' => 'Link in bio & more', 'media' => []],
+    ]);
+})->with([Platform::Instagram, Platform::InstagramFacebook])->with([ContentType::InstagramFeed, ContentType::InstagramReel]);
+
+test('an instagram preview leaves out the comment of a story and of a login whose comments are off', function (Platform $platform, ContentType $type, bool $commentsOn) {
+    $scopes = ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies);
+    config(["trypost.platforms.{$platform->value}.scopes" => $commentsOn ? $scopes : ChannelPermissions::missingFrom([], $platform, GatedFeature::Publish)]);
+    $account = SocialAccount::factory()->create(['platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $type)->create([
+        'content' => 'Root',
+        'meta' => ['thread_replies' => ['Link in bio']],
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh()))->not->toHaveKey('thread_replies');
+})->with([
+    'instagram login story' => [Platform::Instagram, ContentType::InstagramStory, true],
+    'facebook login story' => [Platform::InstagramFacebook, ContentType::InstagramStory, true],
+    'instagram login comments off' => [Platform::Instagram, ContentType::InstagramFeed, false],
+    'facebook login comments off' => [Platform::InstagramFacebook, ContentType::InstagramReel, false],
+]);
 
 test('networks that cannot chain get no thread preview', function () {
     $post = Post::factory()->telegram()->create([

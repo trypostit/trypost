@@ -567,6 +567,17 @@ test('a linkedin comment is a reply type no post can take', function () {
         ->and(ContentType::LinkedInComment->requiresMedia())->toBeFalse();
 });
 
+test('an instagram comment is a text-only reply type no post can take', function (Platform $platform) {
+    expect(ContentType::forPlatform($platform))->not->toContain(ContentType::InstagramComment)
+        ->and(ContentType::InstagramComment->isCompatibleWith($platform))->toBeFalse()
+        ->and(ContentType::InstagramComment->isComment())->toBeTrue()
+        ->and(ContentType::InstagramComment->maxMediaCount())->toBe(0)
+        ->and(ContentType::InstagramComment->supportsImage())->toBeFalse()
+        ->and(ContentType::InstagramComment->supportsVideo())->toBeFalse()
+        ->and(ContentType::InstagramComment->supportsDocument())->toBeFalse()
+        ->and(ContentType::InstagramComment->requiresMedia())->toBeFalse();
+})->with([Platform::Instagram, Platform::InstagramFacebook]);
+
 test('an instagram account connected through facebook gets the same post types as instagram', function () {
     expect(ContentType::forPlatform(Platform::InstagramFacebook))->toBe(ContentType::forPlatform(Platform::Instagram))
         ->and(array_values(ContentType::forPlatform(Platform::Instagram)))->toBe([ContentType::InstagramFeed, ContentType::InstagramReel, ContentType::InstagramStory]);

@@ -77,6 +77,23 @@ test('the instagram composer saves one text comment and shows it inside the post
     'facebook login reel' => [Platform::InstagramFacebook, ContentType::InstagramReel],
 ]);
 
+test('an instagram first comment takes no media and the media button says why', function (Platform $platform) {
+    $post = instagramFirstCommentDraft($platform, ContentType::InstagramFeed);
+    $id = $post->social_account_id;
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, '@thread-start');
+    $page->click('@thread-start');
+    waitFor($page, '@thread-reply-0');
+    waitFor($page, "@composer-{$id}-media-source-disabled");
+
+    $page->assertMissing("@composer-{$id}-reply-0-dropzone")
+        ->assertMissing("@composer-{$id}-media-source-menu")
+        ->hover("@composer-{$id}-media-source-disabled");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.form.thread.comment_attachments'));
+    $page->assertNoJavaScriptErrors();
+})->with([Platform::Instagram, Platform::InstagramFacebook]);
+
 test('switching a scheduled instagram post to story blocks saving until its comment is removed', function (bool $hasCommentGrant) {
     $post = instagramFirstCommentDraft(Platform::Instagram, ContentType::InstagramFeed);
     if (! $hasCommentGrant) {

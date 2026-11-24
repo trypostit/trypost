@@ -45,17 +45,19 @@ test('a caption exceeding the publishing limit is refused', function () {
         ]));
 });
 
-test('an instagram story with a comment is blocked by its format when publishing with an old grant', function () {
-    $account = SocialAccount::factory()->instagram()->create([
-        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish'],
-    ]);
+test('an instagram story with a comment is blocked by its format when publishing with an old grant', function (Platform $platform, array $publishScopes) {
+    config(["trypost.platforms.{$platform->value}.scopes" => ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]);
+    $account = SocialAccount::factory()->create(['platform' => $platform, 'scopes' => $publishScopes]);
     $post = Post::factory()->forAccount($account, ContentType::InstagramStory)->create([
         'meta' => ['thread_replies' => ['More details in the bio']],
     ]);
 
     expect(fn () => PublishContentValidator::validate($post))
         ->toThrow(ContentLimitException::class, __('posts.form.thread.instagram_story'));
-});
+})->with([
+    'instagram login' => [Platform::Instagram, ['instagram_business_basic', 'instagram_business_content_publish']],
+    'facebook login' => [Platform::InstagramFacebook, ['instagram_basic', 'pages_read_engagement', 'instagram_content_publish']],
+]);
 
 test('a missing instagram comment grant blocks the comment and allows publishing without it', function (Platform $platform, string $publish) {
     config(["trypost.platforms.{$platform->value}.scopes" => [$publish, ...ChannelPermissions::missingFrom([], $platform, GatedFeature::ThreadReplies)]]);

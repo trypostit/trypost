@@ -123,6 +123,27 @@ test('instagram creates a first comment only after the published media id is kno
     'reel' => [ContentType::InstagramReel, ['reel.mp4']],
 ]);
 
+test('instagram receives the first comment as the plain text the composer previews', function () {
+    $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
+    $this->post->update([
+        'meta' => ['thread_replies' => ['<p>Link in <strong>bio</strong> &amp; more</p><p>I <3 it</p>']],
+        'media' => [['id' => 'photo', 'url' => 'https://example.com/photo.jpg', 'path' => 'media/photo.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg']],
+    ]);
+    $graph = Platform::Instagram->graphApiUrl();
+    Http::fake([
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container']),
+        "{$graph}/container?*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/ig_123456789/media_publish" => Http::response(['id' => 'published-media']),
+        "{$graph}/published-media/comments" => Http::response(['id' => 'first-comment']),
+        "{$graph}/published-media?*" => Http::response(['permalink' => 'https://www.instagram.com/p/PUBLISHED/']),
+    ]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => Str::endsWith($request->url(), '/published-media/comments')
+        && $request['message'] === "Link in bio & more\nI <3 it");
+});
+
 test('a known first comment rejection resumes from the confirmed instagram media without publishing it again', function () {
     $this->socialAccount->update(['scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments']]);
     $this->post->update([
