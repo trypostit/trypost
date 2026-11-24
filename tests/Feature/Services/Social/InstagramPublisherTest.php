@@ -171,7 +171,7 @@ test('an instagram post live without its media id publishes without the first co
         ->and($published->platform_post_id)->toBe('container')
         ->and($published->thread_reply_ids)->toBeNull()
         ->and($published->error_message)->toBeNull()
-        ->and($published->instagramCommentSkipped())->toBeTrue();
+        ->and(data_get($published->error_context, InstagramPublisher::COMMENT_SKIPPED))->toBeTrue();
     Http::assertSentCount(1);
     Http::assertNotSent(fn (Request $request): bool => Str::contains($request->url(), '/comments'));
 });

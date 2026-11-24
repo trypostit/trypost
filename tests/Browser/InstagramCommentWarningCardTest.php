@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\InstagramPublisher;
 use Illuminate\Support\Facades\Queue;
 
 test('an instagram post published without its first comment says so on its card, with what to do in a popover', function () {
@@ -28,7 +29,7 @@ test('an instagram post published without its first comment says so on its card,
         'published_at' => now()->subHours($hoursAgo),
     ]);
     $skipped = $sentPost(1);
-    $skipped->recordInstagramCommentSkipped();
+    $skipped->writePublication(['error_context' => [InstagramPublisher::COMMENT_SKIPPED => true]]);
     $commented = $sentPost(2);
 
     $this->actingAs($user);

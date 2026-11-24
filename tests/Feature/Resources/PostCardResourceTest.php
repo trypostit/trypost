@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Services\Social\InstagramPublisher;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -91,7 +92,7 @@ test('a rejected post keeps its failure when its context has no category', funct
 
 test('an instagram post published without its first comment shows the warning, not a failure', function () {
     $post = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
-    $post->recordInstagramCommentSkipped();
+    $post->writePublication(['error_context' => [InstagramPublisher::COMMENT_SKIPPED => true]]);
 
     $card = PostCardResource::make($post->fresh())->resolve();
 

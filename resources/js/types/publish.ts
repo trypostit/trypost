@@ -87,7 +87,7 @@ export interface PostCard {
     error_message?: string | null;
     failure?: PostCardFailure | null;
     youtube_thumbnail_warning?: YouTubeThumbnailWarning | null;
-    /** Instagram returned no media id, so the first comment did not go out (`Post::instagramCommentSkipped()`). */
+    /** Instagram returned no media id, so the first comment did not go out (`InstagramPublisher::COMMENT_SKIPPED`). */
     instagram_comment_skipped?: boolean;
     retry_at?: string | null;
     origin: PostOriginValue;

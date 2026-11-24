@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Social\MastodonPoll;
 use App\Support\Social\Poll;
@@ -965,6 +966,14 @@ enum ContentType: string
     public static function derivesFromMedia(SocialPlatform $platform): bool
     {
         return collect([SocialPlatform::Pinterest, SocialPlatform::TikTok])->containsStrict($platform);
+    }
+
+    /**
+     * The post's type on the network, or the one its media implies when it has none.
+     */
+    public static function forPost(Post $post, SocialPlatform $platform): self
+    {
+        return $post->content_type ?? self::forMedia($platform, $post->media ?? []);
     }
 
     /**

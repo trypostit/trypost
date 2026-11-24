@@ -219,7 +219,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         };
 
         if (data_get($result, InstagramPublisher::COMMENT_SKIPPED) === true) {
-            $this->post->recordInstagramCommentSkipped();
+            $this->post->writePublication(['error_context' => [...($this->post->error_context ?? []), InstagramPublisher::COMMENT_SKIPPED => true]]);
         }
 
         if ($this->post->awaitsTikTokVideoId()) {

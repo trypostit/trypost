@@ -21,7 +21,7 @@ final class PublishContentValidator
     {
         $account = $post->socialAccount;
         $platform = $account?->platform ?? $post->platform;
-        $type = $post->contentTypeOn($platform);
+        $type = ContentType::forPost($post, $platform);
         $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type);
 
         if (filled($blockedFeature)) {

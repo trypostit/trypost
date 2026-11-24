@@ -84,7 +84,7 @@ class PostPreviewer
             $preview['description_length_bytes'] = strlen($description);
         }
 
-        $type = $post->contentTypeOn($platform);
+        $type = ContentType::forPost($post, $platform);
         $replies = [];
 
         if (ThreadReplies::supportsPostType($platform, $type)) {
