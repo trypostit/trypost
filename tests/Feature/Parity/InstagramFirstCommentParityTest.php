@@ -15,6 +15,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
@@ -143,3 +144,45 @@ test('an instagram story with a comment reports the format restriction before th
         'web', 'api' => $response->assertUnprocessable()->assertJsonValidationErrors(['meta.thread_replies' => $message]),
     };
 })->with(['web', 'api', 'mcp']);
+
+test('every surface refuses a second instagram comment, a comment with media and a comment over 2,200 characters', function (string $surface, string $case) {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::Instagram,
+        'scopes' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'],
+    ]);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $this->user->id]);
+    $photo = fn (): Media => Media::factory()->temporaryUpload($this->workspace)->stored()->create();
+    $mediaItem = fn (Media $upload): array => $surface === 'web' ? MediaItem::fromMedia($upload)->toArray() : ['upload_token' => $upload->upload_token];
+
+    [$comments, $field, $message] = match ($case) {
+        'second comment' => [
+            [['text' => 'First', 'media' => []], ['text' => 'Second', 'media' => []]],
+            'meta.thread_replies',
+            trans_choice('posts.form.thread.too_many', 1, ['max' => 1]),
+        ],
+        'media' => [
+            [['text' => 'With a photo', 'media' => [$mediaItem($photo())]]],
+            'meta.thread_replies.0.media',
+            __('posts.form.warnings.max_files_exceeded', ['max' => 0, 'current' => 1]),
+        ],
+        'too long' => [
+            [['text' => Str::repeat('a', 2201), 'media' => []]],
+            'meta.thread_replies.0',
+            __('posts.form.thread.comment_too_long', ['limit' => 2200, 'over' => 1]),
+        ],
+    };
+
+    $response = pollParityUpdate($surface, $post, [
+        'status' => Status::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'media' => [$mediaItem($photo())],
+        'meta' => ['thread_replies' => $comments],
+    ]);
+
+    match ($surface) {
+        'mcp' => $response->assertHasErrors([$message]),
+        'web', 'api' => $response->assertUnprocessable()->assertJsonValidationErrors([$field => $message]),
+    };
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp'])->with(['second comment', 'media', 'too long']);
