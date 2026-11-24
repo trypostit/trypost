@@ -535,3 +535,27 @@ test('redirect gives no offer to a plan other than Socials monthly', function ()
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_workspaces_monthly', route('app.billing.index'), $workspaces, Offer::factory()->blackFriday()->create());
 });
+
+test('checkout session carries the affiliate referral from the affonso cookie', function () {
+    request()->cookies->set('affonso_referral', 'ref_123');
+
+    $account = Account::factory()->create();
+    Workspace::factory()->create(['account_id' => $account->id]);
+    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->andReturnSelf();
+    $builder->shouldReceive('checkout')
+        ->once()
+        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.affonso_referral') === 'ref_123')
+        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome.plan'));
+});

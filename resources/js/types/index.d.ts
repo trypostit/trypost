@@ -1,6 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
+import type { AffiliateSignup } from '@/lib/affiliateTracking';
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
 import type { CropPresetValue } from '@/lib/mediaEditor';
 import type {
@@ -59,6 +60,7 @@ export interface FlashData {
     info?: string;
     plainToken?: string;
     createdLabel?: { id: string; name: string; color: string };
+    affiliateSignup?: AffiliateSignup;
     [key: string]: unknown;
 }
 

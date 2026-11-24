@@ -51,6 +51,7 @@ class StartSubscriptionCheckout
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
                 ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => $interval->value,
                 ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
+                ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY => request()->cookie(ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY),
             ], filled(...)),
         ]);
 

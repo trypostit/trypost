@@ -1,3 +1,4 @@
+import type { AffiliateSignup } from '@/lib/affiliateTracking';
 import { AppPageProps } from '@/types/index';
 
 declare global {
@@ -5,6 +6,9 @@ declare global {
         dataLayer: Record<string, unknown>[];
         $crisp?: {
             push: (command: unknown[]) => void;
+        };
+        Affonso?: {
+            signup: (user: AffiliateSignup) => void;
         };
     }
 }
