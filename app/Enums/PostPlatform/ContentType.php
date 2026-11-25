@@ -6,6 +6,7 @@ namespace App\Enums\PostPlatform;
 
 use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\Media\CropPreset;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
@@ -510,22 +511,22 @@ enum ContentType: string
      * in display order for this content type. Every ratio must
      * sit inside the image aspectRatioBounds() (CropPresetBoundsTest).
      *
-     * @return list<string>
+     * @return list<CropPreset>
      */
     public function cropPresets(): array
     {
         return match ($this) {
-            self::InstagramFeed => ['3:4', '4:5', '1:1', '1.91:1'],
+            self::InstagramFeed => [CropPreset::Portrait3x4, CropPreset::Portrait4x5, CropPreset::Square, CropPreset::Landscape191x100],
             self::InstagramStory, self::InstagramReel, self::FacebookStory, self::FacebookReel,
-            self::TikTokVideo, self::YouTubeShort => ['9:16'],
-            self::XPost, self::XPoll => ['1:1', '4:3', '16:9', '2:1'],
-            self::TikTokPhoto => ['4:3', '16:9', '9:16', '1:1'],
-            self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => ['1:1', '1.91:1'],
-            self::PinterestPin, self::PinterestCarousel => ['2:3', '1:1'],
-            self::PinterestVideoPin => ['2:3'],
-            self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => ['1:1', '4:5', '1.91:1'],
-            self::BlueskyPost, self::MastodonPost, self::MastodonPoll => ['1:1', '16:9'],
-            self::GoogleBusinessPost => ['4:3', '1:1'],
+            self::TikTokVideo, self::YouTubeShort => [CropPreset::Portrait9x16],
+            self::XPost, self::XPoll => [CropPreset::Square, CropPreset::Landscape4x3, CropPreset::Landscape16x9, CropPreset::Landscape2x1],
+            self::TikTokPhoto => [CropPreset::Landscape4x3, CropPreset::Landscape16x9, CropPreset::Portrait9x16, CropPreset::Square],
+            self::FacebookPost, self::LinkedInPost, self::LinkedInPagePost => [CropPreset::Square, CropPreset::Landscape191x100],
+            self::PinterestPin, self::PinterestCarousel => [CropPreset::Portrait2x3, CropPreset::Square],
+            self::PinterestVideoPin => [CropPreset::Portrait2x3],
+            self::ThreadsPost, self::ThreadsGhostPost, self::ThreadsPoll => [CropPreset::Square, CropPreset::Portrait4x5, CropPreset::Landscape191x100],
+            self::BlueskyPost, self::MastodonPost, self::MastodonPoll => [CropPreset::Square, CropPreset::Landscape16x9],
+            self::GoogleBusinessPost => [CropPreset::Landscape4x3, CropPreset::Square],
             self::TelegramPost, self::DiscordMessage, self::InstagramComment, self::LinkedInComment => self::defaultCropPresets(),
         };
     }
@@ -533,11 +534,11 @@ enum ContentType: string
     /**
      * Crop presets when no channel is selected.
      *
-     * @return list<string>
+     * @return list<CropPreset>
      */
     public static function defaultCropPresets(): array
     {
-        return ['1:1', '9:16'];
+        return [CropPreset::Square, CropPreset::Portrait9x16];
     }
 
     /**
@@ -595,13 +596,13 @@ enum ContentType: string
      * show it at 9:16, while a Facebook feed video takes it at its own ratio
      * (Meta recommends the video's), so the editor keeps the image's.
      */
-    public function coverCropPreset(): string
+    public function coverCropPreset(): CropPreset
     {
         if ($this === self::FacebookPost) {
-            return 'original';
+            return CropPreset::Original;
         }
 
-        return '9:16';
+        return CropPreset::Portrait9x16;
     }
 
     /**
@@ -675,13 +676,13 @@ enum ContentType: string
             'video_aspect_ratio_min' => $videoBounds['min'] ?? null,
             'video_aspect_ratio_max' => $videoBounds['max'] ?? null,
             'auto_fits_image' => $this->autoFitsImage(),
-            'crop_presets' => $this->cropPresets(),
+            'crop_presets' => CropPreset::valuesOf($this->cropPresets()),
             'supports_alt_text' => $this->supportsImageAltText(),
             'supports_video_alt_text' => $this->supportsVideoAltText(),
             'supports_user_tags' => $this->supportsUserTags(),
             'supports_video_cover' => $this->supportsVideoCover(),
             'supports_custom_video_cover' => $this->supportsCustomVideoCover(),
-            'cover_crop_preset' => $this->coverCropPreset(),
+            'cover_crop_preset' => $this->coverCropPreset()->value,
             'platform_label' => $this->platform()->label(),
             'image_min_width' => $dimensions['min_width'] ?? null,
             'image_min_height' => $dimensions['min_height'] ?? null,

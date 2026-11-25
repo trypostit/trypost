@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\CropPreset;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use Symfony\Component\Process\ExecutableFinder;
@@ -24,7 +25,7 @@ function runMediaEditorPresetsHarness(): array
     $input = tempnam(sys_get_temp_dir(), 'media-editor-presets');
     file_put_contents($input, json_encode([
         'rules' => ContentType::mediaRulesForFrontend(),
-        'defaults' => ContentType::defaultCropPresets(),
+        'defaults' => CropPreset::valuesOf(ContentType::defaultCropPresets()),
     ], JSON_THROW_ON_ERROR));
 
     try {
@@ -62,7 +63,7 @@ test('the typescript media editor offers exactly the backend crop presets for ev
         $presets = data_get($output, "contentTypes.{$type->value}");
 
         expect(array_column($presets, 'value'))
-            ->toBe(['freeform', 'original', ...$type->cropPresets()], $type->value);
+            ->toBe(['freeform', 'original', ...CropPreset::valuesOf($type->cropPresets())], $type->value);
 
         $bounds = $type->aspectRatioBounds(MediaType::Image);
 
@@ -77,7 +78,7 @@ test('the typescript media editor offers exactly the backend crop presets for ev
         }
     }
 
-    expect(data_get($output, 'noChannel'))->toBe(['freeform', 'original', ...ContentType::defaultCropPresets()]);
+    expect(data_get($output, 'noChannel'))->toBe(['freeform', 'original', ...CropPreset::valuesOf(ContentType::defaultCropPresets())]);
 });
 
 test('the no-channel presets sit inside every content type bounds or are filtered out', function () {
@@ -86,7 +87,7 @@ test('the no-channel presets sit inside every content type bounds or are filtere
     foreach (ContentType::cases() as $type) {
         $bounds = $type->aspectRatioBounds(MediaType::Image) ?? ['min' => 0.0, 'max' => INF];
         $inside = array_values(array_filter(
-            ContentType::defaultCropPresets(),
+            CropPreset::valuesOf(ContentType::defaultCropPresets()),
             fn (string $preset): bool => mediaEditorPresetRatio($preset) >= $bounds['min'] - 0.0001
                 && mediaEditorPresetRatio($preset) <= $bounds['max'] + 0.0001,
         ));
