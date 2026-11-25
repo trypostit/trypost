@@ -40,18 +40,11 @@ class FacebookPublisher
     /** The result key of a feed video published without the cover picked for it (`feedVideoThumb()` could not prepare it). */
     public const string COVER_SKIPPED = 'facebook_cover_skipped';
 
-    /** The `status.video_status` of a video Facebook is still processing. */
-    private const string VIDEO_PROCESSING_STATUS = 'processing';
+    /** The `status.video_status` of a video Facebook has finished processing. */
+    private const string VIDEO_READY_STATUS = 'ready';
 
-    /** Upload refusals that say nothing about the `thumb`, so the upload is never sent again without it. */
-    private const array UPLOAD_RETRY_CATEGORIES = [
-        ErrorCategory::RateLimit,
-        ErrorCategory::ServerError,
-        ErrorCategory::PlatformUnavailable,
-        ErrorCategory::Timeout,
-        ErrorCategory::TokenExpired,
-        ErrorCategory::Permission,
-    ];
+    /** The `status.video_status` values of a video Facebook will never finish processing. */
+    private const array VIDEO_FAILED_STATUSES = ['error', 'expired'];
 
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
     public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
@@ -294,8 +287,11 @@ class FacebookPublisher
 
     /**
      * Whether a refused upload is worth sending again without its `thumb`: it
-     * carried one, and Facebook did not refuse it for a reason that would hold
-     * the second request too (a limit, an outage, a dead token).
+     * carried one, and Facebook's refusal is not one of its documented video
+     * errors (`FacebookPublishException::fromApiResponse()`: the file, a
+     * limit, an outage, the Page), which would hold the second request too.
+     * Meta documents no code for a refused thumbnail, so only an
+     * undocumented refusal (Unknown, such as code 100) points at it.
      */
     private function refusedThumb(?string $thumb, FacebookPublishException $exception): bool
     {
@@ -303,7 +299,7 @@ class FacebookPublisher
             return false;
         }
 
-        return ! collect(self::UPLOAD_RETRY_CATEGORIES)->containsStrict($exception->category);
+        return $exception->category === ErrorCategory::Unknown;
     }
 
     /**
@@ -674,10 +670,12 @@ class FacebookPublisher
 
     /**
      * Whether Facebook is still processing the published Reel, which may not
-     * take a cover yet. A status read that fails transiently counts as still
-     * processing, so the cover waits for the next try.
+     * take a cover yet: every status but `ready` counts as processing
+     * (`upload_complete` comes before it). A status read that fails
+     * transiently counts as still processing, so the cover waits for the
+     * next try.
      *
-     * @throws FacebookPublishException when Facebook refuses the read
+     * @throws FacebookPublishException when Facebook refuses the read, or the Reel will never be ready (MediaFormat)
      */
     public function reelIsProcessing(Post $post): bool
     {
@@ -697,7 +695,16 @@ class FacebookPublisher
             return true;
         }
 
-        return data_get($response->json(), 'status.video_status') === self::VIDEO_PROCESSING_STATUS;
+        $videoStatus = data_get($response->json(), 'status.video_status');
+
+        if (collect(self::VIDEO_FAILED_STATUSES)->containsStrict($videoStatus)) {
+            throw new FacebookPublishException(
+                userMessage: "Facebook could not process the Reel ({$videoStatus})",
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        return $videoStatus !== self::VIDEO_READY_STATUS;
     }
 
     /**

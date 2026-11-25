@@ -159,14 +159,38 @@ test('a cover that cannot be made a jpeg leaves a warning at once instead of try
     expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
 });
 
-test('a reel facebook is still processing is tried again before its cover is sent', function () {
+test('a reel facebook is still processing is tried again before its cover is sent', function (string $videoStatus) {
     Http::fake([
-        facebookReelStatusUrl() => Http::response(facebookReelStatus('processing')),
+        facebookReelStatusUrl() => Http::response(facebookReelStatus($videoStatus)),
         FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['success' => true]),
     ]);
 
     runSetFacebookCover($this->post)->assertReleased(SetFacebookCover::CHECK_EVERY_SECONDS);
+
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+})->with(['processing', 'upload_complete']);
+
+test('a reel facebook could not process leaves a warning without sending its cover', function () {
+    Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('error')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response(['success' => true]),
+    ]);
+
+    runSetFacebookCover($this->post)->assertNotReleased();
+
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+});
+
+test('a reel deleted on facebook before its cover went on leaves no warning', function () {
+    Http::fake([
+        facebookReelStatusUrl() => Http::response(['error' => ['message' => 'Unsupported get request. Object with ID video_123 does not exist', 'type' => 'GraphMethodException', 'code' => 100, 'error_subcode' => 33]], 400),
+    ]);
+
+    runSetFacebookCover($this->post)->assertNotReleased();
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
     expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();

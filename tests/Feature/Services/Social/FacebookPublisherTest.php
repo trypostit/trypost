@@ -1578,6 +1578,20 @@ test('a feed video whose thumb facebook refuses is published again without it', 
     ]);
 });
 
+test('a feed video facebook refuses for the video itself is not sent again without its thumb', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['error' => ['message' => 'Unsupported file format', 'type' => 'OAuthException', 'code' => 1363031]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(2);
+});
+
 test('a feed video whose upload facebook throttles is not sent again without its thumb', function () {
     $coverUrl = 'https://example.com/media/2026-01/cover.png';
     $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);

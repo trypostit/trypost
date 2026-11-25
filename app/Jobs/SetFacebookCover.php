@@ -106,8 +106,17 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
         }
     }
 
+    /**
+     * Tries again what a later try may fix, leaves a Reel deleted on Facebook
+     * meanwhile alone (nothing left to warn about, like SetYouTubeCover), and
+     * records the warning for any other refusal.
+     */
     private function settle(FacebookPublishException $exception): void
     {
+        if ($exception->isMissingObject()) {
+            return;
+        }
+
         if (self::isRetryable($exception)) {
             $this->release(self::CHECK_EVERY_SECONDS);
 
