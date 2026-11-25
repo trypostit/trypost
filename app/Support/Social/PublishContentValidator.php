@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
@@ -22,7 +23,7 @@ final class PublishContentValidator
         $account = $post->socialAccount;
         $platform = $account?->platform ?? $post->platform;
         $type = ContentType::forPost($post, $platform);
-        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type);
+        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type, filled(MediaItem::covers($post->media ?? [])));
 
         if (filled($blockedFeature)) {
             throw new MissingPermissionException(

@@ -306,5 +306,9 @@ return [
             'message' => 'Para publicar respostas no :network, reconecte este canal e permita que o TryPost as publique.',
             'member_message' => 'Para publicar respostas no :network, um admin do workspace precisa reconectar este canal.',
         ],
+        'video_cover' => [
+            'message' => 'Para adicionar capa aos Reels no :network, reconecte este canal e permita que o TryPost a aplique.',
+            'member_message' => 'Para adicionar capa aos Reels no :network, um admin do workspace precisa reconectar este canal.',
+        ],
     ],
 ];

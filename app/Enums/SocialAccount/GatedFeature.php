@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\SocialAccount;
 
+use App\Enums\PostPlatform\ContentType;
 use App\Support\ThreadReplies;
 
 /**
@@ -20,22 +21,35 @@ enum GatedFeature: string
     case PostInsightsExtended = 'post_insights_extended';
     case PostHistory = 'post_history';
     case PrivatePostRead = 'private_post_read';
+    case VideoCover = 'video_cover';
 
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
      * schedule or publish it. Mirrored by `requiresFeatureToPublish()` in
      * `lib/channelPermissions.ts`: every post publishes, a post with replies
-     * uses them, analytics are never part of a post.
+     * uses them, a Reel whose video has a cover image uses the video cover,
+     * analytics are never part of a post.
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public function isRequiredToPublish(?array $meta): bool
+    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, bool $hasVideoCover = false): bool
     {
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
+            self::VideoCover => self::usesVideoCover($type, $hasVideoCover),
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => false,
         };
+    }
+
+    /** A cover TryPost sets after publishing, which only a type like the Facebook Reel takes. */
+    private static function usesVideoCover(?ContentType $type, bool $hasVideoCover): bool
+    {
+        if (! $hasVideoCover) {
+            return false;
+        }
+
+        return $type?->setsCoverAfterPublish() === true;
     }
 
     /**
@@ -47,6 +61,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::ThreadReplies => 'meta.thread_replies',
+            self::VideoCover => 'media',
             self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'social_account_id',
         };
     }
@@ -60,7 +75,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::PostInsightsExtended, self::PrivatePostRead => true,
-            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory => false,
+            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory, self::VideoCover => false,
         };
     }
 
@@ -74,6 +89,7 @@ enum GatedFeature: string
         return match ($this) {
             self::Publish => 'channels.permissions.publish',
             self::ThreadReplies => 'channels.permissions.thread_replies',
+            self::VideoCover => 'channels.permissions.video_cover',
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'channels.permissions.insights',
         };
     }

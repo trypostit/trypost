@@ -572,6 +572,16 @@ enum ContentType: string
     }
 
     /**
+     * Whether the network takes this type's cover only once the video is up
+     * (the Facebook Reel's `/{video-id}/thumbnails`), which needs its own
+     * channel permission (`GatedFeature::VideoCover`).
+     */
+    public function setsCoverAfterPublish(): bool
+    {
+        return $this === self::FacebookReel;
+    }
+
+    /**
      * Whether a video of this type may take an image as its cover
      * (`media.*.meta.cover`): Instagram takes `cover_url` on Reels only, and
      * YouTube sets a Short's thumbnail once the video is processed.

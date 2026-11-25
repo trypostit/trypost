@@ -35,7 +35,7 @@ const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
 );
 
-const { missingPermissionKey } = await import(
+const { channelPermissionKey, missingPermissionKey } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/channelPermissions.ts')).href
 );
 const { GatedFeature } = await import(
@@ -88,6 +88,27 @@ console.log(
             analytics_only: missingPermissionKey(thread, { post_insights: missing.thread_replies }, true),
             lacks_scope_admin: missingPermissionKey(thread, missing, true),
             lacks_scope_member: missingPermissionKey(thread, missing, false),
+            reel_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { video_cover: missing.thread_replies } },
+                'facebook_reel',
+                {},
+                true,
+                true,
+            ),
+            reel_without_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { video_cover: missing.thread_replies } },
+                'facebook_reel',
+                {},
+                true,
+                false,
+            ),
+            feed_video_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { video_cover: missing.thread_replies } },
+                'facebook_post',
+                {},
+                true,
+                true,
+            ),
         },
     }),
 );

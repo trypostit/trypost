@@ -161,14 +161,14 @@ class ChannelPermissions
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type): ?GatedFeature
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type, bool $hasVideoCover = false): ?GatedFeature
     {
         if (blank($account)) {
             return null;
         }
 
-        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type): bool {
-            if (! $feature->isRequiredToPublish($meta)) {
+        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type, $hasVideoCover): bool {
+            if (! $feature->isRequiredToPublish($meta, $type, $hasVideoCover)) {
                 return false;
             }
 

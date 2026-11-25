@@ -205,3 +205,82 @@ test('a member whose posts need approval is told an admin needs to reconnect the
 
     expect($lacking->posts()->exists())->toBeFalse();
 });
+
+/** A Facebook Reel draft whose video has a cover image, on a channel connected before TryPost asked for the cover scopes. */
+function reelWithCoverOnChannelWithoutCoverScopes(): Post
+{
+    $post = pollParityPost(ContentType::FacebookReel);
+    $post->socialAccount->update(['scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+    $post->update(['media' => [[
+        'id' => 'video-1',
+        'path' => 'medias/video.mp4',
+        'url' => 'https://cdn.test/medias/video.mp4',
+        'type' => 'video',
+        'mime_type' => 'video/mp4',
+        'meta' => ['cover_source' => 'image', 'cover' => [
+            'id' => 'cover-1',
+            'path' => 'medias/cover.jpg',
+            'url' => 'https://cdn.test/medias/cover.jpg',
+            'type' => 'image',
+            'mime_type' => 'image/jpeg',
+        ]],
+    ]]]);
+
+    return $post;
+}
+
+/**
+ * The web composer always sends the post's media; the API and MCP keep the stored media.
+ *
+ * @return array<string, mixed>
+ */
+function reelCoverChanges(string $surface, Post $post): array
+{
+    $changes = ['status' => Status::Scheduled->value, 'scheduled_at' => now()->addDay()->toIso8601String()];
+
+    if ($surface !== 'web') {
+        return $changes;
+    }
+
+    return [...$changes, 'media' => $post->media];
+}
+
+test('a reel with a cover on a channel without the cover scopes is refused on its media on the web, api and mcp', function (string $surface) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $message = __('channels.permissions.video_cover.message', ['network' => Platform::Facebook->label()]);
+
+    $response = pollParityUpdate($surface, $post, reelCoverChanges($surface, $post));
+
+    match ($surface) {
+        'mcp' => $response->assertHasErrors([$message]),
+        default => $response->assertUnprocessable()->assertJsonValidationErrors(['media' => $message]),
+    };
+    expect($post->fresh()->status)->toBe(Status::Draft);
+})->with(['web', 'api', 'mcp']);
+
+test('a reel with a cover on a channel without the cover scopes still saves a draft', function (string $surface) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $changes = ['content' => 'Kept as a draft'];
+
+    if ($surface === 'web') {
+        $changes['media'] = $post->media;
+    }
+
+    $response = pollParityUpdate($surface, $post, $changes);
+
+    match ($surface) {
+        'mcp' => $response->assertOk(),
+        default => $response->assertSessionHasNoErrors(),
+    };
+    expect($post->fresh()->content)->toContain('Kept as a draft');
+})->with(['web', 'api', 'mcp']);
+
+test('publishing a stored reel with a cover on a channel without the cover scopes is refused before anything goes out', function () {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+
+    TryPostServer::actingAs($this->user)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('channels.permissions.video_cover.message', ['network' => Platform::Facebook->label()])]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+});

@@ -109,7 +109,7 @@ test('a login reporting no scopes lacks every publish scope, while a stored gran
 
 test('a channel is never told to reconnect for an optional read or a scope TryPost no longer asks for', function () {
     config(['trypost.platforms.tiktok.scopes' => data_get(trypostConfigWith(['TIKTOK_SCOPES' => '']), 'platforms.tiktok.scopes')]);
-    $facebook = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_manage_posts', 'pages_read_engagement']]);
+    $facebook = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_manage_posts', 'pages_read_engagement', 'pages_read_user_content', 'pages_manage_engagement']]);
     $tiktok = SocialAccount::factory()->make(['platform' => Platform::TikTok, 'scopes' => ['user.info.basic', 'video.publish']]);
 
     expect(ChannelPermissions::lacks($facebook, GatedFeature::PostInsightsExtended))->toBeTrue()
@@ -212,4 +212,33 @@ test('replies are off on a network whose connect does not ask for their scope', 
     gateFeature(Platform::X, GatedFeature::ThreadReplies, ['tweet.moderate.write']);
 
     expect(ThreadReplies::supports(Platform::X))->toBeTrue();
+});
+
+test('the facebook reel cover is on by default', function () {
+    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::VideoCover))->toBeTrue()
+        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->not->toContain('video_cover');
+});
+
+test('the facebook reel cover is off when the connect does not ask for its scopes', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+    $account = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::VideoCover))->toBeFalse()
+        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->toContain('video_cover')
+        ->and(ChannelPermissions::missing($account))->toBe([])
+        ->and(ChannelPermissions::featureBlockingPost($account, [], ContentType::FacebookReel, true))->toBeNull();
+});
+
+test('a facebook reel with a cover needs the reel cover scopes, and nothing else does', function () {
+    $without = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+    $with = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'pages_read_user_content', 'pages_manage_engagement']]);
+
+    expect(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, true))->toBe(GatedFeature::VideoCover)
+        ->and(GatedFeature::VideoCover->postValidationField())->toBe('media')
+        ->and(ChannelPermissions::reconnectMessage(Platform::Facebook, GatedFeature::VideoCover))
+        ->toBe(__('channels.permissions.video_cover.message', ['network' => Platform::Facebook->label()]))
+        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, false))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookPost, true))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($with, [], ContentType::FacebookReel, true))->toBeNull()
+        ->and(ChannelPermissions::missing($without))->toHaveKey('video_cover');
 });
