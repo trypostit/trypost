@@ -9,12 +9,11 @@ import { createApp, h } from 'vue';
 
 import { initializeDataLayer } from '@/datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from '@/language';
-import { trackAffiliateSignup } from '@/lib/affiliateTracking';
 import { syncContentTypeMediaRules } from '@/lib/contentTypeMediaRules';
 import { trackInAppPushes } from '@/lib/inAppHistory';
 import { capturePageview, initializePostHog, syncPostHogContext } from '@/posthog';
 import { syncPreferences } from '@/preferences';
-import type { Auth, FlashData } from '@/types';
+import type { Auth } from '@/types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'TryPost.it';
 
@@ -59,10 +58,6 @@ createInertiaApp({
         });
 
         trackInAppPushes();
-
-        router.on('flash', (event) => {
-            trackAffiliateSignup((event.detail.flash as FlashData).affiliateSignup);
-        });
 
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);
