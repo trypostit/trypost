@@ -46,6 +46,16 @@ function facebookThumbnailsUrl(): string
     return config('trypost.platforms.facebook.graph_api').'/video_123/thumbnails';
 }
 
+function facebookReelStatusUrl(): string
+{
+    return config('trypost.platforms.facebook.graph_api').'/video_123?fields=status*';
+}
+
+function facebookReelStatus(string $videoStatus): array
+{
+    return ['status' => ['video_status' => $videoStatus]];
+}
+
 function facebookCoverPng(): string
 {
     return (string) (new ImageManager(Driver::class))->createImage(180, 320)->fill('336699')->encodeUsingMediaType('image/png');
@@ -61,6 +71,7 @@ function runSetFacebookCover(Post $post): SetFacebookCover
 
 test('a published reel gets its cover image as the preferred thumbnail', function () {
     Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
         FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['success' => true]),
     ]);
@@ -84,6 +95,7 @@ test('a published reel gets its cover image as the preferred thumbnail', functio
 
 test('a cover facebook refuses leaves a warning and the reel published', function () {
     Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
         FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400),
     ]);
@@ -118,6 +130,7 @@ test('a reel without a cover asks facebook nothing', function () {
 
 test('a facebook server error tries the cover again', function () {
     Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
         FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['error' => ['message' => 'Service temporarily unavailable', 'type' => 'OAuthException', 'code' => 2, 'is_transient' => true]], 500),
     ]);
@@ -135,6 +148,7 @@ test('a cover that never went on records a warning when the job gives up', funct
 
 test('a cover that cannot be made a jpeg leaves a warning at once instead of trying again', function () {
     Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
         FACEBOOK_COVER_URL => Http::response('not an image', 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['success' => true]),
     ]);
@@ -143,4 +157,17 @@ test('a cover that cannot be made a jpeg leaves a warning at once instead of try
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
     expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+});
+
+test('a reel facebook is still processing is tried again before its cover is sent', function () {
+    Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('processing')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response(['success' => true]),
+    ]);
+
+    runSetFacebookCover($this->post)->assertReleased(SetFacebookCover::CHECK_EVERY_SECONDS);
+
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
 });

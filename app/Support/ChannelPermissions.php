@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
@@ -183,7 +184,7 @@ class ChannelPermissions
     public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
         $type = ContentType::forPost($post, $channel->platform);
-        $blocked = self::featureBlockingPost($channel, $post->meta, $type);
+        $blocked = self::featureBlockingPost($channel, $post->meta, $type, filled(MediaItem::covers($post->media ?? [])));
         if (filled($blocked)) {
             throw ValidationException::withMessages([
                 $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
@@ -216,8 +217,7 @@ class ChannelPermissions
      * behind the channel's warnings and a post's refusal, so the composer and
      * the server agree. A feature that is off asks nobody to reconnect.
      */
-    /** Whether the feature is on and the channel's stored grant lacks one of its scopes, so it must reconnect to use it. */
-    public static function requiresReconnect(SocialAccount $account, GatedFeature $feature): bool
+    private static function requiresReconnect(SocialAccount $account, GatedFeature $feature): bool
     {
         return self::enabled($account->platform, $feature) && self::lacks($account, $feature);
     }

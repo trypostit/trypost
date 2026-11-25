@@ -40,6 +40,19 @@ class FacebookPublisher
     /** The result key of a feed video published without the cover picked for it (`feedVideoThumb()` could not prepare it). */
     public const string COVER_SKIPPED = 'facebook_cover_skipped';
 
+    /** The `status.video_status` of a video Facebook is still processing. */
+    private const string VIDEO_PROCESSING_STATUS = 'processing';
+
+    /** Upload refusals that say nothing about the `thumb`, so the upload is never sent again without it. */
+    private const array UPLOAD_RETRY_CATEGORIES = [
+        ErrorCategory::RateLimit,
+        ErrorCategory::ServerError,
+        ErrorCategory::PlatformUnavailable,
+        ErrorCategory::Timeout,
+        ErrorCategory::TokenExpired,
+        ErrorCategory::Permission,
+    ];
+
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
     public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -246,13 +259,25 @@ class FacebookPublisher
      */
     private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
-        $thumb = $this->feedVideoThumb($media);
-
-        $response = $this->postToGraph("{$pageId}/videos", [
+        $payload = [
             'file_url' => $media->url,
             'access_token' => $accessToken,
             ...$this->optionalField('description', $content),
-        ], 'video post', image: $thumb);
+        ];
+        $thumb = $this->feedVideoThumb($media);
+        $coverSkipped = blank($thumb) && filled($media->cover());
+
+        try {
+            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', image: $thumb);
+        } catch (FacebookPublishException $exception) {
+            if (! $this->refusedThumb($thumb, $exception)) {
+                throw $exception;
+            }
+
+            Log::warning('Facebook refused the video cover; publishing without it', ['media_id' => $media->id, 'error' => $exception->getMessage()]);
+            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post');
+            $coverSkipped = true;
+        }
 
         $videoId = data_get($response->json(), 'id');
         $result = [
@@ -260,11 +285,25 @@ class FacebookPublisher
             'url' => "https://www.facebook.com/{$pageId}/videos/{$videoId}",
         ];
 
-        if (blank($thumb) && filled($media->cover())) {
+        if ($coverSkipped) {
             return [...$result, self::COVER_SKIPPED => true];
         }
 
         return $result;
+    }
+
+    /**
+     * Whether a refused upload is worth sending again without its `thumb`: it
+     * carried one, and Facebook did not refuse it for a reason that would hold
+     * the second request too (a limit, an outage, a dead token).
+     */
+    private function refusedThumb(?string $thumb, FacebookPublishException $exception): bool
+    {
+        if (blank($thumb)) {
+            return false;
+        }
+
+        return ! collect(self::UPLOAD_RETRY_CATEGORIES)->containsStrict($exception->category);
     }
 
     /**
@@ -611,7 +650,7 @@ class FacebookPublisher
             return null;
         }
 
-        $download = $this->downloadImage($cover->url);
+        $download = $this->downloadCover($cover->url);
 
         if (blank($download)) {
             Log::warning('Facebook video cover could not be downloaded; publishing without it', ['media_id' => $media->id]);
@@ -634,6 +673,34 @@ class FacebookPublisher
     }
 
     /**
+     * Whether Facebook is still processing the published Reel, which may not
+     * take a cover yet. A status read that fails transiently counts as still
+     * processing, so the cover waits for the next try.
+     *
+     * @throws FacebookPublishException when Facebook refuses the read
+     */
+    public function reelIsProcessing(Post $post): bool
+    {
+        $response = $this->reachOrRetry(
+            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$post->platform_post_id}", [
+                'fields' => 'status',
+                'access_token' => $post->socialAccount->access_token,
+            ]),
+            'reel status',
+        );
+
+        if ($response->failed()) {
+            if (! GraphError::isTransientFailure($response)) {
+                $this->handleApiError($response);
+            }
+
+            return true;
+        }
+
+        return data_get($response->json(), 'status.video_status') === self::VIDEO_PROCESSING_STATUS;
+    }
+
+    /**
      * Sets a published Reel's cover image (`media.0.meta.cover`) as its
      * preferred thumbnail. The Reel takes no cover when it is published, so
      * this runs once it is up (`SetFacebookCover`).
@@ -650,7 +717,7 @@ class FacebookPublisher
             return;
         }
 
-        $download = $this->downloadImage($cover->url) ?? throw new FacebookPublishException(
+        $download = $this->downloadCover($cover->url) ?? throw new FacebookPublishException(
             userMessage: 'Failed to download the cover image for Facebook',
             category: ErrorCategory::ServerError,
         );
@@ -670,6 +737,19 @@ class FacebookPublisher
             'access_token' => $post->socialAccount->access_token,
             'is_preferred' => 'true',
         ], 'reel cover', image: $jpeg, imageField: 'source');
+    }
+
+    /**
+     * Downloads a cover image (`downloadImage()`), treating a host that cannot
+     * be reached like a failed download, so a cover never fails a publish.
+     */
+    private function downloadCover(string $url): ?string
+    {
+        try {
+            return $this->downloadImage($url);
+        } catch (ConnectionException) {
+            return null;
+        }
     }
 
     /** The cover image re-encoded as a JPEG within Facebook's 10MB thumbnail limit. */

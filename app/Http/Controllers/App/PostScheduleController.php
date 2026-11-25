@@ -33,7 +33,7 @@ class PostScheduleController extends Controller
         }
 
         if ($scheduleAction === ScheduleAction::PublishNow && ! PostStatusRules::blocksEditing($post)) {
-            PostStatusRules::assertStoredPostPublishable($post);
+            PostStatusRules::assertStoredPostPublishable($post, $request->user());
         }
 
         $result = match ($scheduleAction) {

@@ -11,7 +11,9 @@ use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use App\Support\PostingSchedule;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     ['user' => $this->user, 'workspace' => $this->workspace, 'token' => $this->token] = parityContext();
@@ -283,4 +285,22 @@ test('publishing a stored reel with a cover on a channel without the cover scope
         ->assertHasErrors([__('channels.permissions.video_cover.message', ['network' => Platform::Facebook->label()])]);
 
     expect($post->fresh()->status)->toBe(Status::Draft);
+});
+
+test('a member who cannot reconnect the channel is told an admin needs to when publishing a stored reel with a cover', function () {
+    $member = workspaceMember($this->workspace);
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->update(['user_id' => $member->id]);
+
+    TryPostServer::actingAs($member)
+        ->tool(PublishPostTool::class, ['post_id' => $post->id])
+        ->assertHasErrors([__('channels.permissions.video_cover.member_message', ['network' => Platform::Facebook->label()])]);
+});
+
+test('attaching a cover to a scheduled reel on a channel without the cover scopes is refused', function () {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+
+    expect(fn () => ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->fresh(), $this->user))
+        ->toThrow(ValidationException::class, __('channels.permissions.video_cover.message', ['network' => Platform::Facebook->label()]));
 });

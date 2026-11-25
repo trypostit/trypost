@@ -27,7 +27,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    /** Facebook usually has the Reel up within a minute of the publish. */
+    /** Facebook usually has the Reel processed within a minute of the publish; until then the job checks again every minute. */
     public const int CHECK_EVERY_SECONDS = 60;
 
     /** What a later try may fix: Facebook or the network was down, or the cover could not be fetched. */
@@ -83,6 +83,12 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
         }
 
         try {
+            if ($publisher->reelIsProcessing($this->post)) {
+                $this->release(self::CHECK_EVERY_SECONDS);
+
+                return;
+            }
+
             $publisher->setReelCover($this->post);
         } catch (PlatformUnavailableException) {
             $this->release(self::CHECK_EVERY_SECONDS);

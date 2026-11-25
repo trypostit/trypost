@@ -238,7 +238,7 @@ test('the stored-post publish guard rejects the too-wide image', function () {
     $wide = aspectTestAsset($this->workspace, 2000, 1000, ['width' => 2000, 'height' => 1000]);
     $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($post, $post->user))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 });
 
@@ -246,7 +246,7 @@ test('a row without dimensions is measured from its file and written back', func
     $wide = aspectTestAsset($this->workspace, 2000, 1000);
     $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($post, $post->user))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 
     expect($wide->fresh()->meta)->toMatchArray(['width' => 2000, 'height' => 1000]);
@@ -256,7 +256,7 @@ test('an unreadable row skips the dimension check', function () {
     $broken = Media::factory()->temporaryUpload($this->workspace)->create(['meta' => []]);
     $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $broken, ContentType::InstagramFeed);
 
-    PostStatusRules::assertStoredPostPublishable($post);
+    PostStatusRules::assertStoredPostPublishable($post, $post->user);
 
     expect($broken->fresh()->meta)->toBe([]);
 });
@@ -272,7 +272,7 @@ test('google business rejects an image under 250 px on its short edge', function
         'min' => '250×250',
     ]);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($post, $post->user))
         ->toThrow(ValidationException::class, $message);
 });
 
@@ -321,7 +321,7 @@ test('a legacy aspect ratio no longer lets a too-wide instagram feed image throu
         'scheduled_at' => now()->addDay()->toIso8601String(),
     ])->assertHasErrors([tooWideForInstagramFeed()]);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($stored))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($stored, $stored->user))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 
     expect($stored->fresh()->status)->toBe(Status::Draft);
@@ -394,10 +394,10 @@ test('a sideways phone photo is measured as people see it', function () {
         ->and($wide->meta)->toMatchArray(['width' => 2000, 'height' => 1000]);
 
     $accepted = aspectTestPost($this->workspace, $this->user, $this->instagram, $tall, ContentType::InstagramFeed);
-    PostStatusRules::assertStoredPostPublishable($accepted);
+    PostStatusRules::assertStoredPostPublishable($accepted, $accepted->user);
 
     $rejected = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($rejected))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($rejected, $rejected->user))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 });
 
@@ -406,7 +406,7 @@ test('a row measured on demand applies the exif orientation', function () {
     Storage::put($asset->path, sidewaysJpeg(1000, 2000));
     $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $asset, ContentType::InstagramFeed);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($post, $post->user))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 
     expect($asset->fresh()->meta)->toMatchArray(['width' => 2000, 'height' => 1000]);
@@ -431,9 +431,9 @@ test('telegram limits the ratio of photos only', function () {
     $photoPost = aspectTestPost($this->workspace, $this->user, $account, $strip, ContentType::TelegramPost);
     $videoPost = aspectTestPost($this->workspace, $this->user, $account, $video, ContentType::TelegramPost);
 
-    expect(fn () => PostStatusRules::assertStoredPostPublishable($photoPost))->toThrow(ValidationException::class);
+    expect(fn () => PostStatusRules::assertStoredPostPublishable($photoPost, $photoPost->user))->toThrow(ValidationException::class);
 
-    PostStatusRules::assertStoredPostPublishable($videoPost);
+    PostStatusRules::assertStoredPostPublishable($videoPost, $videoPost->user);
 });
 
 test('an upload stores the dimensions measured from its bytes', function () {

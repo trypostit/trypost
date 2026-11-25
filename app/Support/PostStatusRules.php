@@ -10,6 +10,7 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Post;
+use App\Models\User;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -127,7 +128,7 @@ class PostStatusRules
      * Guards publishing a post's stored state without resubmitting its platforms
      * (MCP publish, the "publish now" queue card action).
      */
-    public static function assertStoredPostPublishable(Post $post): void
+    public static function assertStoredPostPublishable(Post $post, User $actor): void
     {
         if (! $post->hasChannel()) {
             throw ValidationException::withMessages(['social_account_id' => __('posts.errors.choose_channel')]);
@@ -135,7 +136,7 @@ class PostStatusRules
 
         PostPlatformMetaRules::assertStoredPostPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
-        self::assertVideoCoverPermitted($post);
+        self::assertVideoCoverPermitted($post, $actor);
     }
 
     /**
@@ -146,22 +147,22 @@ class PostStatusRules
      *
      * @throws ValidationException
      */
-    private static function assertVideoCoverPermitted(Post $post): void
+    private static function assertVideoCoverPermitted(Post $post, User $actor): void
     {
         $account = $post->socialAccount;
         $type = ContentType::forPost($post, $account->platform);
         $hasVideoCover = filled(MediaItem::covers($post->media ?? []));
 
-        if (! GatedFeature::VideoCover->isRequiredToPublish($post->meta, $type, $hasVideoCover)) {
-            return;
-        }
-
-        if (! ChannelPermissions::requiresReconnect($account, GatedFeature::VideoCover)) {
+        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasVideoCover) !== GatedFeature::VideoCover) {
             return;
         }
 
         throw ValidationException::withMessages([
-            GatedFeature::VideoCover->postValidationField() => ChannelPermissions::reconnectMessage($account->platform, GatedFeature::VideoCover),
+            GatedFeature::VideoCover->postValidationField() => ChannelPermissions::reconnectMessage(
+                $account->platform,
+                GatedFeature::VideoCover,
+                $actor->can('manageAccounts', $account->workspace),
+            ),
         ]);
     }
 }

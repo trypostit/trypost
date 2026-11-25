@@ -44,7 +44,7 @@ class ApprovePost
                 default => throw ValidationException::withMessages(['scheduled_at' => __('posts.approvals.errors.time_passed')]),
             };
 
-            PostStatusRules::assertStoredPostPublishable($post);
+            PostStatusRules::assertStoredPostPublishable($post, $approver);
 
             return UpdatePost::execute($post->workspace, $post, $data, $approver);
         });

@@ -1554,3 +1554,40 @@ test('a feed video whose cover host cannot be reached is published without it', 
     expect($result['id'])->toBe('video_123');
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });
+
+test('a feed video whose thumb facebook refuses is published again without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::sequence()
+            ->push(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400)
+            ->push(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookPublisher::COVER_SKIPPED])->toBeTrue();
+    Http::assertSentInOrder([
+        fn (Request $request): bool => $request->url() === $coverUrl,
+        fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && $request->hasFile('thumb'),
+        fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart(),
+    ]);
+});
+
+test('a feed video whose upload facebook throttles is not sent again without its thumb', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['error' => ['message' => 'Too many calls', 'type' => 'OAuthException', 'code' => 4]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(2);
+});

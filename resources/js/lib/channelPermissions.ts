@@ -112,8 +112,15 @@ export const missingPermissionKey = (
 };
 
 /** Whether a post's media carries a cover image (`MediaItem::covers()` on the server). */
-export const mediaHasVideoCover = (media: MediaItem[]): boolean =>
-    media.some((item) => filled(item.meta?.cover));
+export const mediaHasVideoCover = (media: MediaItem[]): boolean => {
+    for (const item of media) {
+        if (filled(item.meta?.cover)) {
+            return true;
+        }
+    }
+
+    return false;
+};
 
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (
