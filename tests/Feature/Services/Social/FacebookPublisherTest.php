@@ -1498,7 +1498,9 @@ test('a feed video without a cover is sent without a thumb', function () {
 
     Http::fake(['*/page_123/videos' => Http::response(['id' => 'video_123'], 200)]);
 
-    $this->publisher->publish($this->post);
+    $result = $this->publisher->publish($this->post);
+
+    expect($result)->not->toHaveKey(FacebookPublisher::COVER_SKIPPED);
 
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos')
         && ! $request->isMultipart()
@@ -1517,7 +1519,38 @@ test('a feed video whose cover cannot be downloaded is published without it', fu
 
     $result = $this->publisher->publish($this->post);
 
-    expect($result['id'])->toBe('video_123');
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookPublisher::COVER_SKIPPED])->toBeTrue();
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message): bool => str_contains($message, 'cover'))->once();
+});
+
+test('a reel with a cover still publishes when the channel lost the cover permission, leaving the cover to its job', function () {
+    $this->socialAccount->update(['scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+    $this->post->update([
+        'content_type' => ContentType::FacebookReel,
+        'media' => facebookVideoWithCover('https://example.com/media/2026-01/cover.png'),
+    ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount->fresh());
+
+    Http::fake(facebookVideoUploadFakes('video_reels'));
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('reel_456');
+});
+
+test('a feed video whose cover host cannot be reached is published without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+
+    Http::fake([
+        $coverUrl => Http::failedConnection(),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123');
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });

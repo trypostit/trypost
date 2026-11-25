@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Dto\MediaItem;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Post;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Validation\Rule;
@@ -132,5 +135,33 @@ class PostStatusRules
 
         PostPlatformMetaRules::assertStoredPostPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
+        self::assertVideoCoverPermitted($post);
+    }
+
+    /**
+     * A Reel with a cover on a channel lacking the cover's permission is held
+     * back when someone publishes it, like at save. The publish job itself
+     * never refuses it: a grant lost later leaves the cover to
+     * `SetFacebookCover`, which warns on the live post.
+     *
+     * @throws ValidationException
+     */
+    private static function assertVideoCoverPermitted(Post $post): void
+    {
+        $account = $post->socialAccount;
+        $type = ContentType::forPost($post, $account->platform);
+        $hasVideoCover = filled(MediaItem::covers($post->media ?? []));
+
+        if (! GatedFeature::VideoCover->isRequiredToPublish($post->meta, $type, $hasVideoCover)) {
+            return;
+        }
+
+        if (! ChannelPermissions::requiresReconnect($account, GatedFeature::VideoCover)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            GatedFeature::VideoCover->postValidationField() => ChannelPermissions::reconnectMessage($account->platform, GatedFeature::VideoCover),
+        ]);
     }
 }

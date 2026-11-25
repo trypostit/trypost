@@ -592,7 +592,7 @@ watch(
 
         editingItems.value = [...props.items];
         edits.value = editingItems.value.map((item) => ({
-            ...createMediaEdit(item),
+            ...createMediaEdit(item, coverPreset.value),
             preset: basePreset.value,
         }));
         naturals.value = {};

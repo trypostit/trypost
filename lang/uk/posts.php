@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Увага',
             'title' => 'Обкладинку не застосовано',
-            'description' => 'Facebook не застосував вашу обкладинку до цього Reels. Ви можете встановити її у Facebook.',
+            'description' => 'Facebook не застосував вашу обкладинку до цього відео. Ви можете встановити її у Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Увага',

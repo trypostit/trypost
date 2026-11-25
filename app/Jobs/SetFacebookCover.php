@@ -114,7 +114,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
     /** A failure a later try may fix, by its category or by Meta's transient error codes (`GraphError`). */
     private static function isRetryable(FacebookPublishException $exception): bool
     {
-        if (in_array($exception->category, self::RETRYABLE_CATEGORIES, true)) {
+        if (collect(self::RETRYABLE_CATEGORIES)->containsStrict($exception->category)) {
             return true;
         }
 

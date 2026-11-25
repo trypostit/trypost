@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Attention',
             'title' => 'Couverture non appliquée',
-            'description' => 'Facebook n\'a pas appliqué votre image de couverture à ce Reel. Vous pouvez la définir sur Facebook.',
+            'description' => 'Facebook n\'a pas appliqué votre image de couverture à cette vidéo. Vous pouvez la définir sur Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Attention',

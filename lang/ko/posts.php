@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => '주의',
             'title' => '커버가 적용되지 않음',
-            'description' => 'Facebook이 이 릴스에 커버 이미지를 적용하지 않았습니다. Facebook에서 설정할 수 있습니다.',
+            'description' => 'Facebook이 이 동영상에 커버 이미지를 적용하지 않았습니다. Facebook에서 설정할 수 있습니다.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '주의',

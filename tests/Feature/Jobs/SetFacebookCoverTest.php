@@ -132,3 +132,15 @@ test('a cover that never went on records a warning when the job gives up', funct
 
     expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
 });
+
+test('a cover that cannot be made a jpeg leaves a warning at once instead of trying again', function () {
+    Http::fake([
+        FACEBOOK_COVER_URL => Http::response('not an image', 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response(['success' => true]),
+    ]);
+
+    runSetFacebookCover($this->post)->assertNotReleased();
+
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+});

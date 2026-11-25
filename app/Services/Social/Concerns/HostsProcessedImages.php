@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -129,7 +130,13 @@ trait HostsProcessedImages
     {
         $path = tempnam(sys_get_temp_dir(), 'image_in_');
 
-        if (Http::sink($path)->timeout(120)->get($imageUrl)->failed()) {
+        try {
+            $failed = Http::sink($path)->timeout(120)->get($imageUrl)->failed();
+        } catch (ConnectionException) {
+            $failed = true;
+        }
+
+        if ($failed) {
             File::delete($path);
 
             return null;

@@ -1072,6 +1072,32 @@ test('a facebook reel with a cover on a channel without the cover permission is 
         ->assertNoJavaScriptErrors();
 });
 
+test('reopening a facebook feed video keeps its stored cover at its own ratio', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookPost);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover_source'] = 'image';
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+
+    [$ratio] = elementsMap($page, '@media-editor-selection', 'element.getBoundingClientRect().width / element.getBoundingClientRect().height');
+
+    expect($ratio)->toEqualWithDelta(1.0, 0.05);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a feed video offers only the cover frame', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
     $accountId = $post->social_account_id;

@@ -1082,7 +1082,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Aviso',
             'title' => 'Portada no aplicada',
-            'description' => 'Facebook no aplicó tu imagen de portada a este Reel. Puedes ponerla en Facebook.',
+            'description' => 'Facebook no aplicó tu imagen de portada a este video. Puedes ponerla en Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Aviso',

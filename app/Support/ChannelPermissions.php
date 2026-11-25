@@ -216,7 +216,8 @@ class ChannelPermissions
      * behind the channel's warnings and a post's refusal, so the composer and
      * the server agree. A feature that is off asks nobody to reconnect.
      */
-    private static function requiresReconnect(SocialAccount $account, GatedFeature $feature): bool
+    /** Whether the feature is on and the channel's stored grant lacks one of its scopes, so it must reconnect to use it. */
+    public static function requiresReconnect(SocialAccount $account, GatedFeature $feature): bool
     {
         return self::enabled($account->platform, $feature) && self::lacks($account, $feature);
     }

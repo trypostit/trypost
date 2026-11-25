@@ -44,7 +44,7 @@ class Post extends Model
 
     public const int CONTENT_MAX_LENGTH = SocialAccount::X_LONG_POST_LENGTH;
 
-    /** The `error_context` key of a Reel whose cover image Facebook did not take (`recordFacebookCoverWarning()`). */
+    /** The `error_context` key of a video whose cover image Facebook did not take (`recordFacebookCoverWarning()`). */
     public const string FACEBOOK_COVER_WARNING = 'facebook_cover_warning';
 
     protected $fillable = [

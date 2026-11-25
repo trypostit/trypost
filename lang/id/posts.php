@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Perhatian',
             'title' => 'Sampul tidak diterapkan',
-            'description' => 'Facebook tidak menerapkan gambar sampulmu ke Reels ini. Kamu bisa mengaturnya di Facebook.',
+            'description' => 'Facebook tidak menerapkan gambar sampulmu ke video ini. Kamu bisa mengaturnya di Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Perhatian',

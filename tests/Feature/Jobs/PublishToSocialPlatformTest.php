@@ -2586,6 +2586,30 @@ test('a facebook reel published with a cover image sets it a minute later', func
     'a feed video, whose cover went with the upload' => [ContentType::FacebookPost, true, false],
 ]);
 
+test('a facebook feed video whose cover could not go with it is published with a cover warning', function () {
+    Event::fake();
+    Mail::fake();
+
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::FacebookPost,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn([
+        'id' => 'video_123',
+        'url' => 'https://www.facebook.com/page/videos/video_123',
+        FacebookPublisher::COVER_SKIPPED => true,
+    ]);
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    expect($post->fresh()->hasFacebookCoverWarning())->toBeTrue()
+        ->and($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
+});
+
 test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {
     Event::fake();
     Mail::fake();

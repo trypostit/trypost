@@ -222,6 +222,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $this->post->writePublication(['error_context' => [...($this->post->error_context ?? []), InstagramPublisher::COMMENT_SKIPPED => true]]);
         }
 
+        if (data_get($result, FacebookPublisher::COVER_SKIPPED) === true) {
+            $this->post->recordFacebookCoverWarning();
+        }
+
         if ($this->post->awaitsTikTokVideoId()) {
             ResolveTikTokVideoId::dispatch($this->post)
                 ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))

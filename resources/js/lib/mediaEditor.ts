@@ -227,14 +227,17 @@ export const blankMediaEdit = (
     coverSource: 'frame',
 });
 
-const storedCoverImage = (item: MediaItem): CoverImage | null => {
+const storedCoverImage = (
+    item: MediaItem,
+    coverPreset: CropPresetValue,
+): CoverImage | null => {
     const cover = item.meta?.cover;
 
     if (!filled(cover)) {
         return null;
     }
 
-    return newCoverImage(cover.url, cover, null);
+    return newCoverImage(cover.url, cover, null, coverPreset);
 };
 
 /** A cover image as the editor opens it: framed at the cover's preset (`coverCropPresetFor()`), 9:16 by default, in its middle. */
@@ -276,12 +279,16 @@ export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource =>
     return 'frame';
 };
 
-export const createMediaEdit = (item: MediaItem): MediaEdit => ({
+/** The item's edit as the editor opens it; a stored cover is framed at `coverPreset` (`coverCropPresetFor()`). */
+export const createMediaEdit = (
+    item: MediaItem,
+    coverPreset: CropPresetValue = COVER_CROP_PRESET,
+): MediaEdit => ({
     ...blankMediaEdit(),
     altText: item.meta?.alt_text ?? '',
     userTags: [...(item.meta?.user_tags ?? [])],
     coverOffsetMs: item.meta?.cover_offset_ms ?? null,
-    coverImage: storedCoverImage(item),
+    coverImage: storedCoverImage(item, coverPreset),
     coverSource: storedCoverSource(item),
 });
 

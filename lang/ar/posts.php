@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'تنبيه',
             'title' => 'لم يُطبَّق الغلاف',
-            'description' => 'لم يطبّق Facebook صورة الغلاف على مقطع Reels هذا. يمكنك تعيينها على Facebook.',
+            'description' => 'لم يطبّق Facebook صورة الغلاف على هذا الفيديو. يمكنك تعيينها على Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'تنبيه',

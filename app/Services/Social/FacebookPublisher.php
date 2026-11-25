@@ -37,6 +37,9 @@ class FacebookPublisher
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
+    /** The result key of a feed video published without the cover picked for it (`feedVideoThumb()` could not prepare it). */
+    public const string COVER_SKIPPED = 'facebook_cover_skipped';
+
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
     public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -48,7 +51,7 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string}
+     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
      */
     public function publish(Post $post): array
     {
@@ -74,7 +77,7 @@ class FacebookPublisher
 
     /**
      * @param  Collection<int, MediaItem>  $media
-     * @return array{id: mixed, url: string}
+     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
      */
     private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, bool $attachLink): array
     {
@@ -239,22 +242,29 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string}
+     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
      */
     private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
+        $thumb = $this->feedVideoThumb($media);
+
         $response = $this->postToGraph("{$pageId}/videos", [
             'file_url' => $media->url,
             'access_token' => $accessToken,
             ...$this->optionalField('description', $content),
-        ], 'video post', image: $this->feedVideoThumb($media));
+        ], 'video post', image: $thumb);
 
         $videoId = data_get($response->json(), 'id');
-
-        return [
+        $result = [
             'id' => $videoId,
             'url' => "https://www.facebook.com/{$pageId}/videos/{$videoId}",
         ];
+
+        if (blank($thumb) && filled($media->cover())) {
+            return [...$result, self::COVER_SKIPPED => true];
+        }
+
+        return $result;
     }
 
     /**
@@ -647,6 +657,11 @@ class FacebookPublisher
 
         try {
             $jpeg = $this->coverJpeg($download);
+        } catch (SocialPublishException $exception) {
+            throw new FacebookPublishException(
+                userMessage: $exception->getMessage(),
+                category: ErrorCategory::MediaFormat,
+            );
         } finally {
             File::delete($download);
         }
