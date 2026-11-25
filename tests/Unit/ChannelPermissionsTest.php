@@ -215,16 +215,16 @@ test('replies are off on a network whose connect does not ask for their scope', 
 });
 
 test('the facebook reel cover is on by default', function () {
-    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::ReelCover))->toBeTrue()
-        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->not->toContain('reel_cover');
+    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::FacebookReelCover))->toBeTrue()
+        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->not->toContain('facebook_reel_cover');
 });
 
 test('the facebook reel cover is off when the connect does not ask for its scopes', function () {
     config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
     $account = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
 
-    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::ReelCover))->toBeFalse()
-        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->toContain('reel_cover')
+    expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::FacebookReelCover))->toBeFalse()
+        ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->toContain('facebook_reel_cover')
         ->and(ChannelPermissions::missing($account))->toBe([])
         ->and(ChannelPermissions::featureBlockingPost($account, [], ContentType::FacebookReel, true))->toBeNull();
 });
@@ -233,12 +233,12 @@ test('a facebook reel with a cover needs the reel cover scopes, and nothing else
     $without = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
     $with = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'pages_read_user_content', 'pages_manage_engagement']]);
 
-    expect(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, true))->toBe(GatedFeature::ReelCover)
-        ->and(GatedFeature::ReelCover->postValidationField())->toBe('media')
-        ->and(ChannelPermissions::reconnectMessage(Platform::Facebook, GatedFeature::ReelCover))
-        ->toBe(__('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]))
+    expect(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, true))->toBe(GatedFeature::FacebookReelCover)
+        ->and(GatedFeature::FacebookReelCover->postValidationField())->toBe('media')
+        ->and(ChannelPermissions::reconnectMessage(Platform::Facebook, GatedFeature::FacebookReelCover))
+        ->toBe(__('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]))
         ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, false))->toBeNull()
         ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookPost, true))->toBeNull()
         ->and(ChannelPermissions::featureBlockingPost($with, [], ContentType::FacebookReel, true))->toBeNull()
-        ->and(ChannelPermissions::missing($without))->toHaveKey('reel_cover');
+        ->and(ChannelPermissions::missing($without))->toHaveKey('facebook_reel_cover');
 });

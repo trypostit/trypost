@@ -252,7 +252,7 @@ function reelCoverChanges(string $surface, Post $post): array
 
 test('a reel with a cover on a channel without the cover scopes is refused on its media on the web, api and mcp', function (string $surface) {
     $post = reelWithCoverOnChannelWithoutCoverScopes();
-    $message = __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]);
+    $message = __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]);
 
     $response = pollParityUpdate($surface, $post, reelCoverChanges($surface, $post));
 
@@ -285,7 +285,7 @@ test('publishing a stored reel with a cover on a channel without the cover scope
 
     TryPostServer::actingAs($this->user)
         ->tool(PublishPostTool::class, ['post_id' => $post->id])
-        ->assertHasErrors([__('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()])]);
+        ->assertHasErrors([__('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()])]);
 
     expect($post->fresh()->status)->toBe(Status::Draft);
 });
@@ -297,7 +297,7 @@ test('a member who cannot reconnect the channel is told an admin needs to when p
 
     TryPostServer::actingAs($member)
         ->tool(PublishPostTool::class, ['post_id' => $post->id])
-        ->assertHasErrors([__('channels.permissions.reel_cover.member_message', ['network' => Platform::Facebook->label()])]);
+        ->assertHasErrors([__('channels.permissions.facebook_reel_cover.member_message', ['network' => Platform::Facebook->label()])]);
 });
 
 test('approving a reel with a cover on a channel without the cover scopes is refused on its media on the web, api and mcp', function (string $surface) {
@@ -309,7 +309,7 @@ test('approving a reel with a cover on a channel without the cover scopes is ref
         'scheduled_at' => now()->addDay(),
         'approval_requested_at' => now(),
     ])->save();
-    $message = __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]);
+    $message = __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]);
 
     match ($surface) {
         'web' => $this->actingAs($this->user)->putJson(route('app.posts.approve', $post))->assertUnprocessable()
@@ -326,7 +326,7 @@ test('attaching media to a scheduled reel with a cover on a channel without the 
     $post = reelWithCoverOnChannelWithoutCoverScopes();
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
     $urls = [['url' => 'https://cdn.test/medias/another.mp4']];
-    $message = __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]);
+    $message = __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]);
 
     match ($surface) {
         'api' => $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.attach-media-from-url', $post), ['urls' => $urls])
@@ -343,5 +343,5 @@ test('attaching a cover to a scheduled reel on a channel without the cover scope
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     expect(fn () => ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->fresh(), $this->user))
-        ->toThrow(ValidationException::class, __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]));
+        ->toThrow(ValidationException::class, __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]));
 });

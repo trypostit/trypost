@@ -306,7 +306,7 @@ return [
             'message' => 'Para publicar respuestas en :network, vuelve a conectar este canal y permite que TryPost las publique.',
             'member_message' => 'Para publicar respuestas en :network, un administrador del workspace debe volver a conectar este canal.',
         ],
-        'reel_cover' => [
+        'facebook_reel_cover' => [
             'message' => 'Para añadir una portada a los Reels en :network, vuelve a conectar este canal y permite que TryPost la aplique.',
             'member_message' => 'Para añadir una portada a los Reels en :network, un administrador del workspace debe volver a conectar este canal.',
         ],

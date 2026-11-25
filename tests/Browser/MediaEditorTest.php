@@ -1068,7 +1068,7 @@ test('a facebook reel with a cover on a channel without the cover permission is 
     $page = visit(route('app.posts.edit', $post));
 
     waitFor($page, "@channel-permission-warning-{$accountId}");
-    $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.reel_cover.message', ['network' => 'Facebook']))
+    $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.facebook_reel_cover.message', ['network' => 'Facebook']))
         ->assertNoJavaScriptErrors();
 });
 

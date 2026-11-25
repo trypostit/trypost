@@ -136,7 +136,7 @@ class PostStatusRules
 
         PostPlatformMetaRules::assertStoredPostPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
-        self::assertReelCoverPermitted($post, $actor);
+        self::assertFacebookReelCoverPermitted($post, $actor);
     }
 
     /**
@@ -147,20 +147,20 @@ class PostStatusRules
      *
      * @throws ValidationException
      */
-    private static function assertReelCoverPermitted(Post $post, User $actor): void
+    private static function assertFacebookReelCoverPermitted(Post $post, User $actor): void
     {
         $account = $post->socialAccount;
         $type = ContentType::forPost($post, $account->platform);
         $hasCoverImage = MediaItem::hasAnyCover($post->media ?? []);
 
-        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasCoverImage) !== GatedFeature::ReelCover) {
+        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasCoverImage) !== GatedFeature::FacebookReelCover) {
             return;
         }
 
         throw ValidationException::withMessages([
-            GatedFeature::ReelCover->postValidationField() => ChannelPermissions::reconnectMessage(
+            GatedFeature::FacebookReelCover->postValidationField() => ChannelPermissions::reconnectMessage(
                 $account->platform,
-                GatedFeature::ReelCover,
+                GatedFeature::FacebookReelCover,
                 $actor->can('manageAccounts', $account->workspace),
             ),
         ]);

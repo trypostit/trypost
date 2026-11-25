@@ -21,7 +21,7 @@ enum GatedFeature: string
     case PostInsightsExtended = 'post_insights_extended';
     case PostHistory = 'post_history';
     case PrivatePostRead = 'private_post_read';
-    case ReelCover = 'reel_cover';
+    case FacebookReelCover = 'facebook_reel_cover';
 
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
@@ -37,19 +37,19 @@ enum GatedFeature: string
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
-            self::ReelCover => self::usesReelCover($type, $hasCoverImage),
+            self::FacebookReelCover => self::usesFacebookReelCover($type, $hasCoverImage),
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => false,
         };
     }
 
-    /** A cover image on a type that needs the Reel cover permission (`ContentType::requiresReelCoverPermission()`). */
-    private static function usesReelCover(?ContentType $type, bool $hasCoverImage): bool
+    /** A Facebook Reel with a cover image, which Facebook only takes through `/{video-id}/thumbnails`. */
+    private static function usesFacebookReelCover(?ContentType $type, bool $hasCoverImage): bool
     {
         if (! $hasCoverImage) {
             return false;
         }
 
-        return $type?->requiresReelCoverPermission() === true;
+        return $type === ContentType::FacebookReel;
     }
 
     /**
@@ -61,7 +61,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::ThreadReplies => 'meta.thread_replies',
-            self::ReelCover => 'media',
+            self::FacebookReelCover => 'media',
             self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'social_account_id',
         };
     }
@@ -75,7 +75,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::PostInsightsExtended, self::PrivatePostRead => true,
-            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory, self::ReelCover => false,
+            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory, self::FacebookReelCover => false,
         };
     }
 
@@ -89,7 +89,7 @@ enum GatedFeature: string
         return match ($this) {
             self::Publish => 'channels.permissions.publish',
             self::ThreadReplies => 'channels.permissions.thread_replies',
-            self::ReelCover => 'channels.permissions.reel_cover',
+            self::FacebookReelCover => 'channels.permissions.facebook_reel_cover',
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'channels.permissions.insights',
         };
     }

@@ -63,7 +63,7 @@ function serverPermissionKeys(): array
         GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
         GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
         GatedFeature::Publish->value => ['publish', 'publish member'],
-        GatedFeature::ReelCover->value => ['reconnect', 'ask an admin'],
+        GatedFeature::FacebookReelCover->value => ['reconnect', 'ask an admin'],
     ];
     $cases = [
         'allowed' => [$thread, [], true],
@@ -72,9 +72,9 @@ function serverPermissionKeys(): array
         'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
         'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
         'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
-        'reel_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookReel, true],
-        'reel_without_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookReel, false],
-        'feed_video_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookPost, true],
+        'facebook_reel_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, true],
+        'reel_without_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, false],
+        'feed_video_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookPost, true],
     ];
 
     return collect($cases)->map(function (array $case) use ($copy): ?string {

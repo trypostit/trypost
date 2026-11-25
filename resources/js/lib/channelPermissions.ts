@@ -6,10 +6,7 @@ import {
     type MissingPermission,
     type MissingPermissions,
 } from '@/types/channel-permission';
-import {
-    REEL_COVER_PERMISSION_CONTENT_TYPES,
-    type ContentTypeValue,
-} from '@/types/content-type';
+import { ContentType, type ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 import type { PlatformConfig } from '@/types/platform';
 
@@ -33,7 +30,7 @@ export const featureIsEnabled = (
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
     meta: Record<string, unknown> | null,
-    postUsesReelCover: boolean,
+    postUsesFacebookReelCover: boolean,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
@@ -43,15 +40,15 @@ const requiresFeatureToPublish = (
         return filled(threadRepliesOf(meta));
     }
 
-    if (feature === GatedFeature.ReelCover) {
-        return postUsesReelCover;
+    if (feature === GatedFeature.FacebookReelCover) {
+        return postUsesFacebookReelCover;
     }
 
     return false;
 };
 
-/** Whether the post is a Facebook Reel with a cover image, which needs the Reel cover permission (`GatedFeature::usesReelCover()`). */
-const usesReelCover = (
+/** Whether the post is a Facebook Reel with a cover image, which needs the Reel cover permission (`GatedFeature::usesFacebookReelCover()`). */
+const usesFacebookReelCover = (
     contentType: ContentTypeValue | null,
     hasCoverImage: boolean,
 ): boolean => {
@@ -59,11 +56,7 @@ const usesReelCover = (
         return false;
     }
 
-    if (!filled(contentType)) {
-        return false;
-    }
-
-    return REEL_COVER_PERMISSION_CONTENT_TYPES.has(contentType);
+    return contentType === ContentType.FacebookReel;
 };
 
 /** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
@@ -88,7 +81,7 @@ export const missingPermissionKey = (
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
     repliesSupported = true,
-    postUsesReelCover = false,
+    postUsesFacebookReelCover = false,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -101,7 +94,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta, postUsesReelCover)) {
+        if (!requiresFeatureToPublish(feature, meta, postUsesFacebookReelCover)) {
             continue;
         }
 
@@ -147,6 +140,6 @@ export const channelPermissionKey = (
         platformConfig.missingPermissions,
         canManageAccounts,
         repliesSupported,
-        usesReelCover(contentType, hasCoverImage),
+        usesFacebookReelCover(contentType, hasCoverImage),
     );
 };

@@ -6,6 +6,7 @@ namespace App\Support\Social;
 
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 
@@ -25,7 +26,7 @@ final class FacebookCover
             && $post->origin === Origin::TryPost
             && $post->publish_status === PublishStatus::Published
             && filled($post->platform_post_id)
-            && $post->content_type?->requiresReelCoverPermission() === true
+            && $post->content_type === ContentType::FacebookReel
             && filled($post->mediaItems->first()?->cover());
     }
 

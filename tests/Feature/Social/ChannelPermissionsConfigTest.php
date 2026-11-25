@@ -59,7 +59,7 @@ test('each network needs exactly these scopes for each feature', function () {
             'post_insights' => ['pages_read_engagement'],
             'post_insights_extended' => ['read_insights'],
             'post_history' => ['pages_read_engagement'],
-            'reel_cover' => ['pages_read_user_content', 'pages_manage_engagement'],
+            'facebook_reel_cover' => ['pages_read_user_content', 'pages_manage_engagement'],
         ],
         Platform::Instagram->value => [
             'publish' => ['instagram_business_content_publish'],

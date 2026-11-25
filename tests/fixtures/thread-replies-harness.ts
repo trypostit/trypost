@@ -88,22 +88,22 @@ console.log(
             analytics_only: missingPermissionKey(thread, { post_insights: missing.thread_replies }, true),
             lacks_scope_admin: missingPermissionKey(thread, missing, true),
             lacks_scope_member: missingPermissionKey(thread, missing, false),
-            reel_cover: channelPermissionKey(
-                { platform: 'facebook', disabledFeatures: [], missingPermissions: { reel_cover: missing.thread_replies } },
+            facebook_reel_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_reel',
                 {},
                 true,
                 true,
             ),
             reel_without_cover: channelPermissionKey(
-                { platform: 'facebook', disabledFeatures: [], missingPermissions: { reel_cover: missing.thread_replies } },
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_reel',
                 {},
                 true,
                 false,
             ),
             feed_video_cover: channelPermissionKey(
-                { platform: 'facebook', disabledFeatures: [], missingPermissions: { reel_cover: missing.thread_replies } },
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_post',
                 {},
                 true,

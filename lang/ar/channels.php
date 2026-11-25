@@ -306,7 +306,7 @@ return [
             'message' => 'لنشر الردود على :network، أعد ربط هذه القناة واسمح لـ TryPost بنشرها.',
             'member_message' => 'لنشر الردود على :network، يجب أن يعيد مسؤول مساحة العمل ربط هذه القناة.',
         ],
-        'reel_cover' => [
+        'facebook_reel_cover' => [
             'message' => 'لإضافة غلاف إلى مقاطع Reels على :network، أعد ربط هذه القناة واسمح لـ TryPost بتعيينه.',
             'member_message' => 'لإضافة غلاف إلى مقاطع Reels على :network، يجب أن يعيد مسؤول مساحة العمل ربط هذه القناة.',
         ],

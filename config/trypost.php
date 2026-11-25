@@ -606,7 +606,7 @@ return [
                 'post_insights' => ['scopes' => ['pages_read_engagement']],
                 'post_insights_extended' => ['scopes' => ['read_insights']],
                 'post_history' => ['scopes' => ['pages_read_engagement']],
-                'reel_cover' => ['scopes' => ['pages_read_user_content', 'pages_manage_engagement']],
+                'facebook_reel_cover' => ['scopes' => ['pages_read_user_content', 'pages_manage_engagement']],
             ],
             'graph_api' => ConfigEnvironment::baseUrl('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),

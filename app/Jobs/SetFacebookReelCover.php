@@ -78,7 +78,7 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! ChannelPermissions::permits($account, GatedFeature::ReelCover)) {
+        if (! ChannelPermissions::permits($account, GatedFeature::FacebookReelCover)) {
             FacebookCover::recordRefusal($this->post);
 
             return;
