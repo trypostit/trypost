@@ -646,7 +646,7 @@ class FacebookPublisher
             return null;
         }
 
-        $download = $this->downloadCover($cover->url);
+        $download = $this->downloadImage($cover->url);
 
         if (blank($download)) {
             Log::warning('Facebook video cover could not be downloaded; publishing without it', ['media_id' => $media->id]);
@@ -655,7 +655,7 @@ class FacebookPublisher
         }
 
         try {
-            return $this->coverJpeg($download);
+            return $this->jpegBytesFrom($download, Platform::Facebook, self::COVER_MAX_BYTES);
         } catch (SocialPublishException $exception) {
             Log::warning('Facebook video cover could not be prepared; publishing without it', [
                 'media_id' => $media->id,
@@ -724,13 +724,13 @@ class FacebookPublisher
             return;
         }
 
-        $download = $this->downloadCover($cover->url) ?? throw new FacebookPublishException(
+        $download = $this->downloadImage($cover->url) ?? throw new FacebookPublishException(
             userMessage: 'Failed to download the cover image for Facebook',
             category: ErrorCategory::ServerError,
         );
 
         try {
-            $jpeg = $this->coverJpeg($download);
+            $jpeg = $this->jpegBytesFrom($download, Platform::Facebook, self::COVER_MAX_BYTES);
         } catch (SocialPublishException $exception) {
             throw new FacebookPublishException(
                 userMessage: $exception->getMessage(),
@@ -744,31 +744,6 @@ class FacebookPublisher
             'access_token' => $post->socialAccount->access_token,
             'is_preferred' => 'true',
         ], 'reel cover', image: $jpeg, imageField: 'source');
-    }
-
-    /**
-     * Downloads a cover image (`downloadImage()`), treating a host that cannot
-     * be reached like a failed download, so a cover never fails a publish.
-     */
-    private function downloadCover(string $url): ?string
-    {
-        try {
-            return $this->downloadImage($url);
-        } catch (ConnectionException) {
-            return null;
-        }
-    }
-
-    /** The cover image re-encoded as a JPEG within Facebook's 10MB thumbnail limit. */
-    private function coverJpeg(string $path): string
-    {
-        $converted = $this->jpegFrom($path, Platform::Facebook, self::COVER_MAX_BYTES);
-
-        try {
-            return File::get($converted);
-        } finally {
-            File::delete($converted);
-        }
     }
 
     /**

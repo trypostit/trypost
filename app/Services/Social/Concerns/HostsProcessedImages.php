@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -86,6 +87,21 @@ trait HostsProcessedImages
     }
 
     /**
+     * The image file re-encoded as the platform's JPEG (`jpegFrom()`), as
+     * bytes to send in a request body.
+     */
+    protected function jpegBytesFrom(string $path, Platform $platform, int $maxBytes): string
+    {
+        $converted = $this->jpegFrom($path, $platform, $maxBytes);
+
+        try {
+            return File::get($converted);
+        } finally {
+            File::delete($converted);
+        }
+    }
+
+    /**
      * Downloads the image, runs `$process` on it (which returns the path of a
      * JPEG it wrote), hosts the result and returns its public URL. Both
      * temporary files are removed whatever happens.
@@ -123,13 +139,20 @@ trait HostsProcessedImages
 
     /**
      * Downloads the image to a temporary file and returns its path (the
-     * caller deletes it), or null when the download fails.
+     * caller deletes it), or null when the download fails, the host not
+     * answering included.
      */
     protected function downloadImage(string $imageUrl): ?string
     {
         $path = tempnam(sys_get_temp_dir(), 'image_in_');
 
-        if (Http::sink($path)->timeout(120)->get($imageUrl)->failed()) {
+        try {
+            $failed = Http::sink($path)->timeout(120)->get($imageUrl)->failed();
+        } catch (ConnectionException) {
+            $failed = true;
+        }
+
+        if ($failed) {
             File::delete($path);
 
             return null;
