@@ -54,15 +54,6 @@ class FacebookPublishException extends SocialPublishException
     }
 
     /**
-     * Whether Graph answered that the object no longer exists (code 100,
-     * subcode 33), such as a video deleted on Facebook.
-     */
-    public function isMissingObject(): bool
-    {
-        return $this->platformErrorCode === '100' && $this->platformErrorSubcode === '33';
-    }
-
-    /**
      * A resumable upload (rupload) failure Meta asks to retry: a 5xx or a
      * failure flagged retriable.
      */

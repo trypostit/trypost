@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
+use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\FacebookPublisher;
 use App\Services\Social\Meta\GraphError;
@@ -92,6 +93,8 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
             $publisher->setReelCover($this->post);
         } catch (PlatformUnavailableException) {
             $this->release(self::CHECK_EVERY_SECONDS);
+        } catch (TokenExpiredException) {
+            $this->post->recordFacebookCoverWarning();
         } catch (FacebookPublishException $exception) {
             $this->settle($exception);
         }
@@ -99,24 +102,21 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        $this->post->refresh();
+        $post = Post::find($this->post->id);
 
-        if ($this->post->awaitsFacebookCover()) {
-            $this->post->recordFacebookCoverWarning();
+        if ($post?->awaitsFacebookCover() === true) {
+            $post->recordFacebookCoverWarning();
         }
     }
 
     /**
-     * Tries again what a later try may fix, leaves a Reel deleted on Facebook
-     * meanwhile alone (nothing left to warn about, like SetYouTubeCover), and
-     * records the warning for any other refusal.
+     * Tries again what a later try may fix and records the warning for any
+     * other refusal. A Reel Graph cannot load (code 100, subcode 33) gets the
+     * warning too: Graph answers the same for a lost permission as for a
+     * deleted video.
      */
     private function settle(FacebookPublishException $exception): void
     {
-        if ($exception->isMissingObject()) {
-            return;
-        }
-
         if (self::isRetryable($exception)) {
             $this->release(self::CHECK_EVERY_SECONDS);
 

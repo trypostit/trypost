@@ -46,6 +46,9 @@ class FacebookPublisher
     /** The `status.video_status` values of a video Facebook will never finish processing. */
     private const array VIDEO_FAILED_STATUSES = ['error', 'expired'];
 
+    /** Graph's "Invalid parameter" error code. */
+    private const string INVALID_PARAMETER_CODE = '100';
+
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
     public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -287,11 +290,10 @@ class FacebookPublisher
 
     /**
      * Whether a refused upload is worth sending again without its `thumb`: it
-     * carried one, and Facebook's refusal is not one of its documented video
-     * errors (`FacebookPublishException::fromApiResponse()`: the file, a
-     * limit, an outage, the Page), which would hold the second request too.
-     * Meta documents no code for a refused thumbnail, so only an
-     * undocumented refusal (Unknown, such as code 100) points at it.
+     * carried one, and Graph refused a parameter (code 100). Meta documents
+     * no code of its own for a refused thumbnail; any other refusal (the
+     * file, a limit, an outage, a policy) would hold the second request too,
+     * and resending after a transient one could post the video twice.
      */
     private function refusedThumb(?string $thumb, FacebookPublishException $exception): bool
     {
@@ -299,7 +301,7 @@ class FacebookPublisher
             return false;
         }
 
-        return $exception->category === ErrorCategory::Unknown;
+        return $exception->platformErrorCode === self::INVALID_PARAMETER_CODE;
     }
 
     /**

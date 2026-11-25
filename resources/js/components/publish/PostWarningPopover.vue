@@ -8,8 +8,16 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 
+/**
+ * A warning badge on a post that went out with something left off (the
+ * Instagram first comment, the Facebook cover), opening its explanation.
+ */
 defineProps<{
+    testId: string;
     testKey: string;
+    badge: string;
+    title: string;
+    description: string;
 }>();
 </script>
 
@@ -19,12 +27,12 @@ defineProps<{
             <button
                 type="button"
                 class="rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                :aria-label="$t('posts.publish.facebook_cover_warning.title')"
-                :data-testid="`post-facebook-cover-warning-${testKey}`"
+                :aria-label="title"
+                :data-testid="`${testId}-${testKey}`"
             >
                 <Badge variant="warning" class="cursor-pointer" data-single-line>
                     <IconAlertTriangle aria-hidden="true" />
-                    {{ $t('posts.publish.facebook_cover_warning.badge') }}
+                    {{ badge }}
                 </Badge>
             </button>
         </PopoverTrigger>
@@ -32,13 +40,13 @@ defineProps<{
             align="start"
             :collision-padding="16"
             class="flex w-80 flex-col gap-2"
-            :data-testid="`post-facebook-cover-warning-popover-${testKey}`"
+            :data-testid="`${testId}-popover-${testKey}`"
         >
             <p class="text-sm font-emphasis text-foreground">
-                {{ $t('posts.publish.facebook_cover_warning.title') }}
+                {{ title }}
             </p>
             <p class="text-sm text-foreground">
-                {{ $t('posts.publish.facebook_cover_warning.description') }}
+                {{ description }}
             </p>
         </PopoverContent>
     </Popover>

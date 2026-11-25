@@ -185,13 +185,31 @@ test('a reel facebook could not process leaves a warning without sending its cov
     expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
 });
 
-test('a reel deleted on facebook before its cover went on leaves no warning', function () {
+test('a reel facebook cannot load leaves a warning, since it may be a lost permission and not a deletion', function () {
     Http::fake([
-        facebookReelStatusUrl() => Http::response(['error' => ['message' => 'Unsupported get request. Object with ID video_123 does not exist', 'type' => 'GraphMethodException', 'code' => 100, 'error_subcode' => 33]], 400),
+        facebookReelStatusUrl() => Http::response(['error' => ['message' => 'Unsupported get request. Object with ID video_123 does not exist, cannot be loaded due to missing permissions', 'type' => 'GraphMethodException', 'code' => 100, 'error_subcode' => 33]], 400),
     ]);
 
     runSetFacebookCover($this->post)->assertNotReleased();
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+});
+
+test('a page token that expired leaves a warning at once instead of trying again', function () {
+    Http::fake([
+        facebookReelStatusUrl() => Http::response(['error' => ['message' => 'Error validating access token', 'type' => 'OAuthException', 'code' => 190]], 400),
+    ]);
+
+    runSetFacebookCover($this->post)->assertNotReleased();
+
+    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+});
+
+test('a post deleted while its cover job retried lets the job fail quietly', function () {
+    Post::query()->whereKey($this->post->id)->delete();
+
+    (new SetFacebookCover($this->post))->failed(null);
+
+    expect(Post::find($this->post->id))->toBeNull();
 });
