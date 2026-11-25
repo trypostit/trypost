@@ -65,7 +65,7 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
      * Validate every enabled platform's stored content_type against the post's
      * stored media. Used by publish flows that don't resubmit media (e.g. the
      * MCP publish tool) — the media-side mirror of
-     * PostPlatformMetaRules::assertStoredPostPublishable().
+     * PostPlatformMetaRules::assertStoredMetaPublishable().
      *
      * @throws ValidationException
      */
