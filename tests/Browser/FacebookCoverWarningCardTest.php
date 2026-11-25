@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\FacebookCover;
 use Illuminate\Support\Facades\Queue;
 
 test('a reel whose cover Facebook did not take shows it under its time, with what to do in a popover', function () {
@@ -28,7 +29,7 @@ test('a reel whose cover Facebook did not take shows it under its time, with wha
         'published_at' => now()->subHours($hoursAgo),
     ]);
     $refused = $sentReel(1);
-    $refused->recordFacebookCoverWarning();
+    FacebookCover::recordRefusal($refused);
     $applied = $sentReel(2);
 
     $this->actingAs($user);

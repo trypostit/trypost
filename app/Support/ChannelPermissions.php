@@ -184,7 +184,7 @@ class ChannelPermissions
     public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
         $type = ContentType::forPost($post, $channel->platform);
-        $blocked = self::featureBlockingPost($channel, $post->meta, $type, filled(MediaItem::covers($post->media ?? [])));
+        $blocked = self::featureBlockingPost($channel, $post->meta, $type, MediaItem::hasAnyCover($post->media ?? []));
         if (filled($blocked)) {
             throw ValidationException::withMessages([
                 $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),

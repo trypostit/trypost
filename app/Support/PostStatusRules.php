@@ -151,7 +151,7 @@ class PostStatusRules
     {
         $account = $post->socialAccount;
         $type = ContentType::forPost($post, $account->platform);
-        $hasVideoCover = filled(MediaItem::covers($post->media ?? []));
+        $hasVideoCover = MediaItem::hasAnyCover($post->media ?? []);
 
         if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasVideoCover) !== GatedFeature::VideoCover) {
             return;

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\FacebookPublisher;
+use App\Support\Social\FacebookCover;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -1500,7 +1501,7 @@ test('a feed video without a cover is sent without a thumb', function () {
 
     $result = $this->publisher->publish($this->post);
 
-    expect($result)->not->toHaveKey(FacebookPublisher::COVER_SKIPPED);
+    expect($result)->not->toHaveKey(FacebookCover::WARNING);
 
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos')
         && ! $request->isMultipart()
@@ -1520,7 +1521,7 @@ test('a feed video whose cover cannot be downloaded is published without it', fu
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
-        ->and($result[FacebookPublisher::COVER_SKIPPED])->toBeTrue();
+        ->and($result[FacebookCover::WARNING])->toBeTrue();
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
     Log::shouldHaveReceived('warning')->withArgs(fn (string $message): bool => str_contains($message, 'cover'))->once();
 });
@@ -1570,7 +1571,7 @@ test('a feed video whose thumb facebook refuses is published again without it', 
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
-        ->and($result[FacebookPublisher::COVER_SKIPPED])->toBeTrue();
+        ->and($result[FacebookCover::WARNING])->toBeTrue();
     Http::assertSentInOrder([
         fn (Request $request): bool => $request->url() === $coverUrl,
         fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && $request->hasFile('thumb'),

@@ -12,6 +12,7 @@ use App\Jobs\SetYouTubeCover;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
+use App\Support\Social\YouTubeCover;
 use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -78,7 +79,7 @@ test('a processed video gets the cover image as its thumbnail', function () {
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set')
         && str_contains($request->url(), 'videoId=short-id')
         && $request->body() === 'jpeg bytes');
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBeNull();
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBeNull();
 });
 
 test('a video still processing is checked again a minute later', function () {
@@ -98,7 +99,7 @@ test('a cover YouTube refuses leaves a warning and the post published', function
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe($warning)
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe($warning)
         ->and($this->post->fresh()->publish_status)->toBe(PublishStatus::Published);
 })->with([
     'channel not verified' => [403, ThumbnailWarning::Forbidden],
@@ -115,13 +116,13 @@ test('a server error is tried again', function () {
 
     runSetYouTubeCover($this->post)->assertReleased(delay: SetYouTubeCover::CHECK_EVERY_SECONDS);
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBeNull();
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBeNull();
 });
 
 test('running out of tries leaves the failed warning', function () {
     (new SetYouTubeCover($this->post))->failed(null);
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
 });
 
 test('a post without a cover image asks youtube nothing', function () {
@@ -134,7 +135,7 @@ test('a post without a cover image asks youtube nothing', function () {
 });
 
 test('the post card shows the cover warning without a failure', function () {
-    $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Forbidden);
+    YouTubeCover::recordWarning($this->post, ThumbnailWarning::Forbidden);
 
     $card = PostCardResource::make($this->post->fresh())->resolve();
 
@@ -147,7 +148,7 @@ test('a video youtube could not process leaves the failed warning', function (st
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set'));
 })->with(['failed', 'terminated']);
 
@@ -156,7 +157,7 @@ test('a video youtube no longer lists leaves no warning', function () {
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBeNull();
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBeNull();
 });
 
 test('a revoked token leaves the failed warning at once instead of retrying', function () {
@@ -168,7 +169,7 @@ test('a revoked token leaves the failed warning at once instead of retrying', fu
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
 });
 
 test('a cover that is not a jpeg or a png reaches youtube as a jpeg', function () {
@@ -202,7 +203,7 @@ test('a cover that cannot be made a jpeg leaves the invalid image warning at onc
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::InvalidImage);
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::InvalidImage);
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/thumbnails/set'));
 });
 
@@ -215,7 +216,7 @@ test('a video removed before its thumbnail was set leaves no warning', function 
 
     runSetYouTubeCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBeNull();
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBeNull();
 });
 
 test('a channel no longer connected leaves the failed warning', function () {
@@ -224,6 +225,6 @@ test('a channel no longer connected leaves the failed warning', function () {
 
     runSetYouTubeCover($this->post);
 
-    expect($this->post->fresh()->youTubeThumbnailWarning())->toBe(ThumbnailWarning::Failed);
+    expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
     Http::assertNothingSent();
 });

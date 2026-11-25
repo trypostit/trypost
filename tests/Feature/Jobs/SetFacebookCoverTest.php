@@ -7,6 +7,7 @@ use App\Http\Resources\App\PostCardResource;
 use App\Jobs\SetFacebookCover;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\Social\FacebookCover;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -90,7 +91,7 @@ test('a published reel gets its cover image as the preferred thumbnail', functio
             && str_starts_with((string) data_get($parts, 'source.contents'), "\xFF\xD8")
             && data_get($parts, 'is_preferred.contents') === 'true';
     });
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
 });
 
 test('a cover facebook refuses leaves a warning and the reel published', function () {
@@ -103,7 +104,7 @@ test('a cover facebook refuses leaves a warning and the reel published', functio
     runSetFacebookCover($this->post)->assertNotReleased();
 
     $post = $this->post->fresh();
-    expect($post->hasFacebookCoverWarning())->toBeTrue()
+    expect(FacebookCover::wasRefused($post->error_context))->toBeTrue()
         ->and($post->status->value)->toBe('published')
         ->and(PostCardResource::make($post)->resolve()['facebook_cover_warning'])->toBeTrue();
 });
@@ -115,7 +116,7 @@ test('a channel without the reel cover scopes leaves a warning without asking fa
     runSetFacebookCover($this->post);
 
     Http::assertNothingSent();
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a reel without a cover asks facebook nothing', function () {
@@ -125,7 +126,7 @@ test('a reel without a cover asks facebook nothing', function () {
     runSetFacebookCover($this->post);
 
     Http::assertNothingSent();
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
 });
 
 test('a facebook server error tries the cover again', function () {
@@ -137,13 +138,13 @@ test('a facebook server error tries the cover again', function () {
 
     runSetFacebookCover($this->post)->assertReleased(SetFacebookCover::CHECK_EVERY_SECONDS);
 
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
 });
 
 test('a cover that never went on records a warning when the job gives up', function () {
     (new SetFacebookCover($this->post))->failed(null);
 
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a cover that cannot be made a jpeg leaves a warning at once instead of trying again', function () {
@@ -156,7 +157,7 @@ test('a cover that cannot be made a jpeg leaves a warning at once instead of try
     runSetFacebookCover($this->post)->assertNotReleased();
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a reel facebook is still processing is tried again before its cover is sent', function (string $videoStatus) {
@@ -169,7 +170,7 @@ test('a reel facebook is still processing is tried again before its cover is sen
     runSetFacebookCover($this->post)->assertReleased(SetFacebookCover::CHECK_EVERY_SECONDS);
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeFalse();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
 })->with(['processing', 'upload_complete']);
 
 test('a reel facebook could not process leaves a warning without sending its cover', function () {
@@ -182,7 +183,7 @@ test('a reel facebook could not process leaves a warning without sending its cov
     runSetFacebookCover($this->post)->assertNotReleased();
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a reel facebook cannot load leaves a warning, since it may be a lost permission and not a deletion', function () {
@@ -193,7 +194,7 @@ test('a reel facebook cannot load leaves a warning, since it may be a lost permi
     runSetFacebookCover($this->post)->assertNotReleased();
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a page token that expired leaves a warning at once instead of trying again', function () {
@@ -203,7 +204,7 @@ test('a page token that expired leaves a warning at once instead of trying again
 
     runSetFacebookCover($this->post)->assertNotReleased();
 
-    expect($this->post->fresh()->hasFacebookCoverWarning())->toBeTrue();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a post deleted while its cover job retried lets the job fail quietly', function () {

@@ -13,6 +13,7 @@ use App\Models\Post;
 use App\Services\Social\FacebookPublisher;
 use App\Services\Social\Meta\GraphError;
 use App\Support\ChannelPermissions;
+use App\Support\Social\FacebookCover;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -65,20 +66,20 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! $this->post->awaitsFacebookCover()) {
+        if (! FacebookCover::isAwaitedBy($this->post)) {
             return;
         }
 
         $account = $this->post->socialAccount()->connected()->first();
 
         if (blank($account)) {
-            $this->post->recordFacebookCoverWarning();
+            FacebookCover::recordRefusal($this->post);
 
             return;
         }
 
         if (! ChannelPermissions::permits($account, GatedFeature::VideoCover)) {
-            $this->post->recordFacebookCoverWarning();
+            FacebookCover::recordRefusal($this->post);
 
             return;
         }
@@ -94,7 +95,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
         } catch (PlatformUnavailableException) {
             $this->release(self::CHECK_EVERY_SECONDS);
         } catch (TokenExpiredException) {
-            $this->post->recordFacebookCoverWarning();
+            FacebookCover::recordRefusal($this->post);
         } catch (FacebookPublishException $exception) {
             $this->settle($exception);
         }
@@ -104,8 +105,8 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
     {
         $post = Post::find($this->post->id);
 
-        if ($post?->awaitsFacebookCover() === true) {
-            $post->recordFacebookCoverWarning();
+        if (filled($post) && FacebookCover::isAwaitedBy($post)) {
+            FacebookCover::recordRefusal($post);
         }
     }
 
@@ -123,7 +124,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->post->recordFacebookCoverWarning();
+        FacebookCover::recordRefusal($this->post);
     }
 
     /** A failure a later try may fix, by its category or by Meta's transient error codes (`GraphError`). */

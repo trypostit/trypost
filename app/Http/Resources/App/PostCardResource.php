@@ -8,6 +8,8 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Social\InstagramPublisher;
+use App\Support\Social\FacebookCover;
+use App\Support\Social\YouTubeCover;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -48,12 +50,12 @@ class PostCardResource extends JsonResource
                 'name' => $user->name,
                 'photo_url' => $user->photo_url,
             ]),
-            'failure' => transform(Arr::except($post->error_context ?? [], ['youtube_thumbnail_warning', Post::FACEBOOK_COVER_WARNING, InstagramPublisher::COMMENT_SKIPPED]), fn (array $context): array => [
+            'failure' => transform(Arr::except($post->error_context ?? [], [YouTubeCover::WARNING, FacebookCover::WARNING, InstagramPublisher::COMMENT_SKIPPED]), fn (array $context): array => [
                 'category' => data_get($context, 'category'),
                 'failed_at' => data_get($context, 'failed_at'),
             ]),
-            'youtube_thumbnail_warning' => $post->youTubeThumbnailWarning()?->value,
-            'facebook_cover_warning' => $post->hasFacebookCoverWarning(),
+            'youtube_thumbnail_warning' => YouTubeCover::warning($post->error_context)?->value,
+            'facebook_cover_warning' => FacebookCover::wasRefused($post->error_context),
             'instagram_comment_skipped' => data_get($post->error_context, InstagramPublisher::COMMENT_SKIPPED) === true,
         ];
     }

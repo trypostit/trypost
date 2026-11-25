@@ -16,6 +16,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Support\Social\FacebookCover;
 use App\Support\Social\PublishContentValidator;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
@@ -37,9 +38,6 @@ class FacebookPublisher
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
-    /** The result key of a feed video published without the cover picked for it (`feedVideoThumb()` could not prepare it). */
-    public const string COVER_SKIPPED = 'facebook_cover_skipped';
-
     /** The `status.video_status` of a video Facebook has finished processing. */
     private const string VIDEO_READY_STATUS = 'ready';
 
@@ -50,7 +48,7 @@ class FacebookPublisher
     private const string INVALID_PARAMETER_CODE = '100';
 
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
-    public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
+    private const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
     private string $baseUrl;
 
@@ -60,7 +58,7 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
      */
     public function publish(Post $post): array
     {
@@ -86,7 +84,7 @@ class FacebookPublisher
 
     /**
      * @param  Collection<int, MediaItem>  $media
-     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
      */
     private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, bool $attachLink): array
     {
@@ -251,7 +249,7 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string, facebook_cover_skipped?: true}
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
      */
     private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
@@ -282,7 +280,7 @@ class FacebookPublisher
         ];
 
         if ($coverSkipped) {
-            return [...$result, self::COVER_SKIPPED => true];
+            return [...$result, FacebookCover::WARNING => true];
         }
 
         return $result;
@@ -689,11 +687,11 @@ class FacebookPublisher
             'reel status',
         );
 
-        if ($response->failed()) {
-            if (! GraphError::isTransientFailure($response)) {
-                $this->handleApiError($response);
-            }
+        if ($response->failed() && ! GraphError::isTransientFailure($response)) {
+            $this->handleApiError($response);
+        }
 
+        if ($response->failed()) {
             return true;
         }
 

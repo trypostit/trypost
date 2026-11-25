@@ -46,6 +46,7 @@ use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\FacebookCover;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -2600,13 +2601,13 @@ test('a facebook feed video whose cover could not go with it is published with a
     $publisher->shouldReceive('publish')->once()->andReturn([
         'id' => 'video_123',
         'url' => 'https://www.facebook.com/page/videos/video_123',
-        FacebookPublisher::COVER_SKIPPED => true,
+        FacebookCover::WARNING => true,
     ]);
     $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($post))->handle();
 
-    expect($post->fresh()->hasFacebookCoverWarning())->toBeTrue()
+    expect(FacebookCover::wasRefused($post->fresh()->error_context))->toBeTrue()
         ->and($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
 });
 

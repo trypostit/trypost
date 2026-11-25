@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Social\YouTubeCover;
 use Illuminate\Support\Facades\Queue;
 
 test('a Short whose cover YouTube refused shows it under its time, with the reason in a popover', function () {
@@ -29,7 +30,7 @@ test('a Short whose cover YouTube refused shows it under its time, with the reas
         'published_at' => now()->subHours($hoursAgo),
     ]);
     $refused = $sentShort(1);
-    $refused->recordYouTubeThumbnailWarning(ThumbnailWarning::Forbidden);
+    YouTubeCover::recordWarning($refused, ThumbnailWarning::Forbidden);
     $applied = $sentShort(2);
 
     $this->actingAs($user);

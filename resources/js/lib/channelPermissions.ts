@@ -33,7 +33,7 @@ export const featureIsEnabled = (
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
     meta: Record<string, unknown> | null,
-    usesVideoCover: boolean,
+    postUsesVideoCover: boolean,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
@@ -44,7 +44,7 @@ const requiresFeatureToPublish = (
     }
 
     if (feature === GatedFeature.VideoCover) {
-        return usesVideoCover;
+        return postUsesVideoCover;
     }
 
     return false;
@@ -88,7 +88,7 @@ export const missingPermissionKey = (
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
     repliesSupported = true,
-    videoCoverUsed = false,
+    postUsesVideoCover = false,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -101,7 +101,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta, videoCoverUsed)) {
+        if (!requiresFeatureToPublish(feature, meta, postUsesVideoCover)) {
             continue;
         }
 

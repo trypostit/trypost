@@ -12,6 +12,7 @@ use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\YouTubeCover;
 use Google\Service\Exception as GoogleServiceException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,14 +59,14 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! $this->post->awaitsYouTubeCover()) {
+        if (! YouTubeCover::isAwaitedBy($this->post)) {
             return;
         }
 
         $account = $this->post->socialAccount()->connected()->first();
 
         if (blank($account)) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
 
             return;
         }
@@ -77,7 +78,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
 
             $this->apply($publisher);
         } catch (TokenExpiredException) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
         } catch (GoogleServiceException $exception) {
             $this->settle($exception);
         } catch (YouTubePublishException $exception) {
@@ -89,8 +90,8 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if ($this->post->awaitsYouTubeCover()) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+        if (YouTubeCover::isAwaitedBy($this->post)) {
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
         }
     }
 
@@ -115,7 +116,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         }
 
         if ($status !== ProcessingStatus::Succeeded) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
 
             return;
         }
@@ -144,7 +145,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->post->recordYouTubeThumbnailWarning(self::warningFor($status));
+        YouTubeCover::recordWarning($this->post, self::warningFor($status));
     }
 
     /**
@@ -159,7 +160,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
             throw $exception;
         }
 
-        $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::InvalidImage);
+        YouTubeCover::recordWarning($this->post, ThumbnailWarning::InvalidImage);
     }
 
     private static function warningFor(int $status): ThumbnailWarning
