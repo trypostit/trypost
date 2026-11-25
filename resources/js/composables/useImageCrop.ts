@@ -1,15 +1,13 @@
 import { computed, type Ref } from 'vue';
 
-import type { SourceRect } from '@/lib/imageCrop';
 import {
     cropSelection,
-    type MediaEdit,
     presetRatio,
     workingSize,
 } from '@/lib/mediaEditor';
 import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
-
-export type ImageSize = { width: number; height: number };
+import type { ImageSize, SourceRect } from '@/types/image-crop';
+import type { MediaEdit } from '@/types/media-editor';
 
 const MIN_SELECTION_RATIO = 0.1;
 

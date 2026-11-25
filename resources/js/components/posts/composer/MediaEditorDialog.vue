@@ -20,7 +20,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
+import { useImageCrop } from '@/composables/useImageCrop';
 import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
 import { filled } from '@/lib/helpers';
 import {
@@ -28,13 +28,11 @@ import {
     coverCropPresetFor,
     cropPresetsFor,
     editorTabsFor,
-    type EditorTab,
     hasMetaChanges,
     hasCoverCropChanges,
     hasPixelChanges,
     needsFrameCapture,
     newCoverImage,
-    type MediaEdit,
     presetValuesFor,
     renderImageEdit,
     renderMediaEdit,
@@ -44,7 +42,9 @@ import {
 import { isVideo } from '@/lib/mediaType';
 import { captureVideoFrame } from '@/lib/videoFrame';
 import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
+import type { ImageSize } from '@/types/image-crop';
 import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
+import type { EditorTab, MediaEdit } from '@/types/media-editor';
 
 export type MediaEditChange = {
     index: number;

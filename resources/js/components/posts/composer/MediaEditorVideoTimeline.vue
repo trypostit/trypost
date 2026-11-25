@@ -2,8 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { clamp, filled } from '@/lib/helpers';
-import { formatCoverOffset, type MediaEdit } from '@/lib/mediaEditor';
+import { formatCoverOffset } from '@/lib/mediaEditor';
 import { releaseVideo } from '@/lib/videoFrame';
+import type { MediaEdit } from '@/types/media-editor';
 
 /** How many frames the strip shows across the video. */
 const FRAME_COUNT = 8;

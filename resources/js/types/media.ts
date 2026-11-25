@@ -1,6 +1,6 @@
-import type { ImageSize } from '@/composables/useImageCrop';
-import type { MediaEdit } from '@/lib/mediaEditor';
 import type { MediaType } from '@/lib/mediaType';
+import type { ImageSize } from '@/types/image-crop';
+import type { MediaEdit } from '@/types/media-editor';
 
 export type MediaSource = 'ai' | 'unsplash' | 'giphy' | 'google_drive' | 'google_photos' | 'canva';
 

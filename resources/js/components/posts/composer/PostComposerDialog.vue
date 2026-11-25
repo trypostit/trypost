@@ -172,7 +172,6 @@ import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
 import {
     editorTabsFor,
-    type EditorTab,
     rulesFor,
 } from '@/lib/mediaEditor';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
@@ -211,6 +210,7 @@ import {
     POLL_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import type { EditorTab } from '@/types/media-editor';
 import {
     Platform,
     type PlatformConfigs,

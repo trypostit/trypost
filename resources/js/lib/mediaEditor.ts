@@ -9,7 +9,6 @@ import {
     fullSelection,
     resolveOutputFileName,
     resolveOutputMime,
-    type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
 import {
@@ -17,21 +16,20 @@ import {
     type CropPresetValue,
     UNFIXED_CROP_PRESETS,
 } from '@/types/crop-preset';
-import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
+import type { SourceRect } from '@/types/image-crop';
+import type { CoverImage, CoverSource, MediaItem } from '@/types/media';
+import {
+    ADJUSTMENTS,
+    type CropPresetOption,
+    type EditorTab,
+    type FilterPreset,
+    type MediaEdit,
+} from '@/types/media-editor';
 
 type FixedCropPresetValue = Exclude<
     CropPresetValue,
     typeof CropPreset.Freeform | typeof CropPreset.Original
 >;
-
-export type CropPresetOption = {
-    value: CropPresetValue;
-    ratio: number | null;
-    shape: 'freeform' | 'portrait' | 'square' | 'landscape';
-};
-
-export const FILTER_PRESETS = ['original', 'vivid', 'mono', 'sepia'] as const;
-export type FilterPreset = (typeof FILTER_PRESETS)[number];
 
 /** Each filter at an intensity from 0 (no effect) to 1 (full effect). */
 const FILTER_CSS: Record<FilterPreset, (intensity: number) => string> = {
@@ -40,32 +38,6 @@ const FILTER_CSS: Record<FilterPreset, (intensity: number) => string> = {
         `saturate(${1 + 0.3 * intensity}) contrast(${1 + 0.08 * intensity})`,
     mono: (intensity) => `grayscale(${intensity})`,
     sepia: (intensity) => `sepia(${intensity})`,
-};
-
-export const ADJUSTMENTS = [
-    'brightness',
-    'contrast',
-    'saturation',
-    'warmth',
-] as const;
-export type Adjustment = (typeof ADJUSTMENTS)[number];
-
-export type MediaEdit = {
-    preset: CropPresetValue;
-    selection: SourceRect | null;
-    quarterTurns: number;
-    flipX: boolean;
-    flipY: boolean;
-    straighten: number;
-    filter: FilterPreset;
-    /** How strongly the filter applies, 0 to 100. */
-    filterIntensity: number;
-    adjustments: Record<Adjustment, number>;
-    altText: string;
-    userTags: MediaUserTag[];
-    coverOffsetMs: number | null;
-    coverImage: CoverImage | null;
-    coverSource: CoverSource;
 };
 
 /** Instagram Reels, YouTube Shorts and Facebook Reels show a cover at 9:16 and crop anything else to its middle. */
@@ -186,8 +158,6 @@ export const presetValuesFor = (
     rules: MediaRules[],
     defaults: CropPresetValue[],
 ): CropPresetValue[] => (rules.length === 1 ? rules[0].cropPresets : defaults);
-
-export type EditorTab = 'edit' | 'thumbnail' | 'alt' | 'tags';
 
 /** A video gets a Thumbnail tab when its network takes a frame or an image as its cover. */
 const hasThumbnail = (rule: MediaRules): boolean => {
@@ -324,7 +294,6 @@ export const createMediaEdit = (
     coverImage: storedCoverImage(item, coverPreset),
     coverSource: storedCoverSource(item),
 });
-
 
 /** The source the edit saves: an image picked but never uploaded leaves the cover as it was saved, a frame. */
 export const savedCoverSource = (edit: MediaEdit): CoverSource => {

@@ -31,12 +31,13 @@ import {
     useMediaUpload,
 } from '@/composables/useMediaUpload';
 import { cancelDragOnEscape } from '@/lib/dragPlaceholder';
-import { editorTabsFor, rulesFor, type EditorTab } from '@/lib/mediaEditor';
+import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { canvaDesignId, editInCanva } from '@/lib/mediaSources/canva';
 import { acceptAttribute, isImage, isVideo, mediaKey } from '@/lib/mediaType';
 import { withCoversFor } from '@/lib/videoFrame';
 import type { MediaUploadLimits, SharedData } from '@/types';
 import type { MediaItem } from '@/types/media';
+import type { EditorTab } from '@/types/media-editor';
 
 const props = defineProps<{
     items: MediaItem[];

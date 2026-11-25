@@ -11,12 +11,12 @@ import {
     IconSquare,
 } from '@tabler/icons-vue';
 
-import type { CropPresetOption, MediaEdit } from '@/lib/mediaEditor';
 import { rangeFill } from '@/lib/rangeFill';
 import {
     type CropPresetValue,
     UNFIXED_CROP_PRESETS,
 } from '@/types/crop-preset';
+import type { CropPresetOption, MediaEdit } from '@/types/media-editor';
 
 defineProps<{
     presets: CropPresetOption[];

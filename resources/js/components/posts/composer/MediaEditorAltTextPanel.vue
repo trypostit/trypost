@@ -6,8 +6,8 @@ import { ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { extractErrorMessage } from '@/lib/httpError';
-import type { MediaEdit } from '@/lib/mediaEditor';
 import { altText as generateAltTextRoute } from '@/routes/app/posts/ai';
+import type { MediaEdit } from '@/types/media-editor';
 
 const props = defineProps<{
     mediaId: string;

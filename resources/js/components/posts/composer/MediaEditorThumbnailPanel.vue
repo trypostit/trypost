@@ -5,12 +5,12 @@ import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
 import {
-    type MediaEdit,
     newCoverImage,
 } from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
 import type { CropPresetValue } from '@/types/crop-preset';
 import type { CoverSource } from '@/types/media';
+import type { MediaEdit } from '@/types/media-editor';
 
 const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
 

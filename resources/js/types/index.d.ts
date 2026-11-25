@@ -2,7 +2,6 @@ import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
-import type { CropPresetValue } from '@/types/crop-preset';
 import type {
     DefaultPostAction,
     Theme,
@@ -10,6 +9,7 @@ import type {
     WeekStart,
 } from '@/preferences';
 import type { ScrollChangelogEntries, SharedChangelog } from '@/types/changelog';
+import type { CropPresetValue } from '@/types/crop-preset';
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
 import type { PostingStreak } from '@/types/posting-streak';
 

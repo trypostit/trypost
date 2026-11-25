@@ -8,21 +8,20 @@ import {
     type HTMLAttributes,
 } from 'vue';
 
-import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
+import { useImageCrop } from '@/composables/useImageCrop';
 import {
     clampSelection,
     containScale,
-    type Corner,
     resizeSelection,
-    type SourceRect,
 } from '@/lib/imageCrop';
 import {
     cssFilter,
     imageTransform,
-    type MediaEdit,
     warmthOverlay,
 } from '@/lib/mediaEditor';
 import { CropPreset } from '@/types/crop-preset';
+import type { Corner, ImageSize, SourceRect } from '@/types/image-crop';
+import type { MediaEdit } from '@/types/media-editor';
 
 const props = withDefaults(
     defineProps<{

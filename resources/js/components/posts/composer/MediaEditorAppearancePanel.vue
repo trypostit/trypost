@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import { blankMediaEdit, cssFilter } from '@/lib/mediaEditor';
+import { rangeFill } from '@/lib/rangeFill';
 import {
     ADJUSTMENTS,
-    blankMediaEdit,
-    cssFilter,
     FILTER_PRESETS,
     type MediaEdit,
-} from '@/lib/mediaEditor';
-import { rangeFill } from '@/lib/rangeFill';
+} from '@/types/media-editor';
 
 defineProps<{
     src: string;
