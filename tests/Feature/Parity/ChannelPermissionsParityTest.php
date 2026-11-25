@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
+use App\Mcp\Tools\Post\ApprovePostTool;
+use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Post;
@@ -296,6 +299,44 @@ test('a member who cannot reconnect the channel is told an admin needs to when p
         ->tool(PublishPostTool::class, ['post_id' => $post->id])
         ->assertHasErrors([__('channels.permissions.reel_cover.member_message', ['network' => Platform::Facebook->label()])]);
 });
+
+test('approving a reel with a cover on a channel without the cover scopes is refused on its media on the web, api and mcp', function (string $surface) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->forceFill([
+        'user_id' => workspaceMember($this->workspace, 'approval')->id,
+        'status' => Status::PendingApproval,
+        'schedule_mode' => ScheduleMode::Custom,
+        'scheduled_at' => now()->addDay(),
+        'approval_requested_at' => now(),
+    ])->save();
+    $message = __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]);
+
+    match ($surface) {
+        'web' => $this->actingAs($this->user)->putJson(route('app.posts.approve', $post))->assertUnprocessable()
+            ->assertJsonValidationErrors(['media' => $message]),
+        'api' => $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.approve', $post))->assertUnprocessable()
+            ->assertJsonValidationErrors(['media' => $message]),
+        'mcp' => TryPostServer::actingAs($this->user)->tool(ApprovePostTool::class, ['post_id' => $post->id])->assertHasErrors([$message]),
+    };
+
+    expect($post->fresh()->status)->toBe(Status::PendingApproval);
+})->with(['web', 'api', 'mcp']);
+
+test('attaching media to a scheduled reel with a cover on a channel without the cover scopes is refused on the api and mcp', function (string $surface) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
+    $urls = [['url' => 'https://cdn.test/medias/another.mp4']];
+    $message = __('channels.permissions.reel_cover.message', ['network' => Platform::Facebook->label()]);
+
+    match ($surface) {
+        'api' => $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.attach-media-from-url', $post), ['urls' => $urls])
+            ->assertUnprocessable()->assertJsonValidationErrors(['media' => $message]),
+        'mcp' => TryPostServer::actingAs($this->user)->tool(AttachMediaFromUrlTool::class, ['post_id' => $post->id, 'urls' => $urls])
+            ->assertHasErrors([$message]),
+    };
+
+    expect($post->fresh()->media)->toHaveCount(1);
+})->with(['api', 'mcp']);
 
 test('attaching a cover to a scheduled reel on a channel without the cover scopes is refused', function () {
     $post = reelWithCoverOnChannelWithoutCoverScopes();
