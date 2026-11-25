@@ -52,7 +52,7 @@ trait HostsProcessedImages
     {
         return $this->hostProcessedImage(
             $imageUrl,
-            fn (string $path): string => $this->jpegFrom($path, $platform, $maxBytes),
+            fn (string $path): string => $this->convertToJpeg($path, $platform, $maxBytes),
             'JPEG conversion',
         );
     }
@@ -63,7 +63,7 @@ trait HostsProcessedImages
      * convert it (it hands back an image too large to decode untouched) or the
      * result is still over `$maxBytes`.
      */
-    protected function jpegFrom(string $path, Platform $platform, int $maxBytes): string
+    protected function convertToJpeg(string $path, Platform $platform, int $maxBytes): string
     {
         try {
             $converted = app(MediaOptimizer::class)->optimizeImage($path, $platform);
@@ -87,12 +87,12 @@ trait HostsProcessedImages
     }
 
     /**
-     * The image file re-encoded as the platform's JPEG (`jpegFrom()`), as
+     * The image file re-encoded as the platform's JPEG (`convertToJpeg()`), as
      * bytes to send in a request body.
      */
-    protected function jpegBytesFrom(string $path, Platform $platform, int $maxBytes): string
+    protected function convertToJpegBytes(string $path, Platform $platform, int $maxBytes): string
     {
-        $converted = $this->jpegFrom($path, $platform, $maxBytes);
+        $converted = $this->convertToJpeg($path, $platform, $maxBytes);
 
         try {
             return File::get($converted);

@@ -661,7 +661,7 @@ class FacebookPublisher
         }
 
         try {
-            return $this->jpegBytesFrom($download, Platform::Facebook, self::COVER_MAX_BYTES);
+            return $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
         } catch (SocialPublishException) {
             return null;
         } finally {
@@ -731,7 +731,7 @@ class FacebookPublisher
         );
 
         try {
-            $jpeg = $this->jpegBytesFrom($download, Platform::Facebook, self::COVER_MAX_BYTES);
+            $jpeg = $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
         } catch (SocialPublishException $exception) {
             throw new FacebookPublishException(
                 userMessage: $exception->getMessage(),
