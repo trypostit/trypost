@@ -25,7 +25,7 @@ import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
 import { filled } from '@/lib/helpers';
 import {
     createMediaEdit,
-    COVER_CROP_PRESET,
+    coverCropPresetFor,
     cropPresetsFor,
     editorTabsFor,
     type EditorTab,
@@ -290,9 +290,11 @@ const stageSrc = computed(() => {
 
     return activeItem.value?.url;
 });
+/** How an uploaded cover image is framed for the post's networks. */
+const coverPreset = computed(() => coverCropPresetFor(rules.value));
 const stageBasePreset = computed<CropPresetValue>(() => {
     if (cropsCover.value) {
-        return COVER_CROP_PRESET;
+        return coverPreset.value;
     }
 
     return basePreset.value;
@@ -482,7 +484,12 @@ const captureFrame = async (
     try {
         const file = await captureVideoFrame(media.url, milliseconds);
 
-        return newCoverImage(URL.createObjectURL(file), null, file);
+        return newCoverImage(
+            URL.createObjectURL(file),
+            null,
+            file,
+            coverPreset.value,
+        );
     } catch (error) {
         captureFailed.value = true;
 
@@ -496,7 +503,12 @@ const renderCover = async (cover: CoverImage): Promise<CoverImage> => {
     const image = await loadImage(pixelSource(source));
     const rendered = await renderMediaEdit(image, source, cover.crop);
 
-    return newCoverImage(URL.createObjectURL(rendered.file), null, rendered.file);
+    return newCoverImage(
+        URL.createObjectURL(rendered.file),
+        null,
+        rendered.file,
+        coverPreset.value,
+    );
 };
 
 /** The cover as a media item to read its pixels from: the picked file, or the stored image. */
@@ -858,6 +870,7 @@ watch(tagging, (isTagging) => {
                             :key="activeIndex"
                             v-model:edit="edit"
                             :supports-custom-cover="supportsCustomCover"
+                            :cover-preset="coverPreset"
                         />
                         <MediaEditorCropPanel
                             v-if="coverCropEdit"

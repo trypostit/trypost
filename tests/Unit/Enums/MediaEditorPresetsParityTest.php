@@ -104,3 +104,14 @@ test('the typescript media editor offers alt text on a video exactly where the b
             ->toBe($type->supportsVideoAltText(), $type->value);
     }
 });
+
+test('the editor offers a facebook video the thumbnail tab and frames a feed video cover at its own ratio', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'videoTabs.facebook_post'))->toContain('thumbnail')
+        ->and(data_get($output, 'videoTabs.facebook_reel'))->toContain('thumbnail')
+        ->and(data_get($output, 'coverPresets.facebook_post'))->toBe('original')
+        ->and(data_get($output, 'coverPresets.facebook_reel'))->toBe('9:16')
+        ->and(data_get($output, 'coverPresets.instagram_reel'))->toBe('9:16')
+        ->and(data_get($output, 'coverPresets.youtube_short'))->toBe('9:16');
+});

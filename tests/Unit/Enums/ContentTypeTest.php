@@ -605,3 +605,20 @@ test('only bluesky, mastodon, threads and discord take alt text on a video', fun
     expect($type->supportsVideoAltText())->toBe($expected)
         ->and($type->mediaRules()['supports_video_alt_text'])->toBe($expected);
 })->with(ContentType::cases());
+
+test('a facebook feed video and reel take a frame or an image as their cover', function () {
+    expect(ContentType::FacebookPost->mediaRules())->toMatchArray([
+        'supports_video_cover' => false,
+        'supports_custom_video_cover' => true,
+    ])->and(ContentType::FacebookReel->mediaRules())->toMatchArray([
+        'supports_video_cover' => false,
+        'supports_custom_video_cover' => true,
+    ])->and(ContentType::FacebookStory->supportsCustomVideoCover())->toBeFalse();
+});
+
+test('a facebook reel takes no cover while the reel cover is off, and the feed video still does', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    expect(ContentType::FacebookReel->supportsCustomVideoCover())->toBeFalse()
+        ->and(ContentType::FacebookPost->supportsCustomVideoCover())->toBeTrue();
+});

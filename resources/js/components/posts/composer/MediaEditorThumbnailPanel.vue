@@ -4,7 +4,11 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
-import { type MediaEdit, newCoverImage } from '@/lib/mediaEditor';
+import {
+    type CropPresetValue,
+    type MediaEdit,
+    newCoverImage,
+} from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
 import type { CoverSource } from '@/types/media';
 
@@ -12,6 +16,7 @@ const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
 
 const props = defineProps<{
     supportsCustomCover: boolean;
+    coverPreset: CropPresetValue;
 }>();
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
@@ -86,7 +91,12 @@ const onImagePicked = (event: Event): void => {
         URL.revokeObjectURL(edit.value.coverImage.url);
     }
 
-    edit.value.coverImage = newCoverImage(URL.createObjectURL(file), null, file);
+    edit.value.coverImage = newCoverImage(
+        URL.createObjectURL(file),
+        null,
+        file,
+        props.coverPreset,
+    );
 };
 </script>
 

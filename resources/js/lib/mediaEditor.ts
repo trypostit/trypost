@@ -73,8 +73,27 @@ export type MediaEdit = {
     coverSource: CoverSource;
 };
 
-/** Instagram Reels and YouTube Shorts show a cover at 9:16 and crop anything else to its middle. */
+/** Instagram Reels, YouTube Shorts and Facebook Reels show a cover at 9:16 and crop anything else to its middle. */
 export const COVER_CROP_PRESET: CropPresetValue = '9:16';
+
+/**
+ * How an uploaded cover image is framed (`ContentType::coverCropPreset()`):
+ * at its own ratio only when every network taking it keeps that ratio (a
+ * Facebook feed video), else at 9:16.
+ */
+export const coverCropPresetFor = (rules: MediaRules[]): CropPresetValue => {
+    const coverRules = rules.filter((rule) => rule.supportsCustomVideoCover);
+
+    if (!filled(coverRules)) {
+        return COVER_CROP_PRESET;
+    }
+
+    if (coverRules.every((rule) => rule.coverCropPreset === 'original')) {
+        return 'original';
+    }
+
+    return COVER_CROP_PRESET;
+};
 
 export const USER_TAGS_MAX = 20;
 
@@ -218,16 +237,17 @@ const storedCoverImage = (item: MediaItem): CoverImage | null => {
     return newCoverImage(cover.url, cover, null);
 };
 
-/** A cover image as the editor opens it: framed at 9:16 in its middle. */
+/** A cover image as the editor opens it: framed at the cover's preset (`coverCropPresetFor()`), 9:16 by default, in its middle. */
 export const newCoverImage = (
     url: string,
     item: MediaItem | null,
     file: File | null,
+    preset: CropPresetValue = COVER_CROP_PRESET,
 ): CoverImage => ({
     url,
     item,
     file,
-    crop: blankMediaEdit(COVER_CROP_PRESET),
+    crop: blankMediaEdit(preset),
     natural: null,
 });
 

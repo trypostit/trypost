@@ -27,6 +27,7 @@ const DEFAULT_RULES: MediaRules = {
     supportsUserTags: false,
     supportsVideoCover: false,
     supportsCustomVideoCover: false,
+    coverCropPreset: '9:16',
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {

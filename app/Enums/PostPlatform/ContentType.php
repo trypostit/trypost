@@ -7,9 +7,11 @@ namespace App\Enums\PostPlatform;
 use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Models\Post;
 use App\Models\SocialAccount;
+use App\Support\ChannelPermissions;
 use App\Support\Social\MastodonPoll;
 use App\Support\Social\Poll;
 use App\Support\Social\ThreadsPoll;
@@ -583,12 +585,33 @@ enum ContentType: string
 
     /**
      * Whether a video of this type may take an image as its cover
-     * (`media.*.meta.cover`): Instagram takes `cover_url` on Reels only, and
-     * YouTube sets a Short's thumbnail once the video is processed.
+     * (`media.*.meta.cover`): Instagram takes `cover_url` on Reels only,
+     * YouTube sets a Short's thumbnail once the video is processed, Facebook
+     * takes a feed video's `thumb` on upload and a Reel's cover once it is up,
+     * while the Reel cover's permission is on (`GatedFeature::VideoCover`).
+     * A type here that takes no frame time gets the picked frame as an image.
      */
     public function supportsCustomVideoCover(): bool
     {
-        return collect([self::InstagramReel, self::YouTubeShort])->containsStrict($this);
+        if ($this->setsCoverAfterPublish()) {
+            return ChannelPermissions::enabled($this->platform(), GatedFeature::VideoCover);
+        }
+
+        return collect([self::InstagramReel, self::YouTubeShort, self::FacebookPost])->containsStrict($this);
+    }
+
+    /**
+     * How the media editor frames an uploaded cover image: Reels and Shorts
+     * show it at 9:16, while a Facebook feed video takes it at its own ratio
+     * (Meta recommends the video's), so the editor keeps the image's.
+     */
+    public function coverCropPreset(): string
+    {
+        if ($this === self::FacebookPost) {
+            return 'original';
+        }
+
+        return '9:16';
     }
 
     /**
@@ -628,6 +651,7 @@ enum ContentType: string
      *     supports_user_tags: bool,
      *     supports_video_cover: bool,
      *     supports_custom_video_cover: bool,
+     *     cover_crop_preset: string,
      *     platform_label: string,
      *     image_min_width: int|null,
      *     image_min_height: int|null,
@@ -667,6 +691,7 @@ enum ContentType: string
             'supports_user_tags' => $this->supportsUserTags(),
             'supports_video_cover' => $this->supportsVideoCover(),
             'supports_custom_video_cover' => $this->supportsCustomVideoCover(),
+            'cover_crop_preset' => $this->coverCropPreset(),
             'platform_label' => $this->platform()->label(),
             'image_min_width' => $dimensions['min_width'] ?? null,
             'image_min_height' => $dimensions['min_height'] ?? null,
