@@ -11,11 +11,17 @@ use Illuminate\Support\Facades\Http;
 /**
  * Affonso REST API (https://docs.affonso.io/api/introduction), authenticated
  * with the program's secret key. Each endpoint is one public method built on
- * `request()`, which holds the host, the key and the timeout; the host comes
- * from config and the key is never logged.
+ * `request()`, which holds the host, the key and the timeout. The key is never
+ * logged.
  */
 class AffonsoClient
 {
+    /**
+     * Affonso is a hosted service with no self-hosted edition, so its host is
+     * fixed rather than configurable.
+     */
+    public const string API_URL = 'https://api.affonso.io/v1';
+
     private const int REQUEST_TIMEOUT_SECONDS = 15;
 
     /**
@@ -47,7 +53,7 @@ class AffonsoClient
 
     private function request(): PendingRequest
     {
-        return Http::baseUrl(config('trypost.affonso.api'))
+        return Http::baseUrl(self::API_URL)
             ->withToken(config('services.affonso.api_key'))
             ->acceptJson()
             ->timeout(self::REQUEST_TIMEOUT_SECONDS);
