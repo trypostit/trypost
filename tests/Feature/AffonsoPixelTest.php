@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Listeners\FlashAffiliateSignup;
 use App\Models\User;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Support\Facades\Event;
 use Inertia\Support\SessionKey;
 
 test('every page loads the affonso pixel when an id is set', function () {
@@ -57,6 +60,12 @@ test('a signup flashes nothing for affonso without an id', function () {
     ])->assertRedirect();
 
     expect(session(SessionKey::FLASH_DATA))->toBeNull();
+});
+
+test('every signup, email, google or github, reaches the affonso listener', function () {
+    Event::fake();
+
+    Event::assertListening(Registered::class, FlashAffiliateSignup::class);
 });
 
 test('the affiliate referral cookie the pixel sets is read without decryption', function () {

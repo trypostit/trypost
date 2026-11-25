@@ -14,6 +14,7 @@ use App\Models\Offer;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -51,7 +52,8 @@ class StartSubscriptionCheckout
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
                 ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => $interval->value,
                 ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
-                ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY => request()->cookie(ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY),
+                ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY => $this->affiliateReferral(),
+                ConfigureSubscriptionCheckout::AFFILIATE_USER_METADATA_KEY => $account->owner_id,
             ], filled(...)),
         ]);
 
@@ -70,6 +72,23 @@ class StartSubscriptionCheckout
         });
 
         return Inertia::location($session->url);
+    }
+
+    /**
+     * The referral the Affonso pixel left in the browser. The cookie is written
+     * by the visitor's browser, so anything but a string is dropped and the
+     * value is cut to Stripe's 500-character metadata limit, or Stripe would
+     * refuse the whole checkout.
+     */
+    private function affiliateReferral(): ?string
+    {
+        $referral = request()->cookie(ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY);
+
+        if (! is_string($referral)) {
+            return null;
+        }
+
+        return Str::limit($referral, 500, '');
     }
 
     /**

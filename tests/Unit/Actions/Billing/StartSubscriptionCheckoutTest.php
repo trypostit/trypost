@@ -99,6 +99,7 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
             'cancel_url' => $cancelUrl,
             'metadata' => [
                 'trypost_interval' => 'monthly',
+                'userId' => $account->owner_id,
             ],
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
@@ -209,6 +210,7 @@ test('checkout session carries the plan and interval of a yearly price', functio
         ->withArgs(fn (array $options): bool => data_get($options, 'metadata') === [
             'trypost_plan_slug' => 'workspaces',
             'trypost_interval' => 'yearly',
+            'userId' => $account->owner_id,
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 
@@ -536,8 +538,8 @@ test('redirect gives no offer to a plan other than Socials monthly', function ()
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_workspaces_monthly', route('app.billing.index'), $workspaces, Offer::factory()->blackFriday()->create());
 });
 
-test('checkout session carries the affiliate referral from the affonso cookie', function () {
-    request()->cookies->set('affonso_referral', 'ref_123');
+test('checkout session carries the affiliate referral from the affonso cookie', function (mixed $cookie, ?string $expected) {
+    request()->cookies->set('affonso_referral', $cookie);
 
     $account = Account::factory()->create();
     Workspace::factory()->create(['account_id' => $account->id]);
@@ -549,11 +551,39 @@ test('checkout session carries the affiliate referral from the affonso cookie', 
     $builder->shouldReceive('withMetadata')->andReturnSelf();
     $builder->shouldReceive('checkout')
         ->once()
-        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.affonso_referral') === 'ref_123')
+        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.affonso_referral') === $expected)
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome.plan'));
+})->with([
+    'a referral' => ['ref_123', 'ref_123'],
+    'no cookie' => [null, null],
+    'an empty cookie' => ['', null],
+    'an array cookie' => [['ref_123'], null],
+    'an oversized cookie' => [str_repeat('a', 900), str_repeat('a', 500)],
+]);
+
+test('checkout session carries the owner id affonso matches to the signup lead', function () {
+    $account = Account::factory()->create();
+    Workspace::factory()->create(['account_id' => $account->id]);
+    $owner = User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $account->update(['owner_id' => $owner->id]);
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->andReturnSelf();
+    $builder->shouldReceive('checkout')
+        ->once()
+        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.userId') === $owner->id)
+        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account->refresh())->makePartial();
     $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 

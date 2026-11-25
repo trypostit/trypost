@@ -24,6 +24,12 @@ final class ConfigureSubscriptionCheckout
     public const AFFILIATE_REFERRAL_KEY = 'affonso_referral';
 
     /**
+     * Affonso matches a payment to the lead the pixel recorded at signup by
+     * this metadata key, holding the id signup sent as `externalUserId`.
+     */
+    public const AFFILIATE_USER_METADATA_KEY = 'userId';
+
+    /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
      */
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;

@@ -21,7 +21,7 @@ export const trackAffiliateSignup = (
         return;
     }
 
-    if (window.Affonso) {
+    if (filled(window.Affonso)) {
         window.Affonso.signup(signup);
 
         return;
@@ -29,7 +29,7 @@ export const trackAffiliateSignup = (
 
     const pixel = document.querySelector('script[data-affonso]');
 
-    if (!pixel) {
+    if (!filled(pixel)) {
         return;
     }
 
