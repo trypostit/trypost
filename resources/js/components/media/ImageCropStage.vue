@@ -22,6 +22,7 @@ import {
     type MediaEdit,
     warmthOverlay,
 } from '@/lib/mediaEditor';
+import { CropPreset } from '@/types/crop-preset';
 
 const props = withDefaults(
     defineProps<{
@@ -56,6 +57,11 @@ const HANDLES: Array<{ corner: Corner; x: 'left' | 'right'; y: 'top' | 'bottom';
     { corner: 'sw', x: 'left', y: 'bottom', cursor: 'cursor-nesw-resize' },
     { corner: 'se', x: 'right', y: 'bottom', cursor: 'cursor-nwse-resize' },
 ];
+
+/** The corner and edge marks show on a crop being framed, never on the Original (uncropped) image. */
+const showsCropMarks = computed(
+    () => edit.value.preset !== CropPreset.Original,
+);
 
 const FRAME_DARK = '#121414';
 const MARK_OUTLINE = '#d1d1d1';
@@ -176,7 +182,7 @@ const selectionStyle = computed(() => ({
 
 /** Only a freeform crop changes size; a chosen ratio keeps it and only moves. */
 const resizable = computed(
-    () => props.resizeAnyRatio || edit.value.preset === 'freeform',
+    () => props.resizeAnyRatio || edit.value.preset === CropPreset.Freeform,
 );
 
 const measure = (): void => {
@@ -336,7 +342,7 @@ onBeforeUnmount(() => {
                     :style="frameStyle"
                     :data-testid="`${testIdPrefix}-frame`"
                 />
-                <template v-if="edit.preset !== 'original'">
+                <template v-if="showsCropMarks">
                     <span
                         v-for="(layer, index) in markLayers"
                         :key="index"

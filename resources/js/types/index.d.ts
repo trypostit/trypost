@@ -2,7 +2,7 @@ import { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
 
 import type { ContentTypeMediaRule } from '@/lib/contentTypeMediaRules';
-import type { CropPresetValue } from '@/lib/mediaEditor';
+import type { CropPresetValue } from '@/types/crop-preset';
 import type {
     DefaultPostAction,
     Theme,

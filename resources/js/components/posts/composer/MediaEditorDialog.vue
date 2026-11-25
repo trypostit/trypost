@@ -34,7 +34,6 @@ import {
     hasPixelChanges,
     needsFrameCapture,
     newCoverImage,
-    type CropPresetValue,
     type MediaEdit,
     presetValuesFor,
     renderImageEdit,
@@ -44,6 +43,7 @@ import {
 } from '@/lib/mediaEditor';
 import { isVideo } from '@/lib/mediaType';
 import { captureVideoFrame } from '@/lib/videoFrame';
+import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
 import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
 
 export type MediaEditChange = {
@@ -114,7 +114,7 @@ const imageErrors = ref<Record<number, boolean>>({});
 
 const isPhoto = computed(() => props.mode === 'photo');
 const basePreset = computed<CropPresetValue>(() =>
-    isPhoto.value ? '1:1' : 'original',
+    isPhoto.value ? CropPreset.Square : CropPreset.Original,
 );
 const rules = computed(() => rulesFor(props.contentTypes));
 const presets = computed(() =>

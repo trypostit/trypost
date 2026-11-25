@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\Facebook\VideoStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -37,12 +38,6 @@ class FacebookPublisher
     private const int VIDEO_UPLOAD_MAX_POLLS = 60;
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
-
-    /** The `status.video_status` of a video Facebook has finished processing. */
-    private const string VIDEO_READY_STATUS = 'ready';
-
-    /** The `status.video_status` values of a video Facebook will never finish processing. */
-    private const array VIDEO_FAILED_STATUSES = ['error', 'expired'];
 
     /** Graph's "Invalid parameter" error code. */
     private const string INVALID_PARAMETER_CODE = '100';
@@ -556,7 +551,7 @@ class FacebookPublisher
             return $detail;
         }
 
-        $failed = in_array(data_get($status, 'video_status'), ['error', 'expired'], true)
+        $failed = VideoStatus::tryFrom((string) data_get($status, 'video_status'))?->hasFailed() === true
             || data_get($status, 'uploading_phase.status') === 'error'
             || data_get($status, 'processing_phase.status') === 'error';
 
@@ -569,7 +564,7 @@ class FacebookPublisher
     private function videoUploadComplete(array $status): bool
     {
         return data_get($status, 'uploading_phase.status') === 'complete'
-            || in_array(data_get($status, 'video_status'), ['ready', 'upload_complete'], true);
+            || collect([VideoStatus::Ready, VideoStatus::UploadComplete])->containsStrict(VideoStatus::tryFrom((string) data_get($status, 'video_status')));
     }
 
     private function requireMedia(?MediaItem $media, string $format): MediaItem
@@ -629,7 +624,7 @@ class FacebookPublisher
             return $this->facebookHttp();
         }
 
-        return $this->socialHttp()->attach($field, $image, 'cover.jpg', ['Content-Type' => 'image/jpeg']);
+        return $this->socialHttp()->attach($field, $image, 'cover.jpg', ['Content-Type' => self::JPEG_MIME_TYPE]);
     }
 
     /**
@@ -695,16 +690,16 @@ class FacebookPublisher
             return true;
         }
 
-        $videoStatus = data_get($response->json(), 'status.video_status');
+        $videoStatus = VideoStatus::tryFrom((string) data_get($response->json(), 'status.video_status'));
 
-        if (collect(self::VIDEO_FAILED_STATUSES)->containsStrict($videoStatus)) {
+        if ($videoStatus?->hasFailed() === true) {
             throw new FacebookPublishException(
-                userMessage: "Facebook could not process the Reel ({$videoStatus})",
+                userMessage: "Facebook could not process the Reel ({$videoStatus->value})",
                 category: ErrorCategory::MediaFormat,
             );
         }
 
-        return $videoStatus !== self::VIDEO_READY_STATUS;
+        return $videoStatus !== VideoStatus::Ready;
     }
 
     /**

@@ -26,6 +26,7 @@ function runMediaEditorPresetsHarness(): array
     file_put_contents($input, json_encode([
         'rules' => ContentType::mediaRulesForFrontend(),
         'defaults' => CropPreset::valuesOf(ContentType::defaultCropPresets()),
+        'every' => CropPreset::valuesOf(fixedCropPresets()),
     ], JSON_THROW_ON_ERROR));
 
     try {
@@ -40,6 +41,19 @@ function runMediaEditorPresetsHarness(): array
     }
 
     return json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+}
+
+/**
+ * Every preset with a fixed ratio: Freeform and Original lead the editor's list on their own.
+ *
+ * @return list<CropPreset>
+ */
+function fixedCropPresets(): array
+{
+    return collect(CropPreset::cases())
+        ->reject(fn (CropPreset $preset): bool => collect([CropPreset::Freeform, CropPreset::Original])->containsStrict($preset))
+        ->values()
+        ->all();
 }
 
 function mediaEditorPresetRatio(string $preset): float
@@ -124,4 +138,17 @@ test('the editor offers a facebook reel no thumbnail tab while the reel cover is
 
     expect(data_get($output, 'videoTabs.facebook_reel'))->not->toContain('thumbnail')
         ->and(data_get($output, 'videoTabs.facebook_post'))->toContain('thumbnail');
+});
+
+test('the editor draws every crop preset the server can send, at its ratio', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(array_column(data_get($output, 'every'), 'value'))
+        ->toBe(['freeform', 'original', ...CropPreset::valuesOf(fixedCropPresets())]);
+
+    foreach (fixedCropPresets() as $preset) {
+        $drawn = collect(data_get($output, 'every'))->firstWhere('value', $preset->value);
+
+        expect(data_get($drawn, 'ratio'))->toEqualWithDelta(mediaEditorPresetRatio($preset->value), 0.0001, $preset->value);
+    }
 });

@@ -470,13 +470,10 @@ test('media rules carry crop presets and editor tab availability', function () {
     expect(ContentType::defaultCropPresets())->toBe([CropPreset::Square, CropPreset::Portrait9x16]);
 });
 
-test('crop presets are non-empty and only use ratios the frontend editor knows', function (ContentType $type) {
-    $known = ['9:16', '2:3', '3:4', '4:5', '1:1', '4:3', '1.91:1', '16:9', '2:1'];
-
+test('crop presets are non-empty and never repeat', function (ContentType $type) {
     $presets = CropPreset::valuesOf($type->cropPresets());
 
     expect($presets)->not->toBeEmpty()
-        ->and(array_diff($presets, $known))->toBe([])
         ->and($presets)->toBe(array_values(array_unique($presets)));
 })->with(ContentType::cases());
 

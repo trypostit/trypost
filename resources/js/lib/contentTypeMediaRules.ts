@@ -1,6 +1,6 @@
 import type { Page } from '@inertiajs/core';
 
-import type { CropPresetValue } from '@/lib/mediaEditor';
+import type { CropPresetValue } from '@/types/crop-preset';
 
 /** CamelCase shape consumed by the Vue media picker / compliance checks. */
 export type MediaRules = {

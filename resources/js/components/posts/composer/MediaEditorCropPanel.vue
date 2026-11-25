@@ -11,11 +11,15 @@ import {
     IconSquare,
 } from '@tabler/icons-vue';
 
-import type { CropPreset, CropPresetValue, MediaEdit } from '@/lib/mediaEditor';
+import type { CropPresetOption, MediaEdit } from '@/lib/mediaEditor';
 import { rangeFill } from '@/lib/rangeFill';
+import {
+    type CropPresetValue,
+    UNFIXED_CROP_PRESETS,
+} from '@/types/crop-preset';
 
 defineProps<{
-    presets: CropPreset[];
+    presets: CropPresetOption[];
     centerDisabled: boolean;
     resetDisabled: boolean;
 }>();
@@ -47,15 +51,21 @@ const ICON_BUTTON =
 const TEXT_BUTTON =
     'flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-muted text-sm font-medium transition-colors enabled:hover:bg-accent disabled:text-subtle-foreground';
 
-const presetTitle = (value: CropPresetValue): string =>
-    value === 'freeform' || value === 'original'
-        ? `posts.composer.media_editor.preset_${value}`
-        : value;
+const presetTitle = (value: CropPresetValue): string => {
+    if (UNFIXED_CROP_PRESETS.has(value)) {
+        return `posts.composer.media_editor.preset_${value}`;
+    }
 
-const presetHint = (preset: CropPreset): string =>
-    preset.value === 'freeform' || preset.value === 'original'
-        ? `posts.composer.media_editor.preset_${preset.value}_hint`
-        : `posts.composer.media_editor.preset_${preset.shape}_hint`;
+    return value;
+};
+
+const presetHint = (preset: CropPresetOption): string => {
+    if (UNFIXED_CROP_PRESETS.has(preset.value)) {
+        return `posts.composer.media_editor.preset_${preset.value}_hint`;
+    }
+
+    return `posts.composer.media_editor.preset_${preset.shape}_hint`;
+};
 
 const selectPreset = (value: CropPresetValue): void => {
     edit.value.preset = value;
