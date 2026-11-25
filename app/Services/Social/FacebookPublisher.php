@@ -22,6 +22,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
@@ -35,6 +36,9 @@ class FacebookPublisher
     private const int VIDEO_UPLOAD_MAX_POLLS = 60;
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
+
+    /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
+    public const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
     private string $baseUrl;
 
@@ -243,7 +247,7 @@ class FacebookPublisher
             'file_url' => $media->url,
             'access_token' => $accessToken,
             ...$this->optionalField('description', $content),
-        ], 'video post');
+        ], 'video post', thumb: $this->feedVideoThumb($media));
 
         $videoId = data_get($response->json(), 'id');
 
@@ -573,16 +577,76 @@ class FacebookPublisher
         return $this->socialHttp()->asForm();
     }
 
+    /** The form request, or a multipart one carrying the video's `thumb`. */
+    private function graphRequest(?string $thumb): PendingRequest
+    {
+        if (blank($thumb)) {
+            return $this->facebookHttp();
+        }
+
+        return $this->socialHttp()->attach('thumb', $thumb, 'cover.jpg', ['Content-Type' => 'image/jpeg']);
+    }
+
+    /**
+     * A feed video's cover (`media.*.meta.cover`: the uploaded image, or the
+     * picked frame's screenshot) as JPEG bytes for `thumb`. A cover that
+     * cannot be downloaded or converted publishes the video with the cover
+     * Facebook picks, never fails it.
+     */
+    private function feedVideoThumb(MediaItem $media): ?string
+    {
+        $cover = $media->cover();
+
+        if (blank($cover)) {
+            return null;
+        }
+
+        $download = $this->downloadImage($cover->url);
+
+        if (blank($download)) {
+            Log::warning('Facebook video cover could not be downloaded; publishing without it', ['media_id' => $media->id]);
+
+            return null;
+        }
+
+        try {
+            return $this->coverJpeg($download);
+        } catch (SocialPublishException $exception) {
+            Log::warning('Facebook video cover could not be prepared; publishing without it', [
+                'media_id' => $media->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        } finally {
+            File::delete($download);
+        }
+    }
+
+    /** The cover image re-encoded as a JPEG within Facebook's 10MB thumbnail limit. */
+    private function coverJpeg(string $path): string
+    {
+        $converted = $this->jpegFrom($path, Platform::Facebook, self::COVER_MAX_BYTES);
+
+        try {
+            return File::get($converted);
+        } finally {
+            File::delete($converted);
+        }
+    }
+
     /**
      * POST a form payload to a Graph edge and turn any failure into the typed
      * exception, logging the redacted body under `$label` first.
      *
+     * A `$thumb` (JPEG bytes) goes as a multipart file next to the payload.
+     *
      * @param  array<string, string>  $payload
      */
-    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true): Response
+    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $thumb = null): Response
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload),
+            fn (): Response => $this->graphRequest($thumb)->post("{$this->baseUrl}/{$path}", $payload),
             $label,
         );
 
