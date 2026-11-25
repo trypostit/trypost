@@ -133,8 +133,6 @@ return [
     'affonso' => [
         'id' => env('AFFONSO_ID'),
         'cookie_duration' => (int) env('AFFONSO_COOKIE_DURATION', 30),
-        'script_url' => env('AFFONSO_SCRIPT_URL', 'https://cdn.affonso.io/js/pixel.min.js'),
-        'api' => env('AFFONSO_API_URL', 'https://api.affonso.io/v1'),
         'api_key' => env('AFFONSO_API_KEY'),
     ],
 

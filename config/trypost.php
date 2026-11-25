@@ -365,6 +365,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Affonso (affiliate tracking)
+    |--------------------------------------------------------------------------
+    |
+    | Hosts of the Affonso pixel and REST API. The program id and the secret
+    | key live in `services.affonso`; without them nothing here is used.
+    |
+    */
+
+    'affonso' => [
+        'script_url' => ConfigEnvironment::baseUrl('AFFONSO_SCRIPT_URL', 'https://cdn.affonso.io/js/pixel.min.js'),
+        'api' => ConfigEnvironment::baseUrl('AFFONSO_API_URL', 'https://api.affonso.io/v1'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | RSS Feeds
     |--------------------------------------------------------------------------
     |

@@ -3,11 +3,10 @@
 declare(strict_types=1);
 
 use App\Jobs\Affonso\RecordAffiliateSignup;
-use App\Listeners\RecordAffiliateSignupListener;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
 
 test('every page loads the affonso pixel when an id is set', function () {
     config([
@@ -73,8 +72,31 @@ test('a referred signup queues no lead without an affonso api key', function () 
     Queue::assertNotPushed(RecordAffiliateSignup::class);
 });
 
-test('every signup, email, google or github, reaches the affonso listener', function () {
-    Event::fake();
+test('a referred google or github signup queues its lead from the oauth callback', function (string $network, string $driver) {
+    config([
+        'trypost.self_hosted' => false,
+        "trypost.{$network}_auth_enabled" => true,
+        'services.affonso.api_key' => 'sk_live_test',
+    ]);
+    Queue::fake();
 
-    Event::assertListening(Registered::class, RecordAffiliateSignupListener::class);
-});
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->id = "{$network}-referred";
+    $socialiteUser->name = 'Referred User';
+    $socialiteUser->email = "{$network}-referred@example.com";
+    Socialite::shouldReceive('driver')->with($driver)->andReturn($socialite = Mockery::mock());
+    $socialite->shouldReceive('scopes')->andReturnSelf();
+    $socialite->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->withUnencryptedCookie('affonso_referral', 'clk_123')
+        ->get(route("auth.{$network}.callback"))
+        ->assertRedirect(route('app.welcome', absolute: false));
+
+    $user = User::where('email', "{$network}-referred@example.com")->firstOrFail();
+
+    Queue::assertPushed(RecordAffiliateSignup::class, fn (RecordAffiliateSignup $job): bool => $job->userId === $user->id
+        && $job->clickId === 'clk_123');
+})->with([
+    'google' => ['google', 'google-auth'],
+    'github' => ['github', 'github'],
+]);

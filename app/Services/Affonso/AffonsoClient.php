@@ -47,7 +47,7 @@ class AffonsoClient
 
     private function request(): PendingRequest
     {
-        return Http::baseUrl(config('services.affonso.api'))
+        return Http::baseUrl(config('trypost.affonso.api'))
             ->withToken(config('services.affonso.api_key'))
             ->acceptJson()
             ->timeout(self::REQUEST_TIMEOUT_SECONDS);

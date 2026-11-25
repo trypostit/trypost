@@ -15,14 +15,14 @@ beforeEach(function () {
 });
 
 test('the lead is sent to affonso with the click, the email and the user id', function () {
-    Http::fake([config('services.affonso.api').'/signups' => Http::response(['success' => true], 201)]);
+    Http::fake([config('trypost.affonso.api').'/signups' => Http::response(['success' => true], 201)]);
 
     $job = (new RecordAffiliateSignup($this->user->id, 'clk_123'))->withFakeQueueInteractions();
     $job->handle(app(AffonsoClient::class));
 
     $job->assertNotFailed();
     Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
-        && $request->url() === config('services.affonso.api').'/signups'
+        && $request->url() === config('trypost.affonso.api').'/signups'
         && $request->hasHeader('Authorization', 'Bearer sk_live_test')
         && $request->data() === [
             'click_id' => 'clk_123',
@@ -42,7 +42,7 @@ test('a user deleted before the job runs sends nothing', function () {
 });
 
 test('a rate limit or a server error is thrown so the queue tries again', function (int $status) {
-    Http::fake([config('services.affonso.api').'/signups' => Http::response(['success' => false], $status)]);
+    Http::fake([config('trypost.affonso.api').'/signups' => Http::response(['success' => false], $status)]);
 
     $job = (new RecordAffiliateSignup($this->user->id, 'clk_123'))->withFakeQueueInteractions();
 
@@ -55,7 +55,7 @@ test('a rate limit or a server error is thrown so the queue tries again', functi
 ]);
 
 test('a refusal fails at once, since sending it again gets the same answer', function (int $status) {
-    Http::fake([config('services.affonso.api').'/signups' => Http::response(['success' => false], $status)]);
+    Http::fake([config('trypost.affonso.api').'/signups' => Http::response(['success' => false], $status)]);
 
     $job = (new RecordAffiliateSignup($this->user->id, 'clk_123'))->withFakeQueueInteractions();
     $job->handle(app(AffonsoClient::class));
