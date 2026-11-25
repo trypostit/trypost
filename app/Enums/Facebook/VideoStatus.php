@@ -22,4 +22,10 @@ enum VideoStatus: string
     {
         return collect([self::Error, self::Expired])->containsStrict($this);
     }
+
+    /** Facebook has the whole file: it is processing it or already done. */
+    public function isUploaded(): bool
+    {
+        return collect([self::UploadComplete, self::Ready])->containsStrict($this);
+    }
 }

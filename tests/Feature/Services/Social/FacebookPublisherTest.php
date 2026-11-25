@@ -1511,7 +1511,6 @@ test('a feed video without a cover is sent without a thumb', function () {
 test('a feed video whose cover cannot be downloaded is published without it', function () {
     $coverUrl = 'https://example.com/media/2026-01/cover.png';
     $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
-    Log::spy();
 
     Http::fake([
         $coverUrl => Http::response('', 404),
@@ -1523,7 +1522,6 @@ test('a feed video whose cover cannot be downloaded is published without it', fu
     expect($result['id'])->toBe('video_123')
         ->and($result[FacebookCover::WARNING])->toBeTrue();
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
-    Log::shouldHaveReceived('warning')->withArgs(fn (string $message): bool => str_contains($message, 'cover'))->once();
 });
 
 test('a reel with a cover still publishes when the channel lost the cover permission, leaving the cover to its job', function () {
