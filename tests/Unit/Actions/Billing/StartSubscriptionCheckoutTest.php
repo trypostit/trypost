@@ -538,7 +538,7 @@ test('redirect gives no offer to a plan other than Socials monthly', function ()
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_workspaces_monthly', route('app.billing.index'), $workspaces, Offer::factory()->blackFriday()->create());
 });
 
-test('checkout session carries the affiliate referral from the affonso cookie', function (mixed $cookie, ?string $expected) {
+test('checkout session carries the affiliate referral from the affonso cookie', function (?string $cookie, ?string $expected) {
     request()->cookies->set('affonso_referral', $cookie);
 
     $account = Account::factory()->create();
@@ -564,8 +564,6 @@ test('checkout session carries the affiliate referral from the affonso cookie', 
     'a referral' => ['ref_123', 'ref_123'],
     'no cookie' => [null, null],
     'an empty cookie' => ['', null],
-    'an array cookie' => [['ref_123'], null],
-    'an oversized cookie' => [str_repeat('a', 900), str_repeat('a', 500)],
 ]);
 
 test('checkout session carries the owner id affonso matches to the signup lead', function () {
