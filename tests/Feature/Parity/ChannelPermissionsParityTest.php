@@ -325,7 +325,7 @@ test('approving a reel with a cover on a channel without the cover scopes is ref
 test('attaching media to a scheduled reel with a cover on a channel without the cover scopes is refused on the api and mcp', function (string $surface) {
     $post = reelWithCoverOnChannelWithoutCoverScopes();
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
-    $urls = [['url' => 'https://cdn.test/medias/another.mp4']];
+    $urls = [['url' => 'https://example.com/another.mp4']];
     $message = __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]);
 
     match ($surface) {
