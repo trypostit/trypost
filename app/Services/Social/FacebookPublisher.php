@@ -39,9 +39,6 @@ class FacebookPublisher
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
-    /** Graph's "Invalid parameter" error code. */
-    private const string INVALID_PARAMETER_CODE = '100';
-
     /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
     private const int COVER_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -294,7 +291,7 @@ class FacebookPublisher
             return false;
         }
 
-        return $exception->platformErrorCode === self::INVALID_PARAMETER_CODE;
+        return $exception->rejectsParameter();
     }
 
     /**

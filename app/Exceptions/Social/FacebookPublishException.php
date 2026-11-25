@@ -25,6 +25,9 @@ class FacebookPublishException extends SocialPublishException
      */
     private const string FACEBOOK_URL_SUBCODE = '1609008';
 
+    /** Graph's "Invalid parameter" error code. */
+    private const string INVALID_PARAMETER_CODE = '100';
+
     /**
      * Graph codes the Video API error reference documents as the Page's own
      * file (size, length, format) plus the duplicate post and the account's
@@ -144,6 +147,15 @@ class FacebookPublishException extends SocialPublishException
     {
         return in_array($this->platformErrorCode, self::LINK_REJECTION_CODES, true)
             || ($this->platformErrorCode === '200' && $this->platformErrorSubcode === self::FACEBOOK_URL_SUBCODE);
+    }
+
+    /**
+     * Whether Graph refused a parameter of the request (code 100) rather than
+     * the file, the account or the service.
+     */
+    public function rejectsParameter(): bool
+    {
+        return $this->platformErrorCode === self::INVALID_PARAMETER_CODE;
     }
 
     public function platform(): string
