@@ -21,35 +21,35 @@ enum GatedFeature: string
     case PostInsightsExtended = 'post_insights_extended';
     case PostHistory = 'post_history';
     case PrivatePostRead = 'private_post_read';
-    case VideoCover = 'video_cover';
+    case ReelCover = 'reel_cover';
 
     /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
      * schedule or publish it. Mirrored by `requiresFeatureToPublish()` in
      * `lib/channelPermissions.ts`: every post publishes, a post with replies
-     * uses them, a Reel whose video has a cover image uses the video cover,
+     * uses them, a Facebook Reel whose video has a cover image uses the Reel cover,
      * analytics are never part of a post.
      *
      * @param  array<string, mixed>|null  $meta
      */
-    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, bool $hasVideoCover = false): bool
+    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, bool $hasCoverImage = false): bool
     {
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
-            self::VideoCover => self::usesVideoCover($type, $hasVideoCover),
+            self::ReelCover => self::usesReelCover($type, $hasCoverImage),
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => false,
         };
     }
 
-    /** A cover TryPost sets after publishing, which only a type like the Facebook Reel takes. */
-    private static function usesVideoCover(?ContentType $type, bool $hasVideoCover): bool
+    /** A cover image on a type that needs the Reel cover permission (`ContentType::requiresReelCoverPermission()`). */
+    private static function usesReelCover(?ContentType $type, bool $hasCoverImage): bool
     {
-        if (! $hasVideoCover) {
+        if (! $hasCoverImage) {
             return false;
         }
 
-        return $type?->setsCoverAfterPublish() === true;
+        return $type?->requiresReelCoverPermission() === true;
     }
 
     /**
@@ -61,7 +61,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::ThreadReplies => 'meta.thread_replies',
-            self::VideoCover => 'media',
+            self::ReelCover => 'media',
             self::Publish, self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'social_account_id',
         };
     }
@@ -75,7 +75,7 @@ enum GatedFeature: string
     {
         return match ($this) {
             self::PostInsightsExtended, self::PrivatePostRead => true,
-            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory, self::VideoCover => false,
+            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights, self::PostHistory, self::ReelCover => false,
         };
     }
 
@@ -89,7 +89,7 @@ enum GatedFeature: string
         return match ($this) {
             self::Publish => 'channels.permissions.publish',
             self::ThreadReplies => 'channels.permissions.thread_replies',
-            self::VideoCover => 'channels.permissions.video_cover',
+            self::ReelCover => 'channels.permissions.reel_cover',
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => 'channels.permissions.insights',
         };
     }

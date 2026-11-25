@@ -306,7 +306,7 @@ return [
             'message' => 'Pour publier des réponses sur :network, reconnectez ce canal et autorisez TryPost à les publier.',
             'member_message' => 'Pour publier des réponses sur :network, un administrateur de l\'espace de travail doit reconnecter ce canal.',
         ],
-        'video_cover' => [
+        'reel_cover' => [
             'message' => 'Pour ajouter une couverture aux Reels sur :network, reconnectez ce canal et autorisez TryPost à l\'appliquer.',
             'member_message' => 'Pour ajouter une couverture aux Reels sur :network, un administrateur de l\'espace de travail doit reconnecter ce canal.',
         ],

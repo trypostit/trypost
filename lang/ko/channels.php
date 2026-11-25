@@ -306,7 +306,7 @@ return [
             'message' => ':network에 답글을 게시하려면 이 채널을 다시 연결하고 TryPost가 게시하도록 허용하세요.',
             'member_message' => ':network에 답글을 게시하려면 워크스페이스 관리자가 이 채널을 다시 연결해야 합니다.',
         ],
-        'video_cover' => [
+        'reel_cover' => [
             'message' => ':network 릴스에 커버를 추가하려면 이 채널을 다시 연결하고 TryPost가 커버를 설정하도록 허용하세요.',
             'member_message' => ':network 릴스에 커버를 추가하려면 워크스페이스 관리자가 이 채널을 다시 연결해야 합니다.',
         ],

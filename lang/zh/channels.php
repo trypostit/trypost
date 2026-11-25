@@ -306,7 +306,7 @@ return [
             'message' => '要在 :network 上发布回复，请重新连接此频道并允许 TryPost 发布。',
             'member_message' => '要在 :network 上发布回复，需要工作区管理员重新连接此频道。',
         ],
-        'video_cover' => [
+        'reel_cover' => [
             'message' => '要为 :network 上的 Reels 添加封面，请重新连接此频道并允许 TryPost 设置封面。',
             'member_message' => '要为 :network 上的 Reels 添加封面，需要工作区管理员重新连接此频道。',
         ],

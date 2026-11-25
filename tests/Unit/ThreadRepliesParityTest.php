@@ -63,7 +63,7 @@ function serverPermissionKeys(): array
         GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
         GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
         GatedFeature::Publish->value => ['publish', 'publish member'],
-        GatedFeature::VideoCover->value => ['reconnect', 'ask an admin'],
+        GatedFeature::ReelCover->value => ['reconnect', 'ask an admin'],
     ];
     $cases = [
         'allowed' => [$thread, [], true],
@@ -72,17 +72,17 @@ function serverPermissionKeys(): array
         'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
         'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
         'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
-        'reel_cover' => [[], [GatedFeature::VideoCover], true, ContentType::FacebookReel, true],
-        'reel_without_cover' => [[], [GatedFeature::VideoCover], true, ContentType::FacebookReel, false],
-        'feed_video_cover' => [[], [GatedFeature::VideoCover], true, ContentType::FacebookPost, true],
+        'reel_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookReel, true],
+        'reel_without_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookReel, false],
+        'feed_video_cover' => [[], [GatedFeature::ReelCover], true, ContentType::FacebookPost, true],
     ];
 
     return collect($cases)->map(function (array $case) use ($copy): ?string {
         [$meta, $missing, $canReconnect] = $case;
         $type = data_get($case, 3);
-        $hasVideoCover = data_get($case, 4, false);
+        $hasCoverImage = data_get($case, 4, false);
         $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta, $type, $hasVideoCover) && collect($missing)->contains($feature));
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta, $type, $hasCoverImage) && collect($missing)->contains($feature));
 
         if (blank($feature)) {
             return null;

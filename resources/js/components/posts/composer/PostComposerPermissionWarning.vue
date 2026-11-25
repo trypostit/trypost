@@ -8,7 +8,7 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import {
     channelPermissionKey,
-    mediaHasVideoCover,
+    mediaHasCoverImage,
 } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
@@ -50,7 +50,7 @@ const permissionWarning = computed(() => {
             props.contentType,
             props.meta,
             canManageAccounts.value,
-            mediaHasVideoCover(props.media),
+            mediaHasCoverImage(props.media),
         );
 
         if (filled(key)) {

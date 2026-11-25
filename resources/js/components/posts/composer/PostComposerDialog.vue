@@ -154,7 +154,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import {
     channelPermissionKey,
-    mediaHasVideoCover,
+    mediaHasCoverImage,
     featureIsEnabled,
 } from '@/lib/channelPermissions';
 import {
@@ -1619,7 +1619,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
             destination.meta,
             canManageAccounts.value,
-            mediaHasVideoCover(destination.media),
+            mediaHasCoverImage(destination.media),
         ),
     ]) {
         if (filled(key)) {

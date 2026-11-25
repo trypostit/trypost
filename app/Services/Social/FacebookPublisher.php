@@ -264,7 +264,7 @@ class FacebookPublisher
         try {
             $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', image: $thumb);
         } catch (FacebookPublishException $exception) {
-            if (! $this->refusedThumb($thumb, $exception)) {
+            if (! $this->isThumbRefusal($thumb, $exception)) {
                 throw $exception;
             }
 
@@ -293,7 +293,7 @@ class FacebookPublisher
      * file, a limit, an outage, a policy) would hold the second request too,
      * and resending after a transient one could post the video twice.
      */
-    private function refusedThumb(?string $thumb, FacebookPublishException $exception): bool
+    private function isThumbRefusal(?string $thumb, FacebookPublishException $exception): bool
     {
         if (blank($thumb)) {
             return false;
@@ -623,7 +623,7 @@ class FacebookPublisher
     }
 
     /** The form request, or a multipart one carrying a JPEG as `$field`. */
-    private function graphRequest(?string $image, string $field): PendingRequest
+    private function graphRequestWithImage(?string $image, string $field): PendingRequest
     {
         if (blank($image)) {
             return $this->facebookHttp();
@@ -710,7 +710,7 @@ class FacebookPublisher
     /**
      * Sets a published Reel's cover image (`media.0.meta.cover`) as its
      * preferred thumbnail. The Reel takes no cover when it is published, so
-     * this runs once it is up (`SetFacebookCover`).
+     * this runs once it is up (`SetFacebookReelCover`).
      *
      * @see https://developers.facebook.com/docs/graph-api/reference/video/thumbnails/
      *
@@ -783,7 +783,7 @@ class FacebookPublisher
     private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb'): Response
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->graphRequest($image, $imageField)->post("{$this->baseUrl}/{$path}", $payload),
+            fn (): Response => $this->graphRequestWithImage($image, $imageField)->post("{$this->baseUrl}/{$path}", $payload),
             $label,
         );
 

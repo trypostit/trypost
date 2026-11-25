@@ -25,7 +25,7 @@ use Throwable;
  * is already live: a cover Facebook refuses, or a channel without the cover's
  * permission, leaves a warning on the post, never a failure.
  */
-class SetFacebookCover implements ShouldBeUnique, ShouldQueue
+class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -66,7 +66,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! FacebookCover::isAwaitedBy($this->post)) {
+        if (! FacebookCover::awaitsReelCover($this->post)) {
             return;
         }
 
@@ -78,7 +78,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! ChannelPermissions::permits($account, GatedFeature::VideoCover)) {
+        if (! ChannelPermissions::permits($account, GatedFeature::ReelCover)) {
             FacebookCover::recordRefusal($this->post);
 
             return;
@@ -105,7 +105,7 @@ class SetFacebookCover implements ShouldBeUnique, ShouldQueue
     {
         $post = Post::find($this->post->id);
 
-        if (filled($post) && FacebookCover::isAwaitedBy($post)) {
+        if (filled($post) && FacebookCover::awaitsReelCover($post)) {
             FacebookCover::recordRefusal($post);
         }
     }

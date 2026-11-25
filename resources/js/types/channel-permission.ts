@@ -10,7 +10,7 @@ export const GatedFeature = {
     PostInsightsExtended: 'post_insights_extended',
     PostHistory: 'post_history',
     PrivatePostRead: 'private_post_read',
-    VideoCover: 'video_cover',
+    ReelCover: 'reel_cover',
 } as const;
 
 export type GatedFeatureValue = (typeof GatedFeature)[keyof typeof GatedFeature];

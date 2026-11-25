@@ -43,8 +43,8 @@ export const CAPTIONLESS_CONTENT_TYPES: ReadonlySet<string> = new Set([
     ContentType.InstagramStory,
 ]);
 
-/** Content types whose cover the network takes only once the video is up (`ContentType::setsCoverAfterPublish()`), behind the video cover permission. */
-export const COVER_AFTER_PUBLISH_CONTENT_TYPES: ReadonlySet<string> = new Set([
+/** Content types whose cover image needs the Facebook Reel cover permission (`ContentType::requiresReelCoverPermission()`). */
+export const REEL_COVER_PERMISSION_CONTENT_TYPES: ReadonlySet<string> = new Set([
     ContentType.FacebookReel,
 ]);
 

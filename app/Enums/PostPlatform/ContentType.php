@@ -574,11 +574,12 @@ enum ContentType: string
     }
 
     /**
-     * Whether the network takes this type's cover only once the video is up
-     * (the Facebook Reel's `/{video-id}/thumbnails`), which needs its own
-     * channel permission (`GatedFeature::VideoCover`).
+     * Whether this type's cover image needs the Facebook Reel cover
+     * permission (`GatedFeature::ReelCover`): Facebook takes a Reel's cover
+     * only once it is up (`/{video-id}/thumbnails`), an edge the publish
+     * scopes do not reach. Every other cover goes with the publish itself.
      */
-    public function setsCoverAfterPublish(): bool
+    public function requiresReelCoverPermission(): bool
     {
         return $this === self::FacebookReel;
     }
@@ -588,13 +589,13 @@ enum ContentType: string
      * (`media.*.meta.cover`): Instagram takes `cover_url` on Reels only,
      * YouTube sets a Short's thumbnail once the video is processed, Facebook
      * takes a feed video's `thumb` on upload and a Reel's cover once it is up,
-     * while the Reel cover's permission is on (`GatedFeature::VideoCover`).
+     * while the Reel cover's permission is on (`GatedFeature::ReelCover`).
      * A type here that takes no frame time gets the picked frame as an image.
      */
     public function supportsCustomVideoCover(): bool
     {
-        if ($this->setsCoverAfterPublish()) {
-            return ChannelPermissions::enabled($this->platform(), GatedFeature::VideoCover);
+        if ($this->requiresReelCoverPermission()) {
+            return ChannelPermissions::enabled($this->platform(), GatedFeature::ReelCover);
         }
 
         return collect([self::InstagramReel, self::YouTubeShort, self::FacebookPost])->containsStrict($this);

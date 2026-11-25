@@ -27,7 +27,7 @@ use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
-use App\Jobs\SetFacebookCover;
+use App\Jobs\SetFacebookReelCover;
 use App\Jobs\SetYouTubeCover;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
@@ -2551,7 +2551,7 @@ test('a youtube video published with a cover image sets it once youtube processe
 test('a facebook reel published with a cover image sets it a minute later', function (ContentType $type, bool $hasCover, bool $sets) {
     Event::fake();
     Mail::fake();
-    Queue::fake([SetFacebookCover::class]);
+    Queue::fake([SetFacebookReelCover::class]);
     $this->freezeTime();
 
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
@@ -2578,9 +2578,9 @@ test('a facebook reel published with a cover image sets it a minute later', func
     (new PublishToSocialPlatform($post))->handle();
 
     $sets
-        ? Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookCover::class, fn (SetFacebookCover $job): bool => $job->post->is($post)
-            && $job->delay->equalTo(now()->addSeconds(SetFacebookCover::CHECK_EVERY_SECONDS)))
-        : Queue::assertNotPushed(SetFacebookCover::class);
+        ? Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookReelCover::class, fn (SetFacebookReelCover $job): bool => $job->post->is($post)
+            && $job->delay->equalTo(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS)))
+        : Queue::assertNotPushed(SetFacebookReelCover::class);
 })->with([
     'a reel with a cover image' => [ContentType::FacebookReel, true, true],
     'a reel without one' => [ContentType::FacebookReel, false, false],

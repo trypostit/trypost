@@ -7,7 +7,7 @@ import {
     type MissingPermissions,
 } from '@/types/channel-permission';
 import {
-    COVER_AFTER_PUBLISH_CONTENT_TYPES,
+    REEL_COVER_PERMISSION_CONTENT_TYPES,
     type ContentTypeValue,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -29,11 +29,11 @@ export const featureIsEnabled = (
     return !platformConfig.disabledFeatures.includes(feature);
 };
 
-/** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, a Reel with a cover image uses the video cover, analytics are never part of one. */
+/** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, a Facebook Reel with a cover image uses the Reel cover, analytics are never part of one. */
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
     meta: Record<string, unknown> | null,
-    postUsesVideoCover: boolean,
+    postUsesReelCover: boolean,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
@@ -43,19 +43,19 @@ const requiresFeatureToPublish = (
         return filled(threadRepliesOf(meta));
     }
 
-    if (feature === GatedFeature.VideoCover) {
-        return postUsesVideoCover;
+    if (feature === GatedFeature.ReelCover) {
+        return postUsesReelCover;
     }
 
     return false;
 };
 
-/** Whether the post's video cover is set after publishing, which only a type like the Facebook Reel does (`GatedFeature::usesVideoCover()`). */
-const usesVideoCover = (
+/** Whether the post is a Facebook Reel with a cover image, which needs the Reel cover permission (`GatedFeature::usesReelCover()`). */
+const usesReelCover = (
     contentType: ContentTypeValue | null,
-    hasVideoCover: boolean,
+    hasCoverImage: boolean,
 ): boolean => {
-    if (!hasVideoCover) {
+    if (!hasCoverImage) {
         return false;
     }
 
@@ -63,7 +63,7 @@ const usesVideoCover = (
         return false;
     }
 
-    return COVER_AFTER_PUBLISH_CONTENT_TYPES.has(contentType);
+    return REEL_COVER_PERMISSION_CONTENT_TYPES.has(contentType);
 };
 
 /** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
@@ -88,7 +88,7 @@ export const missingPermissionKey = (
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
     repliesSupported = true,
-    postUsesVideoCover = false,
+    postUsesReelCover = false,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -101,7 +101,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta, postUsesVideoCover)) {
+        if (!requiresFeatureToPublish(feature, meta, postUsesReelCover)) {
             continue;
         }
 
@@ -112,7 +112,7 @@ export const missingPermissionKey = (
 };
 
 /** Whether a post's media carries a cover image (`MediaItem::covers()` on the server). */
-export const mediaHasVideoCover = (media: MediaItem[]): boolean => {
+export const mediaHasCoverImage = (media: MediaItem[]): boolean => {
     for (const item of media) {
         if (filled(item.meta?.cover)) {
             return true;
@@ -128,7 +128,7 @@ export const channelPermissionKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, unknown> | null,
     canManageAccounts: boolean,
-    hasVideoCover = false,
+    hasCoverImage = false,
 ): string | null => {
     if (!filled(platformConfig)) {
         return null;
@@ -147,6 +147,6 @@ export const channelPermissionKey = (
         platformConfig.missingPermissions,
         canManageAccounts,
         repliesSupported,
-        usesVideoCover(contentType, hasVideoCover),
+        usesReelCover(contentType, hasCoverImage),
     );
 };

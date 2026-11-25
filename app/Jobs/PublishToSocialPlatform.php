@@ -240,9 +240,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ->afterCommit();
         }
 
-        if (FacebookCover::isAwaitedBy($this->post)) {
-            SetFacebookCover::dispatch($this->post)
-                ->delay(now()->addSeconds(SetFacebookCover::CHECK_EVERY_SECONDS))
+        if (FacebookCover::awaitsReelCover($this->post)) {
+            SetFacebookReelCover::dispatch($this->post)
+                ->delay(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS))
                 ->afterCommit();
         }
     }

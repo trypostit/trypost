@@ -136,31 +136,31 @@ class PostStatusRules
 
         PostPlatformMetaRules::assertStoredPostPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
-        self::assertVideoCoverPermitted($post, $actor);
+        self::assertReelCoverPermitted($post, $actor);
     }
 
     /**
      * A Reel with a cover on a channel lacking the cover's permission is held
      * back when someone publishes it, like at save. The publish job itself
      * never refuses it: a grant lost later leaves the cover to
-     * `SetFacebookCover`, which warns on the live post.
+     * `SetFacebookReelCover`, which warns on the live post.
      *
      * @throws ValidationException
      */
-    private static function assertVideoCoverPermitted(Post $post, User $actor): void
+    private static function assertReelCoverPermitted(Post $post, User $actor): void
     {
         $account = $post->socialAccount;
         $type = ContentType::forPost($post, $account->platform);
-        $hasVideoCover = MediaItem::hasAnyCover($post->media ?? []);
+        $hasCoverImage = MediaItem::hasAnyCover($post->media ?? []);
 
-        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasVideoCover) !== GatedFeature::VideoCover) {
+        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasCoverImage) !== GatedFeature::ReelCover) {
             return;
         }
 
         throw ValidationException::withMessages([
-            GatedFeature::VideoCover->postValidationField() => ChannelPermissions::reconnectMessage(
+            GatedFeature::ReelCover->postValidationField() => ChannelPermissions::reconnectMessage(
                 $account->platform,
-                GatedFeature::VideoCover,
+                GatedFeature::ReelCover,
                 $actor->can('manageAccounts', $account->workspace),
             ),
         ]);
