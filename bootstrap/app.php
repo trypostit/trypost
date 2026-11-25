@@ -7,6 +7,7 @@ use App\Http\Middleware\App\CaptureOffer;
 use App\Http\Middleware\App\EnsureRegistrationEnabled;
 use App\Http\Middleware\App\HandleInertiaRequests;
 use App\Http\Middleware\App\SetLocale;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->encryptCookies(except: ['sidebar_state']);
+        $middleware->encryptCookies(except: ['sidebar_state', ConfigureSubscriptionCheckout::AFFILIATE_REFERRAL_KEY]);
 
         $middleware->web(append: [
             SetLocale::class,

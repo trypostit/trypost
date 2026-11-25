@@ -18,6 +18,18 @@ final class ConfigureSubscriptionCheckout
     public const OFFER_SLUG_METADATA_KEY = 'trypost_offer_slug';
 
     /**
+     * Affonso attributes a sale to an affiliate by this checkout session
+     * metadata key, filled from the cookie of the same name its pixel sets.
+     */
+    public const AFFILIATE_REFERRAL_KEY = 'affonso_referral';
+
+    /**
+     * Affonso matches a payment to the lead the pixel recorded at signup by
+     * this metadata key, holding the id signup sent as `externalUserId`.
+     */
+    public const AFFILIATE_USER_METADATA_KEY = 'userId';
+
+    /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
      */
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
