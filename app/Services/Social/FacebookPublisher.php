@@ -247,7 +247,7 @@ class FacebookPublisher
             'file_url' => $media->url,
             'access_token' => $accessToken,
             ...$this->optionalField('description', $content),
-        ], 'video post', thumb: $this->feedVideoThumb($media));
+        ], 'video post', image: $this->feedVideoThumb($media));
 
         $videoId = data_get($response->json(), 'id');
 
@@ -577,14 +577,14 @@ class FacebookPublisher
         return $this->socialHttp()->asForm();
     }
 
-    /** The form request, or a multipart one carrying the video's `thumb`. */
-    private function graphRequest(?string $thumb): PendingRequest
+    /** The form request, or a multipart one carrying a JPEG as `$field`. */
+    private function graphRequest(?string $image, string $field): PendingRequest
     {
-        if (blank($thumb)) {
+        if (blank($image)) {
             return $this->facebookHttp();
         }
 
-        return $this->socialHttp()->attach('thumb', $thumb, 'cover.jpg', ['Content-Type' => 'image/jpeg']);
+        return $this->socialHttp()->attach($field, $image, 'cover.jpg', ['Content-Type' => 'image/jpeg']);
     }
 
     /**
@@ -623,6 +623,40 @@ class FacebookPublisher
         }
     }
 
+    /**
+     * Sets a published Reel's cover image (`media.0.meta.cover`) as its
+     * preferred thumbnail. The Reel takes no cover when it is published, so
+     * this runs once it is up (`SetFacebookCover`).
+     *
+     * @see https://developers.facebook.com/docs/graph-api/reference/video/thumbnails/
+     *
+     * @throws FacebookPublishException when the cover cannot be downloaded (ServerError, tried again) or converted (MediaFormat), or Facebook refuses it
+     */
+    public function setReelCover(Post $post): void
+    {
+        $cover = $post->mediaItems->first()?->cover();
+
+        if (blank($cover)) {
+            return;
+        }
+
+        $download = $this->downloadImage($cover->url) ?? throw new FacebookPublishException(
+            userMessage: 'Failed to download the cover image for Facebook',
+            category: ErrorCategory::ServerError,
+        );
+
+        try {
+            $jpeg = $this->coverJpeg($download);
+        } finally {
+            File::delete($download);
+        }
+
+        $this->postToGraph("{$post->platform_post_id}/thumbnails", [
+            'access_token' => $post->socialAccount->access_token,
+            'is_preferred' => 'true',
+        ], 'reel cover', image: $jpeg, imageField: 'source');
+    }
+
     /** The cover image re-encoded as a JPEG within Facebook's 10MB thumbnail limit. */
     private function coverJpeg(string $path): string
     {
@@ -639,14 +673,15 @@ class FacebookPublisher
      * POST a form payload to a Graph edge and turn any failure into the typed
      * exception, logging the redacted body under `$label` first.
      *
-     * A `$thumb` (JPEG bytes) goes as a multipart file next to the payload.
+     * An `$image` (JPEG bytes) goes as a multipart file named `$imageField`
+     * next to the payload.
      *
      * @param  array<string, string>  $payload
      */
-    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $thumb = null): Response
+    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb'): Response
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->graphRequest($thumb)->post("{$this->baseUrl}/{$path}", $payload),
+            fn (): Response => $this->graphRequest($image, $imageField)->post("{$this->baseUrl}/{$path}", $payload),
             $label,
         );
 

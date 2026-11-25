@@ -44,6 +44,9 @@ class Post extends Model
 
     public const int CONTENT_MAX_LENGTH = SocialAccount::X_LONG_POST_LENGTH;
 
+    /** The `error_context` key of a Reel whose cover image Facebook did not take (`recordFacebookCoverWarning()`). */
+    public const string FACEBOOK_COVER_WARNING = 'facebook_cover_warning';
+
     protected $fillable = [
         'workspace_id',
         'post_group_id',
@@ -497,6 +500,35 @@ class Post extends Model
             && $this->publish_status === PublishStatus::Published
             && filled($this->platform_post_id)
             && filled($this->mediaItems->first()?->cover());
+    }
+
+    /**
+     * A Facebook Reel TryPost published with a cover image, which Facebook
+     * only takes once the Reel is up (`SetFacebookCover`).
+     */
+    public function awaitsFacebookCover(): bool
+    {
+        return $this->platform === Platform::Facebook
+            && $this->origin === Origin::TryPost
+            && $this->publish_status === PublishStatus::Published
+            && filled($this->platform_post_id)
+            && $this->content_type?->setsCoverAfterPublish() === true
+            && filled($this->mediaItems->first()?->cover());
+    }
+
+    /** Whether Facebook kept its own cover on this live Reel instead of the image picked for it. */
+    public function hasFacebookCoverWarning(): bool
+    {
+        return data_get($this->error_context, self::FACEBOOK_COVER_WARNING) === true;
+    }
+
+    /**
+     * The post stays published: the warning sits next to the publication
+     * result, which publishing again clears.
+     */
+    public function recordFacebookCoverWarning(): void
+    {
+        $this->writePublication(['error_context' => [...($this->error_context ?? []), self::FACEBOOK_COVER_WARNING => true]]);
     }
 
     /**

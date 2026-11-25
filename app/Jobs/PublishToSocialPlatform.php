@@ -233,6 +233,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ->delay(now()->addSeconds(SetYouTubeCover::CHECK_EVERY_SECONDS))
                 ->afterCommit();
         }
+
+        if ($this->post->awaitsFacebookCover()) {
+            SetFacebookCover::dispatch($this->post)
+                ->delay(now()->addSeconds(SetFacebookCover::CHECK_EVERY_SECONDS))
+                ->afterCommit();
+        }
     }
 
     private function refreshAccountToken(): void

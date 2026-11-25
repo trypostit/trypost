@@ -27,6 +27,7 @@ use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
+use App\Jobs\SetFacebookCover;
 use App\Jobs\SetYouTubeCover;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
@@ -2544,6 +2545,45 @@ test('a youtube video published with a cover image sets it once youtube processe
 })->with([
     'with a cover image' => [true],
     'without one' => [false],
+]);
+
+test('a facebook reel published with a cover image sets it a minute later', function (ContentType $type, bool $hasCover, bool $sets) {
+    Event::fake();
+    Mail::fake();
+    Queue::fake([SetFacebookCover::class]);
+    $this->freezeTime();
+
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $cover = ['id' => 'cover', 'path' => 'media/cover.jpg', 'url' => 'https://example.com/media/cover.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+    $this->post->update([
+        'media' => [[
+            'id' => 'video',
+            'path' => 'media/video.mp4',
+            'url' => 'https://example.com/media/video.mp4',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'meta' => $hasCover ? ['cover' => $cover] : [],
+        ]],
+    ]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => $type,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'video_123', 'url' => 'https://www.facebook.com/reel/video_123']);
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    $sets
+        ? Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookCover::class, fn (SetFacebookCover $job): bool => $job->post->is($post)
+            && $job->delay->equalTo(now()->addSeconds(SetFacebookCover::CHECK_EVERY_SECONDS)))
+        : Queue::assertNotPushed(SetFacebookCover::class);
+})->with([
+    'a reel with a cover image' => [ContentType::FacebookReel, true, true],
+    'a reel without one' => [ContentType::FacebookReel, false, false],
+    'a feed video, whose cover went with the upload' => [ContentType::FacebookPost, true, false],
 ]);
 
 test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {

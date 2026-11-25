@@ -48,11 +48,12 @@ class PostCardResource extends JsonResource
                 'name' => $user->name,
                 'photo_url' => $user->photo_url,
             ]),
-            'failure' => transform(Arr::except($post->error_context ?? [], ['youtube_thumbnail_warning', InstagramPublisher::COMMENT_SKIPPED]), fn (array $context): array => [
+            'failure' => transform(Arr::except($post->error_context ?? [], ['youtube_thumbnail_warning', Post::FACEBOOK_COVER_WARNING, InstagramPublisher::COMMENT_SKIPPED]), fn (array $context): array => [
                 'category' => data_get($context, 'category'),
                 'failed_at' => data_get($context, 'failed_at'),
             ]),
             'youtube_thumbnail_warning' => $post->youTubeThumbnailWarning()?->value,
+            'facebook_cover_warning' => $post->hasFacebookCoverWarning(),
             'instagram_comment_skipped' => data_get($post->error_context, InstagramPublisher::COMMENT_SKIPPED) === true,
         ];
     }
