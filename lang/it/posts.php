@@ -1078,6 +1078,11 @@ return [
             'title' => 'Primo commento non aggiunto',
             'description' => 'Instagram non ha restituito l\'ID di questo post, quindi TryPost non ha potuto aggiungere il tuo primo commento. Aggiungilo su Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Avviso',
+            'title' => 'Copertina non applicata',
+            'description' => 'Facebook non ha applicato la tua immagine di copertina a questo Reel. Puoi impostarla su Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Avviso',
             'title' => 'Copertina non applicata',

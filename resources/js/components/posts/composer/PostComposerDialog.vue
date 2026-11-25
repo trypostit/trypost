@@ -154,6 +154,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import {
     channelPermissionKey,
+    mediaHasVideoCover,
     featureIsEnabled,
 } from '@/lib/channelPermissions';
 import {
@@ -1618,6 +1619,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             contentType,
             destination.meta,
             canManageAccounts.value,
+            mediaHasVideoCover(destination.media),
         ),
     ]) {
         if (filled(key)) {
@@ -2993,6 +2995,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         "
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
+                                        :media="groupDestination(group).media"
                                         :disabled="submitting"
                                         :reconnectable="!isPendingApproval"
                                         :test-id="`channel-permission-warning-${group.anchor.id}`"

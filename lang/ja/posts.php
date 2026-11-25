@@ -1078,6 +1078,11 @@ return [
             'title' => '最初のコメントは追加されませんでした',
             'description' => 'Instagram がこの投稿の ID を返さなかったため、TryPost は最初のコメントを追加できませんでした。Instagram で追加してください。',
         ],
+        'facebook_cover_warning' => [
+            'badge' => '注意',
+            'title' => 'カバーが適用されませんでした',
+            'description' => 'Facebook はこのリールにカバー画像を適用しませんでした。Facebook で設定できます。',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => 'カバーが適用されませんでした',

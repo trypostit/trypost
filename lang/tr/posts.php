@@ -1078,6 +1078,11 @@ return [
             'title' => 'İlk yorum eklenmedi',
             'description' => 'Instagram bu gönderinin kimliğini döndürmedi, bu yüzden TryPost ilk yorumunuzu ekleyemedi. Yorumu Instagram\'da ekleyin.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Uyarı',
+            'title' => 'Kapak uygulanmadı',
+            'description' => 'Facebook kapak görselinizi bu Reels\'e uygulamadı. Kapağı Facebook\'ta ayarlayabilirsiniz.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uyarı',
             'title' => 'Kapak uygulanmadı',

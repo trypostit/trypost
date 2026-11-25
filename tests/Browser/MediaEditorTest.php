@@ -1038,6 +1038,40 @@ test('a youtube short offers a frame or an image as its cover', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a facebook reel offers a frame or an image as its cover', function (ContentType $contentType) {
+    [$post] = seedMediaEditorVideoPost($contentType);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    expect(mediaEditorSegmentIds($page))->toBe(['media-editor-thumbnail-tab']);
+    $page->assertVisible('@media-editor-cover')
+        ->assertVisible('@media-editor-cover-source-image')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'reel' => [ContentType::FacebookReel],
+    'feed video' => [ContentType::FacebookPost],
+]);
+
+test('a facebook reel with a cover on a channel without the cover permission is held back with a reconnect warning', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookReel);
+    $post->update(['media' => [[...$post->media[0], 'meta' => [...$post->media[0]['meta'], 'cover_source' => 'image', 'cover' => [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => $post->media[0]['url'],
+    ]]]]]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+
+    waitFor($page, "@channel-permission-warning-{$accountId}");
+    $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.video_cover.message', ['network' => 'Facebook']))
+        ->assertNoJavaScriptErrors();
+});
+
 test('a feed video offers only the cover frame', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
     $accountId = $post->social_account_id;

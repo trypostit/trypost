@@ -1079,6 +1079,11 @@ return [
             'title' => 'Primer comentario no añadido',
             'description' => 'Instagram no devolvió el ID de esta publicación, así que TryPost no pudo añadir tu primer comentario. Añádelo en Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Aviso',
+            'title' => 'Portada no aplicada',
+            'description' => 'Facebook no aplicó tu imagen de portada a este Reel. Puedes ponerla en Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Aviso',
             'title' => 'Portada no aplicada',

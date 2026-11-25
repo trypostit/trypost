@@ -10,6 +10,7 @@ import {
     COVER_AFTER_PUBLISH_CONTENT_TYPES,
     type ContentTypeValue,
 } from '@/types/content-type';
+import type { MediaItem } from '@/types/media';
 import type { PlatformConfig } from '@/types/platform';
 
 /** Whether the feature is on for a channel's network (not in `disabledFeatures` of its platform config). */
@@ -109,6 +110,10 @@ export const missingPermissionKey = (
 
     return null;
 };
+
+/** Whether a post's media carries a cover image (`MediaItem::covers()` on the server). */
+export const mediaHasVideoCover = (media: MediaItem[]): boolean =>
+    media.some((item) => filled(item.meta?.cover));
 
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (

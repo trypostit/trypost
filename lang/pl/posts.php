@@ -1078,6 +1078,11 @@ return [
             'title' => 'Nie dodano pierwszego komentarza',
             'description' => 'Instagram nie zwrócił identyfikatora tego posta, więc TryPost nie mógł dodać pierwszego komentarza. Dodaj go na Instagramie.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Uwaga',
+            'title' => 'Nie zastosowano okładki',
+            'description' => 'Facebook nie zastosował okładki do tej Rolki. Możesz ustawić ją na Facebooku.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uwaga',
             'title' => 'Nie zastosowano okładki',

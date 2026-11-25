@@ -115,3 +115,12 @@ test('the editor offers a facebook video the thumbnail tab and frames a feed vid
         ->and(data_get($output, 'coverPresets.instagram_reel'))->toBe('9:16')
         ->and(data_get($output, 'coverPresets.youtube_short'))->toBe('9:16');
 });
+
+test('the editor offers a facebook reel no thumbnail tab while the reel cover is off', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'videoTabs.facebook_reel'))->not->toContain('thumbnail')
+        ->and(data_get($output, 'videoTabs.facebook_post'))->toContain('thumbnail');
+});

@@ -1078,6 +1078,11 @@ return [
             'title' => 'لم تتم إضافة التعليق الأول',
             'description' => 'لم يُرجع Instagram معرّف هذا المنشور، لذلك لم يتمكن TryPost من إضافة تعليقك الأول. أضفه على Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'تنبيه',
+            'title' => 'لم يُطبَّق الغلاف',
+            'description' => 'لم يطبّق Facebook صورة الغلاف على مقطع Reels هذا. يمكنك تعيينها على Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'تنبيه',
             'title' => 'لم يُطبَّق الغلاف',

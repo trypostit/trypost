@@ -1078,6 +1078,11 @@ return [
             'title' => 'Premier commentaire non ajouté',
             'description' => 'Instagram n\'a pas renvoyé l\'identifiant de cette publication, donc TryPost n\'a pas pu ajouter votre premier commentaire. Ajoutez-le sur Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Attention',
+            'title' => 'Couverture non appliquée',
+            'description' => 'Facebook n\'a pas appliqué votre image de couverture à ce Reel. Vous pouvez la définir sur Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Attention',
             'title' => 'Couverture non appliquée',

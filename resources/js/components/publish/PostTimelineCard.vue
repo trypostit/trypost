@@ -35,6 +35,7 @@ import PostCommentWarningPopover from '@/components/publish/PostCommentWarningPo
 import PostCoverWarningPopover from '@/components/publish/PostCoverWarningPopover.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
+import PostFacebookCoverWarningPopover from '@/components/publish/PostFacebookCoverWarningPopover.vue';
 import PostFailurePopover from '@/components/publish/PostFailurePopover.vue';
 import PostMetricsBand from '@/components/publish/PostMetricsBand.vue';
 import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
@@ -467,6 +468,10 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
             />
             <PostCommentWarningPopover
                 v-if="post.instagram_comment_skipped"
+                :test-key="post.id"
+            />
+            <PostFacebookCoverWarningPopover
+                v-if="post.facebook_cover_warning"
                 :test-key="post.id"
             />
             <PostFailurePopover

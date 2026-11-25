@@ -1078,6 +1078,11 @@ return [
             'title' => 'Primeiro comentário não adicionado',
             'description' => 'O Instagram não devolveu o ID deste post, então o TryPost não conseguiu adicionar seu primeiro comentário. Adicione no Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Atenção',
+            'title' => 'Capa não aplicada',
+            'description' => 'O Facebook não aplicou sua imagem de capa neste Reel. Você pode definir a capa no Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Atenção',
             'title' => 'Capa não aplicada',

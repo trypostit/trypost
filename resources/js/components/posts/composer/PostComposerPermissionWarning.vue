@@ -6,10 +6,14 @@ import WarningLine from '@/components/WarningLine.vue';
 import WarningLink from '@/components/WarningLink.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { channelPermissionKey } from '@/lib/channelPermissions';
+import {
+    channelPermissionKey,
+    mediaHasVideoCover,
+} from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
 import type { ContentTypeValue } from '@/types/content-type';
+import type { MediaItem } from '@/types/media';
 import type { PlatformConfigs } from '@/types/platform';
 import type { ComposerAccount } from '@/types/post-composition';
 
@@ -27,11 +31,12 @@ const props = withDefaults(
         contentType: ContentTypeValue | null;
         platformConfigs: PlatformConfigs;
         meta?: Record<string, unknown> | null;
+        media?: MediaItem[];
         disabled?: boolean;
         reconnectable?: boolean;
         testId: string;
     }>(),
-    { meta: null, disabled: false, reconnectable: true },
+    { meta: null, media: () => [], disabled: false, reconnectable: true },
 );
 
 const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();
@@ -45,6 +50,7 @@ const permissionWarning = computed(() => {
             props.contentType,
             props.meta,
             canManageAccounts.value,
+            mediaHasVideoCover(props.media),
         );
 
         if (filled(key)) {

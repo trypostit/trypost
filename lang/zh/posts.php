@@ -1078,6 +1078,11 @@ return [
             'title' => '未添加首条评论',
             'description' => 'Instagram 未返回此帖子的 ID，因此 TryPost 无法添加你的首条评论。请在 Instagram 上添加。',
         ],
+        'facebook_cover_warning' => [
+            'badge' => '注意',
+            'title' => '封面未应用',
+            'description' => 'Facebook 未将你的封面图片应用到此 Reels。你可以在 Facebook 上设置。',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
             'title' => '封面未应用',

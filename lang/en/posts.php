@@ -1078,6 +1078,11 @@ return [
             'title' => 'First comment not added',
             'description' => 'Instagram didn\'t return this post\'s ID, so TryPost couldn\'t add your first comment. Add it on Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Warning',
+            'title' => 'Cover not applied',
+            'description' => 'Facebook didn\'t apply your cover image to this Reel. You can set it on Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Warning',
             'title' => 'Cover not applied',

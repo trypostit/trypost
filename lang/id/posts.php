@@ -1078,6 +1078,11 @@ return [
             'title' => 'Komentar pertama tidak ditambahkan',
             'description' => 'Instagram tidak mengembalikan ID postingan ini, jadi TryPost tidak bisa menambahkan komentar pertamamu. Tambahkan di Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Perhatian',
+            'title' => 'Sampul tidak diterapkan',
+            'description' => 'Facebook tidak menerapkan gambar sampulmu ke Reels ini. Kamu bisa mengaturnya di Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Perhatian',
             'title' => 'Sampul tidak diterapkan',

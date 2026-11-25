@@ -1078,6 +1078,11 @@ return [
             'title' => 'Eerste reactie niet toegevoegd',
             'description' => 'Instagram gaf de ID van dit bericht niet terug, dus TryPost kon je eerste reactie niet toevoegen. Voeg die toe op Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Let op',
+            'title' => 'Omslag niet toegepast',
+            'description' => 'Facebook heeft je omslagafbeelding niet op deze Reel toegepast. Je kunt die instellen op Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Let op',
             'title' => 'Omslag niet toegepast',

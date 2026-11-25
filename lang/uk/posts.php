@@ -1078,6 +1078,11 @@ return [
             'title' => 'Перший коментар не додано',
             'description' => 'Instagram не повернув ID цієї публікації, тому TryPost не зміг додати перший коментар. Додайте його в Instagram.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => 'Увага',
+            'title' => 'Обкладинку не застосовано',
+            'description' => 'Facebook не застосував вашу обкладинку до цього Reels. Ви можете встановити її у Facebook.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Увага',
             'title' => 'Обкладинку не застосовано',

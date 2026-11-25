@@ -1078,6 +1078,11 @@ return [
             'title' => '첫 댓글이 추가되지 않았습니다',
             'description' => 'Instagram이 이 게시물의 ID를 반환하지 않아 TryPost가 첫 댓글을 추가하지 못했습니다. Instagram에서 추가하세요.',
         ],
+        'facebook_cover_warning' => [
+            'badge' => '주의',
+            'title' => '커버가 적용되지 않음',
+            'description' => 'Facebook이 이 릴스에 커버 이미지를 적용하지 않았습니다. Facebook에서 설정할 수 있습니다.',
+        ],
         'youtube_thumbnail_warning' => [
             'badge' => '주의',
             'title' => '커버가 적용되지 않음',
