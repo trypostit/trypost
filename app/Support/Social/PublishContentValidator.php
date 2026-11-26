@@ -17,12 +17,17 @@ use Illuminate\Support\Str;
 
 final class PublishContentValidator
 {
+    /**
+     * The publish job checks the channel's grants without the post's media: a
+     * Reel cover whose grant was lost after save never holds the Reel back,
+     * since its cover job leaves a warning on the live post instead.
+     */
     public static function validate(Post $post): void
     {
         $account = $post->socialAccount;
         $platform = $account?->platform ?? $post->platform;
         $type = ContentType::forPost($post, $platform);
-        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type);
+        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type, media: []);
 
         if (filled($blockedFeature)) {
             throw new MissingPermissionException(

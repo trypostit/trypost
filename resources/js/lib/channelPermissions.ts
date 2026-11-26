@@ -5,6 +5,7 @@ import {
     type GatedFeatureValue,
     type MissingPermission,
     type MissingPermissions,
+    type PostFeatureUse,
 } from '@/types/channel-permission';
 import { ContentType, type ContentTypeValue } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
@@ -29,20 +30,18 @@ export const featureIsEnabled = (
 /** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, a Facebook Reel with a cover image uses the Reel cover, analytics are never part of one. */
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
-    meta: Record<string, unknown> | null,
-    contentType: ContentTypeValue | null,
-    media: MediaItem[],
+    post: PostFeatureUse,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
     }
 
     if (feature === GatedFeature.ThreadReplies) {
-        return filled(threadRepliesOf(meta));
+        return filled(threadRepliesOf(post.meta));
     }
 
     if (feature === GatedFeature.FacebookReelCover) {
-        return usesFacebookReelCover(contentType, media);
+        return usesFacebookReelCover(post.contentType, post.media);
     }
 
     return false;
@@ -57,7 +56,7 @@ const usesFacebookReelCover = (
         return false;
     }
 
-    return hasCoverImage(media);
+    return media.some(hasCover);
 };
 
 /** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
@@ -78,12 +77,10 @@ export const permissionMessageKey = (
  * when nothing holds it back.
  */
 export const missingPermissionKey = (
-    meta: Record<string, unknown> | null,
+    post: PostFeatureUse,
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
-    repliesSupported = true,
-    contentType: ContentTypeValue | null = null,
-    media: MediaItem[] = [],
+    repliesSupported: boolean,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -96,7 +93,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta, contentType, media)) {
+        if (!requiresFeatureToPublish(feature, post)) {
             continue;
         }
 
@@ -107,33 +104,24 @@ export const missingPermissionKey = (
 };
 
 /**
- * Whether a post's media carries a cover image (`MediaItem::hasAnyCover()` on
- * the server). Any cover counts, even one without its URL yet: a cover sent by
- * id or upload token gets it once it is hosted. An empty object is a cover
- * too, as the server counts any array, so this compares against
- * null and undefined instead of `blank()`.
+ * Whether a media item carries a cover image (`MediaItem::covers()` on the
+ * server). Any cover counts, even one without its URL yet: a cover sent by id
+ * or upload token gets it once it is hosted. An empty object is a cover too,
+ * as the server counts any array, so this does not use `blank()`.
  */
-const hasCoverImage = (media: MediaItem[]): boolean => {
-    for (const item of media) {
-        const cover = item.meta?.cover;
-
-        if (cover === undefined || cover === null) {
-            continue;
-        }
-
-        return true;
+const hasCover = (item: MediaItem): boolean => {
+    if (item.meta?.cover === undefined) {
+        return false;
     }
 
-    return false;
+    return item.meta.cover !== null;
 };
 
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (
     platformConfig: PlatformConfig | undefined,
-    contentType: ContentTypeValue | null,
-    meta: Record<string, unknown> | null,
+    post: PostFeatureUse,
     canManageAccounts: boolean,
-    media: MediaItem[] = [],
 ): string | null => {
     if (!filled(platformConfig)) {
         return null;
@@ -142,17 +130,15 @@ export const channelPermissionKey = (
     const repliesSupported = blank(
         threadUnsupportedKey(
             platformConfig.platform,
-            contentType,
+            post.contentType,
             featureIsEnabled(platformConfig, GatedFeature.ThreadReplies),
         ),
     );
 
     return missingPermissionKey(
-        meta,
+        post,
         platformConfig.missingPermissions,
         canManageAccounts,
         repliesSupported,
-        contentType,
-        media,
     );
 };

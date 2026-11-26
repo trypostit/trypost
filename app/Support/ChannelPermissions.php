@@ -162,7 +162,7 @@ class ChannelPermissions
      * @param  array<string, mixed>|null  $meta
      * @param  array<int, mixed>  $media
      */
-    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type, array $media = []): ?GatedFeature
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type, array $media): ?GatedFeature
     {
         if (blank($account)) {
             return null;
@@ -191,7 +191,7 @@ class ChannelPermissions
             ]);
         }
 
-        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta)) {
+        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta, $type, $post->media ?? [])) {
             return;
         }
 

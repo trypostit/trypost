@@ -1623,10 +1623,12 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         ),
         channelPermissionKey(
             props.platformConfigs[account.id],
-            contentType,
-            destination.meta,
+            {
+                meta: destination.meta,
+                contentType,
+                media: destination.media,
+            },
             canManageAccounts.value,
-            destination.media,
         ),
     ]) {
         if (filled(key)) {

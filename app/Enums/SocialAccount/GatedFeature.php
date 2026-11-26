@@ -34,7 +34,7 @@ enum GatedFeature: string
      * @param  array<string, mixed>|null  $meta
      * @param  array<int, mixed>  $media
      */
-    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, array $media = []): bool
+    public function isRequiredToPublish(?array $meta, ?ContentType $type, array $media): bool
     {
         return match ($this) {
             self::Publish => true,

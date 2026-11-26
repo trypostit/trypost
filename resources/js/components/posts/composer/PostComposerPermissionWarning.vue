@@ -44,10 +44,12 @@ const permissionWarning = computed(() => {
     for (const account of props.accounts) {
         const key = channelPermissionKey(
             props.platformConfigs[account.id],
-            props.contentType,
-            props.meta,
+            {
+                meta: props.meta,
+                contentType: props.contentType,
+                media: props.media,
+            },
             canManageAccounts.value,
-            props.media,
         );
 
         if (filled(key)) {
