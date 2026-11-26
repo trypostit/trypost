@@ -1068,33 +1068,7 @@ test('pinterest publisher retries a video pin pinterest refuses with code 1 ever
         ]],
     ]);
 
-    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
-
-    Http::fake(function ($request) use ($s3UploadUrl) {
-        $url = $request->url();
-
-        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
-            return Http::response([
-                'media_id' => 'media_video_refused',
-                'upload_url' => $s3UploadUrl,
-                'upload_parameters' => [],
-            ], 201);
-        }
-
-        if ($url === $s3UploadUrl) {
-            return Http::response('', 204);
-        }
-
-        if (str_contains($url, '/v5/media/media_video_refused')) {
-            return Http::response(['status' => 'succeeded'], 200);
-        }
-
-        if (str_contains($url, '/v5/pins')) {
-            return Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
-        }
-
-        return Http::response('fake-video-content', 200);
-    });
+    fakePinterestVideoPinCreate(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
 
     expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(function (PlatformUnavailableException $e) {
@@ -1102,6 +1076,47 @@ test('pinterest publisher retries a video pin pinterest refuses with code 1 ever
                 ->and($e->retryDelaySeconds)->toBe(120)
                 ->and($e->maxRetries)->toBe(5);
         });
+});
+
+test('pinterest publisher fails a video pin at once for any other refusal', function (array $body, int $status) {
+    $this->post->update([
+        'content_type' => ContentType::PinterestVideoPin,
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    fakePinterestVideoPinCreate($body, $status);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(PinterestPublishException::class);
+})->with([
+    'another code on a 400' => [['code' => 2, 'message' => 'Board not found.'], 400],
+    'code 1 on another status' => [['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 403],
+]);
+
+test('pinterest publisher fails a carousel pinterest refuses with code 1 without retrying', function () {
+    $this->post->update([
+        'content_type' => ContentType::PinterestCarousel,
+        'media' => collect([1, 2])->map(fn (int $i) => [
+            'id' => "test-media-{$i}",
+            'path' => "media/2026-01/image{$i}.jpg",
+            'url' => "https://example.com/media/2026-01/image{$i}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "image{$i}.jpg",
+        ])->all(),
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(PinterestPublishException::class);
 });
 
 test('pinterest publisher fails an image pin pinterest refuses with code 1 without retrying', function () {
@@ -1397,3 +1412,40 @@ test('pinterest publisher keeps links intact', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), '/v5/pins')
         && $request['description'] === 'New post: https://acme.com/blog');
 });
+
+/**
+ * Fakes a video pin's upload and processing, and answers its pin create with
+ * the given body and status.
+ *
+ * @param  array<string, mixed>  $pinBody
+ */
+function fakePinterestVideoPinCreate(array $pinBody, int $pinStatus): void
+{
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl, $pinBody, $pinStatus) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_refused',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_refused')) {
+            return Http::response(['status' => 'succeeded'], 200);
+        }
+
+        if (str_contains($url, '/v5/pins')) {
+            return Http::response($pinBody, $pinStatus);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+}
