@@ -7,7 +7,6 @@ use App\Enums\Webhook\EventType;
 use App\Enums\Webhook\Status;
 use App\Jobs\DispatchWebhook;
 use App\Mcp\Servers\TryPostServer;
-use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
 use App\Mcp\Tools\Webhook\CreateWebhookTool;
@@ -23,7 +22,6 @@ use App\Models\AccessToken;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Services\WebhookService;
-use App\Support\Requests\ApiKey\ApiKeyRequestRules;
 use App\Support\Requests\Webhook\WebhookRequestRules;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -227,24 +225,10 @@ test('a member who is not an admin is refused webhooks on the api and mcp', func
     TryPostServer::actingAs($member)->tool(ListWebhooksTool::class)->assertHasErrors();
 });
 
-test('an api key created through the api and mcp is stored the same way and refuses the same past expiry', function () {
-    $this->withHeaders(parityApi($this->token))->postJson(route('api.api-keys.store'), ['name' => 'Integration', 'expires_at' => now()->addDays(10)->toDateString()])->assertCreated()->assertJsonStructure(['plain_token', 'token' => ['id', 'name']]);
-    TryPostServer::actingAs($this->user)->tool(CreateApiKeyTool::class, ['name' => 'Integration', 'expires_at' => now()->addDays(10)->toDateString()])->assertOk();
-
-    auth()->forgetGuards();
-    $this->withHeaders(parityApi($this->token))->postJson(route('api.api-keys.store'), ['name' => 'Integration', 'expires_at' => now()->subDays(2)->toDateString()])->assertUnprocessable();
-    TryPostServer::actingAs($this->user)->tool(CreateApiKeyTool::class, ['name' => 'Integration', 'expires_at' => now()->subDays(2)->toDateString()])->assertHasErrors();
-
-    $keys = webhooksParityKeys($this->workspace);
-
-    expect($keys)->toHaveCount(2)->and($keys[0])->toBe($keys[1]);
-});
-
-test('the web, api and mcp api key rules refuse a missing name', function () {
+test('the web and api api key rules refuse a missing name', function () {
     $this->actingAs($this->user)->postJson(route('app.api-keys.store'), ['name' => ''])->assertUnprocessable();
     auth()->forgetGuards();
     $this->withHeaders(parityApi($this->token))->postJson(route('api.api-keys.store'), ['name' => ''])->assertUnprocessable();
-    TryPostServer::actingAs($this->user)->tool(CreateApiKeyTool::class, ['name' => ''])->assertHasErrors();
 
     expect(webhooksParityKeys($this->workspace))->toBe([]);
 });
@@ -317,18 +301,4 @@ test('the webhook logs list is one query shared by the api and mcp, newest first
 
     expect($api)->toBe($expected);
     $mcp->assertStructuredContent(fn ($json) => $json->has('logs', 3)->where('logs.0.id', $expected[0])->where('logs.2.id', $expected[2])->etc());
-});
-
-test('creating an api key returns the same structure on the api and mcp', function () {
-    $api = $this->withHeaders(parityApi($this->token))->postJson(route('api.api-keys.store'), ['name' => 'Integration'])->assertCreated()->json();
-    auth()->forgetGuards();
-    $mcp = TryPostServer::actingAs($this->user)->tool(CreateApiKeyTool::class, ['name' => 'Integration'])->assertOk();
-
-    expect(array_keys($api))->toEqual(['token', 'plain_token'])
-        ->and(ApiKeyRequestRules::store())->toHaveKeys(['name', 'expires_at']);
-
-    $mcp->assertStructuredContent(fn ($json) => $json
-        ->has('plain_token')
-        ->has('token', fn ($token) => $token->hasAll(array_keys($api['token']))->where('name', 'Integration')->etc())
-        ->etc());
 });

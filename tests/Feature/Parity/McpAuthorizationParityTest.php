@@ -12,7 +12,6 @@ use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
 use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
 use App\Mcp\Tools\Analytics\GetChannelInsightsTool;
 use App\Mcp\Tools\Analytics\ListChannelPublicationsTool;
-use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
 use App\Mcp\Tools\Idea\CreateIdeaStageTool;
@@ -243,7 +242,6 @@ function mcpAuthParityTools(): array
     return [
         'get-analytics-report-tool' => [GetAnalyticsReportTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.insights')), fn (array $f) => []],
         'get-analytics-publication-tool' => [GetAnalyticsPublicationTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.insights.publications.details', $f['publication'])), fn (array $f) => ['publication_id' => $f['publication']->id]],
-        'create-api-key-tool' => [CreateApiKeyTool::class, $admins, fn (TestCase $t, array $f) => $t->post(route('app.api-keys.store'), ['name' => 'Integration']), fn (array $f) => ['name' => 'Integration']],
         'delete-api-key-tool' => [DeleteApiKeyTool::class, $admins, fn (TestCase $t, array $f) => $t->delete(route('app.api-keys.destroy', $f['apiKey'])), fn (array $f) => ['api_key_id' => $f['apiKey']->id]],
         'list-api-keys-tool' => [ListApiKeysTool::class, $admins, fn (TestCase $t, array $f) => $t->get(route('app.api-keys.index')), fn (array $f) => []],
         'list-ideas-tool' => [ListIdeasTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.create.ideas.index')), fn (array $f) => []],
