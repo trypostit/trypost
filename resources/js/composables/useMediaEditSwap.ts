@@ -76,6 +76,23 @@ const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
     return { ...uploaded, meta };
 };
 
+/** The edited item in its place, keeping the item as it was first added when asked to. */
+const swappedItem = (
+    edited: MediaItem,
+    current: MediaItem,
+    keepsOriginal: boolean,
+): MediaItem => {
+    if (!keepsOriginal) {
+        return edited;
+    }
+
+    if (filled(current.original)) {
+        return { ...edited, original: current.original };
+    }
+
+    return { ...edited, original: current };
+};
+
 /**
  * Adds a finished import to a list. With `replaces`, it takes that item's
  * place and keeps its alt text and tagged people, like an editor swap;
@@ -154,10 +171,10 @@ export const useMediaEditSwap = (): {
             for (const { change, item } of edited) {
                 const position = indexes[change.index];
                 const current = next[position];
-                if (current?.id !== change.media.id) continue;
-                next[position] = keepsOriginal
-                    ? { ...item, original: current.original ?? current }
-                    : item;
+                if (current?.id !== change.media.id) {
+                    continue;
+                }
+                next[position] = swappedItem(item, current, keepsOriginal);
             }
             write(next);
         } catch {

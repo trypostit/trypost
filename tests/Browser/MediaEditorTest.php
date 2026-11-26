@@ -692,6 +692,108 @@ test('an image edited for one network reaches a network added later as it was up
     $page->assertNoJavaScriptErrors();
 });
 
+test('an edited item put back from the suggestions at step 1 comes back as it was added', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Only for LinkedIn');
+    $page->click("@composer-{$first->id}-remove-0");
+    waitForGone($page, "@composer-{$first->id}-media-item-0");
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-suggested-0');
+    $page->click('@composer-suggested-0');
+    waitFor($page, '@composer-media-item-0');
+    saveMediaEditorDraft($page);
+
+    expect(mediaEditorSavedAltTexts($first, $second))->toBe([
+        $first->id => null,
+        $second->id => null,
+    ]);
+});
+
+test('going back from customizing keeps the edits each network had before', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Kept for LinkedIn');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-0');
+    $page->click('@composer-next');
+    waitFor($page, "@composer-account-{$first->id}");
+    $page->click('@composer-back');
+    waitFor($page, '@composer-back-confirm-go');
+    $page->click('@composer-back-confirm-go');
+    waitFor($page, '@composer-media-item-0');
+    saveMediaEditorDraft($page);
+
+    expect(mediaEditorSavedAltTexts($first, $second))->toBe([
+        $first->id => 'Kept for LinkedIn',
+        $second->id => null,
+    ]);
+});
+
+test('a second channel of the edited network gets its edits, and another network does not', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $other = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $sibling = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'For LinkedIn');
+    addMediaEditorAccount($page, $other);
+    waitFor($page, '@composer-media-item-0');
+    addMediaEditorAccount($page, $sibling);
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
+    saveMediaEditorDraft($page);
+
+    expect(mediaEditorSavedAltTexts($first, $other, $sibling))->toBe([
+        $first->id => 'For LinkedIn',
+        $other->id => null,
+        $sibling->id => 'For LinkedIn',
+    ]);
+});
+
+test('a network picked after the edited one was removed starts without its edits', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Only for LinkedIn');
+    addMediaEditorAccount($page, $first);
+    waitFor($page, '@composer-media-item-0');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, "@composer-{$second->id}-media-item-0");
+    saveMediaEditorDraft($page);
+
+    expect(data_get(Post::query()->where('social_account_id', $second->id)->sole()->media, '0.meta.alt_text'))->toBeNull();
+});
+
+test('a card edit kept after going back to one network stays with it when another joins', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first, $second], [mediaEditorPng('photo.png')]);
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$first->id}");
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Written in the card');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, "@composer-{$first->id}-media-item-0");
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-0');
+    saveMediaEditorDraft($page);
+
+    expect(mediaEditorSavedAltTexts($first, $second))->toBe([
+        $first->id => 'Written in the card',
+        $second->id => null,
+    ]);
+});
+
 test('media added at step 1 after a network kept its edits reaches every network', function () {
     $user = mediaEditorComposerUser();
     $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);

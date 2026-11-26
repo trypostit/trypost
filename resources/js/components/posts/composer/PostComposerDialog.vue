@@ -174,6 +174,7 @@ import {
     editorTabsFor,
     rulesFor,
 } from '@/lib/mediaEditor';
+import { uneditedMedia } from '@/lib/mediaEdits';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -310,8 +311,9 @@ const updateContent = (value: string): void => {
     composition.content.value = value;
 };
 
+/** Step 1's tray: an item put back from the suggestions comes back as it was added, never as one network edited it. */
 const updateMedia = (items: MediaItem[]): void => {
-    composition.media.value = items;
+    composition.media.value = items.map(uneditedMedia);
 };
 
 if (!props.initialPost) {
@@ -907,6 +909,7 @@ const mediaErrorKeys = computed(() => {
         if (!item) return;
         found[target] ??= {};
         found[target][mediaKey(item)] ??= message;
+        found[target][mediaKey(uneditedMedia(item))] ??= message;
     };
     for (const [key, message] of Object.entries(errors.value)) {
         const shared = /^media\.(\d+)(\.|$)/.exec(key);
@@ -2000,7 +2003,7 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
         changes,
         indexes: target.indexes,
         items: () => editorMedia(target.groupKey, target.replyKey),
-        keepsOriginal: true,
+        keepsOriginal: target.replyKey === null,
         write: (items) => {
             if (target.groupKey !== null && target.replyKey !== null) {
                 setReplyMedia(target.groupKey, target.replyKey, () => items);
@@ -2211,9 +2214,21 @@ const resumeUnfinishedPost = (): void => {
     resumeOpen.value = false;
     if (!snapshot) return;
     const retentionHours = mediaUploadLimits().upload_retention_hours;
+    /** An edit whose original upload expired keeps its own file, so a network added later is never sent a file that is gone. */
+    const withLiveOriginal = (item: AutosaveMediaRef): AutosaveMediaRef => {
+        if (!item.original || !isExpiredUpload(item.original, retentionHours)) {
+            return item;
+        }
+
+        const live = { ...item };
+        delete live.original;
+
+        return live;
+    };
     const restoreMedia = (items: AutosaveMediaRef[]): MediaItem[] =>
         items
             .filter((item) => !isExpiredUpload(item, retentionHours))
+            .map(withLiveOriginal)
             .map(fromAutosaveMedia);
     const restoredOverride = ({
         media,

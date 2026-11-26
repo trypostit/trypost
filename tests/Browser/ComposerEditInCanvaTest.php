@@ -132,19 +132,27 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
 
     $uploadedSrc = editInCanvaTileSrc($page, 'composer', 1);
 
-    $page->assertPresent('@composer-edit-canva-0')
-        ->assertMissing('@composer-edit-canva-1')
-        ->assertAttribute('@composer-edit-canva-0', 'aria-label', 'Edit DAF-shared.png in Canva')
-        ->hover('@composer-dropzone');
+    waitForGone($page, '@canva-preset-square');
+    $page->assertMissing('@composer-edit-canva-0')
+        ->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$channel->id}");
+    $page->click("@composer-account-option-{$channel->id}");
+    waitFor($page, "@composer-{$channel->id}-media-item-1");
+    $card = "composer-{$channel->id}";
+
+    $page->assertPresent("@{$card}-edit-canva-0")
+        ->assertMissing("@{$card}-edit-canva-1")
+        ->assertAttribute("@{$card}-edit-canva-0", 'aria-label', 'Edit DAF-shared.png in Canva')
+        ->hover("@{$card}-dropzone");
     $page->script('document.activeElement?.blur(); true;');
-    waitForState($page, '@composer-edit-canva-0', "getComputedStyle(element.parentElement).opacity === '0'");
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity"))->toBe('0');
+    waitForState($page, "@{$card}-edit-canva-0", "getComputedStyle(element.parentElement).opacity === '0'");
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"{$card}-edit-canva-0\"]').parentElement).opacity"))->toBe('0');
 
-    $page->hover('@composer-media-item-0');
-    waitForState($page, '@composer-edit-canva-0', "getComputedStyle(element.parentElement).opacity === '1'");
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"composer-edit-canva-0\"]').parentElement).opacity"))->toBe('1');
+    $page->hover("@{$card}-media-item-0");
+    waitForState($page, "@{$card}-edit-canva-0", "getComputedStyle(element.parentElement).opacity === '1'");
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"{$card}-edit-canva-0\"]').parentElement).opacity"))->toBe('1');
 
-    ['path' => $path, 'query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click('@composer-edit-canva-0'));
+    ['path' => $path, 'query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click("@{$card}-edit-canva-0"));
 
     expect($path)->toBe(route('app.integrations.canva.designs.edit', [], false))
         ->and(data_get($query, 'media'))->toBe($shared['media']->id)
@@ -153,25 +161,21 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     $exporting = (string) Str::uuid();
     MediaImportStatus::pending($exporting, $user->id, $workspace->id, $shared['media']->id);
     editInCanvaDeliver($page, (string) data_get($query, 'nonce'), $exporting, $shared['media']->id);
-    waitFor($page, '@composer-replacing-0');
+    waitFor($page, "@{$card}-replacing-0");
 
-    $page->assertPresent('@composer-replacing-0')
-        ->assertMissing('@composer-import-item')
-        ->assertMissing('@composer-replacing-1');
-    expect(editInCanvaTileSrc($page, 'composer', 0))->toBe($shared['media']->url)
-        ->and($page->script("document.querySelectorAll('[data-testid^=\"composer-media-item-\"]').length"))->toBe(2);
+    $page->assertPresent("@{$card}-replacing-0")
+        ->assertMissing("@{$card}-import-item")
+        ->assertMissing("@{$card}-replacing-1");
+    expect(editInCanvaTileSrc($page, $card, 0))->toBe($shared['media']->url)
+        ->and($page->script("document.querySelectorAll('[data-testid^=\"{$card}-media-item-\"]').length"))->toBe(2);
 
     MediaImportStatus::complete($exporting, $sharedEdited['media']);
     broadcastToPage($page, "workspace.{$workspace->id}", 'media.import.settled', ['import_id' => $exporting]);
-    waitForState($page, '@composer-media-item-0 img', "element.getAttribute('src') === '{$sharedEdited['media']->url}'");
+    waitForState($page, "@{$card}-media-item-0 img", "element.getAttribute('src') === '{$sharedEdited['media']->url}'");
 
-    expect(editInCanvaTileSrc($page, 'composer', 0))->toBe($sharedEdited['media']->url)
-        ->and(editInCanvaTileSrc($page, 'composer', 1))->toBe($uploadedSrc)
-        ->and($page->script("document.querySelectorAll('[data-testid^=\"composer-media-item-\"]').length"))->toBe(2);
-
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$channel->id}");
-    waitFor($page, "@composer-{$channel->id}-media-item-1");
+    expect(editInCanvaTileSrc($page, $card, 0))->toBe($sharedEdited['media']->url)
+        ->and(editInCanvaTileSrc($page, $card, 1))->toBe($uploadedSrc)
+        ->and($page->script("document.querySelectorAll('[data-testid^=\"{$card}-media-item-\"]').length"))->toBe(2);
 
     editInCanvaDeliver($page, editInCanvaPickSquare($page, "composer-{$channel->id}"), $channelMade['import'], null);
     waitFor($page, "@composer-{$channel->id}-media-item-2");

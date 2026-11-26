@@ -66,14 +66,21 @@ export const usePostComposition = (
             .filter((account): account is ComposerAccount => Boolean(account)),
     );
 
+    /** A network's media: its own list once customized, else the shared items with its edits. */
+    const destinationMedia = (override: DestinationOverride): MediaItem[] => {
+        if (owns(override, 'media')) {
+            return override.media ?? [];
+        }
+
+        return withMediaEdits(media.value, override.media_edits ?? []);
+    };
+
     const resolvedDestination = (
         account: ComposerAccount,
     ): DestinationDraft & { content: string; media: MediaItem[] } => {
         const override = overrides.value[account.id] ?? {};
         const meta = override.meta ?? {};
-        const resolvedMedia = owns(override, 'media')
-            ? (override.media ?? [])
-            : withMediaEdits(media.value, override.media_edits ?? []);
+        const resolvedMedia = destinationMedia(override);
 
         return {
             social_account_id: account.id,
@@ -270,15 +277,12 @@ export const usePostComposition = (
                 ? (overrides.value[mediaOwner.id]?.media ?? [])
                 : editedSharedMedia(group);
 
-            group.accounts.forEach((account) => {
-                const own: DestinationOverride = {
-                    ...(overrides.value[account.id] ?? {}),
+            group.accounts.forEach((account) =>
+                writeOverride(account.id, {
                     content: groupContent,
                     media: [...groupMedia],
-                };
-                delete own.media_edits;
-                overrides.value = { ...overrides.value, [account.id]: own };
-            });
+                }),
+            );
         });
     };
 
@@ -321,8 +325,20 @@ export const usePostComposition = (
         networkGroups.value.forEach(unifyGroup);
     };
 
+    /**
+     * Back to step 1 drops what was customized per network, but each network
+     * keeps the media edits it had before (made while it was the only one).
+     */
     const discardCustomization = (): void => {
-        overrides.value = {};
+        overrides.value = Object.fromEntries(
+            Object.entries(overrides.value).flatMap(([accountId, override]) => {
+                if (!owns(override, 'media_edits')) {
+                    return [];
+                }
+
+                return [[accountId, { media_edits: override.media_edits }]];
+            }),
+        );
     };
 
     const toggleAccount = (id: string): void => {
@@ -348,6 +364,10 @@ export const usePostComposition = (
 
         if (wasSingle && networkGroups.value.length > 1 && !customizing.value) {
             keepEditsWith(single);
+        }
+
+        if (wasSingle && blank(networkGroups.value)) {
+            media.value = media.value.map(uneditedMedia);
         }
 
         normalizeGroups();

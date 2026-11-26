@@ -600,3 +600,36 @@ test('resume keeps the media a network edited with that network and the shared m
     expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('');
     $page->assertNoJavaScriptErrors();
 });
+
+test('alt text that came with the media reaches every network, not only the first one picked', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Media with its own alt text',
+        'accountIds' => [$linkedin->id],
+        'media' => [['id' => 'photo', 'upload_token' => null, 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'From the draft']]],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, "@composer-{$linkedin->id}-media-item-0");
+    if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$x->id}\"]'))")) {
+        $page->click('@composer-add-account');
+    }
+    $page->click("@composer-account-option-{$x->id}");
+    waitFor($page, '@composer-media-item-0');
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('From the draft');
+    $page->assertNoJavaScriptErrors();
+});

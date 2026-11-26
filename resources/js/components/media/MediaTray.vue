@@ -98,11 +98,15 @@ const page = usePage<SharedData>();
 const canvaOption = computed(() =>
     page.props.mediaSources?.menu.find((option) => option.source === 'canva'),
 );
-const canvaEditable = computed<boolean[]>(() =>
-    props.items.map(
+const canvaEditable = computed<boolean[]>(() => {
+    if (props.editingLocked) {
+        return props.items.map(() => false);
+    }
+
+    return props.items.map(
         (item) => Boolean(canvaOption.value) && canvaDesignId(item) !== null,
-    ),
-);
+    );
+});
 const canvaAbort = new AbortController();
 onBeforeUnmount(() => canvaAbort.abort());
 
