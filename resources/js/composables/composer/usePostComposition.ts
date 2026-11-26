@@ -265,19 +265,18 @@ export const usePostComposition = (
         );
     };
 
-    const copiedField = (
+    /** A field as another channel of the network takes it: a media list is copied, so two channels never share one array. */
+    const copiedField = <K extends keyof DestinationOverride>(
         source: DestinationOverride,
-        field: keyof DestinationOverride,
-    ): DestinationOverride[keyof DestinationOverride] => {
-        if (field === 'media') {
-            return [...(source.media ?? [])];
+        field: K,
+    ): DestinationOverride[K] => {
+        const value = source[field];
+
+        if (Array.isArray(value)) {
+            return [...value] as DestinationOverride[K];
         }
 
-        if (field === 'media_edits') {
-            return [...(source.media_edits ?? [])];
-        }
-
-        return source[field];
+        return value;
     };
 
     /** The media a group's posts get while the text is shared: the shared items with the group's edits. */
