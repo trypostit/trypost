@@ -21,7 +21,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly(true)]
 #[IsDestructive(false)]
 #[IsOpenWorld(false)]
-#[Description('List the Personal Access Tokens (API keys) for the current workspace. Returns metadata only — the secret token value is shown only once at creation. OAuth tokens (e.g. ChatGPT MCP sessions) are excluded. Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
+#[Description('List the Personal Access Tokens (API keys) for the current workspace. Returns metadata only — the secret token value is shown only once at creation. Keys are created in the app or through the REST API, never through MCP, so the secret stays out of model context. OAuth tokens (e.g. ChatGPT MCP sessions) are excluded. Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
 class ListApiKeysTool extends Tool
 {
     use AuthorizesMcpTool;
