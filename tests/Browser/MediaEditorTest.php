@@ -701,7 +701,7 @@ test('an edited item put back from the suggestions at step 1 comes back as it wa
     ]);
 });
 
-test('going back from customizing keeps the edits each network had before', function () {
+test('going back from customizing drops every network\'s edits, as the back dialog says', function () {
     $user = mediaEditorComposerUser();
     $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
@@ -719,7 +719,7 @@ test('going back from customizing keeps the edits each network had before', func
     saveMediaEditorDraft($page);
 
     expect(mediaEditorSavedAltTexts($first, $second))->toBe([
-        $first->id => 'Kept for LinkedIn',
+        $first->id => null,
         $second->id => null,
     ]);
 });
@@ -1387,6 +1387,37 @@ test('picking a cover for a facebook reel on a channel without the cover permiss
     waitFor($page, "@channel-permission-warning-{$accountId}");
     $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.facebook_reel_cover.message', ['network' => 'Facebook']))
         ->assertNoJavaScriptErrors();
+});
+
+test('changing a facebook video\'s post type drops its cover and keeps its alt text', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookPost);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['alt_text'] = 'A short clip';
+    $media[0]['meta']['cover_source'] = 'image';
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-type-{$accountId}-facebook_reel");
+
+    $page->click("@composer-type-{$accountId}-facebook_reel");
+    waitForState($page, "@composer-type-{$accountId}-facebook_reel", "element.getAttribute('aria-checked') === 'true'");
+    saveMediaEditorDraft($page);
+
+    $saved = data_get($post->fresh()->media, '0.meta');
+    expect($post->fresh()->content_type)->toBe(ContentType::FacebookReel)
+        ->and(data_get($saved, 'cover'))->toBeNull()
+        ->and(data_get($saved, 'cover_source'))->toBeNull()
+        ->and(data_get($saved, 'alt_text'))->toBe('A short clip');
+    $page->assertNoJavaScriptErrors();
 });
 
 test('reopening a facebook feed video keeps its stored cover at its own ratio', function () {

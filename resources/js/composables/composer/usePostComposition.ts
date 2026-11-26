@@ -2,12 +2,13 @@ import { computed, ref } from 'vue';
 
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
-import { blank } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import {
     isEditedMedia,
     replacedEdit,
     uneditedMedia,
     withMediaEdits,
+    withoutCover,
     withoutOriginal,
 } from '@/lib/mediaEdits';
 import type { MediaItem } from '@/types/media';
@@ -164,6 +165,41 @@ export const usePostComposition = (
             writeOverride(account.id, { media_edits: edits }),
         );
         media.value = items.map(uneditedMedia);
+    };
+
+    /**
+     * A network's post type changed: its covers start over, since a cover
+     * picked for one type (a feed video's own ratio) may not fit another (a
+     * Reel's 9:16). With one network the covers sit in the shared media;
+     * otherwise in the network's own list or its edits.
+     */
+    const dropGroupCovers = (key: string): void => {
+        const group = groupFor(key);
+
+        if (!group) {
+            return;
+        }
+
+        if (networkGroups.value.length === 1) {
+            media.value = media.value.map(withoutCover);
+        }
+
+        group.accounts.forEach((account) => {
+            const override = overrides.value[account.id] ?? {};
+            const patch: DestinationOverride = {};
+
+            if (owns(override, 'media')) {
+                patch.media = (override.media ?? []).map(withoutCover);
+            }
+
+            if (owns(override, 'media_edits')) {
+                patch.media_edits = (override.media_edits ?? []).map(withoutCover);
+            }
+
+            if (filled(patch)) {
+                writeOverride(account.id, patch);
+            }
+        });
     };
 
     /**
@@ -373,19 +409,11 @@ export const usePostComposition = (
     };
 
     /**
-     * Back to step 1 drops what was customized per network, but each network
-     * keeps the media edits it had before (made while it was the only one).
+     * Back to step 1 drops everything set per network, its media edits
+     * included, as the Back dialog says.
      */
     const discardCustomization = (): void => {
-        overrides.value = Object.fromEntries(
-            Object.entries(overrides.value).flatMap(([accountId, override]) => {
-                if (!owns(override, 'media_edits')) {
-                    return [];
-                }
-
-                return [[accountId, { media_edits: override.media_edits }]];
-            }),
-        );
+        overrides.value = {};
     };
 
     const toggleAccount = (id: string): void => {
@@ -456,6 +484,7 @@ export const usePostComposition = (
         customizing,
         setGroupOverride,
         replaceEditedMedia,
+        dropGroupCovers,
         normalizeGroups,
         customize,
         discardCustomization,

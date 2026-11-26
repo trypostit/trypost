@@ -206,6 +206,11 @@ export const useComposerPoll = (
         contentType: ContentTypeValue,
     ): void => {
         const meta = pollMetaForContentType(group, contentType);
+
+        if (destination(group).content_type !== contentType) {
+            composition.dropGroupCovers(group.key);
+        }
+
         composition.setGroupOverride(group.key, 'content_type', contentType);
 
         if (meta !== null) {

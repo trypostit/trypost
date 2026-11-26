@@ -118,3 +118,20 @@ export const replacedEdit = (
 
     return replacementFor(edit, item);
 };
+
+/** What a video's cover sets on it: the image picked, where it came from and the frame time. */
+const COVER_META = ['cover', 'cover_source', 'cover_offset_ms'] as const;
+
+/** The item without its cover, keeping its alt text and tagged people. */
+export const withoutCover = (item: MediaItem): MediaItem => {
+    if (!filled(item.meta)) {
+        return item;
+    }
+
+    const meta = { ...item.meta };
+    COVER_META.forEach((key) => {
+        delete meta[key];
+    });
+
+    return { ...item, meta };
+};
