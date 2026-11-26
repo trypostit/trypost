@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'Ρυθμίσεις',
+        'version' => 'Έκδοση: :version',
         'groups' => [
             'personal' => 'Προσωπικά',
             'workspace' => 'Workspace',

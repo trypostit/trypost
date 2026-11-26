@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => '설정',
+        'version' => '버전: :version',
         'groups' => [
             'personal' => '개인',
             'workspace' => '워크스페이스',

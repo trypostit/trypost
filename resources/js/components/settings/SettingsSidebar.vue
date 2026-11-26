@@ -20,12 +20,33 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { useSettingsNavigation } from '@/composables/useSettingsNavigation';
+import date from '@/date';
+import { filled } from '@/lib/helpers';
 
 const groups = useSettingsNavigation();
 const { urlIsActive } = useActiveUrl();
 const { isMobile, state: sidebarState } = useSidebar();
 
 const exactMatchItems = ['general', 'profile', 'account'];
+
+type Translate = (key: string, replacements: Record<string, string>) => string;
+
+const REPOSITORY_URL = 'https://github.com/trypostit/trypost';
+
+const hasBuildCommit = filled(__BUILD_COMMIT__);
+const buildCommitUrl = `${REPOSITORY_URL}/commit/${__BUILD_COMMIT__}`;
+const buildVersion = (): string => {
+    const buildDate = date.formatBuildDate(__BUILD_DATE__);
+
+    if (hasBuildCommit) {
+        return `${buildDate} (${__BUILD_COMMIT__.slice(0, 7)})`;
+    }
+
+    return buildDate;
+};
+
+const buildInfo = (translate: Translate): string =>
+    translate('settings.sidebar.version', { version: buildVersion() });
 </script>
 
 <template>
@@ -92,6 +113,23 @@ const exactMatchItems = ['general', 'profile', 'account'];
             </SidebarGroup>
         </SidebarContent>
         <SidebarFooter class="gap-0 p-0">
+            <a
+                v-if="hasBuildCommit"
+                :href="buildCommitUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mx-2 mb-2 cursor-alias rounded-md px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-hidden group-data-[collapsible=icon]:hidden"
+                data-testid="settings-build-info"
+            >
+                {{ buildInfo($t) }}
+            </a>
+            <span
+                v-else
+                class="mx-2 mb-2 px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums group-data-[collapsible=icon]:hidden"
+                data-testid="settings-build-info"
+            >
+                {{ buildInfo($t) }}
+            </span>
             <SidebarUserMenu />
         </SidebarFooter>
     </Sidebar>

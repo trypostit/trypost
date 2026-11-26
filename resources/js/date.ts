@@ -461,12 +461,17 @@ export default {
     },
 
     /**
-     * Formata a data de build da aplicação no timezone do usuário
-     * @param date - Data/hora em ISO string (UTC)
-     * @returns String formatada (ex: "31/12/2025 14:25")
+     * When the app was built, short enough for one sidebar line, in the user's
+     * zone and language, always with dots: "26.11.2026 14:32" in pt-BR,
+     * "11.26.2026 2:32 PM" in en.
      */
     formatBuildDate(date: string): string {
-        return dayjs.utc(date).tz(getUserTimezone()).format(`L ${timeToken()}`);
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .locale(activeLocale.value.toLowerCase())
+            .format(`L ${timeToken()}`)
+            .replace(/[/-]/g, '.');
     },
 
     /** The signed-in user's time zone (`users.timezone`), never the browser's. */

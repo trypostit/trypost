@@ -1,6 +1,11 @@
 import { AppPageProps } from '@/types/index';
 
 declare global {
+    /** The full commit the bundle was built from, empty when unknown (`vite.config.ts`). */
+    const __BUILD_COMMIT__: string;
+    /** When the bundle was built, as an ISO instant (`vite.config.ts`). */
+    const __BUILD_DATE__: string;
+
     interface Window {
         dataLayer: Record<string, unknown>[];
         $crisp?: {

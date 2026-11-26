@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'Налаштування',
+        'version' => 'Версія: :version',
         'groups' => [
             'personal' => 'Особисте',
             'workspace' => 'Робочий простір',
