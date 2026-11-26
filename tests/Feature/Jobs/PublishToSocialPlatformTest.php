@@ -792,6 +792,40 @@ test('publish honors a platform-specific retry delay and retry limit', function 
     Carbon::setTestNow();
 });
 
+test('publish waits each step of a platform backoff in turn and fails once it is spent', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $now = now()->startOfSecond();
+    Carbon::setTestNow($now);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
+        message: 'Refused for now',
+        httpStatus: 400,
+        retryBackoffSeconds: [60, 120, 300, 600],
+    ));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    foreach ([60, 120, 300, 600] as $delaySeconds) {
+        (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+        $post = $this->post->fresh();
+
+        expect($post->publish_status)->toBe(PlatformStatus::Retrying)
+            ->and($post->error_context['next_attempt_at'] ?? null)
+            ->toBe($now->copy()->addSeconds($delaySeconds)->toIso8601String());
+    }
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Failed);
+    Bus::assertDispatchedTimes(PublishToSocialPlatform::class, 4);
+
+    Carbon::setTestNow();
+});
+
 test('publish records last_attempt_at when rescheduling for retry', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();

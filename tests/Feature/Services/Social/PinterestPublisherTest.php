@@ -1056,6 +1056,73 @@ test('pinterest publisher treats video processing timeout as platform unavailabl
     Sleep::assertSleptTimes(59);
 });
 
+test('pinterest publisher retries a video pin pinterest refuses with code 1 after 1, 2, 5 and 10 minutes', function () {
+    $this->post->update([
+        'content_type' => ContentType::PinterestVideoPin,
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/video.mp4',
+            'url' => 'https://example.com/media/2026-01/video.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'video.mp4',
+        ]],
+    ]);
+
+    $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
+
+    Http::fake(function ($request) use ($s3UploadUrl) {
+        $url = $request->url();
+
+        if (str_contains($url, '/v5/media') && $request->method() === 'POST') {
+            return Http::response([
+                'media_id' => 'media_video_refused',
+                'upload_url' => $s3UploadUrl,
+                'upload_parameters' => [],
+            ], 201);
+        }
+
+        if ($url === $s3UploadUrl) {
+            return Http::response('', 204);
+        }
+
+        if (str_contains($url, '/v5/media/media_video_refused')) {
+            return Http::response(['status' => 'succeeded'], 200);
+        }
+
+        if (str_contains($url, '/v5/pins')) {
+            return Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(function (PlatformUnavailableException $e) {
+            expect($e->httpStatus)->toBe(400)
+                ->and($e->retryBackoffSeconds)->toBe([60, 120, 300, 600]);
+        });
+});
+
+test('pinterest publisher fails an image pin pinterest refuses with code 1 without retrying', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/image.jpg',
+            'url' => 'https://example.com/media/2026-01/image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'image.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400),
+        '*' => Http::response('fake-image-content', 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(PinterestPublishException::class);
+});
+
 test('pinterest publisher fails hard when video processing reports failed', function () {
     Sleep::fake();
 

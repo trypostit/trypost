@@ -309,11 +309,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
         $previousContext = self::withSeparateRetryCounters($this->post->error_context ?? []);
-        $hasOwnPolicy = $e->maxRetries !== null || $e->retryDelaySeconds !== null;
+        $hasOwnPolicy = $e->hasOwnRetryPolicy();
         $counterKey = $hasOwnPolicy ? 'processing_retry_count' : 'retry_count';
         $retryCount = (int) data_get($previousContext, $counterKey, 0) + 1;
-        $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
-        $retryDelaySeconds = $e->retryDelaySeconds ?? self::DEFAULT_RETRY_DELAY_SECONDS;
+        $maxRetries = $e->maxRetriesOr(self::MAX_PLATFORM_UNAVAILABLE_RETRIES);
+        $retryDelaySeconds = $e->retryDelayFor($retryCount, self::DEFAULT_RETRY_DELAY_SECONDS);
         $context = [
             ...Arr::except($previousContext, ['max_retries', 'retry_delay_seconds']),
             ...$e->context,

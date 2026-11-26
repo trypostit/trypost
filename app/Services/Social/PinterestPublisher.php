@@ -27,6 +27,15 @@ class PinterestPublisher
 {
     use HasSocialHttpClient;
 
+    /**
+     * Pinterest sometimes refuses a video pin with code 1 ("Sorry! This site
+     * doesn't allow you to save Pins.") and accepts the same pin minutes
+     * later. Each retry runs the whole publish again, upload included.
+     *
+     * @var list<int>
+     */
+    private const array REFUSED_VIDEO_PIN_BACKOFF_SECONDS = [60, 120, 300, 600];
+
     private string $baseUrl;
 
     public function __construct()
@@ -104,6 +113,14 @@ class PinterestPublisher
         $response = $this->socialHttp()->withToken($account->access_token)
             ->post($this->baseUrl.'/pins', $payload);
 
+        if ($this->isRefusedVideoPin($payload, $response)) {
+            throw new PlatformUnavailableException(
+                "Pinterest refused the video pin for now: {$response->body()}",
+                $response->status(),
+                retryBackoffSeconds: self::REFUSED_VIDEO_PIN_BACKOFF_SECONDS,
+            );
+        }
+
         if ($response->failed()) {
             Log::error($failureLogMessage, [
                 'status' => $response->status(),
@@ -118,6 +135,22 @@ class PinterestPublisher
             'id' => $pinId,
             'url' => "https://pinterest.com/pin/{$pinId}",
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function isRefusedVideoPin(array $payload, Response $response): bool
+    {
+        if (data_get($payload, 'media_source.source_type') !== 'video_id') {
+            return false;
+        }
+
+        if (! $response->badRequest()) {
+            return false;
+        }
+
+        return (int) $response->json('code') === 1;
     }
 
     private function publishImagePin(Post $post, ?string $content): array
