@@ -29,4 +29,12 @@ return [
         'checkout_button' => '無料で試す',
         'terms' => 'クレジットカードは不要です',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'あなただけの特別オファー 💜',
+        'price' => '無料',
+        'period' => '7日間',
+        'checkout_button' => '無料で試す',
+        'terms' => 'その後3か月は$9.50/月。いつでも解約できます',
+    ],
 ];

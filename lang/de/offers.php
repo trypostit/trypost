@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Kostenlos testen',
         'terms' => 'Keine Kreditkarte nötig',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Ein besonderes Angebot für dich 💜',
+        'price' => 'Kostenlos',
+        'period' => 'für 7 Tage',
+        'checkout_button' => 'Kostenlos testen',
+        'terms' => 'Danach $9.50/Monat für 3 Monate. Jederzeit kündbar',
+    ],
 ];

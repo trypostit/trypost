@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Mulai uji coba gratis',
         'terms' => 'Tidak perlu kartu kredit',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Penawaran spesial untukmu 💜',
+        'price' => 'Gratis',
+        'period' => 'selama 7 hari',
+        'checkout_button' => 'Mulai uji coba gratis',
+        'terms' => 'Lalu $9.50/bulan selama 3 bulan. Batalkan kapan saja',
+    ],
 ];

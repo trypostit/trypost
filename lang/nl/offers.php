@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Gratis proberen',
         'terms' => 'Geen creditcard nodig',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Een speciaal aanbod voor jou 💜',
+        'price' => 'Gratis',
+        'period' => 'voor 7 dagen',
+        'checkout_button' => 'Gratis proberen',
+        'terms' => 'Daarna $9.50/maand voor 3 maanden. Altijd opzegbaar',
+    ],
 ];

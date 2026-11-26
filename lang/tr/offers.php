@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Ücretsiz dene',
         'terms' => 'Kredi kartı gerekmez',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Sana özel bir teklif 💜',
+        'price' => 'Ücretsiz',
+        'period' => '7 gün boyunca',
+        'checkout_button' => 'Ücretsiz dene',
+        'terms' => 'Sonra 3 ay boyunca $9.50/ay. İstediğin zaman iptal et',
+    ],
 ];

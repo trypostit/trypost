@@ -29,4 +29,12 @@ return [
         'checkout_button' => '开始免费试用',
         'terms' => '无需信用卡',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => '专属于你的特别优惠 💜',
+        'price' => '免费',
+        'period' => '7 天内',
+        'checkout_button' => '开始免费试用',
+        'terms' => '之后 3 个月 $9.50/月，随时取消',
+    ],
 ];

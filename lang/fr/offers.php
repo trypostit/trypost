@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Commencer l\'essai',
         'terms' => 'Aucune carte bancaire requise',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Une offre spéciale pour vous 💜',
+        'price' => 'Gratuit',
+        'period' => 'pendant 7 jours',
+        'checkout_button' => 'Commencer l\'essai',
+        'terms' => 'Puis 9,50 $/mois pendant 3 mois. Annulez à tout moment',
+    ],
 ];

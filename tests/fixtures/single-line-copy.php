@@ -79,6 +79,8 @@ return [
     'offers.fm1.checkout_button' => 24,
     'offers.ft7d.checkout_button' => 22,
     'offers.ft7dnc.checkout_button' => 22,
+    'offers.bipcom.name' => 17,
+    'offers.bipcom.checkout_button' => 22,
     'billing.subscription.default' => 14,
     'billing.tabs.plan' => 5,
     'billing.tabs.invoices' => 10,

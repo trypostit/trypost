@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Start free trial',
         'terms' => 'No credit card required',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'A special offer just for you 💜',
+        'price' => 'Free',
+        'period' => 'for 7 days',
+        'checkout_button' => 'Start free trial',
+        'terms' => 'Then $9.50/month for 3 months. Cancel anytime',
+    ],
 ];
