@@ -91,7 +91,7 @@ const exactMatchItems = ['general', 'profile', 'account'];
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarGroup>
-            <BuildVersion class="-mx-1 mt-auto group-data-[collapsible=icon]:hidden" />
+            <BuildVersion />
         </SidebarContent>
         <SidebarFooter class="gap-0 p-0">
             <SidebarUserMenu />

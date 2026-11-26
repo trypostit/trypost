@@ -29,14 +29,14 @@ const label = (translate: Translate): string =>
         :href="commitUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="pointer-fine:cursor-alias rounded-md px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-hidden"
+        class="-mx-1 mt-auto pointer-fine:cursor-alias rounded-md px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-hidden group-data-[collapsible=icon]:hidden"
         data-testid="settings-build-info"
     >
         {{ label($t) }}
     </a>
     <span
         v-else
-        class="px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums"
+        class="-mx-1 mt-auto px-2 py-1.5 text-center text-[11px] whitespace-nowrap text-muted-foreground tabular-nums group-data-[collapsible=icon]:hidden"
         data-testid="settings-build-info"
     >
         {{ label($t) }}
