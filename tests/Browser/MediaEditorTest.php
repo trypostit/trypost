@@ -905,8 +905,8 @@ test('switching a reel back to a video frame saves the frame time and drops the 
     $page->assertNoJavaScriptErrors();
 });
 
-test('switching a youtube short back to a video frame saves a screenshot of that frame as the cover', function () {
-    [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
+test('switching a cover back to a video frame saves a screenshot of that frame on a network that takes no frame time', function (ContentType $contentType) {
+    [$post] = seedMediaEditorVideoPost($contentType);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $media = $post->media;
     $media[0]['meta']['cover'] = [
@@ -925,7 +925,6 @@ test('switching a youtube short back to a video frame saves a screenshot of that
     waitFor($page, '@media-editor-selection');
 
     $page->assertAttribute('@media-editor-cover-source-image', 'aria-pressed', 'true');
-    waitForState($page, '@media-editor-apply', 'element.disabled === true');
 
     $page->click('@media-editor-cover-source-frame');
     waitFor($page, '@media-editor-cover');
@@ -941,7 +940,11 @@ test('switching a youtube short back to a video frame saves a screenshot of that
         ->and($owned->type)->toBe(MediaType::Image)
         ->and(data_get($post->fresh()->media, '0.meta.cover_offset_ms'))->toBe(0);
     $page->assertNoJavaScriptErrors();
-});
+})->with([
+    'youtube short' => ContentType::YouTubeShort,
+    'facebook reel' => ContentType::FacebookReel,
+    'facebook feed video' => ContentType::FacebookPost,
+]);
 
 test('picking an image as the cover keeps the frame picked for the networks that only take one', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
@@ -991,6 +994,58 @@ test('picking image over a frame cover waits for an image instead of reusing the
         ->assertNoJavaScriptErrors();
 });
 
+test('picking image over a frame cover and applying before uploading one keeps the saved cover', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta'] = [...$media[0]['meta'], 'cover_offset_ms' => 2500, 'cover_source' => 'frame', 'cover' => [
+        'id' => 'cover-1', 'type' => 'image', 'mime_type' => 'image/png', 'path' => 'uploads/cover.png', 'url' => "data:image/png;base64,{$png}",
+    ]];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-timeline');
+
+    $page->click('@media-editor-cover-source-image');
+    waitFor($page, '@media-editor-stage-video');
+
+    waitForState($page, '@media-editor-apply', 'element.disabled === true');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a stored cover of another ratio is saved cropped to the reel cover it shows', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookReel);
+    $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
+    $media = $post->media;
+    $media[0]['meta']['cover_source'] = 'image';
+    $media[0]['meta']['cover'] = [
+        'id' => 'cover-1',
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'path' => 'uploads/cover-1.png',
+        'url' => "data:image/png;base64,{$png}",
+        'size' => 1024,
+    ];
+    $post->update(['media' => $media]);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->click("@composer-{$accountId}-edit-0");
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $owned = Media::query()->find(data_get($post->fresh()->media, '0.meta.cover.id'));
+    [$width, $height] = getimagesizefromstring(Storage::get($owned->path));
+
+    expect($height / $width)->toEqualWithDelta(16 / 9, 0.02);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('reframing a stored cover saves the new frame of it', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
@@ -1009,7 +1064,6 @@ test('reframing a stored cover saves the new frame of it', function () {
     waitForState($page, "@composer-{$accountId}-edit-0", 'true');
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
-    waitForState($page, '@media-editor-apply', 'element.disabled === true');
 
     $page->drag('@media-editor-handle-nw', '@media-editor-stage');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
@@ -1066,6 +1120,25 @@ test('a facebook reel with a cover on a channel without the cover permission is 
     ]]]]]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
+
+    waitFor($page, "@channel-permission-warning-{$accountId}");
+    $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.facebook_reel_cover.message', ['network' => 'Facebook']))
+        ->assertNoJavaScriptErrors();
+});
+
+test('picking a cover for a facebook reel on a channel without the cover permission shows the reconnect warning at once', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookReel);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    $page->assertMissing("@channel-permission-warning-{$accountId}");
+
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source-frame');
+    $page->click('@media-editor-cover-source-frame');
+    waitFor($page, '@media-editor-cover');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
 
     waitFor($page, "@channel-permission-warning-{$accountId}");
     $page->assertSeeIn("@channel-permission-warning-{$accountId}", __('channels.permissions.facebook_reel_cover.message', ['network' => 'Facebook']))

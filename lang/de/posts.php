@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Hinweis',
             'title' => 'Vorschaubild nicht übernommen',
-            'description' => 'Facebook hat dein Vorschaubild für dieses Video nicht übernommen. Du kannst es auf Facebook festlegen.',
+            'description' => 'Dein Vorschaubild wurde für dieses Video nicht übernommen. Du kannst es auf Facebook festlegen.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Hinweis',

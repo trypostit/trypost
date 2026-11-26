@@ -75,6 +75,8 @@ function serverPermissionKeys(): array
         'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
         'facebook_reel_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, $videoWithCover],
         'reel_without_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, []],
+        'facebook_reel_cover_member' => [[], [GatedFeature::FacebookReelCover], false, ContentType::FacebookReel, $videoWithCover],
+        'reel_with_cover_without_url' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, [['id' => 'video', 'url' => 'https://example.com/clip.mp4', 'type' => 'video', 'meta' => ['cover' => []]]]],
         'feed_video_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookPost, $videoWithCover],
     ];
 

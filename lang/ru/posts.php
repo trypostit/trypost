@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Внимание',
             'title' => 'Обложка не применена',
-            'description' => 'Facebook не применил вашу обложку к этому видео. Вы можете установить её в Facebook.',
+            'description' => 'Обложка не была применена к этому видео. Вы можете установить её в Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Внимание',

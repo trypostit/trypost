@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\Queue\ReorderChannelQueue;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
@@ -209,6 +210,31 @@ test('a member whose posts need approval is told an admin needs to reconnect the
     ])->assertHasErrors([__('channels.permissions.publish.member_message', ['network' => Platform::X->label()])]);
 
     expect($lacking->posts()->exists())->toBeFalse();
+});
+
+test('publishing a reel with a cover now on the web, on a channel without the cover scopes, is refused and leaves it a draft', function () {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'publish_now'])
+        ->assertSessionHasErrors(['media' => __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()])]);
+
+    expect($post->fresh()->status)->toBe(Status::Draft);
+});
+
+test('reordering a queue holding a reel with a cover, on a channel without the cover scopes, is refused and moves nothing', function () {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $account = $post->socialAccount;
+    $first = Post::factory()->forAccount($account, ContentType::FacebookPost)->scheduled()->create([
+        'user_id' => $this->user->id,
+        'schedule_mode' => ScheduleMode::Queue,
+    ]);
+    $post->update(['status' => Status::Scheduled, 'schedule_mode' => ScheduleMode::Queue, 'scheduled_at' => $first->scheduled_at->copy()->addHour()]);
+
+    expect(fn () => ReorderChannelQueue::handle($account, [$post->id, $first->id], $this->user))
+        ->toThrow(fn (ValidationException $exception) => expect($exception->errors())
+            ->toBe(['post_ids' => [__('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()])]]));
+    expect($post->fresh()->scheduled_at->equalTo($first->scheduled_at->copy()->addHour()))->toBeTrue();
 });
 
 /** A Facebook Reel draft whose video has a cover image, on a channel connected before TryPost asked for the cover scopes. */

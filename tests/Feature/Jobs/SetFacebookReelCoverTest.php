@@ -261,3 +261,10 @@ test('a post deleted while its cover job retried lets the job fail quietly', fun
 
     expect(Post::find($this->post->id))->toBeNull();
 });
+
+test('a try outlasts its three slow requests and stays under the queue retry window', function () {
+    $timeout = (new SetFacebookReelCover($this->post))->timeout;
+
+    expect($timeout)->toBeGreaterThan(3 * 120)
+        ->and($timeout)->toBeLessThan(config('queue.connections.redis.retry_after'));
+});

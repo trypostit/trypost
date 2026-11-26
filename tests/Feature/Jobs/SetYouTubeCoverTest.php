@@ -228,3 +228,10 @@ test('a channel no longer connected leaves the failed warning', function () {
     expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
     Http::assertNothingSent();
 });
+
+test('a try outlasts its four slow requests and stays under the queue retry window', function () {
+    $timeout = (new SetYouTubeCover($this->post))->timeout;
+
+    expect($timeout)->toBeGreaterThan(4 * 120)
+        ->and($timeout)->toBeLessThan(config('queue.connections.redis.retry_after'));
+});

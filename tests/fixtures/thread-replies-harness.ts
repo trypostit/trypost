@@ -103,6 +103,20 @@ console.log(
                 true,
                 [],
             ),
+            facebook_reel_cover_member: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                'facebook_reel',
+                {},
+                false,
+                videoWithCover,
+            ),
+            reel_with_cover_without_url: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                'facebook_reel',
+                {},
+                true,
+                [{ id: 'video', url: 'https://example.com/clip.mp4', type: 'video', meta: { cover: {} } }],
+            ),
             feed_video_cover: channelPermissionKey(
                 { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_post',

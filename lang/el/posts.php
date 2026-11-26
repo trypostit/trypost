@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Προσοχή',
             'title' => 'Το εξώφυλλο δεν εφαρμόστηκε',
-            'description' => 'Το Facebook δεν εφάρμοσε την εικόνα εξωφύλλου σε αυτό το βίντεο. Μπορείτε να την ορίσετε στο Facebook.',
+            'description' => 'Η εικόνα εξωφύλλου δεν εφαρμόστηκε σε αυτό το βίντεο. Μπορείτε να την ορίσετε στο Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Προσοχή',

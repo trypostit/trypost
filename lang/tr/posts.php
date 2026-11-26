@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Uyarı',
             'title' => 'Kapak uygulanmadı',
-            'description' => 'Facebook kapak görselinizi bu videoya uygulamadı. Kapağı Facebook\'ta ayarlayabilirsiniz.',
+            'description' => 'Kapak görseliniz bu videoya uygulanmadı. Kapağı Facebook\'ta ayarlayabilirsiniz.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uyarı',

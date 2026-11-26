@@ -16,7 +16,7 @@ import {
     type CropPresetValue,
     UNFIXED_CROP_PRESETS,
 } from '@/types/crop-preset';
-import type { SourceRect } from '@/types/image-crop';
+import type { ImageSize, SourceRect } from '@/types/image-crop';
 import type { CoverImage, CoverSource, MediaItem } from '@/types/media';
 import {
     ADJUSTMENTS,
@@ -67,6 +67,9 @@ export const coverCropPresetFor = (rules: MediaRules[]): CropPresetValue => {
 export const USER_TAGS_MAX = 20;
 
 const RATIO_TOLERANCE = 0.0001;
+
+/** How far a stored cover's ratio may be from its preset's and still count as framed (rounding of real image sizes). */
+const COVER_RATIO_TOLERANCE = 0.01;
 const MAX_OUTPUT_SIDE = 4096;
 
 const FIXED_PRESETS: Record<
@@ -230,7 +233,7 @@ export const blankMediaEdit = (
     coverSource: 'frame',
 });
 
-const storedCoverImage = (
+export const storedCoverImage = (
     item: MediaItem,
     coverPreset: CropPresetValue,
 ): CoverImage | null => {
@@ -304,19 +307,60 @@ export const savedCoverSource = (edit: MediaEdit): CoverSource => {
     return edit.coverSource;
 };
 
+/**
+ * Whether a cover image needs cropping to save: a new file, a reframed
+ * crop, or a stored image whose ratio is not its preset's (a feed video's
+ * cover reused on a reel), which the stage shows cropped.
+ */
+export const coverNeedsRender = (cover: CoverImage): boolean => {
+    if (filled(cover.file)) {
+        return true;
+    }
+
+    if (hasCoverCropChanges(cover.crop)) {
+        return true;
+    }
+
+    if (!filled(cover.natural)) {
+        return false;
+    }
+
+    return !fitsCropPreset(cover.crop.preset, cover.natural);
+};
+
+/** Whether an image of this size already has the preset's ratio. */
+const fitsCropPreset = (preset: CropPresetValue, size: ImageSize): boolean => {
+    const ratio = presetRatio(preset, size);
+
+    if (ratio === null) {
+        return true;
+    }
+
+    return Math.abs(size.width / size.height - ratio) <= COVER_RATIO_TOLERANCE;
+};
+
+/**
+ * Whether an edit without a cover image drops the item's cover: picking a
+ * frame does, while picking an image and not uploading one yet leaves the
+ * cover as it was saved.
+ */
+const dropsCover = (edit: MediaEdit, item: MediaItem): boolean => {
+    if (edit.coverSource === 'image') {
+        return false;
+    }
+
+    return filled(item.meta?.cover);
+};
+
 /** Whether the edit picks another cover image than the item has. */
 export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean => {
     const stored = item.meta?.cover;
 
     if (!filled(edit.coverImage)) {
-        return filled(stored);
+        return dropsCover(edit, item);
     }
 
-    if (filled(edit.coverImage.file)) {
-        return true;
-    }
-
-    if (hasCoverCropChanges(edit.coverImage.crop)) {
+    if (coverNeedsRender(edit.coverImage)) {
         return true;
     }
 

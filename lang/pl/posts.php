@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Uwaga',
             'title' => 'Nie zastosowano okładki',
-            'description' => 'Facebook nie zastosował okładki do tego filmu. Możesz ustawić ją na Facebooku.',
+            'description' => 'Okładka nie została zastosowana do tego filmu. Możesz ustawić ją na Facebooku.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uwaga',

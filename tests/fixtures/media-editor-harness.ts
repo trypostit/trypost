@@ -59,6 +59,11 @@ const coverPresets = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, coverCropPresetFor([toMediaRules(rule)])]),
 );
 
+const mixedCoverPresets = {
+    facebook_post_and_instagram_reel: coverCropPresetFor([toMediaRules(rules.facebook_post), toMediaRules(rules.instagram_reel)]),
+    facebook_post_and_instagram_feed: coverCropPresetFor([toMediaRules(rules.facebook_post), toMediaRules(rules.instagram_feed)]),
+};
+
 const noChannelResults = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, noChannelValuesFor(toMediaRules(rule))]),
 );
@@ -69,6 +74,7 @@ console.log(
         noChannelWithinBounds: noChannelResults,
         videoTabs,
         coverPresets,
+        mixedCoverPresets,
         every: summarize(cropPresetsFor(every)),
         noChannel: cropPresetsFor(presetValuesFor([], defaults)).map((preset: Preset) => preset.value),
     }),

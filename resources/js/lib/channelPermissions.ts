@@ -106,12 +106,20 @@ export const missingPermissionKey = (
     return null;
 };
 
-/** Whether a post's media carries a cover image (`MediaItem::hasAnyCover()` on the server). */
+/**
+ * Whether a post's media carries a cover image (`MediaItem::hasAnyCover()` on
+ * the server). Any cover counts, even one without its URL yet: a cover sent by
+ * id or upload token gets it once it is hosted.
+ */
 const hasCoverImage = (media: MediaItem[]): boolean => {
     for (const item of media) {
-        if (filled(item.meta?.cover)) {
-            return true;
+        const cover = item.meta?.cover;
+
+        if (cover === undefined || cover === null) {
+            continue;
         }
+
+        return true;
     }
 
     return false;

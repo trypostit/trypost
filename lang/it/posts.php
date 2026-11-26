@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Avviso',
             'title' => 'Copertina non applicata',
-            'description' => 'Facebook non ha applicato la tua immagine di copertina a questo video. Puoi impostarla su Facebook.',
+            'description' => 'La tua immagine di copertina non è stata applicata a questo video. Puoi impostarla su Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Avviso',

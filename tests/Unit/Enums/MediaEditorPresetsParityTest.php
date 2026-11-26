@@ -131,6 +131,13 @@ test('the editor offers a facebook video the thumbnail tab and frames a feed vid
         ->and(data_get($output, 'coverPresets.youtube_short'))->toBe('9:16');
 });
 
+test('a cover shared by a facebook feed video and a reel is framed for the reel', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'mixedCoverPresets.facebook_post_and_instagram_reel'))->toBe('9:16')
+        ->and(data_get($output, 'mixedCoverPresets.facebook_post_and_instagram_feed'))->toBe('original');
+});
+
 test('the editor offers a facebook reel no thumbnail tab while the reel cover is off', function () {
     config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
 

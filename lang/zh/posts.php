@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => '注意',
             'title' => '封面未应用',
-            'description' => 'Facebook 未将你的封面图片应用到此视频。你可以在 Facebook 上设置。',
+            'description' => '封面图片未应用到此视频。你可以在 Facebook 上设置。',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',

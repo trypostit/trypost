@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Let op',
             'title' => 'Omslag niet toegepast',
-            'description' => 'Facebook heeft je omslagafbeelding niet op deze video toegepast. Je kunt die instellen op Facebook.',
+            'description' => 'Je omslagafbeelding is niet op deze video toegepast. Je kunt die instellen op Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Let op',

@@ -47,8 +47,12 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
-    /** Must exceed HasSocialHttpClient's 120s HTTP timeout so a slow request cannot kill the worker. */
-    public int $timeout = 180;
+    /**
+     * A try makes up to three requests of up to 120s each (HasSocialHttpClient and
+     * the cover download): the status read, the cover download and the upload.
+     * It stays under the Redis queue's 960s retry_after.
+     */
+    public int $timeout = 400;
 
     public int $uniqueFor = 3600;
 

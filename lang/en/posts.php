@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => 'Warning',
             'title' => 'Cover not applied',
-            'description' => 'Facebook didn\'t apply your cover image to this video. You can set it on Facebook.',
+            'description' => 'Your cover image wasn\'t applied to this video. You can set it on Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Warning',

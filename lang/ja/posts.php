@@ -1081,7 +1081,7 @@ return [
         'facebook_cover_warning' => [
             'badge' => '注意',
             'title' => 'カバーが適用されませんでした',
-            'description' => 'Facebook はこの動画にカバー画像を適用しませんでした。Facebook で設定できます。',
+            'description' => 'この動画にカバー画像は適用されませんでした。Facebook で設定できます。',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',

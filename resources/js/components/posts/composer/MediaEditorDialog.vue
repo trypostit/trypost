@@ -29,7 +29,8 @@ import {
     cropPresetsFor,
     editorTabsFor,
     hasMetaChanges,
-    hasCoverCropChanges,
+    coverNeedsRender,
+    storedCoverImage,
     hasPixelChanges,
     needsFrameCapture,
     newCoverImage,
@@ -467,14 +468,26 @@ const coverImageFor = async (
     const cover = itemEdit.coverImage;
 
     if (!filled(cover)) {
-        return null;
+        return pendingImageCover(media, itemEdit);
     }
 
-    if (!filled(cover.file) && !hasCoverCropChanges(cover.crop)) {
+    if (!coverNeedsRender(cover)) {
         return cover;
     }
 
     return renderCover(cover);
+};
+
+/** An image picked but not uploaded yet leaves the cover as it was saved. */
+const pendingImageCover = (
+    media: MediaItem,
+    itemEdit: MediaEdit,
+): CoverImage | null => {
+    if (itemEdit.coverSource !== 'image') {
+        return null;
+    }
+
+    return storedCoverImage(media, coverPreset.value);
 };
 
 const captureFrame = async (
