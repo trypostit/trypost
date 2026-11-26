@@ -1100,6 +1100,7 @@ return [
                 'timeout' => 'Het netwerk deed er te lang over om te antwoorden.',
                 'token_expired' => 'De verbinding van het kanaal is verlopen. Verbind het opnieuw om weer te publiceren.',
                 'job_failed' => 'Het publiceren stopte voordat het netwerk de post bevestigde.',
+                'refused' => 'Het netwerk heeft deze post bij elke poging geweigerd. Gebruik Post dupliceren en plan hem opnieuw om hem te publiceren.',
             ],
         ],
         'goal' => ':sent/:goal berichten deze week verzonden',

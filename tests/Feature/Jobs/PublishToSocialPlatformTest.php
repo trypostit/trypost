@@ -792,6 +792,42 @@ test('publish honors a platform-specific retry delay and retry limit', function 
     Carbon::setTestNow();
 });
 
+test('publish fails with the failure the platform gave once its retries are spent', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $refusal = new LinkedInPublishException(
+        userMessage: 'Refused by the network.',
+        category: ErrorCategory::Refused,
+        platformErrorCode: '400',
+        rawResponse: '{"code":1}',
+    );
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
+        message: 'Refused for now',
+        httpStatus: 400,
+        retryDelaySeconds: 120,
+        maxRetries: 1,
+        failure: $refusal,
+    ));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Retrying);
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $post = $this->post->fresh();
+
+    expect($post->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($post->error_message)->toBe('Refused by the network.')
+        ->and($post->error_context['category'] ?? null)->toBe(ErrorCategory::Refused->value)
+        ->and($post->error_context['raw_response'] ?? null)->toBe('{"code":1}');
+});
+
 test('publish records last_attempt_at when rescheduling for retry', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();

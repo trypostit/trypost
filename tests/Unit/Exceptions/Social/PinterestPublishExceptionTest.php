@@ -96,3 +96,15 @@ test('only a Pinterest rejection caused by the user is marked as a network rejec
     'a board we sent that does not exist' => [404, ['code' => 404, 'message' => 'Not found'], false],
     'rate limit' => [429, ['code' => 429, 'message' => 'Too many requests'], false],
 ]);
+
+test('a refused pin fails with Pinterest\'s own message', function () {
+    $fakeResponse = Http::fake(['*' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400)])
+        ->post(config('trypost.platforms.pinterest.api').'/pins');
+
+    $exception = PinterestPublishException::refused($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::Refused)
+        ->and($exception->userMessage)->toBe("Sorry! This site doesn't allow you to save Pins.")
+        ->and($exception->platformErrorCode)->toBe('400')
+        ->and($exception->isNetworkRejection())->toBeFalse();
+});

@@ -119,6 +119,7 @@ class PinterestPublisher
                 $response->status(),
                 retryDelaySeconds: self::REFUSED_PIN_RETRY_DELAY_SECONDS,
                 maxRetries: self::REFUSED_PIN_MAX_RETRIES,
+                failure: PinterestPublishException::refused($response),
             );
         }
 

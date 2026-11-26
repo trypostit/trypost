@@ -1100,6 +1100,7 @@ return [
                 'timeout' => 'Serwis odpowiadał zbyt długo.',
                 'token_expired' => 'Połączenie kanału wygasło. Połącz go ponownie, aby znów publikować.',
                 'job_failed' => 'Publikacja zatrzymała się, zanim serwis potwierdził post.',
+                'refused' => 'Serwis odrzucał ten post przy każdej próbie. Aby go opublikować, użyj opcji Duplikuj post i zaplanuj go ponownie.',
             ],
         ],
         'goal' => ':sent/:goal postów wysłanych w tym tygodniu',

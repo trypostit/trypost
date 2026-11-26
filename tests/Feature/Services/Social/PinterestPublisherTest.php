@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -1065,7 +1066,9 @@ test('pinterest publisher retries a pin pinterest refuses with code 1 every 2 mi
         ->toThrow(function (PlatformUnavailableException $e) {
             expect($e->httpStatus)->toBe(400)
                 ->and($e->retryDelaySeconds)->toBe(120)
-                ->and($e->maxRetries)->toBe(5);
+                ->and($e->maxRetries)->toBe(5)
+                ->and($e->failure?->category)->toBe(ErrorCategory::Refused)
+                ->and($e->failure?->userMessage)->toBe("Sorry! This site doesn't allow you to save Pins.");
         });
 })->with([
     'video pin' => [ContentType::PinterestVideoPin, [pinterestTestMedia('video.mp4', 'video/mp4')]],

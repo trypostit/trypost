@@ -1100,6 +1100,7 @@ return [
                 'timeout' => 'A rede demorou demais para responder.',
                 'token_expired' => 'A conexão do canal expirou. Reconecte para publicar de novo.',
                 'job_failed' => 'A publicação parou antes de a rede confirmar o post.',
+                'refused' => 'A rede recusou este post em todas as tentativas. Para publicar, use Duplicar post e agende de novo.',
             ],
         ],
         'goal' => ':sent/:goal posts enviados nesta semana',

@@ -1100,6 +1100,7 @@ return [
                 'timeout' => 'Ağın yanıt vermesi çok uzun sürdü.',
                 'token_expired' => 'Kanalın bağlantısının süresi doldu. Tekrar yayınlamak için yeniden bağlayın.',
                 'job_failed' => 'Yayınlama, ağ gönderiyi onaylamadan durdu.',
+                'refused' => 'Ağ bu gönderiyi her denemede reddetti. Yayınlamak için Gönderiyi çoğalt\'ı kullanıp yeniden planlayın.',
             ],
         ],
         'goal' => ':sent/:goal gönderi bu hafta gönderildi',

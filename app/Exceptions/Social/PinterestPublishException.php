@@ -81,6 +81,20 @@ class PinterestPublishException extends SocialPublishException
         );
     }
 
+    /**
+     * A pin Pinterest kept refusing with code 1 once the retries are spent.
+     * The user sees Pinterest's own message.
+     */
+    public static function refused(Response $response): static
+    {
+        return new static(
+            userMessage: (string) $response->json('message'),
+            category: ErrorCategory::Refused,
+            platformErrorCode: (string) $response->status(),
+            rawResponse: $response->body(),
+        );
+    }
+
     public static function fromProcessingStatus(string $status, ?string $rawResponse = null): static
     {
         if ($status === 'failed') {
