@@ -1577,11 +1577,13 @@ test('a feed video whose thumb facebook refuses is published again without it', 
             ->push(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400)
             ->push(['id' => 'video_123'], 200),
     ]);
+    Log::spy();
 
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
         ->and($result[FacebookCover::WARNING])->toBeTrue();
+    Log::shouldNotHaveReceived('error');
     Http::assertSentInOrder([
         fn (Request $request): bool => $request->url() === $coverUrl,
         fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && $request->hasFile('thumb'),
@@ -1599,14 +1601,26 @@ test('a feed video facebook refuses for another reason than a parameter is not s
         '*/page_123/videos' => Http::response(['error' => ['message' => 'Refused', 'type' => 'OAuthException', 'code' => $code]], 400),
     ]);
 
+    Log::spy();
+
     expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
     Http::assertSentCount(2);
+    Log::shouldHaveReceived('error')->once();
 })->with([
     'unsupported file format' => 1363031,
     'temporary issue' => 2,
     'unknown error' => 1,
     'policy block' => 368,
 ]);
+
+test('a feed video without a cover that facebook refuses is reported once', function () {
+    $this->post->update(['media' => facebookVideoMedia()]);
+    Http::fake(['*/page_123/videos' => Http::response(['error' => ['message' => 'Refused', 'type' => 'OAuthException', 'code' => 1363031]], 400)]);
+    Log::spy();
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Log::shouldHaveReceived('error')->once();
+});
 
 test('a feed video whose upload facebook throttles is not sent again without its thumb', function () {
     $coverUrl = 'https://example.com/media/2026-01/cover.png';

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Http\Resources\App\PostCardResource;
 use App\Jobs\SetFacebookReelCover;
 use App\Models\Post;
@@ -139,6 +140,52 @@ test('a facebook server error tries the cover again', function () {
     runSetFacebookReelCover($this->post)->assertReleased(SetFacebookReelCover::CHECK_EVERY_SECONDS);
 
     expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
+});
+
+test('a failure a later try may fix tries the cover again without a warning', function (Closure $fakes) {
+    Http::fake($fakes());
+
+    runSetFacebookReelCover($this->post)->assertReleased(SetFacebookReelCover::CHECK_EVERY_SECONDS);
+
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
+})->with([
+    'a gateway error on the cover' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response('<html>Bad gateway</html>', 502),
+    ],
+    'too many requests on the cover' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response('', 429),
+    ],
+    'a page rate limit on the cover' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response(['error' => ['message' => 'Limit', 'type' => 'OAuthException', 'code' => 80001]], 400),
+    ],
+    'facebook unreachable' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::failedConnection(),
+    ],
+    'the cover not downloading' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response('', 404),
+    ],
+    'the status read failing for now' => fn () => fn (): array => [
+        facebookReelStatusUrl() => Http::response('', 503),
+    ],
+]);
+
+test('a channel that is no longer connected leaves a warning without asking facebook', function () {
+    Http::fake();
+    $this->account->update(['status' => AccountStatus::TokenExpired]);
+
+    runSetFacebookReelCover($this->post)->assertNotReleased();
+
+    Http::assertNothingSent();
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
 test('a cover that never went on records a warning when the job gives up', function () {

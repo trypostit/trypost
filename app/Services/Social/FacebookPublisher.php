@@ -256,9 +256,14 @@ class FacebookPublisher
         $coverSkipped = blank($thumb) && filled($media->cover());
 
         try {
-            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', image: $thumb);
+            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', reportFailure: false, image: $thumb);
         } catch (FacebookPublishException $exception) {
             if (! $this->isThumbRefusal($thumb, $exception)) {
+                Log::error('Facebook video post failed', [
+                    'platform_error_code' => $exception->platformErrorCode,
+                    'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
+                ]);
+
                 throw $exception;
             }
 
