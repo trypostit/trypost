@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Кадр видео',
             'thumbnail_source_image' => 'Изображение',
             'thumbnail_image_hint' => 'Это изображение станет обложкой видео. Используйте изображение 9:16, чтобы ничего не обрезалось.',
+            'thumbnail_image_hint_own_ratio' => 'Это изображение станет обложкой видео. Используйте изображение в формате видео, чтобы ничего не обрезалось.',
             'thumbnail_capture_failed' => 'Не удалось захватить этот кадр. Загрузите изображение для обложки.',
             'thumbnail_image_upload' => 'Загрузить фото',
             'thumbnail_image_replace' => 'Заменить фото',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Внимание',
             'title' => 'Первый комментарий не добавлен',
             'description' => 'Instagram не вернул ID этой публикации, поэтому TryPost не смог добавить первый комментарий. Добавьте его в Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Внимание',
+            'title' => 'Обложка не применена',
+            'description' => 'Обложка не была применена к этому видео. Вы можете установить её в Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Внимание',

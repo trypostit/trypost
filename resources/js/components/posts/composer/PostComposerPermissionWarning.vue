@@ -10,6 +10,7 @@ import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
 import type { ContentTypeValue } from '@/types/content-type';
+import type { MediaItem } from '@/types/media';
 import type { PlatformConfigs } from '@/types/platform';
 import type { ComposerAccount } from '@/types/post-composition';
 
@@ -26,12 +27,13 @@ const props = withDefaults(
         accounts: ComposerAccount[];
         contentType: ContentTypeValue | null;
         platformConfigs: PlatformConfigs;
-        meta?: Record<string, unknown> | null;
+        meta: Record<string, unknown> | null;
+        media: MediaItem[];
         disabled?: boolean;
         reconnectable?: boolean;
         testId: string;
     }>(),
-    { meta: null, disabled: false, reconnectable: true },
+    { disabled: false, reconnectable: true },
 );
 
 const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();
@@ -42,8 +44,11 @@ const permissionWarning = computed(() => {
     for (const account of props.accounts) {
         const key = channelPermissionKey(
             props.platformConfigs[account.id],
-            props.contentType,
-            props.meta,
+            {
+                meta: props.meta,
+                contentType: props.contentType,
+                media: props.media,
+            },
             canManageAccounts.value,
         );
 

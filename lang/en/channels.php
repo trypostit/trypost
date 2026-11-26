@@ -306,5 +306,9 @@ return [
             'message' => 'To publish replies on :network, reconnect this channel and allow TryPost to post them.',
             'member_message' => 'To publish replies on :network, a workspace admin needs to reconnect this channel.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'To add a cover to Reels on :network, reconnect this channel and allow TryPost to set it.',
+            'member_message' => 'To add a cover to Reels on :network, a workspace admin needs to reconnect this channel.',
+        ],
     ],
 ];

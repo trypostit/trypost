@@ -31,7 +31,6 @@ import PostApprovalActions from '@/components/publish/PostApprovalActions.vue';
 import PostCardLabels from '@/components/publish/PostCardLabels.vue';
 import PostCardMenu from '@/components/publish/PostCardMenu.vue';
 import PostCardThread from '@/components/publish/PostCardThread.vue';
-import PostCommentWarningPopover from '@/components/publish/PostCommentWarningPopover.vue';
 import PostCoverWarningPopover from '@/components/publish/PostCoverWarningPopover.vue';
 import PostDeletedOnNetworkPopover from '@/components/publish/PostDeletedOnNetworkPopover.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -41,6 +40,7 @@ import PostPollResultsList from '@/components/publish/PostPollResultsList.vue';
 import PostRecurrenceDialog from '@/components/publish/PostRecurrenceDialog.vue';
 import PostRecurrenceSummary from '@/components/publish/PostRecurrenceSummary.vue';
 import PostStatusBadge from '@/components/publish/PostStatusBadge.vue';
+import PostWarningPopover from '@/components/publish/PostWarningPopover.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -465,9 +465,25 @@ const onMenuSelect = (action: PostCardMenuAction): void => {
                 :warning="youTubeThumbnailWarning"
                 :test-key="post.id"
             />
-            <PostCommentWarningPopover
+            <PostWarningPopover
                 v-if="post.instagram_comment_skipped"
+                test-id="post-comment-warning"
                 :test-key="post.id"
+                :badge="$t('posts.publish.instagram_comment_warning.badge')"
+                :title="$t('posts.publish.instagram_comment_warning.title')"
+                :description="
+                    $t('posts.publish.instagram_comment_warning.description')
+                "
+            />
+            <PostWarningPopover
+                v-if="post.facebook_cover_warning"
+                test-id="post-facebook-cover-warning"
+                :test-key="post.id"
+                :badge="$t('posts.publish.facebook_cover_warning.badge')"
+                :title="$t('posts.publish.facebook_cover_warning.title')"
+                :description="
+                    $t('posts.publish.facebook_cover_warning.description')
+                "
             />
             <PostFailurePopover
                 v-if="showStatus && hasFailure"

@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Fotograma',
             'thumbnail_source_image' => 'Imagen',
             'thumbnail_image_hint' => 'Tu video muestra esta imagen como portada. Usa una imagen 9:16 para que no se recorte nada.',
+            'thumbnail_image_hint_own_ratio' => 'Tu video muestra esta imagen como portada. Usa una imagen con el formato de tu video para que no se recorte nada.',
             'thumbnail_capture_failed' => 'No se pudo capturar este fotograma. Sube una imagen como portada.',
             'thumbnail_image_upload' => 'Subir imagen',
             'thumbnail_image_replace' => 'Cambiar imagen',
@@ -1078,6 +1079,11 @@ return [
             'badge' => 'Aviso',
             'title' => 'Primer comentario no añadido',
             'description' => 'Instagram no devolvió el ID de esta publicación, así que TryPost no pudo añadir tu primer comentario. Añádelo en Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Aviso',
+            'title' => 'Portada no aplicada',
+            'description' => 'Tu imagen de portada no se aplicó a este video. Puedes ponerla en Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Aviso',

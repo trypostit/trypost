@@ -27,6 +27,7 @@ use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
+use App\Jobs\SetFacebookReelCover;
 use App\Jobs\SetYouTubeCover;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
@@ -45,6 +46,7 @@ use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
 use App\Services\Social\TikTokPublisher;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\FacebookCover;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -2670,6 +2672,75 @@ test('a youtube video published with a cover image sets it once youtube processe
     'with a cover image' => [true],
     'without one' => [false],
 ]);
+
+test('a facebook reel published with a cover image sets it a minute later', function (ContentType $type, bool $hasCover, bool $sets) {
+    Event::fake();
+    Mail::fake();
+    Queue::fake([SetFacebookReelCover::class]);
+    $this->freezeTime();
+
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $cover = ['id' => 'cover', 'path' => 'media/cover.jpg', 'url' => 'https://example.com/media/cover.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+    $this->post->update([
+        'media' => [[
+            'id' => 'video',
+            'path' => 'media/video.mp4',
+            'url' => 'https://example.com/media/video.mp4',
+            'type' => 'video',
+            'mime_type' => 'video/mp4',
+            'meta' => $hasCover ? ['cover' => $cover] : [],
+        ]],
+    ]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => $type,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'video_123', 'url' => 'https://www.facebook.com/reel/video_123']);
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    if (! $sets) {
+        Queue::assertNotPushed(SetFacebookReelCover::class);
+
+        return;
+    }
+
+    Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookReelCover::class, fn (SetFacebookReelCover $job): bool => $job->post->is($post)
+        && $job->delay->equalTo(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS)));
+})->with([
+    'a reel with a cover image' => [ContentType::FacebookReel, true, true],
+    'a reel without one' => [ContentType::FacebookReel, false, false],
+    'a feed video, whose cover went with the upload' => [ContentType::FacebookPost, true, false],
+]);
+
+test('a facebook feed video whose cover could not go with it is published with a cover warning', function () {
+    Event::fake();
+    Mail::fake();
+
+    $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::FacebookPost,
+        'publish_status' => PlatformStatus::Pending,
+    ]);
+
+    $publisher = Mockery::mock(FacebookPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn([
+        'id' => 'video_123',
+        'url' => 'https://www.facebook.com/page/videos/video_123',
+        FacebookCover::WARNING => true,
+        FacebookCover::FAILURE => ['reason' => 'refused', 'platform_error_code' => '100'],
+    ]);
+    $this->app->instance(FacebookPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    expect(FacebookCover::hasWarning($post->fresh()->error_context))->toBeTrue()
+        ->and(data_get($post->fresh()->error_context, FacebookCover::FAILURE))->toBe(['reason' => 'refused', 'platform_error_code' => '100'])
+        ->and($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
+});
 
 test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {
     Event::fake();

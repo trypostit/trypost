@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\Facebook\CoverFailure;
+use App\Enums\Facebook\VideoStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -16,14 +18,20 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Support\Social\CoverRetry;
+use App\Support\Social\FacebookCover;
+use App\Support\Social\NetworkLimitReset;
 use App\Support\Social\PublishContentValidator;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Uri;
 
 class FacebookPublisher
 {
@@ -36,6 +44,11 @@ class FacebookPublisher
 
     private const int UNREACHABLE_RETRY_DELAY_SECONDS = 60;
 
+    private const string VIDEO_PROCESSING_FAILED = 'Facebook could not process the video. Please try another file.';
+
+    /** Meta's limit for a video thumbnail: "Maximum thumbnail file size 10MB". */
+    private const int COVER_MAX_BYTES = 10 * 1024 * 1024;
+
     private string $baseUrl;
 
     public function __construct()
@@ -44,7 +57,7 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string}
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
      */
     public function publish(Post $post): array
     {
@@ -70,7 +83,7 @@ class FacebookPublisher
 
     /**
      * @param  Collection<int, MediaItem>  $media
-     * @return array{id: mixed, url: string}
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
      */
     private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, bool $attachLink): array
     {
@@ -96,7 +109,7 @@ class FacebookPublisher
      */
     private function publishTextPost(string $pageId, string $accessToken, ?string $content, bool $attachLink): array
     {
-        if (! filled($content)) {
+        if (blank($content)) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook text posts require content. Please add text to your post.',
                 category: ErrorCategory::MediaFormat,
@@ -105,11 +118,11 @@ class FacebookPublisher
 
         $link = $attachLink ? FacebookLinkPreview::url($content) : null;
 
-        $response = $link === null
-            ? $this->postTextToFeed($pageId, $accessToken, $content, null)
-            : $this->postTextWithLink($pageId, $accessToken, $content, $link);
+        if (blank($link)) {
+            return $this->feedPostResult($this->postTextToFeed($pageId, $accessToken, $content, null)->json('id'));
+        }
 
-        return $this->feedPostResult(data_get($response->json(), 'id'));
+        return $this->feedPostResult($this->postTextWithLink($pageId, $accessToken, $content, $link)->json('id'));
     }
 
     /**
@@ -153,7 +166,7 @@ class FacebookPublisher
         return $this->postToGraph("{$pageId}/feed", [
             'message' => $content,
             'access_token' => $accessToken,
-            ...$this->optionalField('link', $link),
+            'link' => $link,
         ], 'text post', $reportFailure);
     }
 
@@ -165,13 +178,11 @@ class FacebookPublisher
         $response = $this->postToGraph("{$pageId}/photos", [
             'url' => $media->url,
             'access_token' => $accessToken,
-            ...$this->optionalField('message', $content),
-            ...$this->altText($media),
+            'message' => $content,
+            'alt_text_custom' => $media->altTextFor(Platform::Facebook),
         ], 'single image post');
 
-        $data = $response->json();
-
-        return $this->feedPostResult(data_get($data, 'post_id') ?? data_get($data, 'id'));
+        return $this->feedPostResult($response->json('post_id') ?? $response->json('id'));
     }
 
     /**
@@ -199,30 +210,30 @@ class FacebookPublisher
 
         $response = $this->postToGraph("{$pageId}/feed", [
             'access_token' => $accessToken,
-            ...$this->optionalField('message', $content),
+            'message' => $content,
             ...$photoIds
                 ->mapWithKeys(fn (string $photoId, int $index): array => ["attached_media[{$index}]" => json_encode(['media_fbid' => $photoId])])
                 ->all(),
         ], 'multi-image post');
 
-        return $this->feedPostResult(data_get($response->json(), 'id'));
+        return $this->feedPostResult($response->json('id'));
     }
 
     private function uploadUnpublishedPhoto(string $pageId, string $accessToken, MediaItem $media, ?string $url = null): ?string
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $this->filledFields([
                 'url' => $url ?? $media->url,
                 'published' => 'false',
                 'access_token' => $accessToken,
-                ...$this->altText($media),
-            ]),
+                'alt_text_custom' => $media->altTextFor(Platform::Facebook),
+            ])),
             'image upload',
         );
 
-        $photoId = data_get($response->json(), 'id');
+        $photoId = $response->json('id');
 
-        if ($response->failed() || ! is_string($photoId) || $photoId === '') {
+        if ($response->failed() || ! is_string($photoId) || blank($photoId)) {
             Log::error('Facebook image upload failed', [
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
@@ -235,22 +246,70 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string}
+     * A cover that cannot be downloaded or converted, or whose `thumb` Facebook
+     * refuses, publishes the video with the cover Facebook picks and says why.
+     *
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true, facebook_cover_failure?: array<string, string>}
      */
     private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
-        $response = $this->postToGraph("{$pageId}/videos", [
+        $payload = [
             'file_url' => $media->url,
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
-        ], 'video post');
+            'description' => $content,
+        ];
+        $coverFailure = null;
 
-        $videoId = data_get($response->json(), 'id');
+        try {
+            $thumb = $this->feedVideoThumb($media);
+        } catch (FacebookPublishException $exception) {
+            $thumb = null;
+            $coverFailure = FacebookCover::failure(CoverFailure::forCoverFile($exception), $exception);
+        }
 
-        return [
+        try {
+            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', reportFailure: false, image: $thumb);
+        } catch (FacebookPublishException $exception) {
+            if (! $this->isThumbRefusal($thumb, $exception)) {
+                Log::error('Facebook video post failed', [
+                    'platform_error_code' => $exception->platformErrorCode,
+                    'body' => $this->redactResponseBody($exception->rawResponse ?? ''),
+                ]);
+
+                throw $exception;
+            }
+
+            $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post');
+            $coverFailure = FacebookCover::failure(CoverFailure::Refused, $exception);
+        }
+
+        $videoId = $response->json('id');
+        $result = [
             'id' => $videoId,
             'url' => "https://www.facebook.com/{$pageId}/videos/{$videoId}",
         ];
+
+        if (filled($coverFailure)) {
+            return [...$result, FacebookCover::WARNING => true, FacebookCover::FAILURE => $coverFailure];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Whether a refused upload is worth sending again without its `thumb`: it
+     * carried one, and Graph refused a parameter (code 100). Meta documents
+     * no code of its own for a refused thumbnail; any other refusal (the
+     * file, a limit, an outage, a policy) would hold the second request too,
+     * and resending after a transient one could post the video twice.
+     */
+    private function isThumbRefusal(?string $thumb, FacebookPublishException $exception): bool
+    {
+        if (blank($thumb)) {
+            return false;
+        }
+
+        return $exception->rejectsParameter();
     }
 
     /**
@@ -265,10 +324,10 @@ class FacebookPublisher
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
+            'description' => $content,
         ], 'reel finish');
 
-        $reelId = data_get($response->json(), 'id') ?? $videoId;
+        $reelId = $response->json('id') ?? $videoId;
 
         return [
             'id' => $reelId,
@@ -293,12 +352,7 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], 'story finish');
 
-        $storyId = data_get($response->json(), 'post_id') ?? $videoId;
-
-        return [
-            'id' => $storyId,
-            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
-        ];
+        return $this->storyResult($pageId, $response->json('post_id') ?? $videoId);
     }
 
     /**
@@ -316,7 +370,7 @@ class FacebookPublisher
 
         $photoId = $this->uploadUnpublishedPhoto($pageId, $accessToken, $media, $fittedUrl);
 
-        if ($photoId === null) {
+        if (blank($photoId)) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook could not upload the story photo.',
                 category: ErrorCategory::ServerError,
@@ -328,12 +382,7 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], 'photo story');
 
-        $storyId = data_get($response->json(), 'post_id') ?? $photoId;
-
-        return [
-            'id' => $storyId,
-            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
-        ];
+        return $this->storyResult($pageId, $response->json('post_id') ?? $photoId);
     }
 
     /**
@@ -366,11 +415,10 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], "{$edge} start");
 
-        $data = $response->json();
-        $videoId = data_get($data, 'video_id');
-        $uploadUrl = data_get($data, 'upload_url');
+        $videoId = $response->json('video_id');
+        $uploadUrl = $response->json('upload_url');
 
-        if (! filled($videoId) || ! is_string($uploadUrl) || ! filled($uploadUrl)) {
+        if (blank($videoId) || ! is_string($uploadUrl) || blank($uploadUrl)) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook did not start the video upload. Please try again.',
                 category: ErrorCategory::ServerError,
@@ -389,10 +437,9 @@ class FacebookPublisher
      */
     private function assertRuploadUrl(string $uploadUrl): void
     {
-        $parts = parse_url($uploadUrl);
-        $allowedHost = config('trypost.platforms.facebook.rupload_host');
+        $uri = rescue(fn (): Uri => Uri::of($uploadUrl), report: false);
 
-        if (data_get($parts, 'scheme') !== 'https' || data_get($parts, 'host') !== $allowedHost) {
+        if (blank($uri) || $uri->scheme() !== 'https' || $uri->host() !== config('trypost.platforms.facebook.rupload_host')) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook returned an invalid upload URL.',
                 category: ErrorCategory::ServerError,
@@ -431,7 +478,7 @@ class FacebookPublisher
             $this->handleApiError($response);
         }
 
-        if (data_get($response->json(), 'success') !== true) {
+        if ($response->json('success') !== true) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook did not accept the video. Please try again.',
                 category: ErrorCategory::ServerError,
@@ -447,13 +494,7 @@ class FacebookPublisher
                 Sleep::for(self::VIDEO_UPLOAD_POLL_SECONDS)->seconds();
             }
 
-            $response = $this->reachOrRetry(
-                fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
-                    'fields' => 'status',
-                    'access_token' => $accessToken,
-                ]),
-                'video status',
-            );
+            $response = $this->readVideoStatus($videoId, $accessToken, 'video status');
 
             if ($response->failed()) {
                 if (! GraphError::isTransientFailure($response)) {
@@ -469,7 +510,7 @@ class FacebookPublisher
                 continue;
             }
 
-            $status = data_get($response->json(), 'status', []);
+            $status = $response->json('status', []);
             $failure = $this->videoUploadFailure($status);
 
             if ($failure !== null) {
@@ -503,15 +544,23 @@ class FacebookPublisher
         $detail = data_get($status, 'processing_phase.error.message')
             ?? data_get($status, 'uploading_phase.error.message');
 
-        if (is_string($detail) && $detail !== '') {
+        if (is_string($detail) && filled($detail)) {
             return $detail;
         }
 
-        $failed = in_array(data_get($status, 'video_status'), ['error', 'expired'], true)
-            || data_get($status, 'uploading_phase.status') === 'error'
-            || data_get($status, 'processing_phase.status') === 'error';
+        if ($this->videoStatus($status)?->hasFailed() === true) {
+            return self::VIDEO_PROCESSING_FAILED;
+        }
 
-        return $failed ? 'Facebook could not process the video. Please try another file.' : null;
+        if (data_get($status, 'uploading_phase.status') === 'error') {
+            return self::VIDEO_PROCESSING_FAILED;
+        }
+
+        if (data_get($status, 'processing_phase.status') === 'error') {
+            return self::VIDEO_PROCESSING_FAILED;
+        }
+
+        return null;
     }
 
     /**
@@ -519,15 +568,38 @@ class FacebookPublisher
      */
     private function videoUploadComplete(array $status): bool
     {
-        return data_get($status, 'uploading_phase.status') === 'complete'
-            || in_array(data_get($status, 'video_status'), ['ready', 'upload_complete'], true);
+        if (data_get($status, 'uploading_phase.status') === 'complete') {
+            return true;
+        }
+
+        return $this->videoStatus($status)?->isUploaded() === true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $status
+     */
+    private function videoStatus(array $status): ?VideoStatus
+    {
+        return VideoStatus::tryFrom((string) data_get($status, 'video_status'));
     }
 
     private function requireMedia(?MediaItem $media, string $format): MediaItem
     {
-        if ($media === null || (! $media->isVideo() && ! $media->isImage())) {
+        if (blank($media) || (! $media->isVideo() && ! $media->isImage())) {
             throw new FacebookPublishException(
                 userMessage: "Facebook {$format} require an image or a video file.",
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        return $media;
+    }
+
+    private function requireVideo(?MediaItem $media, string $format): MediaItem
+    {
+        if (blank($media) || ! $media->isVideo()) {
+            throw new FacebookPublishException(
+                userMessage: "Facebook {$format} require a video file.",
                 category: ErrorCategory::MediaFormat,
             );
         }
@@ -543,25 +615,12 @@ class FacebookPublisher
         );
     }
 
-    private function requireVideo(?MediaItem $media, string $format): MediaItem
-    {
-        if ($media === null || ! $media->isVideo()) {
-            throw new FacebookPublishException(
-                userMessage: "Facebook {$format} require a video file.",
-                category: ErrorCategory::MediaFormat,
-            );
-        }
-
-        return $media;
-    }
-
     private function sanitizedContent(Post $post): ?string
     {
-        $content = $post->content;
-
-        return filled($content)
-            ? app(ContentSanitizer::class)->sanitize($content, $post->platform)
-            : null;
+        return transform(
+            $post->content,
+            fn (string $content): string => app(ContentSanitizer::class)->sanitize($content, $post->platform),
+        );
     }
 
     /**
@@ -573,18 +632,152 @@ class FacebookPublisher
         return $this->socialHttp()->asForm();
     }
 
+    /** The form request, or a multipart one carrying a JPEG as `$field`. */
+    private function graphRequestWithImage(?string $image, string $field): PendingRequest
+    {
+        if (blank($image)) {
+            return $this->facebookHttp();
+        }
+
+        return $this->socialHttp()->attach($field, $image, 'cover.jpg', ['Content-Type' => self::JPEG_MIME_TYPE]);
+    }
+
+    /**
+     * A feed video's cover (`media.*.meta.cover`: the uploaded image, or the
+     * picked frame's screenshot) as JPEG bytes for `thumb`.
+     *
+     * @throws FacebookPublishException when the cover cannot be downloaded (ServerError) or converted (MediaFormat)
+     */
+    private function feedVideoThumb(MediaItem $media): ?string
+    {
+        $cover = $media->cover();
+
+        if (blank($cover)) {
+            return null;
+        }
+
+        return $this->coverJpeg($cover);
+    }
+
+    /**
+     * Whether Facebook is still processing the published Reel, which may not
+     * take a cover yet: every status but `ready` counts as processing
+     * (`upload_complete` comes before it).
+     *
+     * @throws PlatformUnavailableException when the status read fails for now (a server error, a rate limit, a transient Graph error)
+     * @throws FacebookPublishException when Facebook refuses the read, or the Reel will never be ready (MediaFormat)
+     */
+    public function reelIsProcessing(Post $post): bool
+    {
+        $response = $this->readVideoStatus($post->platform_post_id, $post->socialAccount->access_token, 'reel status');
+
+        if ($response->failed() && GraphError::isTransientFailure($response)) {
+            throw new PlatformUnavailableException(
+                message: 'Facebook reel status failed for now: '.$this->redactResponseBody($response->body()),
+                httpStatus: $response->status(),
+            );
+        }
+
+        if ($response->failed()) {
+            $this->handleApiError($response);
+        }
+
+        $videoStatus = $this->videoStatus((array) $response->json('status'));
+
+        if ($videoStatus?->hasFailed() === true) {
+            throw new FacebookPublishException(
+                userMessage: "Facebook could not process the Reel ({$videoStatus->value})",
+                category: ErrorCategory::MediaFormat,
+            );
+        }
+
+        return $videoStatus !== VideoStatus::Ready;
+    }
+
+    /**
+     * Sets a published Reel's cover image (`media.0.meta.cover`) as its
+     * preferred thumbnail. The Reel takes no cover when it is published, so
+     * this runs once it is up (`ApplyFacebookReelCover`).
+     *
+     * @see https://developers.facebook.com/docs/graph-api/reference/video/thumbnails/
+     *
+     * @throws PlatformUnavailableException when Facebook fails for now (a server error, a rate limit, a transient Graph error), with the wait until its own reset when it sends one
+     * @throws FacebookPublishException when the cover cannot be downloaded (ServerError, tried again) or converted (MediaFormat), or Facebook refuses it
+     */
+    public function setReelCover(Post $post): void
+    {
+        $cover = $post->mediaItems->first()?->cover();
+
+        if (blank($cover)) {
+            return;
+        }
+
+        $this->postToGraph("{$post->platform_post_id}/thumbnails", [
+            'access_token' => $post->socialAccount->access_token,
+            'is_preferred' => 'true',
+        ], 'reel cover', image: $this->coverJpeg($cover), imageField: 'source', transientFailsForNow: true);
+    }
+
+    /**
+     * The cover image as JPEG bytes within Facebook's thumbnail limit.
+     *
+     * @throws FacebookPublishException when it cannot be downloaded (ServerError) or converted (MediaFormat)
+     */
+    private function coverJpeg(MediaItem $cover): string
+    {
+        $download = $this->downloadImage($cover->url) ?? throw new FacebookPublishException(
+            userMessage: 'Failed to download the cover image for Facebook',
+            category: ErrorCategory::ServerError,
+        );
+
+        try {
+            return $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
+        } catch (SocialPublishException $exception) {
+            throw new FacebookPublishException(
+                userMessage: $exception->getMessage(),
+                category: ErrorCategory::MediaFormat,
+            );
+        } finally {
+            File::delete($download);
+        }
+    }
+
+    private function readVideoStatus(string $videoId, string $accessToken, string $label): Response
+    {
+        return $this->reachOrRetry(
+            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
+                'fields' => 'status',
+                'access_token' => $accessToken,
+            ]),
+            $label,
+        );
+    }
+
     /**
      * POST a form payload to a Graph edge and turn any failure into the typed
      * exception, logging the redacted body under `$label` first.
      *
-     * @param  array<string, string>  $payload
+     * An `$image` (JPEG bytes) goes as a multipart file named `$imageField`
+     * next to the payload. Blank fields are left out. With
+     * `$transientFailsForNow`, a failure a later try may fix
+     * (`GraphError::isTransientFailure()`) is thrown as unavailable instead.
+     *
+     * @param  array<string, string|null>  $payload
      */
-    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true): Response
+    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb', bool $transientFailsForNow = false): Response
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$path}", $payload),
+            fn (): Response => $this->graphRequestWithImage($image, $imageField)->post("{$this->baseUrl}/{$path}", $this->filledFields($payload)),
             $label,
         );
+
+        if ($response->failed() && $transientFailsForNow && GraphError::isTransientFailure($response)) {
+            throw new PlatformUnavailableException(
+                message: "Facebook {$label} failed for now: ".$this->redactResponseBody($response->body()),
+                httpStatus: $response->status(),
+                retryDelaySeconds: CoverRetry::delayUntil(NetworkLimitReset::from($response)),
+            );
+        }
 
         if ($response->failed()) {
             if ($reportFailure) {
@@ -623,19 +816,14 @@ class FacebookPublisher
     }
 
     /**
+     * The fields without the blank ones (no caption, no alt text, no link), which the request leaves out.
+     *
+     * @param  array<string, string|null>  $fields
      * @return array<string, string>
      */
-    private function optionalField(string $key, ?string $value): array
+    private function filledFields(array $fields): array
     {
-        return filled($value) ? [$key => $value] : [];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function altText(MediaItem $media): array
-    {
-        return $this->optionalField('alt_text_custom', $media->altTextFor(Platform::Facebook));
+        return Arr::where($fields, fn (?string $value): bool => filled($value));
     }
 
     /**
@@ -646,6 +834,17 @@ class FacebookPublisher
         return [
             'id' => $postId,
             'url' => "https://www.facebook.com/{$postId}",
+        ];
+    }
+
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function storyResult(string $pageId, mixed $storyId): array
+    {
+        return [
+            'id' => $storyId,
+            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
         ];
     }
 

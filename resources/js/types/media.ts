@@ -1,6 +1,6 @@
-import type { ImageSize } from '@/composables/useImageCrop';
-import type { MediaEdit } from '@/lib/mediaEditor';
 import type { MediaType } from '@/lib/mediaType';
+import type { ImageSize } from '@/types/image-crop';
+import type { MediaEdit } from '@/types/media-editor';
 
 export type MediaSource = 'ai' | 'unsplash' | 'giphy' | 'google_drive' | 'google_photos' | 'canva';
 
@@ -24,6 +24,12 @@ export interface MediaItem {
     created_at?: string;
     source?: MediaSource;
     source_meta?: Record<string, SourceMetaValue>;
+    /**
+     * The item as it was added, before the media editor changed it for a
+     * network. Composer only: a network added later starts from it, and it
+     * is never sent to the server.
+     */
+    original?: MediaItem;
     meta?: {
         width?: number;
         height?: number;

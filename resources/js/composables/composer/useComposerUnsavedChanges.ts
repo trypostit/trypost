@@ -1,7 +1,7 @@
 import { nextTick, ref, watch } from 'vue';
 
 import { useUnsavedChanges } from '@/composables/composer/useUnsavedChanges';
-import type { usePostComposition } from '@/composables/usePostComposition';
+import type { usePostComposition } from '@/composables/composer/usePostComposition';
 import type { InstagramAudio } from '@/types/instagram';
 import { PostStatus } from '@/types/post';
 

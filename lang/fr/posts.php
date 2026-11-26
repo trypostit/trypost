@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Image de la vidéo',
             'thumbnail_source_image' => 'Image',
             'thumbnail_image_hint' => 'Votre vidéo affiche cette image comme couverture. Utilisez une image 9:16 pour que rien ne soit coupé.',
+            'thumbnail_image_hint_own_ratio' => 'Votre vidéo affiche cette image comme couverture. Utilisez une image au format de votre vidéo pour que rien ne soit coupé.',
             'thumbnail_capture_failed' => 'Impossible de capturer cette image de la vidéo. Importez plutôt une image comme couverture.',
             'thumbnail_image_upload' => 'Importer une image',
             'thumbnail_image_replace' => 'Changer l\'image',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Attention',
             'title' => 'Premier commentaire non ajouté',
             'description' => 'Instagram n\'a pas renvoyé l\'identifiant de cette publication, donc TryPost n\'a pas pu ajouter votre premier commentaire. Ajoutez-le sur Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Attention',
+            'title' => 'Couverture non appliquée',
+            'description' => 'Votre image de couverture n\'a pas été appliquée à cette vidéo. Vous pouvez la définir sur Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Attention',

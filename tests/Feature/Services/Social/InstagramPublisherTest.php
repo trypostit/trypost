@@ -2987,6 +2987,27 @@ test('instagram reel publishes with the picked frame when the cover cannot be ma
         && data_get($request->data(), 'thumb_offset') === 1500);
 });
 
+test('instagram reel publishes with the picked frame when the cover host cannot be reached', function () {
+    Storage::fake();
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['content_type' => ContentType::InstagramReel, 'media' => [instagramVideoWithCover(['mime_type' => 'image/png', 'url' => $coverUrl])]]);
+    $graph = Platform::Instagram->graphApiUrl();
+    Http::fake([
+        $coverUrl => Http::failedConnection(),
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123']),
+        "{$graph}/container-123*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/ig_123456789/media_publish" => Http::response(['id' => 'reel-123']),
+        "{$graph}/reel-123*" => Http::response(['permalink' => 'https://www.instagram.com/reel/ABC/']),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('reel-123');
+    Http::assertSent(fn (Request $request): bool => $request->url() === "{$graph}/ig_123456789/media"
+        && data_get($request->data(), 'cover_url') === null
+        && data_get($request->data(), 'thumb_offset') === 1500);
+});
+
 test('instagram reel sends a frame cover as its time, not as its screenshot', function () {
     $this->post->update(['content_type' => ContentType::InstagramReel, 'media' => [instagramVideoWithCover([])]]);
     $media = $this->post->media;

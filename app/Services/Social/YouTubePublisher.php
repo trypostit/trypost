@@ -149,13 +149,7 @@ class YouTubePublisher
             return [File::get($path), (string) $cover->mime_type];
         }
 
-        $converted = $this->jpegFrom($path, Platform::YouTube, self::COVER_MAX_BYTES);
-
-        try {
-            return [File::get($converted), 'image/jpeg'];
-        } finally {
-            File::delete($converted);
-        }
+        return [$this->convertToJpegBytes($path, Platform::YouTube, self::COVER_MAX_BYTES), 'image/jpeg'];
     }
 
     protected function cropFailureException(string $message): SocialPublishException

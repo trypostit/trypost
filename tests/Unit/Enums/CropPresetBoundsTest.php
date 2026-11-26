@@ -26,8 +26,8 @@ test('every crop preset ratio sits inside the content type aspect ratio bounds',
     }
 
     foreach ($type->cropPresets() as $preset) {
-        expect(cropPresetRatio($preset))
-            ->toBeGreaterThanOrEqual($bounds['min'] - 0.01, "{$type->value} {$preset}")
-            ->toBeLessThanOrEqual($bounds['max'] + 0.01, "{$type->value} {$preset}");
+        expect(cropPresetRatio($preset->value))
+            ->toBeGreaterThanOrEqual($bounds['min'] - 0.01, "{$type->value} {$preset->value}")
+            ->toBeLessThanOrEqual($bounds['max'] + 0.01, "{$type->value} {$preset->value}");
     }
 })->with(ContentType::cases());

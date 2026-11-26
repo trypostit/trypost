@@ -306,5 +306,9 @@ return [
             'message' => 'Untuk memublikasikan balasan di :network, hubungkan kembali kanal ini dan izinkan TryPost mempostingnya.',
             'member_message' => 'Untuk memublikasikan balasan di :network, admin workspace perlu menghubungkan kembali kanal ini.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'Untuk menambahkan sampul ke Reels di :network, hubungkan kembali kanal ini dan izinkan TryPost mengaturnya.',
+            'member_message' => 'Untuk menambahkan sampul ke Reels di :network, admin workspace perlu menghubungkan kembali kanal ini.',
+        ],
     ],
 ];

@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -51,7 +52,7 @@ trait HostsProcessedImages
     {
         return $this->hostProcessedImage(
             $imageUrl,
-            fn (string $path): string => $this->jpegFrom($path, $platform, $maxBytes),
+            fn (string $path): string => $this->convertToJpeg($path, $platform, $maxBytes),
             'JPEG conversion',
         );
     }
@@ -62,7 +63,7 @@ trait HostsProcessedImages
      * convert it (it hands back an image too large to decode untouched) or the
      * result is still over `$maxBytes`.
      */
-    protected function jpegFrom(string $path, Platform $platform, int $maxBytes): string
+    protected function convertToJpeg(string $path, Platform $platform, int $maxBytes): string
     {
         try {
             $converted = app(MediaOptimizer::class)->optimizeImage($path, $platform);
@@ -83,6 +84,21 @@ trait HostsProcessedImages
         }
 
         return $converted;
+    }
+
+    /**
+     * The image file re-encoded as the platform's JPEG (`convertToJpeg()`), as
+     * bytes to send in a request body.
+     */
+    protected function convertToJpegBytes(string $path, Platform $platform, int $maxBytes): string
+    {
+        $converted = $this->convertToJpeg($path, $platform, $maxBytes);
+
+        try {
+            return File::get($converted);
+        } finally {
+            File::delete($converted);
+        }
     }
 
     /**
@@ -123,13 +139,20 @@ trait HostsProcessedImages
 
     /**
      * Downloads the image to a temporary file and returns its path (the
-     * caller deletes it), or null when the download fails.
+     * caller deletes it), or null when the download fails, the host not
+     * answering included.
      */
     protected function downloadImage(string $imageUrl): ?string
     {
         $path = tempnam(sys_get_temp_dir(), 'image_in_');
 
-        if (Http::sink($path)->timeout(120)->get($imageUrl)->failed()) {
+        try {
+            $failed = Http::sink($path)->timeout(120)->get($imageUrl)->failed();
+        } catch (ConnectionException) {
+            $failed = true;
+        }
+
+        if ($failed) {
             File::delete($path);
 
             return null;

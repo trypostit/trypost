@@ -306,5 +306,9 @@ return [
             'message' => 'Om reacties op :network te publiceren, koppel je dit kanaal opnieuw en sta je TryPost toe ze te plaatsen.',
             'member_message' => 'Om reacties op :network te publiceren, moet een workspacebeheerder dit kanaal opnieuw koppelen.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'Om een omslag aan Reels op :network toe te voegen, koppel je dit kanaal opnieuw en sta je TryPost toe die in te stellen.',
+            'member_message' => 'Om een omslag aan Reels op :network toe te voegen, moet een workspacebeheerder dit kanaal opnieuw koppelen.',
+        ],
     ],
 ];

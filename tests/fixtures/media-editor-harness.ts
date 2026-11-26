@@ -2,7 +2,8 @@
  * Runs the real `resources/js/lib/mediaEditor.ts` preset functions over the
  * `ContentType::mediaRules()` payload of every content type and prints the
  * preset values per content type as JSON, so `MediaEditorPresetsParityTest.php`
- * can assert the editor offers exactly `ContentType::cropPresets()`.
+ * can assert the editor offers exactly `ContentType::cropPresets()`, and
+ * draws every `CropPreset` the server can send.
  *
  * Node strips type annotations on import; the resolve hook maps the `@/` alias
  * and extension-less specifiers onto `resources/js/**.ts`.
@@ -21,7 +22,7 @@ registerHooks({
             : nextResolve(specifier, context),
 });
 
-const { cropPresetsFor, editorTabsFor, presetValuesFor } = await import(
+const { coverCropPresetFor, cropPresetsFor, editorTabsFor, presetValuesFor } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/mediaEditor.ts')).href
 );
 const { toMediaRules } = await import(
@@ -32,7 +33,9 @@ type Bounds = { aspectRatioMin: number | null; aspectRatioMax: number | null };
 
 type Preset = { value: string; ratio: number | null };
 
-const { rules, defaults }: { rules: Record<string, unknown>; defaults: unknown } = JSON.parse(fs.readFileSync(inputFile, 'utf8'));
+const { rules, defaults, every }: { rules: Record<string, unknown>; defaults: unknown; every: string[] } = JSON.parse(
+    fs.readFileSync(inputFile, 'utf8'),
+);
 
 const boundsOf = (rule: Bounds) => ({ min: rule.aspectRatioMin, max: rule.aspectRatioMax });
 
@@ -52,6 +55,15 @@ const videoTabs = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, editorTabsFor(video, [toMediaRules(rule)])]),
 );
 
+const coverPresets = Object.fromEntries(
+    Object.entries(rules).map(([contentType, rule]) => [contentType, coverCropPresetFor([toMediaRules(rule)])]),
+);
+
+const mixedCoverPresets = {
+    facebook_post_and_instagram_reel: coverCropPresetFor([toMediaRules(rules.facebook_post), toMediaRules(rules.instagram_reel)]),
+    facebook_post_and_instagram_feed: coverCropPresetFor([toMediaRules(rules.facebook_post), toMediaRules(rules.instagram_feed)]),
+};
+
 const noChannelResults = Object.fromEntries(
     Object.entries(rules).map(([contentType, rule]) => [contentType, noChannelValuesFor(toMediaRules(rule))]),
 );
@@ -61,6 +73,9 @@ console.log(
         contentTypes: results,
         noChannelWithinBounds: noChannelResults,
         videoTabs,
+        coverPresets,
+        mixedCoverPresets,
+        every: summarize(cropPresetsFor(every)),
         noChannel: cropPresetsFor(presetValuesFor([], defaults)).map((preset: Preset) => preset.value),
     }),
 );

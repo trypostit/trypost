@@ -35,7 +35,7 @@ const { THREAD_REPLY_CONTENT_TYPES } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'types/network-options.ts')).href
 );
 
-const { missingPermissionKey } = await import(
+const { channelPermissionKey, missingPermissionKey } = await import(
     pathToFileURL(path.join(path.resolve(resourcesDir), 'lib/channelPermissions.ts')).href
 );
 const { GatedFeature } = await import(
@@ -62,7 +62,9 @@ const results = Object.fromEntries(
 );
 
 const thread = { thread_replies: [{ text: 'Second', media: [] }] };
+const threadPost = { meta: thread, contentType: null, media: [] };
 const missing = { thread_replies: { message: 'reconnect', member_message: 'ask an admin' } };
+const videoWithCover = [{ id: 'video', url: 'https://example.com/clip.mp4', type: 'video', meta: { cover: { url: 'https://example.com/cover.jpg' } } }];
 
 console.log(
     JSON.stringify({
@@ -82,12 +84,37 @@ console.log(
             threadUnavailableKey('facebook', 'facebook_story', thread, true),
         ],
         permission_keys: {
-            allowed: missingPermissionKey(thread, {}, true),
-            not_used: missingPermissionKey({}, missing, true),
-            publish_before_replies: missingPermissionKey(thread, { thread_replies: missing.thread_replies, publish: { message: 'publish', member_message: 'publish member' } }, true),
-            analytics_only: missingPermissionKey(thread, { post_insights: missing.thread_replies }, true),
-            lacks_scope_admin: missingPermissionKey(thread, missing, true),
-            lacks_scope_member: missingPermissionKey(thread, missing, false),
+            allowed: missingPermissionKey(threadPost, {}, true, true),
+            not_used: missingPermissionKey({ ...threadPost, meta: {} }, missing, true, true),
+            publish_before_replies: missingPermissionKey(threadPost, { thread_replies: missing.thread_replies, publish: { message: 'publish', member_message: 'publish member' } }, true, true),
+            analytics_only: missingPermissionKey(threadPost, { post_insights: missing.thread_replies }, true, true),
+            lacks_scope_admin: missingPermissionKey(threadPost, missing, true, true),
+            lacks_scope_member: missingPermissionKey(threadPost, missing, false, true),
+            facebook_reel_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                { meta: {}, contentType: 'facebook_reel', media: videoWithCover },
+                true,
+            ),
+            reel_without_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                { meta: {}, contentType: 'facebook_reel', media: [] },
+                true,
+            ),
+            facebook_reel_cover_member: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                { meta: {}, contentType: 'facebook_reel', media: videoWithCover },
+                false,
+            ),
+            reel_with_cover_without_url: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                { meta: {}, contentType: 'facebook_reel', media: [{ id: 'video', url: 'https://example.com/clip.mp4', type: 'video', meta: { cover: {} } }] },
+                true,
+            ),
+            feed_video_cover: channelPermissionKey(
+                { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
+                { meta: {}, contentType: 'facebook_post', media: videoWithCover },
+                true,
+            ),
         },
     }),
 );

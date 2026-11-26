@@ -1570,3 +1570,78 @@ test('closing the copy of a post duplicated from the board goes back to the boar
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
 });
+
+/** The reel's draft turned into a feed post with one image, whose alt text the media editor changes. */
+function seedUnsavedChangesFeedImage(): Post
+{
+    $post = seedUnsavedChangesReel();
+    $post->forceFill([
+        'content_type' => ContentType::InstagramFeed,
+        'media' => [[
+            'id' => 'image-1', 'type' => 'image', 'path' => 'images/trypost/icon.png', 'url' => '/images/trypost/icon.png',
+            'mime_type' => 'image/png', 'original_filename' => 'icon.png', 'meta' => ['width' => 512, 'height' => 512],
+        ]],
+    ])->save();
+
+    return $post;
+}
+
+test('an edit applied in the media editor of an edited post asks before closing', function () {
+    $post = seedUnsavedChangesFeedImage();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-{$post->social_account_id}-alt-0");
+    $page->click("@composer-{$post->social_account_id}-alt-0");
+    waitFor($page, '@media-editor-alt-text');
+    $page->fill('@media-editor-alt-text', 'Four coloured squares');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    waitForGone($page, '@media-editor');
+
+    $page->click('@composer-close');
+    waitFor($page, '@unsaved-changes-dialog');
+
+    $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
+});
+
+test('opening the media editor of an edited post and cancelling it closes without asking', function () {
+    $post = seedUnsavedChangesFeedImage();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, "@composer-{$post->social_account_id}-alt-0");
+    $page->click("@composer-{$post->social_account_id}-alt-0");
+    waitFor($page, '@media-editor-alt-text');
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click('@composer-close');
+    waitForGone($page, '@post-composer-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
+});
+
+test('an edit undone in the media editor of an edited post closes without asking', function () {
+    $post = seedUnsavedChangesFeedImage();
+    $alt = "@composer-{$post->social_account_id}-alt-0";
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitFor($page, $alt);
+    $page->click($alt);
+    waitFor($page, '@media-editor-alt-text');
+    $page->fill('@media-editor-alt-text', 'Four coloured squares');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    waitForGone($page, '@media-editor');
+
+    $page->click($alt);
+    waitForState($page, '@media-editor-alt-text', "element.value === 'Four coloured squares'");
+    $page->fill('@media-editor-alt-text', '');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    waitForGone($page, '@media-editor');
+
+    $page->click('@composer-close');
+    waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog');
+
+    $page->assertMissing('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
+});

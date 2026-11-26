@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Facebook\CoverFailure;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -14,11 +15,15 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\FacebookPublisher;
+use App\Support\Social\FacebookCover;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 /**
  * @return array<int, array<string, string>>
@@ -532,7 +537,19 @@ test('facebook publisher rejects an upload_url outside the rupload host', functi
     'plain http' => 'http://rupload.facebook.com/video-upload/v25.0/video_123',
     'userinfo trick' => 'https://rupload.facebook.com@evil.example/video-upload/v25.0/video_123',
     'not a url' => 'video_123',
+    'malformed host' => 'https://rupload facebook.com/video-upload/v25.0/video_123',
 ]);
+
+test('facebook publisher does not start a video upload whose upload_url is not text', function (ContentType $contentType, string $edge) {
+    $this->post->update(['content_type' => $contentType, 'media' => facebookVideoMedia()]);
+
+    Http::fake([
+        "*/page_123/{$edge}" => Http::response(['video_id' => 'video_123', 'upload_url' => ['https://rupload.facebook.com/x']], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not start the video upload. Please try again.');
+})->with('facebook resumable video formats');
 
 test('facebook publisher trusts the rupload host from config', function () {
     config()->set('trypost.platforms.facebook.rupload_host', 'rupload.example.test');
@@ -1445,4 +1462,216 @@ test('facebook publisher does not attach a link card when the post has media', f
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page_123/feed'));
     Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/photos')
         && ! array_key_exists('link', $request->data()));
+});
+
+/** A Facebook feed video whose cover image lives at `$coverUrl`. */
+function facebookVideoWithCover(string $coverUrl): array
+{
+    return [[
+        ...facebookVideoMedia()[0],
+        'type' => 'video',
+        'meta' => ['cover_source' => 'image', 'cover' => [
+            'id' => 'cover-1',
+            'path' => 'media/2026-01/cover.png',
+            'url' => $coverUrl,
+            'type' => 'image',
+            'mime_type' => 'image/png',
+        ]],
+    ]];
+}
+
+test('a feed video sends its cover as the thumb of the upload, next to the hosted video', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/page_123/videos')) {
+            return false;
+        }
+
+        $parts = collect($request->data())->keyBy('name');
+
+        return $request->isMultipart()
+            && $request->hasFile('thumb')
+            && str_starts_with((string) data_get($parts, 'thumb.contents'), "\xFF\xD8")
+            && data_get($parts, 'file_url.contents') === 'https://example.com/media/2026-01/video.mp4'
+            && data_get($parts, 'description.contents') === 'Check out this Facebook post!';
+    });
+});
+
+test('a feed video without a cover is sent without a thumb', function () {
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    Http::fake(['*/page_123/videos' => Http::response(['id' => 'video_123'], 200)]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result)->not->toHaveKey(FacebookCover::WARNING);
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos')
+        && ! $request->isMultipart()
+        && $request['file_url'] === 'https://example.com/media/2026-01/video.mp4');
+});
+
+test('a feed video whose cover cannot be downloaded is published without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+
+    Http::fake([
+        $coverUrl => Http::response('', 404),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::NotDownloaded->value, 'category' => 'server_error']);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
+});
+
+test('a feed video whose cover is not an image is published without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+
+    Http::fake([
+        $coverUrl => Http::response('not an image', 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::InvalidImage->value, 'category' => 'media_format']);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
+});
+
+test('a reel with a cover still publishes when the channel lost the cover permission, leaving the cover to its job', function () {
+    $this->socialAccount->update(['scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+    $this->post->update([
+        'content_type' => ContentType::FacebookReel,
+        'media' => facebookVideoWithCover('https://example.com/media/2026-01/cover.png'),
+    ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount->fresh());
+
+    Http::fake(facebookVideoUploadFakes('video_reels'));
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('reel_456');
+});
+
+test('a feed video whose cover host cannot be reached is published without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+
+    Http::fake([
+        $coverUrl => Http::failedConnection(),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::FAILURE]['reason'])->toBe(CoverFailure::NotDownloaded->value);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
+});
+
+test('a feed video whose thumb facebook refuses is published again without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::sequence()
+            ->push(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400)
+            ->push(['id' => 'video_123'], 200),
+    ]);
+    Log::spy();
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::Refused->value, 'platform_error_code' => '100'])
+        ->and($result[FacebookCover::FAILURE]['raw_response'])->toContain('Invalid parameter');
+    Log::shouldNotHaveReceived('error');
+    Http::assertSentInOrder([
+        fn (Request $request): bool => $request->url() === $coverUrl,
+        fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && $request->hasFile('thumb'),
+        fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart(),
+    ]);
+});
+
+test('a feed video facebook refuses for another reason than a parameter is not sent again without its thumb', function (int $code) {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['error' => ['message' => 'Refused', 'type' => 'OAuthException', 'code' => $code]], 400),
+    ]);
+
+    Log::spy();
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(2);
+    Log::shouldHaveReceived('error')->once();
+})->with([
+    'unsupported file format' => 1363031,
+    'temporary issue' => 2,
+    'unknown error' => 1,
+    'policy block' => 368,
+]);
+
+test('a feed video facebook refuses again without its thumb fails, reported once', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::sequence()
+            ->push(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400)
+            ->push(['error' => ['message' => 'Unsupported file format', 'type' => 'OAuthException', 'code' => 1363031]], 400),
+    ]);
+    Log::spy();
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(3);
+    Log::shouldHaveReceived('error')->once();
+});
+
+test('a feed video without a cover that facebook refuses is reported once', function () {
+    $this->post->update(['media' => facebookVideoMedia()]);
+    Http::fake(['*/page_123/videos' => Http::response(['error' => ['message' => 'Refused', 'type' => 'OAuthException', 'code' => 1363031]], 400)]);
+    Log::spy();
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Log::shouldHaveReceived('error')->once();
+});
+
+test('a feed video whose upload facebook throttles is not sent again without its thumb', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['error' => ['message' => 'Too many calls', 'type' => 'OAuthException', 'code' => 4]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(2);
 });

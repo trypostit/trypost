@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Videoframe',
             'thumbnail_source_image' => 'Afbeelding',
             'thumbnail_image_hint' => 'Je video toont deze afbeelding als omslag. Gebruik een afbeelding van 9:16 zodat er niets wordt afgesneden.',
+            'thumbnail_image_hint_own_ratio' => 'Je video toont deze afbeelding als omslag. Gebruik een afbeelding in het formaat van je video zodat er niets wordt afgesneden.',
             'thumbnail_capture_failed' => 'Dit videoframe kon niet worden vastgelegd. Upload in plaats daarvan een afbeelding als omslag.',
             'thumbnail_image_upload' => 'Afbeelding uploaden',
             'thumbnail_image_replace' => 'Vervangen',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Let op',
             'title' => 'Eerste reactie niet toegevoegd',
             'description' => 'Instagram gaf de ID van dit bericht niet terug, dus TryPost kon je eerste reactie niet toevoegen. Voeg die toe op Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Let op',
+            'title' => 'Omslag niet toegepast',
+            'description' => 'Je omslagafbeelding is niet op deze video toegepast. Je kunt die instellen op Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Let op',

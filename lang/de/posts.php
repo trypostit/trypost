@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Videobild',
             'thumbnail_source_image' => 'Bild',
             'thumbnail_image_hint' => 'Dein Video zeigt dieses Bild als Vorschaubild. Nutze ein Bild im Format 9:16, damit nichts abgeschnitten wird.',
+            'thumbnail_image_hint_own_ratio' => 'Dein Video zeigt dieses Bild als Vorschaubild. Nutze ein Bild im Format deines Videos, damit nichts abgeschnitten wird.',
             'thumbnail_capture_failed' => 'Dieses Videobild konnte nicht aufgenommen werden. Lade stattdessen ein Bild als Vorschaubild hoch.',
             'thumbnail_image_upload' => 'Bild hochladen',
             'thumbnail_image_replace' => 'Bild ersetzen',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Hinweis',
             'title' => 'Erster Kommentar nicht hinzugefügt',
             'description' => 'Instagram hat die ID dieses Beitrags nicht zurückgegeben, daher konnte TryPost deinen ersten Kommentar nicht hinzufügen. Füge ihn auf Instagram hinzu.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Hinweis',
+            'title' => 'Vorschaubild nicht übernommen',
+            'description' => 'Dein Vorschaubild wurde für dieses Video nicht übernommen. Du kannst es auf Facebook festlegen.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Hinweis',

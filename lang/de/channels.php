@@ -306,5 +306,9 @@ return [
             'message' => 'Um Antworten auf :network zu veröffentlichen, verbinde diesen Kanal erneut und erlaube TryPost, sie zu posten.',
             'member_message' => 'Um Antworten auf :network zu veröffentlichen, muss ein Workspace-Admin diesen Kanal erneut verbinden.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'Um Reels auf :network ein Vorschaubild zu geben, verbinde diesen Kanal erneut und erlaube TryPost, es festzulegen.',
+            'member_message' => 'Um Reels auf :network ein Vorschaubild zu geben, muss ein Workspace-Admin diesen Kanal erneut verbinden.',
+        ],
     ],
 ];

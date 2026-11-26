@@ -402,7 +402,7 @@ test('list-content-types-tool shows every media rule a save enforces', function 
         ->and($rows[ContentType::GoogleBusinessPost->value])->toMatchArray(['image_min_width' => 250, 'image_min_height' => 250])
         ->and($rows[ContentType::ThreadsPost->value])->toMatchArray(['aspect_ratio_min' => 0.1, 'video_aspect_ratio_min' => null]);
 
-    $editorOnly = array_flip(['max_files', 'min_files', 'crop_presets', 'platform_label']);
+    $editorOnly = array_flip(['max_files', 'min_files', 'crop_presets', 'cover_crop_preset', 'platform_label']);
 
     foreach (array_filter(ContentType::cases(), fn (ContentType $type): bool => filled($type->compatiblePlatforms())) as $contentType) {
         $rules = array_diff_key($contentType->mediaRules(), $editorOnly);

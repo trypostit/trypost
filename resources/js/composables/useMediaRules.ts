@@ -5,6 +5,7 @@ import {
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
+import { COVER_CROP_PRESET } from '@/lib/mediaEditor';
 import { classifyBy, MediaType } from '@/lib/mediaType';
 
 export type { MediaRules };
@@ -27,6 +28,7 @@ const DEFAULT_RULES: MediaRules = {
     supportsUserTags: false,
     supportsVideoCover: false,
     supportsCustomVideoCover: false,
+    coverCropPreset: COVER_CROP_PRESET,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {

@@ -122,7 +122,7 @@ class PostStatusRules
 
     /**
      * Guards publishing a post's stored state without resubmitting its platforms
-     * (MCP publish, the "publish now" queue card action).
+     * (MCP publish, the "publish now" queue card action, approving).
      */
     public static function assertStoredPostPublishable(Post $post): void
     {
@@ -130,7 +130,7 @@ class PostStatusRules
             throw ValidationException::withMessages(['social_account_id' => __('posts.errors.choose_channel')]);
         }
 
-        PostPlatformMetaRules::assertStoredPostPublishable($post);
+        PostPlatformMetaRules::assertStoredMetaPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
     }
 }

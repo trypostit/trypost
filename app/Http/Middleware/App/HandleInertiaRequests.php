@@ -8,6 +8,7 @@ use App\Actions\AccessToken\HasConnectedMcpClient;
 use App\Actions\Analytics\ShowPostingStreak;
 use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
+use App\Enums\Media\CropPreset;
 use App\Enums\Media\Source as MediaSource;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
@@ -97,7 +98,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::shareOnce($request),
             'connectablePlatforms' => fn (): array => SocialPlatform::connectableOptions(),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
-            'defaultCropPresets' => fn (): array => ContentType::defaultCropPresets(),
+            'defaultCropPresets' => fn (): array => CropPreset::valuesOf(ContentType::defaultCropPresets()),
             'plans' => function (): array {
                 if (config('trypost.self_hosted') || blank(auth()->user()?->account)) {
                     return [];

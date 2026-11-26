@@ -1119,6 +1119,22 @@ function elementsMap(mixed $page, string $selector, string $expression): array
 }
 
 /**
+ * Picks a channel in the composer's channel menu, opening the menu first
+ * unless it is already open (it stays open after a pick).
+ */
+function pickComposerAccount(mixed $page, SocialAccount $account): void
+{
+    waitFor($page, '@composer-add-account');
+
+    if (elementsMap($page, '@composer-add-account', "element.getAttribute('data-state')") !== ['open']) {
+        $page->click('@composer-add-account');
+    }
+
+    waitFor($page, "@composer-account-option-{$account->id}");
+    $page->click("@composer-account-option-{$account->id}");
+}
+
+/**
  * Changes the element the selector matches the way the browser or the user
  * would (scrolling it, resizing what holds it), with `element` in scope.
  */

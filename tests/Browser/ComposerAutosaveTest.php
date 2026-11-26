@@ -559,3 +559,193 @@ test('the sidebar new button marks only a draft the composer offers back, not on
     'a disconnected channel' => [fn (SocialAccount $account): array => ['accountIds' => [(string) Str::uuid()]], false],
     'an expired upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'expired', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/expired.png', 'type' => 'image', 'mime_type' => 'image/png']]], false],
 ]);
+
+test('resume keeps the media a network edited with that network and the shared media as it was added', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $photo = ['id' => 'photo', 'upload_token' => null, 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+
+    $page = visit(route('app.posts.index'));
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited for one network',
+        'accountIds' => [$linkedin->id, $x->id],
+        'media' => [$photo],
+        'overrides' => [
+            $linkedin->id => ['media_edits' => [[...$photo, 'id' => 'photo-cropped', 'url' => '/images/photo-cropped.png', 'meta' => ['alt_text' => 'Kept for LinkedIn'], 'original' => $photo]]],
+        ],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, '@composer-media-item-0');
+    waitForCondition($page, "{$draft}?.overrides?.['{$linkedin->id}']?.media_edits?.[0]?.original?.id === 'photo'");
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$linkedin->id}");
+    waitFor($page, "@composer-{$linkedin->id}-alt-0");
+    $page->click("@composer-{$linkedin->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === 'Kept for LinkedIn'");
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === ''");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('alt text that came with the media reaches every network, not only the first one picked', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Media with its own alt text',
+        'accountIds' => [$linkedin->id],
+        'media' => [['id' => 'photo', 'upload_token' => null, 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'From the draft']]],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, "@composer-{$linkedin->id}-media-item-0");
+    pickComposerAccount($page, $x);
+    waitFor($page, '@composer-media-item-0');
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === 'From the draft'");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('resuming a step 1 draft whose shared upload expired keeps the file a network edited', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $expired = ['id' => 'photo', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+    $edit = ['id' => 'photo-cropped', 'upload_token' => 'fresh-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/photo-cropped.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'Kept for LinkedIn'], 'original' => $expired];
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited for one network',
+        'accountIds' => [$linkedin->id, $x->id],
+        'media' => [$expired],
+        'overrides' => [$linkedin->id => ['media_edits' => [$edit]]],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, '@composer-media-item-0');
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$linkedin->id}");
+    waitFor($page, "@composer-{$linkedin->id}-alt-0");
+    $page->click("@composer-{$linkedin->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === 'Kept for LinkedIn'");
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === ''");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('resuming a one channel draft whose edited file outlived its original keeps that file when a network is added', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $expired = ['id' => 'photo', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+    $edited = ['id' => 'photo-cropped', 'upload_token' => 'fresh-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/photo-cropped.png', 'type' => 'image', 'mime_type' => 'image/png', 'original' => $expired];
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Cropped for one network',
+        'accountIds' => [$linkedin->id],
+        'media' => [$edited],
+        'overrides' => [],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, "@composer-{$linkedin->id}-media-item-0");
+
+    pickComposerAccount($page, $x);
+    waitForState($page, '@composer-media-item-0 img', "element.getAttribute('src') === '/images/photo-cropped.png'");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('resuming a draft whose edited file expired brings back the file it was made from', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $this->actingAs($user);
+    $original = ['id' => 'photo', 'upload_token' => null, 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+    $edited = ['id' => 'photo-cropped', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/photo-cropped.png', 'type' => 'image', 'mime_type' => 'image/png', 'original' => $original];
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited a day ago',
+        'accountIds' => [$linkedin->id],
+        'media' => [$edited],
+        'overrides' => [],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+
+    waitForState($page, "@composer-{$linkedin->id}-media-item-0 img", "element.getAttribute('src') === '/images/photo.png'");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('resuming a draft whose shared upload expired keeps each network the file it edited', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $expired = ['id' => 'photo', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+    $forLinkedIn = ['id' => 'photo-linkedin', 'upload_token' => 'linkedin-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/photo-linkedin.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'For LinkedIn'], 'original' => $expired];
+    $forX = ['id' => 'photo-x', 'upload_token' => 'x-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/photo-x.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'For X'], 'original' => $expired];
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited for two networks',
+        'accountIds' => [$linkedin->id, $x->id],
+        'media' => [$expired],
+        'overrides' => [
+            $linkedin->id => ['media_edits' => [$forLinkedIn]],
+            $x->id => ['media_edits' => [$forX]],
+        ],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, '@composer-media-item-0');
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$x->id}");
+    waitForState($page, "@composer-{$x->id}-media-item-0 img", "element.getAttribute('src') === '/images/photo-x.png'");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', "element.value === 'For X'");
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click("@composer-account-{$linkedin->id}");
+    waitForState($page, "@composer-{$linkedin->id}-media-item-0 img", "element.getAttribute('src') === '/images/photo-linkedin.png'");
+    $page->assertNoJavaScriptErrors();
+});

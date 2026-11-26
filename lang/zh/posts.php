@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '视频帧',
             'thumbnail_source_image' => '图片',
             'thumbnail_image_hint' => '你的视频会以这张图片作为封面。请使用 9:16 的图片，避免被裁切。',
+            'thumbnail_image_hint_own_ratio' => '你的视频会以这张图片作为封面。请使用与视频比例相同的图片，避免被裁切。',
             'thumbnail_capture_failed' => '无法截取这一帧。请改为上传一张图片作为封面。',
             'thumbnail_image_upload' => '上传图片',
             'thumbnail_image_replace' => '更换图片',
@@ -1077,6 +1078,11 @@ return [
             'badge' => '注意',
             'title' => '未添加首条评论',
             'description' => 'Instagram 未返回此帖子的 ID，因此 TryPost 无法添加你的首条评论。请在 Instagram 上添加。',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => '注意',
+            'title' => '封面未应用',
+            'description' => '封面图片未应用到此视频。你可以在 Facebook 上设置。',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',
