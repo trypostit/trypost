@@ -225,7 +225,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if (FacebookCover::hasWarning($result)) {
-            FacebookCover::recordWarning($this->post);
+            FacebookCover::recordWarning($this->post, data_get($result, FacebookCover::FAILURE, []));
         }
 
         if ($this->post->awaitsTikTokVideoId()) {

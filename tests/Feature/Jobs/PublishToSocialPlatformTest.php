@@ -2602,12 +2602,14 @@ test('a facebook feed video whose cover could not go with it is published with a
         'id' => 'video_123',
         'url' => 'https://www.facebook.com/page/videos/video_123',
         FacebookCover::WARNING => true,
+        FacebookCover::FAILURE => ['reason' => 'refused', 'platform_error_code' => '100'],
     ]);
     $this->app->instance(FacebookPublisher::class, $publisher);
 
     (new PublishToSocialPlatform($post))->handle();
 
     expect(FacebookCover::hasWarning($post->fresh()->error_context))->toBeTrue()
+        ->and(data_get($post->fresh()->error_context, FacebookCover::FAILURE))->toBe(['reason' => 'refused', 'platform_error_code' => '100'])
         ->and($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
 });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\Facebook\CoverFailure;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
@@ -66,8 +67,10 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! FacebookCover::channelTakesReelCover($this->post)) {
-            FacebookCover::recordWarning($this->post);
+        $channelFailure = FacebookCover::channelFailure($this->post);
+
+        if (filled($channelFailure)) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure($channelFailure));
 
             return;
         }
@@ -75,12 +78,20 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
         try {
             $publisher->setReelCover($this->post);
         } catch (PlatformUnavailableException $exception) {
-            $this->release(CoverRetry::delayAfter($this->attempts(), $exception->retryDelaySeconds));
+            $this->tryAgain(FacebookCover::unavailable($exception), $exception->retryDelaySeconds);
+
+            return;
         } catch (TokenExpiredException) {
-            FacebookCover::recordWarning($this->post);
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::TokenExpired));
+
+            return;
         } catch (FacebookPublishException $exception) {
             $this->settle($exception);
+
+            return;
         }
+
+        FacebookCover::forgetLastError($this->post);
     }
 
     public function failed(?Throwable $exception): void
@@ -88,7 +99,7 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
         $post = Post::find($this->post->id);
 
         if (filled($post) && FacebookCover::isAwaitedBy($post)) {
-            FacebookCover::recordWarning($post);
+            FacebookCover::recordGaveUp($post);
         }
     }
 
@@ -101,11 +112,29 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
     private function settle(FacebookPublishException $exception): void
     {
         if ($exception->category === ErrorCategory::ServerError) {
-            $this->release(CoverRetry::delayAfter($this->attempts()));
+            $this->tryAgain(FacebookCover::failure(CoverFailure::NotDownloaded, $exception));
 
             return;
         }
 
-        FacebookCover::recordWarning($this->post);
+        if ($exception->category === ErrorCategory::MediaFormat) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::InvalidImage, $exception));
+
+            return;
+        }
+
+        FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::Refused, $exception));
+    }
+
+    /**
+     * Keeps what failed, so the warning left when the tries run out says it,
+     * and tries again after the next wait (`CoverRetry`).
+     *
+     * @param  array<string, int|string>  $lastError
+     */
+    private function tryAgain(array $lastError, ?int $networkDelaySeconds = null): void
+    {
+        FacebookCover::recordLastError($this->post, $lastError);
+        $this->release(CoverRetry::delayAfter($this->attempts(), $networkDelaySeconds));
     }
 }

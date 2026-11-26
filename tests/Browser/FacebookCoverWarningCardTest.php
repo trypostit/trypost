@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Facebook\CoverFailure;
 use App\Enums\PostPlatform\ContentType;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -29,7 +30,7 @@ test('a reel whose cover Facebook did not take shows it under its time, with wha
         'published_at' => now()->subHours($hoursAgo),
     ]);
     $refused = $sentReel(1);
-    FacebookCover::recordWarning($refused);
+    FacebookCover::recordWarning($refused, FacebookCover::failure(CoverFailure::Refused));
     $applied = $sentReel(2);
 
     $this->actingAs($user);

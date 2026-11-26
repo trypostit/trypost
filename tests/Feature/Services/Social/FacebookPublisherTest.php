@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Facebook\CoverFailure;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
@@ -1532,7 +1533,8 @@ test('a feed video whose cover cannot be downloaded is published without it', fu
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
-        ->and($result[FacebookCover::WARNING])->toBeTrue();
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::NotDownloaded->value, 'category' => 'server_error']);
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });
 
@@ -1548,7 +1550,8 @@ test('a feed video whose cover is not an image is published without it', functio
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
-        ->and($result[FacebookCover::WARNING])->toBeTrue();
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::InvalidImage->value, 'category' => 'media_format']);
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });
 
@@ -1578,7 +1581,8 @@ test('a feed video whose cover host cannot be reached is published without it', 
 
     $result = $this->publisher->publish($this->post);
 
-    expect($result['id'])->toBe('video_123');
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::FAILURE]['reason'])->toBe(CoverFailure::NotDownloaded->value);
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });
 
@@ -1598,7 +1602,9 @@ test('a feed video whose thumb facebook refuses is published again without it', 
     $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_123')
-        ->and($result[FacebookCover::WARNING])->toBeTrue();
+        ->and($result[FacebookCover::WARNING])->toBeTrue()
+        ->and($result[FacebookCover::FAILURE])->toMatchArray(['reason' => CoverFailure::Refused->value, 'platform_error_code' => '100'])
+        ->and($result[FacebookCover::FAILURE]['raw_response'])->toContain('Invalid parameter');
     Log::shouldNotHaveReceived('error');
     Http::assertSentInOrder([
         fn (Request $request): bool => $request->url() === $coverUrl,

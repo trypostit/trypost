@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\Facebook\CoverFailure;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -63,8 +65,10 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! FacebookCover::channelTakesReelCover($this->post)) {
-            FacebookCover::recordWarning($this->post);
+        $channelFailure = FacebookCover::channelFailure($this->post);
+
+        if (filled($channelFailure)) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure($channelFailure));
 
             return;
         }
@@ -79,8 +83,12 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
             $this->release(self::CHECK_EVERY_SECONDS);
 
             return;
-        } catch (TokenExpiredException|FacebookPublishException) {
-            FacebookCover::recordWarning($this->post);
+        } catch (TokenExpiredException) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::TokenExpired));
+
+            return;
+        } catch (FacebookPublishException $exception) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(self::readFailure($exception), $exception));
 
             return;
         }
@@ -97,7 +105,17 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
         $post = Post::find($this->post->id);
 
         if (filled($post) && FacebookCover::isAwaitedBy($post)) {
-            FacebookCover::recordWarning($post);
+            FacebookCover::recordWarning($post, FacebookCover::failure(CoverFailure::StillProcessing));
         }
+    }
+
+    /** A Reel Facebook could not process (`reelIsProcessing()` throws it as MediaFormat), else a status read it refused. */
+    private static function readFailure(FacebookPublishException $exception): CoverFailure
+    {
+        if ($exception->category === ErrorCategory::MediaFormat) {
+            return CoverFailure::ProcessingFailed;
+        }
+
+        return CoverFailure::Refused;
     }
 }

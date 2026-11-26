@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Dto\MediaItem;
+use App\Enums\Facebook\CoverFailure;
 use App\Enums\Facebook\VideoStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -245,7 +246,10 @@ class FacebookPublisher
     }
 
     /**
-     * @return array{id: mixed, url: string, facebook_cover_warning?: true}
+     * A cover that cannot be downloaded or converted, or whose `thumb` Facebook
+     * refuses, publishes the video with the cover Facebook picks and says why.
+     *
+     * @return array{id: mixed, url: string, facebook_cover_warning?: true, facebook_cover_failure?: array<string, string>}
      */
     private function publishVideoPost(string $pageId, string $accessToken, ?string $content, MediaItem $media): array
     {
@@ -254,8 +258,14 @@ class FacebookPublisher
             'access_token' => $accessToken,
             'description' => $content,
         ];
-        $thumb = $this->feedVideoThumb($media);
-        $coverSkipped = blank($thumb) && filled($media->cover());
+        $coverFailure = null;
+
+        try {
+            $thumb = $this->feedVideoThumb($media);
+        } catch (FacebookPublishException $exception) {
+            $thumb = null;
+            $coverFailure = FacebookCover::failure(CoverFailure::forCoverFile($exception), $exception);
+        }
 
         try {
             $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post', reportFailure: false, image: $thumb);
@@ -270,7 +280,7 @@ class FacebookPublisher
             }
 
             $response = $this->postToGraph("{$pageId}/videos", $payload, 'video post');
-            $coverSkipped = true;
+            $coverFailure = FacebookCover::failure(CoverFailure::Refused, $exception);
         }
 
         $videoId = $response->json('id');
@@ -279,8 +289,8 @@ class FacebookPublisher
             'url' => "https://www.facebook.com/{$pageId}/videos/{$videoId}",
         ];
 
-        if ($coverSkipped) {
-            return [...$result, FacebookCover::WARNING => true];
+        if (filled($coverFailure)) {
+            return [...$result, FacebookCover::WARNING => true, FacebookCover::FAILURE => $coverFailure];
         }
 
         return $result;
@@ -634,9 +644,9 @@ class FacebookPublisher
 
     /**
      * A feed video's cover (`media.*.meta.cover`: the uploaded image, or the
-     * picked frame's screenshot) as JPEG bytes for `thumb`. A cover that
-     * cannot be downloaded or converted publishes the video with the cover
-     * Facebook picks, never fails it.
+     * picked frame's screenshot) as JPEG bytes for `thumb`.
+     *
+     * @throws FacebookPublishException when the cover cannot be downloaded (ServerError) or converted (MediaFormat)
      */
     private function feedVideoThumb(MediaItem $media): ?string
     {
@@ -646,11 +656,7 @@ class FacebookPublisher
             return null;
         }
 
-        try {
-            return $this->coverJpeg($cover);
-        } catch (FacebookPublishException) {
-            return null;
-        }
+        return $this->coverJpeg($cover);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Facebook\CoverFailure;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Http\Resources\App\PostCardResource;
@@ -82,6 +83,12 @@ function runApplyFacebookReelCover(Post $post, int $attempt = 1): ApplyFacebookR
     return $job;
 }
 
+/** Why the cover did not go on, as the post keeps it. */
+function facebookCoverFailure(Post $post): ?array
+{
+    return data_get($post->fresh()->error_context, FacebookCover::FAILURE);
+}
+
 function thumbnailsWereAsked(): bool
 {
     return Http::recorded(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl())->isNotEmpty();
@@ -124,7 +131,8 @@ describe('waiting for the reel', function () {
         runSetFacebookReelCover($this->post)->assertNotReleased();
 
         Queue::assertNotPushed(ApplyFacebookReelCover::class);
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post)['reason'])->toBe(CoverFailure::ProcessingFailed->value);
     })->with(['error', 'expired']);
 
     test('a reel facebook cannot load leaves a warning, since it may be a lost permission and not a deletion', function () {
@@ -135,7 +143,9 @@ describe('waiting for the reel', function () {
         runSetFacebookReelCover($this->post)->assertNotReleased();
 
         Queue::assertNotPushed(ApplyFacebookReelCover::class);
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toMatchArray(['reason' => CoverFailure::Refused->value, 'platform_error_code' => '100'])
+            ->and(facebookCoverFailure($this->post)['raw_response'])->toContain('cannot be loaded due to missing permissions');
     });
 
     test('a page token that expired leaves a warning at once instead of checking again', function () {
@@ -145,7 +155,8 @@ describe('waiting for the reel', function () {
 
         runSetFacebookReelCover($this->post)->assertNotReleased();
 
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toBe(['reason' => CoverFailure::TokenExpired->value]);
     });
 
     test('a channel without the reel cover scopes leaves a warning without asking facebook', function () {
@@ -155,7 +166,8 @@ describe('waiting for the reel', function () {
         runSetFacebookReelCover($this->post);
 
         Http::assertNothingSent();
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toBe(['reason' => CoverFailure::NoPermission->value]);
     });
 
     test('a channel whose granted scopes are unknown still gets its reel cover', function (?array $scopes) {
@@ -174,7 +186,8 @@ describe('waiting for the reel', function () {
         runSetFacebookReelCover($this->post)->assertNotReleased();
 
         Http::assertNothingSent();
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toBe(['reason' => CoverFailure::NotConnected->value]);
     });
 
     test('a reel without a cover asks facebook nothing', function () {
@@ -190,7 +203,8 @@ describe('waiting for the reel', function () {
     test('a reel still processing after thirty minutes of checks keeps a warning', function () {
         (new SetFacebookReelCover($this->post))->failed(null);
 
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toBe(['reason' => CoverFailure::StillProcessing->value]);
     });
 
     test('a post deleted while its reel was checked lets the job fail quietly', function () {
@@ -243,6 +257,8 @@ describe('sending the cover', function () {
 
         $post = $this->post->fresh();
         expect(FacebookCover::hasWarning($post->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($post))->toMatchArray(['reason' => CoverFailure::Refused->value, 'platform_error_code' => '100'])
+            ->and(facebookCoverFailure($post)['raw_response'])->toContain('Invalid parameter')
             ->and($post->status->value)->toBe('published')
             ->and(PostCardResource::make($post)->resolve()['facebook_cover_warning'])->toBeTrue();
     });
@@ -256,7 +272,8 @@ describe('sending the cover', function () {
         runApplyFacebookReelCover($this->post)->assertReleased(CoverRetry::delayAfter(1));
 
         expect(thumbnailsWereAsked())->toBe($asksFacebook)
-            ->and(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse();
+            ->and(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse()
+            ->and(facebookCoverFailure($this->post))->not->toBeEmpty();
     })->with([
         'a gateway error' => fn (): array => [[facebookThumbnailsUrl() => Http::response('<html>Bad gateway</html>', 502)], true],
         'a server error' => fn (): array => [[facebookThumbnailsUrl() => Http::response(['error' => ['message' => 'Service temporarily unavailable', 'type' => 'OAuthException', 'code' => 2, 'is_transient' => true]], 500)], true],
@@ -294,12 +311,36 @@ describe('sending the cover', function () {
         runApplyFacebookReelCover($this->post)->assertReleased(30 * 60);
     });
 
-    test('the last try failing for now leaves a warning', function () {
+    test('the last try failing for now leaves a warning that says what kept failing', function () {
         expect((new ApplyFacebookReelCover($this->post))->tries)->toBe(count(CoverRetry::BACKOFF_SECONDS) + 1);
+        Http::fake([
+            FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+            facebookThumbnailsUrl() => Http::response('<html>Bad gateway</html>', 502),
+        ]);
 
+        runApplyFacebookReelCover($this->post, CoverRetry::TRIES)->assertReleased(600);
         (new ApplyFacebookReelCover($this->post))->failed(null);
 
-        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toMatchArray(['reason' => CoverFailure::GaveUp->value, 'http_status' => 502])
+            ->and(facebookCoverFailure($this->post)['detail'])->toContain('Bad gateway');
+    });
+
+    test('a cover that goes on after a failed try keeps no failure', function () {
+        Http::fake([
+            FACEBOOK_COVER_URL => fn () => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+            facebookThumbnailsUrl() => Http::sequence()
+                ->push('<html>Bad gateway</html>', 502)
+                ->push(['success' => true]),
+        ]);
+
+        runApplyFacebookReelCover($this->post)->assertReleased(60);
+        expect(facebookCoverFailure($this->post))->not->toBeNull();
+
+        runApplyFacebookReelCover($this->post, 2)->assertNotReleased();
+
+        expect(facebookCoverFailure($this->post))->toBeNull()
+            ->and(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse();
     });
 
     test('a cover that cannot be made a jpeg leaves a warning at once instead of trying again', function () {
@@ -311,7 +352,8 @@ describe('sending the cover', function () {
         runApplyFacebookReelCover($this->post)->assertNotReleased();
 
         expect(thumbnailsWereAsked())->toBeFalse()
-            ->and(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue();
+            ->and(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toMatchArray(['reason' => CoverFailure::InvalidImage->value, 'category' => 'media_format']);
     });
 
     test('a page token that expired leaves a warning at once instead of trying again', function () {

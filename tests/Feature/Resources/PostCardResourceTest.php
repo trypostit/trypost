@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\BuildPublishPageProps;
+use App\Enums\Facebook\CoverFailure;
 use App\Http\Resources\App\PostCardResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -104,7 +105,7 @@ test('an instagram post published without its first comment shows the warning, n
 
 test('a facebook video published without its cover shows the warning, not a failure', function () {
     $post = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
-    FacebookCover::recordWarning($post);
+    FacebookCover::recordWarning($post, FacebookCover::failure(CoverFailure::Refused));
 
     $card = PostCardResource::make($post->fresh())->resolve();
 
