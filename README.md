@@ -2,7 +2,7 @@
   <img src="public/images/trypost/logo-dark.png" alt="TryPost" width="190">
 </p>
 
-<h1 align="center">The open-source social media scheduler built for AI agents</h1>
+<h1 align="center">Open-source social media scheduler built for humans and AI agents.</h1>
 
 <p align="center">
   Let your AI agents create, schedule and publish posts to every network through MCP or the REST API,<br/>
