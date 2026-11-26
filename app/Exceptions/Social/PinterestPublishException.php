@@ -88,7 +88,7 @@ class PinterestPublishException extends SocialPublishException
     public static function refused(Response $response): static
     {
         return new static(
-            userMessage: (string) data_get($response->json(), 'message', $response->body()),
+            userMessage: transform($response->json('message'), fn (mixed $message): string => (string) $message, $response->body()),
             category: ErrorCategory::Refused,
             platformErrorCode: (string) $response->status(),
             rawResponse: $response->body(),
