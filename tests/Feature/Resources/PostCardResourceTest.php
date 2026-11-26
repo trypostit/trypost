@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Services\Social\InstagramPublisher;
+use App\Support\Social\FacebookCover;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -99,4 +100,14 @@ test('an instagram post published without its first comment shows the warning, n
 
     expect($card['failure'])->toBeNull()
         ->and($card['instagram_comment_skipped'])->toBeTrue();
+});
+
+test('a facebook video published without its cover shows the warning, not a failure', function () {
+    $post = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
+    FacebookCover::recordWarning($post);
+
+    $card = PostCardResource::make($post->fresh())->resolve();
+
+    expect($card['failure'])->toBeNull()
+        ->and($card['facebook_cover_warning'])->toBeTrue();
 });

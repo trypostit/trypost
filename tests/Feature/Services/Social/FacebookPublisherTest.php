@@ -1629,6 +1629,24 @@ test('a feed video facebook refuses for another reason than a parameter is not s
     'policy block' => 368,
 ]);
 
+test('a feed video facebook refuses again without its thumb fails, reported once', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+    $png = (string) (new ImageManager(Driver::class))->createImage(320, 180)->fill('ff0000')->encodeUsingMediaType('image/png');
+
+    Http::fake([
+        $coverUrl => Http::response($png, 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::sequence()
+            ->push(['error' => ['message' => 'Invalid parameter', 'type' => 'OAuthException', 'code' => 100]], 400)
+            ->push(['error' => ['message' => 'Unsupported file format', 'type' => 'OAuthException', 'code' => 1363031]], 400),
+    ]);
+    Log::spy();
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(FacebookPublishException::class);
+    Http::assertSentCount(3);
+    Log::shouldHaveReceived('error')->once();
+});
+
 test('a feed video without a cover that facebook refuses is reported once', function () {
     $this->post->update(['media' => facebookVideoMedia()]);
     Http::fake(['*/page_123/videos' => Http::response(['error' => ['message' => 'Refused', 'type' => 'OAuthException', 'code' => 1363031]], 400)]);

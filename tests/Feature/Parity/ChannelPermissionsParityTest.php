@@ -364,10 +364,85 @@ test('attaching media to a scheduled reel with a cover on a channel without the 
     expect($post->fresh()->media)->toHaveCount(1);
 })->with(['api', 'mcp']);
 
-test('attaching a cover to a scheduled reel on a channel without the cover scopes is refused', function () {
+test('a scheduled reel with a cover on a channel without the cover scopes cannot change', function () {
     $post = reelWithCoverOnChannelWithoutCoverScopes();
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     expect(fn () => ChannelPermissions::ensureScheduledPostCanChange($post->socialAccount, $post->fresh(), $this->user))
         ->toThrow(ValidationException::class, __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]));
+});
+
+test('with the reel cover turned off, a reel with a cover schedules on the web, api and mcp and saves without its cover', function (string $surface) {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'read_insights', 'business_management']]);
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+
+    $response = pollParityUpdate($surface, $post, reelCoverChanges($surface, $post));
+
+    match ($surface) {
+        'mcp' => $response->assertOk(),
+        default => $response->assertSessionHasNoErrors(),
+    };
+    $post = $post->fresh();
+    expect($post->status)->toBe(Status::Scheduled)
+        ->and(data_get($post->media, '0.meta.cover'))->toBeNull();
+})->with(['web', 'api', 'mcp']);
+
+test('a reel with a cover on a channel granted the cover scopes schedules on the web, api and mcp and keeps its cover', function (string $surface) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->socialAccount->update(['scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'pages_read_user_content', 'pages_manage_engagement']]);
+
+    $response = pollParityUpdate($surface, $post, reelCoverChanges($surface, $post));
+
+    match ($surface) {
+        'mcp' => $response->assertOk(),
+        default => $response->assertSessionHasNoErrors(),
+    };
+    $post = $post->fresh();
+    expect($post->status)->toBe(Status::Scheduled)
+        ->and(data_get($post->media, '0.meta.cover.id'))->toBe('cover-1');
+})->with(['web', 'api', 'mcp']);
+
+test('rescheduling a reel with a cover on a channel without the cover scopes is refused and leaves it as it was', function () {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $at = now()->addDays(2)->startOfHour();
+    $post->update(['status' => Status::Scheduled, 'scheduled_at' => $at]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => now()->addDays(3)->startOfHour()->toIso8601String()])
+        ->assertSessionHasErrors(['media' => __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()])]);
+
+    $post->refresh();
+    expect($post->status)->toBe(Status::Scheduled)
+        ->and($post->scheduled_at->equalTo($at))->toBeTrue();
+});
+
+test('adding a reel with a cover on a channel without the cover scopes to the queue is refused and leaves it a draft', function (string $action) {
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $schedule = collect(range(0, 6))->reduce(fn (PostingSchedule $schedule, int $day): PostingSchedule => $schedule->withTime($day, '12:00'), PostingSchedule::empty());
+    $post->socialAccount->update(['posting_schedule' => $schedule]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => $action])
+        ->assertSessionHasErrors(['media' => __('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()])]);
+
+    expect($post->fresh())
+        ->status->toBe(Status::Draft)
+        ->scheduled_at->toBeNull();
+})->with(['queue_next', 'queue_top']);
+
+test('an approver who cannot reconnect the channel is told an admin needs to when approving a reel with a cover', function () {
+    $approver = workspaceMember($this->workspace);
+    $post = reelWithCoverOnChannelWithoutCoverScopes();
+    $post->forceFill([
+        'user_id' => workspaceMember($this->workspace, 'approval')->id,
+        'status' => Status::PendingApproval,
+        'schedule_mode' => ScheduleMode::Custom,
+        'scheduled_at' => now()->addDay(),
+        'approval_requested_at' => now(),
+    ])->save();
+
+    $this->actingAs($approver)->putJson(route('app.posts.approve', $post))->assertUnprocessable()
+        ->assertJsonValidationErrors(['media' => __('channels.permissions.facebook_reel_cover.member_message', ['network' => Platform::Facebook->label()])]);
+
+    expect($post->fresh()->status)->toBe(Status::PendingApproval);
 });
