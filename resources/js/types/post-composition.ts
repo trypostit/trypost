@@ -75,7 +75,14 @@ export interface ComposerInitialDraft {
 }
 
 export type DestinationOverride = Partial<
-    Pick<DestinationDraft, 'content' | 'media' | 'content_type' | 'meta'>
+    Pick<DestinationDraft, 'content' | 'media' | 'content_type' | 'meta'> & {
+        /**
+         * The shared media as the media editor changed it for this network,
+         * each item matched to a shared one by its `original`: kept while the
+         * text is shared, so the media a network edited never reaches the others.
+         */
+        media_edits: MediaItem[];
+    }
 >;
 
 export interface NetworkGroup {

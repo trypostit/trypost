@@ -62,10 +62,13 @@ export interface AutosaveMediaRef {
     source?: MediaSource;
     source_meta?: Record<string, SourceMetaValue>;
     meta?: Record<string, unknown> | null;
+    /** The item as it was added, before the media editor changed it for a network. */
+    original?: AutosaveMediaRef;
 }
 
-export type AutosaveOverride = Omit<DestinationOverride, 'media'> & {
+export type AutosaveOverride = Omit<DestinationOverride, 'media' | 'media_edits'> & {
     media?: AutosaveMediaRef[];
+    media_edits?: AutosaveMediaRef[];
 };
 
 /** The shape of a saved draft; a draft of another version is not offered back. */
@@ -97,6 +100,7 @@ export const toAutosaveMedia = (item: MediaItem): AutosaveMediaRef => ({
     meta: item.meta ?? null,
     ...(item.source ? { source: item.source } : {}),
     ...(item.source_meta ? { source_meta: item.source_meta } : {}),
+    ...(item.original ? { original: toAutosaveMedia(item.original) } : {}),
 });
 
 export const fromAutosaveMedia = (media: AutosaveMediaRef): MediaItem => ({
@@ -113,6 +117,7 @@ export const fromAutosaveMedia = (media: AutosaveMediaRef): MediaItem => ({
     ...(media.meta ? { meta: media.meta as MediaItem['meta'] } : {}),
     ...(media.source ? { source: media.source } : {}),
     ...(media.source_meta ? { source_meta: media.source_meta } : {}),
+    ...(media.original ? { original: fromAutosaveMedia(media.original) } : {}),
 });
 
 export const isExpiredUpload = (

@@ -109,6 +109,7 @@ import { useCanHover } from '@/composables/useCanHover';
 import {
     AUTOSAVE_VERSION,
     type AutosaveMediaRef,
+    type AutosaveOverride,
     type AutosaveSnapshot,
     fromAutosaveMedia,
     isExpiredUpload,
@@ -224,6 +225,7 @@ import type {
     ComposerAccount,
     ComposerInitialDraft,
     ComposerInitialPost,
+    DestinationOverride,
     NetworkGroup,
     PostComposition,
     SubmitPostComposition,
@@ -1998,6 +2000,7 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
         changes,
         indexes: target.indexes,
         items: () => editorMedia(target.groupKey, target.replyKey),
+        keepsOriginal: true,
         write: (items) => {
             if (target.groupKey !== null && target.replyKey !== null) {
                 setReplyMedia(target.groupKey, target.replyKey, () => items);
@@ -2134,19 +2137,33 @@ const resumeOpen = ref(
                 resumeMediaCount.value,
         ),
 );
+/** A network's override as the draft keeps it: its media lists as stored references. */
+const autosaveOverride = ({
+    media,
+    media_edits: mediaEdits,
+    ...override
+}: DestinationOverride): AutosaveOverride => {
+    const stored: AutosaveOverride = { ...override };
+
+    if (media) {
+        stored.media = media.map(toAutosaveMedia);
+    }
+
+    if (mediaEdits) {
+        stored.media_edits = mediaEdits.map(toAutosaveMedia);
+    }
+
+    return stored;
+};
 const autosaveSnapshot = (): AutosaveSnapshot => ({
     version: AUTOSAVE_VERSION,
     savedAt: dayjs().toISOString(),
     content: composition.content.value,
     overrides: Object.fromEntries(
-        Object.entries(composition.overrides.value).map(
-            ([id, { media, ...override }]) => [
-                id,
-                media
-                    ? { ...override, media: media.map(toAutosaveMedia) }
-                    : override,
-            ],
-        ),
+        Object.entries(composition.overrides.value).map(([id, override]) => [
+            id,
+            autosaveOverride(override),
+        ]),
     ),
     accountIds: [...composition.selectedAccountIds.value],
     media: composition.media.value.map(toAutosaveMedia),
@@ -2198,6 +2215,23 @@ const resumeUnfinishedPost = (): void => {
         items
             .filter((item) => !isExpiredUpload(item, retentionHours))
             .map(fromAutosaveMedia);
+    const restoredOverride = ({
+        media,
+        media_edits: mediaEdits,
+        ...override
+    }: AutosaveOverride): DestinationOverride => {
+        const restored: DestinationOverride = { ...override };
+
+        if (Array.isArray(media)) {
+            restored.media = restoreMedia(media);
+        }
+
+        if (Array.isArray(mediaEdits)) {
+            restored.media_edits = restoreMedia(mediaEdits);
+        }
+
+        return restored;
+    };
     [...composition.selectedAccountIds.value].forEach((id) =>
         composition.toggleAccount(id),
     );
@@ -2211,12 +2245,7 @@ const resumeUnfinishedPost = (): void => {
     composition.overrides.value = Object.fromEntries(
         Object.entries(snapshot.overrides)
             .filter(([id]) => selectedIds.includes(id))
-            .map(([id, { media, ...override }]) => [
-                id,
-                Array.isArray(media)
-                    ? { ...override, media: restoreMedia(media) }
-                    : override,
-            ]),
+            .map(([id, override]) => [id, restoredOverride(override)]),
     );
     composition.normalizeGroups();
     forgetPolls();
@@ -2870,6 +2899,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                     :suggested="suggestionsFor(null)"
                                     :item-errors="mediaErrorsFor(null)"
                                     :content-types="editorContentTypes(null)"
+                                    editing-locked
                                     :disabled="cropUploading"
                                     @update:suggested="setSuggestions(null, $event)"
                                     @update:items="updateMedia"

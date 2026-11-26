@@ -501,7 +501,7 @@ function mediaEditorTileSrc(mixed $page, string $prefix, int $index): ?string
     return $page->script("document.querySelector('[data-testid=\"{$prefix}-media-item-{$index}\"] img')?.dataset.originalSrc ?? null");
 }
 
-test('step 1 tiles offer the buttons the selected channels support', function () {
+test('step 1 tiles of a post for several networks offer no editor', function () {
     $user = mediaEditorComposerUser();
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id]);
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
@@ -511,7 +511,7 @@ test('step 1 tiles offer the buttons the selected channels support', function ()
         ['name' => 'brochure.pdf', 'type' => 'application/pdf', 'base64' => base64_encode("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF")],
     ]);
 
-    expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0', 'composer-tag-0', 'composer-alt-0', 'composer-edit-0'])
+    expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0'])
         ->and(mediaEditorTileButtons($page, 'composer', 1))->toBe(['composer-remove-1'])
         ->and(mediaEditorTileButtons($page, 'composer', 2))->toBe(['composer-remove-2']);
     $page->assertNoJavaScriptErrors();
@@ -563,50 +563,72 @@ function mediaEditorSavedAltTexts(SocialAccount ...$accounts): array
     ])->all();
 }
 
-test('alt text is offered only once a channel is selected', function () {
+/**
+ * Adds a channel to the open composer.
+ */
+function addMediaEditorAccount(mixed $page, SocialAccount $account): void
+{
+    if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]'))")) {
+        $page->click('@composer-add-account');
+    }
+    $page->click("@composer-account-option-{$account->id}");
+}
+
+test('media is edited only once a channel is selected', function () {
     $user = mediaEditorComposerUser();
     $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $page = openMediaEditorComposer($user, [], [mediaEditorPng('photo.png')]);
 
-    expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0', 'composer-edit-0']);
-    $page->click('@composer-edit-0');
-    waitForState($page, '@crop-aspect-freeform', 'true');
-    $page->assertMissing('@media-editor-alt-tab')
-        ->click('@media-editor-cancel');
-    waitForGone($page, '@media-editor');
+    expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0']);
 
-    if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$linkedin->id}\"]'))")) {
-        $page->click('@composer-add-account');
-    }
-    $page->click("@composer-account-option-{$linkedin->id}");
+    addMediaEditorAccount($page, $linkedin);
     waitForState($page, "@composer-{$linkedin->id}-alt-0", 'true');
 
     expect(mediaEditorTileButtons($page, "composer-{$linkedin->id}", 0))->toBe(["composer-{$linkedin->id}-remove-0", "composer-{$linkedin->id}-alt-0", "composer-{$linkedin->id}-edit-0"]);
     $page->assertNoJavaScriptErrors();
 });
 
-test('a step 1 alt text is saved on every channel', function () {
+test('an alt text written for one network stays with it, and a network added later starts without one', function () {
     $user = mediaEditorComposerUser();
     $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
-    $page = openMediaEditorComposer($user, [$first, $second], [mediaEditorPng('photo.png')]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
-    applyMediaEditorAltText($page, 'composer', 'Four coloured squares');
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Four coloured squares');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-0');
     saveMediaEditorDraft($page);
 
     expect(mediaEditorSavedAltTexts($first, $second))->toBe([
         $first->id => 'Four coloured squares',
-        $second->id => 'Four coloured squares',
+        $second->id => null,
     ]);
 });
 
-test('a step 2 alt text stays on its channel and the others keep the shared one', function () {
+test('removing the network added later gives the first one back its edits', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'Four coloured squares');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-0');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, "@composer-{$first->id}-alt-0");
+    $page->click("@composer-{$first->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Four coloured squares');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a step 2 alt text stays on its channel', function () {
     $user = mediaEditorComposerUser();
     $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
     $page = openMediaEditorComposer($user, [$first, $second], [mediaEditorPng('photo.png')]);
 
-    applyMediaEditorAltText($page, 'composer', 'Shared description');
     $page->click('@composer-next')
         ->click("@composer-account-{$first->id}");
     applyMediaEditorAltText($page, "composer-{$first->id}", 'First channel description');
@@ -615,51 +637,92 @@ test('a step 2 alt text stays on its channel and the others keep the shared one'
     waitForState($page, "@composer-{$second->id}-alt-0", 'true');
     $page->click("@composer-{$second->id}-alt-0");
     waitForState($page, '@media-editor-alt-text', 'true');
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Shared description');
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('');
     $page->click('@media-editor-cancel');
     saveMediaEditorDraft($page);
 
     expect(mediaEditorSavedAltTexts($first, $second))->toBe([
         $first->id => 'First channel description',
-        $second->id => 'Shared description',
+        $second->id => null,
     ]);
 });
 
-test('a step 1 edit replaces the shared item in place and every post owns its own file', function () {
+test('an image edited for one network reaches a network added later as it was uploaded', function () {
     $user = mediaEditorComposerUser();
     $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
     $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
-    $page = openMediaEditorComposer($user, [$first, $second], [mediaEditorPng('first.png'), mediaEditorPng('second.png')]);
-    $originals = Media::query()->where('collection', Media::COLLECTION_UPLOADS)->orderBy('original_filename')->get()->keyBy('original_filename');
-    $firstSrc = mediaEditorTileSrc($page, 'composer', 0);
-    $secondSrc = mediaEditorTileSrc($page, 'composer', 1);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('first.png'), mediaEditorPng('second.png')]);
+    $firstSrc = mediaEditorTileSrc($page, "composer-{$first->id}", 0);
+    $secondSrc = mediaEditorTileSrc($page, "composer-{$first->id}", 1);
 
-    $page->click('@composer-edit-1');
+    $page->click("@composer-{$first->id}-edit-1");
     waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     $page->click('@media-editor-rotate-right');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
     waitForGone($page, '@media-editor');
-    waitForState($page, '@composer-save-draft', 'element.disabled === false');
+    waitForState($page, "@composer-{$first->id}-media-item-1 img", "element.dataset.originalSrc !== '{$secondSrc}'");
+    $editedSrc = mediaEditorTileSrc($page, "composer-{$first->id}", 1);
+
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-1');
 
     expect(mediaEditorTileSrc($page, 'composer', 0))->toBe($firstSrc)
-        ->and(mediaEditorTileSrc($page, 'composer', 1))->not->toBe($secondSrc)
-        ->and(mediaEditorTileSrc($page, 'composer', 1))->not->toBeNull();
+        ->and(mediaEditorTileSrc($page, 'composer', 1))->toBe($secondSrc);
 
-    $page->click('@composer-save-draft');
-    waitForGone($page, '@post-composer-dialog');
+    $page->click('@composer-next')
+        ->click("@composer-account-{$first->id}");
+    waitFor($page, "@composer-{$first->id}-media-item-1");
+    expect(mediaEditorTileSrc($page, "composer-{$first->id}", 1))->toBe($editedSrc);
+    $page->click("@composer-account-{$second->id}");
+    waitFor($page, "@composer-{$second->id}-media-item-1");
+    expect(mediaEditorTileSrc($page, "composer-{$second->id}", 1))->toBe($secondSrc);
+    saveMediaEditorDraft($page);
 
-    $posts = Post::query()->whereIn('social_account_id', [$first->id, $second->id])->get();
-    expect($posts)->toHaveCount(2);
-    $paths = [];
-    foreach ($posts as $post) {
-        $owned = $post->ownedMedia()->orderBy('order')->get();
-        expect($owned)->toHaveCount(2)
-            ->and($owned[1]->path)->not->toBe($originals['second.png']->path)
-            ->and($owned[1]->original_filename)->not->toBe('second.png');
-        $paths = [...$paths, ...$owned->pluck('path')->all()];
-    }
-    expect(array_unique($paths))->toHaveCount(4);
+    $firstOwned = Post::query()->where('social_account_id', $first->id)->sole()->ownedMedia()->orderBy('order')->get();
+    $secondOwned = Post::query()->where('social_account_id', $second->id)->sole()->ownedMedia()->orderBy('order')->get();
+
+    expect($firstOwned)->toHaveCount(2)
+        ->and($secondOwned)->toHaveCount(2)
+        ->and($firstOwned[1]->original_filename)->not->toBe('second.png')
+        ->and($secondOwned[1]->original_filename)->toBe('second.png')
+        ->and(array_unique([...$firstOwned->pluck('path')->all(), ...$secondOwned->pluck('path')->all()]))->toHaveCount(4)
+        ->and(Media::query()->whereNull('post_id')->where('original_filename', 'second.png')->exists())->toBeFalse()
+        ->and(collect(Post::query()->where('social_account_id', $first->id)->sole()->media)->contains(fn (array $item): bool => array_key_exists('original', $item)))->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('media added at step 1 after a network kept its edits reaches every network', function () {
+    $user = mediaEditorComposerUser();
+    $first = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $second = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id]);
+    $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('first.png')]);
+
+    applyMediaEditorAltText($page, "composer-{$first->id}", 'First image');
+    addMediaEditorAccount($page, $second);
+    waitFor($page, '@composer-media-item-0');
+    $page->script(<<<'JS'
+        (() => {
+            const input = document.querySelector('[data-testid="composer-file-input"]');
+            const transfer = new DataTransfer();
+            const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (character) => character.charCodeAt(0));
+            transfer.items.add(new File([bytes], 'later.png', { type: 'image/png' }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })();
+    JS);
+    waitForCount($page, '@composer-media-item', 2);
+    waitForGone($page, '@composer-upload-item');
+    saveMediaEditorDraft($page);
+
+    $first = Post::query()->where('social_account_id', $first->id)->sole();
+    $second = Post::query()->where('social_account_id', $second->id)->sole();
+
+    expect(collect($first->media)->pluck('original_filename')->all())->toBe(['first.png', 'later.png'])
+        ->and(collect($second->media)->pluck('original_filename')->all())->toBe(['first.png', 'later.png'])
+        ->and(data_get($first->media, '0.meta.alt_text'))->toBe('First image')
+        ->and(data_get($second->media, '0.meta.alt_text'))->toBeNull();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('a step 2 edit replaces only that channel\'s item and leaves the shared list alone', function () {
@@ -1046,6 +1109,52 @@ test('a frame moved before picking image without uploading one is saved as a fra
     expect(data_get($meta, 'cover_source'))->toBe('frame')
         ->and(data_get($meta, 'cover_offset_ms'))->toBe(1500)
         ->and(data_get($meta, 'cover.id'))->not->toBe('cover-1');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a frame cover picked for youtube stays with it, and facebook added later starts without one', function () {
+    $user = mediaEditorComposerUser();
+    $youtube = SocialAccount::factory()->youtube()->create(['workspace_id' => $user->current_workspace_id]);
+    $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $user->current_workspace_id]);
+    $mp4 = base64_encode((string) file_get_contents(base_path('tests/fixtures/sample.mp4')));
+    $webm = base64_encode((string) file_get_contents(base_path('tests/fixtures/cover-3s.webm')));
+    $page = openMediaEditorComposer($user, [$youtube], [['name' => 'clip.mp4', 'type' => 'video/mp4', 'base64' => $mp4]]);
+    $page->script(<<<JS
+        (() => {
+            const clip = 'data:video/webm;base64,{$webm}';
+            const property = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+            Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+                configurable: true,
+                get() { return property.get.call(this); },
+                set(value) { return property.set.call(this, String(value).includes('/storage/') ? clip : value); },
+            });
+        })();
+    JS);
+
+    $page->click("@composer-{$youtube->id}-edit-0");
+    waitForState($page, '@media-editor-cover', 'Number(element.max) > 0.5');
+    $page->script(<<<'JS'
+        (() => {
+            const slider = document.querySelector('[data-testid="media-editor-cover"]');
+            slider.value = '0.5';
+            slider.dispatchEvent(new Event('input', { bubbles: true }));
+        })();
+    JS);
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    waitForGone($page, '@media-editor');
+
+    addMediaEditorAccount($page, $facebook);
+    waitFor($page, '@composer-media-item-0');
+    saveMediaEditorDraft($page);
+
+    $youtubeMeta = data_get(Post::query()->where('social_account_id', $youtube->id)->sole()->media, '0.meta');
+    $facebookMeta = data_get(Post::query()->where('social_account_id', $facebook->id)->sole()->media, '0.meta');
+
+    expect(data_get($youtubeMeta, 'cover.id'))->not->toBeNull()
+        ->and(data_get($youtubeMeta, 'cover_offset_ms'))->toBe(500)
+        ->and(data_get($facebookMeta, 'cover'))->toBeNull()
+        ->and(data_get($facebookMeta, 'cover_offset_ms'))->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 

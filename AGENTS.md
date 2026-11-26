@@ -1285,6 +1285,9 @@ An Instagram feed post or reel (both logins) takes one thread reply, published a
 - Step 1 is one shared editor. "Customize for each network" opens one card per network, in channel-list order, grouped by `platform`; each card starts as a copy of the shared text.
 - Going back to step 1 discards every per-network override, including post type and settings.
 - Settings in `ACCOUNT_SCOPED_SETTINGS` (Pinterest, Discord, TikTok) stay per account; every other meta fans out to all accounts of the network.
+- **Media is edited for one network at a time** (owner decision November 2026). Each network takes its own crop, alt text, tagged people and cover, so step 1 offers no media editor while it holds several networks or none (`MediaTray`'s `editing-locked`); the editor opens in a network's card, with one network selected or after "Customize for each network".
+    - An edit belongs to the network it was made on. With one network the edited items sit in the shared media, each keeping the item as it was added (`MediaItem.original`, set by `useMediaEditSwap`'s `keepsOriginal`). When a second network joins, those items move to the first network's `media_edits` (matched to a shared item by their `original`) and the shared media goes back to the items as added (`lib/mediaEdits.ts`), so the new network starts with the original file and no alt text, tags or cover. Removing networks back to one gives its edits back; customizing seeds each card with its edits.
+    - `original` never leaves the composer: `materialize()` strips it, so the server only gets the files each post uses. An original no post uses stays a temporary upload and is pruned with the others (`PruneTemporaryUploads`). The browser draft keeps `original` and `media_edits` (`useComposerAutosave`).
 
 ## Link preview card
 

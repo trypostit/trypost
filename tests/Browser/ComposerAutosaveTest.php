@@ -559,3 +559,44 @@ test('the sidebar new button marks only a draft the composer offers back, not on
     'a disconnected channel' => [fn (SocialAccount $account): array => ['accountIds' => [(string) Str::uuid()]], false],
     'an expired upload' => [fn (SocialAccount $account): array => ['media' => [['id' => 'expired', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/expired.png', 'type' => 'image', 'mime_type' => 'image/png']]], false],
 ]);
+
+test('resume keeps the media a network edited with that network and the shared media as it was added', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $photo = ['id' => 'photo', 'upload_token' => null, 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+
+    $page = visit(route('app.posts.index'));
+    $draft = composerAutosaveJs($user, $workspace);
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited for one network',
+        'accountIds' => [$linkedin->id, $x->id],
+        'media' => [$photo],
+        'overrides' => [
+            $linkedin->id => ['media_edits' => [[...$photo, 'id' => 'photo-cropped', 'url' => '/images/photo-cropped.png', 'meta' => ['alt_text' => 'Kept for LinkedIn'], 'original' => $photo]]],
+        ],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, '@composer-media-item-0');
+    waitForCondition($page, "{$draft}?.overrides?.['{$linkedin->id}']?.media_edits?.[0]?.original?.id === 'photo'");
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$linkedin->id}");
+    waitFor($page, "@composer-{$linkedin->id}-alt-0");
+    $page->click("@composer-{$linkedin->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Kept for LinkedIn');
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('');
+    $page->assertNoJavaScriptErrors();
+});

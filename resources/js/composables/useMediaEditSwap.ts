@@ -109,7 +109,9 @@ export const withMediaAdded = (
 /**
  * Applies media editor changes to a list: pixel edits upload as temporary
  * uploads, then every edited item replaces the one still at its index. On a
- * failed upload nothing is replaced and `failed` is set.
+ * failed upload nothing is replaced and `failed` is set. With `keepsOriginal`
+ * each edited item keeps the item as it was first added (`original`), so a
+ * network added later starts from it.
  */
 export const useMediaEditSwap = (): {
     uploading: Ref<boolean>;
@@ -119,6 +121,7 @@ export const useMediaEditSwap = (): {
         indexes: number[];
         items: () => MediaItem[];
         write: (items: MediaItem[]) => void;
+        keepsOriginal?: boolean;
     }) => Promise<void>;
 } => {
     const uploading = ref(false);
@@ -129,11 +132,13 @@ export const useMediaEditSwap = (): {
         indexes,
         items,
         write,
+        keepsOriginal = false,
     }: {
         changes: MediaEditChange[];
         indexes: number[];
         items: () => MediaItem[];
         write: (items: MediaItem[]) => void;
+        keepsOriginal?: boolean;
     }): Promise<void> => {
         if (changes.length === 0) return;
         uploading.value = true;
@@ -148,8 +153,11 @@ export const useMediaEditSwap = (): {
             const next = [...items()];
             for (const { change, item } of edited) {
                 const position = indexes[change.index];
-                if (next[position]?.id !== change.media.id) continue;
-                next[position] = item;
+                const current = next[position];
+                if (current?.id !== change.media.id) continue;
+                next[position] = keepsOriginal
+                    ? { ...item, original: current.original ?? current }
+                    : item;
             }
             write(next);
         } catch {

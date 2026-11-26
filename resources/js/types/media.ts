@@ -24,6 +24,12 @@ export interface MediaItem {
     created_at?: string;
     source?: MediaSource;
     source_meta?: Record<string, SourceMetaValue>;
+    /**
+     * The item as it was added, before the media editor changed it for a
+     * network. Composer only: a network added later starts from it, and it
+     * is never sent to the server.
+     */
+    original?: MediaItem;
     meta?: {
         width?: number;
         height?: number;

@@ -50,6 +50,12 @@ const props = defineProps<{
     itemErrors?: Record<number, string>;
     /** Hides the add tile; files reach the tray from elsewhere. */
     itemsOnly?: boolean;
+    /**
+     * Offers no editor: the shared media of a post for several networks is
+     * edited in each network's card, so an edit never reaches a network it
+     * was not made for.
+     */
+    editingLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -80,9 +86,13 @@ const takesCoverImage = computed(() =>
 
 /** The items as the tiles draw them, without an uploaded cover no network of the post shows. */
 const tileItems = computed(() => withCoversFor(props.items, takesCoverImage.value));
-const itemTabs = computed<EditorTab[][]>(() =>
-    props.items.map((item) => editorTabsFor(item, editorRules.value)),
-);
+const itemTabs = computed<EditorTab[][]>(() => {
+    if (props.editingLocked) {
+        return props.items.map(() => []);
+    }
+
+    return props.items.map((item) => editorTabsFor(item, editorRules.value));
+});
 
 const page = usePage<SharedData>();
 const canvaOption = computed(() =>
