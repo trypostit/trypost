@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Começar teste grátis',
         'terms' => 'Sem cartão de crédito',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Uma oferta especial para você 💜',
+        'price' => 'Grátis',
+        'period' => 'por 7 dias',
+        'checkout_button' => 'Começar teste grátis',
+        'terms' => 'Depois, R$ 49,50/mês por 3 meses. Cancele quando quiser',
+    ],
 ];

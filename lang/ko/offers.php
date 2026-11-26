@@ -29,4 +29,12 @@ return [
         'checkout_button' => '무료 체험 시작',
         'terms' => '신용카드가 필요 없습니다',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => '당신만을 위한 특별 혜택 💜',
+        'price' => '무료',
+        'period' => '7일 동안',
+        'checkout_button' => '무료 체험 시작',
+        'terms' => '이후 3개월간 $9.50/월. 언제든지 해지 가능',
+    ],
 ];

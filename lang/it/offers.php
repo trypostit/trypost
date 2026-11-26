@@ -29,4 +29,12 @@ return [
         'checkout_button' => 'Inizia la prova gratis',
         'terms' => 'Nessuna carta di credito richiesta',
     ],
+    'bipcom' => [
+        'name' => 'BuildinPublic.com',
+        'headline' => 'Un\'offerta speciale per te 💜',
+        'price' => 'Gratis',
+        'period' => 'per 7 giorni',
+        'checkout_button' => 'Inizia la prova gratis',
+        'terms' => 'Poi $9.50/mese per 3 mesi. Disdici quando vuoi',
+    ],
 ];
