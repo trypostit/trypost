@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Social\SocialPublishException;
 use Exception;
 
 /**
@@ -15,6 +16,9 @@ use Exception;
 class PlatformUnavailableException extends Exception
 {
     /**
+     * A `failure` is what the post fails with once the retries are spent,
+     * in place of the generic "stayed unavailable" message.
+     *
      * @param  array<string, mixed>  $context
      */
     public function __construct(
@@ -23,6 +27,7 @@ class PlatformUnavailableException extends Exception
         public array $context = [],
         public ?int $retryDelaySeconds = null,
         public ?int $maxRetries = null,
+        public ?SocialPublishException $failure = null,
     ) {
         parent::__construct($message);
     }

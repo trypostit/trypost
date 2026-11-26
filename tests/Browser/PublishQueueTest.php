@@ -404,6 +404,27 @@ test('more times extends the queue range', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('a post the network kept refusing tells the user to duplicate it and shows the network message', function () {
+    [$user, , $channel] = publishQueueSetup();
+    $failed = Post::factory()->forAccount($channel)->failed()->create([
+        'error_message' => "Sorry! This site doesn't allow you to save Pins.",
+        'error_context' => ['category' => ErrorCategory::Refused->value],
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subDays(2),
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'sent']));
+    waitFor($page, "@post-card-{$failed->id}");
+
+    $page->click("@post-status-{$failed->id}");
+    waitFor($page, "@post-failure-{$failed->id}");
+
+    $page->assertSeeIn("@post-failure-reason-{$failed->id}", __('posts.publish.failure.categories.refused'))
+        ->assertSeeIn("@post-failure-details-{$failed->id}", "Sorry! This site doesn't allow you to save Pins.")
+        ->assertNoJavaScriptErrors();
+});
+
 test('a failed post is listed in sent with its failed badge and actions', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
     $failed = Post::factory()->forAccount($channel)->failed()->create([

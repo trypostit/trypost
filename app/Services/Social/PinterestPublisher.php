@@ -27,6 +27,15 @@ class PinterestPublisher
 {
     use HasSocialHttpClient;
 
+    /**
+     * Pinterest sometimes refuses a pin with code 1 ("Sorry! This site
+     * doesn't allow you to save Pins.") and accepts the same pin minutes
+     * later. Each retry runs the whole publish again, uploads included.
+     */
+    private const int REFUSED_PIN_RETRY_DELAY_SECONDS = 120;
+
+    private const int REFUSED_PIN_MAX_RETRIES = 5;
+
     private string $baseUrl;
 
     public function __construct()
@@ -104,6 +113,16 @@ class PinterestPublisher
         $response = $this->socialHttp()->withToken($account->access_token)
             ->post($this->baseUrl.'/pins', $payload);
 
+        if ($this->isRefusedPin($response)) {
+            throw new PlatformUnavailableException(
+                "Pinterest refused the pin for now: {$response->body()}",
+                $response->status(),
+                retryDelaySeconds: self::REFUSED_PIN_RETRY_DELAY_SECONDS,
+                maxRetries: self::REFUSED_PIN_MAX_RETRIES,
+                failure: PinterestPublishException::refused($response),
+            );
+        }
+
         if ($response->failed()) {
             Log::error($failureLogMessage, [
                 'status' => $response->status(),
@@ -118,6 +137,15 @@ class PinterestPublisher
             'id' => $pinId,
             'url' => "https://pinterest.com/pin/{$pinId}",
         ];
+    }
+
+    private function isRefusedPin(Response $response): bool
+    {
+        if (! $response->badRequest()) {
+            return false;
+        }
+
+        return (int) $response->json('code') === 1;
     }
 
     private function publishImagePin(Post $post, ?string $content): array

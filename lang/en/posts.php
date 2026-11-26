@@ -1100,6 +1100,7 @@ return [
                 'timeout' => 'The network took too long to respond.',
                 'token_expired' => 'The channel\'s connection expired. Reconnect it to publish again.',
                 'job_failed' => 'Publishing stopped before the network confirmed the post.',
+                'refused' => 'The network refused this post every time we tried. To publish it, use Duplicate Post and schedule it again.',
             ],
         ],
         'goal' => ':sent/:goal posts sent this week',
