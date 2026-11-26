@@ -536,7 +536,19 @@ test('facebook publisher rejects an upload_url outside the rupload host', functi
     'plain http' => 'http://rupload.facebook.com/video-upload/v25.0/video_123',
     'userinfo trick' => 'https://rupload.facebook.com@evil.example/video-upload/v25.0/video_123',
     'not a url' => 'video_123',
+    'malformed host' => 'https://rupload facebook.com/video-upload/v25.0/video_123',
 ]);
+
+test('facebook publisher does not start a video upload whose upload_url is not text', function (ContentType $contentType, string $edge) {
+    $this->post->update(['content_type' => $contentType, 'media' => facebookVideoMedia()]);
+
+    Http::fake([
+        "*/page_123/{$edge}" => Http::response(['video_id' => 'video_123', 'upload_url' => ['https://rupload.facebook.com/x']], 200),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(FacebookPublishException::class, 'Facebook did not start the video upload. Please try again.');
+})->with('facebook resumable video formats');
 
 test('facebook publisher trusts the rupload host from config', function () {
     config()->set('trypost.platforms.facebook.rupload_host', 'rupload.example.test');

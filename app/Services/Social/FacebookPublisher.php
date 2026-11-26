@@ -230,7 +230,7 @@ class FacebookPublisher
 
         $photoId = $response->json('id');
 
-        if ($response->failed() || blank($photoId)) {
+        if ($response->failed() || ! is_string($photoId) || blank($photoId)) {
             Log::error('Facebook image upload failed', [
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),
@@ -401,7 +401,7 @@ class FacebookPublisher
         $videoId = $response->json('video_id');
         $uploadUrl = $response->json('upload_url');
 
-        if (blank($videoId) || blank($uploadUrl)) {
+        if (blank($videoId) || ! is_string($uploadUrl) || blank($uploadUrl)) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook did not start the video upload. Please try again.',
                 category: ErrorCategory::ServerError,
@@ -411,7 +411,7 @@ class FacebookPublisher
 
         $this->assertRuploadUrl($uploadUrl);
 
-        return [(string) $videoId, (string) $uploadUrl];
+        return [(string) $videoId, $uploadUrl];
     }
 
     /**
@@ -420,9 +420,9 @@ class FacebookPublisher
      */
     private function assertRuploadUrl(string $uploadUrl): void
     {
-        $uri = Uri::of($uploadUrl);
+        $uri = rescue(fn (): Uri => Uri::of($uploadUrl), report: false);
 
-        if ($uri->scheme() !== 'https' || $uri->host() !== config('trypost.platforms.facebook.rupload_host')) {
+        if (blank($uri) || $uri->scheme() !== 'https' || $uri->host() !== config('trypost.platforms.facebook.rupload_host')) {
             throw new FacebookPublishException(
                 userMessage: 'Facebook returned an invalid upload URL.',
                 category: ErrorCategory::ServerError,
@@ -527,8 +527,8 @@ class FacebookPublisher
         $detail = data_get($status, 'processing_phase.error.message')
             ?? data_get($status, 'uploading_phase.error.message');
 
-        if (filled($detail)) {
-            return (string) $detail;
+        if (is_string($detail) && filled($detail)) {
+            return $detail;
         }
 
         if ($this->videoStatus($status)?->hasFailed() === true) {
@@ -639,7 +639,11 @@ class FacebookPublisher
             return null;
         }
 
-        return rescue(fn (): string => $this->coverJpeg($cover), report: false);
+        try {
+            return $this->coverJpeg($cover);
+        } catch (FacebookPublishException) {
+            return null;
+        }
     }
 
     /**
@@ -663,7 +667,7 @@ class FacebookPublisher
             return true;
         }
 
-        $videoStatus = $this->videoStatus($response->json('status', []));
+        $videoStatus = $this->videoStatus((array) $response->json('status'));
 
         if ($videoStatus?->hasFailed() === true) {
             throw new FacebookPublishException(
