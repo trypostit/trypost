@@ -31,10 +31,10 @@ class PinterestPublisher
      * Pinterest sometimes refuses a video pin with code 1 ("Sorry! This site
      * doesn't allow you to save Pins.") and accepts the same pin minutes
      * later. Each retry runs the whole publish again, upload included.
-     *
-     * @var list<int>
      */
-    private const array REFUSED_VIDEO_PIN_BACKOFF_SECONDS = [60, 120, 300, 600];
+    private const int REFUSED_VIDEO_PIN_RETRY_DELAY_SECONDS = 120;
+
+    private const int REFUSED_VIDEO_PIN_MAX_RETRIES = 5;
 
     private string $baseUrl;
 
@@ -117,7 +117,8 @@ class PinterestPublisher
             throw new PlatformUnavailableException(
                 "Pinterest refused the video pin for now: {$response->body()}",
                 $response->status(),
-                retryBackoffSeconds: self::REFUSED_VIDEO_PIN_BACKOFF_SECONDS,
+                retryDelaySeconds: self::REFUSED_VIDEO_PIN_RETRY_DELAY_SECONDS,
+                maxRetries: self::REFUSED_VIDEO_PIN_MAX_RETRIES,
             );
         }
 

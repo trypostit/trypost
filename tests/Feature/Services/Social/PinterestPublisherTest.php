@@ -1056,7 +1056,7 @@ test('pinterest publisher treats video processing timeout as platform unavailabl
     Sleep::assertSleptTimes(59);
 });
 
-test('pinterest publisher retries a video pin pinterest refuses with code 1 after 1, 2, 5 and 10 minutes', function () {
+test('pinterest publisher retries a video pin pinterest refuses with code 1 every 2 minutes, 5 times', function () {
     $this->post->update([
         'content_type' => ContentType::PinterestVideoPin,
         'media' => [[
@@ -1099,7 +1099,8 @@ test('pinterest publisher retries a video pin pinterest refuses with code 1 afte
     expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(function (PlatformUnavailableException $e) {
             expect($e->httpStatus)->toBe(400)
-                ->and($e->retryBackoffSeconds)->toBe([60, 120, 300, 600]);
+                ->and($e->retryDelaySeconds)->toBe(120)
+                ->and($e->maxRetries)->toBe(5);
         });
 });
 
