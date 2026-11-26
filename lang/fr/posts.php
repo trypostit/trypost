@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Image de la vidéo',
             'thumbnail_source_image' => 'Image',
             'thumbnail_image_hint' => 'Votre vidéo affiche cette image comme couverture. Utilisez une image 9:16 pour que rien ne soit coupé.',
+            'thumbnail_image_hint_own_ratio' => 'Votre vidéo affiche cette image comme couverture. Utilisez une image au format de votre vidéo pour que rien ne soit coupé.',
             'thumbnail_capture_failed' => 'Impossible de capturer cette image de la vidéo. Importez plutôt une image comme couverture.',
             'thumbnail_image_upload' => 'Importer une image',
             'thumbnail_image_replace' => 'Changer l\'image',

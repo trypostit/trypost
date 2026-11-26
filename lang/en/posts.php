@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Video frame',
             'thumbnail_source_image' => 'Image',
             'thumbnail_image_hint' => 'Your video shows this image as its cover. Use a 9:16 image so nothing gets cut off.',
+            'thumbnail_image_hint_own_ratio' => 'Your video shows this image as its cover. Use an image the shape of your video so nothing gets cut off.',
             'thumbnail_capture_failed' => 'Couldn\'t capture this frame. Upload an image as the cover instead.',
             'thumbnail_image_upload' => 'Upload image',
             'thumbnail_image_replace' => 'Replace image',

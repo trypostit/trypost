@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Frame video',
             'thumbnail_source_image' => 'Gambar',
             'thumbnail_image_hint' => 'Videomu menampilkan gambar ini sebagai sampul. Gunakan gambar 9:16 agar tidak ada yang terpotong.',
+            'thumbnail_image_hint_own_ratio' => 'Videomu menampilkan gambar ini sebagai sampul. Gunakan gambar dengan bentuk yang sama seperti videomu agar tidak ada yang terpotong.',
             'thumbnail_capture_failed' => 'Tidak dapat mengambil frame ini. Unggah gambar sebagai sampul.',
             'thumbnail_image_upload' => 'Unggah gambar',
             'thumbnail_image_replace' => 'Ganti gambar',

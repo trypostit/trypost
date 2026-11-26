@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Videoframe',
             'thumbnail_source_image' => 'Afbeelding',
             'thumbnail_image_hint' => 'Je video toont deze afbeelding als omslag. Gebruik een afbeelding van 9:16 zodat er niets wordt afgesneden.',
+            'thumbnail_image_hint_own_ratio' => 'Je video toont deze afbeelding als omslag. Gebruik een afbeelding in het formaat van je video zodat er niets wordt afgesneden.',
             'thumbnail_capture_failed' => 'Dit videoframe kon niet worden vastgelegd. Upload in plaats daarvan een afbeelding als omslag.',
             'thumbnail_image_upload' => 'Afbeelding uploaden',
             'thumbnail_image_replace' => 'Vervangen',

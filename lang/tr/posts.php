@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Video karesi',
             'thumbnail_source_image' => 'Görsel',
             'thumbnail_image_hint' => 'Videonuz bu görseli kapak olarak gösterir. Hiçbir yerin kesilmemesi için 9:16 bir görsel kullanın.',
+            'thumbnail_image_hint_own_ratio' => 'Videonuz bu görseli kapak olarak gösterir. Hiçbir yerin kesilmemesi için videonuzla aynı formatta bir görsel kullanın.',
             'thumbnail_capture_failed' => 'Bu kare yakalanamadı. Bunun yerine kapak olarak bir görsel yükleyin.',
             'thumbnail_image_upload' => 'Görsel yükle',
             'thumbnail_image_replace' => 'Görseli değiştir',

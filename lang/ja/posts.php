@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '動画のフレーム',
             'thumbnail_source_image' => '画像',
             'thumbnail_image_hint' => 'この画像が動画のカバーになります。切れないように9:16の画像を使ってください。',
+            'thumbnail_image_hint_own_ratio' => 'この画像が動画のカバーになります。切れないように動画と同じ形の画像を使ってください。',
             'thumbnail_capture_failed' => 'このフレームを取得できませんでした。代わりにカバー画像をアップロードしてください。',
             'thumbnail_image_upload' => '画像をアップロード',
             'thumbnail_image_replace' => '画像を変更',

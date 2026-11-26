@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '동영상 프레임',
             'thumbnail_source_image' => '이미지',
             'thumbnail_image_hint' => '이 이미지가 동영상 커버로 표시됩니다. 잘리지 않도록 9:16 이미지를 사용하세요.',
+            'thumbnail_image_hint_own_ratio' => '이 이미지가 동영상 커버로 표시됩니다. 잘리지 않도록 동영상과 같은 비율의 이미지를 사용하세요.',
             'thumbnail_capture_failed' => '이 프레임을 캡처하지 못했습니다. 대신 커버 이미지를 업로드하세요.',
             'thumbnail_image_upload' => '이미지 업로드',
             'thumbnail_image_replace' => '이미지 변경',

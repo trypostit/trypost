@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Klatka wideo',
             'thumbnail_source_image' => 'Obraz',
             'thumbnail_image_hint' => 'Twoje wideo pokazuje ten obraz jako okładkę. Użyj obrazu 9:16, aby nic nie zostało przycięte.',
+            'thumbnail_image_hint_own_ratio' => 'Twoje wideo pokazuje ten obraz jako okładkę. Użyj obrazu w formacie wideo, aby nic nie zostało przycięte.',
             'thumbnail_capture_failed' => 'Nie udało się przechwycić tej klatki. Prześlij obraz jako okładkę.',
             'thumbnail_image_upload' => 'Prześlij obraz',
             'thumbnail_image_replace' => 'Zmień obraz',

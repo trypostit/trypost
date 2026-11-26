@@ -8,7 +8,7 @@ import {
     newCoverImage,
 } from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
-import type { CropPresetValue } from '@/types/crop-preset';
+import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
 import type { CoverSource } from '@/types/media';
 import type { MediaEdit } from '@/types/media-editor';
 
@@ -98,6 +98,18 @@ const onImagePicked = (event: Event): void => {
         props.coverPreset,
     );
 };
+
+/**
+ * What an uploaded cover should look like: a cover kept at its own ratio (a
+ * Facebook feed video) asks for the video's shape, the others for 9:16.
+ */
+const imageHintKey = computed(() => {
+    if (props.coverPreset === CropPreset.Original) {
+        return 'posts.composer.media_editor.thumbnail_image_hint_own_ratio';
+    }
+
+    return 'posts.composer.media_editor.thumbnail_image_hint';
+});
 </script>
 
 <template>
@@ -107,7 +119,7 @@ const onImagePicked = (event: Event): void => {
                 {{ $t('posts.composer.media_editor.thumbnail_heading') }}
             </h3>
             <p v-if="showsImage" class="text-xs text-muted-foreground">
-                {{ $t('posts.composer.media_editor.thumbnail_image_hint') }}
+                {{ $t(imageHintKey) }}
             </p>
             <p v-else class="text-xs text-muted-foreground">
                 {{ $t('posts.composer.media_editor.thumbnail_hint') }}

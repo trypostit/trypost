@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '视频帧',
             'thumbnail_source_image' => '图片',
             'thumbnail_image_hint' => '你的视频会以这张图片作为封面。请使用 9:16 的图片，避免被裁切。',
+            'thumbnail_image_hint_own_ratio' => '你的视频会以这张图片作为封面。请使用与视频比例相同的图片，避免被裁切。',
             'thumbnail_capture_failed' => '无法截取这一帧。请改为上传一张图片作为封面。',
             'thumbnail_image_upload' => '上传图片',
             'thumbnail_image_replace' => '更换图片',

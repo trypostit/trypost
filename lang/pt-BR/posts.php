@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Quadro do vídeo',
             'thumbnail_source_image' => 'Imagem',
             'thumbnail_image_hint' => 'Seu vídeo mostra essa imagem como capa. Use uma imagem 9:16 para nada ser cortado.',
+            'thumbnail_image_hint_own_ratio' => 'Seu vídeo mostra essa imagem como capa. Use uma imagem no formato do vídeo para nada ser cortado.',
             'thumbnail_capture_failed' => 'Não foi possível capturar esse quadro. Envie uma imagem como capa.',
             'thumbnail_image_upload' => 'Enviar imagem',
             'thumbnail_image_replace' => 'Trocar imagem',

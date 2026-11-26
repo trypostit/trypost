@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Fotogramma',
             'thumbnail_source_image' => 'Immagine',
             'thumbnail_image_hint' => 'Il tuo video mostra questa immagine come copertina. Usa un\'immagine 9:16 così non viene tagliato nulla.',
+            'thumbnail_image_hint_own_ratio' => 'Il tuo video mostra questa immagine come copertina. Usa un\'immagine nel formato del video così non viene tagliato nulla.',
             'thumbnail_capture_failed' => 'Impossibile catturare questo fotogramma. Carica invece un\'immagine come copertina.',
             'thumbnail_image_upload' => 'Carica immagine',
             'thumbnail_image_replace' => 'Sostituisci',
