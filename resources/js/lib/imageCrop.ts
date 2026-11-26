@@ -1,11 +1,4 @@
-export type SourceRect = {
-    sx: number;
-    sy: number;
-    sw: number;
-    sh: number;
-};
-
-export type Corner = 'nw' | 'ne' | 'sw' | 'se';
+import type { Corner, SourceRect } from '@/types/image-crop';
 
 const ENCODABLE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 const EXTENSIONS: Record<string, string> = {

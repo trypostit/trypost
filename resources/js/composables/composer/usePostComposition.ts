@@ -2,6 +2,15 @@ import { computed, ref } from 'vue';
 
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
+import { blank, filled } from '@/lib/helpers';
+import {
+    isEditedMedia,
+    replacedEdit,
+    uneditedMedia,
+    withMediaEdits,
+    withoutCover,
+    withoutOriginal,
+} from '@/lib/mediaEdits';
 import type { MediaItem } from '@/types/media';
 import { Platform, type PlatformValue } from '@/types/platform';
 import {
@@ -59,14 +68,21 @@ export const usePostComposition = (
             .filter((account): account is ComposerAccount => Boolean(account)),
     );
 
+    /** A network's media: its own list once customized, else the shared items with its edits. */
+    const destinationMedia = (override: DestinationOverride): MediaItem[] => {
+        if (owns(override, 'media')) {
+            return override.media ?? [];
+        }
+
+        return withMediaEdits(media.value, override.media_edits ?? []);
+    };
+
     const resolvedDestination = (
         account: ComposerAccount,
     ): DestinationDraft & { content: string; media: MediaItem[] } => {
         const override = overrides.value[account.id] ?? {};
         const meta = override.meta ?? {};
-        const resolvedMedia = owns(override, 'media')
-            ? (override.media ?? [])
-            : media.value;
+        const resolvedMedia = destinationMedia(override);
 
         return {
             social_account_id: account.id,
@@ -129,6 +145,87 @@ export const usePostComposition = (
         };
     };
 
+    /**
+     * A network's media changed while the text is shared (an import landing in
+     * its card): with one network it is the shared media; with several, the
+     * shared media takes the items as added and the network keeps its edits.
+     */
+    const writeUncustomizedMedia = (
+        group: NetworkGroup,
+        items: MediaItem[],
+    ): void => {
+        if (networkGroups.value.length < 2) {
+            media.value = items;
+
+            return;
+        }
+
+        const edits = items.filter(isEditedMedia);
+        group.accounts.forEach((account) =>
+            writeOverride(account.id, { media_edits: edits }),
+        );
+        media.value = items.map(uneditedMedia);
+    };
+
+    /**
+     * A network's post type changed: its covers start over, since a cover
+     * picked for one type (a feed video's own ratio) may not fit another (a
+     * Reel's 9:16). With one network the covers sit in the shared media;
+     * otherwise in the network's own list or its edits.
+     */
+    const dropGroupCovers = (key: string): void => {
+        const group = groupFor(key);
+
+        if (!group) {
+            return;
+        }
+
+        if (networkGroups.value.length === 1) {
+            media.value = media.value.map(withoutCover);
+        }
+
+        group.accounts.forEach((account) => {
+            const override = overrides.value[account.id] ?? {};
+            const patch: DestinationOverride = {};
+
+            if (owns(override, 'media')) {
+                patch.media = (override.media ?? []).map(withoutCover);
+            }
+
+            if (owns(override, 'media_edits')) {
+                patch.media_edits = (override.media_edits ?? []).map(withoutCover);
+            }
+
+            if (filled(patch)) {
+                writeOverride(account.id, patch);
+            }
+        });
+    };
+
+    /**
+     * A shared item was replaced (an Edit in Canva landing at step 1): each
+     * network that edited it keeps its edit on the new file.
+     */
+    const replaceEditedMedia = (replaces: string, item: MediaItem): void => {
+        overrides.value = Object.fromEntries(
+            Object.entries(overrides.value).map(([accountId, override]) => {
+                if (!owns(override, 'media_edits')) {
+                    return [accountId, override];
+                }
+
+                return [
+                    accountId,
+                    {
+                        ...override,
+                        media_edits: (override.media_edits ?? []).map((edit) =>
+                            replacedEdit(edit, replaces, item),
+                        ),
+                    },
+                ];
+            }),
+        );
+    };
+
     const setGroupOverride = <K extends keyof DestinationOverride>(
         key: string,
         field: K,
@@ -158,7 +255,7 @@ export const usePostComposition = (
             return;
         }
         if (field === 'media' && !customizing.value) {
-            media.value = (value as MediaItem[] | undefined) ?? [];
+            writeUncustomizedMedia(group, (value as MediaItem[] | undefined) ?? []);
 
             return;
         }
@@ -168,10 +265,39 @@ export const usePostComposition = (
         );
     };
 
+    /** A field as another channel of the network takes it: a media list is copied, so two channels never share one array. */
+    const copiedField = <K extends keyof DestinationOverride>(
+        source: DestinationOverride,
+        field: K,
+    ): DestinationOverride[K] => {
+        const value = source[field];
+
+        if (Array.isArray(value)) {
+            return [...value] as DestinationOverride[K];
+        }
+
+        return value;
+    };
+
+    /** The media a group's posts get while the text is shared: the shared items with the group's edits. */
+    const editedSharedMedia = (group: NetworkGroup): MediaItem[] => {
+        const owner = firstOwner(group, 'media_edits');
+
+        if (!owner) {
+            return media.value;
+        }
+
+        return withMediaEdits(
+            media.value,
+            overrides.value[owner.id]?.media_edits ?? [],
+        );
+    };
+
     const unifyGroup = (group: NetworkGroup): void => {
         const fields: (keyof DestinationOverride)[] = [
             'content',
             'media',
+            'media_edits',
             'content_type',
             ...(ACCOUNT_SCOPED_SETTINGS.includes(group.platform)
                 ? []
@@ -187,10 +313,7 @@ export const usePostComposition = (
                 const own: DestinationOverride = { ...(next[account.id] ?? {}) };
                 if (source && owns(source, field)) {
                     Object.assign(own, {
-                        [field]:
-                            field === 'media'
-                                ? [...(source.media ?? [])]
-                                : source[field],
+                        [field]: copiedField(source, field),
                     });
                 } else {
                     delete own[field];
@@ -210,6 +333,8 @@ export const usePostComposition = (
         }
         if (mediaOwner) {
             media.value = overrides.value[mediaOwner.id]?.media ?? [];
+        } else {
+            media.value = editedSharedMedia(group);
         }
 
         const next = { ...overrides.value };
@@ -217,6 +342,7 @@ export const usePostComposition = (
             const rest = { ...(next[account.id] ?? {}) };
             delete rest.content;
             delete rest.media;
+            delete rest.media_edits;
             next[account.id] = rest;
         });
         overrides.value = next;
@@ -231,7 +357,7 @@ export const usePostComposition = (
                 : content.value;
             const groupMedia = mediaOwner
                 ? (overrides.value[mediaOwner.id]?.media ?? [])
-                : media.value;
+                : editedSharedMedia(group);
 
             group.accounts.forEach((account) =>
                 writeOverride(account.id, {
@@ -240,6 +366,24 @@ export const usePostComposition = (
                 }),
             );
         });
+    };
+
+    /**
+     * A second network joins a post edited for one: the edits stay with the
+     * network they were made on, and the shared media goes back to the items
+     * as they were added, which is what the new network starts from.
+     */
+    const keepEditsWith = (group: NetworkGroup): void => {
+        const edits = media.value.filter(isEditedMedia);
+
+        if (blank(edits)) {
+            return;
+        }
+
+        group.accounts.forEach((account) =>
+            writeOverride(account.id, { media_edits: edits }),
+        );
+        media.value = media.value.map(uneditedMedia);
     };
 
     const normalizeGroups = (): void => {
@@ -263,6 +407,10 @@ export const usePostComposition = (
         networkGroups.value.forEach(unifyGroup);
     };
 
+    /**
+     * Back to step 1 drops everything set per network, its media edits
+     * included, as the Back dialog says.
+     */
     const discardCustomization = (): void => {
         overrides.value = {};
     };
@@ -271,6 +419,9 @@ export const usePostComposition = (
         if (initial) {
             return;
         }
+
+        const [single] = networkGroups.value;
+        const wasSingle = networkGroups.value.length === 1;
 
         if (selectedAccountIds.value.includes(id)) {
             selectedAccountIds.value = selectedAccountIds.value.filter(
@@ -285,6 +436,14 @@ export const usePostComposition = (
             return;
         }
 
+        if (wasSingle && networkGroups.value.length > 1 && !customizing.value) {
+            keepEditsWith(single);
+        }
+
+        if (wasSingle && blank(networkGroups.value)) {
+            media.value = media.value.map(uneditedMedia);
+        }
+
         normalizeGroups();
     };
 
@@ -293,15 +452,20 @@ export const usePostComposition = (
         queue: QueuePositionValue | null = null,
     ): PostComposition => ({
         content: content.value,
-        media: [...media.value],
+        media: media.value.map(withoutOriginal),
         scheduled_at:
             status === PostStatus.Scheduled && !queue ? scheduledAt.value || null : null,
         queue: status === PostStatus.Scheduled ? queue : null,
         status,
         label_ids: [...labelIds.value],
-        destinations: selectedAccounts.value.map((account) =>
-            resolvedDestination(account),
-        ),
+        destinations: selectedAccounts.value.map((account) => {
+            const destination = resolvedDestination(account);
+
+            return {
+                ...destination,
+                media: destination.media.map(withoutOriginal),
+            };
+        }),
     });
 
     return {
@@ -318,6 +482,8 @@ export const usePostComposition = (
         networkGroups,
         customizing,
         setGroupOverride,
+        replaceEditedMedia,
+        dropGroupCovers,
         normalizeGroups,
         customize,
         discardCustomization,

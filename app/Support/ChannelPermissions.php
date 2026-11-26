@@ -160,15 +160,16 @@ class ChannelPermissions
      * The first feature needed to publish the post that the channel lacks a scope for.
      *
      * @param  array<string, mixed>|null  $meta
+     * @param  array<int, mixed>  $media
      */
-    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type): ?GatedFeature
+    public static function featureBlockingPost(?SocialAccount $account, ?array $meta, ContentType $type, array $media): ?GatedFeature
     {
         if (blank($account)) {
             return null;
         }
 
-        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type): bool {
-            if (! $feature->isRequiredToPublish($meta)) {
+        return Arr::first(GatedFeature::cases(), function (GatedFeature $feature) use ($account, $meta, $type, $media): bool {
+            if (! $feature->isRequiredToPublish($meta, $type, $media)) {
                 return false;
             }
 
@@ -183,14 +184,14 @@ class ChannelPermissions
     public static function ensureScheduledPostCanChange(SocialAccount $channel, Post $post, User $actor, ?string $field = null): void
     {
         $type = ContentType::forPost($post, $channel->platform);
-        $blocked = self::featureBlockingPost($channel, $post->meta, $type);
+        $blocked = self::featureBlockingPost($channel, $post->meta, $type, $post->media ?? []);
         if (filled($blocked)) {
             throw ValidationException::withMessages([
                 $field ?? $blocked->postValidationField() => self::reconnectMessage($channel->platform, $blocked, $actor->can('manageAccounts', $channel->workspace)),
             ]);
         }
 
-        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta)) {
+        if (! GatedFeature::ThreadReplies->isRequiredToPublish($post->meta, $type, $post->media ?? [])) {
             return;
         }
 

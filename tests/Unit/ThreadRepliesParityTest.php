@@ -59,10 +59,12 @@ test('the composer threads every network the way the server does', function () {
 function serverPermissionKeys(): array
 {
     $thread = ['thread_replies' => [['text' => 'Second', 'media' => []]]];
+    $videoWithCover = [['id' => 'video', 'url' => 'https://example.com/clip.mp4', 'type' => 'video', 'meta' => ['cover' => ['url' => 'https://example.com/cover.jpg']]]];
     $copy = [
         GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
         GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
         GatedFeature::Publish->value => ['publish', 'publish member'],
+        GatedFeature::FacebookReelCover->value => ['reconnect', 'ask an admin'],
     ];
     $cases = [
         'allowed' => [$thread, [], true],
@@ -71,12 +73,19 @@ function serverPermissionKeys(): array
         'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
         'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
         'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
+        'facebook_reel_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, $videoWithCover],
+        'reel_without_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, []],
+        'facebook_reel_cover_member' => [[], [GatedFeature::FacebookReelCover], false, ContentType::FacebookReel, $videoWithCover],
+        'reel_with_cover_without_url' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, [['id' => 'video', 'url' => 'https://example.com/clip.mp4', 'type' => 'video', 'meta' => ['cover' => []]]]],
+        'feed_video_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookPost, $videoWithCover],
     ];
 
     return collect($cases)->map(function (array $case) use ($copy): ?string {
         [$meta, $missing, $canReconnect] = $case;
+        $type = data_get($case, 3);
+        $media = data_get($case, 4, []);
         $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta) && collect($missing)->contains($feature));
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta, $type, $media) && collect($missing)->contains($feature));
 
         if (blank($feature)) {
             return null;

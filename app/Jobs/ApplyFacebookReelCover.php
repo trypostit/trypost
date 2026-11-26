@@ -1,0 +1,155 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Jobs;
+
+use App\Enums\Facebook\CoverFailure;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\FacebookPublishException;
+use App\Exceptions\TokenExpiredException;
+use App\Models\Post;
+use App\Services\Social\FacebookPublisher;
+use App\Support\Social\CoverRetry;
+use App\Support\Social\FacebookCover;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Throwable;
+
+/**
+ * Sends the cover image of a Reel Facebook has processed
+ * (`SetFacebookReelCover` waits for that) to `/{video-id}/thumbnails`. A
+ * failure a later try may fix is tried again after 1, 2, 5 and 10 minutes
+ * (`CoverRetry`); a cover Facebook refuses, or the last try failing, leaves a
+ * warning on the post, never a failure.
+ */
+class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
+{
+    use Queueable;
+
+    public int $tries = CoverRetry::TRIES;
+
+    /**
+     * The waits after a try that throws, like the ones the job releases itself.
+     *
+     * @var list<int>
+     */
+    public array $backoff = CoverRetry::BACKOFF_SECONDS;
+
+    public bool $deleteWhenMissingModels = true;
+
+    /**
+     * A try downloads the cover and uploads it, each of up to 120s
+     * (HasSocialHttpClient), and the HTTP client tries the upload up to three
+     * times on a 429. It stays under the Redis queue's 960s retry_after.
+     */
+    public int $timeout = 600;
+
+    public int $uniqueFor = 3600;
+
+    public function __construct(public Post $post)
+    {
+        $this->onQueue($post->platform->queue());
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->post->id;
+    }
+
+    public function handle(FacebookPublisher $publisher): void
+    {
+        $this->post->refresh();
+
+        if (! FacebookCover::isAwaitedBy($this->post)) {
+            return;
+        }
+
+        $channelFailure = FacebookCover::channelFailure($this->post);
+
+        if (filled($channelFailure)) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure($channelFailure));
+
+            return;
+        }
+
+        try {
+            $publisher->setReelCover($this->post);
+        } catch (PlatformUnavailableException $exception) {
+            $this->tryAgain(FacebookCover::unavailable($exception), $exception->retryDelaySeconds);
+
+            return;
+        } catch (TokenExpiredException) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::TokenExpired));
+
+            return;
+        } catch (FacebookPublishException $exception) {
+            $this->settle($exception);
+
+            return;
+        }
+
+        FacebookCover::forgetLastError($this->post);
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $post = Post::find($this->post->id);
+
+        if (filled($post) && FacebookCover::isAwaitedBy($post)) {
+            FacebookCover::recordGaveUp($post, CoverFailure::GaveUp);
+        }
+    }
+
+    /**
+     * A rate limit waits for its reset, and a server error or a cover that
+     * could not be downloaded is tried again; a cover that cannot be made a
+     * JPEG, or that Facebook refuses, never will be. A Reel Graph cannot load
+     * (code 100, subcode 33) gets the warning too: Graph answers the same for
+     * a lost permission as for a deleted video.
+     */
+    private function settle(FacebookPublishException $exception): void
+    {
+        if ($exception->isLimit()) {
+            $this->tryAgain(FacebookCover::retried($exception), CoverRetry::delayUntil($exception->retryAt));
+
+            return;
+        }
+
+        if ($exception->category === ErrorCategory::ServerError) {
+            $this->tryAgain(FacebookCover::retried($exception));
+
+            return;
+        }
+
+        if ($exception->category === ErrorCategory::MediaFormat) {
+            FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::InvalidImage, $exception));
+
+            return;
+        }
+
+        FacebookCover::recordWarning($this->post, FacebookCover::failure(CoverFailure::Refused, $exception));
+    }
+
+    /**
+     * Keeps what failed, so the warning left when the tries run out says it,
+     * and tries again after the next wait (`CoverRetry`). The last try gives
+     * up at once instead of waiting for a try that never comes.
+     *
+     * @param  array<string, int|string>  $lastError
+     */
+    private function tryAgain(array $lastError, ?int $networkDelaySeconds = null): void
+    {
+        FacebookCover::recordLastError($this->post, $lastError);
+
+        if ($this->attempts() >= $this->tries) {
+            FacebookCover::recordGaveUp($this->post, CoverFailure::GaveUp);
+
+            return;
+        }
+
+        $this->release(CoverRetry::delayAfter($this->attempts(), $networkDelaySeconds));
+    }
+}

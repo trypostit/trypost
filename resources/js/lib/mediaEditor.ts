@@ -4,39 +4,32 @@ import {
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
-import { filled } from '@/lib/helpers';
+import { filled, isNumber } from '@/lib/helpers';
 import {
     fullSelection,
     resolveOutputFileName,
     resolveOutputMime,
-    type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
-import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
+import {
+    CropPreset,
+    type CropPresetValue,
+    UNFIXED_CROP_PRESETS,
+} from '@/types/crop-preset';
+import type { ImageSize, SourceRect } from '@/types/image-crop';
+import type { CoverImage, CoverSource, MediaItem } from '@/types/media';
+import {
+    ADJUSTMENTS,
+    type CropPresetOption,
+    type EditorTab,
+    type FilterPreset,
+    type MediaEdit,
+} from '@/types/media-editor';
 
-export type CropPresetValue =
-    | 'freeform'
-    | 'original'
-    | '9:16'
-    | '2:3'
-    | '3:4'
-    | '4:5'
-    | '1:1'
-    | '4:3'
-    | '1.91:1'
-    | '16:9'
-    | '2:1';
-
-type FixedCropPresetValue = Exclude<CropPresetValue, 'freeform' | 'original'>;
-
-export type CropPreset = {
-    value: CropPresetValue;
-    ratio: number | null;
-    shape: 'freeform' | 'portrait' | 'square' | 'landscape';
-};
-
-export const FILTER_PRESETS = ['original', 'vivid', 'mono', 'sepia'] as const;
-export type FilterPreset = (typeof FILTER_PRESETS)[number];
+type FixedCropPresetValue = Exclude<
+    CropPresetValue,
+    typeof CropPreset.Freeform | typeof CropPreset.Original
+>;
 
 /** Each filter at an intensity from 0 (no effect) to 1 (full effect). */
 const FILTER_CSS: Record<FilterPreset, (intensity: number) => string> = {
@@ -47,53 +40,87 @@ const FILTER_CSS: Record<FilterPreset, (intensity: number) => string> = {
     sepia: (intensity) => `sepia(${intensity})`,
 };
 
-export const ADJUSTMENTS = [
-    'brightness',
-    'contrast',
-    'saturation',
-    'warmth',
-] as const;
-export type Adjustment = (typeof ADJUSTMENTS)[number];
+/** Instagram Reels, YouTube Shorts and Facebook Reels show a cover at 9:16 and crop anything else to its middle. */
+export const COVER_CROP_PRESET: CropPresetValue = CropPreset.Portrait9x16;
 
-export type MediaEdit = {
-    preset: CropPresetValue;
-    selection: SourceRect | null;
-    quarterTurns: number;
-    flipX: boolean;
-    flipY: boolean;
-    straighten: number;
-    filter: FilterPreset;
-    /** How strongly the filter applies, 0 to 100. */
-    filterIntensity: number;
-    adjustments: Record<Adjustment, number>;
-    altText: string;
-    userTags: MediaUserTag[];
-    coverOffsetMs: number | null;
-    coverImage: CoverImage | null;
-    coverSource: CoverSource;
+/**
+ * How an uploaded cover image is framed (`ContentType::coverCropPreset()`):
+ * at its own ratio only when every network taking it keeps that ratio (a
+ * Facebook feed video), else at 9:16.
+ */
+export const coverCropPresetFor = (rules: MediaRules[]): CropPresetValue => {
+    const coverRules = rules.filter((rule) => rule.supportsCustomVideoCover);
+
+    if (!filled(coverRules)) {
+        return COVER_CROP_PRESET;
+    }
+
+    if (
+        coverRules.every((rule) => rule.coverCropPreset === CropPreset.Original)
+    ) {
+        return CropPreset.Original;
+    }
+
+    return COVER_CROP_PRESET;
 };
-
-/** Instagram Reels and YouTube Shorts show a cover at 9:16 and crop anything else to its middle. */
-export const COVER_CROP_PRESET: CropPresetValue = '9:16';
 
 export const USER_TAGS_MAX = 20;
 
 const RATIO_TOLERANCE = 0.0001;
+
+/** How far a stored cover's ratio may be from its preset's and still count as framed (rounding of real image sizes). */
+const COVER_RATIO_TOLERANCE = 0.01;
 const MAX_OUTPUT_SIDE = 4096;
 
 const FIXED_PRESETS: Record<
     FixedCropPresetValue,
-    CropPreset & { ratio: number }
+    CropPresetOption & { ratio: number }
 > = {
-    '9:16': { value: '9:16', ratio: 9 / 16, shape: 'portrait' },
-    '2:3': { value: '2:3', ratio: 2 / 3, shape: 'portrait' },
-    '3:4': { value: '3:4', ratio: 3 / 4, shape: 'portrait' },
-    '4:5': { value: '4:5', ratio: 4 / 5, shape: 'portrait' },
-    '1:1': { value: '1:1', ratio: 1, shape: 'square' },
-    '4:3': { value: '4:3', ratio: 4 / 3, shape: 'landscape' },
-    '1.91:1': { value: '1.91:1', ratio: 1.91, shape: 'landscape' },
-    '16:9': { value: '16:9', ratio: 16 / 9, shape: 'landscape' },
-    '2:1': { value: '2:1', ratio: 2, shape: 'landscape' },
+    [CropPreset.Portrait9x16]: {
+        value: CropPreset.Portrait9x16,
+        ratio: 9 / 16,
+        shape: 'portrait',
+    },
+    [CropPreset.Portrait2x3]: {
+        value: CropPreset.Portrait2x3,
+        ratio: 2 / 3,
+        shape: 'portrait',
+    },
+    [CropPreset.Portrait3x4]: {
+        value: CropPreset.Portrait3x4,
+        ratio: 3 / 4,
+        shape: 'portrait',
+    },
+    [CropPreset.Portrait4x5]: {
+        value: CropPreset.Portrait4x5,
+        ratio: 4 / 5,
+        shape: 'portrait',
+    },
+    [CropPreset.Square]: {
+        value: CropPreset.Square,
+        ratio: 1,
+        shape: 'square',
+    },
+    [CropPreset.Landscape4x3]: {
+        value: CropPreset.Landscape4x3,
+        ratio: 4 / 3,
+        shape: 'landscape',
+    },
+    [CropPreset.Landscape191x100]: {
+        value: CropPreset.Landscape191x100,
+        ratio: 1.91,
+        shape: 'landscape',
+    },
+    [CropPreset.Landscape16x9]: {
+        value: CropPreset.Landscape16x9,
+        ratio: 16 / 9,
+        shape: 'landscape',
+    },
+    [CropPreset.Landscape2x1]: {
+        value: CropPreset.Landscape2x1,
+        ratio: 2,
+        shape: 'landscape',
+    },
 };
 
 /**
@@ -103,9 +130,9 @@ const FIXED_PRESETS: Record<
 export const cropPresetsFor = (
     values: CropPresetValue[],
     bounds: { min?: number; max?: number } = {},
-): CropPreset[] => [
-    { value: 'freeform', ratio: null, shape: 'freeform' },
-    { value: 'original', ratio: null, shape: 'landscape' },
+): CropPresetOption[] => [
+    { value: CropPreset.Freeform, ratio: null, shape: 'freeform' },
+    { value: CropPreset.Original, ratio: null, shape: 'landscape' },
     ...values
         .map((value) => FIXED_PRESETS[value as FixedCropPresetValue])
         .filter((preset) => preset !== undefined)
@@ -134,8 +161,6 @@ export const presetValuesFor = (
     rules: MediaRules[],
     defaults: CropPresetValue[],
 ): CropPresetValue[] => (rules.length === 1 ? rules[0].cropPresets : defaults);
-
-export type EditorTab = 'edit' | 'thumbnail' | 'alt' | 'tags';
 
 /** A video gets a Thumbnail tab when its network takes a frame or an image as its cover. */
 const hasThumbnail = (rule: MediaRules): boolean => {
@@ -190,7 +215,7 @@ export const editorTabsFor = (
 
 /** An untouched edit: no crop, turn, flip, filter or metadata. */
 export const blankMediaEdit = (
-    preset: CropPresetValue = 'original',
+    preset: CropPresetValue = CropPreset.Original,
 ): MediaEdit => ({
     preset,
     selection: null,
@@ -208,26 +233,52 @@ export const blankMediaEdit = (
     coverSource: 'frame',
 });
 
-const storedCoverImage = (item: MediaItem): CoverImage | null => {
+export const storedCoverImage = (
+    item: MediaItem,
+    coverPreset: CropPresetValue,
+): CoverImage | null => {
     const cover = item.meta?.cover;
 
     if (!filled(cover)) {
         return null;
     }
 
-    return newCoverImage(cover.url, cover, null);
+    return {
+        ...newCoverImage(cover.url, cover, null, coverPreset),
+        natural: storedSize(cover),
+    };
 };
 
-/** A cover image as the editor opens it: framed at 9:16 in its middle. */
+/**
+ * A stored image's size, as the server measured it, so a cover saved at
+ * another ratio is known to need a new crop before the stage draws it.
+ */
+const storedSize = (item: MediaItem): ImageSize | null => {
+    const width = item.meta?.width;
+    const height = item.meta?.height;
+
+    if (!isNumber(width)) {
+        return null;
+    }
+
+    if (!isNumber(height)) {
+        return null;
+    }
+
+    return { width, height };
+};
+
+/** A cover image as the editor opens it: framed at the cover's preset (`coverCropPresetFor()`), 9:16 by default, in its middle. */
 export const newCoverImage = (
     url: string,
     item: MediaItem | null,
     file: File | null,
+    preset: CropPresetValue,
 ): CoverImage => ({
     url,
     item,
     file,
-    crop: blankMediaEdit(COVER_CROP_PRESET),
+    crop: blankMediaEdit(preset),
     natural: null,
 });
 
@@ -236,7 +287,7 @@ export const newCoverImage = (
  * only a moved or resized frame, a turn, a flip or an adjustment counts.
  */
 export const hasCoverCropChanges = (crop: MediaEdit): boolean =>
-    hasPixelChanges({ ...crop, preset: 'original' });
+    hasPixelChanges({ ...crop, preset: CropPreset.Original });
 
 /**
  * Where the item's cover comes from. A cover sent without its source (the
@@ -256,23 +307,75 @@ export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource =>
     return 'frame';
 };
 
-export const createMediaEdit = (item: MediaItem): MediaEdit => ({
+/** The item's edit as the editor opens it; a stored cover is framed at `coverPreset` (`coverCropPresetFor()`). */
+export const createMediaEdit = (
+    item: MediaItem,
+    coverPreset: CropPresetValue,
+): MediaEdit => ({
     ...blankMediaEdit(),
     altText: item.meta?.alt_text ?? '',
     userTags: [...(item.meta?.user_tags ?? [])],
     coverOffsetMs: item.meta?.cover_offset_ms ?? null,
-    coverImage: storedCoverImage(item),
+    coverImage: storedCoverImage(item, coverPreset),
     coverSource: storedCoverSource(item),
 });
 
-
-/** The source the edit saves: an image picked but never uploaded leaves the cover as it was saved, a frame. */
-export const savedCoverSource = (edit: MediaEdit): CoverSource => {
-    if (!filled(edit.coverImage)) {
-        return 'frame';
+/** The source the edit saves: an image picked but never uploaded leaves the source as it was saved. */
+export const savedCoverSource = (edit: MediaEdit, item: Pick<MediaItem, 'meta'>): CoverSource => {
+    if (filled(edit.coverImage)) {
+        return edit.coverSource;
     }
 
-    return edit.coverSource;
+    if (edit.coverSource === 'image') {
+        return storedCoverSource(item);
+    }
+
+    return 'frame';
+};
+
+/**
+ * Whether a cover image needs cropping to save: a new file, a reframed
+ * crop, or a stored image whose ratio is not its preset's (a feed video's
+ * cover reused on a reel), which the stage shows cropped.
+ */
+export const coverNeedsRender = (cover: CoverImage): boolean => {
+    if (filled(cover.file)) {
+        return true;
+    }
+
+    if (hasCoverCropChanges(cover.crop)) {
+        return true;
+    }
+
+    if (!filled(cover.natural)) {
+        return false;
+    }
+
+    return !fitsCropPreset(cover.crop.preset, cover.natural);
+};
+
+/** Whether an image of this size already has the preset's ratio. */
+const fitsCropPreset = (preset: CropPresetValue, size: ImageSize): boolean => {
+    const ratio = presetRatio(preset, size);
+
+    if (ratio === null) {
+        return true;
+    }
+
+    return Math.abs(size.width / size.height - ratio) <= COVER_RATIO_TOLERANCE;
+};
+
+/**
+ * Whether an edit without a cover image drops the item's cover: picking a
+ * frame does, while picking an image and not uploading one yet leaves the
+ * cover as it was saved.
+ */
+const dropsCover = (edit: MediaEdit, item: MediaItem): boolean => {
+    if (edit.coverSource === 'image') {
+        return false;
+    }
+
+    return filled(item.meta?.cover);
 };
 
 /** Whether the edit picks another cover image than the item has. */
@@ -280,14 +383,10 @@ export const hasCoverImageChange = (edit: MediaEdit, item: MediaItem): boolean =
     const stored = item.meta?.cover;
 
     if (!filled(edit.coverImage)) {
-        return filled(stored);
+        return dropsCover(edit, item);
     }
 
-    if (filled(edit.coverImage.file)) {
-        return true;
-    }
-
-    if (hasCoverCropChanges(edit.coverImage.crop)) {
+    if (coverNeedsRender(edit.coverImage)) {
         return true;
     }
 
@@ -321,7 +420,7 @@ export const needsFrameCapture = (
         return false;
     }
 
-    if (edit.coverSource !== 'frame') {
+    if (savedCoverSource(edit, item) !== 'frame') {
         return false;
     }
 
@@ -333,22 +432,53 @@ export const needsFrameCapture = (
         return false;
     }
 
-    if (!filled(edit.coverImage)) {
+    if (!filled(edit.coverImage) && edit.coverSource === 'frame') {
         return true;
     }
 
     return edit.coverOffsetMs !== item.meta?.cover_offset_ms;
 };
 
-export const hasPixelChanges = (edit: MediaEdit): boolean =>
-    edit.selection !== null ||
-    !['original', 'freeform'].includes(edit.preset) ||
-    edit.quarterTurns % 4 !== 0 ||
-    edit.flipX ||
-    edit.flipY ||
-    edit.straighten !== 0 ||
-    (edit.filter !== 'original' && edit.filterIntensity > 0) ||
-    ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
+export const hasPixelChanges = (edit: MediaEdit): boolean => {
+    if (edit.selection !== null) {
+        return true;
+    }
+
+    if (!UNFIXED_CROP_PRESETS.has(edit.preset)) {
+        return true;
+    }
+
+    if (edit.quarterTurns % 4 !== 0) {
+        return true;
+    }
+
+    if (edit.flipX) {
+        return true;
+    }
+
+    if (edit.flipY) {
+        return true;
+    }
+
+    if (edit.straighten !== 0) {
+        return true;
+    }
+
+    if (hasFilter(edit)) {
+        return true;
+    }
+
+    return ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
+};
+
+/** Whether the edit applies a filter: one picked other than the original, at some strength. */
+const hasFilter = (edit: MediaEdit): boolean => {
+    if (edit.filter === 'original') {
+        return false;
+    }
+
+    return edit.filterIntensity > 0;
+};
 
 export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
     if (edit.altText.trim() !== (item.meta?.alt_text ?? '').trim()) {
@@ -363,7 +493,7 @@ export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
         return true;
     }
 
-    if (savedCoverSource(edit) !== storedCoverSource(item)) {
+    if (savedCoverSource(edit, item) !== storedCoverSource(item)) {
         return true;
     }
 
@@ -423,8 +553,13 @@ export const presetRatio = (
     preset: CropPresetValue,
     size: { width: number; height: number },
 ): number | null => {
-    if (preset === 'freeform') return null;
-    if (preset === 'original') return size.width / size.height;
+    if (preset === CropPreset.Freeform) {
+        return null;
+    }
+
+    if (preset === CropPreset.Original) {
+        return size.width / size.height;
+    }
 
     return FIXED_PRESETS[preset].ratio;
 };

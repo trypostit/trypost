@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '動画のフレーム',
             'thumbnail_source_image' => '画像',
             'thumbnail_image_hint' => 'この画像が動画のカバーになります。切れないように9:16の画像を使ってください。',
+            'thumbnail_image_hint_own_ratio' => 'この画像が動画のカバーになります。切れないように動画と同じ形の画像を使ってください。',
             'thumbnail_capture_failed' => 'このフレームを取得できませんでした。代わりにカバー画像をアップロードしてください。',
             'thumbnail_image_upload' => '画像をアップロード',
             'thumbnail_image_replace' => '画像を変更',
@@ -1077,6 +1078,11 @@ return [
             'badge' => '注意',
             'title' => '最初のコメントは追加されませんでした',
             'description' => 'Instagram がこの投稿の ID を返さなかったため、TryPost は最初のコメントを追加できませんでした。Instagram で追加してください。',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => '注意',
+            'title' => 'カバーが適用されませんでした',
+            'description' => 'この動画にカバー画像は適用されませんでした。Facebook で設定できます。',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '注意',

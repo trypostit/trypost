@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => '동영상 프레임',
             'thumbnail_source_image' => '이미지',
             'thumbnail_image_hint' => '이 이미지가 동영상 커버로 표시됩니다. 잘리지 않도록 9:16 이미지를 사용하세요.',
+            'thumbnail_image_hint_own_ratio' => '이 이미지가 동영상 커버로 표시됩니다. 잘리지 않도록 동영상과 같은 비율의 이미지를 사용하세요.',
             'thumbnail_capture_failed' => '이 프레임을 캡처하지 못했습니다. 대신 커버 이미지를 업로드하세요.',
             'thumbnail_image_upload' => '이미지 업로드',
             'thumbnail_image_replace' => '이미지 변경',
@@ -1077,6 +1078,11 @@ return [
             'badge' => '주의',
             'title' => '첫 댓글이 추가되지 않았습니다',
             'description' => 'Instagram이 이 게시물의 ID를 반환하지 않아 TryPost가 첫 댓글을 추가하지 못했습니다. Instagram에서 추가하세요.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => '주의',
+            'title' => '커버가 적용되지 않음',
+            'description' => '이 동영상에 커버 이미지가 적용되지 않았습니다. Facebook에서 설정할 수 있습니다.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => '주의',

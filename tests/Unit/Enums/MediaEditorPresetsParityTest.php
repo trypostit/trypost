@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\CropPreset;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use Symfony\Component\Process\ExecutableFinder;
@@ -24,7 +25,8 @@ function runMediaEditorPresetsHarness(): array
     $input = tempnam(sys_get_temp_dir(), 'media-editor-presets');
     file_put_contents($input, json_encode([
         'rules' => ContentType::mediaRulesForFrontend(),
-        'defaults' => ContentType::defaultCropPresets(),
+        'defaults' => CropPreset::valuesOf(ContentType::defaultCropPresets()),
+        'every' => CropPreset::valuesOf(fixedCropPresets()),
     ], JSON_THROW_ON_ERROR));
 
     try {
@@ -39,6 +41,19 @@ function runMediaEditorPresetsHarness(): array
     }
 
     return json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR);
+}
+
+/**
+ * Every preset with a fixed ratio: Freeform and Original lead the editor's list on their own.
+ *
+ * @return list<CropPreset>
+ */
+function fixedCropPresets(): array
+{
+    return collect(CropPreset::cases())
+        ->filter(fn (CropPreset $preset): bool => $preset->hasFixedRatio())
+        ->values()
+        ->all();
 }
 
 function mediaEditorPresetRatio(string $preset): float
@@ -62,7 +77,7 @@ test('the typescript media editor offers exactly the backend crop presets for ev
         $presets = data_get($output, "contentTypes.{$type->value}");
 
         expect(array_column($presets, 'value'))
-            ->toBe(['freeform', 'original', ...$type->cropPresets()], $type->value);
+            ->toBe(['freeform', 'original', ...CropPreset::valuesOf($type->cropPresets())], $type->value);
 
         $bounds = $type->aspectRatioBounds(MediaType::Image);
 
@@ -77,7 +92,7 @@ test('the typescript media editor offers exactly the backend crop presets for ev
         }
     }
 
-    expect(data_get($output, 'noChannel'))->toBe(['freeform', 'original', ...ContentType::defaultCropPresets()]);
+    expect(data_get($output, 'noChannel'))->toBe(['freeform', 'original', ...CropPreset::valuesOf(ContentType::defaultCropPresets())]);
 });
 
 test('the no-channel presets sit inside every content type bounds or are filtered out', function () {
@@ -86,7 +101,7 @@ test('the no-channel presets sit inside every content type bounds or are filtere
     foreach (ContentType::cases() as $type) {
         $bounds = $type->aspectRatioBounds(MediaType::Image) ?? ['min' => 0.0, 'max' => INF];
         $inside = array_values(array_filter(
-            ContentType::defaultCropPresets(),
+            CropPreset::valuesOf(ContentType::defaultCropPresets()),
             fn (string $preset): bool => mediaEditorPresetRatio($preset) >= $bounds['min'] - 0.0001
                 && mediaEditorPresetRatio($preset) <= $bounds['max'] + 0.0001,
         ));
@@ -102,5 +117,45 @@ test('the typescript media editor offers alt text on a video exactly where the b
     foreach (ContentType::cases() as $type) {
         expect(in_array('alt', data_get($output, "videoTabs.{$type->value}"), true))
             ->toBe($type->supportsVideoAltText(), $type->value);
+    }
+});
+
+test('the editor offers a facebook video the thumbnail tab and frames a feed video cover at its own ratio', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'videoTabs.facebook_post'))->toContain('thumbnail')
+        ->and(data_get($output, 'videoTabs.facebook_reel'))->toContain('thumbnail')
+        ->and(data_get($output, 'coverPresets.facebook_post'))->toBe('original')
+        ->and(data_get($output, 'coverPresets.facebook_reel'))->toBe('9:16')
+        ->and(data_get($output, 'coverPresets.instagram_reel'))->toBe('9:16')
+        ->and(data_get($output, 'coverPresets.youtube_short'))->toBe('9:16');
+});
+
+test('a cover shared by a facebook feed video and a reel is framed for the reel', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'mixedCoverPresets.facebook_post_and_instagram_reel'))->toBe('9:16')
+        ->and(data_get($output, 'mixedCoverPresets.facebook_post_and_instagram_feed'))->toBe('original');
+});
+
+test('the editor offers a facebook reel no thumbnail tab while the reel cover is off', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    $output = runMediaEditorPresetsHarness();
+
+    expect(data_get($output, 'videoTabs.facebook_reel'))->not->toContain('thumbnail')
+        ->and(data_get($output, 'videoTabs.facebook_post'))->toContain('thumbnail');
+});
+
+test('the editor draws every crop preset the server can send, at its ratio', function () {
+    $output = runMediaEditorPresetsHarness();
+
+    expect(array_column(data_get($output, 'every'), 'value'))
+        ->toBe(['freeform', 'original', ...CropPreset::valuesOf(fixedCropPresets())]);
+
+    foreach (fixedCropPresets() as $preset) {
+        $drawn = collect(data_get($output, 'every'))->firstWhere('value', $preset->value);
+
+        expect(data_get($drawn, 'ratio'))->toEqualWithDelta(mediaEditorPresetRatio($preset->value), 0.0001, $preset->value);
     }
 });

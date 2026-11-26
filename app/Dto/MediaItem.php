@@ -251,6 +251,16 @@ class MediaItem
     }
 
     /**
+     * Whether any item carries a cover image (`covers()`).
+     *
+     * @param  array<int, mixed>  $items
+     */
+    public static function hasAnyCover(array $items): bool
+    {
+        return filled(self::covers($items));
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self

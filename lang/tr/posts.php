@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Video karesi',
             'thumbnail_source_image' => 'Görsel',
             'thumbnail_image_hint' => 'Videonuz bu görseli kapak olarak gösterir. Hiçbir yerin kesilmemesi için 9:16 bir görsel kullanın.',
+            'thumbnail_image_hint_own_ratio' => 'Videonuz bu görseli kapak olarak gösterir. Hiçbir yerin kesilmemesi için videonuzla aynı formatta bir görsel kullanın.',
             'thumbnail_capture_failed' => 'Bu kare yakalanamadı. Bunun yerine kapak olarak bir görsel yükleyin.',
             'thumbnail_image_upload' => 'Görsel yükle',
             'thumbnail_image_replace' => 'Görseli değiştir',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Uyarı',
             'title' => 'İlk yorum eklenmedi',
             'description' => 'Instagram bu gönderinin kimliğini döndürmedi, bu yüzden TryPost ilk yorumunuzu ekleyemedi. Yorumu Instagram\'da ekleyin.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Uyarı',
+            'title' => 'Kapak uygulanmadı',
+            'description' => 'Kapak görseliniz bu videoya uygulanmadı. Kapağı Facebook\'ta ayarlayabilirsiniz.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Uyarı',

@@ -306,5 +306,9 @@ return [
             'message' => 'Aby publikować odpowiedzi w :network, połącz ponownie ten kanał i zezwól TryPost na ich publikowanie.',
             'member_message' => 'Aby publikować odpowiedzi w :network, administrator workspace\'u musi ponownie połączyć ten kanał.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'Aby dodać okładkę do Rolek w :network, połącz ponownie ten kanał i zezwól TryPost na jej ustawienie.',
+            'member_message' => 'Aby dodać okładkę do Rolek w :network, administrator workspace\'u musi ponownie połączyć ten kanał.',
+        ],
     ],
 ];

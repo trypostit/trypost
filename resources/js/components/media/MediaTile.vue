@@ -19,9 +19,9 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { isRetryable, type UploadEntry } from '@/composables/useMediaUpload';
-import type { EditorTab } from '@/lib/mediaEditor';
 import { isImage, isVideo } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
+import type { EditorTab } from '@/types/media-editor';
 
 const props = defineProps<{
     testIdPrefix: string;

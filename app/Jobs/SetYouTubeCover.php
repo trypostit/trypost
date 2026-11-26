@@ -6,12 +6,11 @@ namespace App\Jobs;
 
 use App\Enums\YouTube\ProcessingStatus;
 use App\Enums\YouTube\ThumbnailWarning;
-use App\Exceptions\Social\ErrorCategory;
-use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\YouTubePublisher;
+use App\Support\Social\YouTubeCover;
 use Google\Service\Exception as GoogleServiceException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,10 +19,10 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * Sets the cover image of a video TryPost published on YouTube. YouTube
- * applies a Short's thumbnail only once the video is processed, so the job
- * waits for that, a minute at a time. The video is already live: a cover
- * YouTube refuses leaves a warning on the post, never a failure.
+ * Waits until YouTube has processed a video TryPost published, then hands its
+ * cover to `ApplyYouTubeCover`: YouTube applies a Short's thumbnail only once
+ * the video is processed. The video is already live: a video YouTube could not
+ * process leaves a warning on the post, never a failure.
  */
 class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
 {
@@ -39,8 +38,12 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
-    /** Must exceed HasSocialHttpClient's 120s HTTP timeout so a slow request cannot kill the worker. */
-    public int $timeout = 180;
+    /**
+     * A check makes up to two requests of up to 120s each (HasSocialHttpClient):
+     * the token refresh and the status read. It stays under the Redis queue's
+     * 960s retry_after.
+     */
+    public int $timeout = 300;
 
     public int $uniqueFor = 3600;
 
@@ -58,14 +61,14 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! $this->post->awaitsYouTubeCover()) {
+        if (! YouTubeCover::isAwaitedBy($this->post)) {
             return;
         }
 
         $account = $this->post->socialAccount()->connected()->first();
 
         if (blank($account)) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
 
             return;
         }
@@ -75,37 +78,37 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
                 app(ConnectionVerifier::class)->refreshToken($account);
             }
 
-            $this->apply($publisher);
+            $status = $publisher->processingStatus($this->post);
         } catch (TokenExpiredException) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
+
+            return;
         } catch (GoogleServiceException $exception) {
             $this->settle($exception);
-        } catch (YouTubePublishException $exception) {
-            $this->settleCoverFile($exception);
+
+            return;
         }
+
+        $this->follow($status);
     }
 
     public function failed(?Throwable $exception): void
     {
-        $this->post->refresh();
+        $post = Post::find($this->post->id);
 
-        if ($this->post->awaitsYouTubeCover()) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+        if (filled($post) && YouTubeCover::isAwaitedBy($post)) {
+            YouTubeCover::recordWarning($post, ThumbnailWarning::Failed);
         }
     }
 
     /**
      * A video YouTube no longer lists was removed: there is nothing to warn
      * about. One it could not process never takes a thumbnail.
-     *
-     * @throws GoogleServiceException
      */
-    private function apply(YouTubePublisher $publisher): void
+    private function follow(?ProcessingStatus $status): void
     {
-        $status = $publisher->processingStatus($this->post);
-
         if ($status === ProcessingStatus::Processing) {
-            $this->release(self::CHECK_EVERY_SECONDS);
+            $this->checkAgain();
 
             return;
         }
@@ -115,27 +118,24 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         }
 
         if ($status !== ProcessingStatus::Succeeded) {
-            $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::Failed);
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
 
             return;
         }
 
-        $publisher->setCover($this->post);
+        ApplyYouTubeCover::dispatch($this->post);
     }
 
     /**
-     * A server error is tried again, and a video removed meanwhile (404
-     * `videoNotFound`) leaves nothing to warn about, like a video YouTube no
-     * longer lists; any other refusal stays on the post.
-     *
-     * @see https://developers.google.com/youtube/v3/docs/thumbnails/set#errors
+     * A server error checks again, and a video removed meanwhile (404) leaves
+     * nothing to warn about; any other refusal stays on the post.
      */
     private function settle(GoogleServiceException $exception): void
     {
         $status = $exception->getCode();
 
         if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
-            $this->release(self::CHECK_EVERY_SECONDS);
+            $this->checkAgain();
 
             return;
         }
@@ -144,38 +144,18 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->post->recordYouTubeThumbnailWarning(self::warningFor($status));
+        YouTubeCover::recordWarning($this->post, YouTubeCover::warningFor($status));
     }
 
-    /**
-     * A cover that cannot be made a JPEG never will be; a download that
-     * failed is tried again.
-     *
-     * @throws YouTubePublishException
-     */
-    private function settleCoverFile(YouTubePublishException $exception): void
+    /** Checks again a minute later; the last check gives up at once instead of waiting for one that never comes. */
+    private function checkAgain(): void
     {
-        if ($exception->category !== ErrorCategory::MediaFormat) {
-            throw $exception;
+        if ($this->attempts() >= $this->tries) {
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
+
+            return;
         }
 
-        $this->post->recordYouTubeThumbnailWarning(ThumbnailWarning::InvalidImage);
-    }
-
-    private static function warningFor(int $status): ThumbnailWarning
-    {
-        if ($status === Response::HTTP_FORBIDDEN) {
-            return ThumbnailWarning::Forbidden;
-        }
-
-        if ($status === Response::HTTP_TOO_MANY_REQUESTS) {
-            return ThumbnailWarning::DailyLimit;
-        }
-
-        if ($status === Response::HTTP_BAD_REQUEST) {
-            return ThumbnailWarning::InvalidImage;
-        }
-
-        return ThumbnailWarning::Failed;
+        $this->release(self::CHECK_EVERY_SECONDS);
     }
 }

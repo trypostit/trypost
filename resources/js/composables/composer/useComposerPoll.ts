@@ -1,4 +1,4 @@
-import type { usePostComposition } from '@/composables/usePostComposition';
+import type { usePostComposition } from '@/composables/composer/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
 import { newPoll } from '@/lib/poll';
 import { withReplyPoll } from '@/lib/threadReplies';
@@ -206,6 +206,11 @@ export const useComposerPoll = (
         contentType: ContentTypeValue,
     ): void => {
         const meta = pollMetaForContentType(group, contentType);
+
+        if (destination(group).content_type !== contentType) {
+            composition.dropGroupCovers(group.key);
+        }
+
         composition.setGroupOverride(group.key, 'content_type', contentType);
 
         if (meta !== null) {

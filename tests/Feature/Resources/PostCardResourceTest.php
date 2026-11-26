@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\BuildPublishPageProps;
+use App\Enums\Facebook\CoverFailure;
 use App\Http\Resources\App\PostCardResource;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
 use App\Services\Social\InstagramPublisher;
+use App\Support\Social\FacebookCover;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -32,6 +34,7 @@ function postCardAsBefore(Post $post): array
         ],
         'youtube_thumbnail_warning' => null,
         'instagram_comment_skipped' => false,
+        'facebook_cover_warning' => false,
     ];
 
     $card['user'] = $post->user === null ? null : [
@@ -75,7 +78,7 @@ test('a card without its relations loaded leaves them out', function () {
     $card = PostCardResource::make($post->fresh())->resolve();
 
     expect($card)->not->toHaveKeys(['social_account', 'user', 'labels'])
-        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null, 'instagram_comment_skipped' => false]);
+        ->and($card)->toEqual([...$post->fresh()->toArray(), 'failure' => null, 'youtube_thumbnail_warning' => null, 'instagram_comment_skipped' => false, 'facebook_cover_warning' => false]);
 });
 
 test('a rejected post keeps its failure when its context has no category', function () {
@@ -98,4 +101,14 @@ test('an instagram post published without its first comment shows the warning, n
 
     expect($card['failure'])->toBeNull()
         ->and($card['instagram_comment_skipped'])->toBeTrue();
+});
+
+test('a facebook video published without its cover shows the warning, not a failure', function () {
+    $post = Post::factory()->forAccount($this->channel)->published()->create(['user_id' => $this->user->id]);
+    FacebookCover::recordWarning($post, FacebookCover::failure(CoverFailure::Refused));
+
+    $card = PostCardResource::make($post->fresh())->resolve();
+
+    expect($card['failure'])->toBeNull()
+        ->and($card['facebook_cover_warning'])->toBeTrue();
 });

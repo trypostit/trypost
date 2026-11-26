@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Кадр відео',
             'thumbnail_source_image' => 'Зображення',
             'thumbnail_image_hint' => 'Це зображення стане обкладинкою відео. Використовуйте зображення 9:16, щоб нічого не обрізалося.',
+            'thumbnail_image_hint_own_ratio' => 'Це зображення стане обкладинкою відео. Використовуйте зображення у форматі відео, щоб нічого не обрізалося.',
             'thumbnail_capture_failed' => 'Не вдалося захопити цей кадр. Завантажте зображення для обкладинки.',
             'thumbnail_image_upload' => 'Завантажити фото',
             'thumbnail_image_replace' => 'Замінити фото',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Увага',
             'title' => 'Перший коментар не додано',
             'description' => 'Instagram не повернув ID цієї публікації, тому TryPost не зміг додати перший коментар. Додайте його в Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Увага',
+            'title' => 'Обкладинку не застосовано',
+            'description' => 'Обкладинку не застосовано до цього відео. Ви можете встановити її у Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Увага',

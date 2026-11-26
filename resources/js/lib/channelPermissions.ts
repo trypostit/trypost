@@ -5,8 +5,10 @@ import {
     type GatedFeatureValue,
     type MissingPermission,
     type MissingPermissions,
+    type PostFeatureUse,
 } from '@/types/channel-permission';
-import type { ContentTypeValue } from '@/types/content-type';
+import { ContentType, type ContentTypeValue } from '@/types/content-type';
+import type { MediaItem } from '@/types/media';
 import type { PlatformConfig } from '@/types/platform';
 
 /** Whether the feature is on for a channel's network (not in `disabledFeatures` of its platform config). */
@@ -25,20 +27,36 @@ export const featureIsEnabled = (
     return !platformConfig.disabledFeatures.includes(feature);
 };
 
-/** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, analytics are never part of one. */
+/** Whether a post uses the feature, as `GatedFeature::isRequiredToPublish()` says on the server: every post publishes, a Facebook Reel with a cover image uses the Reel cover, analytics are never part of one. */
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
-    meta: Record<string, unknown> | null,
+    post: PostFeatureUse,
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
     }
 
     if (feature === GatedFeature.ThreadReplies) {
-        return filled(threadRepliesOf(meta));
+        return filled(threadRepliesOf(post.meta));
+    }
+
+    if (feature === GatedFeature.FacebookReelCover) {
+        return usesFacebookReelCover(post.contentType, post.media);
     }
 
     return false;
+};
+
+/** Whether the post is a Facebook Reel with a cover image, which needs the Reel cover permission (`GatedFeature::usesFacebookReelCover()`). */
+const usesFacebookReelCover = (
+    contentType: ContentTypeValue | null,
+    media: MediaItem[],
+): boolean => {
+    if (contentType !== ContentType.FacebookReel) {
+        return false;
+    }
+
+    return media.some(hasCover);
 };
 
 /** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
@@ -59,10 +77,10 @@ export const permissionMessageKey = (
  * when nothing holds it back.
  */
 export const missingPermissionKey = (
-    meta: Record<string, unknown> | null,
+    post: PostFeatureUse,
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
-    repliesSupported = true,
+    repliesSupported: boolean,
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -75,7 +93,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta)) {
+        if (!requiresFeatureToPublish(feature, post)) {
             continue;
         }
 
@@ -85,11 +103,24 @@ export const missingPermissionKey = (
     return null;
 };
 
+/**
+ * Whether a media item carries a cover image (`MediaItem::covers()` on the
+ * server). Any cover counts, even one without its URL yet: a cover sent by id
+ * or upload token gets it once it is hosted. An empty object is a cover too,
+ * as the server counts any array, so this does not use `blank()`.
+ */
+const hasCover = (item: MediaItem): boolean => {
+    if (item.meta?.cover === undefined) {
+        return false;
+    }
+
+    return item.meta.cover !== null;
+};
+
 /** `missingPermissionKey()` for a channel, read from its platform config. */
 export const channelPermissionKey = (
     platformConfig: PlatformConfig | undefined,
-    contentType: ContentTypeValue | null,
-    meta: Record<string, unknown> | null,
+    post: PostFeatureUse,
     canManageAccounts: boolean,
 ): string | null => {
     if (!filled(platformConfig)) {
@@ -99,13 +130,13 @@ export const channelPermissionKey = (
     const repliesSupported = blank(
         threadUnsupportedKey(
             platformConfig.platform,
-            contentType,
+            post.contentType,
             featureIsEnabled(platformConfig, GatedFeature.ThreadReplies),
         ),
     );
 
     return missingPermissionKey(
-        meta,
+        post,
         platformConfig.missingPermissions,
         canManageAccounts,
         repliesSupported,

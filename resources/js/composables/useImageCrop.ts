@@ -1,15 +1,13 @@
 import { computed, type Ref } from 'vue';
 
-import type { SourceRect } from '@/lib/imageCrop';
 import {
-    type CropPresetValue,
     cropSelection,
-    type MediaEdit,
     presetRatio,
     workingSize,
 } from '@/lib/mediaEditor';
-
-export type ImageSize = { width: number; height: number };
+import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
+import type { ImageSize, SourceRect } from '@/types/image-crop';
+import type { MediaEdit } from '@/types/media-editor';
 
 const MIN_SELECTION_RATIO = 0.1;
 
@@ -58,7 +56,9 @@ export const useImageCrop = (
         };
     };
 
-    const resetGeometry = (preset: CropPresetValue = 'original'): void => {
+    const resetGeometry = (
+        preset: CropPresetValue = CropPreset.Original,
+    ): void => {
         if (!edit.value) return;
         Object.assign(edit.value, {
             preset,

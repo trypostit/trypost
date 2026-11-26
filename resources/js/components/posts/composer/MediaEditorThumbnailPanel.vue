@@ -4,14 +4,19 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { filled } from '@/lib/helpers';
-import { type MediaEdit, newCoverImage } from '@/lib/mediaEditor';
+import {
+    newCoverImage,
+} from '@/lib/mediaEditor';
 import { fromMimeType, MediaType, stillImageAcceptAttribute } from '@/lib/mediaType';
+import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
 import type { CoverSource } from '@/types/media';
+import type { MediaEdit } from '@/types/media-editor';
 
 const COVER_SOURCES: CoverSource[] = ['frame', 'image'];
 
 const props = defineProps<{
     supportsCustomCover: boolean;
+    coverPreset: CropPresetValue;
 }>();
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
@@ -86,8 +91,25 @@ const onImagePicked = (event: Event): void => {
         URL.revokeObjectURL(edit.value.coverImage.url);
     }
 
-    edit.value.coverImage = newCoverImage(URL.createObjectURL(file), null, file);
+    edit.value.coverImage = newCoverImage(
+        URL.createObjectURL(file),
+        null,
+        file,
+        props.coverPreset,
+    );
 };
+
+/**
+ * What an uploaded cover should look like: a cover kept at its own ratio (a
+ * Facebook feed video) asks for the video's shape, the others for 9:16.
+ */
+const imageHintKey = computed(() => {
+    if (props.coverPreset === CropPreset.Original) {
+        return 'posts.composer.media_editor.thumbnail_image_hint_own_ratio';
+    }
+
+    return 'posts.composer.media_editor.thumbnail_image_hint';
+});
 </script>
 
 <template>
@@ -97,7 +119,7 @@ const onImagePicked = (event: Event): void => {
                 {{ $t('posts.composer.media_editor.thumbnail_heading') }}
             </h3>
             <p v-if="showsImage" class="text-xs text-muted-foreground">
-                {{ $t('posts.composer.media_editor.thumbnail_image_hint') }}
+                {{ $t(imageHintKey) }}
             </p>
             <p v-else class="text-xs text-muted-foreground">
                 {{ $t('posts.composer.media_editor.thumbnail_hint') }}

@@ -20,31 +20,33 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type ImageSize, useImageCrop } from '@/composables/useImageCrop';
+import { useImageCrop } from '@/composables/useImageCrop';
 import { defaultCropPresets } from '@/lib/contentTypeMediaRules';
 import { filled } from '@/lib/helpers';
 import {
     createMediaEdit,
-    COVER_CROP_PRESET,
+    coverCropPresetFor,
     cropPresetsFor,
     editorTabsFor,
-    type EditorTab,
     hasMetaChanges,
-    hasCoverCropChanges,
+    coverNeedsRender,
+    storedCoverImage,
     hasPixelChanges,
     needsFrameCapture,
     newCoverImage,
-    type CropPresetValue,
-    type MediaEdit,
     presetValuesFor,
     renderImageEdit,
     renderMediaEdit,
     rulesFor,
+    savedCoverSource,
     USER_TAGS_MAX,
 } from '@/lib/mediaEditor';
 import { isVideo } from '@/lib/mediaType';
 import { captureVideoFrame } from '@/lib/videoFrame';
+import { CropPreset, type CropPresetValue } from '@/types/crop-preset';
+import type { ImageSize } from '@/types/image-crop';
 import type { CoverImage, CoverSource, MediaItem, MediaUserTag } from '@/types/media';
+import type { EditorTab, MediaEdit } from '@/types/media-editor';
 
 export type MediaEditChange = {
     index: number;
@@ -114,7 +116,7 @@ const imageErrors = ref<Record<number, boolean>>({});
 
 const isPhoto = computed(() => props.mode === 'photo');
 const basePreset = computed<CropPresetValue>(() =>
-    isPhoto.value ? '1:1' : 'original',
+    isPhoto.value ? CropPreset.Square : CropPreset.Original,
 );
 const rules = computed(() => rulesFor(props.contentTypes));
 const presets = computed(() =>
@@ -290,9 +292,11 @@ const stageSrc = computed(() => {
 
     return activeItem.value?.url;
 });
+/** How an uploaded cover image is framed for the post's networks. */
+const coverPreset = computed(() => coverCropPresetFor(rules.value));
 const stageBasePreset = computed<CropPresetValue>(() => {
     if (cropsCover.value) {
-        return COVER_CROP_PRESET;
+        return coverPreset.value;
     }
 
     return basePreset.value;
@@ -320,7 +324,7 @@ const stagePresets = computed(() => {
 
     return presets.value;
 });
-/** A fixed ratio only moves, except a profile photo's square and a cover's 9:16, which also resize. */
+/** A fixed ratio only moves, except a profile photo's square and a cover's preset, which also resize. */
 const resizesAnyRatio = computed(() => {
     if (isPhoto.value) {
         return true;
@@ -465,14 +469,26 @@ const coverImageFor = async (
     const cover = itemEdit.coverImage;
 
     if (!filled(cover)) {
-        return null;
+        return pendingImageCover(media, itemEdit);
     }
 
-    if (!filled(cover.file) && !hasCoverCropChanges(cover.crop)) {
+    if (!coverNeedsRender(cover)) {
         return cover;
     }
 
     return renderCover(cover);
+};
+
+/** An image picked but not uploaded yet leaves the cover as it was saved. */
+const pendingImageCover = (
+    media: MediaItem,
+    itemEdit: MediaEdit,
+): CoverImage | null => {
+    if (itemEdit.coverSource !== 'image') {
+        return null;
+    }
+
+    return storedCoverImage(media, coverPreset.value);
 };
 
 const captureFrame = async (
@@ -482,7 +498,12 @@ const captureFrame = async (
     try {
         const file = await captureVideoFrame(media.url, milliseconds);
 
-        return newCoverImage(URL.createObjectURL(file), null, file);
+        return newCoverImage(
+            URL.createObjectURL(file),
+            null,
+            file,
+            coverPreset.value,
+        );
     } catch (error) {
         captureFailed.value = true;
 
@@ -496,7 +517,12 @@ const renderCover = async (cover: CoverImage): Promise<CoverImage> => {
     const image = await loadImage(pixelSource(source));
     const rendered = await renderMediaEdit(image, source, cover.crop);
 
-    return newCoverImage(URL.createObjectURL(rendered.file), null, rendered.file);
+    return newCoverImage(
+        URL.createObjectURL(rendered.file),
+        null,
+        rendered.file,
+        coverPreset.value,
+    );
 };
 
 /** The cover as a media item to read its pixels from: the picked file, or the stored image. */
@@ -559,7 +585,7 @@ const apply = async (): Promise<void> => {
                         userTags: itemEdit.userTags,
                         coverOffsetMs: itemEdit.coverOffsetMs,
                         coverImage: await coverImageFor(media, itemEdit),
-                        coverSource: itemEdit.coverSource,
+                        coverSource: savedCoverSource(itemEdit, media),
                     };
                 },
             ),
@@ -580,7 +606,7 @@ watch(
 
         editingItems.value = [...props.items];
         edits.value = editingItems.value.map((item) => ({
-            ...createMediaEdit(item),
+            ...createMediaEdit(item, coverPreset.value),
             preset: basePreset.value,
         }));
         naturals.value = {};
@@ -858,6 +884,7 @@ watch(tagging, (isTagging) => {
                             :key="activeIndex"
                             v-model:edit="edit"
                             :supports-custom-cover="supportsCustomCover"
+                            :cover-preset="coverPreset"
                         />
                         <MediaEditorCropPanel
                             v-if="coverCropEdit"

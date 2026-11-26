@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\CropPreset;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -466,15 +467,14 @@ test('media rules carry crop presets and editor tab availability', function () {
     ]);
 
     expect(ContentType::GoogleBusinessPost->mediaRules()['supports_alt_text'])->toBeFalse();
-    expect(ContentType::defaultCropPresets())->toBe(['1:1', '9:16']);
+    expect(ContentType::defaultCropPresets())->toBe([CropPreset::Square, CropPreset::Portrait9x16]);
 });
 
-test('crop presets are non-empty and only use ratios the frontend editor knows', function (ContentType $type) {
-    $known = ['9:16', '2:3', '3:4', '4:5', '1:1', '4:3', '1.91:1', '16:9', '2:1'];
+test('crop presets are non-empty and never repeat', function (ContentType $type) {
+    $presets = CropPreset::valuesOf($type->cropPresets());
 
-    expect($type->cropPresets())->not->toBeEmpty()
-        ->and(array_diff($type->cropPresets(), $known))->toBe([])
-        ->and($type->cropPresets())->toBe(array_values(array_unique($type->cropPresets())));
+    expect($presets)->not->toBeEmpty()
+        ->and($presets)->toBe(array_values(array_unique($presets)));
 })->with(ContentType::cases());
 
 test('media rules carry the documented pixel limits and the platform label', function () {
@@ -605,3 +605,20 @@ test('only bluesky, mastodon, threads and discord take alt text on a video', fun
     expect($type->supportsVideoAltText())->toBe($expected)
         ->and($type->mediaRules()['supports_video_alt_text'])->toBe($expected);
 })->with(ContentType::cases());
+
+test('a facebook feed video and reel take a frame or an image as their cover', function () {
+    expect(ContentType::FacebookPost->mediaRules())->toMatchArray([
+        'supports_video_cover' => false,
+        'supports_custom_video_cover' => true,
+    ])->and(ContentType::FacebookReel->mediaRules())->toMatchArray([
+        'supports_video_cover' => false,
+        'supports_custom_video_cover' => true,
+    ])->and(ContentType::FacebookStory->supportsCustomVideoCover())->toBeFalse();
+});
+
+test('a facebook reel takes no cover while the reel cover is off, and the feed video still does', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
+
+    expect(ContentType::FacebookReel->supportsCustomVideoCover())->toBeFalse()
+        ->and(ContentType::FacebookPost->supportsCustomVideoCover())->toBeTrue();
+});

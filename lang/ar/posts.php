@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'إطار من الفيديو',
             'thumbnail_source_image' => 'صورة',
             'thumbnail_image_hint' => 'يعرض الفيديو هذه الصورة كغلاف. استخدم صورة بنسبة 9:16 حتى لا يُقص منها شيء.',
+            'thumbnail_image_hint_own_ratio' => 'يعرض الفيديو هذه الصورة كغلاف. استخدم صورة بنفس شكل الفيديو حتى لا يُقص منها شيء.',
             'thumbnail_capture_failed' => 'تعذّر التقاط هذا الإطار. ارفع صورة لتكون الغلاف بدلًا من ذلك.',
             'thumbnail_image_upload' => 'رفع صورة',
             'thumbnail_image_replace' => 'استبدال الصورة',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'تنبيه',
             'title' => 'لم تتم إضافة التعليق الأول',
             'description' => 'لم يُرجع Instagram معرّف هذا المنشور، لذلك لم يتمكن TryPost من إضافة تعليقك الأول. أضفه على Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'تنبيه',
+            'title' => 'لم يُطبَّق الغلاف',
+            'description' => 'لم تُطبَّق صورة الغلاف على هذا الفيديو. يمكنك تعيينها على Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'تنبيه',

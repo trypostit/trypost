@@ -287,6 +287,7 @@ return [
             'thumbnail_source_frame' => 'Video frame',
             'thumbnail_source_image' => 'Image',
             'thumbnail_image_hint' => 'Your video shows this image as its cover. Use a 9:16 image so nothing gets cut off.',
+            'thumbnail_image_hint_own_ratio' => 'Your video shows this image as its cover. Use an image the shape of your video so nothing gets cut off.',
             'thumbnail_capture_failed' => 'Couldn\'t capture this frame. Upload an image as the cover instead.',
             'thumbnail_image_upload' => 'Upload image',
             'thumbnail_image_replace' => 'Replace image',
@@ -1077,6 +1078,11 @@ return [
             'badge' => 'Warning',
             'title' => 'First comment not added',
             'description' => 'Instagram didn\'t return this post\'s ID, so TryPost couldn\'t add your first comment. Add it on Instagram.',
+        ],
+        'facebook_cover_warning' => [
+            'badge' => 'Warning',
+            'title' => 'Cover not applied',
+            'description' => 'Your cover image wasn\'t applied to this video. You can set it on Facebook.',
         ],
         'youtube_thumbnail_warning' => [
             'badge' => 'Warning',

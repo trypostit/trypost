@@ -31,12 +31,13 @@ import {
     useMediaUpload,
 } from '@/composables/useMediaUpload';
 import { cancelDragOnEscape } from '@/lib/dragPlaceholder';
-import { editorTabsFor, rulesFor, type EditorTab } from '@/lib/mediaEditor';
+import { editorTabsFor, rulesFor } from '@/lib/mediaEditor';
 import { canvaDesignId, editInCanva } from '@/lib/mediaSources/canva';
 import { acceptAttribute, isImage, isVideo, mediaKey } from '@/lib/mediaType';
 import { withCoversFor } from '@/lib/videoFrame';
 import type { MediaUploadLimits, SharedData } from '@/types';
 import type { MediaItem } from '@/types/media';
+import type { EditorTab } from '@/types/media-editor';
 
 const props = defineProps<{
     items: MediaItem[];
@@ -49,6 +50,12 @@ const props = defineProps<{
     itemErrors?: Record<number, string>;
     /** Hides the add tile; files reach the tray from elsewhere. */
     itemsOnly?: boolean;
+    /**
+     * Offers no editor: the shared media of a post for several networks is
+     * edited in each network's card, so an edit never reaches a network it
+     * was not made for.
+     */
+    editingLocked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -79,19 +86,27 @@ const takesCoverImage = computed(() =>
 
 /** The items as the tiles draw them, without an uploaded cover no network of the post shows. */
 const tileItems = computed(() => withCoversFor(props.items, takesCoverImage.value));
-const itemTabs = computed<EditorTab[][]>(() =>
-    props.items.map((item) => editorTabsFor(item, editorRules.value)),
-);
+const itemTabs = computed<EditorTab[][]>(() => {
+    if (props.editingLocked) {
+        return props.items.map(() => []);
+    }
+
+    return props.items.map((item) => editorTabsFor(item, editorRules.value));
+});
 
 const page = usePage<SharedData>();
 const canvaOption = computed(() =>
     page.props.mediaSources?.menu.find((option) => option.source === 'canva'),
 );
-const canvaEditable = computed<boolean[]>(() =>
-    props.items.map(
+const canvaEditable = computed<boolean[]>(() => {
+    if (props.editingLocked) {
+        return props.items.map(() => false);
+    }
+
+    return props.items.map(
         (item) => Boolean(canvaOption.value) && canvaDesignId(item) !== null,
-    ),
-);
+    );
+});
 const canvaAbort = new AbortController();
 onBeforeUnmount(() => canvaAbort.abort());
 

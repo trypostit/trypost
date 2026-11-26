@@ -306,5 +306,9 @@ return [
             'message' => ':network\'te yanıt yayınlamak için bu kanalı yeniden bağlayın ve TryPost\'un yanıtları paylaşmasına izin verin.',
             'member_message' => ':network\'te yanıt yayınlamak için bir çalışma alanı yöneticisinin bu kanalı yeniden bağlaması gerekir.',
         ],
+        'facebook_reel_cover' => [
+            'message' => ':network\'te Reels\'e kapak eklemek için bu kanalı yeniden bağlayın ve TryPost\'un kapağı ayarlamasına izin verin.',
+            'member_message' => ':network\'te Reels\'e kapak eklemek için bir çalışma alanı yöneticisinin bu kanalı yeniden bağlaması gerekir.',
+        ],
     ],
 ];

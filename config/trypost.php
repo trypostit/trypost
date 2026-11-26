@@ -598,7 +598,7 @@ return [
         ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
-            'scopes' => ConfigEnvironment::oauthScopes('FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,business_management'),
+            'scopes' => ConfigEnvironment::oauthScopes('FACEBOOK_SCOPES', 'public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,business_management,pages_read_user_content,pages_manage_engagement'),
             'required_scopes' => ['pages_show_list', 'pages_read_engagement'],
             'permissions' => [
                 'publish' => ['scopes' => ['pages_manage_posts']],
@@ -606,6 +606,7 @@ return [
                 'post_insights' => ['scopes' => ['pages_read_engagement']],
                 'post_insights_extended' => ['scopes' => ['read_insights']],
                 'post_history' => ['scopes' => ['pages_read_engagement']],
+                'facebook_reel_cover' => ['scopes' => ['pages_read_user_content', 'pages_manage_engagement']],
             ],
             'graph_api' => ConfigEnvironment::baseUrl('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),

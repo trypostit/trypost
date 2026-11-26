@@ -34,11 +34,13 @@ use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
 use App\Support\ChannelPermissions;
+use App\Support\Social\FacebookCover;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\LimitRetryPolicy;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
+use App\Support\Social\YouTubeCover;
 use App\Support\ThreadReplies;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -217,15 +219,25 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $this->post->writePublication(['error_context' => [...($this->post->error_context ?? []), InstagramPublisher::COMMENT_SKIPPED => true]]);
         }
 
+        if (FacebookCover::hasWarning($result)) {
+            FacebookCover::recordWarning($this->post, data_get($result, FacebookCover::FAILURE, []));
+        }
+
         if ($this->post->awaitsTikTokVideoId()) {
             ResolveTikTokVideoId::dispatch($this->post)
                 ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))
                 ->afterCommit();
         }
 
-        if ($this->post->awaitsYouTubeCover()) {
+        if (YouTubeCover::isAwaitedBy($this->post)) {
             SetYouTubeCover::dispatch($this->post)
                 ->delay(now()->addSeconds(SetYouTubeCover::CHECK_EVERY_SECONDS))
+                ->afterCommit();
+        }
+
+        if (FacebookCover::isAwaitedBy($this->post)) {
+            SetFacebookReelCover::dispatch($this->post)
+                ->delay(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS))
                 ->afterCommit();
         }
     }

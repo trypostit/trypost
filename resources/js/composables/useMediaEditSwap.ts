@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
 import { filled } from '@/lib/helpers';
+import { replacementFor } from '@/lib/mediaEdits';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
 import type { CoverImage, MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -76,10 +77,26 @@ const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
     return { ...uploaded, meta };
 };
 
+/** The edited item in its place, keeping the item as it was first added when asked to. */
+const swappedItem = (
+    edited: MediaItem,
+    current: MediaItem,
+    keepsOriginal: boolean,
+): MediaItem => {
+    if (!keepsOriginal) {
+        return edited;
+    }
+
+    if (filled(current.original)) {
+        return { ...edited, original: current.original };
+    }
+
+    return { ...edited, original: current };
+};
+
 /**
  * Adds a finished import to a list. With `replaces`, it takes that item's
- * place and keeps its alt text and tagged people, like an editor swap;
- * when that item is gone it is appended.
+ * place (`replacementFor`); when that item is gone it is appended.
  */
 export const withMediaAdded = (
     items: MediaItem[],
@@ -91,15 +108,7 @@ export const withMediaAdded = (
         : -1;
     if (index === -1) return [...items, item];
 
-    const { alt_text: altText, user_tags: userTags } = items[index].meta ?? {};
-    const replacement: MediaItem = {
-        ...item,
-        meta: {
-            ...item.meta,
-            ...(altText ? { alt_text: altText } : {}),
-            ...(userTags?.length ? { user_tags: userTags } : {}),
-        },
-    };
+    const replacement = replacementFor(items[index], item);
 
     return items.map((existing, position) =>
         position === index ? replacement : existing,
@@ -109,7 +118,9 @@ export const withMediaAdded = (
 /**
  * Applies media editor changes to a list: pixel edits upload as temporary
  * uploads, then every edited item replaces the one still at its index. On a
- * failed upload nothing is replaced and `failed` is set.
+ * failed upload nothing is replaced and `failed` is set. With `keepsOriginal`
+ * each edited item keeps the item as it was first added (`original`), so a
+ * network added later starts from it.
  */
 export const useMediaEditSwap = (): {
     uploading: Ref<boolean>;
@@ -119,6 +130,7 @@ export const useMediaEditSwap = (): {
         indexes: number[];
         items: () => MediaItem[];
         write: (items: MediaItem[]) => void;
+        keepsOriginal?: boolean;
     }) => Promise<void>;
 } => {
     const uploading = ref(false);
@@ -129,11 +141,13 @@ export const useMediaEditSwap = (): {
         indexes,
         items,
         write,
+        keepsOriginal = false,
     }: {
         changes: MediaEditChange[];
         indexes: number[];
         items: () => MediaItem[];
         write: (items: MediaItem[]) => void;
+        keepsOriginal?: boolean;
     }): Promise<void> => {
         if (changes.length === 0) return;
         uploading.value = true;
@@ -148,8 +162,11 @@ export const useMediaEditSwap = (): {
             const next = [...items()];
             for (const { change, item } of edited) {
                 const position = indexes[change.index];
-                if (next[position]?.id !== change.media.id) continue;
-                next[position] = item;
+                const current = next[position];
+                if (current?.id !== change.media.id) {
+                    continue;
+                }
+                next[position] = swappedItem(item, current, keepsOriginal);
             }
             write(next);
         } catch {

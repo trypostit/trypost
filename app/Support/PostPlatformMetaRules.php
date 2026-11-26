@@ -309,7 +309,7 @@ class PostPlatformMetaRules
      *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post): void
+    public static function assertStoredMetaPublishable(Post $post): void
     {
         if (! $post->hasDestination()) {
             return;

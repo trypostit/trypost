@@ -102,17 +102,20 @@ import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
+import {
+    ACCOUNT_SCOPED_SETTINGS,
+    usePostComposition,
+} from '@/composables/composer/usePostComposition';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
 import { useSaveAndReconnect } from '@/composables/composer/useSaveAndReconnect';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
     AUTOSAVE_VERSION,
-    type AutosaveMediaRef,
     type AutosaveSnapshot,
-    fromAutosaveMedia,
-    isExpiredUpload,
+    restoreSnapshotMedia,
     toAutosaveMedia,
+    toAutosaveOverride,
     useAutosavePreview,
     useComposerAutosave,
 } from '@/composables/useComposerAutosave';
@@ -144,10 +147,6 @@ import {
     getPickableContentTypeOptions,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import {
-    ACCOUNT_SCOPED_SETTINGS,
-    usePostComposition,
-} from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
@@ -171,9 +170,9 @@ import { getInstagramImageAspectIssues } from '@/lib/instagramImageAspect';
 import { linkPreviewDroppable, linkPreviewUrl } from '@/lib/linkPreview';
 import {
     editorTabsFor,
-    type EditorTab,
     rulesFor,
 } from '@/lib/mediaEditor';
+import { uneditedMedia } from '@/lib/mediaEdits';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -210,6 +209,7 @@ import {
     POLL_CONTENT_TYPES,
 } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
+import type { EditorTab } from '@/types/media-editor';
 import {
     Platform,
     type PlatformConfigs,
@@ -308,8 +308,9 @@ const updateContent = (value: string): void => {
     composition.content.value = value;
 };
 
+/** Step 1's tray: an item put back from the suggestions comes back as it was added, never as one network edited it. */
 const updateMedia = (items: MediaItem[]): void => {
-    composition.media.value = items;
+    composition.media.value = items.map(uneditedMedia);
 };
 
 if (!props.initialPost) {
@@ -564,7 +565,7 @@ const openNetwork = (
 };
 const cropping = ref(false);
 const cropTarget = ref<{
-    groupKey: string | null;
+    groupKey: string;
     replyKey: string | null;
     indexes: number[];
     initialIndex: number;
@@ -641,6 +642,9 @@ const appendMedia = (
             item,
             replaces,
         );
+        if (filled(replaces)) {
+            composition.replaceEditedMedia(replaces, item);
+        }
     }
     const targets = group
         ? [group]
@@ -905,6 +909,7 @@ const mediaErrorKeys = computed(() => {
         if (!item) return;
         found[target] ??= {};
         found[target][mediaKey(item)] ??= message;
+        found[target][mediaKey(uneditedMedia(item))] ??= message;
     };
     for (const [key, message] of Object.entries(errors.value)) {
         const shared = /^media\.(\d+)(\.|$)/.exec(key);
@@ -1615,8 +1620,11 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
         ),
         channelPermissionKey(
             props.platformConfigs[account.id],
-            contentType,
-            destination.meta,
+            {
+                meta: destination.meta,
+                contentType,
+                media: destination.media,
+            },
             canManageAccounts.value,
         ),
     ]) {
@@ -1899,18 +1907,22 @@ const showSidePanel = (panel: ComposerSidePanel): void => {
 };
 
 const editorMedia = (
-    groupKey: string | null,
+    groupKey: string,
     replyKey: string | null = null,
 ): MediaItem[] => {
     const group = findGroup(groupKey);
-    if (group && replyKey !== null) {
+    if (!group) {
+        return [];
+    }
+
+    if (replyKey !== null) {
         return (
             threadReplies(group).find((reply) => reply.key === replyKey)
                 ?.media ?? []
         );
     }
 
-    return group ? groupDestination(group).media : composition.media.value;
+    return groupDestination(group).media;
 };
 const editorContentTypes = (
     groupKey: string | null,
@@ -1929,12 +1941,12 @@ const editorContentTypes = (
 };
 
 const openEditor = (
-    target: { groupKey: string | null; replyKey?: string | null },
+    target: { groupKey: string; replyKey?: string | null },
     index: number,
     tab: EditorTab,
 ): void => {
     if (cropUploading.value) return;
-    if (target.groupKey !== null && !findGroup(target.groupKey)) return;
+    if (!findGroup(target.groupKey)) return;
     const replyKey = target.replyKey ?? null;
     const rules = rulesFor(editorContentTypes(target.groupKey, replyKey));
     const indexes = editorMedia(target.groupKey, replyKey).flatMap(
@@ -1984,7 +1996,7 @@ const cropItems = computed(() => {
     );
 });
 const cropAspectBounds = computed(() => {
-    if (!cropTarget.value?.groupKey) return {};
+    if (!cropTarget.value) return {};
     const rules = getMediaRulesForContentType(cropContentTypes.value[0] ?? '');
 
     return { min: rules.aspectRatioMin, max: rules.aspectRatioMax };
@@ -1997,11 +2009,10 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
         changes,
         indexes: target.indexes,
         items: () => editorMedia(target.groupKey, target.replyKey),
+        keepsOriginal: target.replyKey === null,
         write: (items) => {
-            if (target.groupKey !== null && target.replyKey !== null) {
+            if (target.replyKey !== null) {
                 setReplyMedia(target.groupKey, target.replyKey, () => items);
-            } else if (target.groupKey === null) {
-                composition.media.value = items;
             } else {
                 composition.setGroupOverride(target.groupKey, 'media', items);
             }
@@ -2138,14 +2149,10 @@ const autosaveSnapshot = (): AutosaveSnapshot => ({
     savedAt: dayjs().toISOString(),
     content: composition.content.value,
     overrides: Object.fromEntries(
-        Object.entries(composition.overrides.value).map(
-            ([id, { media, ...override }]) => [
-                id,
-                media
-                    ? { ...override, media: media.map(toAutosaveMedia) }
-                    : override,
-            ],
-        ),
+        Object.entries(composition.overrides.value).map(([id, override]) => [
+            id,
+            toAutosaveOverride(override),
+        ]),
     ),
     accountIds: [...composition.selectedAccountIds.value],
     media: composition.media.value.map(toAutosaveMedia),
@@ -2192,30 +2199,24 @@ const resumeUnfinishedPost = (): void => {
     const snapshot = autosave.saved.value;
     resumeOpen.value = false;
     if (!snapshot) return;
-    const retentionHours = mediaUploadLimits().upload_retention_hours;
-    const restoreMedia = (items: AutosaveMediaRef[]): MediaItem[] =>
-        items
-            .filter((item) => !isExpiredUpload(item, retentionHours))
-            .map(fromAutosaveMedia);
     [...composition.selectedAccountIds.value].forEach((id) =>
         composition.toggleAccount(id),
     );
     snapshot.accountIds.forEach((id) => composition.toggleAccount(id));
     const selectedIds = composition.selectedAccountIds.value;
     composition.content.value = snapshot.content;
-    composition.media.value = restoreMedia(snapshot.media);
+    const restored = restoreSnapshotMedia(
+        snapshot,
+        mediaUploadLimits().upload_retention_hours,
+    );
+    composition.media.value = restored.media;
     composition.labelIds.value = snapshot.labelIds.filter((id) =>
         props.labels.some((label) => label.id === id),
     );
     composition.overrides.value = Object.fromEntries(
-        Object.entries(snapshot.overrides)
-            .filter(([id]) => selectedIds.includes(id))
-            .map(([id, { media, ...override }]) => [
-                id,
-                Array.isArray(media)
-                    ? { ...override, media: restoreMedia(media) }
-                    : override,
-            ]),
+        Object.entries(restored.overrides).filter(([id]) =>
+            selectedIds.includes(id),
+        ),
     );
     composition.normalizeGroups();
     forgetPolls();
@@ -2869,17 +2870,11 @@ const onDialogOpenChange = (value: boolean): void => {
                                     :suggested="suggestionsFor(null)"
                                     :item-errors="mediaErrorsFor(null)"
                                     :content-types="editorContentTypes(null)"
+                                    editing-locked
                                     :disabled="cropUploading"
                                     @update:suggested="setSuggestions(null, $event)"
                                     @update:items="updateMedia"
                                     @import-started="onImportStarted($event, null)"
-                                    @edit="
-                                        openEditor(
-                                            { groupKey: null },
-                                            $event.index,
-                                            $event.tab,
-                                        )
-                                    "
                                 />
                                 <p
                                     v-if="cropError"
@@ -2993,6 +2988,7 @@ const onDialogOpenChange = (value: boolean): void => {
                                         "
                                         :platform-configs="platformConfigs"
                                         :meta="groupDestination(group).meta"
+                                        :media="groupDestination(group).media"
                                         :disabled="submitting"
                                         :reconnectable="!isPendingApproval"
                                         :test-id="`channel-permission-warning-${group.anchor.id}`"

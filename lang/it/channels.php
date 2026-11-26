@@ -306,5 +306,9 @@ return [
             'message' => 'Per pubblicare risposte su :network, ricollega questo canale e consenti a TryPost di pubblicarle.',
             'member_message' => 'Per pubblicare risposte su :network, un amministratore del workspace deve ricollegare questo canale.',
         ],
+        'facebook_reel_cover' => [
+            'message' => 'Per aggiungere una copertina ai Reel su :network, ricollega questo canale e consenti a TryPost di applicarla.',
+            'member_message' => 'Per aggiungere una copertina ai Reel su :network, un amministratore del workspace deve ricollegare questo canale.',
+        ],
     ],
 ];

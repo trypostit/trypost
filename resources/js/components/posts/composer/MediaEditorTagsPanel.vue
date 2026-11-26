@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button';
 import { instagramProfileUrl } from '@/lib/instagram';
 import {
     isValidInstagramUsername,
-    type MediaEdit,
     normalizeUsername,
     USER_TAGS_MAX,
 } from '@/lib/mediaEditor';
+import type { MediaEdit } from '@/types/media-editor';
 
 const edit = defineModel<MediaEdit>('edit', { required: true });
 const pendingPoint = defineModel<{ x: number; y: number } | null>(
