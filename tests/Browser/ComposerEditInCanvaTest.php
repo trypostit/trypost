@@ -262,3 +262,91 @@ test('the idea editor replaces a Canva tile in place and the save releases the r
 
     $page->assertNoJavaScriptErrors();
 });
+
+test('a Canva edit of an item edited for one network keeps the edit with that network when another joins', function (bool $landsAfterJoining) {
+    Storage::fake();
+    config()->set([
+        'services.unsplash.access_key' => null,
+        'services.giphy.api_key' => null,
+        'services.google_media.client_id' => null,
+        'services.google_media.api_key' => null,
+        'services.google_media.app_id' => null,
+        'services.canva.client_id' => 'canva-client-id',
+        'services.canva.client_secret' => 'canva-client-secret',
+        'trypost.media_sources.canva.enabled' => true,
+    ]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $made = editInCanvaBrowserImport($user, $workspace, 'DAF-design');
+    $edited = editInCanvaBrowserImport($user, $workspace, 'DAF-design-edited', $made['media']->id);
+    $png = (string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png'));
+    Storage::put($made['media']->path, $png);
+    Storage::put($edited['media']->path, $png);
+    $card = "composer-{$linkedin->id}";
+
+    $page = visit(route('app.posts.create'));
+    waitFor($page, '@composer-add-account');
+    $page->click('@composer-add-account');
+    waitFor($page, "@composer-account-option-{$linkedin->id}");
+    $page->click("@composer-account-option-{$linkedin->id}");
+    waitFor($page, "@{$card}-media-source-menu");
+
+    editInCanvaDeliver($page, editInCanvaPickSquare($page, $card), $made['import'], null);
+    waitFor($page, "@{$card}-alt-0");
+    waitForGone($page, '@canva-preset-square');
+    $page->click("@{$card}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+    $page->fill('@media-editor-alt-text', 'Only for LinkedIn');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+    $page->click('@media-editor-apply');
+    waitForGone($page, '@media-editor');
+
+    ['query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click("@{$card}-edit-canva-0"));
+    $addX = function () use ($page, $x): void {
+        if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$x->id}\"]'))")) {
+            $page->click('@composer-add-account');
+        }
+        waitFor($page, "@composer-account-option-{$x->id}");
+        $page->click("@composer-account-option-{$x->id}");
+        waitFor($page, '@composer-media-item-0');
+    };
+
+    if ($landsAfterJoining) {
+        $exporting = (string) Str::uuid();
+        MediaImportStatus::pending($exporting, $user->id, $workspace->id, $made['media']->id);
+        editInCanvaDeliver($page, (string) data_get($query, 'nonce'), $exporting, $made['media']->id);
+        waitFor($page, "@{$card}-replacing-0");
+        $addX();
+        MediaImportStatus::complete($exporting, $edited['media']);
+        broadcastToPage($page, "workspace.{$workspace->id}", 'media.import.settled', ['import_id' => $exporting]);
+    } else {
+        editInCanvaDeliver($page, (string) data_get($query, 'nonce'), $edited['import'], $made['media']->id);
+        waitForState($page, "@{$card}-media-item-0 img", "element.getAttribute('src') === '{$edited['media']->url}'");
+        $addX();
+    }
+    waitForState($page, '@composer-media-item-0 img', "element.getAttribute('src') === '{$edited['media']->url}'");
+
+    waitForState($page, '@composer-save-draft', 'element.disabled === false');
+    $page->click('@composer-save-draft');
+    waitForGone($page, '@post-composer-dialog');
+
+    $linkedinMedia = Post::query()->where('social_account_id', $linkedin->id)->sole()->media;
+    $xMedia = Post::query()->where('social_account_id', $x->id)->sole()->media;
+
+    expect(data_get($linkedinMedia, '0.meta.alt_text'))->toBe('Only for LinkedIn')
+        ->and(data_get($xMedia, '0.meta.alt_text'))->toBeNull()
+        ->and(data_get($linkedinMedia, '0.original_filename'))->toBe('DAF-design-edited.png')
+        ->and(data_get($xMedia, '0.original_filename'))->toBe('DAF-design-edited.png');
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'lands before the second network' => [false],
+    'lands after the second network joined' => [true],
+]);

@@ -109,7 +109,9 @@ export const missingPermissionKey = (
 /**
  * Whether a post's media carries a cover image (`MediaItem::hasAnyCover()` on
  * the server). Any cover counts, even one without its URL yet: a cover sent by
- * id or upload token gets it once it is hosted.
+ * id or upload token gets it once it is hosted. An empty object is a cover
+ * too, as the server counts any array, so this compares against
+ * null and undefined instead of `blank()`.
  */
 const hasCoverImage = (media: MediaItem[]): boolean => {
     for (const item of media) {

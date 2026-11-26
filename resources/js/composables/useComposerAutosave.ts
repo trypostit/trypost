@@ -88,7 +88,17 @@ export interface AutosaveSnapshot {
 }
 
 
-export const toAutosaveMedia = (item: MediaItem): AutosaveMediaRef => ({
+export const toAutosaveMedia = (item: MediaItem): AutosaveMediaRef => {
+    const stored = storedMediaRef(item);
+
+    if (filled(item.original)) {
+        stored.original = toAutosaveMedia(item.original);
+    }
+
+    return stored;
+};
+
+const storedMediaRef = (item: MediaItem): AutosaveMediaRef => ({
     id: item.id,
     upload_token: item.upload_token ?? null,
     ...(item.created_at ? { created_at: item.created_at } : {}),
@@ -100,10 +110,19 @@ export const toAutosaveMedia = (item: MediaItem): AutosaveMediaRef => ({
     meta: item.meta ?? null,
     ...(item.source ? { source: item.source } : {}),
     ...(item.source_meta ? { source_meta: item.source_meta } : {}),
-    ...(item.original ? { original: toAutosaveMedia(item.original) } : {}),
 });
 
-export const fromAutosaveMedia = (media: AutosaveMediaRef): MediaItem => ({
+export const fromAutosaveMedia = (media: AutosaveMediaRef): MediaItem => {
+    const restored = restoredMediaItem(media);
+
+    if (filled(media.original)) {
+        restored.original = fromAutosaveMedia(media.original);
+    }
+
+    return restored;
+};
+
+const restoredMediaItem = (media: AutosaveMediaRef): MediaItem => ({
     id: media.id,
     url: media.url,
     ...(media.path ? { path: media.path } : {}),
@@ -117,7 +136,6 @@ export const fromAutosaveMedia = (media: AutosaveMediaRef): MediaItem => ({
     ...(media.meta ? { meta: media.meta as MediaItem['meta'] } : {}),
     ...(media.source ? { source: media.source } : {}),
     ...(media.source_meta ? { source_meta: media.source_meta } : {}),
-    ...(media.original ? { original: fromAutosaveMedia(media.original) } : {}),
 });
 
 export const isExpiredUpload = (

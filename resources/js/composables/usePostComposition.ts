@@ -1,9 +1,11 @@
 import { computed, ref } from 'vue';
 
+import { replacementFor } from '@/composables/useMediaEditSwap';
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
 import { blank } from '@/lib/helpers';
 import {
+    editedId,
     isEditedMedia,
     uneditedMedia,
     withMediaEdits,
@@ -143,6 +145,65 @@ export const usePostComposition = (
         };
     };
 
+    /**
+     * A network's media changed while the text is shared (an import landing in
+     * its card): with one network it is the shared media; with several, the
+     * shared media takes the items as added and the network keeps its edits.
+     */
+    const writeUncustomizedMedia = (
+        group: NetworkGroup,
+        items: MediaItem[],
+    ): void => {
+        if (networkGroups.value.length < 2) {
+            media.value = items;
+
+            return;
+        }
+
+        const edits = items.filter(isEditedMedia);
+        group.accounts.forEach((account) =>
+            writeOverride(account.id, { media_edits: edits }),
+        );
+        media.value = items.map(uneditedMedia);
+    };
+
+    /** A network's edit of a shared item, carried onto the file that replaces that item. */
+    const replacedEdit = (
+        edit: MediaItem,
+        replaces: string,
+        item: MediaItem,
+    ): MediaItem => {
+        if (editedId(edit) !== replaces) {
+            return edit;
+        }
+
+        return replacementFor(edit, item);
+    };
+
+    /**
+     * A shared item was replaced (an Edit in Canva landing at step 1): each
+     * network that edited it keeps its edit on the new file.
+     */
+    const replaceEditedMedia = (replaces: string, item: MediaItem): void => {
+        overrides.value = Object.fromEntries(
+            Object.entries(overrides.value).map(([accountId, override]) => {
+                if (!owns(override, 'media_edits')) {
+                    return [accountId, override];
+                }
+
+                return [
+                    accountId,
+                    {
+                        ...override,
+                        media_edits: (override.media_edits ?? []).map((edit) =>
+                            replacedEdit(edit, replaces, item),
+                        ),
+                    },
+                ];
+            }),
+        );
+    };
+
     const setGroupOverride = <K extends keyof DestinationOverride>(
         key: string,
         field: K,
@@ -172,7 +233,7 @@ export const usePostComposition = (
             return;
         }
         if (field === 'media' && !customizing.value) {
-            media.value = (value as MediaItem[] | undefined) ?? [];
+            writeUncustomizedMedia(group, (value as MediaItem[] | undefined) ?? []);
 
             return;
         }
@@ -408,6 +469,7 @@ export const usePostComposition = (
         networkGroups,
         customizing,
         setGroupOverride,
+        replaceEditedMedia,
         normalizeGroups,
         customize,
         discardCustomization,

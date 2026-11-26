@@ -1,6 +1,15 @@
 import { filled } from '@/lib/helpers';
 import type { MediaItem } from '@/types/media';
 
+/** What the media editor sets on an item for one network: its alt text, tagged people and cover. */
+const NETWORK_META = [
+    'alt_text',
+    'user_tags',
+    'cover_offset_ms',
+    'cover',
+    'cover_source',
+] as const;
+
 /** Whether the media editor changed the item for the network it was edited on. */
 export const isEditedMedia = (item: MediaItem): boolean => filled(item.original);
 
@@ -10,6 +19,26 @@ export const withoutOriginal = (item: MediaItem): MediaItem => {
     delete copy.original;
 
     return copy;
+};
+
+/**
+ * The item's own file with nothing set for a network: what a network that
+ * never edited it starts from, when the file it was added as is gone (an
+ * expired upload) or was replaced (an Edit in Canva).
+ */
+export const asAddedFile = (item: MediaItem): MediaItem => {
+    const file = withoutOriginal(item);
+
+    if (!filled(file.meta)) {
+        return file;
+    }
+
+    const meta = { ...file.meta };
+    NETWORK_META.forEach((key) => {
+        delete meta[key];
+    });
+
+    return { ...file, meta };
 };
 
 /** The item as it was added, before the media editor changed it for a network. */
@@ -22,7 +51,7 @@ export const uneditedMedia = (item: MediaItem): MediaItem => {
 };
 
 /** The id of the shared item an edit changed. */
-const editedId = (edit: MediaItem): string => {
+export const editedId = (edit: MediaItem): string => {
     if (filled(edit.original)) {
         return edit.original.id;
     }

@@ -633,3 +633,41 @@ test('alt text that came with the media reaches every network, not only the firs
     expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('From the draft');
     $page->assertNoJavaScriptErrors();
 });
+
+test('resuming a step 1 draft whose shared upload expired keeps the file a network edited', function () {
+    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
+    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+    $expired = ['id' => 'photo', 'upload_token' => 'expired-token', 'created_at' => now()->subHours(25)->toISOString(), 'url' => '/images/photo.png', 'type' => 'image', 'mime_type' => 'image/png'];
+    $edit = ['id' => 'photo-cropped', 'upload_token' => 'fresh-token', 'created_at' => now()->subHour()->toISOString(), 'url' => '/images/photo-cropped.png', 'type' => 'image', 'mime_type' => 'image/png', 'meta' => ['alt_text' => 'Kept for LinkedIn'], 'original' => $expired];
+
+    $page = visit(route('app.posts.index'));
+    seedComposerAutosave($page, $user, $workspace->id, [
+        'content' => 'Edited for one network',
+        'accountIds' => [$linkedin->id, $x->id],
+        'media' => [$expired],
+        'overrides' => [$linkedin->id => ['media_edits' => [$edit]]],
+    ]);
+
+    openComposerForAutosave($page);
+    waitFor($page, '@composer-resume-dialog');
+    $page->click('@composer-resume-confirm');
+    waitForGone($page, '@composer-resume-dialog');
+    waitFor($page, '@composer-media-item-0');
+
+    $page->click('@composer-next')
+        ->click("@composer-account-{$linkedin->id}");
+    waitFor($page, "@composer-{$linkedin->id}-alt-0");
+    $page->click("@composer-{$linkedin->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Kept for LinkedIn');
+    $page->click('@media-editor-cancel');
+    waitForGone($page, '@media-editor');
+
+    $page->click("@composer-account-{$x->id}");
+    waitFor($page, "@composer-{$x->id}-alt-0");
+    $page->click("@composer-{$x->id}-alt-0");
+    waitForState($page, '@media-editor-alt-text', 'true');
+    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('');
+    $page->assertNoJavaScriptErrors();
+});

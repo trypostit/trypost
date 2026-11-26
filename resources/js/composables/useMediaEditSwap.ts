@@ -1,7 +1,8 @@
 import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
+import { asAddedFile } from '@/lib/mediaEdits';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
 import type { CoverImage, MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -94,9 +95,34 @@ const swappedItem = (
 };
 
 /**
+ * The import that replaces an item: it keeps the item's alt text and tagged
+ * people, like an editor swap. An item a network edited stays that network's
+ * edit, with the new file as the one a network that never edited it gets.
+ */
+export const replacementFor = (
+    replaced: MediaItem,
+    item: MediaItem,
+): MediaItem => {
+    const { alt_text: altText, user_tags: userTags } = replaced.meta ?? {};
+    const replacement: MediaItem = {
+        ...item,
+        meta: {
+            ...item.meta,
+            ...(altText ? { alt_text: altText } : {}),
+            ...(userTags?.length ? { user_tags: userTags } : {}),
+        },
+    };
+
+    if (blank(replaced.original)) {
+        return replacement;
+    }
+
+    return { ...replacement, original: asAddedFile(item) };
+};
+
+/**
  * Adds a finished import to a list. With `replaces`, it takes that item's
- * place and keeps its alt text and tagged people, like an editor swap;
- * when that item is gone it is appended.
+ * place (`replacementFor`); when that item is gone it is appended.
  */
 export const withMediaAdded = (
     items: MediaItem[],
@@ -108,15 +134,7 @@ export const withMediaAdded = (
         : -1;
     if (index === -1) return [...items, item];
 
-    const { alt_text: altText, user_tags: userTags } = items[index].meta ?? {};
-    const replacement: MediaItem = {
-        ...item,
-        meta: {
-            ...item.meta,
-            ...(altText ? { alt_text: altText } : {}),
-            ...(userTags?.length ? { user_tags: userTags } : {}),
-        },
-    };
+    const replacement = replacementFor(items[index], item);
 
     return items.map((existing, position) =>
         position === index ? replacement : existing,

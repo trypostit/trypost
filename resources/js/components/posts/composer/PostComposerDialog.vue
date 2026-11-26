@@ -174,7 +174,7 @@ import {
     editorTabsFor,
     rulesFor,
 } from '@/lib/mediaEditor';
-import { uneditedMedia } from '@/lib/mediaEdits';
+import { asAddedFile, uneditedMedia } from '@/lib/mediaEdits';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -645,6 +645,9 @@ const appendMedia = (
             item,
             replaces,
         );
+        if (replaces) {
+            composition.replaceEditedMedia(replaces, item);
+        }
     }
     const targets = group
         ? [group]
@@ -2214,22 +2217,37 @@ const resumeUnfinishedPost = (): void => {
     resumeOpen.value = false;
     if (!snapshot) return;
     const retentionHours = mediaUploadLimits().upload_retention_hours;
-    /** An edit whose original upload expired keeps its own file, so a network added later is never sent a file that is gone. */
-    const withLiveOriginal = (item: AutosaveMediaRef): AutosaveMediaRef => {
-        if (!item.original || !isExpiredUpload(item.original, retentionHours)) {
-            return item;
+    const isLive = (item: AutosaveMediaRef): boolean =>
+        !isExpiredUpload(item, retentionHours);
+    /** An edit whose original upload expired starts from its own file, so no network is ever sent a file that is gone. */
+    const withLiveOriginal = (item: AutosaveMediaRef): MediaItem => {
+        const restored = fromAutosaveMedia(item);
+
+        if (!filled(item.original) || isLive(item.original)) {
+            return restored;
         }
 
-        const live = { ...item };
-        delete live.original;
-
-        return live;
+        return { ...restored, original: asAddedFile(restored) };
     };
     const restoreMedia = (items: AutosaveMediaRef[]): MediaItem[] =>
-        items
-            .filter((item) => !isExpiredUpload(item, retentionHours))
-            .map(withLiveOriginal)
-            .map(fromAutosaveMedia);
+        items.filter(isLive).map(withLiveOriginal);
+    const liveEdits = Object.values(snapshot.overrides)
+        .flatMap((override) => override.media_edits ?? [])
+        .filter(isLive);
+    /** A shared item whose upload expired gives its place to the live file a network edited it into, as added. */
+    const restoredShared = (item: AutosaveMediaRef): MediaItem[] => {
+        if (isLive(item)) {
+            return [fromAutosaveMedia(item)];
+        }
+
+        const edit = liveEdits.find((candidate) => candidate.original?.id === item.id);
+
+        if (!filled(edit)) {
+            return [];
+        }
+
+        return [asAddedFile(fromAutosaveMedia(edit))];
+    };
     const restoredOverride = ({
         media,
         media_edits: mediaEdits,
@@ -2253,7 +2271,7 @@ const resumeUnfinishedPost = (): void => {
     snapshot.accountIds.forEach((id) => composition.toggleAccount(id));
     const selectedIds = composition.selectedAccountIds.value;
     composition.content.value = snapshot.content;
-    composition.media.value = restoreMedia(snapshot.media);
+    composition.media.value = snapshot.media.flatMap(restoredShared);
     composition.labelIds.value = snapshot.labelIds.filter((id) =>
         props.labels.some((label) => label.id === id),
     );
