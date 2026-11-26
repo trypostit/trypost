@@ -2607,7 +2607,7 @@ test('a facebook feed video whose cover could not go with it is published with a
 
     (new PublishToSocialPlatform($post))->handle();
 
-    expect(FacebookCover::wasRefused($post->fresh()->error_context))->toBeTrue()
+    expect(FacebookCover::hasWarning($post->fresh()->error_context))->toBeTrue()
         ->and($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
 });
 

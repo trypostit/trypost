@@ -23,7 +23,7 @@ final class FacebookCover
     public const string WARNING = 'facebook_cover_warning';
 
     /** A Facebook Reel TryPost published with a cover image, waiting for its cover. */
-    public static function awaitsReelCover(Post $post): bool
+    public static function isAwaitedBy(Post $post): bool
     {
         return $post->platform === Platform::Facebook
             && $post->origin === Origin::TryPost
@@ -50,13 +50,13 @@ final class FacebookCover
      *
      * @param  array<string, mixed>|null  $context
      */
-    public static function wasRefused(?array $context): bool
+    public static function hasWarning(?array $context): bool
     {
         return data_get($context, self::WARNING) === true;
     }
 
     /** The warning sits next to the publication result, which publishing again clears. */
-    public static function recordRefusal(Post $post): void
+    public static function recordWarning(Post $post): void
     {
         $post->writePublication(['error_context' => [...($post->error_context ?? []), self::WARNING => true]]);
     }

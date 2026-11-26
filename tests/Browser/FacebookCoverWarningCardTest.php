@@ -29,7 +29,7 @@ test('a reel whose cover Facebook did not take shows it under its time, with wha
         'published_at' => now()->subHours($hoursAgo),
     ]);
     $refused = $sentReel(1);
-    FacebookCover::recordRefusal($refused);
+    FacebookCover::recordWarning($refused);
     $applied = $sentReel(2);
 
     $this->actingAs($user);

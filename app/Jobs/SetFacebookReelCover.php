@@ -59,12 +59,12 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! FacebookCover::awaitsReelCover($this->post)) {
+        if (! FacebookCover::isAwaitedBy($this->post)) {
             return;
         }
 
         if (! FacebookCover::channelTakesReelCover($this->post)) {
-            FacebookCover::recordRefusal($this->post);
+            FacebookCover::recordWarning($this->post);
 
             return;
         }
@@ -80,7 +80,7 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
 
             return;
         } catch (TokenExpiredException|FacebookPublishException) {
-            FacebookCover::recordRefusal($this->post);
+            FacebookCover::recordWarning($this->post);
 
             return;
         }
@@ -96,8 +96,8 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
     {
         $post = Post::find($this->post->id);
 
-        if (filled($post) && FacebookCover::awaitsReelCover($post)) {
-            FacebookCover::recordRefusal($post);
+        if (filled($post) && FacebookCover::isAwaitedBy($post)) {
+            FacebookCover::recordWarning($post);
         }
     }
 }

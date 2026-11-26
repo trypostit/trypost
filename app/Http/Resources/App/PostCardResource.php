@@ -55,7 +55,7 @@ class PostCardResource extends JsonResource
                 'failed_at' => data_get($context, 'failed_at'),
             ]),
             'youtube_thumbnail_warning' => YouTubeCover::warning($post->error_context)?->value,
-            'facebook_cover_warning' => FacebookCover::wasRefused($post->error_context),
+            'facebook_cover_warning' => FacebookCover::hasWarning($post->error_context),
             'instagram_comment_skipped' => data_get($post->error_context, InstagramPublisher::COMMENT_SKIPPED) === true,
         ];
     }

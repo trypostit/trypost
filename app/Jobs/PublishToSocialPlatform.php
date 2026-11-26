@@ -224,8 +224,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $this->post->writePublication(['error_context' => [...($this->post->error_context ?? []), InstagramPublisher::COMMENT_SKIPPED => true]]);
         }
 
-        if (FacebookCover::wasRefused($result)) {
-            FacebookCover::recordRefusal($this->post);
+        if (FacebookCover::hasWarning($result)) {
+            FacebookCover::recordWarning($this->post);
         }
 
         if ($this->post->awaitsTikTokVideoId()) {
@@ -240,7 +240,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 ->afterCommit();
         }
 
-        if (FacebookCover::awaitsReelCover($this->post)) {
+        if (FacebookCover::isAwaitedBy($this->post)) {
             SetFacebookReelCover::dispatch($this->post)
                 ->delay(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS))
                 ->afterCommit();

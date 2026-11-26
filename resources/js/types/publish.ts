@@ -87,7 +87,7 @@ export interface PostCard {
     error_message?: string | null;
     failure?: PostCardFailure | null;
     youtube_thumbnail_warning?: YouTubeThumbnailWarning | null;
-    /** Facebook kept its own cover on this video instead of the image picked for it (`FacebookCover::wasRefused()`). */
+    /** Facebook kept its own cover on this video instead of the image picked for it (`FacebookCover::hasWarning()`). */
     facebook_cover_warning?: boolean;
     /** Instagram returned no media id, so the first comment did not go out (`InstagramPublisher::COMMENT_SKIPPED`). */
     instagram_comment_skipped?: boolean;

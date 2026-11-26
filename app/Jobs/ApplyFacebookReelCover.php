@@ -62,12 +62,12 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! FacebookCover::awaitsReelCover($this->post)) {
+        if (! FacebookCover::isAwaitedBy($this->post)) {
             return;
         }
 
         if (! FacebookCover::channelTakesReelCover($this->post)) {
-            FacebookCover::recordRefusal($this->post);
+            FacebookCover::recordWarning($this->post);
 
             return;
         }
@@ -77,7 +77,7 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
         } catch (PlatformUnavailableException $exception) {
             $this->release(CoverRetry::delayAfter($this->attempts(), $exception->retryDelaySeconds));
         } catch (TokenExpiredException) {
-            FacebookCover::recordRefusal($this->post);
+            FacebookCover::recordWarning($this->post);
         } catch (FacebookPublishException $exception) {
             $this->settle($exception);
         }
@@ -87,8 +87,8 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
     {
         $post = Post::find($this->post->id);
 
-        if (filled($post) && FacebookCover::awaitsReelCover($post)) {
-            FacebookCover::recordRefusal($post);
+        if (filled($post) && FacebookCover::isAwaitedBy($post)) {
+            FacebookCover::recordWarning($post);
         }
     }
 
@@ -106,6 +106,6 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        FacebookCover::recordRefusal($this->post);
+        FacebookCover::recordWarning($this->post);
     }
 }
