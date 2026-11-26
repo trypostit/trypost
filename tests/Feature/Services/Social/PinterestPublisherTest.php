@@ -1056,19 +1056,10 @@ test('pinterest publisher treats video processing timeout as platform unavailabl
     Sleep::assertSleptTimes(59);
 });
 
-test('pinterest publisher retries a video pin pinterest refuses with code 1 every 2 minutes, 5 times', function () {
-    $this->post->update([
-        'content_type' => ContentType::PinterestVideoPin,
-        'media' => [[
-            'id' => 'test-media-video',
-            'path' => 'media/2026-01/video.mp4',
-            'url' => 'https://example.com/media/2026-01/video.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'video.mp4',
-        ]],
-    ]);
+test('pinterest publisher retries a pin pinterest refuses with code 1 every 2 minutes, 5 times', function (ContentType $contentType, array $media) {
+    $this->post->update(['content_type' => $contentType, 'media' => $media]);
 
-    fakePinterestVideoPinCreate(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
+    fakePinterestPinCreate(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
 
     expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(function (PlatformUnavailableException $e) {
@@ -1076,21 +1067,19 @@ test('pinterest publisher retries a video pin pinterest refuses with code 1 ever
                 ->and($e->retryDelaySeconds)->toBe(120)
                 ->and($e->maxRetries)->toBe(5);
         });
-});
+})->with([
+    'video pin' => [ContentType::PinterestVideoPin, [pinterestTestMedia('video.mp4', 'video/mp4')]],
+    'image pin' => [ContentType::PinterestPin, [pinterestTestMedia('image.jpg', 'image/jpeg')]],
+    'carousel' => [ContentType::PinterestCarousel, [pinterestTestMedia('image1.jpg', 'image/jpeg'), pinterestTestMedia('image2.jpg', 'image/jpeg')]],
+]);
 
-test('pinterest publisher fails a video pin at once for any other refusal', function (array $body, int $status) {
+test('pinterest publisher fails a pin at once for any other refusal', function (array $body, int $status) {
     $this->post->update([
         'content_type' => ContentType::PinterestVideoPin,
-        'media' => [[
-            'id' => 'test-media-video',
-            'path' => 'media/2026-01/video.mp4',
-            'url' => 'https://example.com/media/2026-01/video.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'video.mp4',
-        ]],
+        'media' => [pinterestTestMedia('video.mp4', 'video/mp4')],
     ]);
 
-    fakePinterestVideoPinCreate($body, $status);
+    fakePinterestPinCreate($body, $status);
 
     expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PinterestPublishException::class);
@@ -1098,46 +1087,6 @@ test('pinterest publisher fails a video pin at once for any other refusal', func
     'another code on a 400' => [['code' => 2, 'message' => 'Board not found.'], 400],
     'code 1 on another status' => [['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 403],
 ]);
-
-test('pinterest publisher fails a carousel pinterest refuses with code 1 without retrying', function () {
-    $this->post->update([
-        'content_type' => ContentType::PinterestCarousel,
-        'media' => collect([1, 2])->map(fn (int $i) => [
-            'id' => "test-media-{$i}",
-            'path' => "media/2026-01/image{$i}.jpg",
-            'url' => "https://example.com/media/2026-01/image{$i}.jpg",
-            'mime_type' => 'image/jpeg',
-            'original_filename' => "image{$i}.jpg",
-        ])->all(),
-    ]);
-
-    Http::fake([
-        '*/v5/pins' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->post))
-        ->toThrow(PinterestPublishException::class);
-});
-
-test('pinterest publisher fails an image pin pinterest refuses with code 1 without retrying', function () {
-    $this->post->update([
-        'media' => [[
-            'id' => 'test-media-id',
-            'path' => 'media/2026-01/image.jpg',
-            'url' => 'https://example.com/media/2026-01/image.jpg',
-            'mime_type' => 'image/jpeg',
-            'original_filename' => 'image.jpg',
-        ]],
-    ]);
-
-    Http::fake([
-        '*/v5/pins' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400),
-        '*' => Http::response('fake-image-content', 200),
-    ]);
-
-    expect(fn () => $this->publisher->publish($this->post))
-        ->toThrow(PinterestPublishException::class);
-});
 
 test('pinterest publisher fails hard when video processing reports failed', function () {
     Sleep::fake();
@@ -1414,12 +1363,26 @@ test('pinterest publisher keeps links intact', function () {
 });
 
 /**
- * Fakes a video pin's upload and processing, and answers its pin create with
- * the given body and status.
+ * @return array<string, string>
+ */
+function pinterestTestMedia(string $filename, string $mimeType): array
+{
+    return [
+        'id' => "test-media-{$filename}",
+        'path' => "media/2026-01/{$filename}",
+        'url' => "https://example.com/media/2026-01/{$filename}",
+        'mime_type' => $mimeType,
+        'original_filename' => $filename,
+    ];
+}
+
+/**
+ * Fakes a pin's media download, a video's upload and processing, and answers
+ * the pin create with the given body and status.
  *
  * @param  array<string, mixed>  $pinBody
  */
-function fakePinterestVideoPinCreate(array $pinBody, int $pinStatus): void
+function fakePinterestPinCreate(array $pinBody, int $pinStatus): void
 {
     $s3UploadUrl = 'https://pinterest-media-upload.s3.amazonaws.com/upload';
 

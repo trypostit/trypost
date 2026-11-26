@@ -28,13 +28,13 @@ class PinterestPublisher
     use HasSocialHttpClient;
 
     /**
-     * Pinterest sometimes refuses a video pin with code 1 ("Sorry! This site
+     * Pinterest sometimes refuses a pin with code 1 ("Sorry! This site
      * doesn't allow you to save Pins.") and accepts the same pin minutes
-     * later. Each retry runs the whole publish again, upload included.
+     * later. Each retry runs the whole publish again, uploads included.
      */
-    private const int REFUSED_VIDEO_PIN_RETRY_DELAY_SECONDS = 120;
+    private const int REFUSED_PIN_RETRY_DELAY_SECONDS = 120;
 
-    private const int REFUSED_VIDEO_PIN_MAX_RETRIES = 5;
+    private const int REFUSED_PIN_MAX_RETRIES = 5;
 
     private string $baseUrl;
 
@@ -108,17 +108,17 @@ class PinterestPublisher
      * @param  array<string, mixed>  $payload
      * @return array{id: mixed, url: string}
      */
-    private function createPin(Post $post, array $payload, string $failureLogMessage): array
+    private function createPin(SocialAccount $account, array $payload, string $failureLogMessage): array
     {
-        $response = $this->socialHttp()->withToken($post->socialAccount->access_token)
+        $response = $this->socialHttp()->withToken($account->access_token)
             ->post($this->baseUrl.'/pins', $payload);
 
-        if ($this->isRefusedVideoPin($post, $response)) {
+        if ($this->isRefusedPin($response)) {
             throw new PlatformUnavailableException(
-                "Pinterest refused the video pin for now: {$response->body()}",
+                "Pinterest refused the pin for now: {$response->body()}",
                 $response->status(),
-                retryDelaySeconds: self::REFUSED_VIDEO_PIN_RETRY_DELAY_SECONDS,
-                maxRetries: self::REFUSED_VIDEO_PIN_MAX_RETRIES,
+                retryDelaySeconds: self::REFUSED_PIN_RETRY_DELAY_SECONDS,
+                maxRetries: self::REFUSED_PIN_MAX_RETRIES,
             );
         }
 
@@ -138,12 +138,8 @@ class PinterestPublisher
         ];
     }
 
-    private function isRefusedVideoPin(Post $post, Response $response): bool
+    private function isRefusedPin(Response $response): bool
     {
-        if ($post->content_type !== ContentType::PinterestVideoPin) {
-            return false;
-        }
-
         if (! $response->badRequest()) {
             return false;
         }
@@ -153,6 +149,7 @@ class PinterestPublisher
 
     private function publishImagePin(Post $post, ?string $content): array
     {
+        $account = $post->socialAccount;
         $media = $post->mediaItems->first();
 
         if (! $media) {
@@ -205,7 +202,7 @@ class PinterestPublisher
             $payload['alt_text'] = $alt;
         }
 
-        return $this->createPin($post, $payload, 'Pinterest pin creation failed');
+        return $this->createPin($account, $payload, 'Pinterest pin creation failed');
     }
 
     private function publishVideoPin(Post $post, ?string $content): array
@@ -320,11 +317,12 @@ class PinterestPublisher
 
         $payload['media_source']['cover_image_key_frame_time'] = (int) round(($media->coverOffsetMs() ?? 0) / 1000);
 
-        return $this->createPin($post, $payload, 'Pinterest video pin creation failed');
+        return $this->createPin($account, $payload, 'Pinterest video pin creation failed');
     }
 
     private function publishCarousel(Post $post, ?string $content): array
     {
+        $account = $post->socialAccount;
         $medias = $post->mediaItems;
 
         if ($medias->count() < 2 || $medias->count() > 5) {
@@ -346,7 +344,7 @@ class PinterestPublisher
             ],
         ], $post, $content);
 
-        return $this->createPin($post, $payload, 'Pinterest carousel creation failed');
+        return $this->createPin($account, $payload, 'Pinterest carousel creation failed');
     }
 
     /** @throws PlatformUnavailableException|PinterestPublishException */
