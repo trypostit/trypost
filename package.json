@@ -2,9 +2,6 @@
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
     "type": "module",
-    "imports": {
-        "#build-info": "./resources/js/vite/buildInfo.ts"
-    },
     "scripts": {
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",

@@ -6,7 +6,7 @@ import laravel from 'laravel-vite-plugin';
 import i18n from 'laravel-vue-i18n/vite';
 import { defineConfig } from 'vite';
 
-import { buildInfo } from '#build-info';
+import { buildInfo } from './vite/build-info';
 
 export default defineConfig({
     plugins: [
