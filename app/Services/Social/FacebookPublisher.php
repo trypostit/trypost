@@ -23,6 +23,7 @@ use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -162,7 +163,7 @@ class FacebookPublisher
         return $this->postToGraph("{$pageId}/feed", [
             'message' => $content,
             'access_token' => $accessToken,
-            ...$this->optionalField('link', $link),
+            'link' => $link,
         ], 'text post', $reportFailure);
     }
 
@@ -174,8 +175,8 @@ class FacebookPublisher
         $response = $this->postToGraph("{$pageId}/photos", [
             'url' => $media->url,
             'access_token' => $accessToken,
-            ...$this->optionalField('message', $content),
-            ...$this->altText($media),
+            'message' => $content,
+            'alt_text_custom' => $media->altTextFor(Platform::Facebook),
         ], 'single image post');
 
         return $this->feedPostResult($response->json('post_id') ?? $response->json('id'));
@@ -206,7 +207,7 @@ class FacebookPublisher
 
         $response = $this->postToGraph("{$pageId}/feed", [
             'access_token' => $accessToken,
-            ...$this->optionalField('message', $content),
+            'message' => $content,
             ...$photoIds
                 ->mapWithKeys(fn (string $photoId, int $index): array => ["attached_media[{$index}]" => json_encode(['media_fbid' => $photoId])])
                 ->all(),
@@ -218,12 +219,12 @@ class FacebookPublisher
     private function uploadUnpublishedPhoto(string $pageId, string $accessToken, MediaItem $media, ?string $url = null): ?string
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", [
+            fn (): Response => $this->facebookHttp()->post("{$this->baseUrl}/{$pageId}/photos", $this->filledFields([
                 'url' => $url ?? $media->url,
                 'published' => 'false',
                 'access_token' => $accessToken,
-                ...$this->altText($media),
-            ]),
+                'alt_text_custom' => $media->altTextFor(Platform::Facebook),
+            ])),
             'image upload',
         );
 
@@ -249,7 +250,7 @@ class FacebookPublisher
         $payload = [
             'file_url' => $media->url,
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
+            'description' => $content,
         ];
         $thumb = $this->feedVideoThumb($media);
         $coverSkipped = blank($thumb) && filled($media->cover());
@@ -306,7 +307,7 @@ class FacebookPublisher
             'video_id' => $videoId,
             'video_state' => 'PUBLISHED',
             'access_token' => $accessToken,
-            ...$this->optionalField('description', $content),
+            'description' => $content,
         ], 'reel finish');
 
         $reelId = $response->json('id') ?? $videoId;
@@ -334,12 +335,7 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], 'story finish');
 
-        $storyId = $response->json('post_id') ?? $videoId;
-
-        return [
-            'id' => $storyId,
-            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
-        ];
+        return $this->storyResult($pageId, $response->json('post_id') ?? $videoId);
     }
 
     /**
@@ -369,12 +365,7 @@ class FacebookPublisher
             'access_token' => $accessToken,
         ], 'photo story');
 
-        $storyId = $response->json('post_id') ?? $photoId;
-
-        return [
-            'id' => $storyId,
-            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
-        ];
+        return $this->storyResult($pageId, $response->json('post_id') ?? $photoId);
     }
 
     /**
@@ -486,13 +477,7 @@ class FacebookPublisher
                 Sleep::for(self::VIDEO_UPLOAD_POLL_SECONDS)->seconds();
             }
 
-            $response = $this->reachOrRetry(
-                fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
-                    'fields' => 'status',
-                    'access_token' => $accessToken,
-                ]),
-                'video status',
-            );
+            $response = $this->readVideoStatus($videoId, $accessToken, 'video status');
 
             if ($response->failed()) {
                 if (! GraphError::isTransientFailure($response)) {
@@ -593,14 +578,6 @@ class FacebookPublisher
         return $media;
     }
 
-    protected function cropFailureException(string $message): SocialPublishException
-    {
-        return new FacebookPublishException(
-            userMessage: $message,
-            category: ErrorCategory::ServerError,
-        );
-    }
-
     private function requireVideo(?MediaItem $media, string $format): MediaItem
     {
         if (blank($media) || ! $media->isVideo()) {
@@ -611,6 +588,14 @@ class FacebookPublisher
         }
 
         return $media;
+    }
+
+    protected function cropFailureException(string $message): SocialPublishException
+    {
+        return new FacebookPublishException(
+            userMessage: $message,
+            category: ErrorCategory::ServerError,
+        );
     }
 
     private function sanitizedContent(Post $post): ?string
@@ -654,19 +639,7 @@ class FacebookPublisher
             return null;
         }
 
-        $download = $this->downloadImage($cover->url);
-
-        if (blank($download)) {
-            return null;
-        }
-
-        try {
-            return $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
-        } catch (SocialPublishException) {
-            return null;
-        } finally {
-            File::delete($download);
-        }
+        return rescue(fn (): string => $this->coverJpeg($cover), report: false);
     }
 
     /**
@@ -680,13 +653,7 @@ class FacebookPublisher
      */
     public function reelIsProcessing(Post $post): bool
     {
-        $response = $this->reachOrRetry(
-            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$post->platform_post_id}", [
-                'fields' => 'status',
-                'access_token' => $post->socialAccount->access_token,
-            ]),
-            'reel status',
-        );
+        $response = $this->readVideoStatus($post->platform_post_id, $post->socialAccount->access_token, 'reel status');
 
         if ($response->failed()) {
             if (! GraphError::isTransientFailure($response)) {
@@ -725,13 +692,26 @@ class FacebookPublisher
             return;
         }
 
+        $this->postToGraph("{$post->platform_post_id}/thumbnails", [
+            'access_token' => $post->socialAccount->access_token,
+            'is_preferred' => 'true',
+        ], 'reel cover', image: $this->coverJpeg($cover), imageField: 'source');
+    }
+
+    /**
+     * The cover image as JPEG bytes within Facebook's thumbnail limit.
+     *
+     * @throws FacebookPublishException when it cannot be downloaded (ServerError) or converted (MediaFormat)
+     */
+    private function coverJpeg(MediaItem $cover): string
+    {
         $download = $this->downloadImage($cover->url) ?? throw new FacebookPublishException(
             userMessage: 'Failed to download the cover image for Facebook',
             category: ErrorCategory::ServerError,
         );
 
         try {
-            $jpeg = $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
+            return $this->convertToJpegBytes($download, Platform::Facebook, self::COVER_MAX_BYTES);
         } catch (SocialPublishException $exception) {
             throw new FacebookPublishException(
                 userMessage: $exception->getMessage(),
@@ -740,11 +720,17 @@ class FacebookPublisher
         } finally {
             File::delete($download);
         }
+    }
 
-        $this->postToGraph("{$post->platform_post_id}/thumbnails", [
-            'access_token' => $post->socialAccount->access_token,
-            'is_preferred' => 'true',
-        ], 'reel cover', image: $jpeg, imageField: 'source');
+    private function readVideoStatus(string $videoId, string $accessToken, string $label): Response
+    {
+        return $this->reachOrRetry(
+            fn (): Response => $this->socialHttp()->get("{$this->baseUrl}/{$videoId}", [
+                'fields' => 'status',
+                'access_token' => $accessToken,
+            ]),
+            $label,
+        );
     }
 
     /**
@@ -752,14 +738,14 @@ class FacebookPublisher
      * exception, logging the redacted body under `$label` first.
      *
      * An `$image` (JPEG bytes) goes as a multipart file named `$imageField`
-     * next to the payload.
+     * next to the payload. Blank fields are left out.
      *
-     * @param  array<string, string>  $payload
+     * @param  array<string, string|null>  $payload
      */
     private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb'): Response
     {
         $response = $this->reachOrRetry(
-            fn (): Response => $this->graphRequestWithImage($image, $imageField)->post("{$this->baseUrl}/{$path}", $payload),
+            fn (): Response => $this->graphRequestWithImage($image, $imageField)->post("{$this->baseUrl}/{$path}", $this->filledFields($payload)),
             $label,
         );
 
@@ -800,19 +786,14 @@ class FacebookPublisher
     }
 
     /**
+     * The fields without the blank ones (no caption, no alt text, no link), which the request leaves out.
+     *
+     * @param  array<string, string|null>  $fields
      * @return array<string, string>
      */
-    private function optionalField(string $key, ?string $value): array
+    private function filledFields(array $fields): array
     {
-        return filled($value) ? [$key => $value] : [];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function altText(MediaItem $media): array
-    {
-        return $this->optionalField('alt_text_custom', $media->altTextFor(Platform::Facebook));
+        return Arr::where($fields, fn (?string $value): bool => filled($value));
     }
 
     /**
@@ -823,6 +804,17 @@ class FacebookPublisher
         return [
             'id' => $postId,
             'url' => "https://www.facebook.com/{$postId}",
+        ];
+    }
+
+    /**
+     * @return array{id: mixed, url: string}
+     */
+    private function storyResult(string $pageId, mixed $storyId): array
+    {
+        return [
+            'id' => $storyId,
+            'url' => "https://www.facebook.com/stories/{$pageId}/{$storyId}",
         ];
     }
 
