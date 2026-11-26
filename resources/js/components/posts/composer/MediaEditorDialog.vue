@@ -38,6 +38,7 @@ import {
     renderImageEdit,
     renderMediaEdit,
     rulesFor,
+    savedCoverSource,
     USER_TAGS_MAX,
 } from '@/lib/mediaEditor';
 import { isVideo } from '@/lib/mediaType';
@@ -584,7 +585,7 @@ const apply = async (): Promise<void> => {
                         userTags: itemEdit.userTags,
                         coverOffsetMs: itemEdit.coverOffsetMs,
                         coverImage: await coverImageFor(media, itemEdit),
-                        coverSource: itemEdit.coverSource,
+                        coverSource: savedCoverSource(itemEdit, media),
                     };
                 },
             ),

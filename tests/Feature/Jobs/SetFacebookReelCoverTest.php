@@ -120,6 +120,20 @@ test('a channel without the reel cover scopes leaves a warning without asking fa
     expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
 });
 
+test('a channel whose granted scopes are unknown still gets its reel cover', function (?array $scopes) {
+    Http::fake([
+        facebookReelStatusUrl() => Http::response(facebookReelStatus('ready')),
+        FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+        facebookThumbnailsUrl() => Http::response(['success' => true]),
+    ]);
+    $this->account->update(['scopes' => $scopes]);
+
+    runSetFacebookReelCover($this->post)->assertNotReleased();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
+    expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
+})->with(['null' => [null], 'empty' => [[]]]);
+
 test('a reel without a cover asks facebook nothing', function () {
     Http::fake();
     $this->post->update(['media' => [[...$this->post->media[0], 'meta' => []]]]);
@@ -220,9 +234,9 @@ test('a reel facebook is still processing is tried again before its cover is sen
     expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeFalse();
 })->with(['processing', 'upload_complete']);
 
-test('a reel facebook could not process leaves a warning without sending its cover', function () {
+test('a reel facebook could not process leaves a warning without sending its cover', function (string $videoStatus) {
     Http::fake([
-        facebookReelStatusUrl() => Http::response(facebookReelStatus('error')),
+        facebookReelStatusUrl() => Http::response(facebookReelStatus($videoStatus)),
         FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
         facebookThumbnailsUrl() => Http::response(['success' => true]),
     ]);
@@ -231,7 +245,7 @@ test('a reel facebook could not process leaves a warning without sending its cov
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === facebookThumbnailsUrl());
     expect(FacebookCover::wasRefused($this->post->fresh()->error_context))->toBeTrue();
-});
+})->with(['error', 'expired']);
 
 test('a reel facebook cannot load leaves a warning, since it may be a lost permission and not a deletion', function () {
     Http::fake([

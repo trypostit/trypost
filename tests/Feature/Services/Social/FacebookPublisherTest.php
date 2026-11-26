@@ -1536,6 +1536,22 @@ test('a feed video whose cover cannot be downloaded is published without it', fu
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
 });
 
+test('a feed video whose cover is not an image is published without it', function () {
+    $coverUrl = 'https://example.com/media/2026-01/cover.png';
+    $this->post->update(['media' => facebookVideoWithCover($coverUrl)]);
+
+    Http::fake([
+        $coverUrl => Http::response('not an image', 200, ['Content-Type' => 'image/png']),
+        '*/page_123/videos' => Http::response(['id' => 'video_123'], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('video_123')
+        ->and($result[FacebookCover::WARNING])->toBeTrue();
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/page_123/videos') && ! $request->isMultipart());
+});
+
 test('a reel with a cover still publishes when the channel lost the cover permission, leaving the cover to its job', function () {
     $this->socialAccount->update(['scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
     $this->post->update([

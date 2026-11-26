@@ -298,13 +298,17 @@ export const createMediaEdit = (
     coverSource: storedCoverSource(item),
 });
 
-/** The source the edit saves: an image picked but never uploaded leaves the cover as it was saved, a frame. */
-export const savedCoverSource = (edit: MediaEdit): CoverSource => {
-    if (!filled(edit.coverImage)) {
-        return 'frame';
+/** The source the edit saves: an image picked but never uploaded leaves the source as it was saved. */
+export const savedCoverSource = (edit: MediaEdit, item: Pick<MediaItem, 'meta'>): CoverSource => {
+    if (filled(edit.coverImage)) {
+        return edit.coverSource;
     }
 
-    return edit.coverSource;
+    if (edit.coverSource === 'image') {
+        return storedCoverSource(item);
+    }
+
+    return 'frame';
 };
 
 /**
@@ -394,7 +398,7 @@ export const needsFrameCapture = (
         return false;
     }
 
-    if (edit.coverSource !== 'frame') {
+    if (savedCoverSource(edit, item) !== 'frame') {
         return false;
     }
 
@@ -406,7 +410,7 @@ export const needsFrameCapture = (
         return false;
     }
 
-    if (!filled(edit.coverImage)) {
+    if (!filled(edit.coverImage) && edit.coverSource === 'frame') {
         return true;
     }
 
@@ -436,7 +440,7 @@ export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
         return true;
     }
 
-    if (savedCoverSource(edit) !== storedCoverSource(item)) {
+    if (savedCoverSource(edit, item) !== storedCoverSource(item)) {
         return true;
     }
 
