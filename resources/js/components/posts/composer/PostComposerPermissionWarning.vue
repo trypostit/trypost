@@ -6,10 +6,7 @@ import WarningLine from '@/components/WarningLine.vue';
 import WarningLink from '@/components/WarningLink.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import {
-    channelPermissionKey,
-    mediaHasCoverImage,
-} from '@/lib/channelPermissions';
+import { channelPermissionKey } from '@/lib/channelPermissions';
 import { filled } from '@/lib/helpers';
 import { channelName } from '@/types/channel';
 import type { ContentTypeValue } from '@/types/content-type';
@@ -50,7 +47,7 @@ const permissionWarning = computed(() => {
             props.contentType,
             props.meta,
             canManageAccounts.value,
-            mediaHasCoverImage(props.media),
+            props.media,
         );
 
         if (filled(key)) {

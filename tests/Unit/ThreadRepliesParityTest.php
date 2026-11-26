@@ -59,6 +59,7 @@ test('the composer threads every network the way the server does', function () {
 function serverPermissionKeys(): array
 {
     $thread = ['thread_replies' => [['text' => 'Second', 'media' => []]]];
+    $videoWithCover = [['id' => 'video', 'url' => 'https://example.com/clip.mp4', 'type' => 'video', 'meta' => ['cover' => ['url' => 'https://example.com/cover.jpg']]]];
     $copy = [
         GatedFeature::ThreadReplies->value => ['reconnect', 'ask an admin'],
         GatedFeature::PostInsights->value => ['reconnect', 'ask an admin'],
@@ -72,17 +73,17 @@ function serverPermissionKeys(): array
         'analytics_only' => [$thread, [GatedFeature::PostInsights], true],
         'lacks_scope_admin' => [$thread, [GatedFeature::ThreadReplies], true],
         'lacks_scope_member' => [$thread, [GatedFeature::ThreadReplies], false],
-        'facebook_reel_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, true],
-        'reel_without_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, false],
-        'feed_video_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookPost, true],
+        'facebook_reel_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, $videoWithCover],
+        'reel_without_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookReel, []],
+        'feed_video_cover' => [[], [GatedFeature::FacebookReelCover], true, ContentType::FacebookPost, $videoWithCover],
     ];
 
     return collect($cases)->map(function (array $case) use ($copy): ?string {
         [$meta, $missing, $canReconnect] = $case;
         $type = data_get($case, 3);
-        $hasCoverImage = data_get($case, 4, false);
+        $media = data_get($case, 4, []);
         $feature = collect(GatedFeature::cases())
-            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta, $type, $hasCoverImage) && collect($missing)->contains($feature));
+            ->first(fn (GatedFeature $feature): bool => ! $feature->isOptionalRead() && $feature->isRequiredToPublish($meta, $type, $media) && collect($missing)->contains($feature));
 
         if (blank($feature)) {
             return null;

@@ -226,19 +226,27 @@ test('the facebook reel cover is off when the connect does not ask for its scope
     expect(ChannelPermissions::enabled(Platform::Facebook, GatedFeature::FacebookReelCover))->toBeFalse()
         ->and(ChannelPermissions::disabledFeatures(Platform::Facebook))->toContain('facebook_reel_cover')
         ->and(ChannelPermissions::missing($account))->toBe([])
-        ->and(ChannelPermissions::featureBlockingPost($account, [], ContentType::FacebookReel, true))->toBeNull();
+        ->and(ChannelPermissions::featureBlockingPost($account, [], ContentType::FacebookReel, reelWithCoverMedia()))->toBeNull();
 });
 
 test('a facebook reel with a cover needs the reel cover scopes, and nothing else does', function () {
     $without = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']]);
     $with = SocialAccount::factory()->make(['platform' => Platform::Facebook, 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'pages_read_user_content', 'pages_manage_engagement']]);
 
-    expect(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, true))->toBe(GatedFeature::FacebookReelCover)
+    expect(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, reelWithCoverMedia()))->toBe(GatedFeature::FacebookReelCover)
         ->and(GatedFeature::FacebookReelCover->postValidationField())->toBe('media')
         ->and(ChannelPermissions::reconnectMessage(Platform::Facebook, GatedFeature::FacebookReelCover))
         ->toBe(__('channels.permissions.facebook_reel_cover.message', ['network' => Platform::Facebook->label()]))
-        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, false))->toBeNull()
-        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookPost, true))->toBeNull()
-        ->and(ChannelPermissions::featureBlockingPost($with, [], ContentType::FacebookReel, true))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookReel, []))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($without, [], ContentType::FacebookPost, reelWithCoverMedia()))->toBeNull()
+        ->and(ChannelPermissions::featureBlockingPost($with, [], ContentType::FacebookReel, reelWithCoverMedia()))->toBeNull()
         ->and(ChannelPermissions::missing($without))->toHaveKey('facebook_reel_cover');
 });
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function reelWithCoverMedia(): array
+{
+    return [['id' => 'video', 'url' => 'https://example.com/clip.mp4', 'type' => 'video', 'meta' => ['cover' => ['url' => 'https://example.com/cover.jpg']]]];
+}

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Dto\MediaItem;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -151,9 +150,7 @@ class PostStatusRules
     {
         $account = $post->socialAccount;
         $type = ContentType::forPost($post, $account->platform);
-        $hasCoverImage = MediaItem::hasAnyCover($post->media ?? []);
-
-        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $hasCoverImage) !== GatedFeature::FacebookReelCover) {
+        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $post->media ?? []) !== GatedFeature::FacebookReelCover) {
             return;
         }
 

@@ -30,7 +30,8 @@ export const featureIsEnabled = (
 const requiresFeatureToPublish = (
     feature: GatedFeatureValue,
     meta: Record<string, unknown> | null,
-    postUsesFacebookReelCover: boolean,
+    contentType: ContentTypeValue | null,
+    media: MediaItem[],
 ): boolean => {
     if (feature === GatedFeature.Publish) {
         return true;
@@ -41,7 +42,7 @@ const requiresFeatureToPublish = (
     }
 
     if (feature === GatedFeature.FacebookReelCover) {
-        return postUsesFacebookReelCover;
+        return usesFacebookReelCover(contentType, media);
     }
 
     return false;
@@ -50,13 +51,13 @@ const requiresFeatureToPublish = (
 /** Whether the post is a Facebook Reel with a cover image, which needs the Reel cover permission (`GatedFeature::usesFacebookReelCover()`). */
 const usesFacebookReelCover = (
     contentType: ContentTypeValue | null,
-    hasCoverImage: boolean,
+    media: MediaItem[],
 ): boolean => {
-    if (!hasCoverImage) {
+    if (contentType !== ContentType.FacebookReel) {
         return false;
     }
 
-    return contentType === ContentType.FacebookReel;
+    return hasCoverImage(media);
 };
 
 /** The copy for a missing permission: the reconnect ask, or who can reconnect for someone who cannot. */
@@ -81,7 +82,8 @@ export const missingPermissionKey = (
     missing: MissingPermissions | null | undefined,
     canManageAccounts: boolean,
     repliesSupported = true,
-    postUsesFacebookReelCover = false,
+    contentType: ContentTypeValue | null = null,
+    media: MediaItem[] = [],
 ): string | null => {
     for (const feature of Object.values(GatedFeature)) {
         if (feature === GatedFeature.ThreadReplies && !repliesSupported) {
@@ -94,7 +96,7 @@ export const missingPermissionKey = (
             continue;
         }
 
-        if (!requiresFeatureToPublish(feature, meta, postUsesFacebookReelCover)) {
+        if (!requiresFeatureToPublish(feature, meta, contentType, media)) {
             continue;
         }
 
@@ -104,8 +106,8 @@ export const missingPermissionKey = (
     return null;
 };
 
-/** Whether a post's media carries a cover image (`MediaItem::covers()` on the server). */
-export const mediaHasCoverImage = (media: MediaItem[]): boolean => {
+/** Whether a post's media carries a cover image (`MediaItem::hasAnyCover()` on the server). */
+const hasCoverImage = (media: MediaItem[]): boolean => {
     for (const item of media) {
         if (filled(item.meta?.cover)) {
             return true;
@@ -121,7 +123,7 @@ export const channelPermissionKey = (
     contentType: ContentTypeValue | null,
     meta: Record<string, unknown> | null,
     canManageAccounts: boolean,
-    hasCoverImage = false,
+    media: MediaItem[] = [],
 ): string | null => {
     if (!filled(platformConfig)) {
         return null;
@@ -140,6 +142,7 @@ export const channelPermissionKey = (
         platformConfig.missingPermissions,
         canManageAccounts,
         repliesSupported,
-        usesFacebookReelCover(contentType, hasCoverImage),
+        contentType,
+        media,
     );
 };

@@ -63,6 +63,7 @@ const results = Object.fromEntries(
 
 const thread = { thread_replies: [{ text: 'Second', media: [] }] };
 const missing = { thread_replies: { message: 'reconnect', member_message: 'ask an admin' } };
+const videoWithCover = [{ id: 'video', url: 'https://example.com/clip.mp4', type: 'video', meta: { cover: { url: 'https://example.com/cover.jpg' } } }];
 
 console.log(
     JSON.stringify({
@@ -93,21 +94,21 @@ console.log(
                 'facebook_reel',
                 {},
                 true,
-                true,
+                videoWithCover,
             ),
             reel_without_cover: channelPermissionKey(
                 { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_reel',
                 {},
                 true,
-                false,
+                [],
             ),
             feed_video_cover: channelPermissionKey(
                 { platform: 'facebook', disabledFeatures: [], missingPermissions: { facebook_reel_cover: missing.thread_replies } },
                 'facebook_post',
                 {},
                 true,
-                true,
+                videoWithCover,
             ),
         },
     }),

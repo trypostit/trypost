@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\SocialAccount;
 
+use App\Dto\MediaItem;
 use App\Enums\PostPlatform\ContentType;
 use App\Support\ThreadReplies;
 
@@ -31,25 +32,30 @@ enum GatedFeature: string
      * analytics are never part of a post.
      *
      * @param  array<string, mixed>|null  $meta
+     * @param  array<int, mixed>  $media
      */
-    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, bool $hasCoverImage = false): bool
+    public function isRequiredToPublish(?array $meta, ?ContentType $type = null, array $media = []): bool
     {
         return match ($this) {
             self::Publish => true,
             self::ThreadReplies => filled(ThreadReplies::of($meta)),
-            self::FacebookReelCover => self::usesFacebookReelCover($type, $hasCoverImage),
+            self::FacebookReelCover => self::usesFacebookReelCover($type, $media),
             self::Followers, self::PostInsights, self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => false,
         };
     }
 
-    /** A Facebook Reel with a cover image, which Facebook only takes through `/{video-id}/thumbnails`. */
-    private static function usesFacebookReelCover(?ContentType $type, bool $hasCoverImage): bool
+    /**
+     * A Facebook Reel with a cover image, which Facebook only takes through `/{video-id}/thumbnails`.
+     *
+     * @param  array<int, mixed>  $media
+     */
+    private static function usesFacebookReelCover(?ContentType $type, array $media): bool
     {
-        if (! $hasCoverImage) {
+        if ($type !== ContentType::FacebookReel) {
             return false;
         }
 
-        return $type === ContentType::FacebookReel;
+        return MediaItem::hasAnyCover($media);
     }
 
     /**

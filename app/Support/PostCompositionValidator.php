@@ -233,7 +233,7 @@ class PostCompositionValidator
                     $validator->errors()->add("{$key}.content", trans('posts.edit.compliance.requires_content_or_media'));
                 }
 
-                $blockedFeature = ChannelPermissions::featureBlockingPost($account, data_get($destination, 'meta', []), $contentType, MediaItem::hasAnyCover(data_get($destination, 'media', [])));
+                $blockedFeature = ChannelPermissions::featureBlockingPost($account, data_get($destination, 'meta', []), $contentType, data_get($destination, 'media', []));
                 if (filled($blockedFeature)) {
                     $canManageAccounts ??= $actor->can('manageAccounts', $workspace);
                     $validator->errors()->add(
