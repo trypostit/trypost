@@ -6,10 +6,7 @@ namespace App\Support;
 
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\GatedFeature;
 use App\Models\Post;
-use App\Models\User;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -125,9 +122,9 @@ class PostStatusRules
 
     /**
      * Guards publishing a post's stored state without resubmitting its platforms
-     * (MCP publish, the "publish now" queue card action).
+     * (MCP publish, the "publish now" queue card action, approving).
      */
-    public static function assertStoredPostPublishable(Post $post, User $actor): void
+    public static function assertStoredPostPublishable(Post $post): void
     {
         if (! $post->hasChannel()) {
             throw ValidationException::withMessages(['social_account_id' => __('posts.errors.choose_channel')]);
@@ -135,31 +132,5 @@ class PostStatusRules
 
         PostPlatformMetaRules::assertStoredMetaPublishable($post);
         ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
-        self::assertFacebookReelCoverPermitted($post, $actor);
-    }
-
-    /**
-     * A Reel with a cover on a channel lacking the cover's permission is held
-     * back when someone publishes it, like at save. The publish job itself
-     * never refuses it: a grant lost later leaves the cover to
-     * `SetFacebookReelCover`, which warns on the live post.
-     *
-     * @throws ValidationException
-     */
-    private static function assertFacebookReelCoverPermitted(Post $post, User $actor): void
-    {
-        $account = $post->socialAccount;
-        $type = ContentType::forPost($post, $account->platform);
-        if (ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $post->media ?? []) !== GatedFeature::FacebookReelCover) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            GatedFeature::FacebookReelCover->postValidationField() => ChannelPermissions::reconnectMessage(
-                $account->platform,
-                GatedFeature::FacebookReelCover,
-                $actor->can('manageAccounts', $account->workspace),
-            ),
-        ]);
     }
 }
