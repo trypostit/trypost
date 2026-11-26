@@ -2,16 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostHog\ApiKeyEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Mcp\Servers\TryPostServer;
-use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
@@ -67,25 +63,6 @@ test('list api keys excludes workspace-bound MCP OAuth grants', function () {
         });
 });
 
-test('create api key returns plain token only at creation', function () {
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, ['name' => 'My Key']);
-
-    $response->assertOk()
-        ->assertStructuredContent(function (AssertableJson $json) {
-            $json->has('plain_token')
-                ->has('token', fn (AssertableJson $token) => $token->where('name', 'My Key')
-                    ->hasAll(['id', 'last_used_at', 'expires_at', 'created_at'])
-                    ->missing('token')
-                    ->etc())
-                ->etc();
-        });
-
-    expect(AccessToken::where('user_id', $this->user->id)
-        ->where('workspace_id', $this->workspace->id)
-        ->count())->toBe(1);
-});
-
 test('workspace members cannot manage api keys through mcp', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, membershipPivot('member'));
@@ -97,96 +74,11 @@ test('workspace members cannot manage api keys through mcp', function () {
         ->assertHasErrors();
 
     TryPostServer::actingAs($member)
-        ->tool(CreateApiKeyTool::class, ['name' => 'Escalation Key'])
-        ->assertHasErrors();
-
-    TryPostServer::actingAs($member)
         ->tool(DeleteApiKeyTool::class, ['api_key_id' => $token->id])
         ->assertHasErrors();
 
     expect($token->fresh()->revoked)->toBeFalse()
         ->and(AccessToken::where('user_id', $member->id)->count())->toBe(1);
-});
-
-test('create api key validates name required', function () {
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, []);
-
-    $response->assertHasErrors();
-});
-
-test('create api key rejects expires_at in the past', function () {
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, [
-            'name' => 'Past Key',
-            'expires_at' => '2020-01-01',
-        ]);
-
-    $response->assertHasErrors();
-});
-
-test('create api key omits expiration when not provided', function () {
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, [
-            'name' => 'Never Expires',
-        ]);
-
-    $response->assertOk()
-        ->assertStructuredContent(function (AssertableJson $json) {
-            $json->has('token', fn (AssertableJson $token) => $token->where('name', 'Never Expires')
-                ->where('expires_at', null)
-                ->etc())
-                ->etc();
-        });
-
-    expect(AccessToken::query()
-        ->where('user_id', $this->user->id)
-        ->where('workspace_id', $this->workspace->id)
-        ->where('name', 'Never Expires')
-        ->firstOrFail()
-        ->expires_at)->toBeNull();
-});
-
-test('create api key stores expiration at end of day', function () {
-    $expiresAt = now()->addDays(14)->startOfDay();
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, [
-            'name' => 'Expiring Key',
-            'expires_at' => $expiresAt->toDateString(),
-        ]);
-
-    $response->assertOk();
-
-    $token = AccessToken::query()
-        ->where('user_id', $this->user->id)
-        ->where('workspace_id', $this->workspace->id)
-        ->where('name', 'Expiring Key')
-        ->firstOrFail();
-
-    expect($token->expires_at->toDateString())->toBe($expiresAt->toDateString())
-        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
-});
-
-test('create api key allows an expiration of today', function () {
-    $today = now()->toDateString();
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, [
-            'name' => 'Expires Today',
-            'expires_at' => $today,
-        ]);
-
-    $response->assertOk();
-
-    $token = AccessToken::query()
-        ->where('user_id', $this->user->id)
-        ->where('workspace_id', $this->workspace->id)
-        ->where('name', 'Expires Today')
-        ->firstOrFail();
-
-    expect($token->expires_at->toDateString())->toBe($today)
-        ->and($token->expires_at->format('H:i:s'))->toBe('23:59:59');
 });
 
 test('delete api key marks revoked', function () {
@@ -232,27 +124,10 @@ test('delete api key validates api_key_id required', function () {
     $response->assertHasErrors();
 });
 
-test('creating an api key through mcp tracks api_key.created', function () {
-    enablePostHog();
-    Queue::fake([CaptureAccountEvent::class]);
+test('the MCP server no longer registers a create api key tool', function () {
+    $tools = (new ReflectionClass(TryPostServer::class))->getDefaultProperties()['tools'] ?? [];
 
-    TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
-        ->assertOk();
-
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
-        && $job->distinctId === (string) $this->user->id
-        && $job->properties === ['workspace_id' => (string) $this->workspace->id]);
-});
-
-test('creating an api key through mcp still returns the plain token when tracking it fails', function () {
-    enablePostHog();
-    failDispatchOf(CaptureAccountEvent::class);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
-        ->assertOk()
-        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('plain_token')->etc());
-
-    expect(AccessToken::where('workspace_id', $this->workspace->id)->where('name', 'My Key')->exists())->toBeTrue();
+    expect($tools)->not->toBeEmpty()
+        ->and(collect($tools)->map(fn (string $tool): string => class_basename($tool)))
+        ->not->toContain('CreateApiKeyTool');
 });

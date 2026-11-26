@@ -122,7 +122,6 @@ function mcpExpectedToolAnnotations(): array
         // Workspace and API keys
         'get-workspace-tool' => [true, false, false],
         'list-api-keys-tool' => [true, false, false],
-        'create-api-key-tool' => [false, false, false],
         'delete-api-key-tool' => [false, true, false],
     ];
 }
