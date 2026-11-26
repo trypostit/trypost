@@ -1,4 +1,4 @@
-import { filled } from '@/lib/helpers';
+import { blank, filled } from '@/lib/helpers';
 import type { MediaItem } from '@/types/media';
 
 /** What the media editor sets on an item for one network: its alt text, tagged people and cover. */
@@ -75,3 +75,33 @@ export const withMediaEdits = (
     shared: MediaItem[],
     edits: MediaItem[],
 ): MediaItem[] => shared.map((item) => editedItem(item, edits));
+
+/**
+ * The import that replaces an item: it keeps the item's alt text and tagged
+ * people, like an editor swap. An item a network edited stays that network's
+ * edit, with the new file as the one a network that never edited it gets.
+ */
+export const replacementFor = (
+    replaced: MediaItem,
+    item: MediaItem,
+): MediaItem => {
+    const meta = { ...item.meta };
+    const altText = replaced.meta?.alt_text;
+    const userTags = replaced.meta?.user_tags;
+
+    if (filled(altText)) {
+        meta.alt_text = altText;
+    }
+
+    if (filled(userTags)) {
+        meta.user_tags = userTags;
+    }
+
+    const replacement: MediaItem = { ...item, meta };
+
+    if (blank(replaced.original)) {
+        return replacement;
+    }
+
+    return { ...replacement, original: asAddedFile(item) };
+};

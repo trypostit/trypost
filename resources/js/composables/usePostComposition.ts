@@ -1,12 +1,12 @@
 import { computed, ref } from 'vue';
 
-import { replacementFor } from '@/composables/useMediaEditSwap';
 import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
 import { blank } from '@/lib/helpers';
 import {
     editedId,
     isEditedMedia,
+    replacementFor,
     uneditedMedia,
     withMediaEdits,
     withoutOriginal,

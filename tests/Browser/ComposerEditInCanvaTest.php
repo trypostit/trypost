@@ -146,11 +146,9 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
         ->hover("@{$card}-dropzone");
     $page->script('document.activeElement?.blur(); true;');
     waitForState($page, "@{$card}-edit-canva-0", "getComputedStyle(element.parentElement).opacity === '0'");
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"{$card}-edit-canva-0\"]').parentElement).opacity"))->toBe('0');
 
     $page->hover("@{$card}-media-item-0");
     waitForState($page, "@{$card}-edit-canva-0", "getComputedStyle(element.parentElement).opacity === '1'");
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"{$card}-edit-canva-0\"]').parentElement).opacity"))->toBe('1');
 
     ['path' => $path, 'query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click("@{$card}-edit-canva-0"));
 
@@ -166,16 +164,16 @@ test('the Canva button shows only on Canva-made tiles and replaces the tile in p
     $page->assertPresent("@{$card}-replacing-0")
         ->assertMissing("@{$card}-import-item")
         ->assertMissing("@{$card}-replacing-1");
-    expect(editInCanvaTileSrc($page, $card, 0))->toBe($shared['media']->url)
-        ->and($page->script("document.querySelectorAll('[data-testid^=\"{$card}-media-item-\"]').length"))->toBe(2);
+    waitForCount($page, "[data-testid^=\"{$card}-media-item-\"]", 2);
+    expect(editInCanvaTileSrc($page, $card, 0))->toBe($shared['media']->url);
 
     MediaImportStatus::complete($exporting, $sharedEdited['media']);
     broadcastToPage($page, "workspace.{$workspace->id}", 'media.import.settled', ['import_id' => $exporting]);
     waitForState($page, "@{$card}-media-item-0 img", "element.getAttribute('src') === '{$sharedEdited['media']->url}'");
 
     expect(editInCanvaTileSrc($page, $card, 0))->toBe($sharedEdited['media']->url)
-        ->and(editInCanvaTileSrc($page, $card, 1))->toBe($uploadedSrc)
-        ->and($page->script("document.querySelectorAll('[data-testid^=\"{$card}-media-item-\"]').length"))->toBe(2);
+        ->and(editInCanvaTileSrc($page, $card, 1))->toBe($uploadedSrc);
+    waitForCount($page, "[data-testid^=\"{$card}-media-item-\"]", 2);
 
     editInCanvaDeliver($page, editInCanvaPickSquare($page, "composer-{$channel->id}"), $channelMade['import'], null);
     waitFor($page, "@composer-{$channel->id}-media-item-2");
@@ -303,7 +301,7 @@ test('a Canva edit of an item edited for one network keeps the edit with that ne
     waitFor($page, "@{$card}-alt-0");
     waitForGone($page, '@canva-preset-square');
     $page->click("@{$card}-alt-0");
-    waitForState($page, '@media-editor-alt-text', 'true');
+    waitFor($page, '@media-editor-alt-text');
     $page->fill('@media-editor-alt-text', 'Only for LinkedIn');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
@@ -311,11 +309,7 @@ test('a Canva edit of an item edited for one network keeps the edit with that ne
 
     ['query' => $query] = editInCanvaStubbedPopup($page, fn () => $page->click("@{$card}-edit-canva-0"));
     $addX = function () use ($page, $x): void {
-        if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$x->id}\"]'))")) {
-            $page->click('@composer-add-account');
-        }
-        waitFor($page, "@composer-account-option-{$x->id}");
-        $page->click("@composer-account-option-{$x->id}");
+        pickComposerAccount($page, $x);
         waitFor($page, '@composer-media-item-0');
     };
 

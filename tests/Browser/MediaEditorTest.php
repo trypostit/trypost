@@ -532,9 +532,8 @@ test('the ALT button opens the editor on the Alt Text segment', function () {
     $page = openMediaEditorComposer($user, [$instagram], [mediaEditorPng('photo.png')]);
 
     $page->click("@composer-{$instagram->id}-alt-0");
-    waitForState($page, '@media-editor-alt-text', 'true');
+    waitForState($page, '@media-editor-alt-tab', "element.getAttribute('aria-pressed') === 'true'");
 
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-tab\"]').getAttribute('aria-pressed')"))->toBe('true');
     $page->assertVisible('@media-editor-alt-text')
         ->assertNoJavaScriptErrors();
 });
@@ -544,9 +543,9 @@ test('the ALT button opens the editor on the Alt Text segment', function () {
  */
 function applyMediaEditorAltText(mixed $page, string $prefix, string $altText): void
 {
-    waitForState($page, "@{$prefix}-alt-0", 'true');
+    waitFor($page, "@{$prefix}-alt-0");
     $page->click("@{$prefix}-alt-0");
-    waitForState($page, '@media-editor-alt-text', 'true');
+    waitFor($page, '@media-editor-alt-text');
     $page->fill('@media-editor-alt-text', $altText);
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
@@ -566,14 +565,6 @@ function mediaEditorSavedAltTexts(SocialAccount ...$accounts): array
 /**
  * Adds a channel to the open composer.
  */
-function addMediaEditorAccount(mixed $page, SocialAccount $account): void
-{
-    if (! $page->script("Boolean(document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]'))")) {
-        $page->click('@composer-add-account');
-    }
-    $page->click("@composer-account-option-{$account->id}");
-}
-
 test('media is edited only once a channel is selected', function () {
     $user = mediaEditorComposerUser();
     $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
@@ -581,7 +572,7 @@ test('media is edited only once a channel is selected', function () {
 
     expect(mediaEditorTileButtons($page, 'composer', 0))->toBe(['composer-remove-0']);
 
-    addMediaEditorAccount($page, $linkedin);
+    pickComposerAccount($page, $linkedin);
     waitForState($page, "@composer-{$linkedin->id}-alt-0", 'true');
 
     expect(mediaEditorTileButtons($page, "composer-{$linkedin->id}", 0))->toBe(["composer-{$linkedin->id}-remove-0", "composer-{$linkedin->id}-alt-0", "composer-{$linkedin->id}-edit-0"]);
@@ -595,7 +586,7 @@ test('an alt text written for one network stays with it, and a network added lat
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Four coloured squares');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-0');
     saveMediaEditorDraft($page);
 
@@ -612,14 +603,12 @@ test('removing the network added later gives the first one back its edits', func
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Four coloured squares');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-0');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, "@composer-{$first->id}-alt-0");
     $page->click("@composer-{$first->id}-alt-0");
-    waitForState($page, '@media-editor-alt-text', 'true');
-
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('Four coloured squares');
+    waitForState($page, '@media-editor-alt-text', "element.value === 'Four coloured squares'");
     $page->assertNoJavaScriptErrors();
 });
 
@@ -636,8 +625,7 @@ test('a step 2 alt text stays on its channel', function () {
     $page->click("@composer-account-{$second->id}");
     waitForState($page, "@composer-{$second->id}-alt-0", 'true');
     $page->click("@composer-{$second->id}-alt-0");
-    waitForState($page, '@media-editor-alt-text', 'true');
-    expect($page->script("document.querySelector('[data-testid=\"media-editor-alt-text\"]').value"))->toBe('');
+    waitForState($page, '@media-editor-alt-text', "element.value === ''");
     $page->click('@media-editor-cancel');
     saveMediaEditorDraft($page);
 
@@ -664,7 +652,7 @@ test('an image edited for one network reaches a network added later as it was up
     waitForState($page, "@composer-{$first->id}-media-item-1 img", "element.dataset.originalSrc !== '{$secondSrc}'");
     $editedSrc = mediaEditorTileSrc($page, "composer-{$first->id}", 1);
 
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-1');
 
     expect(mediaEditorTileSrc($page, 'composer', 0))->toBe($firstSrc)
@@ -701,7 +689,7 @@ test('an edited item put back from the suggestions at step 1 comes back as it wa
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Only for LinkedIn');
     $page->click("@composer-{$first->id}-remove-0");
     waitForGone($page, "@composer-{$first->id}-media-item-0");
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-suggested-0');
     $page->click('@composer-suggested-0');
     waitFor($page, '@composer-media-item-0');
@@ -720,7 +708,7 @@ test('going back from customizing keeps the edits each network had before', func
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Kept for LinkedIn');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-0');
     $page->click('@composer-next');
     waitFor($page, "@composer-account-{$first->id}");
@@ -744,9 +732,9 @@ test('a second channel of the edited network gets its edits, and another network
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'For LinkedIn');
-    addMediaEditorAccount($page, $other);
+    pickComposerAccount($page, $other);
     waitFor($page, '@composer-media-item-0');
-    addMediaEditorAccount($page, $sibling);
+    pickComposerAccount($page, $sibling);
     waitForState($page, '@composer-save-draft', 'element.disabled === false');
     saveMediaEditorDraft($page);
 
@@ -764,9 +752,9 @@ test('a network picked after the edited one was removed starts without its edits
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('photo.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Only for LinkedIn');
-    addMediaEditorAccount($page, $first);
+    pickComposerAccount($page, $first);
     waitFor($page, '@composer-media-item-0');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, "@composer-{$second->id}-media-item-0");
     saveMediaEditorDraft($page);
 
@@ -782,9 +770,9 @@ test('a card edit kept after going back to one network stays with it when anothe
     $page->click('@composer-next')
         ->click("@composer-account-{$first->id}");
     applyMediaEditorAltText($page, "composer-{$first->id}", 'Written in the card');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, "@composer-{$first->id}-media-item-0");
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-0');
     saveMediaEditorDraft($page);
 
@@ -801,17 +789,14 @@ test('media added at step 1 after a network kept its edits reaches every network
     $page = openMediaEditorComposer($user, [$first], [mediaEditorPng('first.png')]);
 
     applyMediaEditorAltText($page, "composer-{$first->id}", 'First image');
-    addMediaEditorAccount($page, $second);
+    pickComposerAccount($page, $second);
     waitFor($page, '@composer-media-item-0');
-    $page->script(<<<'JS'
-        (() => {
-            const input = document.querySelector('[data-testid="composer-file-input"]');
-            const transfer = new DataTransfer();
-            const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (character) => character.charCodeAt(0));
-            transfer.items.add(new File([bytes], 'later.png', { type: 'image/png' }));
-            input.files = transfer.files;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        })();
+    onElement($page, '@composer-file-input', <<<'JS'
+        const transfer = new DataTransfer();
+        const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (character) => character.charCodeAt(0));
+        transfer.items.add(new File([bytes], 'later.png', { type: 'image/png' }));
+        element.files = transfer.files;
+        element.dispatchEvent(new Event('change', { bubbles: true }))
     JS);
     waitForCount($page, '@composer-media-item', 2);
     waitForGone($page, '@composer-upload-item');
@@ -920,7 +905,7 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-cover', 'true');
 
@@ -1007,7 +992,7 @@ test('a reel video takes an uploaded image as its cover', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-source');
 
@@ -1040,6 +1025,32 @@ test('a reel video takes an uploaded image as its cover', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a facebook feed video keeps an uploaded cover at its own ratio', function () {
+    [$post] = seedMediaEditorVideoPost(ContentType::FacebookPost);
+    $accountId = $post->social_account_id;
+    $page = visit(route('app.posts.edit', $post));
+    waitFor($page, "@composer-{$accountId}-edit-0");
+    $page->click("@composer-{$accountId}-edit-0");
+    waitFor($page, '@media-editor-cover-source');
+
+    $page->click('@media-editor-cover-source-image');
+    pickMediaEditorCoverImage($page);
+    waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
+    waitForState($page, '@media-editor-apply', 'element.disabled === false');
+
+    [$ratio] = elementsMap($page, '@media-editor-selection', 'element.getBoundingClientRect().width / element.getBoundingClientRect().height');
+    expect($ratio)->toEqualWithDelta(1.0, 0.05);
+
+    $page->click('@media-editor-apply');
+    saveMediaEditorDraft($page);
+
+    $cover = data_get($post->fresh()->media, '0.meta.cover');
+    [$width, $height] = getimagesizefromstring(Storage::get(Media::query()->find(data_get($cover, 'id'))->path));
+
+    expect($width / $height)->toEqualWithDelta(1.0, 0.02);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('switching a reel back to a video frame saves the frame time and drops the image', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $png = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
@@ -1055,7 +1066,7 @@ test('switching a reel back to a video frame saves the frame time and drops the 
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-selection');
 
@@ -1085,7 +1096,7 @@ test('switching a cover back to a video frame saves a screenshot of that frame o
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-selection');
 
@@ -1118,7 +1129,7 @@ test('picking an image as the cover keeps the frame picked for the networks that
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-source');
 
@@ -1147,7 +1158,7 @@ test('picking image over a frame cover waits for an image instead of reusing the
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-timeline');
 
@@ -1169,7 +1180,7 @@ test('picking image over a frame cover and applying before uploading one keeps t
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-timeline');
 
@@ -1190,16 +1201,10 @@ test('a frame moved before picking image without uploading one is saved as a fra
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-cover', "element.max === '3'");
-    $page->script(<<<'JS'
-        (() => {
-            const slider = document.querySelector('[data-testid="media-editor-cover"]');
-            slider.value = '1.5';
-            slider.dispatchEvent(new Event('input', { bubbles: true }));
-        })();
-    JS);
+    onElement($page, '@media-editor-cover', "element.value = '1.5'; element.dispatchEvent(new Event('input', { bubbles: true }))");
 
     $page->click('@media-editor-cover-source-image');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
@@ -1235,18 +1240,12 @@ test('a frame cover picked for youtube stays with it, and facebook added later s
 
     $page->click("@composer-{$youtube->id}-edit-0");
     waitForState($page, '@media-editor-cover', 'Number(element.max) > 0.5');
-    $page->script(<<<'JS'
-        (() => {
-            const slider = document.querySelector('[data-testid="media-editor-cover"]');
-            slider.value = '0.5';
-            slider.dispatchEvent(new Event('input', { bubbles: true }));
-        })();
-    JS);
+    onElement($page, '@media-editor-cover', "element.value = '0.5'; element.dispatchEvent(new Event('input', { bubbles: true }))");
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
     $page->click('@media-editor-apply');
     waitForGone($page, '@media-editor');
 
-    addMediaEditorAccount($page, $facebook);
+    pickComposerAccount($page, $facebook);
     waitFor($page, '@composer-media-item-0');
     saveMediaEditorDraft($page);
 
@@ -1276,7 +1275,7 @@ test('a stored cover of another ratio is saved cropped to the reel cover it show
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');
@@ -1306,7 +1305,7 @@ test('reframing a stored cover saves the new frame of it', function () {
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
 
@@ -1327,7 +1326,7 @@ test('a youtube short offers a frame or an image as its cover', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::YouTubeShort);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-source');
 
@@ -1341,7 +1340,7 @@ test('a facebook reel offers a frame or an image as its cover', function (Conten
     [$post] = seedMediaEditorVideoPost($contentType);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-source');
 
@@ -1375,7 +1374,7 @@ test('picking a cover for a facebook reel on a channel without the cover permiss
     [$post] = seedMediaEditorVideoPost(ContentType::FacebookReel);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->assertMissing("@channel-permission-warning-{$accountId}");
 
     $page->click("@composer-{$accountId}-edit-0");
@@ -1406,7 +1405,7 @@ test('reopening a facebook feed video keeps its stored cover at its own ratio', 
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitForState($page, '@media-editor-selection', 'element.getBoundingClientRect().width > 0');
 
@@ -1420,7 +1419,7 @@ test('a feed video offers only the cover frame', function () {
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramFeed);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover');
 
@@ -1432,7 +1431,7 @@ test('the thumbnail tab picks the frame by dragging along a strip under the vide
     [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-timeline');
     waitForState($page, '@media-editor-cover-timeline canvas:last-of-type', 'element.width > 0');
@@ -1501,7 +1500,7 @@ test('a frame picked before youtube was added gets its screenshot when the edito
     $post->update(['media' => $media]);
     $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
-    waitForState($page, "@composer-{$accountId}-edit-0", 'true');
+    waitFor($page, "@composer-{$accountId}-edit-0");
     $page->click("@composer-{$accountId}-edit-0");
     waitFor($page, '@media-editor-cover-timeline');
     waitForState($page, '@media-editor-apply', 'element.disabled === false');

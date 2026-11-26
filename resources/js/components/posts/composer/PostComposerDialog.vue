@@ -568,7 +568,7 @@ const openNetwork = (
 };
 const cropping = ref(false);
 const cropTarget = ref<{
-    groupKey: string | null;
+    groupKey: string;
     replyKey: string | null;
     indexes: number[];
     initialIndex: number;
@@ -1940,12 +1940,12 @@ const editorContentTypes = (
 };
 
 const openEditor = (
-    target: { groupKey: string | null; replyKey?: string | null },
+    target: { groupKey: string; replyKey?: string | null },
     index: number,
     tab: EditorTab,
 ): void => {
     if (cropUploading.value) return;
-    if (target.groupKey !== null && !findGroup(target.groupKey)) return;
+    if (!findGroup(target.groupKey)) return;
     const replyKey = target.replyKey ?? null;
     const rules = rulesFor(editorContentTypes(target.groupKey, replyKey));
     const indexes = editorMedia(target.groupKey, replyKey).flatMap(
@@ -1995,7 +1995,7 @@ const cropItems = computed(() => {
     );
 });
 const cropAspectBounds = computed(() => {
-    if (!cropTarget.value?.groupKey) return {};
+    if (!cropTarget.value) return {};
     const rules = getMediaRulesForContentType(cropContentTypes.value[0] ?? '');
 
     return { min: rules.aspectRatioMin, max: rules.aspectRatioMax };
@@ -2010,10 +2010,8 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
         items: () => editorMedia(target.groupKey, target.replyKey),
         keepsOriginal: target.replyKey === null,
         write: (items) => {
-            if (target.groupKey !== null && target.replyKey !== null) {
+            if (target.replyKey !== null) {
                 setReplyMedia(target.groupKey, target.replyKey, () => items);
-            } else if (target.groupKey === null) {
-                composition.media.value = items;
             } else {
                 composition.setGroupOverride(target.groupKey, 'media', items);
             }
@@ -2221,12 +2219,28 @@ const resumeUnfinishedPost = (): void => {
     const retentionHours = mediaUploadLimits().upload_retention_hours;
     const isLive = (item: AutosaveMediaRef): boolean =>
         !isExpiredUpload(item, retentionHours);
-    /** An edit whose original upload expired starts from its own file, so no network is ever sent a file that is gone. */
+    /** The live file that took the place of an expired shared item, by the expired item's id. */
+    const replacements = new Map<string, MediaItem>();
+    /**
+     * An edit whose original upload expired points at the file that took the
+     * original's place, else starts from its own file, so no network is ever
+     * sent a file that is gone.
+     */
     const withLiveOriginal = (item: AutosaveMediaRef): MediaItem => {
         const restored = fromAutosaveMedia(item);
 
-        if (!filled(item.original) || isLive(item.original)) {
+        if (!filled(item.original)) {
             return restored;
+        }
+
+        if (isLive(item.original)) {
+            return restored;
+        }
+
+        const replacement = replacements.get(item.original.id);
+
+        if (filled(replacement)) {
+            return { ...restored, original: replacement };
         }
 
         return { ...restored, original: asAddedFile(restored) };
@@ -2236,19 +2250,29 @@ const resumeUnfinishedPost = (): void => {
     const liveEdits = Object.values(snapshot.overrides)
         .flatMap((override) => override.media_edits ?? [])
         .filter(isLive);
-    /** A shared item whose upload expired gives its place to the live file a network edited it into, as added. */
+    /**
+     * A shared item whose upload expired gives its place to the live file a
+     * network edited it into, as added, else to its own live original.
+     */
     const restoredShared = (item: AutosaveMediaRef): MediaItem[] => {
         if (isLive(item)) {
-            return [fromAutosaveMedia(item)];
+            return [withLiveOriginal(item)];
         }
 
         const edit = liveEdits.find((candidate) => candidate.original?.id === item.id);
 
-        if (!filled(edit)) {
-            return [];
+        if (filled(edit)) {
+            const replacement = asAddedFile(fromAutosaveMedia(edit));
+            replacements.set(item.id, replacement);
+
+            return [replacement];
         }
 
-        return [asAddedFile(fromAutosaveMedia(edit))];
+        if (filled(item.original) && isLive(item.original)) {
+            return [asAddedFile(fromAutosaveMedia(item.original))];
+        }
+
+        return [];
     };
     const restoredOverride = ({
         media,
@@ -2939,13 +2963,6 @@ const onDialogOpenChange = (value: boolean): void => {
                                     @update:suggested="setSuggestions(null, $event)"
                                     @update:items="updateMedia"
                                     @import-started="onImportStarted($event, null)"
-                                    @edit="
-                                        openEditor(
-                                            { groupKey: null },
-                                            $event.index,
-                                            $event.tab,
-                                        )
-                                    "
                                 />
                                 <p
                                     v-if="cropError"

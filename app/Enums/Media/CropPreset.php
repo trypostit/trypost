@@ -23,6 +23,19 @@ enum CropPreset: string
     case Landscape2x1 = '2:1';
 
     /**
+     * Whether the preset is a fixed width:height ratio, which Freeform and
+     * Original are not (`UNFIXED_CROP_PRESETS` in `types/crop-preset.ts`).
+     */
+    public function hasFixedRatio(): bool
+    {
+        return match ($this) {
+            self::Freeform, self::Original => false,
+            self::Portrait9x16, self::Portrait2x3, self::Portrait3x4, self::Portrait4x5, self::Square,
+            self::Landscape4x3, self::Landscape191x100, self::Landscape16x9, self::Landscape2x1 => true,
+        };
+    }
+
+    /**
      * The presets as the editor reads them.
      *
      * @param  list<self>  $presets

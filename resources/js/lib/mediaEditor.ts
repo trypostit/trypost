@@ -4,7 +4,7 @@ import {
     toMediaRules,
     type MediaRules,
 } from '@/lib/contentTypeMediaRules';
-import { filled } from '@/lib/helpers';
+import { filled, isNumber } from '@/lib/helpers';
 import {
     fullSelection,
     resolveOutputFileName,
@@ -243,7 +243,29 @@ export const storedCoverImage = (
         return null;
     }
 
-    return newCoverImage(cover.url, cover, null, coverPreset);
+    return {
+        ...newCoverImage(cover.url, cover, null, coverPreset),
+        natural: storedSize(cover),
+    };
+};
+
+/**
+ * A stored image's size, as the server measured it, so a cover saved at
+ * another ratio is known to need a new crop before the stage draws it.
+ */
+const storedSize = (item: MediaItem): ImageSize | null => {
+    const width = item.meta?.width;
+    const height = item.meta?.height;
+
+    if (!isNumber(width)) {
+        return null;
+    }
+
+    if (!isNumber(height)) {
+        return null;
+    }
+
+    return { width, height };
 };
 
 /** A cover image as the editor opens it: framed at the cover's preset (`coverCropPresetFor()`), 9:16 by default, in its middle. */
@@ -251,7 +273,7 @@ export const newCoverImage = (
     url: string,
     item: MediaItem | null,
     file: File | null,
-    preset: CropPresetValue = COVER_CROP_PRESET,
+    preset: CropPresetValue,
 ): CoverImage => ({
     url,
     item,
@@ -288,7 +310,7 @@ export const storedCoverSource = (item: Pick<MediaItem, 'meta'>): CoverSource =>
 /** The item's edit as the editor opens it; a stored cover is framed at `coverPreset` (`coverCropPresetFor()`). */
 export const createMediaEdit = (
     item: MediaItem,
-    coverPreset: CropPresetValue = COVER_CROP_PRESET,
+    coverPreset: CropPresetValue,
 ): MediaEdit => ({
     ...blankMediaEdit(),
     altText: item.meta?.alt_text ?? '',

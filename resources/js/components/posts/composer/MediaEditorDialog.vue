@@ -324,7 +324,7 @@ const stagePresets = computed(() => {
 
     return presets.value;
 });
-/** A fixed ratio only moves, except a profile photo's square and a cover's 9:16, which also resize. */
+/** A fixed ratio only moves, except a profile photo's square and a cover's preset, which also resize. */
 const resizesAnyRatio = computed(() => {
     if (isPhoto.value) {
         return true;

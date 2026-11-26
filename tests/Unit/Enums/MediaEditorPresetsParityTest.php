@@ -51,7 +51,7 @@ function runMediaEditorPresetsHarness(): array
 function fixedCropPresets(): array
 {
     return collect(CropPreset::cases())
-        ->reject(fn (CropPreset $preset): bool => collect([CropPreset::Freeform, CropPreset::Original])->containsStrict($preset))
+        ->filter(fn (CropPreset $preset): bool => $preset->hasFixedRatio())
         ->values()
         ->all();
 }

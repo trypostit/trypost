@@ -1,8 +1,8 @@
 import { ref, type Ref } from 'vue';
 
 import type { MediaEditChange } from '@/components/posts/composer/MediaEditorDialog.vue';
-import { blank, filled } from '@/lib/helpers';
-import { asAddedFile } from '@/lib/mediaEdits';
+import { filled } from '@/lib/helpers';
+import { replacementFor } from '@/lib/mediaEdits';
 import { storeChunked as mediaStoreChunked } from '@/routes/app/media';
 import type { CoverImage, MediaItem } from '@/types/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -92,32 +92,6 @@ const swappedItem = (
     }
 
     return { ...edited, original: current };
-};
-
-/**
- * The import that replaces an item: it keeps the item's alt text and tagged
- * people, like an editor swap. An item a network edited stays that network's
- * edit, with the new file as the one a network that never edited it gets.
- */
-export const replacementFor = (
-    replaced: MediaItem,
-    item: MediaItem,
-): MediaItem => {
-    const { alt_text: altText, user_tags: userTags } = replaced.meta ?? {};
-    const replacement: MediaItem = {
-        ...item,
-        meta: {
-            ...item.meta,
-            ...(altText ? { alt_text: altText } : {}),
-            ...(userTags?.length ? { user_tags: userTags } : {}),
-        },
-    };
-
-    if (blank(replaced.original)) {
-        return replacement;
-    }
-
-    return { ...replacement, original: asAddedFile(item) };
 };
 
 /**
