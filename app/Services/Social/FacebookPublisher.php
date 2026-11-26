@@ -18,7 +18,9 @@ use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
 use App\Support\Social\FacebookCover;
+use App\Support\Social\NetworkLimitReset;
 use App\Support\Social\PublishContentValidator;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -687,10 +689,11 @@ class FacebookPublisher
     /**
      * Sets a published Reel's cover image (`media.0.meta.cover`) as its
      * preferred thumbnail. The Reel takes no cover when it is published, so
-     * this runs once it is up (`SetFacebookReelCover`).
+     * this runs once it is up (`ApplyFacebookReelCover`).
      *
      * @see https://developers.facebook.com/docs/graph-api/reference/video/thumbnails/
      *
+     * @throws PlatformUnavailableException when Facebook fails for now (a server error, a rate limit, a transient Graph error), with the wait until its own reset when it sends one
      * @throws FacebookPublishException when the cover cannot be downloaded (ServerError, tried again) or converted (MediaFormat), or Facebook refuses it
      */
     public function setReelCover(Post $post): void
@@ -704,7 +707,7 @@ class FacebookPublisher
         $this->postToGraph("{$post->platform_post_id}/thumbnails", [
             'access_token' => $post->socialAccount->access_token,
             'is_preferred' => 'true',
-        ], 'reel cover', image: $this->coverJpeg($cover), imageField: 'source');
+        ], 'reel cover', image: $this->coverJpeg($cover), imageField: 'source', transientFailsForNow: true);
     }
 
     /**
@@ -747,16 +750,26 @@ class FacebookPublisher
      * exception, logging the redacted body under `$label` first.
      *
      * An `$image` (JPEG bytes) goes as a multipart file named `$imageField`
-     * next to the payload. Blank fields are left out.
+     * next to the payload. Blank fields are left out. With
+     * `$transientFailsForNow`, a failure a later try may fix
+     * (`GraphError::isTransientFailure()`) is thrown as unavailable instead.
      *
      * @param  array<string, string|null>  $payload
      */
-    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb'): Response
+    private function postToGraph(string $path, array $payload, string $label, bool $reportFailure = true, ?string $image = null, string $imageField = 'thumb', bool $transientFailsForNow = false): Response
     {
         $response = $this->reachOrRetry(
             fn (): Response => $this->graphRequestWithImage($image, $imageField)->post("{$this->baseUrl}/{$path}", $this->filledFields($payload)),
             $label,
         );
+
+        if ($response->failed() && $transientFailsForNow && GraphError::isTransientFailure($response)) {
+            throw new PlatformUnavailableException(
+                message: "Facebook {$label} failed for now: ".$this->redactResponseBody($response->body()),
+                httpStatus: $response->status(),
+                retryDelaySeconds: transform(NetworkLimitReset::from($response), fn (CarbonInterface $resetAt): int => (int) ceil(now()->diffInSeconds($resetAt))),
+            );
+        }
 
         if ($response->failed()) {
             if ($reportFailure) {

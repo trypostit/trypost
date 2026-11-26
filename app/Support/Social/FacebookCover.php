@@ -7,19 +7,22 @@ namespace App\Support\Social;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\GatedFeature;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
+use App\Support\ChannelPermissions;
 
 /**
  * The cover image of a Facebook video: a Reel takes it once it is up
- * (`SetFacebookReelCover`), a feed video with its upload. A cover Facebook did
- * not take leaves a warning in posts.error_context; the post stays published.
+ * (`SetFacebookReelCover` waits for that, `ApplyFacebookReelCover` sends it),
+ * a feed video with its upload. A cover Facebook did not take leaves a
+ * warning in posts.error_context; the post stays published.
  */
 final class FacebookCover
 {
     public const string WARNING = 'facebook_cover_warning';
 
-    /** A Facebook Reel TryPost published with a cover image, waiting for `SetFacebookReelCover`. */
+    /** A Facebook Reel TryPost published with a cover image, waiting for its cover. */
     public static function awaitsReelCover(Post $post): bool
     {
         return $post->platform === Platform::Facebook
@@ -28,6 +31,18 @@ final class FacebookCover
             && filled($post->platform_post_id)
             && $post->content_type === ContentType::FacebookReel
             && filled($post->mediaItems->first()?->cover());
+    }
+
+    /** Whether the post's channel is still connected and granted the Reel cover's permission. */
+    public static function channelTakesReelCover(Post $post): bool
+    {
+        $account = $post->socialAccount()->connected()->first();
+
+        if (blank($account)) {
+            return false;
+        }
+
+        return ChannelPermissions::permits($account, GatedFeature::FacebookReelCover);
     }
 
     /**

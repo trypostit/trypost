@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\SocialAccount\GatedFeature;
 use App\Exceptions\PlatformUnavailableException;
-use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Services\Social\FacebookPublisher;
-use App\Services\Social\Meta\GraphError;
-use App\Support\ChannelPermissions;
 use App\Support\Social\FacebookCover;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,10 +16,11 @@ use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
 /**
- * Sets the cover image of a Reel TryPost published on a Facebook Page, which
- * Facebook takes only once the Reel is up (`/{video-id}/thumbnails`). The Reel
- * is already live: a cover Facebook refuses, or a channel without the cover's
- * permission, leaves a warning on the post, never a failure.
+ * Waits until Facebook has processed a Reel TryPost published, then hands its
+ * cover to `ApplyFacebookReelCover`: a Reel takes a cover only once it is up
+ * (`/{video-id}/thumbnails`). The Reel is already live: a Reel Facebook could
+ * not process, or a channel without the cover's permission, leaves a warning
+ * on the post, never a failure.
  */
 class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
 {
@@ -32,15 +29,7 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
     /** Facebook usually has the Reel processed within a minute of the publish; until then the job checks again every minute. */
     public const int CHECK_EVERY_SECONDS = 60;
 
-    /** What a later try may fix: Facebook or the network was down, or the cover could not be fetched. */
-    private const array RETRYABLE_CATEGORIES = [
-        ErrorCategory::ServerError,
-        ErrorCategory::RateLimit,
-        ErrorCategory::PlatformUnavailable,
-        ErrorCategory::Timeout,
-    ];
-
-    /** Thirty minutes of tries. */
+    /** Thirty minutes of checks. */
     public int $tries = 30;
 
     public int $backoff = self::CHECK_EVERY_SECONDS;
@@ -48,9 +37,9 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
     public bool $deleteWhenMissingModels = true;
 
     /**
-     * A try makes up to three requests of up to 120s each (HasSocialHttpClient and
-     * the cover download): the status read, the cover download and the upload.
-     * It stays under the Redis queue's 960s retry_after.
+     * A check is one status read of up to 120s (HasSocialHttpClient), which the
+     * HTTP client tries up to three times on a 429. It stays under the Redis
+     * queue's 960s retry_after.
      */
     public int $timeout = 400;
 
@@ -74,15 +63,7 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $account = $this->post->socialAccount()->connected()->first();
-
-        if (blank($account)) {
-            FacebookCover::recordRefusal($this->post);
-
-            return;
-        }
-
-        if (! ChannelPermissions::permits($account, GatedFeature::FacebookReelCover)) {
+        if (! FacebookCover::channelTakesReelCover($this->post)) {
             FacebookCover::recordRefusal($this->post);
 
             return;
@@ -94,17 +75,23 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
 
                 return;
             }
-
-            $publisher->setReelCover($this->post);
         } catch (PlatformUnavailableException) {
             $this->release(self::CHECK_EVERY_SECONDS);
-        } catch (TokenExpiredException) {
+
+            return;
+        } catch (TokenExpiredException|FacebookPublishException) {
             FacebookCover::recordRefusal($this->post);
-        } catch (FacebookPublishException $exception) {
-            $this->settle($exception);
+
+            return;
         }
+
+        ApplyFacebookReelCover::dispatch($this->post);
     }
 
+    /**
+     * A Reel Facebook was still processing after thirty minutes of checks keeps
+     * Facebook's own cover.
+     */
     public function failed(?Throwable $exception): void
     {
         $post = Post::find($this->post->id);
@@ -112,42 +99,5 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
         if (filled($post) && FacebookCover::awaitsReelCover($post)) {
             FacebookCover::recordRefusal($post);
         }
-    }
-
-    /**
-     * Tries again what a later try may fix and records the warning for any
-     * other refusal. A Reel Graph cannot load (code 100, subcode 33) gets the
-     * warning too: Graph answers the same for a lost permission as for a
-     * deleted video.
-     */
-    private function settle(FacebookPublishException $exception): void
-    {
-        if (self::isRetryable($exception)) {
-            $this->release(self::CHECK_EVERY_SECONDS);
-
-            return;
-        }
-
-        FacebookCover::recordRefusal($this->post);
-    }
-
-    /** A failure a later try may fix, by its category or by Meta's transient error codes (`GraphError`). */
-    private static function isRetryable(FacebookPublishException $exception): bool
-    {
-        if (collect(self::RETRYABLE_CATEGORIES)->containsStrict($exception->category)) {
-            return true;
-        }
-
-        if (blank($exception->rawResponse)) {
-            return false;
-        }
-
-        $body = json_decode($exception->rawResponse, true);
-
-        if (! is_array($body)) {
-            return false;
-        }
-
-        return GraphError::isTransient($body);
     }
 }
