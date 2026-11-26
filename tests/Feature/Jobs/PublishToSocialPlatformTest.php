@@ -794,6 +794,131 @@ test('publish honors a platform-specific retry delay and retry limit', function 
     Carbon::setTestNow();
 });
 
+test('publish fails with the failure the platform gave once its retries are spent', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $refusal = new LinkedInPublishException(
+        userMessage: 'Refused by the network.',
+        category: ErrorCategory::Refused,
+        platformErrorCode: '400',
+        rawResponse: '{"code":1}',
+    );
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new PlatformUnavailableException(
+        message: 'Refused for now',
+        httpStatus: 400,
+        retryDelaySeconds: 120,
+        maxRetries: 1,
+        failure: $refusal,
+    ));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Retrying);
+
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
+
+    $post = $this->post->fresh();
+
+    expect($post->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($post->error_message)->toBe('Refused by the network.')
+        ->and($post->error_context['category'] ?? null)->toBe(ErrorCategory::Refused->value)
+        ->and($post->error_context['raw_response'] ?? null)->toBe('{"code":1}');
+});
+
+/**
+ * A Pinterest carousel the job can publish without downloading or uploading.
+ */
+function publishJobPinterestCarousel(Post $post, Workspace $workspace): Post
+{
+    $account = SocialAccount::factory()->pinterest()->create([
+        'workspace_id' => $workspace->id,
+        'status' => AccountStatus::Connected,
+        'token_expires_at' => now()->addDays(30),
+    ]);
+
+    $carousel = publishJobRetarget($post, $account, [
+        'content_type' => ContentType::PinterestCarousel,
+        'publish_status' => PlatformStatus::Pending,
+        'meta' => ['board_id' => 'board_123'],
+    ]);
+
+    $carousel->update([
+        'media' => collect([1, 2])->map(fn (int $i) => [
+            'id' => "test-media-{$i}",
+            'path' => "media/2026-01/image{$i}.jpg",
+            'url' => "https://example.com/media/2026-01/image{$i}.jpg",
+            'mime_type' => 'image/jpeg',
+            'original_filename' => "image{$i}.jpg",
+            'meta' => ['width' => 1000, 'height' => 1500],
+        ])->all(),
+    ]);
+
+    return $carousel->fresh();
+}
+
+test('a pin pinterest keeps refusing fails with pinterest message once the retries are spent', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $carousel = publishJobPinterestCarousel($this->post, $this->workspace);
+
+    Http::fake([
+        '*/v5/pins' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400),
+    ]);
+
+    foreach (range(1, 5) as $retry) {
+        (new PublishToSocialPlatform($carousel->fresh()))->handle();
+
+        expect($carousel->fresh()->publish_status)->toBe(PlatformStatus::Retrying);
+    }
+
+    (new PublishToSocialPlatform($carousel->fresh()))->handle();
+
+    $carousel = $carousel->fresh();
+
+    expect($carousel->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($carousel->status)->toBe(PostStatus::Failed)
+        ->and($carousel->error_message)->toBe("Sorry! This site doesn't allow you to save Pins.")
+        ->and($carousel->error_context['category'] ?? null)->toBe(ErrorCategory::Refused->value);
+
+    Bus::assertDispatchedTimes(PublishToSocialPlatform::class, 5);
+    Http::assertSentCount(6);
+});
+
+test('a pin pinterest refuses once is published on the next try', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+
+    $carousel = publishJobPinterestCarousel($this->post, $this->workspace);
+
+    Http::fake([
+        '*/v5/pins' => Http::sequence()
+            ->push(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400)
+            ->push(['id' => 'pin_123'], 201),
+    ]);
+
+    (new PublishToSocialPlatform($carousel->fresh()))->handle();
+
+    expect($carousel->fresh()->publish_status)->toBe(PlatformStatus::Retrying);
+
+    (new PublishToSocialPlatform($carousel->fresh()))->handle();
+
+    $carousel = $carousel->fresh();
+
+    expect($carousel->publish_status)->toBe(PlatformStatus::Published)
+        ->and($carousel->status)->toBe(PostStatus::Published)
+        ->and($carousel->platform_post_id)->toBe('pin_123')
+        ->and($carousel->error_message)->toBeNull()
+        ->and($carousel->error_context)->toBeNull();
+});
+
 test('publish records last_attempt_at when rescheduling for retry', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();

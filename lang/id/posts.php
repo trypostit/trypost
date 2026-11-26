@@ -1106,6 +1106,7 @@ return [
                 'timeout' => 'Platform terlalu lama merespons.',
                 'token_expired' => 'Koneksi channel ini kedaluwarsa. Hubungkan kembali untuk menerbitkan lagi.',
                 'job_failed' => 'Penerbitan berhenti sebelum platform mengonfirmasi postingan.',
+                'refused' => 'Platform menolak postingan ini di setiap percobaan. Untuk menerbitkannya, gunakan Duplikat postingan dan jadwalkan lagi.',
             ],
         ],
         'goal' => ':sent/:goal postingan terkirim minggu ini',

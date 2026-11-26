@@ -1106,6 +1106,7 @@ return [
                 'timeout' => 'Le réseau a mis trop de temps à répondre.',
                 'token_expired' => 'La connexion du canal a expiré. Reconnectez-le pour publier à nouveau.',
                 'job_failed' => 'La publication s\'est arrêtée avant que le réseau ne confirme le post.',
+                'refused' => 'Le réseau a refusé ce post à chaque tentative. Pour le publier, utilisez Dupliquer la publication et programmez-le à nouveau.',
             ],
         ],
         'goal' => ':sent/:goal posts envoyés cette semaine',

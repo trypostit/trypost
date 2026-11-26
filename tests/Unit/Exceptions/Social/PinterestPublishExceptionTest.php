@@ -44,16 +44,6 @@ test('HTTP 404 maps to ContentPolicy category', function () {
         ->and($exception->userMessage)->toBe('Pinterest could not find the selected board. It may have been deleted or you no longer have access to it.');
 });
 
-test('HTTP 400 with Pinterest error code 1 maps to ContentPolicy category', function () {
-    $response = Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400);
-    $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');
-
-    $exception = PinterestPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
-        ->and($exception->userMessage)->toBe("Pinterest rejected this pin. This usually means the content violates Pinterest's content policies (e.g. adult or sexual content).");
-});
-
 test('HTTP 400 with board in body maps to ContentPolicy category', function () {
     $response = Http::response(['message' => 'Invalid board_id provided.'], 400);
     $fakeResponse = Http::fake(['*' => $response])->post('https://api.pinterest.com/test');
@@ -105,4 +95,27 @@ test('only a Pinterest rejection caused by the user is marked as a network rejec
     'undocumented code 1' => [400, ['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], false],
     'a board we sent that does not exist' => [404, ['code' => 404, 'message' => 'Not found'], false],
     'rate limit' => [429, ['code' => 429, 'message' => 'Too many requests'], false],
+]);
+
+test('a refused pin fails with Pinterest\'s own message', function () {
+    $fakeResponse = Http::fake(['*' => Http::response(['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], 400)])
+        ->post(config('trypost.platforms.pinterest.api').'/pins');
+
+    $exception = PinterestPublishException::refused($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::Refused)
+        ->and($exception->userMessage)->toBe("Sorry! This site doesn't allow you to save Pins.")
+        ->and($exception->platformErrorCode)->toBe('400')
+        ->and($exception->isNetworkRejection())->toBeFalse();
+});
+
+test('a refused pin without a message fails with Pinterest\'s whole answer', function (array $body, string $userMessage) {
+    $fakeResponse = Http::fake(['*' => Http::response($body, 400)])
+        ->post(config('trypost.platforms.pinterest.api').'/pins');
+
+    expect(PinterestPublishException::refused($fakeResponse)->userMessage)->toBe($userMessage);
+})->with([
+    'no message' => [['code' => 1], '{"code":1}'],
+    'a null message' => [['code' => 1, 'message' => null], '{"code":1,"message":null}'],
+    'an empty message' => [['code' => 1, 'message' => ''], '{"code":1,"message":""}'],
 ]);

@@ -30,6 +30,7 @@ const CATEGORIES = [
     'timeout',
     'token_expired',
     'job_failed',
+    'refused',
 ];
 
 

@@ -1107,6 +1107,7 @@ return [
                 'timeout' => 'La red tardó demasiado en responder.',
                 'token_expired' => 'La conexión del canal caducó. Vuelve a conectarlo para publicar de nuevo.',
                 'job_failed' => 'La publicación se detuvo antes de que la red la confirmara.',
+                'refused' => 'La red rechazó este post en todos los intentos. Para publicarlo, usa Duplicar post y prográmalo de nuevo.',
             ],
         ],
         'goal' => ':sent/:goal publicaciones enviadas esta semana',

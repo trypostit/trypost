@@ -164,12 +164,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                     break;
                 }
 
-                $this->reportCaughtPublishFailure($e);
-                $this->markPlatformAsFailed($e->userMessage, $this->failureContext([
-                    'category' => $e->category->value,
-                    'platform_error_code' => $e->platformErrorCode,
-                    'raw_response' => $e->context()['raw_response'],
-                ]));
+                $this->failWithPublishException($e);
                 break;
             } catch (Throwable $e) {
                 $this->reportCaughtPublishFailure($e);
@@ -318,6 +313,16 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         return true;
     }
 
+    private function failWithPublishException(SocialPublishException $e): void
+    {
+        $this->reportCaughtPublishFailure($e);
+        $this->markPlatformAsFailed($e->userMessage, $this->failureContext([
+            'category' => $e->category->value,
+            'platform_error_code' => $e->platformErrorCode,
+            'raw_response' => $e->context()['raw_response'],
+        ]));
+    }
+
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
         $previousContext = self::withSeparateRetryCounters($this->post->error_context ?? []);
@@ -335,6 +340,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ...($hasOwnPolicy ? ['max_retries' => $maxRetries, 'retry_delay_seconds' => $retryDelaySeconds] : []),
             'detail' => $e->getMessage(),
         ];
+
+        if ($retryCount > $maxRetries && filled($e->failure)) {
+            $this->failWithPublishException($e->failure);
+
+            return;
+        }
 
         if ($retryCount > $maxRetries) {
             $this->reportCaughtPublishFailure($e, [

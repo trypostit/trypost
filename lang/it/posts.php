@@ -1106,6 +1106,7 @@ return [
                 'timeout' => 'Il social ha impiegato troppo tempo a rispondere.',
                 'token_expired' => 'La connessione del canale è scaduta. Ricollegalo per pubblicare di nuovo.',
                 'job_failed' => 'La pubblicazione si è interrotta prima che il social confermasse il post.',
+                'refused' => 'Il social ha rifiutato questo post a ogni tentativo. Per pubblicarlo, usa Duplica post e programmalo di nuovo.',
             ],
         ],
         'goal' => ':sent/:goal post inviati questa settimana',

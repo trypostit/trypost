@@ -1106,6 +1106,7 @@ return [
                 'timeout' => 'Das Netzwerk hat zu lange gebraucht, um zu antworten.',
                 'token_expired' => 'Die Verbindung des Kanals ist abgelaufen. Verbinde ihn neu, um wieder zu veröffentlichen.',
                 'job_failed' => 'Die Veröffentlichung wurde abgebrochen, bevor das Netzwerk den Beitrag bestätigt hat.',
+                'refused' => 'Das Netzwerk hat diesen Beitrag bei jedem Versuch abgelehnt. Nutze Beitrag duplizieren und plane ihn neu, um ihn zu veröffentlichen.',
             ],
         ],
         'goal' => ':sent/:goal Beiträge diese Woche gesendet',
