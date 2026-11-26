@@ -99,20 +99,27 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
         $post = Post::find($this->post->id);
 
         if (filled($post) && FacebookCover::isAwaitedBy($post)) {
-            FacebookCover::recordGaveUp($post);
+            FacebookCover::recordGaveUp($post, CoverFailure::GaveUp);
         }
     }
 
     /**
-     * A cover that could not be downloaded is tried again; one that cannot be
-     * made a JPEG, or that Facebook refuses, never will be. A Reel Graph
-     * cannot load (code 100, subcode 33) gets the warning too: Graph answers
-     * the same for a lost permission as for a deleted video.
+     * A rate limit waits for its reset, and a server error or a cover that
+     * could not be downloaded is tried again; a cover that cannot be made a
+     * JPEG, or that Facebook refuses, never will be. A Reel Graph cannot load
+     * (code 100, subcode 33) gets the warning too: Graph answers the same for
+     * a lost permission as for a deleted video.
      */
     private function settle(FacebookPublishException $exception): void
     {
+        if ($exception->isLimit()) {
+            $this->tryAgain(FacebookCover::retried($exception), CoverRetry::delayUntil($exception->retryAt));
+
+            return;
+        }
+
         if ($exception->category === ErrorCategory::ServerError) {
-            $this->tryAgain(FacebookCover::failure(CoverFailure::NotDownloaded, $exception));
+            $this->tryAgain(FacebookCover::retried($exception));
 
             return;
         }
@@ -128,13 +135,21 @@ class ApplyFacebookReelCover implements ShouldBeUnique, ShouldQueue
 
     /**
      * Keeps what failed, so the warning left when the tries run out says it,
-     * and tries again after the next wait (`CoverRetry`).
+     * and tries again after the next wait (`CoverRetry`). The last try gives
+     * up at once instead of waiting for a try that never comes.
      *
      * @param  array<string, int|string>  $lastError
      */
     private function tryAgain(array $lastError, ?int $networkDelaySeconds = null): void
     {
         FacebookCover::recordLastError($this->post, $lastError);
+
+        if ($this->attempts() >= $this->tries) {
+            FacebookCover::recordGaveUp($this->post, CoverFailure::GaveUp);
+
+            return;
+        }
+
         $this->release(CoverRetry::delayAfter($this->attempts(), $networkDelaySeconds));
     }
 }

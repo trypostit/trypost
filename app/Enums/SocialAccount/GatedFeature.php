@@ -25,6 +25,20 @@ enum GatedFeature: string
     case FacebookReelCover = 'facebook_reel_cover';
 
     /**
+     * Whether the publish job holds back a post that uses the feature on a
+     * channel lacking its scope. A Facebook Reel cover never does: the Reel
+     * goes out and its cover job leaves a warning on it instead.
+     */
+    public function holdsBackPublishing(): bool
+    {
+        return match ($this) {
+            self::FacebookReelCover => false,
+            self::Publish, self::ThreadReplies, self::Followers, self::PostInsights,
+            self::PostInsightsExtended, self::PostHistory, self::PrivatePostRead => true,
+        };
+    }
+
+    /**
      * Whether a post uses the feature, so a channel lacking its scope cannot
      * schedule or publish it. Mirrored by `requiresFeatureToPublish()` in
      * `lib/channelPermissions.ts`: every post publishes, a post with replies

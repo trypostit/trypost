@@ -6,7 +6,7 @@ namespace App\Enums\Media;
 
 /**
  * A crop the media editor offers: free, the image's own ratio, or a fixed
- * width:height ratio. Mirrored by `CropPresetValue` in `lib/mediaEditor.ts`.
+ * width:height ratio. Mirrored by `CropPresetValue` in `types/crop-preset.ts`.
  */
 enum CropPreset: string
 {

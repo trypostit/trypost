@@ -125,6 +125,33 @@ describe('waiting for the reel', function () {
         'facebook unreachable' => fn (): array => [facebookReelStatusUrl() => Http::failedConnection()],
     ]);
 
+    test('a status read that keeps failing for now leaves, after the last check, a warning that says what kept failing', function () {
+        Http::fake([facebookReelStatusUrl() => Http::response('<html>Bad gateway</html>', 502)]);
+
+        runSetFacebookReelCover($this->post)->assertReleased(SetFacebookReelCover::CHECK_EVERY_SECONDS);
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse();
+
+        $job = (new SetFacebookReelCover($this->post))->withFakeQueueInteractions();
+        $job->job->attempts = $job->tries;
+        app()->call([$job, 'handle']);
+
+        $job->assertNotReleased();
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
+            ->and(facebookCoverFailure($this->post))->toMatchArray(['reason' => CoverFailure::StillProcessing->value, 'http_status' => 502]);
+    });
+
+    test('a reel ready after a status read failed for now keeps no failure', function () {
+        Http::fake([facebookReelStatusUrl() => Http::sequence()
+            ->push('<html>Bad gateway</html>', 502)
+            ->push(facebookReelStatus('ready'))]);
+
+        runSetFacebookReelCover($this->post)->assertReleased(SetFacebookReelCover::CHECK_EVERY_SECONDS);
+        runSetFacebookReelCover($this->post)->assertNotReleased();
+
+        Queue::assertPushed(ApplyFacebookReelCover::class);
+        expect(facebookCoverFailure($this->post))->toBeNull();
+    });
+
     test('a reel facebook could not process leaves a warning', function (string $videoStatus) {
         Http::fake([facebookReelStatusUrl() => Http::response(facebookReelStatus($videoStatus))]);
 
@@ -223,6 +250,20 @@ describe('waiting for the reel', function () {
     });
 });
 
+test('with the reel cover turned off, a reel published with a saved cover gets no cover job and no warning', function () {
+    config(['trypost.platforms.facebook.scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'read_insights', 'business_management']]);
+    Http::fake();
+
+    expect(FacebookCover::isAwaitedBy($this->post->fresh()))->toBeFalse();
+
+    runSetFacebookReelCover($this->post)->assertNotReleased();
+    runApplyFacebookReelCover($this->post)->assertNotReleased();
+
+    Http::assertNothingSent();
+    Queue::assertNotPushed(ApplyFacebookReelCover::class);
+    expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse();
+});
+
 describe('sending the cover', function () {
     test('the cover goes to facebook as the preferred thumbnail of the reel', function () {
         Http::fake([
@@ -311,6 +352,23 @@ describe('sending the cover', function () {
         runApplyFacebookReelCover($this->post)->assertReleased(30 * 60);
     });
 
+    test('a rate limit facebook does not count as transient waits for its reset before trying again', function (int $code) {
+        $this->freezeTime();
+        Http::fake([
+            FACEBOOK_COVER_URL => Http::response(facebookCoverPng(), 200, ['Content-Type' => 'image/png']),
+            facebookThumbnailsUrl() => Http::response(
+                ['error' => ['message' => 'Limit', 'type' => 'OAuthException', 'code' => $code]],
+                400,
+                ['X-Business-Use-Case-Usage' => json_encode(['page_123' => [['type' => 'pages', 'estimated_time_to_regain_access' => 20]]])],
+            ),
+        ]);
+
+        runApplyFacebookReelCover($this->post)->assertReleased(20 * 60);
+
+        expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeFalse()
+            ->and(facebookCoverFailure($this->post))->toMatchArray(['category' => 'rate_limit', 'platform_error_code' => (string) $code]);
+    })->with(['341' => 341, '613' => 613, '1349125' => 1349125]);
+
     test('the last try failing for now leaves a warning that says what kept failing', function () {
         expect((new ApplyFacebookReelCover($this->post))->tries)->toBe(count(CoverRetry::BACKOFF_SECONDS) + 1);
         Http::fake([
@@ -318,8 +376,7 @@ describe('sending the cover', function () {
             facebookThumbnailsUrl() => Http::response('<html>Bad gateway</html>', 502),
         ]);
 
-        runApplyFacebookReelCover($this->post, CoverRetry::TRIES)->assertReleased(600);
-        (new ApplyFacebookReelCover($this->post))->failed(null);
+        runApplyFacebookReelCover($this->post, CoverRetry::TRIES)->assertNotReleased();
 
         expect(FacebookCover::hasWarning($this->post->fresh()->error_context))->toBeTrue()
             ->and(facebookCoverFailure($this->post))->toMatchArray(['reason' => CoverFailure::GaveUp->value, 'http_status' => 502])

@@ -645,7 +645,7 @@ const appendMedia = (
             item,
             replaces,
         );
-        if (replaces) {
+        if (filled(replaces)) {
             composition.replaceEditedMedia(replaces, item);
         }
     }
@@ -1910,18 +1910,22 @@ const showSidePanel = (panel: ComposerSidePanel): void => {
 };
 
 const editorMedia = (
-    groupKey: string | null,
+    groupKey: string,
     replyKey: string | null = null,
 ): MediaItem[] => {
     const group = findGroup(groupKey);
-    if (group && replyKey !== null) {
+    if (!group) {
+        return [];
+    }
+
+    if (replyKey !== null) {
         return (
             threadReplies(group).find((reply) => reply.key === replyKey)
                 ?.media ?? []
         );
     }
 
-    return group ? groupDestination(group).media : composition.media.value;
+    return groupDestination(group).media;
 };
 const editorContentTypes = (
     groupKey: string | null,
@@ -2151,11 +2155,11 @@ const autosaveOverride = ({
 }: DestinationOverride): AutosaveOverride => {
     const stored: AutosaveOverride = { ...override };
 
-    if (media) {
+    if (Array.isArray(media)) {
         stored.media = media.map(toAutosaveMedia);
     }
 
-    if (mediaEdits) {
+    if (Array.isArray(mediaEdits)) {
         stored.media_edits = mediaEdits.map(toAutosaveMedia);
     }
 

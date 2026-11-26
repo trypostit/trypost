@@ -74,13 +74,10 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
         }
 
         try {
-            if ($publisher->reelIsProcessing($this->post)) {
-                $this->release(self::CHECK_EVERY_SECONDS);
-
-                return;
-            }
-        } catch (PlatformUnavailableException) {
-            $this->release(self::CHECK_EVERY_SECONDS);
+            $processing = $publisher->reelIsProcessing($this->post);
+        } catch (PlatformUnavailableException $exception) {
+            FacebookCover::recordLastError($this->post, FacebookCover::unavailable($exception));
+            $this->checkAgain();
 
             return;
         } catch (TokenExpiredException) {
@@ -93,6 +90,13 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($processing) {
+            $this->checkAgain();
+
+            return;
+        }
+
+        FacebookCover::forgetLastError($this->post);
         ApplyFacebookReelCover::dispatch($this->post);
     }
 
@@ -105,8 +109,20 @@ class SetFacebookReelCover implements ShouldBeUnique, ShouldQueue
         $post = Post::find($this->post->id);
 
         if (filled($post) && FacebookCover::isAwaitedBy($post)) {
-            FacebookCover::recordWarning($post, FacebookCover::failure(CoverFailure::StillProcessing));
+            FacebookCover::recordGaveUp($post, CoverFailure::StillProcessing);
         }
+    }
+
+    /** Checks again a minute later; the last check gives up at once instead of waiting for one that never comes. */
+    private function checkAgain(): void
+    {
+        if ($this->attempts() >= $this->tries) {
+            FacebookCover::recordGaveUp($this->post, CoverFailure::StillProcessing);
+
+            return;
+        }
+
+        $this->release(self::CHECK_EVERY_SECONDS);
     }
 
     /** A Reel Facebook could not process (`reelIsProcessing()` throws it as MediaFormat), else a status read it refused. */

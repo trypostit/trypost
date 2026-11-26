@@ -28,7 +28,11 @@ final class FacebookCover
 
     public const string FAILURE = 'facebook_cover_failure';
 
-    /** A Facebook Reel TryPost published with a cover image, waiting for its cover. */
+    /**
+     * A Facebook Reel TryPost published with a cover image, waiting for its
+     * cover. An install that turned the Reel cover off (its scopes left out)
+     * sets none and warns about none, even for a cover saved before.
+     */
     public static function isAwaitedBy(Post $post): bool
     {
         return $post->platform === Platform::Facebook
@@ -36,7 +40,8 @@ final class FacebookCover
             && $post->publish_status === PublishStatus::Published
             && filled($post->platform_post_id)
             && $post->content_type === ContentType::FacebookReel
-            && filled($post->mediaItems->first()?->cover());
+            && filled($post->mediaItems->first()?->cover())
+            && ChannelPermissions::enabled(Platform::Facebook, GatedFeature::FacebookReelCover);
     }
 
     /** Why the post's channel cannot take the Reel's cover now, if it cannot: it is no longer connected, or it lacks the cover's permission. */
@@ -102,14 +107,14 @@ final class FacebookCover
     }
 
     /**
-     * The warning for tries that ran out: what kept failing, as the last try
-     * recorded it.
+     * The warning for tries or checks that ran out, with what kept failing as
+     * the last one recorded it.
      */
-    public static function recordGaveUp(Post $post): void
+    public static function recordGaveUp(Post $post, CoverFailure $reason): void
     {
         self::recordWarning($post, [
             ...data_get($post->error_context, self::FAILURE, []),
-            'reason' => CoverFailure::GaveUp->value,
+            'reason' => $reason->value,
         ]);
     }
 
@@ -128,6 +133,21 @@ final class FacebookCover
 
         return Arr::whereNotNull([
             'reason' => $reason->value,
+            'category' => $exception->category->value,
+            'platform_error_code' => $exception->platformErrorCode,
+            'raw_response' => data_get($exception->context(), 'raw_response'),
+        ]);
+    }
+
+    /**
+     * A refusal a later try may fix (a rate limit, a server error, a cover
+     * that did not download), as Facebook or the download answered it.
+     *
+     * @return array<string, string>
+     */
+    public static function retried(SocialPublishException $exception): array
+    {
+        return Arr::whereNotNull([
             'category' => $exception->category->value,
             'platform_error_code' => $exception->platformErrorCode,
             'raw_response' => data_get($exception->context(), 'raw_response'),

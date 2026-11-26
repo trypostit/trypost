@@ -2577,10 +2577,14 @@ test('a facebook reel published with a cover image sets it a minute later', func
 
     (new PublishToSocialPlatform($post))->handle();
 
-    $sets
-        ? Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookReelCover::class, fn (SetFacebookReelCover $job): bool => $job->post->is($post)
-            && $job->delay->equalTo(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS)))
-        : Queue::assertNotPushed(SetFacebookReelCover::class);
+    if (! $sets) {
+        Queue::assertNotPushed(SetFacebookReelCover::class);
+
+        return;
+    }
+
+    Queue::assertPushedOn(Platform::Facebook->queue(), SetFacebookReelCover::class, fn (SetFacebookReelCover $job): bool => $job->post->is($post)
+        && $job->delay->equalTo(now()->addSeconds(SetFacebookReelCover::CHECK_EVERY_SECONDS)));
 })->with([
     'a reel with a cover image' => [ContentType::FacebookReel, true, true],
     'a reel without one' => [ContentType::FacebookReel, false, false],

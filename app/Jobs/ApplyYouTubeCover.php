@@ -113,7 +113,7 @@ class ApplyYouTubeCover implements ShouldBeUnique, ShouldQueue
         $status = $exception->getCode();
 
         if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
-            $this->release(CoverRetry::delayAfter($this->attempts()));
+            $this->tryAgain();
 
             return;
         }
@@ -133,6 +133,18 @@ class ApplyYouTubeCover implements ShouldBeUnique, ShouldQueue
     {
         if ($exception->category === ErrorCategory::MediaFormat) {
             YouTubeCover::recordWarning($this->post, ThumbnailWarning::InvalidImage);
+
+            return;
+        }
+
+        $this->tryAgain();
+    }
+
+    /** Tries again after the next wait (`CoverRetry`); the last try gives up at once instead of waiting for a try that never comes. */
+    private function tryAgain(): void
+    {
+        if ($this->attempts() >= $this->tries) {
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
 
             return;
         }

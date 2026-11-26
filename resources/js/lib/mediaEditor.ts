@@ -439,15 +439,46 @@ export const needsFrameCapture = (
     return edit.coverOffsetMs !== item.meta?.cover_offset_ms;
 };
 
-export const hasPixelChanges = (edit: MediaEdit): boolean =>
-    edit.selection !== null ||
-    !UNFIXED_CROP_PRESETS.has(edit.preset) ||
-    edit.quarterTurns % 4 !== 0 ||
-    edit.flipX ||
-    edit.flipY ||
-    edit.straighten !== 0 ||
-    (edit.filter !== 'original' && edit.filterIntensity > 0) ||
-    ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
+export const hasPixelChanges = (edit: MediaEdit): boolean => {
+    if (edit.selection !== null) {
+        return true;
+    }
+
+    if (!UNFIXED_CROP_PRESETS.has(edit.preset)) {
+        return true;
+    }
+
+    if (edit.quarterTurns % 4 !== 0) {
+        return true;
+    }
+
+    if (edit.flipX) {
+        return true;
+    }
+
+    if (edit.flipY) {
+        return true;
+    }
+
+    if (edit.straighten !== 0) {
+        return true;
+    }
+
+    if (hasFilter(edit)) {
+        return true;
+    }
+
+    return ADJUSTMENTS.some((key) => edit.adjustments[key] !== 0);
+};
+
+/** Whether the edit applies a filter: one picked other than the original, at some strength. */
+const hasFilter = (edit: MediaEdit): boolean => {
+    if (edit.filter === 'original') {
+        return false;
+    }
+
+    return edit.filterIntensity > 0;
+};
 
 export const hasMetaChanges = (edit: MediaEdit, item: MediaItem): boolean => {
     if (edit.altText.trim() !== (item.meta?.alt_text ?? '').trim()) {

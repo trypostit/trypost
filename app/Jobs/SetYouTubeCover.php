@@ -108,7 +108,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
     private function follow(?ProcessingStatus $status): void
     {
         if ($status === ProcessingStatus::Processing) {
-            $this->release(self::CHECK_EVERY_SECONDS);
+            $this->checkAgain();
 
             return;
         }
@@ -135,7 +135,7 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         $status = $exception->getCode();
 
         if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
-            $this->release(self::CHECK_EVERY_SECONDS);
+            $this->checkAgain();
 
             return;
         }
@@ -145,5 +145,17 @@ class SetYouTubeCover implements ShouldBeUnique, ShouldQueue
         }
 
         YouTubeCover::recordWarning($this->post, YouTubeCover::warningFor($status));
+    }
+
+    /** Checks again a minute later; the last check gives up at once instead of waiting for one that never comes. */
+    private function checkAgain(): void
+    {
+        if ($this->attempts() >= $this->tries) {
+            YouTubeCover::recordWarning($this->post, ThumbnailWarning::Failed);
+
+            return;
+        }
+
+        $this->release(self::CHECK_EVERY_SECONDS);
     }
 }

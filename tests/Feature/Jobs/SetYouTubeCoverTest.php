@@ -248,6 +248,29 @@ describe('setting the cover', function () {
         'after the fourth, ten minutes' => [4, 600],
     ]);
 
+    test('the last try that fails for now leaves the failed warning at once', function () {
+        Http::fake([
+            YOUTUBE_COVER_URL => Http::response('jpeg bytes', 200, ['Content-Type' => 'image/jpeg']),
+            YOUTUBE_THUMBNAILS_URL => Http::response(['error' => ['code' => 503, 'message' => 'backend']], 503),
+        ]);
+
+        runApplyYouTubeCover($this->post, CoverRetry::TRIES)->assertNotReleased();
+
+        expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
+    });
+
+    test('the last check of a video still processing leaves the failed warning at once', function () {
+        Http::fake([YOUTUBE_VIDEOS_URL => Http::response(youTubeProcessing('processing'))]);
+        fakeYouTubeClient();
+
+        $job = (new SetYouTubeCover($this->post))->withFakeQueueInteractions();
+        $job->job->attempts = $job->tries;
+        app()->call([$job, 'handle']);
+
+        $job->assertNotReleased();
+        expect(YouTubeCover::warning($this->post->fresh()->error_context))->toBe(ThumbnailWarning::Failed);
+    });
+
     test('the last try failing for now leaves the failed warning', function () {
         expect((new ApplyYouTubeCover($this->post))->tries)->toBe(count(CoverRetry::BACKOFF_SECONDS) + 1);
 

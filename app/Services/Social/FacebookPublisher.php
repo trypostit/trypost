@@ -18,10 +18,10 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\HostsProcessedImages;
 use App\Services\Social\Meta\GraphError;
 use App\Support\FacebookLinkPreview;
+use App\Support\Social\CoverRetry;
 use App\Support\Social\FacebookCover;
 use App\Support\Social\NetworkLimitReset;
 use App\Support\Social\PublishContentValidator;
-use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -662,22 +662,24 @@ class FacebookPublisher
     /**
      * Whether Facebook is still processing the published Reel, which may not
      * take a cover yet: every status but `ready` counts as processing
-     * (`upload_complete` comes before it). A status read that fails
-     * transiently counts as still processing, so the cover waits for the
-     * next try.
+     * (`upload_complete` comes before it).
      *
+     * @throws PlatformUnavailableException when the status read fails for now (a server error, a rate limit, a transient Graph error)
      * @throws FacebookPublishException when Facebook refuses the read, or the Reel will never be ready (MediaFormat)
      */
     public function reelIsProcessing(Post $post): bool
     {
         $response = $this->readVideoStatus($post->platform_post_id, $post->socialAccount->access_token, 'reel status');
 
-        if ($response->failed()) {
-            if (! GraphError::isTransientFailure($response)) {
-                $this->handleApiError($response);
-            }
+        if ($response->failed() && GraphError::isTransientFailure($response)) {
+            throw new PlatformUnavailableException(
+                message: 'Facebook reel status failed for now: '.$this->redactResponseBody($response->body()),
+                httpStatus: $response->status(),
+            );
+        }
 
-            return true;
+        if ($response->failed()) {
+            $this->handleApiError($response);
         }
 
         $videoStatus = $this->videoStatus((array) $response->json('status'));
@@ -773,7 +775,7 @@ class FacebookPublisher
             throw new PlatformUnavailableException(
                 message: "Facebook {$label} failed for now: ".$this->redactResponseBody($response->body()),
                 httpStatus: $response->status(),
-                retryDelaySeconds: transform(NetworkLimitReset::from($response), fn (CarbonInterface $resetAt): int => (int) ceil(now()->diffInSeconds($resetAt))),
+                retryDelaySeconds: CoverRetry::delayUntil(NetworkLimitReset::from($response)),
             );
         }
 

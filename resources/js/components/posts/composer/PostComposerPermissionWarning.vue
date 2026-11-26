@@ -27,13 +27,13 @@ const props = withDefaults(
         accounts: ComposerAccount[];
         contentType: ContentTypeValue | null;
         platformConfigs: PlatformConfigs;
-        meta?: Record<string, unknown> | null;
-        media?: MediaItem[];
+        meta: Record<string, unknown> | null;
+        media: MediaItem[];
         disabled?: boolean;
         reconnectable?: boolean;
         testId: string;
     }>(),
-    { meta: null, media: () => [], disabled: false, reconnectable: true },
+    { disabled: false, reconnectable: true },
 );
 
 const emit = defineEmits<{ reconnect: [account: ComposerAccount] }>();

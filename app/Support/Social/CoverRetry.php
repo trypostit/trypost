@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Number;
 
@@ -33,10 +34,16 @@ final class CoverRetry
     {
         $backoff = Arr::get(self::BACKOFF_SECONDS, $attempt - 1, Arr::last(self::BACKOFF_SECONDS));
 
-        if ($networkDelaySeconds === null) {
+        if (blank($networkDelaySeconds)) {
             return $backoff;
         }
 
         return (int) Number::clamp($networkDelaySeconds, $backoff, self::MAX_DELAY_SECONDS);
+    }
+
+    /** The seconds until a reset time the network sent, if it sent one. */
+    public static function delayUntil(?CarbonInterface $resetAt): ?int
+    {
+        return transform($resetAt, fn (CarbonInterface $at): int => (int) ceil(now()->diffInSeconds($at)));
     }
 }

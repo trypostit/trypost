@@ -18,18 +18,18 @@ use Illuminate\Support\Str;
 final class PublishContentValidator
 {
     /**
-     * The publish job checks the channel's grants without the post's media: a
-     * Reel cover whose grant was lost after save never holds the Reel back,
-     * since its cover job leaves a warning on the live post instead.
+     * The publish job holds back a post only for a feature that holds back
+     * publishing (`GatedFeature::holdsBackPublishing()`): a Reel cover whose
+     * grant was lost after save lets the Reel out with a warning.
      */
     public static function validate(Post $post): void
     {
         $account = $post->socialAccount;
         $platform = $account?->platform ?? $post->platform;
         $type = ContentType::forPost($post, $platform);
-        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type, media: []);
+        $blockedFeature = ChannelPermissions::featureBlockingPost($account, $post->meta, $type, $post->media ?? []);
 
-        if (filled($blockedFeature)) {
+        if (filled($blockedFeature) && $blockedFeature->holdsBackPublishing()) {
             throw new MissingPermissionException(
                 $post->platform,
                 ChannelPermissions::reconnectMessage($platform, $blockedFeature),
