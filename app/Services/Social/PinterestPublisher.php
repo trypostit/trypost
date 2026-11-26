@@ -108,12 +108,12 @@ class PinterestPublisher
      * @param  array<string, mixed>  $payload
      * @return array{id: mixed, url: string}
      */
-    private function createPin(SocialAccount $account, array $payload, string $failureLogMessage): array
+    private function createPin(Post $post, array $payload, string $failureLogMessage): array
     {
-        $response = $this->socialHttp()->withToken($account->access_token)
+        $response = $this->socialHttp()->withToken($post->socialAccount->access_token)
             ->post($this->baseUrl.'/pins', $payload);
 
-        if ($this->isRefusedVideoPin($payload, $response)) {
+        if ($this->isRefusedVideoPin($post, $response)) {
             throw new PlatformUnavailableException(
                 "Pinterest refused the video pin for now: {$response->body()}",
                 $response->status(),
@@ -138,12 +138,9 @@ class PinterestPublisher
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function isRefusedVideoPin(array $payload, Response $response): bool
+    private function isRefusedVideoPin(Post $post, Response $response): bool
     {
-        if (data_get($payload, 'media_source.source_type') !== 'video_id') {
+        if ($post->content_type !== ContentType::PinterestVideoPin) {
             return false;
         }
 
@@ -156,7 +153,6 @@ class PinterestPublisher
 
     private function publishImagePin(Post $post, ?string $content): array
     {
-        $account = $post->socialAccount;
         $media = $post->mediaItems->first();
 
         if (! $media) {
@@ -209,7 +205,7 @@ class PinterestPublisher
             $payload['alt_text'] = $alt;
         }
 
-        return $this->createPin($account, $payload, 'Pinterest pin creation failed');
+        return $this->createPin($post, $payload, 'Pinterest pin creation failed');
     }
 
     private function publishVideoPin(Post $post, ?string $content): array
@@ -324,12 +320,11 @@ class PinterestPublisher
 
         $payload['media_source']['cover_image_key_frame_time'] = (int) round(($media->coverOffsetMs() ?? 0) / 1000);
 
-        return $this->createPin($account, $payload, 'Pinterest video pin creation failed');
+        return $this->createPin($post, $payload, 'Pinterest video pin creation failed');
     }
 
     private function publishCarousel(Post $post, ?string $content): array
     {
-        $account = $post->socialAccount;
         $medias = $post->mediaItems;
 
         if ($medias->count() < 2 || $medias->count() > 5) {
@@ -351,7 +346,7 @@ class PinterestPublisher
             ],
         ], $post, $content);
 
-        return $this->createPin($account, $payload, 'Pinterest carousel creation failed');
+        return $this->createPin($post, $payload, 'Pinterest carousel creation failed');
     }
 
     /** @throws PlatformUnavailableException|PinterestPublishException */
