@@ -4,9 +4,8 @@ import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
 import { blank } from '@/lib/helpers';
 import {
-    editedId,
     isEditedMedia,
-    replacementFor,
+    replacedEdit,
     uneditedMedia,
     withMediaEdits,
     withoutOriginal,
@@ -165,19 +164,6 @@ export const usePostComposition = (
             writeOverride(account.id, { media_edits: edits }),
         );
         media.value = items.map(uneditedMedia);
-    };
-
-    /** A network's edit of a shared item, carried onto the file that replaces that item. */
-    const replacedEdit = (
-        edit: MediaItem,
-        replaces: string,
-        item: MediaItem,
-    ): MediaItem => {
-        if (editedId(edit) !== replaces) {
-            return edit;
-        }
-
-        return replacementFor(edit, item);
     };
 
     /**

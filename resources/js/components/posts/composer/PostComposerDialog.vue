@@ -102,18 +102,20 @@ import { useComposerPoll } from '@/composables/composer/useComposerPoll';
 import { useComposerTimezone } from '@/composables/composer/useComposerTimezone';
 import { useComposerUnsavedChanges } from '@/composables/composer/useComposerUnsavedChanges';
 import { useLastUsedAccounts } from '@/composables/composer/useLastUsedAccounts';
+import {
+    ACCOUNT_SCOPED_SETTINGS,
+    usePostComposition,
+} from '@/composables/composer/usePostComposition';
 import { useSaveAndLinkFacebook } from '@/composables/composer/useSaveAndLinkFacebook';
 import { useSaveAndReconnect } from '@/composables/composer/useSaveAndReconnect';
 import { useAtLeastBreakpoint, useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCanHover } from '@/composables/useCanHover';
 import {
     AUTOSAVE_VERSION,
-    type AutosaveMediaRef,
-    type AutosaveOverride,
     type AutosaveSnapshot,
-    fromAutosaveMedia,
-    isExpiredUpload,
+    restoreSnapshotMedia,
     toAutosaveMedia,
+    toAutosaveOverride,
     useAutosavePreview,
     useComposerAutosave,
 } from '@/composables/useComposerAutosave';
@@ -145,10 +147,6 @@ import {
     getPickableContentTypeOptions,
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
-import {
-    ACCOUNT_SCOPED_SETTINGS,
-    usePostComposition,
-} from '@/composables/usePostComposition';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import date from '@/date';
@@ -174,7 +172,7 @@ import {
     editorTabsFor,
     rulesFor,
 } from '@/lib/mediaEditor';
-import { asAddedFile, uneditedMedia } from '@/lib/mediaEdits';
+import { uneditedMedia } from '@/lib/mediaEdits';
 import { isGooglePickerOpen } from '@/lib/mediaSources/googleDrive';
 import { acceptAttribute, mediaKey } from '@/lib/mediaType';
 import { evaluatePlatformMeta } from '@/lib/platformMeta';
@@ -226,7 +224,6 @@ import type {
     ComposerAccount,
     ComposerInitialDraft,
     ComposerInitialPost,
-    DestinationOverride,
     NetworkGroup,
     PostComposition,
     SubmitPostComposition,
@@ -2147,24 +2144,6 @@ const resumeOpen = ref(
                 resumeMediaCount.value,
         ),
 );
-/** A network's override as the draft keeps it: its media lists as stored references. */
-const autosaveOverride = ({
-    media,
-    media_edits: mediaEdits,
-    ...override
-}: DestinationOverride): AutosaveOverride => {
-    const stored: AutosaveOverride = { ...override };
-
-    if (Array.isArray(media)) {
-        stored.media = media.map(toAutosaveMedia);
-    }
-
-    if (Array.isArray(mediaEdits)) {
-        stored.media_edits = mediaEdits.map(toAutosaveMedia);
-    }
-
-    return stored;
-};
 const autosaveSnapshot = (): AutosaveSnapshot => ({
     version: AUTOSAVE_VERSION,
     savedAt: dayjs().toISOString(),
@@ -2172,7 +2151,7 @@ const autosaveSnapshot = (): AutosaveSnapshot => ({
     overrides: Object.fromEntries(
         Object.entries(composition.overrides.value).map(([id, override]) => [
             id,
-            autosaveOverride(override),
+            toAutosaveOverride(override),
         ]),
     ),
     accountIds: [...composition.selectedAccountIds.value],
@@ -2220,95 +2199,24 @@ const resumeUnfinishedPost = (): void => {
     const snapshot = autosave.saved.value;
     resumeOpen.value = false;
     if (!snapshot) return;
-    const retentionHours = mediaUploadLimits().upload_retention_hours;
-    const isLive = (item: AutosaveMediaRef): boolean =>
-        !isExpiredUpload(item, retentionHours);
-    /** The live file that took the place of an expired shared item, by the expired item's id. */
-    const replacements = new Map<string, MediaItem>();
-    /**
-     * An edit whose original upload expired points at the file that took the
-     * original's place, else starts from its own file, so no network is ever
-     * sent a file that is gone.
-     */
-    const withLiveOriginal = (item: AutosaveMediaRef): MediaItem => {
-        const restored = fromAutosaveMedia(item);
-
-        if (!filled(item.original)) {
-            return restored;
-        }
-
-        if (isLive(item.original)) {
-            return restored;
-        }
-
-        const replacement = replacements.get(item.original.id);
-
-        if (filled(replacement)) {
-            return { ...restored, original: replacement };
-        }
-
-        return { ...restored, original: asAddedFile(restored) };
-    };
-    const restoreMedia = (items: AutosaveMediaRef[]): MediaItem[] =>
-        items.filter(isLive).map(withLiveOriginal);
-    const liveEdits = Object.values(snapshot.overrides)
-        .flatMap((override) => override.media_edits ?? [])
-        .filter(isLive);
-    /**
-     * A shared item whose upload expired gives its place to the live file a
-     * network edited it into, as added, else to its own live original.
-     */
-    const restoredShared = (item: AutosaveMediaRef): MediaItem[] => {
-        if (isLive(item)) {
-            return [withLiveOriginal(item)];
-        }
-
-        const edit = liveEdits.find((candidate) => candidate.original?.id === item.id);
-
-        if (filled(edit)) {
-            const replacement = asAddedFile(fromAutosaveMedia(edit));
-            replacements.set(item.id, replacement);
-
-            return [replacement];
-        }
-
-        if (filled(item.original) && isLive(item.original)) {
-            return [asAddedFile(fromAutosaveMedia(item.original))];
-        }
-
-        return [];
-    };
-    const restoredOverride = ({
-        media,
-        media_edits: mediaEdits,
-        ...override
-    }: AutosaveOverride): DestinationOverride => {
-        const restored: DestinationOverride = { ...override };
-
-        if (Array.isArray(media)) {
-            restored.media = restoreMedia(media);
-        }
-
-        if (Array.isArray(mediaEdits)) {
-            restored.media_edits = restoreMedia(mediaEdits);
-        }
-
-        return restored;
-    };
     [...composition.selectedAccountIds.value].forEach((id) =>
         composition.toggleAccount(id),
     );
     snapshot.accountIds.forEach((id) => composition.toggleAccount(id));
     const selectedIds = composition.selectedAccountIds.value;
     composition.content.value = snapshot.content;
-    composition.media.value = snapshot.media.flatMap(restoredShared);
+    const restored = restoreSnapshotMedia(
+        snapshot,
+        mediaUploadLimits().upload_retention_hours,
+    );
+    composition.media.value = restored.media;
     composition.labelIds.value = snapshot.labelIds.filter((id) =>
         props.labels.some((label) => label.id === id),
     );
     composition.overrides.value = Object.fromEntries(
-        Object.entries(snapshot.overrides)
-            .filter(([id]) => selectedIds.includes(id))
-            .map(([id, override]) => [id, restoredOverride(override)]),
+        Object.entries(restored.overrides).filter(([id]) =>
+            selectedIds.includes(id),
+        ),
     );
     composition.normalizeGroups();
     forgetPolls();

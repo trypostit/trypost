@@ -11,6 +11,7 @@ import {
 } from '@/lib/browserStorage';
 import { filled } from '@/lib/helpers';
 import { moveLegacyBrowserStorage } from '@/lib/legacyBrowserStorage';
+import { asAddedFile } from '@/lib/mediaEdits';
 import { classify, MediaType } from '@/lib/mediaType';
 import type { SharedData } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
@@ -146,6 +147,116 @@ export const isExpiredUpload = (
     Boolean(media.created_at) &&
     retentionHours > 0 &&
     dayjs(media.created_at).add(retentionHours, 'hour').isBefore(dayjs());
+
+/** A network's override as the draft keeps it: its media lists as stored references. */
+export const toAutosaveOverride = ({
+    media,
+    media_edits: mediaEdits,
+    ...override
+}: DestinationOverride): AutosaveOverride => {
+    const stored: AutosaveOverride = { ...override };
+
+    if (Array.isArray(media)) {
+        stored.media = media.map(toAutosaveMedia);
+    }
+
+    if (Array.isArray(mediaEdits)) {
+        stored.media_edits = mediaEdits.map(toAutosaveMedia);
+    }
+
+    return stored;
+};
+
+/**
+ * The media a saved draft brings back, the shared items and each network's
+ * override, with no upload that expired: a shared item whose upload expired
+ * gives its place to the live file a network edited it into (as added), else
+ * to its own live original; an edit whose original expired points at the file
+ * that took the original's place, else starts from its own file. The shared
+ * items are restored first, since the overrides read what replaced them.
+ */
+export const restoreSnapshotMedia = (
+    snapshot: AutosaveSnapshot,
+    retentionHours: number,
+): { media: MediaItem[]; overrides: Record<string, DestinationOverride> } => {
+    const isLive = (item: AutosaveMediaRef): boolean =>
+        !isExpiredUpload(item, retentionHours);
+    const replacements = new Map<string, MediaItem>();
+    const liveEdits = Object.values(snapshot.overrides)
+        .flatMap((override) => override.media_edits ?? [])
+        .filter(isLive);
+
+    const withLiveOriginal = (item: AutosaveMediaRef): MediaItem => {
+        const restored = fromAutosaveMedia(item);
+
+        if (!filled(item.original)) {
+            return restored;
+        }
+
+        if (isLive(item.original)) {
+            return restored;
+        }
+
+        const replacement = replacements.get(item.original.id);
+
+        if (filled(replacement)) {
+            return { ...restored, original: replacement };
+        }
+
+        return { ...restored, original: asAddedFile(restored) };
+    };
+
+    const restoredShared = (item: AutosaveMediaRef): MediaItem[] => {
+        if (isLive(item)) {
+            return [withLiveOriginal(item)];
+        }
+
+        const edit = liveEdits.find((candidate) => candidate.original?.id === item.id);
+
+        if (filled(edit)) {
+            const replacement = asAddedFile(fromAutosaveMedia(edit));
+            replacements.set(item.id, replacement);
+
+            return [replacement];
+        }
+
+        if (filled(item.original) && isLive(item.original)) {
+            return [asAddedFile(fromAutosaveMedia(item.original))];
+        }
+
+        return [];
+    };
+
+    const restoreMedia = (items: AutosaveMediaRef[]): MediaItem[] =>
+        items.filter(isLive).map(withLiveOriginal);
+
+    const restoredOverride = ({
+        media,
+        media_edits: mediaEdits,
+        ...override
+    }: AutosaveOverride): DestinationOverride => {
+        const restored: DestinationOverride = { ...override };
+
+        if (Array.isArray(media)) {
+            restored.media = restoreMedia(media);
+        }
+
+        if (Array.isArray(mediaEdits)) {
+            restored.media_edits = restoreMedia(mediaEdits);
+        }
+
+        return restored;
+    };
+
+    const media = snapshot.media.flatMap(restoredShared);
+
+    return {
+        media,
+        overrides: Object.fromEntries(
+            Object.entries(snapshot.overrides).map(([id, override]) => [id, restoredOverride(override)]),
+        ),
+    };
+};
 
 /** Drops the draft of one workspace, once its post is saved. */
 export const clearComposerAutosave = (

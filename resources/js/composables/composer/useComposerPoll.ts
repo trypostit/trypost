@@ -1,4 +1,4 @@
-import type { usePostComposition } from '@/composables/usePostComposition';
+import type { usePostComposition } from '@/composables/composer/usePostComposition';
 import { blank, filled, transform } from '@/lib/helpers';
 import { newPoll } from '@/lib/poll';
 import { withReplyPoll } from '@/lib/threadReplies';

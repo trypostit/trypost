@@ -105,3 +105,16 @@ export const replacementFor = (
 
     return { ...replacement, original: asAddedFile(item) };
 };
+
+/** A network's edit of a shared item, carried onto the file that replaces that item. */
+export const replacedEdit = (
+    edit: MediaItem,
+    replaces: string,
+    item: MediaItem,
+): MediaItem => {
+    if (editedId(edit) !== replaces) {
+        return edit;
+    }
+
+    return replacementFor(edit, item);
+};
