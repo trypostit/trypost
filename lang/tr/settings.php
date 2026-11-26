@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'Ayarlar',
+        'version' => 'Sürüm: :version',
         'groups' => [
             'personal' => 'Kişisel',
             'workspace' => 'Çalışma Alanı',

@@ -239,6 +239,7 @@ return [
     'posts.publish.pending_slot.next' => 14,
     'posts.publish.pending_slot.top' => 12,
     'settings.api_keys.description' => 42,
+    'settings.sidebar.version' => 12,
     'settings.members.access.admin_description' => 41,
     'settings.members.access.needs_approval' => 25,
     'settings.members.access.publishes_directly' => 22,

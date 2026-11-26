@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'Instellingen',
+        'version' => 'Versie: :version',
         'groups' => [
             'personal' => 'Persoonlijk',
             'workspace' => 'Workspace',

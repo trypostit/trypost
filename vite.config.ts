@@ -1,9 +1,12 @@
+
 import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 import i18n from 'laravel-vue-i18n/vite';
 import { defineConfig } from 'vite';
+
+import { buildInfo } from './vite/build-info';
 
 export default defineConfig({
     plugins: [
@@ -26,5 +29,6 @@ export default defineConfig({
             },
         }),
         i18n(),
+        buildInfo(),
     ],
 });

@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'Pengaturan',
+        'version' => 'Versi: :version',
         'groups' => [
             'personal' => 'Pribadi',
             'workspace' => 'Workspace',

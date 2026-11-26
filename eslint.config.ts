@@ -60,5 +60,13 @@ export default defineConfigWithVueTs(
             ],
         },
     },
+    {
+        // Vite loads its config before the '@/' alias exists, so the config
+        // reaches its own plugins in vite/ by a relative path.
+        files: ['vite.config.ts'],
+        rules: {
+            'no-restricted-imports': 'off',
+        },
+    },
     prettier,
 );

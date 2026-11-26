@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
 
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
+import BuildVersion from '@/components/settings/BuildVersion.vue';
 import SidebarUserMenu from '@/components/SidebarUserMenu.vue';
 import {
     Sidebar,
@@ -90,6 +91,7 @@ const exactMatchItems = ['general', 'profile', 'account'];
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarGroup>
+            <BuildVersion />
         </SidebarContent>
         <SidebarFooter class="gap-0 p-0">
             <SidebarUserMenu />

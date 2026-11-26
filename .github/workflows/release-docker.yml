@@ -65,6 +65,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VITE_REVERB_APP_KEY=trypost-reverb-key
+            BUILD_COMMIT=${{ github.sha }}
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true

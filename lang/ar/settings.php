@@ -8,6 +8,7 @@ return [
 
     'sidebar' => [
         'back' => 'الإعدادات',
+        'version' => 'الإصدار: :version',
         'groups' => [
             'personal' => 'شخصي',
             'workspace' => 'مساحة العمل',
