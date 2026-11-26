@@ -108,3 +108,10 @@ test('a refused pin fails with Pinterest\'s own message', function () {
         ->and($exception->platformErrorCode)->toBe('400')
         ->and($exception->isNetworkRejection())->toBeFalse();
 });
+
+test('a refused pin without a message fails with Pinterest\'s whole answer', function () {
+    $fakeResponse = Http::fake(['*' => Http::response(['code' => 1], 400)])
+        ->post(config('trypost.platforms.pinterest.api').'/pins');
+
+    expect(PinterestPublishException::refused($fakeResponse)->userMessage)->toBe('{"code":1}');
+});
