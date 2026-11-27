@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Requests\ApiKey;
 
 /**
- * Single source of the API key rules shared by the web and API FormRequests
- * and the MCP create tool.
+ * Single source of the API key rules shared by the web and API FormRequests.
  */
 class ApiKeyRequestRules
 {

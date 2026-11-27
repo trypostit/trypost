@@ -10,7 +10,6 @@ use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
 use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
 use App\Mcp\Tools\Analytics\GetChannelInsightsTool;
 use App\Mcp\Tools\Analytics\ListChannelPublicationsTool;
-use App\Mcp\Tools\ApiKey\CreateApiKeyTool;
 use App\Mcp\Tools\ApiKey\DeleteApiKeyTool;
 use App\Mcp\Tools\ApiKey\ListApiKeysTool;
 use App\Mcp\Tools\Idea\CreateIdeaStageTool;
@@ -203,7 +202,6 @@ class TryPostServer extends Server
         GetWorkspaceTool::class,
 
         ListApiKeysTool::class,
-        CreateApiKeyTool::class,
         DeleteApiKeyTool::class,
     ];
 
