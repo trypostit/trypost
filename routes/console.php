@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\Admin\SyncPlatformQuotas;
 use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
 use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
 use App\Console\Commands\Analytics\DispatchPublicationMetrics;
@@ -33,6 +34,8 @@ Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverla
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ResolveTikTokVideoIds::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command('activitylog:clean', ['--force' => true])->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(SyncPlatformQuotas::class)->cron('0 */6 * * *')->withoutOverlapping()->onOneServer();
 Schedule::command(RankPostingStreaks::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();

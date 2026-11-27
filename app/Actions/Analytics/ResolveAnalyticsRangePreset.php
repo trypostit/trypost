@@ -50,6 +50,8 @@ class ResolveAnalyticsRangePreset
         return match ($range) {
             '7d' => $this->between($today->subDays(6), $today),
             '30d' => $this->between($today->subDays(29), $today),
+            '60d' => $this->between($today->subDays(59), $today),
+            '90d' => $this->between($today->subDays(89), $today),
             'mtd' => $this->between($today->startOfMonth(), $today),
             default => ['start' => (string) $start, 'end' => (string) $end],
         };

@@ -4,6 +4,7 @@ import { IconArrowsLeftRight, IconX } from '@tabler/icons-vue';
 import { onMounted, onUnmounted } from 'vue';
 
 import AppLogo from '@/components/AppLogo.vue';
+import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 
@@ -38,6 +39,7 @@ onUnmounted(stopClearingOnNavigate);
         class="flex min-h-dvh flex-col items-center bg-muted sm:justify-center sm:px-6 sm:py-10"
         data-testid="connect-page"
     >
+        <ImpersonationBanner class="self-stretch sm:-mx-6 sm:-mt-10 sm:mb-6" />
         <div
             class="flex w-full flex-1 flex-col bg-card sm:h-[min(45rem,calc(100dvh-5rem))] sm:max-w-[58rem] sm:flex-none sm:rounded-2xl sm:border sm:shadow-sm"
         >

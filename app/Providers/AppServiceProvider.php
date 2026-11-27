@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Actions\Mcp\ListChatGptEgressRanges;
 use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\Activity;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
@@ -124,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'accessToken' => AccessToken::class,
+            'activity' => Activity::class,
             'account' => Account::class,
             'analyticsAccountDailySnapshot' => AnalyticsAccountDailySnapshot::class,
             'analyticsPublication' => AnalyticsPublication::class,

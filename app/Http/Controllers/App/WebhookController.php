@@ -35,7 +35,7 @@ class WebhookController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return Inertia::render('webhooks/Index', [
+        return Inertia::render('app/webhooks/Index', [
             'webhooks' => $webhooks,
         ]);
     }
@@ -44,7 +44,7 @@ class WebhookController extends Controller
     {
         $this->authorize('view', $webhook);
 
-        return Inertia::render('webhooks/Show', [
+        return Inertia::render('app/webhooks/Show', [
             'webhook' => $webhook->makeVisible('signing_secret'),
             'logs' => Inertia::scroll(
                 fn () => ListWebhookLogs::execute($webhook)->paginate((int) config('app.pagination.default')),

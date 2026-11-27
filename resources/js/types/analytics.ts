@@ -161,6 +161,8 @@ export interface WorkspaceAnalyticsReport extends AnalyticsReport {
 export type AnalyticsRangePreset =
     | '7d'
     | '30d'
+    | '60d'
+    | '90d'
     | 'mtd'
     | 'custom';
 

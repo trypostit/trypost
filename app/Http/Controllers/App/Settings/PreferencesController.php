@@ -16,7 +16,7 @@ class PreferencesController extends Controller
 {
     public function edit(): Response
     {
-        return Inertia::render('settings/profile/Preferences', [
+        return Inertia::render('app/settings/profile/Preferences', [
             'timezones' => Timezone::options(),
         ]);
     }

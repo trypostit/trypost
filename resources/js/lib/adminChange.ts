@@ -1,0 +1,17 @@
+import type { AdminChange } from '@/components/admin/AdminStatGrid.vue';
+import { formatPercentChange, percentChange } from '@/lib/utils';
+
+/**
+ * A figure's change from a past value, as the backoffice's stat tiles show
+ * it: signed, one decimal. `inverted` when going up is bad news (cancellations,
+ * churn, a longer wait). None when there is nothing to compare with.
+ */
+export const metricChange = (current: number, past: number, inverted = false): AdminChange | null => {
+    const value = percentChange(current, past);
+
+    if (value === null) {
+        return null;
+    }
+
+    return { value, label: formatPercentChange(value, 1), inverted };
+};

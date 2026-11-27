@@ -18,6 +18,7 @@ return [
     'failed' => 'Te dane logowania nie pasują do naszych rekordów.',
     'password' => 'Podane hasło jest nieprawidłowe.',
     'throttle' => 'Zbyt wiele prób logowania. Spróbuj ponownie za :seconds s.',
+    'blocked' => 'To konto zostało zawieszone. Skontaktuj się z pomocą techniczną, jeśli uważasz, że to pomyłka.',
 
     'flash' => [
         'welcome' => 'Witamy w TryPost!',

@@ -18,6 +18,7 @@ return [
     'failed' => 'Deze gegevens komen niet overeen met onze administratie.',
     'password' => 'Het opgegeven wachtwoord is onjuist.',
     'throttle' => 'Te veel inlogpogingen. Probeer het over :seconds seconden opnieuw.',
+    'blocked' => 'Dit account is geschorst. Neem contact op met support als je denkt dat dit een vergissing is.',
 
     'flash' => [
         'welcome' => 'Welkom bij TryPost!',

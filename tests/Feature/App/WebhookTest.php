@@ -32,7 +32,7 @@ test('authenticated users can view webhooks', function () {
         ->get(route('app.webhooks.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('webhooks/Index')
+            ->component('app/webhooks/Index')
             ->has('webhooks')
         );
 });
@@ -256,7 +256,7 @@ test('webhook show includes full log payload and response body', function () {
         ->get(route('app.webhooks.show', $webhook))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('webhooks/Show')
+            ->component('app/webhooks/Show')
             ->has('logs.data', 1)
             ->where('logs.data.0.id', $log->id)
             ->where('logs.data.0.payload.id', 'post-1')
@@ -275,7 +275,7 @@ test('authenticated users can view a webhook with signing_secret exposed', funct
         ->get(route('app.webhooks.show', $webhook))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('webhooks/Show')
+            ->component('app/webhooks/Show')
             ->has('webhook')
             ->has('logs')
             ->where('webhook.signing_secret', 'whsec_test123')

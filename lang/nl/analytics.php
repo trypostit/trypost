@@ -106,6 +106,8 @@ return [
     'ranges' => [
         '7d' => '7 dagen',
         '30d' => '30 dagen',
+        '60d' => '60 dagen',
+        '90d' => '90 dagen',
         'mtd' => 'Huidige maand',
         'custom' => 'Aangepast',
         'versus' => 'vs. :range',

@@ -20,6 +20,7 @@ use App\Http\Controllers\App\GooglePhotosSessionController;
 use App\Http\Controllers\App\IdeaController;
 use App\Http\Controllers\App\IdeaGenerateController;
 use App\Http\Controllers\App\IdeaStageController;
+use App\Http\Controllers\App\ImpersonationController;
 use App\Http\Controllers\App\InsightsController;
 use App\Http\Controllers\App\InstagramAudioController;
 use App\Http\Controllers\App\LibraryTemplateController;
@@ -433,6 +434,10 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('settings/account/billing/change-plan', [BillingController::class, 'changePlan'])->name('app.billing.change-plan');
     Route::post('settings/account/billing/checkout', [BillingController::class, 'checkout'])->name('app.billing.checkout');
 
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::delete('impersonation', [ImpersonationController::class, 'destroy'])->name('app.impersonation.destroy');
 });
 
 Route::middleware(['auth'])->group(function () {

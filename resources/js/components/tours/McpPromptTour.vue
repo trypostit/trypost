@@ -75,7 +75,7 @@ const visible = computed((): boolean => {
         return false;
     }
 
-    return page.component !== 'settings/workspace/Mcp';
+    return page.component !== 'app/settings/workspace/Mcp';
 });
 
 /** How long the card waits before it shows, in milliseconds. */

@@ -143,6 +143,7 @@ export interface User {
     week_starts_on: WeekStart;
     default_post_action: DefaultPostAction;
     email_verified_at: string | null;
+    is_backoffice_admin: boolean;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

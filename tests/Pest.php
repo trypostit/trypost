@@ -65,7 +65,11 @@ pest()->extend(BrowserTestCase::class)
     })
     ->in('Browser');
 
-pest()->in('Feature/Social')
+/** The backoffice is TryPost Cloud's only, so its tests run as Cloud. */
+pest()->in('Feature/Admin', 'Browser/Admin')
+    ->beforeEach(fn () => config()->set('trypost.self_hosted', false));
+
+pest()->in('Feature/App/Social')
     ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
 
 /*
@@ -456,10 +460,27 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
          * @param  array<string, mixed>  $params
          * @return array<string, mixed>
          */
+        /**
+         * The first invoice took the coupon off, as Stripe returns it with `discounts` expanded.
+         *
+         * @return array<string, mixed>
+         */
+        private function invoiceDiscount(int $number): array
+        {
+            if ($number !== 1 || $this->coupon === null) {
+                return [];
+            }
+
+            return [
+                'discounts' => [['id' => 'di_fake', 'object' => 'discount', 'coupon' => ['id' => 'coupon_fake', 'object' => 'coupon', ...$this->coupon]]],
+                'total_discount_amounts' => [['amount' => 1800, 'discount' => 'di_fake']],
+            ];
+        }
+
         private function invoices(array $params): array
         {
             $invoices = collect($this->paidInvoices > 0 ? range($this->paidInvoices, 1) : [])
-                ->filter(fn (): bool => data_get($params, 'status') === 'paid')
+                ->filter(fn (): bool => in_array(data_get($params, 'status'), ['paid', null], true))
                 ->map(fn (int $number): array => [
                     'id' => sprintf('in_fake_%03d', $number),
                     'object' => 'invoice',
@@ -469,6 +490,7 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                     'total' => 1900,
                     'created' => now()->subMonths($this->paidInvoices - $number)->timestamp,
                     'invoice_pdf' => "https://pay.stripe.com/invoice/in_fake_{$number}/pdf",
+                    ...$this->invoiceDiscount($number),
                 ])
                 ->values();
 

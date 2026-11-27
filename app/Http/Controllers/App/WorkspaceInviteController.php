@@ -26,7 +26,7 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        return Inertia::render('settings/workspace/Members', [
+        return Inertia::render('app/settings/workspace/Members', [
             'workspace' => $workspace,
             'invites' => $workspace->invites()
                 ->latest()

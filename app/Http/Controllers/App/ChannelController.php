@@ -56,7 +56,7 @@ class ChannelController extends Controller
         $search = $request->search();
         $networks = $request->networks();
 
-        return Inertia::render('settings/workspace/Channels', [
+        return Inertia::render('app/settings/workspace/Channels', [
             'connectedChannels' => Inertia::scroll(fn () => ChannelListRowResource::collection(
                 ListWorkspaceChannels::page($workspace, $search, $networks, $weekStart),
             ))->matchOn('data.id'),
@@ -107,7 +107,7 @@ class ChannelController extends Controller
         $this->authorize('view', $request->user()->currentWorkspace);
         abort_unless($account->platform->hasProfileGrid(), HttpResponse::HTTP_NOT_FOUND);
 
-        return Inertia::render('channels/Grid', [
+        return Inertia::render('app/channels/Grid', [
             'channel' => BuildPublishPageProps::channelHeader($account, $request->user()->week_starts_on),
             'posts' => Inertia::scroll(fn () => InstagramGridTileResource::collection(ListInstagramGridPosts::execute($account))),
         ]);
@@ -135,7 +135,7 @@ class ChannelController extends Controller
             ]);
         }
 
-        return Inertia::render('posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, $account, $view));
+        return Inertia::render('app/posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, $account, $view));
     }
 
     public function board(Request $request, SocialAccount $account): Response|RedirectResponse
@@ -181,7 +181,7 @@ class ChannelController extends Controller
         ];
 
         if (! $supported) {
-            return Inertia::render('channels/Insights', $props);
+            return Inertia::render('app/channels/Insights', $props);
         }
 
         ['range' => $range, 'selection' => $selection, 'clamped' => $clamped] = $presets->selection(
@@ -202,7 +202,7 @@ class ChannelController extends Controller
         $metrics = fn (): array => $availableMetrics->handle($account, $accountKey, $resolveAvailability());
         $sort = fn (): string => ChannelMetrics::sortFor($request->validated('sort'), $metrics());
 
-        return Inertia::render('channels/Insights', [
+        return Inertia::render('app/channels/Insights', [
             ...$props,
             'sortableMetrics' => ChannelMetrics::sortable(),
             'sync' => SyncCadence::toArray(),
@@ -286,7 +286,7 @@ class ChannelController extends Controller
         $workspace = $request->user()->currentWorkspace;
         $this->authorize('manageAccounts', $workspace);
 
-        return Inertia::render('channels/Settings', [
+        return Inertia::render('app/channels/Settings', [
             'channel' => SocialAccountResource::make($account)->resolve(),
             'schedule' => ChannelPostingScheduleResource::make($account)->resolve(),
             'timezones' => Timezone::options(),

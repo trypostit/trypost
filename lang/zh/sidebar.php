@@ -19,6 +19,7 @@ return [
     ],
     'settings' => '设置',
     'plans_billing' => '套餐与账单',
+    'backoffice' => '管理后台',
     'log_out' => '退出登录',
     'help' => '帮助',
     'language' => '语言：:name',

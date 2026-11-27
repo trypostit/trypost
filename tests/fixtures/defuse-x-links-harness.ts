@@ -1,6 +1,6 @@
 /**
  * Runs `resources/js/lib/defuseXLinks.ts` over a corpus and prints the results as
- * JSON, so `tests/Feature/Services/Social/XLinkDefusingParityTest.php` can diff the
+ * JSON, so `tests/Feature/App/Services/Social/XLinkDefusingParityTest.php` can diff the
  * TypeScript against the PHP it mirrors. Reads the source directly rather than
  * importing it, which keeps the harness free of a bundler.
  *

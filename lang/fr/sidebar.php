@@ -19,6 +19,7 @@ return [
     ],
     'settings' => 'Paramètres',
     'plans_billing' => 'Offres et facturation',
+    'backoffice' => 'Back-office',
     'log_out' => 'Se déconnecter',
     'help' => 'Aide',
     'language' => 'Langue : :name',

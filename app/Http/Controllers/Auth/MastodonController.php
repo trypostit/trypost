@@ -36,7 +36,7 @@ class MastodonController extends SocialController
 
         $this->rememberConnectSession($request, $workspace);
 
-        return Inertia::render('accounts/MastodonConnect', [
+        return Inertia::render('app/accounts/MastodonConnect', [
             'errors' => session('errors')?->getBag('default')?->toArray() ?? [],
             'backUrl' => PendingConnection::current()?->returnUrl() ?? PendingConnection::defaultReturnUrl(),
         ]);

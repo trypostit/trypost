@@ -254,6 +254,8 @@ return [
     'sidebar.log_out' => 14,
     'sidebar.manage_team' => 19,
     'sidebar.plans_billing' => 26,
+    'sidebar.backoffice' => 14,
+    'impersonation.stop' => 16,
     'sidebar.settings' => 13,
     'sidebar.support.menu' => 20,
     'sidebar.support.changelog' => 15,

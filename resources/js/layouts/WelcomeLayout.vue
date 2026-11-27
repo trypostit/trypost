@@ -5,6 +5,7 @@ import { computed } from 'vue';
 
 import { updateLanguage } from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
 import AppLogo from '@/components/AppLogo.vue';
+import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
 import LanguageSelect from '@/components/LanguageSelect.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import Toast from '@/components/Toast.vue';
@@ -82,6 +83,7 @@ const previousStep = computed(() =>
 
 <template>
     <div class="flex min-h-svh flex-col bg-muted">
+        <ImpersonationBanner />
         <header
             class="flex items-center justify-between gap-4 px-4 pt-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:px-8 sm:pt-8 lg:px-12"
         >

@@ -36,7 +36,7 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('welcome/Persona', [
+        return Inertia::render('app/welcome/Persona', [
             'personas' => array_map(fn (Persona $persona): string => $persona->value, Persona::cases()),
             'selected' => $user->persona?->value,
         ]);
@@ -74,7 +74,7 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('welcome/Goals', [
+        return Inertia::render('app/welcome/Goals', [
             'goals' => array_map(fn (Goal $goal): string => $goal->value, Goal::cases()),
             'selected' => $user->goals ?? [],
         ]);
@@ -112,7 +112,7 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('welcome/Software', [
+        return Inertia::render('app/welcome/Software', [
             'software' => array_map(fn (PreviousSoftware $software): array => [
                 'value' => $software->value,
                 'name' => $software->brandName(),
@@ -154,7 +154,7 @@ class WelcomeController extends Controller
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
         $offer = $request->user()->account->currentOffer();
 
-        return Inertia::render('welcome/Plan', [
+        return Inertia::render('app/welcome/Plan', [
             'plan' => PlanResource::make($plan)->resolve(),
             'offer' => filled($offer) ? OfferResource::make($offer)->resolve() : null,
         ]);
@@ -197,7 +197,7 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.plan');
         }
 
-        return Inertia::render('welcome/SubscriptionRequired', [
+        return Inertia::render('app/welcome/SubscriptionRequired', [
             'ownerName' => $user->account?->owner?->name,
         ]);
     }

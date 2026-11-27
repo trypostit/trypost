@@ -111,6 +111,6 @@ class IdeaController extends Controller
     {
         $workspace = $request->user()->currentWorkspace;
 
-        return Inertia::render('create/Ideas', BuildIdeasPageProps::execute($request, $workspace, $editor));
+        return Inertia::render('app/create/Ideas', BuildIdeasPageProps::execute($request, $workspace, $editor));
     }
 }

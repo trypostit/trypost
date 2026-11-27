@@ -106,6 +106,8 @@ return [
     'ranges' => [
         '7d' => '7 hari',
         '30d' => '30 hari',
+        '60d' => '60 hari',
+        '90d' => '90 hari',
         'mtd' => 'Sejak awal bulan',
         'custom' => 'Kustom',
         'versus' => 'vs :range',

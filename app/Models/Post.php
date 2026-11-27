@@ -264,7 +264,16 @@ class Post extends Model
 
     public function scopeDue(Builder $query): Builder
     {
-        return $query->scheduled()->where('scheduled_at', '<=', now());
+        return $query->scheduled()->where('scheduled_at', '<=', now())->ownerNotBlocked();
+    }
+
+    /**
+     * Posts whose account owner is not blocked. A blocked owner's scheduled
+     * posts wait, unpublished, until a backoffice admin unblocks them.
+     */
+    public function scopeOwnerNotBlocked(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('workspace.account.owner', fn (Builder $owner) => $owner->whereNotNull('blocked_at'));
     }
 
     public function scopeDraft(Builder $query): Builder
@@ -410,7 +419,8 @@ class Post extends Model
     {
         return $query->where('posts.publish_status', PublishStatus::Retrying)
             ->whereNotNull('posts.retry_at')
-            ->where('posts.retry_at', '<=', now());
+            ->where('posts.retry_at', '<=', now())
+            ->ownerNotBlocked();
     }
 
     public function scopeIncludedInAnalytics(Builder $query): Builder

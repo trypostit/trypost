@@ -29,7 +29,7 @@ class WorkspaceSignatureController extends Controller
         $signatures = ListSignatures::execute($workspace, $request->input('search'))
             ->paginate(config('app.pagination.default'));
 
-        return Inertia::render('signatures/Index', [
+        return Inertia::render('app/signatures/Index', [
             'workspace' => $workspace,
             'signatures' => Inertia::scroll(fn () => $signatures),
             'hasData' => $workspace->signatures()->exists(),

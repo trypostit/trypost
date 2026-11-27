@@ -27,7 +27,7 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        return Inertia::render('settings/profile/Profile', [
+        return Inertia::render('app/settings/profile/Profile', [
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'hasPassword' => (bool) $user->password,
             'passwordRequirements' => PasswordRequirements::checklist(),

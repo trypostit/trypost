@@ -1,6 +1,7 @@
 import type { Page } from '@inertiajs/core';
 import posthog from 'posthog-js';
 
+import { filled } from '@/lib/helpers';
 import type { Auth, Usage } from '@/types';
 
 const apiKey = import.meta.env.VITE_POSTHOG_API_KEY as string | undefined;
@@ -8,6 +9,31 @@ const host = import.meta.env.VITE_POSTHOG_HOST as string | undefined;
 // Vite stringifies env vars, so explicit equality with 'true' avoids the
 // gotcha where 'false' would be truthy. Mirrors backend `POSTHOG_ENABLED`.
 const enabled = import.meta.env.VITE_POSTHOG_ENABLED === 'true' && !!apiKey;
+
+/**
+ * A backoffice admin viewing the app as another user (the shared
+ * `impersonating` prop) must never be tracked as that user: capture stays off
+ * until the impersonation ends.
+ */
+let impersonating = false;
+
+/**
+ * PostHog keeps an opt-out in the browser, so leaving an impersonation (even
+ * by closing the tab midway) is caught on the next page and opts back in.
+ */
+const syncImpersonation = (page: Page): void => {
+    impersonating = filled(page.props.impersonating);
+
+    if (impersonating) {
+        posthog.opt_out_capturing();
+
+        return;
+    }
+
+    if (posthog.has_opted_out_capturing()) {
+        posthog.opt_in_capturing();
+    }
+};
 
 export const initializePostHog = (): void => {
     if (!enabled) {
@@ -44,6 +70,12 @@ export const initializePostHog = (): void => {
  */
 export const syncPostHogContext = (page: Page): void => {
     if (!enabled) {
+        return;
+    }
+
+    syncImpersonation(page);
+
+    if (impersonating) {
         return;
     }
 
@@ -84,6 +116,10 @@ export const syncPostHogContext = (page: Page): void => {
  */
 export const capturePageview = (): void => {
     if (!enabled) {
+        return;
+    }
+
+    if (impersonating) {
         return;
     }
     posthog.capture('$pageview', { $current_url: window.location.href });

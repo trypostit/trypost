@@ -1,0 +1,307 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+import AdminDailyBarChart, {
+    type AdminChartSeries,
+} from '@/components/admin/AdminDailyBarChart.vue';
+import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
+import AdminMetricTabs, { type AdminMetricTab } from '@/components/admin/AdminMetricTabs.vue';
+import AdminStatGrid, { type AdminStat } from '@/components/admin/AdminStatGrid.vue';
+import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
+import { metricChange } from '@/lib/adminChange';
+import { planLabel, usd } from '@/lib/adminSubscriptions';
+import { accountColor } from '@/lib/analyticsColors';
+import { filled } from '@/lib/helpers';
+import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import type { AdminNetMrr, AdminSubscriptionOverview } from '@/types/admin';
+
+const props = defineProps<{
+    overview: AdminSubscriptionOverview;
+    /** Read from Stripe after the page loads; undefined while it loads, null on a self-hosted install. */
+    netMrr?: AdminNetMrr | null;
+    subtitle: string;
+}>();
+
+const LINE_COLOR = accountColor(0);
+const NEW_COLOR = 'var(--success)';
+const CANCELED_COLOR = 'var(--destructive)';
+
+const now = computed((): AdminStat[] => [
+    {
+        key: 'subs-mrr',
+        label: 'MRR (list price)',
+        value: usd(props.overview.mrr.cents),
+        hint: mrrHint.value,
+        change: metricChange(props.overview.mrr.cents, props.overview.previous.mrr_cents),
+    },
+    {
+        key: 'subs-mrr-net',
+        label: 'MRR (after coupons)',
+        value: netMrrValue.value,
+        hint: netMrrHint.value,
+    },
+    {
+        key: 'subs-past-due',
+        label: 'Past due',
+        value: `${usd(props.overview.at_risk.past_due_cents)}/mo`,
+        hint: subscriptionsCount(props.overview.now.past_due, 'unpaid'),
+    },
+    {
+        key: 'subs-cancelling',
+        label: 'Cancelling',
+        value: `${usd(props.overview.at_risk.cancelling_cents)}/mo`,
+        hint: subscriptionsCount(props.overview.now.cancelling, 'cancelling'),
+    },
+]);
+
+const subscriptionsCount = (count: number, state: string): string => {
+    if (count === 1) {
+        return `1 subscription ${state}`;
+    }
+
+    return `${formatFullNumber(count)} subscriptions ${state}`;
+};
+
+const netMrrValue = computed((): string => {
+    const netMrr = props.netMrr;
+
+    if (!filled(netMrr)) {
+        return '…';
+    }
+
+    if ('error' in netMrr) {
+        return '—';
+    }
+
+    return usd(netMrr.cents);
+});
+
+const netMrrHint = computed((): string => {
+    const netMrr = props.netMrr;
+
+    if (!filled(netMrr)) {
+        return 'Reading Stripe…';
+    }
+
+    if ('error' in netMrr) {
+        return "Couldn't read Stripe";
+    }
+
+    return 'Coupons taken off';
+});
+
+const mrrHint = computed((): string => {
+    if (props.overview.mrr.unpriced > 0) {
+        return `Coupons not taken off; ${props.overview.mrr.unpriced} without a known price`;
+    }
+
+    return 'Coupons not taken off';
+});
+
+type TrendView = 'alive' | 'new' | 'canceled' | 'net' | 'churn';
+
+/** The total opens first: it answers whether subscriptions are growing. */
+const trendView = ref<string>('alive');
+
+const trends = computed((): AdminMetricTab[] => [
+    {
+        value: 'alive',
+        label: 'Subscriptions',
+        figure: formatFullNumber(props.overview.now.alive),
+        change: metricChange(props.overview.now.alive, props.overview.period.alive_at_start),
+    },
+    {
+        value: 'new',
+        label: 'New',
+        figure: formatFullNumber(props.overview.period.new),
+        change: metricChange(props.overview.period.new, props.overview.previous.new),
+    },
+    {
+        value: 'canceled',
+        label: 'Canceled',
+        figure: formatFullNumber(props.overview.period.canceled),
+        change: metricChange(props.overview.period.canceled, props.overview.previous.canceled, true),
+    },
+    {
+        value: 'net',
+        label: 'Net',
+        figure: netLabel.value,
+    },
+    {
+        value: 'churn',
+        label: 'Churn',
+        figure: formatPercent(props.overview.period.churn_rate, 1),
+        change: metricChange(props.overview.period.churn_rate, props.overview.previous.churn_rate, true),
+    },
+]);
+
+const isTrend = (value: TrendView): boolean => trendView.value === value;
+
+const TREND_NOTES: Record<TrendView, string> = {
+    alive: 'alive at the end of each day',
+    new: 'started per day',
+    canceled: 'ended per day',
+    net: 'new minus canceled, added up since the start of the period',
+    churn: 'share that ended in the 30 days before each day',
+};
+
+const trendSubtitle = computed(
+    (): string =>
+        `${props.subtitle} · ${TREND_NOTES[trendView.value as TrendView]} · changes against the period before`,
+);
+
+/** The period's net, added up day by day from zero. */
+const netByDay = computed((): number[] => {
+    let total = 0;
+
+    return props.overview.new_by_day.map((count, index) => {
+        total += count - (props.overview.canceled_by_day[index] ?? 0);
+
+        return total;
+    });
+});
+
+const newSeries = computed((): AdminChartSeries[] => [
+    { key: 'new', label: 'New', color: NEW_COLOR, values: props.overview.new_by_day },
+]);
+
+const canceledSeries = computed((): AdminChartSeries[] => [
+    { key: 'canceled', label: 'Canceled', color: CANCELED_COLOR, values: props.overview.canceled_by_day },
+]);
+
+const netLabel = computed((): string => {
+    const net = props.overview.period.new - props.overview.period.canceled;
+
+    if (net > 0) {
+        return `+${formatFullNumber(net)}`;
+    }
+
+    return formatFullNumber(net);
+});
+
+
+const maxPlan = computed(() =>
+    Math.max(1, ...props.overview.plans.map((plan) => plan.count)),
+);
+
+const barWidth = (count: number, max: number): string => `${(count / max) * 100}%`;
+
+const planShare = (count: number): string =>
+    formatPercent(percentOf(count, props.overview.now.alive), 1);
+
+const hasOffers = computed(() => filled(props.overview.offers));
+
+const offerRetention = (redeemed: number, stillSubscribed: number): string =>
+    formatPercent(percentOf(stillSubscribed, redeemed), 1);
+</script>
+
+<template>
+    <div class="flex flex-col gap-6" data-testid="admin-subscriptions-overview">
+        <AnalyticsSection
+            title="Right now"
+            subtitle="MRR change against the start of the period"
+            flush
+        >
+            <AdminStatGrid :stats="now" />
+        </AnalyticsSection>
+
+        <AnalyticsSection title="Subscriptions over time" :subtitle="trendSubtitle" flush>
+            <AdminMetricTabs v-model="trendView" :tabs="trends" test-id="admin-subscriptions-trend" />
+            <div class="border-t border-border px-4 py-4 sm:px-5">
+                <AdminDailyLineChart
+                    v-if="isTrend('alive')"
+                    :days="overview.days"
+                    :values="overview.alive_by_day"
+                    label="Subscriptions"
+                    :color="LINE_COLOR"
+                    test-id="admin-subscriptions-alive"
+                />
+                <AdminDailyBarChart
+                    v-else-if="isTrend('new')"
+                    :days="overview.days"
+                    :series="newSeries"
+                    test-id="admin-subscriptions-new"
+                />
+                <AdminDailyBarChart
+                    v-else-if="isTrend('canceled')"
+                    :days="overview.days"
+                    :series="canceledSeries"
+                    test-id="admin-subscriptions-canceled"
+                />
+                <AdminDailyLineChart
+                    v-else-if="isTrend('net')"
+                    :days="overview.days"
+                    :values="netByDay"
+                    label="Net"
+                    :color="NEW_COLOR"
+                    test-id="admin-subscriptions-net"
+                />
+                <AdminDailyLineChart
+                    v-else
+                    :days="overview.days"
+                    :values="overview.churn_rate_by_day"
+                    label="Churn"
+                    :color="CANCELED_COLOR"
+                    percent
+                    test-id="admin-subscriptions-churn"
+                />
+            </div>
+        </AnalyticsSection>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+            <AnalyticsSection title="By plan" subtitle="Subscriptions alive now" flush>
+                <ul class="flex flex-col border-t border-border py-2" data-testid="admin-subscriptions-plans">
+                    <li
+                        v-for="plan in overview.plans"
+                        :key="`${plan.plan}-${plan.interval}`"
+                        class="flex items-center gap-3 px-4 py-1.5 sm:px-5"
+                    >
+                        <span class="w-40 shrink-0 truncate text-sm text-foreground">{{
+                            planLabel(plan)
+                        }}</span>
+                        <span class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                            <span
+                                class="block h-full rounded-full bg-primary-text"
+                                :style="{ width: barWidth(plan.count, maxPlan) }"
+                            />
+                        </span>
+                        <span
+                            class="w-10 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
+                            >{{ formatFullNumber(plan.count) }}</span
+                        >
+                        <span class="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{{
+                            planShare(plan.count)
+                        }}</span>
+                    </li>
+                </ul>
+            </AnalyticsSection>
+
+            <AnalyticsSection title="Offers" subtitle="Redeemed, and still subscribed now" flush>
+                <p
+                    v-if="!hasOffers"
+                    class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
+                >
+                    No offer redeemed yet.
+                </p>
+                <ul v-else class="divide-y divide-border border-t border-border" data-testid="admin-subscriptions-offers">
+                    <li
+                        v-for="offer in overview.offers"
+                        :key="offer.slug"
+                        class="flex items-center gap-3 px-4 py-2.5 sm:px-5"
+                    >
+                        <code class="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{{
+                            offer.slug
+                        }}</code>
+                        <span class="text-sm text-muted-foreground tabular-nums"
+                            >{{ formatFullNumber(offer.redeemed) }} redeemed</span
+                        >
+                        <span class="w-24 text-right text-sm font-medium text-foreground tabular-nums"
+                            >{{ formatFullNumber(offer.still_subscribed) }} ·
+                            {{ offerRetention(offer.redeemed, offer.still_subscribed) }}</span
+                        >
+                    </li>
+                </ul>
+            </AnalyticsSection>
+        </div>
+    </div>
+</template>

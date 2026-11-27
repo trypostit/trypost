@@ -18,19 +18,24 @@ import type {
     DateRange,
 } from '@/types/analytics';
 
-const props = defineProps<{
-    filters: AnalyticsFilters;
-    bounds: { min: string | null; max: string | null };
-    url: string;
-    range: DateRange;
-    keep?: Record<string, string | string[]>;
-}>();
-
-const presets: Exclude<AnalyticsRangePreset, 'custom'>[] = [
-    '7d',
-    '30d',
-    'mtd',
-];
+const props = withDefaults(
+    defineProps<{
+        filters: AnalyticsFilters;
+        bounds: { min: string | null; max: string | null };
+        url: string;
+        range: DateRange;
+        keep?: Record<string, string | string[]>;
+        /** The fixed ranges offered, in this order. */
+        presets?: Exclude<AnalyticsRangePreset, 'custom'>[];
+        /** Offers "Custom" and its calendar to pick any days within `bounds`. */
+        custom?: boolean;
+    }>(),
+    {
+        keep: undefined,
+        presets: () => ['7d', '30d', 'mtd'],
+        custom: true,
+    },
+);
 const buttonClass = (preset: AnalyticsRangePreset): string =>
     props.filters.range === preset
         ? 'bg-primary-selected text-primary-text'
@@ -98,7 +103,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                         <DropdownMenuItem
-                            v-for="preset in presets"
+                            v-for="preset in props.presets"
                             :key="preset"
                             :data-testid="`insights-range-mobile-${preset}`"
                             :aria-checked="filters.range === preset"
@@ -111,8 +116,9 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                                 class="ms-auto size-4 text-primary-text"
                             />
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator v-if="custom" />
                         <DropdownMenuItem
+                            v-if="custom"
                             data-testid="insights-range-mobile-custom"
                             :aria-checked="filters.range === 'custom'"
                             :disabled="!bounds.min"
@@ -127,6 +133,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DateRangePicker
+                    v-if="custom"
                     v-model:open="customOpen"
                     :model-value="selectedRange"
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
@@ -142,7 +149,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                 :aria-label="$t('analytics.ranges.label')"
             >
                 <button
-                    v-for="preset in presets"
+                    v-for="preset in props.presets"
                     :key="preset"
                     type="button"
                     :data-testid="`insights-range-${preset}`"
@@ -154,6 +161,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     {{ $t(`analytics.ranges.${preset}`) }}
                 </button>
                 <DateRangePicker
+                    v-if="custom"
                     :model-value="selectedRange"
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
                     :max-date="bounds.max ? dayjs(bounds.max).toDate() : undefined"

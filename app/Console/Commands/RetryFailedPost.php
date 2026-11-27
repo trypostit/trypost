@@ -4,18 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\Post\PublishStatus;
-use App\Enums\Post\Status as PostStatus;
-use App\Enums\SocialAccount\Platform as SocialPlatform;
-use App\Exceptions\Social\ErrorCategory;
-use App\Jobs\PublishToSocialPlatform;
+use App\Actions\Post\RetryFailedPost as RetryFailedPostAction;
+use App\Enums\Post\RetryOutcome;
 use App\Models\Post;
-use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
-use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RetryFailedPost extends Command
@@ -26,7 +19,7 @@ class RetryFailedPost extends Command
     protected $description = 'Retry a failed post, resuming an in-flight remote publish when a checkpoint exists';
 
     public function __construct(
-        private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
+        private readonly RetryFailedPostAction $retryFailedPost,
     ) {
         parent::__construct();
     }
@@ -41,24 +34,21 @@ class RetryFailedPost extends Command
             return self::FAILURE;
         }
 
-        if (! $this->isRetryable($post)) {
+        if (! $this->retryFailedPost->isRetryable($post)) {
             $this->error('Only failed posts with a channel can be retried.');
 
             return self::FAILURE;
         }
 
-        $previousContext = $post->error_context;
-        $commentUnconfirmed = PublishCheckpoint::instagramCommentIsUnconfirmed($previousContext);
+        $commentUnconfirmed = $this->retryFailedPost->needsInstagramConfirmation($post);
 
-        if ($commentUnconfirmed && ! ThreadProgress::hasPublishedRoot($previousContext)) {
+        if ($commentUnconfirmed && ! ThreadProgress::hasPublishedRoot($post->error_context)) {
             $this->error(__('posts.errors.instagram.comment_unconfirmed'));
 
             return self::FAILURE;
         }
 
-        $retryContext = $this->contextForRetry($previousContext);
-
-        $this->showRetrySummary($post, resuming: filled($retryContext));
+        $this->showRetrySummary($post, resuming: $this->retryFailedPost->resumes($post));
 
         $confirmation = match ($commentUnconfirmed) {
             true => 'Did you check Instagram and confirm the first comment is missing?',
@@ -69,19 +59,13 @@ class RetryFailedPost extends Command
             return $commentUnconfirmed ? self::FAILURE : self::SUCCESS;
         }
 
-        if (! $this->prepareRetry($post, $retryContext)) {
+        $outcome = $this->retryFailedPost->execute($post, instagramCommentChecked: true);
+
+        if ($outcome !== RetryOutcome::Queued) {
             $this->warn('The post changed while the command was running; nothing was retried.');
 
             return self::FAILURE;
         }
-
-        $post->refresh();
-
-        if ($post->platform === SocialPlatform::TikTok && blank(PublishCheckpoint::tiktokPublishId($post->error_context))) {
-            $this->tiktokPhotoDerivativeCleaner->cleanup($previousContext, $post->id);
-        }
-
-        PublishToSocialPlatform::dispatch($post);
 
         Log::info('Failed post queued for manual retry', ['post_id' => $post->id]);
 
@@ -100,68 +84,5 @@ class RetryFailedPost extends Command
                 $resuming ? 'Resume' : 'New',
             ]],
         );
-    }
-
-    private function isRetryable(Post $post): bool
-    {
-        return $post->status === PostStatus::Failed
-            && $post->publish_status === PublishStatus::Failed
-            && $post->hasChannel();
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $retryContext
-     */
-    private function prepareRetry(Post $post, ?array $retryContext): bool
-    {
-        return DB::transaction(function () use ($post, $retryContext): bool {
-            $locked = Post::query()->lockForUpdate()->find($post->id);
-
-            if (! $locked || ! $this->isRetryable($locked)) {
-                return false;
-            }
-
-            if ($locked->error_context !== $post->error_context) {
-                return false;
-            }
-
-            $locked->writePublication([
-                'publish_status' => PublishStatus::Pending,
-                'platform_post_id' => null,
-                'platform_url' => null,
-                'error_message' => null,
-                'error_context' => $retryContext,
-                'published_at' => null,
-            ]);
-            $locked->update(['status' => PostStatus::Publishing]);
-
-            return true;
-        });
-    }
-
-    /**
-     * Keep in-flight checkpoints only. Confirmed remote failures must start over,
-     * except the live segments of a thread, which are never posted twice.
-     *
-     * @param  array<string, mixed>|null  $context
-     * @return array<string, mixed>|null
-     */
-    private function contextForRetry(?array $context): ?array
-    {
-        $thread = data_get($context, ThreadProgress::KEY);
-        $threadProgress = is_array($thread) ? $thread : [];
-        $canResumeRemote = ErrorCategory::tryFromContext($context)?->isResumable() === true;
-        $tiktokPublishId = $canResumeRemote ? PublishCheckpoint::tiktokPublishId($context) : null;
-        $instagramWorkflow = $canResumeRemote ? PublishCheckpoint::instagramWorkflow($context) : null;
-        $tiktokPaths = $tiktokPublishId === null ? [] : PublishCheckpoint::tiktokDerivativePaths($context);
-
-        $checkpoints = Arr::whereNotNull([
-            ThreadProgress::KEY => filled($threadProgress) ? $threadProgress : null,
-            PublishCheckpoint::TIKTOK_PUBLISH_ID => $tiktokPublishId,
-            PublishCheckpoint::INSTAGRAM_WORKFLOW => $instagramWorkflow,
-            PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS => filled($tiktokPaths) ? $tiktokPaths : null,
-        ]);
-
-        return filled($checkpoints) ? $checkpoints : null;
     }
 }

@@ -43,7 +43,7 @@ class InsightsController extends Controller
         $report = $analytics->forSelection($workspace, $selection, $channelKeys, $clamped, weekStart: $request->user()->week_starts_on, filter: $filter);
         $single = $selectedChannels->count() === 1 ? $selectedChannels->first() : null;
 
-        return Inertia::render('insights/Index', [
+        return Inertia::render('app/insights/Index', [
             'channelOptions' => $channels,
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'availableMetrics' => $single === null ? null : $availableMetrics->handle($single, data_get($channelKeys, $single->id)),

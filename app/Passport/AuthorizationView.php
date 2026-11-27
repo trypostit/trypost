@@ -20,7 +20,7 @@ class AuthorizationView
             ? $user->accountWorkspaces()->orderBy('name')->get()
             : collect();
 
-        return Inertia::render('mcp/Authorize', [
+        return Inertia::render('app/mcp/Authorize', [
             'client' => [
                 'id' => data_get($parameters, 'client.id'),
                 'name' => data_get($parameters, 'client.name'),

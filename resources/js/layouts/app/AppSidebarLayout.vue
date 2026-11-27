@@ -12,6 +12,7 @@ import AppSidebar from '@/components/AppSidebar.vue';
 import ChangelogDialog from '@/components/changelog/ChangelogDialog.vue';
 import ConnectChannelDialog from '@/components/channels/ConnectChannelDialog.vue';
 import CommandPalette from '@/components/command-palette/CommandPalette.vue';
+import ImpersonationBanner from '@/components/ImpersonationBanner.vue';
 import GlobalPostComposer from '@/components/posts/composer/GlobalPostComposer.vue';
 import ReferralSourceSurvey from '@/components/ReferralSourceSurvey.vue';
 import Toast from '@/components/Toast.vue';
@@ -70,6 +71,7 @@ watch(isCompactViewport, (isCompact) => {
             class="min-w-0 overflow-hidden max-md:bg-sidebar md:my-2 md:me-2 md:rounded-xl md:border md:border-border md:bg-card"
             data-testid="app-content-shell"
         >
+            <ImpersonationBanner />
             <div
                 class="flex h-14 shrink-0 items-center gap-2 px-4 md:hidden"
                 data-testid="app-mobile-bar"

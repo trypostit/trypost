@@ -75,7 +75,7 @@ class PostController extends Controller
             ]);
         }
 
-        return Inertia::render('posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, null, $view ?? $request->query('view')));
+        return Inertia::render('app/posts/Calendar', BuildCalendarPageProps::handle($request, $workspace, null, $view ?? $request->query('view')));
     }
 
     public function board(Request $request): Response|RedirectResponse

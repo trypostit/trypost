@@ -1,7 +1,7 @@
 /**
  * Runs `displayLength()` from `resources/js/lib/characters.ts` over a corpus for
  * each platform and prints the counts as JSON, so
- * `tests/Feature/Services/Social/DisplayLengthParityTest.php` can compare them
+ * `tests/Feature/App/Services/Social/DisplayLengthParityTest.php` can compare them
  * with `ContentSanitizer::displayText()`. Node strips the types; the hook only
  * resolves the `@/` alias the source imports with.
  */

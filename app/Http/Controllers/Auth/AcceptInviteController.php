@@ -28,7 +28,7 @@ class AcceptInviteController extends Controller
         if ($expired) {
             // Non-mutating for crawler/email prefetch: cleanup happens on
             // workspace delete and on accept/decline of a dead invite.
-            return Inertia::render('auth/AcceptInvite', [
+            return Inertia::render('app/auth/AcceptInvite', [
                 'expired' => true,
                 'invite' => null,
             ]);
@@ -36,7 +36,7 @@ class AcceptInviteController extends Controller
 
         $workspace = $workspaces->first();
 
-        return Inertia::render('auth/AcceptInvite', [
+        return Inertia::render('app/auth/AcceptInvite', [
             'expired' => false,
             'invite' => [
                 'id' => $invite->id,

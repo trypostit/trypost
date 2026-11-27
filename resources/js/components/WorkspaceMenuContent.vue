@@ -16,6 +16,7 @@ import {
     IconMoon,
     IconPlus,
     IconSettings,
+    IconShieldLock,
     IconSparkles,
     IconSun,
     IconUsers,
@@ -45,6 +46,7 @@ import { cn } from '@/lib/utils';
 import posthog from '@/posthog';
 import { applyTheme, type Theme } from '@/preferences';
 import { logout } from '@/routes';
+import { dashboard as adminDashboard } from '@/routes/admin';
 import { members } from '@/routes/app';
 import { index as billingIndex } from '@/routes/app/billing';
 import { edit as profileEdit } from '@/routes/app/profile';
@@ -339,6 +341,16 @@ const supportLinks = [
             >
                 <IconCoin class="size-4" />
                 {{ $t('sidebar.plans_billing') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem v-if="user.is_backoffice_admin" :as-child="true">
+            <Link
+                class="block w-full cursor-pointer"
+                :href="adminDashboard.url()"
+                data-testid="sidebar-menu-backoffice"
+            >
+                <IconShieldLock class="size-4" />
+                {{ $t('sidebar.backoffice') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>

@@ -249,7 +249,7 @@ A function that decides between several outcomes is a list of early returns, one
     - The composer's save visits (`router.put` / `router.post` in `pages/publish/Index.vue`) send `replace: true`, so the saved page takes the place of the edit's history entry instead of stacking on it.
     - A composer opened from a page of the app (`lib/inAppHistory.ts`, `cameFromAppPage()`) leaves through history: closing goes back, and saving goes back once the saved page lands and reloads that page. So after a save or close, one browser Back reaches the page before the list, calendar or tab it was opened from. A composer reached by its link or a reload has nothing behind it and still replaces its entry with the list. Duplicating a post (a POST that lands on the copy's composer) counts as opened from the page it was duplicated from (`rememberInAppPush()`), so closing the copy goes back to that List, Calendar or Board.
     - "Is there unsaved work" is decided by the snapshot comparison alone, never by `isSubmitting` or another request flag.
-    - Every change to the guard ships with a browser test in `tests/Browser/ComposerUnsavedChangesTest.php` that fails without it, checked by removing the change and running the test. History bugs here showed up only in a real browser (Inertia's own popstate handler is part of every flow).
+    - Every change to the guard ships with a browser test in `tests/Browser/App/ComposerUnsavedChangesTest.php` that fails without it, checked by removing the change and running the test. History bugs here showed up only in a real browser (Inertia's own popstate handler is part of every flow).
 - **A post's status badge is always `PostStatusBadge`** (`components/publish/PostStatusBadge.vue`, owner decision November 2026). Never build one by hand from `<Badge>`, an icon and `posts.status.*`. It takes two props only: `status`, the status to show (a `PostDisplayStatus`: the post's status, or `pending_review` / `deleted_on_network`; read a post's with `postDisplayStatus(post)` from `composables/usePostStatus.ts`), and `compact`, the smaller badge of a dense card (the board), which changes the size only, never the text. Color and icon come from `getPostStatusConfig()` in `usePostStatus.ts`, the label from `posts.status.<status>`: one short label per status, the same at both sizes and in every place it shows (no long and short variants, no per-screen override). A new status adds its row there and its key in the 16 locales and in `tests/fixtures/single-line-copy.php`. The calendar chip's icon-only marker (`CalendarPostChip`, `calendar.post_status.*` in its tooltip) is a separate thing and stays as it is.
 - **Composables are scoped by area.** A composable used by one area only lives in that area's folder, `resources/js/composables/<area>/` (e.g. `composables/composer/useComposerUnsavedChanges.ts`, `composables/echo/usePostEcho.ts`). Only composables shared across areas stay at the root of `resources/js/composables/`. When a scoped composable gains a consumer in another area, move it to the root in the same change.
 - Searching a list in the UI goes through `matchesSearch` / `filterBySearch` (`resources/js/lib/search.ts`): word by word, ignoring case and accents. Never hand-roll `.toLowerCase().includes(...)` for a search box.
@@ -260,7 +260,7 @@ A function that decides between several outcomes is a list of early returns, one
 
 - This project does **not** run Inertia SSR. `config/inertia.php` defaults `ssr.enabled` to `false` and nothing in the repo sets `INERTIA_SSR_ENABLED`.
 - Keep it off. With it on, every test rendering an Inertia page issues a real HTTP request to the SSR endpoint, which fails silently and falls back to client rendering — slow, and it hides missing `Http::fake()` stubs.
-- The build wiring is still shipped (`resources/js/ssr.ts`, `vite.config.ts`, `npm run build:ssr` in `docker/Dockerfile`). Turning SSR on means building that bundle and running `inertia:start-ssr` alongside the app, not just flipping the env.
+- There is no SSR entry or build (owner decision November 2026): `resources/js/ssr.ts`, the `ssr` input in `vite.config.ts` and `npm run build:ssr` were removed. Turning SSR on means adding them back and running `inertia:start-ssr` alongside the app, not just flipping the env.
 
 ## Dialog and slide-over actions
 
@@ -305,7 +305,7 @@ A tour walks the user through a page the first time they see it, one step per co
 - **Where it is kept:** the browser storage item `tours` (see "Browser storage"; the one item not named `area.thing`, owner decision November 2026: it holds every tour, keyed by tour name), one entry per tour, `{ "status": "completed" | "skipped", "step": <reached, from 1> }`, read and written through `useTourProgress()`. Never a database column.
 - **Tracking:** `POST app.tours.store` sends `tour.completed` or `tour.skipped` with `tour`, `step`, `steps` and `workspace_id` (`TourController`, queued on `posthog`).
 - **The MCP card is the `mcp.prompt` tour**: it records its "Not now" in `tours`, keeps its own tracking, and waits while a `TourStep` tour is open (`useTourOnScreen()`).
-- **`TOURS_ENABLED`** (on by default) turns `TourStep` tours off. Browser tests run with them off (`tests/Pest.php`) so a tour never covers the page they drive; a tour's own test turns them on (`config(['trypost.tours.enabled' => true])`). Tour browser tests live in `tests/Browser/Tours`.
+- **`TOURS_ENABLED`** (on by default) turns `TourStep` tours off. Browser tests run with them off (`tests/Pest.php`) so a tour never covers the page they drive; a tour's own test turns them on (`config(['trypost.tours.enabled' => true])`). Tour browser tests live in `tests/Browser/App/Tours`.
 
 ## Inviting a user to connect an AI (MCP)
 
@@ -341,7 +341,7 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 - When adding or changing a key, check the longest translations (French, German, Ukrainian, Russian, Polish and Portuguese usually run longest) against the slot, and shorten the copy in that locale rather than letting it wrap. A shorter natural phrase beats a literal one (`Ajustes do workspace`, not `Configurações do workspace`).
 - Never fix a wrap by truncating the text or widening one locale's layout; the label has to stay readable everywhere.
 - A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action.
-- Single-line copy is guarded by `tests/Feature/SingleLineCopyTest.php`, which fails when any locale's translation of a watched key gets longer than its budget in `tests/fixtures/single-line-copy.php`. When adding a button, tab, menu item or badge label, add its key there with the length of its longest translation; raise a budget only after checking the slot still fits.
+- Single-line copy is guarded by `tests/Feature/App/SingleLineCopyTest.php`, which fails when any locale's translation of a watched key gets longer than its budget in `tests/fixtures/single-line-copy.php`. When adding a button, tab, menu item or badge label, add its key there with the length of its longest translation; raise a budget only after checking the slot still fits.
 - Do not write browser tests that measure whether a label wraps (pixel widths, line counts, `Locale::cases()` loops over rendered text). They depend on the machine's fonts and fail differently on CI and locally; they were replaced by the length test in October 2026 (owner decision).
 
 ## AI agents (`app/Ai/Agents`)
@@ -499,15 +499,29 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   the offer's `checkout_button` (required, like `price` and `period`), or
   `welcome.plan_checkout_button` without an offer; without an offer the step
   shows the full price.
-  `tests/Feature/Offer/OfferCopyTest.php` fails when an offer misses its copy in
+  `tests/Feature/App/Offer/OfferCopyTest.php` fails when an offer misses its copy in
   any locale.
 - **Adding an offer.** Create its coupon in Stripe when it has one (no dates, no
   limit), add its
-  copy to all 16 locales and deploy, then insert the `offers` row in each
-  environment's database by hand (owner decision October 2026: no data
-  migration, since the coupon id differs between Stripe test and live). Locally,
+  copy to all 16 locales and deploy, then create the offer on the backoffice
+  Offers page (`admin.billing.offers.index`) of each environment (owner decision
+  November 2026; still no data migration, since the coupon id differs between
+  Stripe test and live). The page edits only the `offers` row: it refuses a
+  coupon its Stripe account does not have, shows the locales an offer's copy is
+  missing in, never changes a slug, ends an offer at once, and deletes only one
+  nobody redeemed. Every change is in the admin activity log. Locally,
   `php artisan db:seed --class=OfferSeeder` adds the test-mode offers; it is not
   part of `DatabaseSeeder`, so tests never start with them.
+
+## Backoffice (`/admin`)
+
+The in-app backoffice lives at `/admin` (`routes/admin.php`, pages under `resources/js/pages/admin`, controllers under `app/Http/Controllers/Admin`). It is TryPost Cloud's only.
+
+- **Off on self-hosted** (owner decision November 2026): every backoffice route sits behind `EnsureBackofficeEnabled`, which answers 404 when `trypost.self_hosted` is on, before the admin check, and the app menu never offers it there (`auth.user.is_backoffice_admin` is false). So nothing inside the backoffice checks `self_hosted` or `selfHosted`: no page, tab, sidebar group, action or Stripe read hides or skips anything for self-hosted. Do not add such a check; a new backoffice page needs nothing for it. Its tests run as Cloud (`tests/Pest.php` sets `trypost.self_hosted` off for `Feature/Admin` and `Browser/Admin`).
+- **Who gets in:** only the verified emails in `ADMIN_EMAILS` (`User::isBackofficeAdmin()`, through `EnsureBackofficeAdmin`); anyone else gets a 403. Horizon uses the same check, self-hosted included. The list is empty by default.
+- **People → Insights** (`admin.users.insights.index`): Overview (usage against the period before, customers by lifecycle stage worked out live through `ResolveLifecycleStage`, channels and posts per account), Top accounts (one sortable table: posts sent, via API and MCP, channels connected, posts failed) and Churn risk. Churn risk reads the paying accounts as a funnel (subscribed, active, at risk, MRR at risk); its signals (stopped posting, never posted or no channel a week after subscribing, posting halved, failing, channels broken, cancelling, past due) each weigh into a risk level (`BuildChurnRisk::assess()`), which a user's profile reads too (`BuildUserHealth`).
+- **Days are the viewer's own:** every per-day count (dashboard, publishing, networks, subscriptions) buckets by the admin's `users.timezone`, never UTC. The one exception is the X usage on Quotas, which keeps X's UTC days because X counts and bills them so.
+- **Every admin action is in the activity log** (`RecordAdminAction`, log `admin`): blocking, impersonating, retrying a post, creating, editing, ending and deleting an offer.
 
 ## Multiple social accounts per network
 
@@ -903,7 +917,7 @@ How that works in practice:
 New email checklist: add the template, add the `mail.<slug>` block to all 16
 locales, write a Mailable that passes data plus the three metadata strings, send
 with `Mail::to($user)`, run the Maizzle build, and cover it with a render test —
-`tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
+`tests/Feature/App/Mail/MailRenderingTest.php` exists because copy moving into the
 view turns a forgotten variable into a runtime-only failure.
 
 ## Icons (@tabler/icons-vue and @thesvg/vue)
@@ -1029,7 +1043,7 @@ Never derive the first-use state from the list or from the search box. A paginat
 
 - Validation rules always live in a dedicated `Illuminate\Foundation\Http\FormRequest` subclass under `app/Http/Requests/App/<Group>/`. Controller actions must type-hint the FormRequest as the parameter — NEVER call `$request->validate([...])` inline in the controller.
 - Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `UpdatePostRequest`, `LinkPreviewRequest`).
-- **Requests are independent.** Every FormRequest (web under `App/`, API under `Api/`) and every MCP tool declares its own rules inline. Do not create a shared rules helper (e.g. `ChannelRequestRules::reorderQueue()`) for requests or tools to call, and do not make one request delegate its rules to another. Web, API and MCP agreeing is proven by the parity tests in `tests/Feature/Parity`, not by sharing a rules class. Domain rules that already exist as their own concept (`PostPlatformMetaRules`, `PostMediaRules`, `PostStatusRules`, `App\Rules\*` rule objects) stay shared.
+- **Requests are independent.** Every FormRequest (web under `App/`, API under `Api/`) and every MCP tool declares its own rules inline. Do not create a shared rules helper (e.g. `ChannelRequestRules::reorderQueue()`) for requests or tools to call, and do not make one request delegate its rules to another. Web, API and MCP agreeing is proven by the parity tests in `tests/Feature/App/Parity`, not by sharing a rules class. Domain rules that already exist as their own concept (`PostPlatformMetaRules`, `PostMediaRules`, `PostStatusRules`, `App\Rules\*` rule objects) stay shared.
     - The classes under `app/Support/Requests/**` predate this rule and will be refactored away; do not add to them or copy their pattern.
 
 ## Controllers: one per resource, mirrored on web and API
@@ -1040,7 +1054,7 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **The web and the API mirror each other.** The same resource has the same controller name on both sides: `App\InstagramAudioController` ↔ `Api\InstagramAudioController`, `App\PinterestBoardController` ↔ `Api\PinterestBoardController`, `App\DiscordController` ↔ `Api\DiscordController`, `App\ChannelPostingScheduleController` ↔ `Api\ChannelPostingScheduleController`. When one side gains an endpoint, the other side's endpoint for the same resource goes in the controller with the same name.
 - **Channel features belong to their channel controller**: posting schedule reads and writes in `ChannelPostingScheduleController`, queue slots and ordering in `ChannelQueueController`, insights in `ChannelInsightsController`. `Api\SocialAccountController` only lists the connected accounts.
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
-- Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
+- Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/App/Parity` must pass unchanged.
 
 ## The current workspace is guaranteed by middleware
 
@@ -1053,7 +1067,7 @@ Every app route that works on the current workspace sits behind `EnsureHasWorksp
 
 ## MCP tools list in one page
 
-`tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). The same page size applies to `resources/list`, `resources/templates/list` and `prompts/list`. Raise both before the server reaches 200 tools. A client may still ask for a smaller page (`per_page`, a laravel/mcp extension; the MCP spec only defines `cursor`) and follow `nextCursor`; a bigger request is capped at 200. `tests/Feature/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.
+`tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). The same page size applies to `resources/list`, `resources/templates/list` and `prompts/list`. Raise both before the server reaches 200 tools. A client may still ask for a smaller page (`per_page`, a laravel/mcp extension; the MCP spec only defines `cursor`) and follow `nextCursor`; a bigger request is capped at 200. `tests/Feature/App/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.
 
 ## MCP sign-in inside ChatGPT
 
@@ -1063,7 +1077,7 @@ ChatGPT offers sign-in inside the conversation when a user who never connected (
 - **Without a token, ChatGPT may only connect and list tools** (`initialize`, `notifications/initialized`, `ping`, `tools/list`), through `AuthenticateMcp` and `LoadMcpWorkspace` (the MCP route's own workspace middleware: it lets that discovery through and hands every other request to the shared `LoadWorkspaceFromToken` with `mcp`, which the MCP change leaves untouched). A tool call always needs a token, so no tool ever runs without a user. A request that carries a token, valid or not, is always authenticated; Passport blanks the `Authorization` header when it refuses a token, so `AuthenticateMcp` records `ChatGptMcpClient::TOKEN_SENT` before it runs.
 - **A refused tool call from ChatGPT** gets `ChallengeChatGptToolCalls`'s 200 tool result with `isError` and `_meta["mcp/www_authenticate"]`: ChatGPT never shows its sign-in prompt for a 401. 402 and 403 are unchanged.
 - **Every tool declares `securitySchemes`** (`oauth2`, `mcp:use`) through `ListToolsWithSecuritySchemes`; ChatGPT offers sign-in only for tools that declare it, other clients ignore it.
-- `tests/Feature/Mcp/ChatGptSignInTest.php` covers ChatGPT, Claude and other clients with no token, an invalid token and a valid one, and the cached ranges; every guard there fails its test when removed.
+- `tests/Feature/App/Mcp/ChatGptSignInTest.php` covers ChatGPT, Claude and other clients with no token, an invalid token and a valid one, and the cached ranges; every guard there fails its test when removed.
 
 ## MCP OAuth rate limit
 
@@ -1071,7 +1085,7 @@ All of `Mcp::oauthRoutes()` sits in one `throttle:mcp-oauth` group in `routes/ai
 
 - The `/.well-known/oauth-protected-resource*` and `/.well-known/oauth-authorization-server*` GETs (and HEADs, `isMethodCacheable()`) are public static JSON and are never limited. Clients fetch them before every connection, even with a stored token (Codex desktop does it for each thread, from the user's own IP), and a 429 there makes the client drop the server, so its tools never appear.
 - The exemption reads `$request->ip()`, so it holds as long as only real proxies are trusted (see "Trusted proxies"). With `TRUSTED_PROXIES=*` a client can fake an OpenAI or Anthropic address with `X-Forwarded-For`.
-- `tests/Feature/Mcp/OAuthRegistrationTest.php` covers the limit, the exemption and the metadata.
+- `tests/Feature/App/Mcp/OAuthRegistrationTest.php` covers the limit, the exemption and the metadata.
 
 ## Trusted proxies (`config/trustedproxy.php`)
 
@@ -1079,7 +1093,7 @@ The client IP (`$request->ip()`, used by every per-IP rate limit and by the Chat
 
 - It defaults to the ranges Cloudflare publishes (https://www.cloudflare.com/ips-v4 and https://www.cloudflare.com/ips-v6), written in the config file. TryPost Cloud runs on one machine behind Cloudflare, so the IP is the one Cloudflare appended and a client cannot fake it. When Cloudflare changes its lists (rarely), update the config.
 - Another install sets `TRUSTED_PROXIES` to its proxy's IPs or ranges (comma-separated), or `*` to trust any proxy, which lets a client fake its IP with `X-Forwarded-For`. Never `trustProxies(at: '*')` in code: that was the bug.
-- `tests/Feature/TrustedProxiesTest.php` covers Cloudflare (IPv4 and IPv6), a direct request, a listed proxy and `*`.
+- `tests/Feature/App/TrustedProxiesTest.php` covers Cloudflare (IPv4 and IPv6), a direct request, a listed proxy and `*`.
 
 ## MCP tool annotations
 
@@ -1088,7 +1102,7 @@ The client IP (`$request->ip()`, used by every per-IP rate limit and by the Chat
 - **readOnly**: `true` only when the tool reads or computes. Warming a cache or refreshing a token during a read still counts as read-only.
 - **destructive**: `true` when the tool changes or removes existing data or sends something irreversible (updates, deletes, reorders, replacing a schedule, publishing, approving or rejecting, emails, webhook replays). `false` for purely additive writes. A read-only tool is never destructive.
 - **openWorld**: `true` when the tool can publish to public networks, fetch arbitrary URLs, call or set arbitrary external endpoints, or read a public catalog. `false` inside the private workspace, including network APIs that only read the connected account's own data.
-- A new tool goes into `mcpExpectedToolAnnotations()` in `tests/Feature/Mcp/ToolAnnotationsTest.php`; the test fails when a registered tool is missing from that list or has a different value. Borderline cases already decided are listed in `.ai/rules/tools.md`; follow them instead of deciding again.
+- A new tool goes into `mcpExpectedToolAnnotations()` in `tests/Feature/App/Mcp/ToolAnnotationsTest.php`; the test fails when a registered tool is missing from that list or has a different value. Borderline cases already decided are listed in `.ai/rules/tools.md`; follow them instead of deciding again.
 
 ## Database engines (PostgreSQL + MySQL)
 
@@ -1199,7 +1213,7 @@ an `enabled` flag or posts with several channels. Posts created together share
     - Every post create/update entry point — web (`App\Http\Requests\App\Post\UpdatePostRequest`), public API (`App\Http\Requests\Api\Post\{Store,Update}PostRequest`), and MCP (`App\Mcp\Tools\Post\{Create,Update}PostTool`) — spreads `...PostPlatformMetaRules::rules()`. NEVER add a per-platform meta rule inline to a single request/tool.
     - Why: `FormRequest::validated()` (and MCP `$request->validate()`) STRIPS any key without a rule. A meta field defined in only one entry point is silently dropped everywhere else — which is exactly how Discord/Pinterest/TikTok meta was lost via API/MCP before this was centralized.
 - Required-on-publish (meta a platform needs to publish, e.g. Discord `channel_id`) also lives there: `addRequiredOnPublishErrors()` for request-driven flows (web/API update `withValidator`), `assertStoredMetaPublishable()` for flows that publish stored state without resubmitting it (Publish now on the web, approving, MCP `PublishPostTool`), reached through `PostStatusRules::assertStoredPostPublishable()`, which checks the whole stored post. Add new required-meta rules to `requiredMetaViolation()`, not inline.
-- When adding a new platform's meta field, add it (and any publish requirement) to `PostPlatformMetaRules` ONLY, and cover it in `tests/Feature/Api/PostApiPlatformMetaTest.php` + `tests/Feature/Mcp/PostPlatformMetaToolTest.php`.
+- When adding a new platform's meta field, add it (and any publish requirement) to `PostPlatformMetaRules` ONLY, and cover it in `tests/Feature/App/Api/PostApiPlatformMetaTest.php` + `tests/Feature/App/Mcp/PostPlatformMetaToolTest.php`.
 - `PostPlatformMetaRules::formatErrors()` holds meta no post may store, even as a draft (a YouTube title with `<` or `>`). Every create and update path (web, API, MCP, repurpose) goes through `App\Support\PostCompositionValidator`, which runs it and, once the post is scheduled or published, the content limits below.
 - **What a post stores in `meta` goes through `App\Support\PostMeta::forChannel($account, $meta, $stored)`, on create (`CreateChannelPost`) and on update (`UpdatePost`, passing the post's current meta as `$stored`).** It normalizes the meta, keeps the system keys the post already had (`PostPlatformMetaRules::SYSTEM_KEYS`, today Telegram `reactions`) and has one `match` arm per network that derives something. Never write `posts.meta` from a request without it, and never add a second helper next to it.
 - **A derived value is never taken from the request.** Only the id comes in; the server resolves what it names. The Discord `channel_name` has no validation rule: `PostMeta` drops any sent value and reads the name of `channel_id` from the guild's channel list in the cache (`DiscordClient::cachedChannels()`, warmed by the composer, the API, MCP and publishing). Without a cached list the post stores no name; that is accepted (owner decision October 2026). The composer may keep the name in its local meta for the live preview; the server ignores it.
@@ -1230,7 +1244,7 @@ an `enabled` flag or posts with several channels. Posts created together share
 What TryPost does on a channel and the scopes it needs for it live in one map (owner decision November 2026), read by connect, publishing, analytics, the composer, the channel pages, the API and MCP. An account connected before TryPost asked for a scope is told to reconnect instead of failing silently or at publish time.
 
 - **The map:** each network's `permissions` setting in `config/trypost.php` (`trypost.platforms.<network>.permissions.<feature>`): `scopes`, a list of requirements (a scope, or a list of alternatives like `YouTubeScopes::READ`), and optionally its own `message` / `member_message` lang keys. The features are `App\Enums\SocialAccount\GatedFeature`: `publish`, `thread_replies`, `followers`, `post_insights`, `post_insights_extended` (the soft reads: Facebook `read_insights`, YouTube Analytics), `post_history`, `private_post_read` (authenticated reads of Mastodon statuses) and `facebook_reel_cover` (a Facebook Reel whose video has a cover image, set after publishing through `/{video-id}/thumbnails`; the gate reads the post's media, like `thread_replies` reads its meta). Never write a scope literal in a controller, job or collector; read it through `App\Support\ChannelPermissions`.
-- **Who reads it:** the connect refusal (`SocialController::refusalForMissingPublishScopes`, through `ChannelPermissions::missingFrom()`, where an empty grant lacks everything) and `PublishToSocialPlatform::failForMissingScopes` read `publish`; every analytics collector reads its feature (`AnalyticsCollectionException::unlessPermitted()`, or `ChannelPermissions::permits()` for the history pages and the optional reads); `ChannelPermissions::featureBlockingPost($account, $meta, $type, $media)` finds the first feature that `GatedFeature::isRequiredToPublish()` says the post needs and whose scope the channel lacks. `PostCompositionValidator` places the refusal on `GatedFeature::postValidationField()` and chooses the message using the actor’s workspace permission. Publishers use the channel’s reconnect message. An unknown stored grant (null or `[]`) lacks nothing for these checks (`validateContentLength()` included); only the publish job reads it strictly (`PublishToSocialPlatform::failForMissingScopes()`, through `missingFrom()`), as it always did. `PostPlatformMetaRules::requiredMetaViolation()` never reads it, so a repurpose destination is only checked for its meta (see "Repurpose account health"). Unknown stored scopes are never read as missing. `tests/Feature/Social/ChannelPermissionsConfigTest.php` fails when a network's map holds a scope its connect never asks for.
+- **Who reads it:** the connect refusal (`SocialController::refusalForMissingPublishScopes`, through `ChannelPermissions::missingFrom()`, where an empty grant lacks everything) and `PublishToSocialPlatform::failForMissingScopes` read `publish`; every analytics collector reads its feature (`AnalyticsCollectionException::unlessPermitted()`, or `ChannelPermissions::permits()` for the history pages and the optional reads); `ChannelPermissions::featureBlockingPost($account, $meta, $type, $media)` finds the first feature that `GatedFeature::isRequiredToPublish()` says the post needs and whose scope the channel lacks. `PostCompositionValidator` places the refusal on `GatedFeature::postValidationField()` and chooses the message using the actor’s workspace permission. Publishers use the channel’s reconnect message. An unknown stored grant (null or `[]`) lacks nothing for these checks (`validateContentLength()` included); only the publish job reads it strictly (`PublishToSocialPlatform::failForMissingScopes()`, through `missingFrom()`), as it always did. `PostPlatformMetaRules::requiredMetaViolation()` never reads it, so a repurpose destination is only checked for its meta (see "Repurpose account health"). Unknown stored scopes are never read as missing. `tests/Feature/App/Social/ChannelPermissionsConfigTest.php` fails when a network's map holds a scope its connect never asks for.
 - **A scheduled post on a channel that lost a grant it uses** (owner decision November 2026): reordering its channel's queue and attaching media to it go through `ChannelPermissions::ensureScheduledPostCanChange()`, which refuses with the reconnect message, so the user sees the channel needs reconnecting. A Facebook Reel cover counts like thread replies. The publish job itself never holds a Reel back for its cover (`GatedFeature::holdsBackPublishing()` is false for it): the Reel goes out and `ApplyFacebookReelCover` leaves the cover warning.
 - **Features follow the scopes the connect asks for** (owner decision November 2026): each network's connect asks for `trypost.platforms.<network>.scopes`, read from its `*_SCOPES` env (comma or space separated, `.env.example` lists them) and defaulting to TryPost's list when unset or blank; every connect controller reads it through `ChannelPermissions::requestedScopes()` (`SocialController::requestedScopes()` in the controllers), never a `$scopes` property or the config key directly. Connecting and publishing never break: `requestedScopes()` always adds what the list leaves out of the `publish` scopes and of the network's `required_scopes` (what connecting and publishing call on the network: X's `users.read` and `media.write`, YouTube's channel read, Discord's `bot`, …); any alternative of a requirement counts, Mastodon's broad `write` included. So trimming a list only turns optional features off, never a feature whose scope is required (X's insights, for one, cannot be turned off). A feature is on only when every scope it needs is in that list (`ChannelPermissions::enabled()`). A self-hosted app that leaves a scope out turns the features that need it off: no thread replies (`ThreadReplies::supports()`, the composer's `disabledFeatures` from `PlatformConfigResource`), no insights read (the collectors ask `ChannelPermissions::permits()`), and no warning or refusal asking anyone to reconnect for it. By default every feature is on (`ChannelPermissionsConfigTest`, owner decision November 2026): the default lists in `config/trypost.php` ask for every scope, and an install turns a feature off by leaving its scope out of its env. Tests put a feature behind a scope with `gateFeature()` (`tests/Pest.php`), which also adds the scope to the requested list.
 - **Copy:** `GatedFeature::translationGroup()` names the lang group (`channels.permissions.publish`, `.thread_replies`, `.insights`, `.facebook_reel_cover`, with `:network`), each with `message` and `member_message` (for someone who cannot reconnect; it names who can).
@@ -1330,7 +1344,7 @@ What a post can carry on Instagram depends on how the account is connected: thro
 
 ## Browser Tests (Pest + Playwright)
 
-Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
+Browser tests live in `tests/Browser`, split like the pages: `tests/Browser/App` for the app and `tests/Browser/Admin` for the backoffice. They run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
 
 - ALWAYS use named routes via `route()`. NEVER hardcode URLs like `'https://trypost.test/login'`.
     - Example: `visit(route('login'))`.
@@ -1453,7 +1467,7 @@ Standing constraints:
 - Off by default everywhere. Cloud opts in; self-hosted installs publish through their own X app and pay their own bill, so they only turn it on if they want to.
 - Character limits are measured against the **sanitized** content — the string the publisher actually sends — against the **account's** limit plus the reserved length (see Content limits), in both `App\Rules\ContentFitsPlatformLimits` (save/schedule) and `HasSocialHttpClient::validateContentLength()` (publish). The editor stores HTML and per-platform rules change the length again, so measuring the raw draft blocks saving posts that publish fine and lets through posts the network rejects. Keep the two in step.
 - Tests enable it explicitly with `config()->set('trypost.platforms.x.defuse_links', true)` rather than pinning an env, so the suite runs against the shipped default.
-- The editor counts characters and renders the X preview client-side, so the rewrite is mirrored in `resources/js/lib/defuseXLinks.ts`. The TLD list is NOT duplicated there: `HandleInertiaRequests::shareOnce()` shares `App\Support\LinkTlds::all()` as the `xLinkTlds` once prop (sent on the first page load, then remembered by the client), only to signed-in users and only while defusing is on — an absent or empty set means the feature is off, since without the list a bare host cannot be told from `Node.js`. Keep it a once prop of its own; never fold it into a per-request prop or the `composer` bundle. Two tests keep the mirror honest: `XLinkDefusingParityTest` runs a shared corpus through both engines over the same list and diffs the output, and `tests/Browser/XLinkDefusingTest.php` drives the real editor.
+- The editor counts characters and renders the X preview client-side, so the rewrite is mirrored in `resources/js/lib/defuseXLinks.ts`. The TLD list is NOT duplicated there: `HandleInertiaRequests::shareOnce()` shares `App\Support\LinkTlds::all()` as the `xLinkTlds` once prop (sent on the first page load, then remembered by the client), only to signed-in users and only while defusing is on — an absent or empty set means the feature is off, since without the list a bare host cannot be told from `Node.js`. Keep it a once prop of its own; never fold it into a per-request prop or the `composer` bundle. Two tests keep the mirror honest: `XLinkDefusingParityTest` runs a shared corpus through both engines over the same list and diffs the output, and `tests/Browser/App/XLinkDefusingTest.php` drives the real editor.
 - Neither expression may use lookbehind. Safari only understands it from 16.4, esbuild cannot transpile it, and a `SyntaxError` there takes down the whole chunk — the character before a candidate URL is consumed and put back instead.
 
 ## Legacy queued-job compatibility (TryPost 2.0 deploy)
@@ -1465,7 +1479,7 @@ Jobs, mails and broadcasts queued by the pre-2.0 `main` release are still in the
 - `App\Events\NotificationCreated`, `App\Events\PostCommentCreated`, `App\Events\Ai\PostCreationReady` and `App\Events\Ai\PostMediaRegenerated` (queued broadcasts that finish without broadcasting).
 - `App\Mail\MentionedInComment` (dropped without sending).
 
-No new code may use them. The two `Type` cases never appear in a user-facing list (preferences UI, validation rules, `cases()` iteration) and `User::wantsEmailFor()` answers `false` for them; `tests/Feature/Jobs/LegacyQueuedPayloadsTest.php` covers both. Remove all of it one release after 2.0, once the queues hold no main-era payloads.
+No new code may use them. The two `Type` cases never appear in a user-facing list (preferences UI, validation rules, `cases()` iteration) and `User::wantsEmailFor()` answers `false` for them; `tests/Feature/App/Jobs/LegacyQueuedPayloadsTest.php` covers both. Remove all of it one release after 2.0, once the queues hold no main-era payloads.
 
 ## Git
 

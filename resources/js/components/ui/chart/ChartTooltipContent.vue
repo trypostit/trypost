@@ -14,6 +14,8 @@ const props = withDefaults(
         labelFormatter?: (value: number | Date) => string;
         /** The labelled numbers listed under an entry, such as where it started and what it gained. */
         detailFormatter?: (key: string, value: number) => ChartTooltipDetail[];
+        /** How an entry's value reads; a plain number in the reader's language without it. */
+        valueFormatter?: (key: string, value: number) => string;
         /** A labelled total for the whole point, shown under its heading, such as a day's posts. */
         totalFormatter?: (x: number | Date) => ChartTooltipDetail | null;
         x?: number | Date;
@@ -30,6 +32,7 @@ const entries = computed(() =>
                       key,
                       item,
                       value,
+                      display: props.valueFormatter?.(key, value) ?? value.toLocaleString(activeLocale.value),
                       details: props.detailFormatter?.(key, value) ?? [],
                   },
               ]
@@ -91,7 +94,7 @@ const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
                     <span
                         class="font-medium text-foreground tabular-nums"
                         data-testid="analytics-tooltip-value"
-                        >{{ entry.value.toLocaleString(activeLocale) }}</span
+                        >{{ entry.display }}</span
                     >
                 </div>
                 <dl

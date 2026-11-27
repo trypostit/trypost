@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Enums\Admin;
+
+/**
+ * The tabs of a user's backoffice profile. Only the open tab's data is built
+ * on each visit.
+ */
+enum UserTab: string
+{
+    case Overview = 'overview';
+    case Workspaces = 'workspaces';
+    case Posts = 'posts';
+    case Integrations = 'integrations';
+    case Billing = 'billing';
+    case Activity = 'activity';
+}

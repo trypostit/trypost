@@ -19,6 +19,7 @@ return [
     ],
     'settings' => '설정',
     'plans_billing' => '요금제 및 결제',
+    'backoffice' => '관리자 페이지',
     'log_out' => '로그아웃',
     'help' => '도움말',
     'language' => '언어: :name',

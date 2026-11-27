@@ -107,7 +107,7 @@ class SocialController extends Controller
 
         $state = $this->confirmationState($pending);
 
-        return Inertia::render('accounts/ConnectFinish', [
+        return Inertia::render('app/accounts/ConnectFinish', [
             'platform' => $this->platform->value,
             'state' => $state,
             'reason' => $state === 'error' ? __("accounts.connect.errors.{$pending?->failure()}") : null,

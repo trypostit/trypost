@@ -84,6 +84,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'time_format' => TimeFormat::DEFAULT->value,
         'week_starts_on' => WeekStart::DEFAULT->value,
         'default_post_action' => DefaultPostAction::DEFAULT->value,
+        'blocked_at' => null,
+        'blocked_reason' => null,
     ];
 
     /**
@@ -129,10 +131,33 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return (string) Str::of($this->name ?? '')->trim()->before(' ');
     }
 
+    /**
+     * A backoffice admin blocked this user: no sign-in, no API or MCP, and the
+     * scheduled posts of the account they own wait until they are unblocked.
+     */
+    public function isBlocked(): bool
+    {
+        return filled($this->blocked_at);
+    }
+
+    /**
+     * May open the backoffice and Horizon: a verified account whose email is
+     * in `ADMIN_EMAILS`. Not the workspace admin (`user_workspace.is_admin`).
+     */
+    public function isBackofficeAdmin(): bool
+    {
+        if (blank($this->email_verified_at)) {
+            return false;
+        }
+
+        return collect(config()->array('trypost.admin.emails'))->contains(Str::lower($this->email));
+    }
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'blocked_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'persona' => Persona::class,

@@ -19,6 +19,7 @@ return [
     ],
     'settings' => 'Einstellungen',
     'plans_billing' => 'Tarife & Abrechnung',
+    'backoffice' => 'Backoffice',
     'log_out' => 'Abmelden',
     'help' => 'Hilfe',
     'language' => 'Sprache: :name',

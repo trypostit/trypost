@@ -105,6 +105,17 @@ class UserFactory extends Factory
     }
 
     /**
+     * A user a backoffice admin has blocked.
+     */
+    public function blocked(string $reason = 'Abuse'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'blocked_at' => now(),
+            'blocked_reason' => $reason,
+        ]);
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static

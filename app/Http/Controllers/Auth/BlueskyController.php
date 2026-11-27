@@ -33,7 +33,7 @@ class BlueskyController extends SocialController
 
         $this->rememberConnectSession($request, $workspace);
 
-        return Inertia::render('accounts/BlueskyConnect', [
+        return Inertia::render('app/accounts/BlueskyConnect', [
             'errors' => session('errors')?->getBag('default')?->toArray() ?? [],
             'backUrl' => PendingConnection::current()?->returnUrl() ?? PendingConnection::defaultReturnUrl(),
         ]);

@@ -1,0 +1,2157 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\Post\PublishStatus;
+use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\ErrorCategory;
+use App\Exceptions\Social\XPublishException;
+use App\Exceptions\TokenExpiredException;
+use App\Jobs\PublishPost;
+use App\Jobs\PublishToSocialPlatform;
+use App\Models\Post;
+use App\Models\SocialAccount;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Services\Media\MediaOptimizer;
+use App\Services\Social\XPublisher;
+use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\XPoll;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
+
+/**
+ * Official X upload STATUS: GET /2/media/upload?media_id=...&command=STATUS
+ */
+function isXMediaUploadStatusRequest(Request $request): bool
+{
+    if (strtoupper($request->method()) !== 'GET') {
+        return false;
+    }
+
+    $url = $request->url();
+
+    if (
+        ! str_contains($url, '/media/upload')
+        || str_contains($url, '/initialize')
+        || str_contains($url, '/append')
+        || str_contains($url, '/finalize')
+    ) {
+        return false;
+    }
+
+    return str_contains($url, 'media_id=')
+        || filled(data_get($request->data(), 'media_id'));
+}
+
+beforeEach(function () {
+    $this->user = User::factory()->create();
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+
+    $this->socialAccount = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => '123456789',
+        'username' => 'testuser',
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Hello from X!',
+        'content_type' => ContentType::XPost,
+    ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
+
+    $this->publisher = new XPublisher;
+});
+
+test('x publisher can publish text-only post', function () {
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => [
+                'id' => '1234567890123456789',
+                'text' => 'Hello from X!',
+            ],
+        ], 200),
+    ]);
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result)->toHaveKey('id');
+    expect($result)->toHaveKey('url');
+    expect($result['id'])->toBe('1234567890123456789');
+    expect($result['url'])->toBe('https://x.com/testuser/status/1234567890123456789');
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/2/tweets')
+            && $request['text'] === 'Hello from X!';
+    });
+});
+
+test('x publisher does NOT rotate the token when it is only expiring soon but still valid', function () {
+    $this->socialAccount->update([
+        'token_expires_at' => now()->addMinutes(5),
+        'refresh_token' => 'original-refresh-token',
+    ]);
+    $originalAccessToken = $this->socialAccount->access_token;
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '999']], 200),
+        config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
+            'access_token' => 'should-not-be-used',
+            'refresh_token' => 'should-not-be-used',
+            'expires_in' => 7200,
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    // X single-use refresh tokens: a still-valid access_token must NOT be rotated.
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+    $this->socialAccount->refresh();
+    expect($this->socialAccount->access_token)->toBe($originalAccessToken);
+    expect($this->socialAccount->refresh_token)->toBe('original-refresh-token');
+});
+
+test('x publisher uses bearer token authentication', function () {
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => [
+                'id' => '1234567890123456789',
+            ],
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        return $request->hasHeader('Authorization')
+            && str_starts_with($request->header('Authorization')[0], 'Bearer ');
+    });
+});
+
+test('x publisher throws exception on api error', function () {
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'detail' => 'You are not allowed to create a Tweet with duplicate content.',
+            'type' => 'about:blank',
+            'title' => 'Forbidden',
+            'status' => 403,
+        ], 403),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(Exception::class);
+});
+
+test('x publisher throws token expired exception on auth error', function () {
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'title' => 'Unauthorized',
+            'detail' => 'Unauthorized',
+            'status' => 401,
+        ], 401),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(TokenExpiredException::class);
+});
+
+test('x publisher refreshes token when expired', function () {
+    $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
+
+    Http::fake([
+        'https://api.x.com/2/oauth2/token' => Http::response([
+            'access_token' => 'new-access-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 7200,
+        ], 200),
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => [
+                'id' => '1234567890123456789',
+            ],
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), 'oauth2/token')) {
+            return false;
+        }
+
+        // Verify Basic Auth is used for confidential client authentication
+        $authHeader = $request->header('Authorization')[0] ?? '';
+
+        return str_starts_with($authHeader, 'Basic ');
+    });
+
+    $this->socialAccount->refresh();
+    expect($this->socialAccount->access_token)->toBe('new-access-token');
+});
+
+test('x publisher includes media ids in post when media uploaded', function () {
+    // Note: This test verifies the post structure when media IDs are present
+    // Actual media upload requires file_get_contents which needs real files
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => [
+                'id' => '1234567890123456789',
+            ],
+        ], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/2/tweets');
+    });
+});
+
+test('x publisher throws exception with empty content and no media', function () {
+    $this->post->update(['content' => '']);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(Exception::class, 'X posts require either text or media');
+});
+
+test('x publisher throws exception with null content and no media', function () {
+    $this->post->update(['content' => null]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(Exception::class, 'X posts require either text or media');
+});
+
+test('x publisher throws exception when no refresh token available', function () {
+    $this->socialAccount->update([
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => null,
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(TokenExpiredException::class, 'No refresh token available for X account');
+});
+
+test('x publisher throws TokenExpiredException when refresh_token is rejected by X', function () {
+    $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
+
+    Http::fake([
+        'https://api.x.com/2/oauth2/token' => Http::response([
+            'error' => 'invalid_request',
+            'error_description' => 'Value passed for the token was invalid.',
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(TokenExpiredException::class, 'Value passed for the token was invalid.');
+});
+
+test('x publisher handles gif upload with processing', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-gif',
+                'path' => 'media/2026-01/animated.gif',
+                'url' => 'https://example.com/media/2026-01/animated.gif',
+                'mime_type' => 'image/gif',
+                'original_filename' => 'animated.gif',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'gif_media_555']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            // Nested under data — matches the real X API shape.
+            return Http::response([
+                'data' => [
+                    'id' => 'gif_media_555',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response([
+                'data' => [
+                    'processing_info' => ['state' => 'succeeded'],
+                ],
+            ], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '9999888877776666', 'text' => 'Hello from X!']], 200);
+        }
+
+        // GIF download
+        return Http::response('fake-gif-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('9999888877776666');
+
+    // GIF uses chunked upload (not simple upload)
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/media/upload/initialize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        return str_contains($contentType, 'application/json')
+            && data_get($request->data(), 'media_type') === 'image/gif'
+            && data_get($request->data(), 'media_category') === 'tweet_gif';
+    });
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/append'));
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/finalize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        return str_contains($contentType, 'application/json')
+            && $request->body() === '{}';
+    });
+    // waitForProcessing polls the official STATUS endpoint
+    Http::assertSent(function ($request) {
+        return isXMediaUploadStatusRequest($request)
+            && (
+                str_contains($request->url(), 'media_id=gif_media_555')
+                || data_get($request->data(), 'media_id') === 'gif_media_555'
+            )
+            && (
+                str_contains($request->url(), 'command=STATUS')
+                || data_get($request->data(), 'command') === 'STATUS'
+            );
+    });
+});
+
+test('x publisher recovers a missing mime type from the downloaded bytes', function () {
+    $this->post->update([
+        'media' => [
+            ['url' => 'https://cdn.example.com/listing'],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_111']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121212', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('1212121212');
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/media/upload'));
+});
+
+test('x publisher sends image alt text to the media metadata endpoint', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'a red bike'],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/metadata')) {
+            return Http::response([], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_1']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121212', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/media/metadata')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'id') === 'media_id_alt_1'
+            && data_get($request->data(), 'metadata.alt_text.text') === 'a red bike';
+    });
+});
+
+test('x publisher truncates alt text to the platform max length', function () {
+    $longAlt = str_repeat('a', 1200);
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => $longAlt],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/metadata')) {
+            return Http::response([], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_2']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121213', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/media/metadata')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'metadata.alt_text.text') === str_repeat('a', 1000);
+    });
+});
+
+test('x publisher does not call media metadata when no alt text is set', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_3']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1212121214', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media/metadata'));
+});
+
+test('x publisher still posts the tweet when the alt text metadata call fails', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-id',
+                'path' => 'media/2026-01/test-image.jpg',
+                'url' => 'https://example.com/media/2026-01/test-image.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'test.jpg',
+                'meta' => ['alt_text' => 'a red bike'],
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/metadata')) {
+            throw new ConnectionException('Connection timed out');
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_id_alt_fail']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '5551112223', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response(
+            file_get_contents(base_path('tests/fixtures/1x1.png')),
+            200,
+            ['Content-Type' => 'image/png'],
+        );
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('5551112223');
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+});
+
+test('x publisher does not send alt text metadata for a video even if it carries alt text', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+                'meta' => ['alt_text' => 'alt text must not be sent for a video'],
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'video_media_777']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'video_media_777']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '7778889990', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('7778889990');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media/metadata'));
+});
+
+test('x publisher uploads video via chunked upload', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test-video.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        // Order matters: more specific patterns first
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_id_999']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_id_999']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            // STATUS check: GET /2/media/upload?media_id=...&command=STATUS
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '9876543210987654321', 'text' => 'Hello from X!']], 200);
+        }
+
+        // Media download (any URL including relative paths in test env)
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('9876543210987654321');
+    expect($result['url'])->toContain('x.com/testuser/status/9876543210987654321');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/media/upload/initialize'));
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), '/append')
+            && (int) data_get($request->data(), 'segment_index') === 0;
+    });
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/finalize'));
+    Http::assertSent(fn ($request) => isXMediaUploadStatusRequest($request));
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/tweets')) {
+            return false;
+        }
+
+        $mediaIds = data_get($request->data(), 'media.media_ids');
+
+        return is_array($mediaIds)
+            && $mediaIds === ['media_id_999']
+            && is_string($mediaIds[0]);
+    });
+});
+
+test('x publisher sends JSON object bodies for chunked upload initialize and finalize', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/test-video.mp4',
+                'url' => 'https://example.com/media/2026-01/test-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'test-video.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_id_json']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_id_json']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1111222233334444', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/media/upload/initialize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        return str_contains($contentType, 'application/json')
+            && data_get($request->data(), 'media_type') === 'video/mp4'
+            && data_get($request->data(), 'media_category') === 'tweet_video';
+    });
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/finalize')) {
+            return false;
+        }
+
+        $contentType = $request->header('Content-Type')[0] ?? '';
+
+        // Empty PHP array encodes as `[]`; X requires a JSON *object* (`{}`).
+        return str_contains($contentType, 'application/json')
+            && $request->body() === '{}';
+    });
+});
+
+test('x publisher uploads a large video in sequential 1MB segments', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/big-video.mp4',
+                'url' => 'https://example.com/media/2026-01/big-video.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'big-video.mp4',
+            ],
+        ],
+    ]);
+
+    $appendCount = 0;
+
+    Http::fake(function ($request) use (&$appendCount) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_id_999']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            $appendCount++;
+
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_id_999']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '9876543210987654321', 'text' => 'Hello from X!']], 200);
+        }
+
+        // ~2.5MB download -> at least three 1MB segments.
+        return Http::response(str_repeat('x', (int) (2.5 * 1024 * 1024)), 200);
+    });
+
+    $this->publisher->publish($this->post);
+
+    expect($appendCount)->toBeGreaterThan(1);
+});
+
+test('x publisher fails cleanly when media cannot be downloaded', function () {
+    $this->post->update([
+        'media' => [
+            ['url' => 'https://cdn.example.com/listing', 'mime_type' => 'image/jpeg'],
+        ],
+    ]);
+
+    Http::fake(['cdn.example.com/listing' => Http::response(null, 404)]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'Could not fetch the media to upload to X');
+});
+
+test('x publisher uses simple upload for small images and skips chunked finalize', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/photo.jpg',
+                'url' => 'https://example.com/media/2026-01/photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'photo.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/media/upload')
+            && ! str_contains($url, '/initialize')
+            && ! str_contains($url, '/append')
+            && ! str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'simple_image_1']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_simple_1']], 200);
+        }
+
+        return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200);
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('tweet_simple_1');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/initialize'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/finalize'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/media/upload')
+        && ! str_contains($request->url(), '/initialize'));
+});
+
+test('x publisher fails instead of posting without the image when the simple upload returns no media id', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/photo.jpg',
+                'url' => 'https://example.com/media/2026-01/photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'photo.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/media/upload')) {
+            return Http::response(['data' => []], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_without_image']], 200);
+        }
+
+        return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200);
+    });
+
+    $exception = null;
+
+    try {
+        $this->publisher->publish($this->post);
+    } catch (XPublishException $caught) {
+        $exception = $caught;
+    }
+
+    expect($exception)->toBeInstanceOf(XPublishException::class)
+        ->and($exception->userMessage)->toBe('X did not accept the media upload. Please try again.')
+        ->and($exception->category)->toBe(ErrorCategory::ServerError)
+        ->and($exception->isNetworkRejection())->toBeFalse();
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+});
+
+test('x publisher uses chunked upload for images larger than 5MB', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-large-image',
+                'path' => 'media/2026-01/large.jpg',
+                'url' => 'https://example.com/media/2026-01/large.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'large.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function () {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        file_put_contents($optimized, str_repeat('x', (5 * 1024 * 1024) + 10));
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'large_image_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'large_image_1']], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_large_image']], 200);
+        }
+
+        return Http::response('tiny', 200);
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/media/upload/initialize')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'media_type') === 'image/jpeg'
+            && data_get($request->data(), 'media_category') === 'tweet_image'
+            && data_get($request->data(), 'total_bytes') > 5 * 1024 * 1024;
+    });
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/finalize')
+        && $request->body() === '{}');
+});
+
+test('x publisher keeps tweet_video category for videos larger than 15MB', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-amplify',
+                'path' => 'media/2026-01/big.mp4',
+                'url' => 'https://example.com/media/2026-01/big.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'big.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'amplify_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'amplify_1']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_amplify']], 200);
+        }
+
+        return Http::response(str_repeat('v', (15 * 1024 * 1024) + 10), 200);
+    });
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/2/media/upload/initialize')) {
+            return false;
+        }
+
+        return data_get($request->data(), 'media_category') === 'tweet_video'
+            && data_get($request->data(), 'total_bytes') > 15 * 1024 * 1024;
+    });
+});
+
+test('x publisher fails when chunked finalize is rejected by X', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_fail_finalize']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'detail' => 'One or more parameters to your request was invalid.',
+                'errors' => [['message' => 'Request body must be a JSON object.']],
+                'title' => 'Invalid Request',
+                'type' => 'https://api.x.com/2/problems/invalid-request',
+            ], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'Invalid request. Check your post content.');
+});
+
+test('x publisher fails when append is rejected by X', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_fail_append']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response([
+                'title' => 'Invalid Request',
+                'detail' => 'Segments do not add up to provided total file size.',
+                'type' => 'https://api.x.com/2/problems/invalid-request',
+            ], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class);
+});
+
+test('x publisher fails when media processing reports failed', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_proc_fail']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_proc_fail',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response([
+                'data' => [
+                    'processing_info' => [
+                        'state' => 'failed',
+                        'error' => 'Unsupported codec',
+                    ],
+                ],
+            ], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'X could not process the uploaded media');
+});
+
+test('x publisher reschedules media still processing with its media id as a checkpoint', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_proc_timeout']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_proc_timeout',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response([
+                'data' => [
+                    'processing_info' => [
+                        'state' => 'in_progress',
+                        'check_after_secs' => 0,
+                        'progress_percent' => 40,
+                    ],
+                ],
+            ], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_proc_timeout'],
+            ]);
+        });
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+});
+
+test('x publisher never waits longer than thirty seconds between media status checks', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_slow']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_slow', 'processing_info' => ['state' => 'pending', 'check_after_secs' => 0]]], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'in_progress', 'check_after_secs' => 600]]], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(PlatformUnavailableException::class);
+
+    Sleep::assertSlept(fn ($duration): bool => $duration->totalSeconds === 30.0, 20);
+    Sleep::assertSleptTimes(20);
+});
+
+test('x publisher fails once instead of rescheduling when no status check ever succeeds', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_status_broken']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_status_broken',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['errors' => [['message' => 'Bad request']]], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'X media processing timed out. Please try again.');
+});
+
+test('x publisher resumes checkpointed media without uploading it again', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+    $this->post->update([
+        'error_context' => [PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_ready']],
+    ]);
+
+    Http::fake(function ($request) {
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response([
+                'data' => ['processing_info' => ['state' => 'succeeded']],
+            ], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1234567890123456789', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response('unexpected', 500);
+    });
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('1234567890123456789');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/media/upload/initialize'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && data_get($request->data(), 'media.media_ids') === ['media_ready']);
+});
+
+test('x status connection failures reschedule and resume the uploaded media', function (bool $checkpointed, int $failedCheck) {
+    Sleep::fake();
+    Queue::fake();
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+    $this->post->forceFill([
+        'scheduled_before_media_checks' => true,
+        'error_context' => $checkpointed ? [PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_ready']] : null,
+    ])->save();
+
+    $checks = 0;
+    Http::fake(function ($request) use (&$checks, $failedCheck) {
+        if (isXMediaUploadStatusRequest($request)) {
+            if (++$checks === $failedCheck) {
+                throw new ConnectionException('Timed out checking media');
+            }
+
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]]);
+        }
+
+        if (str_contains($request->url(), '/initialize')) {
+            return Http::response(['data' => ['id' => 'media_ready']]);
+        }
+
+        if (str_contains($request->url(), '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_ready', 'processing_info' => ['state' => 'pending']]]);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_ready']]);
+        }
+
+        return Http::response('fake-video-content');
+    });
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Retrying)
+        ->and($this->post->error_context[PublishCheckpoint::X_MEDIA])->toBe(['test-media-video' => 'media_ready'])
+        ->and($this->post->error_context['retry_count'])->toBe(1);
+    Queue::assertPushed(PublishToSocialPlatform::class, fn ($job) => $job->post->is($this->post)
+        && $job->delay->isFuture());
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+
+    (new PublishToSocialPlatform($this->post, 1))->handle();
+
+    expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Published);
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/initialize')))->toHaveCount($checkpointed ? 0 : 1);
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/2/tweets')))->toHaveCount(1);
+})->with([
+    'checkpoint existence check' => [true, 1],
+    'checkpoint processing check' => [true, 2],
+    'first poll after upload' => [false, 1],
+]);
+
+test('x publisher uploads again when a checkpointed media id is no longer known to X', function (int $status) {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+    $this->post->update([
+        'error_context' => [PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_expired']],
+    ]);
+
+    Http::fake(function ($request) use ($status) {
+        $url = $request->url();
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return str_contains($url, 'media_expired')
+                ? Http::response(['errors' => [['message' => 'Invalid media id']]], $status)
+                : Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_fresh']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_fresh', 'processing_info' => ['state' => 'pending', 'check_after_secs' => 0]]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '1234567890123456789', 'text' => 'Hello from X!']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/media/upload/initialize'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && data_get($request->data(), 'media.media_ids') === ['media_fresh']);
+})->with([400, 404]);
+
+test('x publisher fails when tweet rejects invalid media ids', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_invalid']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_invalid']], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response([
+                'detail' => 'One or more parameters to your request was invalid.',
+                'errors' => [[
+                    'parameters' => ['media.media_ids' => ['media_invalid']],
+                    'message' => 'Your media IDs are invalid.',
+                ]],
+                'title' => 'Invalid Request',
+                'type' => 'https://api.x.com/2/problems/invalid-request',
+            ], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'Invalid request. Check your post content.');
+});
+
+test('x publisher sends the tweet with links defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => 'New post: https://trypost.it/blog']);
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '111']], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'New post: trypost(.)it/blog');
+});
+
+test('x publisher leaves the tweet untouched when defusing is disabled', function () {
+    config()->set('trypost.platforms.x.defuse_links', false);
+    $this->post->update(['content' => 'New post: https://trypost.it/blog']);
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '111']], 200),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+        && $request['text'] === 'New post: https://trypost.it/blog');
+});
+
+test('x publisher rejects a post that only fits before its links are defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => str_repeat('a', 271).' acme.com']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(fn (ContentLimitException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+            ->and($exception->userMessage)->toBe(__('posts.errors.content_too_long', ['platform' => 'X', 'max' => 280, 'provided' => 282]))
+            ->and($exception->platform())->toBe('x'));
+
+    Http::assertNothingSent();
+});
+
+test('x publisher accepts a post that only fits once its links are defused', function () {
+    config()->set('trypost.platforms.x.defuse_links', true);
+    $this->post->update(['content' => str_repeat('a', 263).' https://acme.com/x']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => mb_strlen($request['text']) === 276);
+});
+
+test('x publisher does not count html markup toward the character limit', function () {
+    $this->post->update(['content' => '<p>'.str_repeat('a', 275).'</p>']);
+
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => mb_strlen($request['text']) === 275);
+});
+
+test('an x thread posts each reply under the previous one', function () {
+    $this->post->update(['meta' => ['thread_replies' => ['Second', 'Third']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)
+        ->push(['data' => ['id' => '102']], 201)]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result)->toBe(['id' => '100', 'url' => 'https://x.com/testuser/status/100', 'thread_reply_ids' => ['101', '102']]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Second', 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Third', 'reply' => ['in_reply_to_tweet_id' => '101']]);
+});
+
+test('an x thread uploads each reply media with that reply only', function () {
+    $image = ['id' => 'reply-image', 'path' => 'media/2026-01/photo.jpg', 'url' => 'https://example.com/media/2026-01/photo.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg'];
+    $this->post->update(['meta' => ['thread_replies' => [['text' => '', 'media' => [$image]], ['text' => 'Third', 'media' => []]]]]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    $tweetIds = ['100', '101', '102'];
+    Http::fake(function (Request $request) use (&$tweetIds) {
+        if (str_contains($request->url(), '/media/upload')) {
+            return Http::response(['data' => ['id' => 'uploaded-1']], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => array_shift($tweetIds)]], 201);
+        }
+
+        return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200);
+    });
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['101', '102']);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/2/tweets') && $request->data() === ['text' => 'Hello from X!']);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/2/tweets') && $request->data() === ['media' => ['media_ids' => ['uploaded-1']], 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/2/tweets') && $request->data() === ['text' => 'Third', 'reply' => ['in_reply_to_tweet_id' => '101']]);
+});
+
+test('a retried x thread resumes after the live segments instead of re-posting the root', function () {
+    $this->post->update(['meta' => ['thread_replies' => ['Second']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['title' => 'Forbidden', 'detail' => 'Not allowed', 'status' => 403], 403)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    rescue(fn () => $this->publisher->publish($this->post->fresh()), report: false);
+    $result = (new XPublisher)->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('100')
+        ->and($result['thread_reply_ids'])->toBe(['101']);
+    Http::assertSentCount(3);
+});
+
+test('an x reply over the account limit is rejected before anything is posted', function () {
+    $this->post->update(['meta' => ['thread_replies' => [str_repeat('a', 281)]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.reply_too_long', ['limit' => 280, 'over' => 1]));
+    Http::assertNothingSent();
+});
+
+test('an x account with long posts may thread replies past 280 characters', function () {
+    $this->socialAccount->update(['meta' => [...(array) $this->socialAccount->meta, 'x_subscription_type' => 'Premium']]);
+    $this->post->update(['meta' => ['thread_replies' => [str_repeat('a', 400)]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['101']);
+});
+
+test('an x post marked as ai generated discloses it with made_with_ai', function (mixed $flag, bool $sent) {
+    $this->post->update(['meta' => ['is_ai_generated' => $flag]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/tweets')
+        && array_key_exists('made_with_ai', $request->data()) === $sent
+        && (! $sent || $request->data()['made_with_ai'] === true));
+})->with([
+    'marked' => [true, true],
+    'not marked' => [false, false],
+]);
+
+test('x publisher never uploads checkpointed media again when the status check fails for another reason', function (int $status, string $exception) {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+    $this->post->update([
+        'error_context' => [PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_ready']],
+    ]);
+
+    Http::fake(function ($request) use ($status) {
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['title' => 'Error', 'detail' => 'Error', 'status' => $status], $status);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow($exception);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/media/upload/initialize'));
+})->with([
+    'rate limited' => [429, XPublishException::class],
+    'unauthorized' => [401, TokenExpiredException::class],
+    'server error' => [503, PlatformUnavailableException::class],
+]);
+
+function fakeXVideoUploadStuckWith(array $statusProcessingInfo): void
+{
+    Http::fake(function ($request) use ($statusProcessingInfo) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_video_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_video_1',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => $statusProcessingInfo]], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_image_1']], 200);
+        }
+
+        if (str_contains($url, 'photo.jpg')) {
+            return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+}
+
+test('x publisher reads processing_info only under data in the status response', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_video_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => ['id' => 'media_video_1', 'processing_info' => ['state' => 'pending', 'check_after_secs' => 0]],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['processing_info' => ['state' => 'failed', 'error' => ['message' => 'Invalid media']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '555']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->post);
+
+    expect($result['id'])->toBe('555')
+        ->and(Http::recorded(fn (Request $request): bool => isXMediaUploadStatusRequest($request)))->toHaveCount(1);
+});
+
+test('x publisher reschedules media still processing under its own retry policy', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    fakeXVideoUploadStuckWith(['state' => 'in_progress', 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->retryDelaySeconds)->toBe(60)
+                ->and($exception->maxRetries)->toBe(30);
+        });
+});
+
+test('x publisher keeps the media uploaded before the one still processing in the checkpoint', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/photo.jpg',
+                'url' => 'https://example.com/media/2026-01/photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'photo.jpg',
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    fakeXVideoUploadStuckWith(['state' => 'in_progress', 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                PublishCheckpoint::X_MEDIA => [
+                    'test-media-image' => 'media_image_1',
+                    'test-media-video' => 'media_video_1',
+                ],
+            ]);
+        });
+});
+
+test('x publisher treats a processing state that is not a string as unknown', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    fakeXVideoUploadStuckWith(['state' => ['name' => 'in_progress'], 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'X media processing timed out. Please try again.');
+});
+
+test('x publisher fails on a v1-shaped upload response without data.id', function (string $mimeType, string $url, string $uploadPath) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media',
+            'path' => 'media/2026-01/file',
+            'url' => $url,
+            'mime_type' => $mimeType,
+            'original_filename' => basename($url),
+        ]],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) use ($uploadPath) {
+        if (str_contains($request->url(), $uploadPath)) {
+            return Http::response(['media_id' => 710511363345354753, 'media_id_string' => '710511363345354753'], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_without_media']], 200);
+        }
+
+        return Http::response(file_get_contents(base_path('tests/fixtures/1x1.png')), 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->post))
+        ->toThrow(XPublishException::class, 'X did not accept the media upload. Please try again.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/append'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+})->with([
+    'simple upload' => ['image/jpeg', 'https://example.com/media/2026-01/photo.jpg', '/2/media/upload'],
+    'chunked initialize' => ['video/mp4', 'https://example.com/media/2026-01/clip.mp4', '/2/media/upload/initialize'],
+]);
+
+function xPollMeta(array $overrides = []): array
+{
+    return ['poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440, ...$overrides]];
+}
+
+test('x publisher publishes an x poll with its choices and length', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => xPollMeta()]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]);
+});
+
+test('x publisher publishes an x post whose text is 0', function () {
+    $this->post->update(['content' => '0']);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => '0']);
+});
+
+test('x publisher sends no poll for an x post carrying a stale poll', function () {
+    $this->post->update(['meta' => xPollMeta()]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Hello from X!']);
+});
+
+test('an x poll root starts a thread whose replies carry no poll', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => ['Second']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Second', 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSentCount(2);
+});
+
+test('a retry after the x poll went live does not post it again', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => ['Second']]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['title' => 'Forbidden', 'detail' => 'Not allowed', 'status' => 403], 403)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    rescue(fn () => $this->publisher->publish($this->post->fresh()), report: false);
+    $result = (new XPublisher)->publish($this->post->fresh());
+
+    expect($result['id'])->toBe('100');
+    Http::assertSentCount(3);
+    expect(Http::recorded(fn (Request $request): bool => Arr::has($request->data(), 'poll')))->toHaveCount(1);
+});
+
+test('x publisher refuses to publish an x poll with media', function () {
+    $this->post->update([
+        'content_type' => ContentType::XPoll,
+        'meta' => xPollMeta(),
+        'media' => [['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg']],
+    ]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.errors.media_not_accepted'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses to publish an x poll without two choices', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => xPollMeta(['options' => ['Yes', '  ']])]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(XPoll::optionsRequiredMessage())
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
+    Http::assertNothingSent();
+});
+
+test('x publisher asks for the question of an x poll without text', function () {
+    $this->post->update(['content' => '', 'content_type' => ContentType::XPoll, 'meta' => xPollMeta()]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.poll.question_required'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses to publish an x poll without a length', function () {
+    $this->post->update(['content_type' => ContentType::XPoll, 'meta' => ['poll' => ['options' => ['Yes', 'No']]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (XPublishException $exception) => expect($exception->getMessage())->toBe(__('posts.form.poll.duration_required'))
+            ->and($exception->category)->toBe(ErrorCategory::ContentPolicy));
+    Http::assertNothingSent();
+});
+
+test('publishing a scheduled x poll sends its poll and ends published', function () {
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
+    $this->post->update([
+        'content' => 'Pick one',
+        'content_type' => ContentType::XPoll,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->subMinute(),
+        'meta' => xPollMeta(['duration_minutes' => 60]),
+    ]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    (new PublishPost($this->post->fresh()))->handle();
+
+    Http::assertSent(fn (Request $request): bool => data_get($request->data(), 'poll') === ['options' => ['Yes', 'No'], 'duration_minutes' => 60]);
+    expect($this->post->fresh())
+        ->status->toBe(PostStatus::Published)
+        ->publish_status->toBe(PublishStatus::Published)
+        ->platform_post_id->toBe('100');
+});
+
+test('x publisher discloses an ai-generated x poll', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'is_ai_generated' => true]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440], 'made_with_ai' => true]);
+});
+
+test('a thread reply poll is sent on its reply with its choices and length', function () {
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)]);
+
+    $result = $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Hello from X!']);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60], 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    expect($result['thread_reply_ids'])->toBe(['101']);
+});
+
+test('a poll on the post and polls on its replies are each sent on their own tweet', function () {
+    $this->post->update(['content' => 'Pick one', 'content_type' => ContentType::XPoll, 'meta' => [...xPollMeta(), 'thread_replies' => [
+        ['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120]],
+        ['text' => 'Thanks for voting!'],
+    ]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)
+        ->push(['data' => ['id' => '102']], 201)]);
+
+    $this->publisher->publish($this->post->fresh());
+
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Pick one', 'poll' => ['options' => ['Yes', 'No'], 'duration_minutes' => 1440]]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'And on Fridays?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 120], 'reply' => ['in_reply_to_tweet_id' => '100']]);
+    Http::assertSent(fn (Request $request): bool => $request->data() === ['text' => 'Thanks for voting!', 'reply' => ['in_reply_to_tweet_id' => '101']]);
+});
+
+test('a retry after a thread reply poll went live does not post it again', function () {
+    $this->post->update(['meta' => ['thread_replies' => [
+        ['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+        ['text' => 'Last one'],
+    ]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::sequence()
+        ->push(['data' => ['id' => '100']], 201)
+        ->push(['data' => ['id' => '101']], 201)
+        ->push(['title' => 'Forbidden', 'detail' => 'Not allowed', 'status' => 403], 403)
+        ->push(['data' => ['id' => '102']], 201)]);
+
+    rescue(fn () => $this->publisher->publish($this->post->fresh()), report: false);
+    $result = (new XPublisher)->publish($this->post->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['101', '102']);
+    expect(Http::recorded(fn (Request $request): bool => Arr::has($request->data(), 'poll')))->toHaveCount(1);
+});
+
+test('x publisher refuses a thread reply poll without its question before posting anything', function () {
+    $this->post->update(['meta' => ['thread_replies' => [['text' => '', 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]]]]]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.poll.question_required'));
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses a reply poll question over 280 characters on a long post account before posting anything', function () {
+    $this->socialAccount->update(['meta' => ['x_subscription_type' => 'Premium']]);
+    $this->post->update(['content' => 'Pick one', 'meta' => ['thread_replies' => [
+        ['text' => Str::repeat('a', XPoll::QUESTION_MAX_LENGTH + 1), 'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60]],
+    ]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(ContentLimitException::class);
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses a reply poll carrying media before posting anything', function () {
+    $this->post->update(['content' => 'Pick one', 'meta' => ['thread_replies' => [[
+        'text' => 'Tabs or spaces?',
+        'poll' => ['options' => ['Tabs', 'Spaces'], 'duration_minutes' => 60],
+        'media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']],
+    ]]]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.errors.media_not_accepted'));
+    Http::assertNothingSent();
+});
+
+test('x publisher refuses a poll with repeated choices before calling x', function (array $meta) {
+    $this->post->update(['content' => 'Pick one', ...$meta]);
+    Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '100']], 201)]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(Exception::class, __('posts.form.poll.options_distinct'));
+    Http::assertNothingSent();
+})->with([
+    'on the post' => [['content_type' => ContentType::XPoll, 'meta' => ['poll' => ['options' => ['Yes', 'yes'], 'duration_minutes' => 60]]]],
+    'on a reply' => [['meta' => ['thread_replies' => [['text' => 'Tabs or spaces?', 'poll' => ['options' => ['Tabs', 'tabs'], 'duration_minutes' => 60]]]]]],
+]);

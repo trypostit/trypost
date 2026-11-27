@@ -26,6 +26,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Admin\Impersonation;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
@@ -75,6 +76,7 @@ class HandleInertiaRequests extends Middleware
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
             'mcpPrompt' => fn (): ?array => $this->mcpPrompt($user),
+            'impersonating' => fn (): ?array => $this->impersonating($user),
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             ...($user ? BuildChangelogProps::execute($user) : []),
@@ -84,6 +86,21 @@ class HandleInertiaRequests extends Middleware
             'locale' => app()->getLocale(),
             'selfHosted' => $isSelfHosted,
         ];
+    }
+
+    /**
+     * The user a backoffice admin is viewing the app as, for the banner that
+     * lets them stop. Null when nobody is impersonating.
+     *
+     * @return array{name: string, email: string}|null
+     */
+    private function impersonating(?User $user): ?array
+    {
+        if ($user === null || ! Impersonation::isActive()) {
+            return null;
+        }
+
+        return ['name' => $user->name, 'email' => $user->email];
     }
 
     /**

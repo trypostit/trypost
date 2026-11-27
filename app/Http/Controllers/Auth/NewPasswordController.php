@@ -22,7 +22,7 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render('auth/ResetPassword', [
+        return Inertia::render('app/auth/ResetPassword', [
             'email' => $request->email,
             'token' => $request->route('token'),
         ]);

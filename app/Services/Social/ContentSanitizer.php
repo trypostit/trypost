@@ -97,6 +97,21 @@ class ContentSanitizer
      * its algorithm demotes link posts, so neither side of that wants the raw URL.
      * Off by default; opt in with `X_DEFUSE_LINKS`.
      */
+    /**
+     * Whether X will see a link in this text, by the same rule the defusing
+     * uses: a scheme or `www.` is always a link, a bare host only when its
+     * last label is a delegated TLD. Pass the text X receives
+     * ({@see self::sanitize()}): a defused link no longer matches.
+     */
+    public function containsXLink(string $text): bool
+    {
+        if (preg_match_all(self::LINK_PATTERN, $text, $matches, PREG_SET_ORDER) === 0) {
+            return false;
+        }
+
+        return collect($matches)->contains(fn (array $match): bool => $match[2] !== '' || LinkTlds::has($match[4]));
+    }
+
     private function defuseLinks(string $content): string
     {
         if (! config('trypost.platforms.x.defuse_links')) {

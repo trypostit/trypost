@@ -28,7 +28,7 @@ class WorkspaceLabelController extends Controller
             ->withCount('posts')
             ->paginate(config('app.pagination.default'));
 
-        return Inertia::render('labels/Index', [
+        return Inertia::render('app/labels/Index', [
             'workspace' => $workspace,
             'labels' => Inertia::scroll(fn () => $labels),
             'hasData' => $workspace->labels()->exists(),
