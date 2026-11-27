@@ -23,6 +23,9 @@ class YouTubeQuotaReader
 {
     private const string SERVICE = 'youtube.googleapis.com';
 
+    /** The shortest alignment period Cloud Monitoring accepts, in seconds. */
+    private const int MIN_ALIGNMENT_SECONDS = 60;
+
     public function isConfigured(): bool
     {
         if (! config('trypost.admin.quotas.youtube.enabled')) {
@@ -40,7 +43,7 @@ class YouTubeQuotaReader
     {
         $now = CarbonImmutable::now('UTC');
         $since = $now->setTimezone((string) config('trypost.admin.quotas.youtube.timezone'))->startOfDay()->utc();
-        $alignmentPeriod = max(60, (int) $now->diffInSeconds($since, true));
+        $alignmentPeriod = max(self::MIN_ALIGNMENT_SECONDS, (int) $now->diffInSeconds($since, true));
         $interval = [
             'interval.startTime' => $since->toIso8601ZuluString(),
             'interval.endTime' => $now->toIso8601ZuluString(),

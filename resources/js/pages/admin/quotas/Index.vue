@@ -19,10 +19,10 @@ import {
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { formatUsd, joinFilled } from '@/lib/adminFormat';
+import { countIn, formatUsd, humanize, joinFilled } from '@/lib/adminFormat';
 import { accountColor } from '@/lib/analyticsColors';
 import { blank, filled, isNumber } from '@/lib/helpers';
-import { formatFullNumber, formatMoney } from '@/lib/utils';
+import { formatFullNumber } from '@/lib/utils';
 import { index as quotasIndex } from '@/routes/admin/quotas';
 import type {
     AdminQuotaCards,
@@ -32,6 +32,7 @@ import type {
     AdminXCredits,
     AdminXUsage,
     AdminYouTubeQuota,
+    QuotaSource,
 } from '@/types/admin';
 import type {
     AnalyticsFilters,
@@ -50,10 +51,8 @@ const YOUTUBE_ENV = [
 
 const X_ENV = ['X_USAGE_MONITORING_ENABLED=true', 'X_BEARER_TOKEN='];
 
-type QuotaNetwork = 'youtube' | 'x';
-
 /** One tab per network that reports a quota, in this order; X opens by default. */
-const QUOTA_NETWORKS: { value: QuotaNetwork; label: string; platform: string }[] = [
+const QUOTA_NETWORKS: { value: QuotaSource; label: string; platform: string }[] = [
     { value: 'x', label: 'X', platform: 'x' },
     { value: 'youtube', label: 'YouTube', platform: 'youtube' },
 ];
@@ -78,13 +77,14 @@ const { tab: network, selectTab: selectNetwork } = useUrlTab({
     url: (mergeQuery) => quotasIndex.url({ mergeQuery }),
 });
 
-/** X reports its credits and prices in dollars; the money formatters take cents. */
+/** X reports its credits and prices in dollars; the money formatter takes cents. */
 const toCents = (dollars: number): number => dollars * 100;
 
-const money = (dollars: number): string => formatMoney(toCents(dollars));
+/** Spend and credits to the cent: a day of X often costs less than a dollar. */
+const money = (dollars: number): string => formatUsd(toCents(dollars), 2);
 
 /** A unit price, to the tenth of a cent: X bills reads at $0.005. */
-const price = (dollars: number): string => formatUsd(toCents(dollars), 3);
+const unitPrice = (dollars: number): string => formatUsd(toCents(dollars), 3);
 
 const updatedLabel = (takenAt: string | null): string => {
     if (filled(takenAt)) {
@@ -129,9 +129,7 @@ const quotaLabel = (quota: AdminYouTubeQuota): string => {
         return label;
     }
 
-    const words = key.replaceAll('_', ' ');
-
-    return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+    return humanize(key);
 };
 
 const hasYouTubeQuotas = computed(() => filled(props.cards.youtube.quotas));
@@ -234,21 +232,11 @@ const projectDays = computed((): AdminUsageDay[] => {
 
 const usageDays = computed((): string[] => projectDays.value.map((day) => day.date));
 
+/** Each day's usage, in the order of the chart's days; a day X reported nothing for reads 0. */
 const valuesFor = (entries: AdminUsageDay[]): number[] => {
-    const byDate = new Map(entries.map((entry) => [entry.date, entry.usage]));
+    const byDate: Record<string, number> = Object.fromEntries(entries.map((entry) => [entry.date, entry.usage]));
 
-    return usageDays.value.map((day) => usageOn(byDate, day));
-};
-
-/** A day X reported no usage for reads 0. */
-const usageOn = (byDate: Map<string, number>, day: string): number => {
-    const value = byDate.get(day);
-
-    if (isNumber(value)) {
-        return value;
-    }
-
-    return 0;
+    return usageDays.value.map((day) => countIn(byDate, day));
 };
 
 /** An app X names by its id, else by its place in the list. */
@@ -312,30 +300,30 @@ const costLine = (pickCount: (day: AdminXCostDay) => number) => (index: number, 
     const day = estimate.value[index];
 
     if (filled(day)) {
-        return `${formatFullNumber(pickCount(day))} posts · ${formatMoney(cents)}`;
+        return `${formatFullNumber(pickCount(day))} posts · ${formatUsd(cents, 2)}`;
     }
 
-    return formatMoney(cents);
+    return formatUsd(cents, 2);
 };
 
 const costSeries = computed((): AdminChartSeries[] => [
     {
         key: 'cost_reads',
-        label: `Posts read (${price(prices.value.read)} each)`,
+        label: `Posts read (${unitPrice(prices.value.read)} each)`,
         color: 'var(--chart-1)',
         values: estimate.value.map((day) => toCents(day.cost_reads)),
         format: costLine((day) => day.reads),
     },
     {
         key: 'cost_created',
-        label: `Posts created (${price(prices.value.create)} each)`,
+        label: `Posts created (${unitPrice(prices.value.create)} each)`,
         color: 'var(--chart-3)',
         values: estimate.value.map((day) => toCents(day.cost_created)),
         format: costLine((day) => day.created),
     },
     {
         key: 'cost_created_with_link',
-        label: `Posts with a link (${price(prices.value.create_with_link)} each)`,
+        label: `Posts with a link (${unitPrice(prices.value.create_with_link)} each)`,
         color: 'var(--chart-5)',
         values: estimate.value.map((day) => toCents(day.cost_created_with_link)),
         format: costLine((day) => day.created_with_link),

@@ -23,7 +23,11 @@ class ImpersonationController extends Controller
         $impersonated = $request->user();
         $admin = $stopImpersonation->execute($request, $impersonated);
 
-        if ($admin?->isBackofficeAdmin() === true) {
+        if ($admin === null) {
+            return redirect()->route('login');
+        }
+
+        if ($admin->isBackofficeAdmin()) {
             return redirect()->route('admin.users.show', $impersonated);
         }
 

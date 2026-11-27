@@ -42,6 +42,31 @@ test('searches users by name or email', function () {
         );
 });
 
+test('the status filter keeps everyone or only the blocked, and a search narrows within it', function (string $status, array $names) {
+    User::factory()->blocked()->create(['name' => 'Grace Hopper']);
+    User::factory()->create(['name' => 'Hopper Active']);
+    User::factory()->blocked()->create(['name' => 'Ada Lovelace']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.index', ['status' => $status, 'search' => 'HOPPER']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('users.data', fn ($users) => collect($users)->pluck('name')->sort()->values()->all() === $names)
+            ->where('filters.status', $status),
+        );
+})->with([
+    'everyone' => ['all', ['Grace Hopper', 'Hopper Active']],
+    'only the blocked' => ['blocked', ['Grace Hopper']],
+]);
+
+test('a user matches a term in their name or email, whatever its case', function () {
+    $byName = User::factory()->create(['name' => 'Grace Hopper', 'email' => 'g@example.test']);
+    $byEmail = User::factory()->create(['name' => 'Someone', 'email' => 'hopper@example.test']);
+    User::factory()->create(['name' => 'Ada', 'email' => 'ada@example.test']);
+
+    expect(User::query()->matching('HoPPer')->pluck('id')->sort()->values()->all())
+        ->toBe(collect([$byName->id, $byEmail->id])->sort()->values()->all());
+});
+
 test('a user who is not an admin cannot list or open users', function () {
     $user = User::factory()->create();
 

@@ -18,15 +18,12 @@ import type { ChangelogEntry } from '@/types/changelog';
  * opening it here never records a view or a reaction for the admin.
  */
 const props = defineProps<{
+    /** The last entry opened, kept while the dialog animates out. */
     entry: ChangelogEntry | null;
     userName: string;
 }>();
 
-const emit = defineEmits<{
-    close: [];
-}>();
-
-const isOpen = computed(() => filled(props.entry));
+const open = defineModel<boolean>('open', { default: false });
 
 const hasTags = computed(() => filled(props.entry?.tags));
 
@@ -41,16 +38,10 @@ const reactionLabel = computed((): string => {
 
     return `${props.userName} opened it without reacting`;
 });
-
-const onOpenChange = (open: boolean): void => {
-    if (!open) {
-        emit('close');
-    }
-};
 </script>
 
 <template>
-    <Dialog :open="isOpen" @update:open="onOpenChange">
+    <Dialog v-model:open="open">
         <DialogContent
             class="gap-0 px-0 pt-0 pb-0 sm:max-h-[min(640px,80dvh)] sm:max-w-lg"
             data-testid="admin-changelog-entry-dialog"

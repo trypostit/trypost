@@ -11,20 +11,13 @@ import { filled } from '@/lib/helpers';
 /**
  * The backoffice page: the app's shell with the admin sidebar in place of the
  * app's, like `SettingsLayout` swaps in the settings one, and the wide
- * settings page header (the sidebar item's icon, title, count,
- * description, actions).
+ * settings page header (the sidebar item's icon, title, description,
+ * actions).
  */
-withDefaults(
-    defineProps<{
-        title: string;
-        description?: string;
-        total?: number | null;
-    }>(),
-    {
-        description: undefined,
-        total: null,
-    },
-);
+defineProps<{
+    title: string;
+    description?: string;
+}>();
 
 const { urlIsActive } = useActiveUrl();
 
@@ -55,7 +48,6 @@ const icon = computed((): Component | undefined => {
             <header class="flex items-start justify-between gap-3">
                 <HeaderTitle
                     :title="title"
-                    :total="total"
                     :icon="icon"
                     :description="description"
                 />

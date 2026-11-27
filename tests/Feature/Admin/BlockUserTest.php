@@ -31,6 +31,7 @@ function adminDueScheduledPost(Workspace $workspace, User $author): Post
 }
 
 test('blocking a user stores the reason, drops their sessions and records it', function () {
+    config(['session.driver' => 'database']);
     $user = User::factory()->create();
     DB::table('sessions')->insert([
         'id' => 'session-of-the-user',
@@ -49,6 +50,37 @@ test('blocking a user stores the reason, drops their sessions and records it', f
         ->and($user->blocked_reason)->toBe('Spam')
         ->and(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(Activity::query()->inLog(LogName::Admin)->forSubject($user)->sole()->event)->toBe('user.blocked');
+});
+
+test('blocking under another session driver leaves the sessions table alone and still blocks', function () {
+    config(['session.driver' => 'array']);
+    $user = User::factory()->create();
+    DB::table('sessions')->insert(['id' => 'kept-row', 'user_id' => $user->id, 'payload' => '', 'last_activity' => now()->timestamp]);
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.users.block.store', $user), ['reason' => 'Spam'])
+        ->assertSessionHasNoErrors();
+
+    expect($user->fresh()->isBlocked())->toBeTrue()
+        ->and(DB::table('sessions')->where('id', 'kept-row')->exists())->toBeTrue();
+});
+
+test('the block reason is trimmed and holds 500 characters at most', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.users.block.store', $user), ['reason' => str_repeat('a', 501)])
+        ->assertSessionHasErrors('reason');
+
+    expect($user->fresh()->isBlocked())->toBeFalse();
+
+    $reason = str_repeat('a', 500);
+
+    $this->actingAs($this->admin)
+        ->post(route('admin.users.block.store', $user), ['reason' => "  {$reason}  "])
+        ->assertSessionHasNoErrors();
+
+    expect($user->fresh()->blocked_reason)->toBe($reason);
 });
 
 test('blocking needs a reason', function () {

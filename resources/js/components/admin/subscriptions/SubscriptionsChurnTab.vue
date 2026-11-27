@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
-import AdminBarRows from '@/components/admin/AdminBarRows.vue';
+import AdminBarList from '@/components/admin/AdminBarList.vue';
+import AdminCustomerCell from '@/components/admin/AdminCustomerCell.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +22,10 @@ import {
 } from '@/components/ui/table';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import { planLabel } from '@/lib/adminSubscriptions';
-import { billingUrl, customerName } from '@/lib/adminUsers';
-import { filled } from '@/lib/helpers';
+import { countLabel } from '@/lib/adminFormat';
+import { subscriptionPlanLabel } from '@/lib/adminSubscriptions';
+import { billingUrl } from '@/lib/adminUsers';
+import { filled, transform } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type {
     AdminBarRow,
@@ -76,7 +78,7 @@ const summary = computed((): AdminStat[] => [
     {
         key: 'churn-lifetime',
         label: 'Average lifetime',
-        value: `${formatFullNumber(props.churn.summary.average_lifetime_days)} days`,
+        value: countLabel(props.churn.summary.average_lifetime_days, 'day', 'days'),
         hint: 'Of those canceled in the period',
     },
     {
@@ -105,15 +107,9 @@ const lifetimeRows = computed((): AdminBarRow[] =>
     })),
 );
 
-const lasted = (cancellation: Cancellation): string => {
-    if (cancellation.lifetime_days === 1) {
-        return '1 day';
-    }
+const lasted = (cancellation: Cancellation): string => countLabel(cancellation.lifetime_days, 'day', 'days');
 
-    return `${formatFullNumber(cancellation.lifetime_days)} days`;
-};
-
-const customer = (cancellation: Cancellation): string => customerName(cancellation.user_name);
+const customerUrl = (cancellation: Cancellation): string | null => transform(cancellation.user_id, billingUrl);
 
 /** A cohort's `YYYY-MM` as "Nov 2026". */
 const cohortMonth = (month: string): string => {
@@ -176,28 +172,33 @@ const cohortRows = computed((): AdminBarRow[] =>
         </AnalyticsSection>
 
         <div class="grid gap-6 lg:grid-cols-2">
-            <AnalyticsSection title="How long canceled subscriptions lasted" subtitle="Every subscription that ended" flush>
-                <AdminBarRows :rows="lifetimeRows" label-class="w-32" test-id="admin-subscriptions-lifetimes" />
-            </AnalyticsSection>
+            <AdminBarList
+                title="How long canceled subscriptions lasted"
+                subtitle="Every subscription that ended"
+                :rows="lifetimeRows"
+                label-class="w-32"
+                empty="No subscription ended yet."
+                test-id="admin-subscriptions-lifetimes"
+            />
 
-            <AnalyticsSection title="Retention by start month" subtitle="Accounts still paying and not cancelling, by the month they first subscribed" flush>
-                <AdminBarRows :rows="cohortRows" label-class="w-24" test-id="admin-subscriptions-cohorts">
-                    <template #value="{ row }">
-                        <span class="w-14 shrink-0 text-right text-sm font-medium text-foreground tabular-nums">{{
-                            formatPercent(row.share, 1)
-                        }}</span>
-                    </template>
-                </AdminBarRows>
-            </AnalyticsSection>
+            <AdminBarList
+                title="Retention by start month"
+                subtitle="Accounts still paying and not cancelling, by the month they first subscribed"
+                :rows="cohortRows"
+                label-class="w-24"
+                empty="Nobody subscribed yet."
+                test-id="admin-subscriptions-cohorts"
+            >
+                <template #value="{ row }">
+                    <span class="w-14 shrink-0 text-right text-sm font-medium text-foreground tabular-nums">{{
+                        formatPercent(row.share, 1)
+                    }}</span>
+                </template>
+            </AdminBarList>
         </div>
 
         <AnalyticsSection title="Canceled in the period" :subtitle="subtitle" flush>
-            <p
-                v-if="!hasRecent"
-                class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
-            >
-                Nobody canceled in this period.
-            </p>
+            <AdminEmptyState v-if="!hasRecent" variant="section">Nobody canceled in this period.</AdminEmptyState>
             <div v-else class="overflow-x-auto border-t border-border">
                 <Table data-testid="admin-subscriptions-canceled">
                     <TableHeader>
@@ -216,18 +217,14 @@ const cohortRows = computed((): AdminBarRow[] =>
                             class="last:border-b-0"
                         >
                             <TableCell class="max-w-56 border-r-0 px-4 py-2 sm:px-5">
-                                <Link
-                                    v-if="cancellation.user_id"
-                                    :href="billingUrl(cancellation.user_id)"
-                                    class="block truncate text-sm text-foreground hover:underline"
-                                    >{{ customer(cancellation) }}</Link
-                                >
-                                <span v-else class="block truncate text-sm text-muted-foreground">{{
-                                    customer(cancellation)
-                                }}</span>
+                                <AdminCustomerCell
+                                    :name="cancellation.user_name"
+                                    :href="customerUrl(cancellation)"
+                                    :detail="cancellation.user_email"
+                                />
                             </TableCell>
                             <TableCell class="border-r-0 px-4 py-2 text-sm whitespace-nowrap text-muted-foreground">
-                                {{ planLabel(cancellation.plan) }}
+                                {{ subscriptionPlanLabel(cancellation.plan) }}
                             </TableCell>
                             <TableCell class="border-r-0 px-4 py-2">
                                 <span class="flex gap-1">
@@ -244,7 +241,7 @@ const cohortRows = computed((): AdminBarRow[] =>
                                 {{ lasted(cancellation) }}
                             </TableCell>
                             <TableCell class="border-r-0 px-4 py-2 text-right text-sm whitespace-nowrap text-muted-foreground sm:px-5">
-                                {{ date.formatDate(cancellation.ended_at) }}
+                                {{ date.formatDate(cancellation.ends_at) }}
                             </TableCell>
                         </TableRow>
                     </TableBody>

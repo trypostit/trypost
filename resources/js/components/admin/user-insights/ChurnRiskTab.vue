@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { IconArrowRight } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import AdminBarList from '@/components/admin/AdminBarList.vue';
+import AdminCustomerCell from '@/components/admin/AdminCustomerCell.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import ChurnSignalChip from '@/components/admin/ChurnSignalChip.vue';
 import RiskLevelLabel from '@/components/admin/RiskLevelLabel.vue';
@@ -17,18 +18,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import date from '@/date';
-import { formatUsd } from '@/lib/adminFormat';
-import { customerName } from '@/lib/adminUsers';
-import { churnSignal } from '@/lib/churnRisk';
-import { filled, isNumber } from '@/lib/helpers';
+import { countIn, formatUsd } from '@/lib/adminFormat';
+import { profileUrl } from '@/lib/adminUsers';
+import { churnSignal, isChurnSignal } from '@/lib/churnRisk';
+import { filled, transform } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
-import { show as userShow } from '@/routes/admin/users';
-import type {
-    AdminBarRow,
-    AdminChurnRisk,
-    AdminRiskLevel,
-    AdminStat,
-} from '@/types/admin';
+import type { AdminBarRow, AdminChurnRisk, AdminStat } from '@/types/admin';
 
 type RiskRow = AdminChurnRisk['accounts'][number];
 const props = defineProps<{
@@ -80,34 +75,30 @@ const postsClass = (row: RiskRow): string => {
     return 'text-foreground';
 };
 
-const levelCount = (level: AdminRiskLevel): number => {
-    const count = props.churn.levels[level];
-
-    if (isNumber(count)) {
-        return count;
-    }
-
-    return 0;
-};
-
 const levelsHint = computed(
-    (): string => `${formatFullNumber(levelCount('high'))} high, ${formatFullNumber(levelCount('medium'))} medium`,
+    (): string =>
+        `${formatFullNumber(countIn(props.churn.levels, 'high'))} high, ${formatFullNumber(countIn(props.churn.levels, 'medium'))} medium`,
 );
 
+/** One row per signal, most frequent first as the server counted them; a signal this page does not know yet is left out. */
 const signalRows = computed((): AdminBarRow[] =>
-    Object.entries(props.churn.signals).map(([key, count]) => ({
-        key,
-        label: churnSignal(key).label,
-        count,
-        share: percentOf(count, props.churn.at_risk),
-    })),
+    Object.keys(props.churn.signals)
+        .filter(isChurnSignal)
+        .map((signal) => {
+            const count = countIn(props.churn.signals, signal);
+
+            return {
+                key: signal,
+                label: churnSignal(signal).label,
+                count,
+                share: percentOf(count, props.churn.at_risk),
+            };
+        }),
 );
 
 const hasAtRisk = computed(() => filled(props.churn.accounts));
 
-const nameOf = (row: RiskRow): string => customerName(row.name);
-
-const profileUrl = (userId: string): string => userShow.url(userId);
+const customerUrl = (row: RiskRow): string | null => transform(row.user_id, profileUrl);
 </script>
 
 <template>
@@ -132,12 +123,7 @@ const profileUrl = (userId: string): string => userShow.url(userId);
             subtitle="Highest risk first, then what they pay · posts are the period before → this period"
             flush
         >
-            <p
-                v-if="!hasAtRisk"
-                class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
-            >
-                Nobody looks at risk.
-            </p>
+            <AdminEmptyState v-if="!hasAtRisk" variant="section">Nobody looks at risk.</AdminEmptyState>
             <div v-else class="overflow-x-auto border-t border-border">
                 <Table data-testid="admin-user-insights-at-risk">
                     <TableHeader>
@@ -153,16 +139,7 @@ const profileUrl = (userId: string): string => userShow.url(userId);
                     <TableBody>
                         <TableRow v-for="row in churn.accounts" :key="row.account_id" class="last:border-b-0">
                             <TableCell class="max-w-56 border-r-0 px-4 py-3 align-top sm:px-5">
-                                <Link
-                                    v-if="row.user_id"
-                                    :href="profileUrl(row.user_id)"
-                                    class="block truncate text-sm font-emphasis text-foreground hover:underline"
-                                    >{{ nameOf(row) }}</Link
-                                >
-                                <span v-else class="block truncate text-sm text-muted-foreground">{{
-                                    nameOf(row)
-                                }}</span>
-                                <span class="block truncate text-xs text-muted-foreground">{{ row.email }}</span>
+                                <AdminCustomerCell :name="row.name" :href="customerUrl(row)" :detail="row.email" />
                             </TableCell>
                             <TableCell class="border-r-0 px-4 py-3 align-top whitespace-nowrap">
                                 <RiskLevelLabel :level="row.level" />

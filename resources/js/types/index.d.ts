@@ -120,6 +120,9 @@ export interface SharedData {
     changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;
     toursEnabled?: boolean;
+    languages?: Language[];
+    /** The user a backoffice admin is viewing the app as; null when nobody is. */
+    impersonating?: { name: string; email: string } | null;
     [key: string]: unknown;
 }
 

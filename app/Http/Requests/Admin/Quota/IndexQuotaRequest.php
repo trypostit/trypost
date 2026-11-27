@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Quota;
 
-use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Enums\Analytics\DateRangePreset;
+use App\Http\Requests\Admin\Concerns\PicksDateRange;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class IndexQuotaRequest extends FormRequest
 {
-    /** The ranges the X tab offers: X keeps 90 days of usage, so no custom range. */
-    public const array RANGES = ['7d', '30d', '60d', '90d'];
+    use PicksDateRange;
 
-    public const string DEFAULT_RANGE = '30d';
+    /** X keeps 90 days of usage, so the X tab offers no custom range. */
+    public const int MAX_DAYS_BACK = 90;
 
     public function authorize(): bool
     {
@@ -26,22 +27,13 @@ class IndexQuotaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'range' => ['nullable', Rule::in(self::RANGES)],
+            'range' => ['nullable', Rule::enum(DateRangePreset::class)->only(DateRangePreset::backoffice())],
         ];
     }
 
-    public function range(): string
+    /** X counts and bills its usage by UTC days, so its charts do too. */
+    public function timezone(): string
     {
-        return (string) ($this->validated('range') ?? self::DEFAULT_RANGE);
-    }
-
-    /**
-     * The UTC days the X charts cover.
-     *
-     * @return array{start: string, end: string}
-     */
-    public function dates(): array
-    {
-        return app(ResolveAnalyticsRangePreset::class)->handle($this->range(), null, null, 'UTC');
+        return 'UTC';
     }
 }

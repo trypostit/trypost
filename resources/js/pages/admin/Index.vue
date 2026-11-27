@@ -14,6 +14,7 @@ import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { countLabel } from '@/lib/adminFormat';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 import { index as networksIndex } from '@/routes/admin/networks';
@@ -54,13 +55,10 @@ const networkDetail = (network: FailingNetwork): string =>
 const failedPostsUrl = (network: FailingNetwork): string =>
     failedIndex.url({ query: { networks: [network.network] } });
 
-const stuckLabel = computed((): string => {
-    if (attention.value.stuck_publishing === 1) {
-        return '1 post stuck publishing for over 30 minutes';
-    }
-
-    return `${formatFullNumber(attention.value.stuck_publishing)} posts stuck publishing for over 30 minutes`;
-});
+const stuckLabel = computed(
+    (): string =>
+        `${countLabel(attention.value.stuck_publishing, 'post', 'posts')} stuck publishing for over 30 minutes`,
+);
 
 const quotaUrl = (alert: QuotaAlert): string =>
     quotasIndex.url({ query: { network: alert.source } });
@@ -250,7 +248,7 @@ const channels = computed((): AdminStat[] => [
                         </Link>
                     </Button>
                 </template>
-                <PublishingBarChart :days="dashboard.publishing.days" />
+                <PublishingBarChart :days="dashboard.publishing_days" />
             </AnalyticsSection>
 
             <AnalyticsSection title="Channels" flush>

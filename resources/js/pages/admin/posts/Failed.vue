@@ -31,10 +31,12 @@ import {
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { needsReconnect } from '@/lib/adminChannels';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { firstError } from '@/lib/adminFormat';
-import { blank, filled, isNumber } from '@/lib/helpers';
-import { formatFullNumber } from '@/lib/utils';
+import { countIn, firstError, joinFilled } from '@/lib/adminFormat';
+import { originLabel } from '@/lib/adminPublishing';
+import { blank, filled, transform } from '@/lib/helpers';
+import { formatFullNumber, MISSING_VALUE } from '@/lib/utils';
 import { index as failedIndex } from '@/routes/admin/posts/failed';
 import { store as retryStore } from '@/routes/admin/posts/retry';
 import { show as userShow } from '@/routes/admin/users';
@@ -89,21 +91,11 @@ const totalFailed = computed(() =>
  * stays with 0 when a network filter leaves it without any, so a chip is
  * always lit for what the list shows.
  */
-const categoryCount = (category: string): number => {
-    const count = props.categories[category];
-
-    if (isNumber(count)) {
-        return count;
-    }
-
-    return 0;
-};
-
 const categoryCounts = computed((): Record<string, number> => {
     const category = selectedCategory.value;
 
     if (filled(category)) {
-        return { ...props.categories, [category]: categoryCount(category) };
+        return { ...props.categories, [category]: countIn(props.categories, category) };
     }
 
     return props.categories;
@@ -117,8 +109,10 @@ const categoryChips = computed(() =>
     })),
 );
 
+const isPicked = (category: string | null): boolean => selectedCategory.value === category;
+
 const chipClass = (category: string | null): string => {
-    if (selectedCategory.value === category) {
+    if (isPicked(category)) {
         return 'border-foreground bg-foreground text-background';
     }
 
@@ -126,71 +120,67 @@ const chipClass = (category: string | null): string => {
 };
 
 const chipCountClass = (category: string | null): string => {
-    if (selectedCategory.value === category) {
+    if (isPicked(category)) {
         return 'text-background/70';
     }
 
     return 'text-muted-foreground';
 };
 
-/** Posts whose channel must be reconnected before a retry can work. */
-const RECONNECT_STATUSES = ['token_expired', 'disconnected'];
+const channelMissing = (post: AdminFailedPost): boolean => blank(post.channel_status);
 
-const needsReconnect = (post: AdminFailedPost): boolean => {
+/** The channel is there but must be reconnected before a retry can work. */
+const mustReconnect = (post: AdminFailedPost): boolean => {
     if (filled(post.channel_status)) {
-        return RECONNECT_STATUSES.includes(post.channel_status);
+        return needsReconnect(post.channel_status);
     }
 
     return false;
 };
 
-const channelMissing = (post: AdminFailedPost): boolean => blank(post.channel_status);
-
-const postMeta = (post: AdminFailedPost): string => {
-    const parts: string[] = [];
-
-    if (filled(post.content_type_label)) {
-        parts.push(post.content_type_label);
-    }
-
-    if (filled(post.scheduled_at)) {
-        parts.push(`scheduled ${date.formatDateTime(post.scheduled_at)}`);
-    }
-
-    if (filled(post.created_via)) {
-        parts.push(`via ${post.created_via}`);
-    }
-
-    return parts.join(' · ');
-};
+const postMeta = (post: AdminFailedPost): string =>
+    joinFilled([
+        post.content_type_label,
+        transform(post.scheduled_at, (scheduledAt) => `scheduled ${date.formatDateTime(scheduledAt)}`),
+        transform(post.created_via, (createdVia) => `via ${originLabel(createdVia)}`),
+    ]);
 
 const failedAgo = (post: AdminFailedPost): string => {
     if (filled(post.failed_at)) {
         return date.diffForHumans(post.failed_at);
     }
 
-    return '—';
+    return MISSING_VALUE;
 };
 
-const failedAt = (post: AdminFailedPost): string => {
-    if (filled(post.failed_at)) {
-        return date.formatDateTime(post.failed_at);
-    }
-
-    return '';
-};
-
+/** Kept after the dialog closes, so the post holds while it animates out. */
 const viewedPost = ref<AdminFailedPost | null>(null);
+const postOpen = ref(false);
 
 const viewPost = (post: AdminFailedPost): void => {
     viewedPost.value = post;
-};
-
-const closePost = (): void => {
-    viewedPost.value = null;
+    postOpen.value = true;
 };
 
 const hasPosts = computed(() => filled(props.posts.data));
+
+/** What the list holds failures of, as the server filtered it. */
+const failuresLabel = computed((): string => {
+    if (filled(props.filters.category)) {
+        return `${errorCategoryLabel(props.filters.category)} failures`;
+    }
+
+    return 'failed posts';
+});
+
+/** Says what is filtered, so an empty list never reads as nothing having failed at all. */
+const emptyMessage = computed((): string => {
+    if (filled(props.filters.networks)) {
+        return `No ${failuresLabel.value} on these networks.`;
+    }
+
+    return `No ${failuresLabel.value}.`;
+});
 
 const retryingId = ref<string | null>(null);
 const confirmingPost = ref<AdminFailedPost | null>(null);
@@ -278,6 +268,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors"
                 :class="chipClass(null)"
+                :aria-pressed="isPicked(null)"
                 data-testid="admin-failed-category-all"
                 @click="selectCategory(null)"
             >
@@ -292,6 +283,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors"
                 :class="chipClass(chip.category)"
+                :aria-pressed="isPicked(chip.category)"
                 :data-testid="`admin-failed-category-${chip.category}`"
                 @click="selectCategory(chip.category)"
             >
@@ -303,7 +295,7 @@ const channelLabel = (post: AdminFailedPost): string => {
         </div>
 
         <AdminEmptyState v-if="!hasPosts" variant="page" test-id="admin-failed-empty">
-            No failed posts.
+            {{ emptyMessage }}
         </AdminEmptyState>
 
         <div
@@ -380,7 +372,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                                 </TableCell>
                                 <TableCell
                                     class="border-r-0 px-4 py-3 align-top text-sm whitespace-nowrap text-muted-foreground"
-                                    :title="failedAt(post)"
+                                    :title="date.formatDateTime(post.failed_at)"
                                 >
                                     {{ failedAgo(post) }}
                                 </TableCell>
@@ -402,7 +394,7 @@ const channelLabel = (post: AdminFailedPost): string => {
                                             >Channel gone</Badge
                                         >
                                         <Badge
-                                            v-else-if="needsReconnect(post)"
+                                            v-else-if="mustReconnect(post)"
                                             variant="warning"
                                             title="The channel must be reconnected before a retry can work."
                                             >Reconnect</Badge
@@ -432,7 +424,7 @@ const channelLabel = (post: AdminFailedPost): string => {
         </div>
     </AdminLayout>
 
-    <FailedPostDialog :post="viewedPost" @close="closePost" />
+    <FailedPostDialog v-model:open="postOpen" :post="viewedPost" />
 
     <AlertDialog v-model:open="confirmOpen">
         <AlertDialogContent data-testid="admin-retry-instagram-dialog">

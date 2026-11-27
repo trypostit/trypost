@@ -6,7 +6,7 @@ namespace App\Actions\Admin\UserProfile;
 
 use App\Actions\Account\ResolveLifecycleStage;
 use App\Actions\Admin\Users\BuildChurnRisk;
-use App\Actions\Admin\Users\BuildUsageInsights;
+use App\Actions\Admin\Users\CountAccountActivity;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\PublishStatus;
@@ -14,7 +14,6 @@ use App\Models\Account;
 use App\Models\User;
 use App\Support\Admin\PublishingCounts;
 use App\Support\Percent;
-use Illuminate\Support\Collection;
 
 class BuildUserHealth
 {
@@ -44,11 +43,11 @@ class BuildUserHealth
         $last = now();
         $first = $last->subDays(self::WINDOW_DAYS);
 
-        $sent = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [], $account->id), $account);
-        $previousSent = self::count(BuildUsageInsights::postsPerAccount($first->subDays(self::WINDOW_DAYS), $first->subSecond(), PublishStatus::wentOutCases(), [], $account->id), $account);
-        $failed = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishingCounts::failedStatuses(), [], $account->id), $account);
-        $automated = self::count(BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp], $account->id), $account);
-        $channels = BuildChurnRisk::channelHealth($account->id)->get($account->id);
+        $sent = CountAccountActivity::postsOf($account->id, $first, $last, PublishStatus::wentOutCases());
+        $previousSent = CountAccountActivity::postsOf($account->id, $first->subDays(self::WINDOW_DAYS), $first->subSecond(), PublishStatus::wentOutCases());
+        $failed = CountAccountActivity::postsOf($account->id, $first, $last, PublishingCounts::failedStatuses());
+        $automated = CountAccountActivity::postsOf($account->id, $first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
+        $channels = CountAccountActivity::channelsOf($account->id);
         $stage = ResolveLifecycleStage::execute($account, $account->last_published_at, (bool) $account->has_social_account);
 
         return [
@@ -78,20 +77,10 @@ class BuildUserHealth
      */
     private static function risk(Account $account, LifecycleStage $stage, ?array $channels, int $sent, int $previousSent, int $failed): ?array
     {
-        $subscription = BuildChurnRisk::paidSubscriptions($account->id)->get($account->id);
-
-        if ($subscription === null) {
+        if ($account->payingSubscription() === null) {
             return null;
         }
 
-        return BuildChurnRisk::assess($account, $stage, $subscription, $channels, $sent, $previousSent, $failed);
-    }
-
-    /**
-     * @param  Collection<string, int>  $counts
-     */
-    private static function count(Collection $counts, Account $account): int
-    {
-        return (int) $counts->get($account->id, 0);
+        return BuildChurnRisk::assess($account, $stage, $channels, $sent, $previousSent, $failed);
     }
 }

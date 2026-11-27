@@ -2,10 +2,11 @@
 import { computed } from 'vue';
 
 import { churnSignal } from '@/lib/churnRisk';
+import type { ChurnSignal } from '@/types/admin';
 
 /** One churn signal as a neutral outlined chip with its icon. */
 const props = defineProps<{
-    signal: string;
+    signal: ChurnSignal;
 }>();
 
 const known = computed(() => churnSignal(props.signal));

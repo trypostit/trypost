@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Requests\Admin\Insights\IndexSignupInsightsRequest;
 use App\Http\Requests\Admin\Network\IndexNetworkHealthRequest;
-use App\Http\Requests\Admin\Post\PostStatsRequest;
+use App\Http\Requests\Admin\Post\IndexPostStatsRequest;
 use App\Http\Requests\Admin\Subscription\IndexSubscriptionRequest;
 use App\Http\Requests\Admin\User\IndexUserInsightsRequest;
 
@@ -14,7 +14,7 @@ beforeEach(function () {
 });
 
 dataset('range pages', [
-    'publishing' => ['admin.posts.index', PostStatsRequest::MAX_DAYS_BACK],
+    'publishing' => ['admin.posts.index', IndexPostStatsRequest::MAX_DAYS_BACK],
     'networks' => ['admin.networks.index', IndexNetworkHealthRequest::MAX_DAYS_BACK],
     'subscriptions' => ['admin.billing.subscriptions.index', IndexSubscriptionRequest::MAX_DAYS_BACK],
     'signups' => ['admin.billing.insights.index', IndexSignupInsightsRequest::MAX_DAYS_BACK],

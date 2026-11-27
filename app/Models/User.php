@@ -22,6 +22,7 @@ use App\Support\Timezone;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -147,6 +148,20 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function isBackofficeAdmin(): bool
     {
         return collect(config()->array('trypost.admin.emails'))->contains(Str::lower($this->email));
+    }
+
+    /**
+     * Users whose name or email contains the term, as a search box looks
+     * them up.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeMatching(Builder $query, string $term): Builder
+    {
+        return $query->where(fn (Builder $match): Builder => $match
+            ->whereLike('users.name', "%{$term}%")
+            ->orWhereLike('users.email', "%{$term}%"));
     }
 
     protected function casts(): array

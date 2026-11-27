@@ -1,8 +1,5 @@
-import date from '@/date';
-import { filled } from '@/lib/helpers';
-
-/** What the backoffice shows for a value it does not have. */
-export const NO_VALUE = '—';
+import { filled, isNumber } from '@/lib/helpers';
+import { formatFullNumber, MISSING_VALUE } from '@/lib/utils';
 
 /** The value, or a dash when there is none. */
 export const orDash = (value: string | null | undefined): string => {
@@ -10,16 +7,7 @@ export const orDash = (value: string | null | undefined): string => {
         return value;
     }
 
-    return NO_VALUE;
-};
-
-/** A date and time, or a dash when there is none. */
-export const dateTimeOrDash = (value: string | null | undefined): string => {
-    if (filled(value)) {
-        return date.formatDateTime(value);
-    }
-
-    return NO_VALUE;
+    return MISSING_VALUE;
 };
 
 /** A stored key as people read it: `token_expired` becomes "Token expired"; none is a dash. */
@@ -30,16 +18,36 @@ export const humanize = (value: string | null | undefined): string => {
         return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
     }
 
-    return NO_VALUE;
+    return MISSING_VALUE;
 };
 
 /** The parts a line has, joined by a middle dot; the missing ones leave no gap. */
 export const joinFilled = (parts: (string | null | undefined)[]): string =>
     parts.filter((part) => filled(part)).join(' · ');
 
+/** A count with the word it counts: "1 channel", "1,204 channels". */
+export const countLabel = (count: number, singular: string, plural: string): string => {
+    if (count === 1) {
+        return `1 ${singular}`;
+    }
+
+    return `${formatFullNumber(count)} ${plural}`;
+};
+
+/** A count the server left out reads 0: a key missing from a map, a day past the end of a list. */
+export const countIn = <Key extends PropertyKey>(counts: Partial<Record<Key, number>>, key: Key): number => {
+    const count = counts[key];
+
+    if (isNumber(count)) {
+        return count;
+    }
+
+    return 0;
+};
+
 /**
  * An amount in US dollars, from cents: whole dollars by default ("$1,235"),
- * or with up to `decimals` digits for a unit price ("$0.005").
+ * or with up to `decimals` digits for an amount under a dollar ("$0.42").
  */
 export const formatUsd = (cents: number, decimals: number = 0): string =>
     new Intl.NumberFormat('en-US', {

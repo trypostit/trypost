@@ -19,6 +19,9 @@ class BuildUserPosts
 {
     public const int RECENT_FAILURES = 10;
 
+    /** The network a post without a channel counts under. */
+    public const string NO_PLATFORM = 'none';
+
     /**
      * What the workspaces the user is in publish, whoever wrote it: posts by
      * network and status (imported posts left out, counted in SQL), the latest failures, and
@@ -38,7 +41,7 @@ class BuildUserPosts
             ->toBase()
             ->get()
             ->map(fn (object $group): array => [
-                'platform' => (string) ($group->platform ?? 'none'),
+                'platform' => (string) ($group->platform ?? self::NO_PLATFORM),
                 'status' => (string) $group->status,
                 'total' => (int) $group->total,
             ]);

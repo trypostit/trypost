@@ -19,7 +19,7 @@ class AdminOfferResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $timezone = (string) $request->user()?->timezone;
+        $timezone = $request->user()->timezone;
 
         return [
             'id' => $this->id,
@@ -35,28 +35,10 @@ class AdminOfferResource extends JsonResource
             'first_subscription_only' => $this->first_subscription_only,
             'show_banner' => $this->show_banner,
             'requires_card' => $this->requires_card,
-            'state' => $this->state(),
+            'state' => $this->state()->value,
             'claimed' => (int) $this->accounts_count,
             'redeemed' => (int) $this->redemptions_count,
             'missing_copy' => OfferCopy::missingLocales($this->slug, $this->show_banner),
         ];
-    }
-
-    /** Scheduled, live, full (no place left) or ended. */
-    private function state(): string
-    {
-        if ($this->ends_at !== null && $this->ends_at->isPast()) {
-            return 'ended';
-        }
-
-        if ($this->starts_at->isFuture()) {
-            return 'scheduled';
-        }
-
-        if ($this->max_redemptions !== null && (int) $this->redemptions_count >= $this->max_redemptions) {
-            return 'full';
-        }
-
-        return 'live';
     }
 }

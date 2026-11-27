@@ -78,3 +78,40 @@ test('the insights page shows the signup funnel', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->component('admin/billing/insights/Index')->has('insights.funnel', 7));
 });
+
+test('a checkout that never billed does not count as subscribed', function (string $status) {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    $owner = adminSignup();
+    subscribeAccount($owner->account, ['stripe_status' => $status]);
+
+    $insights = BuildSignupInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
+
+    expect($insights['totals'])->toMatchArray(['signups' => 1, 'subscribed' => 0, 'new_mrr_cents' => 0, 'minutes_to_subscribe' => null])
+        ->and(collect($insights['funnel'])->firstWhere('key', 'subscribed')['count'])->toBe(0);
+})->with(['incomplete', 'incomplete_expired']);
+
+test('an owner\'s first subscription decides when they subscribed and what it brings', function () {
+    fakeStripeReads(['price_123' => [1900, 'month'], 'price_yearly' => [19000, 'year']]);
+    $owner = adminSignup();
+    $later = subscribeAccount($owner->account, ['stripe_price' => 'price_yearly']);
+    $first = subscribeAccount($owner->account, ['stripe_status' => 'canceled', 'ends_at' => $this->now->subHour()]);
+    adminBackdateSubscription($first, $owner->created_at->addMinutes(10));
+    adminBackdateSubscription($later, $owner->created_at->addMinutes(90));
+
+    $totals = BuildSignupInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'))['totals'];
+
+    expect($totals)->toMatchArray(['subscribed' => 1, 'minutes_to_subscribe' => 10.0, 'new_mrr_cents' => 1900]);
+});
+
+test('the period before counts its own signups', function () {
+    $this->travelTo($this->now->subDays(9));
+    adminSignup();
+    adminSignup();
+    $this->travelTo($this->now);
+    adminSignup();
+
+    $insights = BuildSignupInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
+
+    expect($insights['totals']['signups'])->toBe(1)
+        ->and($insights['previous'])->toMatchArray(['signups' => 2, 'subscribed' => 0, 'subscribed_rate' => 0.0]);
+});

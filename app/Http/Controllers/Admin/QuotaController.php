@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\BuildQuotaCards;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Quota\IndexQuotaRequest;
 use Inertia\Inertia;
@@ -17,14 +18,10 @@ class QuotaController extends Controller
         $dates = $request->dates();
 
         return Inertia::render('admin/quotas/Index', [
-            'cards' => BuildQuotaCards::execute($dates['start'], $dates['end']),
+            'cards' => BuildQuotaCards::execute($request->dateRange()),
             'range' => $dates,
-            'ranges' => IndexQuotaRequest::RANGES,
-            'filters' => [
-                'range' => $request->range(),
-                'start' => $dates['start'],
-                'end' => $dates['end'],
-            ],
+            'ranges' => DateRangePreset::backoffice(),
+            'filters' => $request->rangeFilters(),
         ]);
     }
 }

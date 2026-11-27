@@ -42,7 +42,7 @@ const osIconClass = computed((): string => {
         <img
             v-if="showBrowserIcon"
             :src="browserIcon"
-            :alt="browserName"
+            alt=""
             class="size-4 shrink-0 object-contain"
         />
         <span class="truncate font-emphasis">{{ browserName }}</span>

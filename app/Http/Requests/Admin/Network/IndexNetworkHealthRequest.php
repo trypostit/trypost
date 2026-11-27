@@ -28,8 +28,8 @@ class IndexNetworkHealthRequest extends FormRequest
     {
         return [
             'range' => ['nullable', Rule::in(ResolveAnalyticsRangePreset::PRESETS)],
-            'start' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d', "after_or_equal:{$this->earliestDay()}"],
-            'end' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:start', "before_or_equal:{$this->today()}"],
+            'start' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', "after_or_equal:{$this->earliestDay()}"],
+            'end' => [Rule::requiredIf($this->picksCustomRange()), 'nullable', 'date_format:Y-m-d', 'after_or_equal:start', "before_or_equal:{$this->today()}"],
         ];
     }
 }

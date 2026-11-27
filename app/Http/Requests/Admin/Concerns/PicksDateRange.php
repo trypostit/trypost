@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin\Concerns;
 
-use App\Actions\Analytics\ResolveAnalyticsRangePreset;
 use App\Dto\Analytics\DateRange;
+use App\Enums\Analytics\DateRangePreset;
 
 /**
  * The period a backoffice page covers: a preset or a custom range of the
@@ -14,11 +14,16 @@ use App\Dto\Analytics\DateRange;
  */
 trait PicksDateRange
 {
-    public const string DEFAULT_RANGE = ResolveAnalyticsRangePreset::DEFAULT;
-
-    public function range(): string
+    /** The period picked, the default one when none is. */
+    public function range(): DateRangePreset
     {
-        return (string) ($this->validated('range') ?? self::DEFAULT_RANGE);
+        return $this->enum('range', DateRangePreset::class) ?? DateRangePreset::DEFAULT_RANGE;
+    }
+
+    /** A custom range is picked, so its days are required. */
+    public function picksCustomRange(): bool
+    {
+        return $this->enum('range', DateRangePreset::class) === DateRangePreset::Custom;
     }
 
     /**
@@ -28,12 +33,7 @@ trait PicksDateRange
      */
     public function dates(): array
     {
-        return app(ResolveAnalyticsRangePreset::class)->handle(
-            $this->range(),
-            $this->validated('start'),
-            $this->validated('end'),
-            $this->timezone(),
-        );
+        return $this->range()->dates($this->timezone(), $this->validated('start'), $this->validated('end'));
     }
 
     /** The days the page covers as a range of the viewing admin's zone. */
@@ -89,7 +89,7 @@ trait PicksDateRange
         $dates = $this->dates();
 
         return [
-            'range' => $this->range(),
+            'range' => $this->range()->value,
             'start' => $dates['start'],
             'end' => $dates['end'],
         ];

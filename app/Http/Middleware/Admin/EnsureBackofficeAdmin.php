@@ -11,8 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureBackofficeAdmin
 {
     /**
-     * Let only backoffice admins (`ADMIN_EMAILS`, verified) through; everyone
-     * else gets a 403.
+     * Let only backoffice admins (an account whose email is in `ADMIN_EMAILS`,
+     * verified or not) through; everyone else gets a 403.
      *
      * @param  Closure(Request): (Response)  $next
      */

@@ -11,20 +11,17 @@ use Illuminate\Database\Eloquent\Builder;
 class ListUsers
 {
     /**
-     * Every user, newest first, matched by name or email, optionally only the
-     * blocked ones.
+     * Every user the filter keeps, newest first, matched by name or email
+     * when there is a search.
      *
      * @return Builder<User>
      */
-    public static function execute(?string $search = null, ?UserStatusFilter $status = null): Builder
+    public static function execute(?string $search, UserStatusFilter $status): Builder
     {
-        return User::query()
+        return $status->apply(User::query())
             ->with(['account.plan', 'account.subscriptions'])
             ->withCount('workspaces')
-            ->when($search, fn (Builder $query, string $term) => $query->where(
-                fn (Builder $match) => $match->whereLike('name', "%{$term}%")->orWhereLike('email', "%{$term}%"),
-            ))
-            ->when($status === UserStatusFilter::Blocked, fn (Builder $query) => $query->whereNotNull('blocked_at'))
+            ->when($search, fn (Builder $query, string $term): Builder => $query->matching($term))
             ->latest()
             ->orderByDesc('id');
     }

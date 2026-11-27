@@ -11,16 +11,16 @@ import {
 } from '@tabler/icons-vue';
 import type { Component } from 'vue';
 
-import { filled } from '@/lib/helpers';
-import type { AdminRiskLevel } from '@/types/admin';
+import type { ChurnSignal, RiskLevel } from '@/types/admin';
 
-export interface ChurnSignal {
+/** How a churn signal shows: its words and its icon. */
+export interface ChurnSignalDisplay {
     label: string;
     icon: Component;
 }
 
 /** Each churn signal: how it reads, and its icon. The color is the risk level's, never the signal's. */
-const CHURN_SIGNALS: Record<string, ChurnSignal> = {
+const CHURN_SIGNALS: Record<ChurnSignal, ChurnSignalDisplay> = {
     cancelling: { label: 'Cancelling', icon: IconDoorExit },
     past_due: { label: 'Payment past due', icon: IconCreditCardOff },
     dormant: { label: 'No post in 21+ days', icon: IconZzz },
@@ -32,21 +32,15 @@ const CHURN_SIGNALS: Record<string, ChurnSignal> = {
     failing: { label: 'Posts failing', icon: IconAlertTriangle },
 };
 
-const RISK_LEVELS: Record<AdminRiskLevel, { label: string; dot: string }> = {
+const RISK_LEVELS: Record<RiskLevel, { label: string; dot: string }> = {
     high: { label: 'High', dot: 'bg-destructive' },
     medium: { label: 'Medium', dot: 'bg-warning' },
     low: { label: 'Low', dot: 'bg-muted-foreground' },
 };
 
-/** A signal the backoffice does not know yet still shows, under its own key. */
-export const churnSignal = (key: string): ChurnSignal => {
-    const known = CHURN_SIGNALS[key];
+export const churnSignal = (signal: ChurnSignal): ChurnSignalDisplay => CHURN_SIGNALS[signal];
 
-    if (filled(known)) {
-        return known;
-    }
+/** Whether the key names a signal the backoffice knows, as a count map's keys come back as text. */
+export const isChurnSignal = (key: string): key is ChurnSignal => key in CHURN_SIGNALS;
 
-    return { label: key, icon: IconAlertTriangle };
-};
-
-export const riskLevel = (level: AdminRiskLevel): { label: string; dot: string } => RISK_LEVELS[level];
+export const riskLevel = (level: RiskLevel): { label: string; dot: string } => RISK_LEVELS[level];

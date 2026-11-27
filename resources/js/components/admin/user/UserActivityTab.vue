@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
@@ -11,7 +11,7 @@ import SettingsSection from '@/components/settings/SettingsSection.vue';
 import date from '@/date';
 import { CHANGELOG_REACTIONS } from '@/lib/adminChangelog';
 import { filled } from '@/lib/helpers';
-import { browserIconUrl, parseBrowserName } from '@/lib/userAgent';
+import { browserIconUrl } from '@/lib/userAgent';
 import { formatFullNumber } from '@/lib/utils';
 import type {
     AdminActivity,
@@ -45,14 +45,13 @@ const changelogStats = computed((): AdminStat[] => [
 
 const hasChangelogViews = computed(() => filled(props.data.changelog.entries));
 
+/** Kept after the dialog closes, so the entry holds while it animates out. */
 const openedEntry = shallowRef<ChangelogEntry | null>(null);
+const entryOpen = ref(false);
 
 const openEntry = (view: AdminChangelogView): void => {
     openedEntry.value = view.entry;
-};
-
-const closeEntry = (): void => {
-    openedEntry.value = null;
+    entryOpen.value = true;
 };
 
 const reactionEmoji = (view: AdminChangelogView): string => {
@@ -107,13 +106,16 @@ const activityReason = (activity: AdminActivity): string => {
     return '';
 };
 
-const orUnknown = (value: string | null): string => {
-    if (filled(value)) {
-        return value;
+const sessionIp = (ip: string | null): string => {
+    if (filled(ip)) {
+        return ip;
     }
 
-    return 'Unknown';
+    return 'Unknown IP';
 };
+
+const sessionDetail = (session: AdminUserActivityData['sessions'][number]): string =>
+    `${sessionIp(session.ip)} · Last active ${date.diffForHumans(session.last_activity)}`;
 </script>
 
 <template>
@@ -166,13 +168,13 @@ const orUnknown = (value: string | null): string => {
                     <template #media>
                         <img
                             :src="browserIconUrl(session.user_agent)"
-                            :alt="parseBrowserName(session.user_agent)"
+                            alt=""
                             class="size-9 shrink-0 object-contain"
                         />
                     </template>
                     <SessionDevice :user-agent="session.user_agent" :show-browser-icon="false" />
                     <p class="-mt-0.5 text-xs leading-4 text-muted-foreground">
-                        {{ orUnknown(session.ip) }} · Last active {{ session.last_active }}
+                        {{ sessionDetail(session) }}
                     </p>
                 </SettingsListRow>
             </ul>
@@ -180,12 +182,7 @@ const orUnknown = (value: string | null): string => {
 
         <AnalyticsSection title="What's New" flush>
             <AdminStatGrid :stats="changelogStats" />
-            <p
-                v-if="!hasChangelogViews"
-                class="border-t border-border px-4 py-5 text-sm text-muted-foreground sm:px-5"
-            >
-                No update opened yet.
-            </p>
+            <AdminEmptyState v-if="!hasChangelogViews" variant="section">No update opened yet.</AdminEmptyState>
             <ul v-else class="divide-y divide-border border-t border-border">
                 <li v-for="view in data.changelog.entries" :key="view.entry.id">
                     <button
@@ -225,9 +222,9 @@ const orUnknown = (value: string | null): string => {
         </AnalyticsSection>
 
         <AdminChangelogEntryDialog
+            v-model:open="entryOpen"
             :entry="openedEntry"
             :user-name="userName"
-            @close="closeEntry"
         />
     </div>
 </template>

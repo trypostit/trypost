@@ -5,19 +5,17 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
-use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
-use App\Enums\Post\PublishStatus;
-use App\Enums\SocialAccount\Status;
+use App\Enums\Admin\ChurnSignal;
+use App\Enums\Admin\RiskLevel;
 use App\Models\Account;
-use App\Models\SocialAccount;
 use App\Models\Subscription;
-use App\Support\Admin\PublishingCounts;
+use App\Support\Admin\AccountActivity;
+use App\Support\Admin\AccountSummary;
 use App\Support\Admin\StripePriceAmounts;
-use App\Support\Admin\SubscriptionPlans;
 use App\Support\Percent;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Stripe\Subscription as StripeSubscription;
 
 class BuildChurnRisk
 {
@@ -34,26 +32,8 @@ class BuildChurnRisk
 
     private const float FAILURE_RATE = 20.0;
 
-    /** How much each signal weighs: money already leaving counts most, a slowdown least. */
-    private const array WEIGHTS = [
-        'cancelling' => 3,
-        'past_due' => 3,
-        'dormant' => 2,
-        'never_posted' => 2,
-        'no_channels' => 2,
-        'channels_broken' => 2,
-        'at_risk' => 1,
-        'posting_dropped' => 1,
-        'failing' => 1,
-    ];
-
-    /** The weight from which an account's risk is high, and from which it is medium. */
-    private const int HIGH_RISK = 4;
-
-    private const int MEDIUM_RISK = 2;
-
     /** Days a new customer has to connect a channel and post before not doing so is a signal. */
-    private const int SETTLING_DAYS = 7;
+    public const int SETTLING_DAYS = 7;
 
     /** The share of an account's channels that need reconnecting for it to count. */
     private const float BROKEN_CHANNELS_SHARE = 50.0;
@@ -69,39 +49,28 @@ class BuildChurnRisk
      *
      * @return array<string, mixed>
      */
-    public static function execute(DateRange $range): array
+    public static function execute(AccountActivity $activity): array
     {
-        $first = $range->startsAt();
-        $last = $range->endsAt();
-        $previous = $range->previous();
-
-        $subscriptions = self::paidSubscriptions();
-        $channels = self::channelHealth();
-        $base = $subscriptions->keys();
-
-        $sent = BuildUsageInsights::postsPerAccount($first, $last, PublishStatus::wentOutCases());
-        $previousSent = BuildUsageInsights::postsPerAccount($previous->startsAt(), $previous->endsAt(), PublishStatus::wentOutCases());
-        $failed = BuildUsageInsights::postsPerAccount($first, $last, PublishingCounts::failedStatuses());
-
         $accounts = Account::query()
-            ->whereIn('id', $base)
+            ->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions->paying())
             ->with(['owner', 'plan', 'subscriptions'])
             ->withLifecycleActivity()
-            ->get()
-            ->keyBy('id');
+            ->get();
 
         $atRisk = $accounts
-            ->map(function (Account $account) use ($subscriptions, $channels, $sent, $previousSent, $failed): array {
+            ->map(function (Account $account) use ($activity): array {
                 $stage = ResolveLifecycleStage::execute($account, $account->last_published_at, (bool) $account->has_social_account);
+                $sent = $activity->sentBy($account->id);
+                $previousSent = $activity->previousSentBy($account->id);
 
                 return [
-                    ...BuildUsageInsights::accountSummary($account),
+                    ...AccountSummary::of($account),
                     'account_id' => $account->id,
-                    'posts' => (int) $sent->get($account->id, 0),
-                    'previous_posts' => (int) $previousSent->get($account->id, 0),
+                    'posts' => $sent,
+                    'previous_posts' => $previousSent,
                     'stage' => $stage->value,
                     'last_posted_at' => $account->last_published_at?->toIso8601String(),
-                    ...self::assess($account, $stage, $subscriptions->get($account->id), $channels->get($account->id), (int) $sent->get($account->id, 0), (int) $previousSent->get($account->id, 0), (int) $failed->get($account->id, 0)),
+                    ...self::assess($account, $stage, $activity->channelsOf($account->id), $sent, $previousSent, $activity->failedFor($account->id)),
                 ];
             })
             ->filter(fn (array $row): bool => filled($row['signals']))
@@ -110,7 +79,7 @@ class BuildChurnRisk
 
         return [
             'base' => $accounts->count(),
-            'active' => $accounts->keys()->filter(fn (string $accountId): bool => $sent->get($accountId, 0) > 0)->count(),
+            'active' => $accounts->filter(fn (Account $account): bool => $activity->sentBy($account->id) > 0)->count(),
             'at_risk' => $atRisk->count(),
             'at_risk_share' => Percent::of($atRisk->count(), $accounts->count()),
             'mrr_at_risk_cents' => $atRisk->sum('mrr_cents'),
@@ -121,27 +90,30 @@ class BuildChurnRisk
     }
 
     /**
-     * One paying account's churn signals, how much they weigh, its risk
-     * level (null without a signal) and what it pays a month.
+     * One account's churn signals, how much they weigh, its risk level (null
+     * without a signal) and what it pays a month, through the subscription it
+     * pays with now (none for an account that pays nothing).
      *
      * @param  array{total: int, broken: int}|null  $channels
      * @return array{signals: list<string>, score: int, level: ?string, mrr_cents: int}
      */
-    public static function assess(Account $account, LifecycleStage $stage, ?Subscription $subscription, ?array $channels, int $sent, int $previousSent, int $failed): array
+    public static function assess(Account $account, LifecycleStage $stage, ?array $channels, int $sent, int $previousSent, int $failed): array
     {
-        $signals = self::signals($account, $stage, $subscription, $channels, $sent, $previousSent, $failed);
+        $subscription = $account->payingSubscription();
+        $signals = collect(self::signals($account, $stage, $subscription, $channels, $sent, $previousSent, $failed));
+        $score = $signals->sum(fn (ChurnSignal $signal): int => $signal->weight());
 
         return [
-            'signals' => $signals,
-            'score' => self::score($signals),
-            'level' => self::level(self::score($signals)),
+            'signals' => $signals->map(fn (ChurnSignal $signal): string => $signal->value)->all(),
+            'score' => $score,
+            'level' => RiskLevel::fromScore($score)?->value,
             'mrr_cents' => self::monthlyCents($subscription),
         ];
     }
 
     /**
      * @param  array{total: int, broken: int}|null  $channels
-     * @return list<string>
+     * @return list<ChurnSignal>
      */
     private static function signals(Account $account, LifecycleStage $stage, ?Subscription $subscription, ?array $channels, int $sent, int $previousSent, int $failed): array
     {
@@ -149,103 +121,43 @@ class BuildChurnRisk
 
         $settled = ($subscription?->created_at ?? $account->created_at)->lte(now()->subDays(self::SETTLING_DAYS));
 
-        if (collect([LifecycleStage::AtRisk, LifecycleStage::Dormant])->contains($stage)) {
-            $signals[] = $stage->value;
+        if ($stage === LifecycleStage::AtRisk) {
+            $signals[] = ChurnSignal::AtRisk;
+        }
+
+        if ($stage === LifecycleStage::Dormant) {
+            $signals[] = ChurnSignal::Dormant;
         }
 
         if ($settled && $stage === LifecycleStage::Connected) {
-            $signals[] = 'never_posted';
+            $signals[] = ChurnSignal::NeverPosted;
         }
 
         if ($subscription?->ends_at !== null) {
-            $signals[] = 'cancelling';
+            $signals[] = ChurnSignal::Cancelling;
         }
 
-        if ($subscription?->stripe_status === 'past_due') {
-            $signals[] = 'past_due';
+        if ($subscription?->stripe_status === StripeSubscription::STATUS_PAST_DUE) {
+            $signals[] = ChurnSignal::PastDue;
         }
 
         if ($settled && $channels === null) {
-            $signals[] = 'no_channels';
+            $signals[] = ChurnSignal::NoChannels;
         }
 
         if ($channels !== null && Percent::of($channels['broken'], $channels['total']) >= self::BROKEN_CHANNELS_SHARE) {
-            $signals[] = 'channels_broken';
+            $signals[] = ChurnSignal::ChannelsBroken;
         }
 
         if ($previousSent >= self::DROP_MIN_POSTS && Percent::of($sent, $previousSent) <= self::DROP_SHARE) {
-            $signals[] = 'posting_dropped';
+            $signals[] = ChurnSignal::PostingDropped;
         }
 
         if ($failed >= self::FAILURE_MIN_POSTS && Percent::of($failed, $failed + $sent) >= self::FAILURE_RATE) {
-            $signals[] = 'failing';
+            $signals[] = ChurnSignal::Failing;
         }
 
         return $signals;
-    }
-
-    /**
-     * @param  list<string>  $signals
-     */
-    private static function score(array $signals): int
-    {
-        return collect($signals)->sum(fn (string $signal): int => (int) data_get(self::WEIGHTS, $signal, 1));
-    }
-
-    private static function level(int $score): ?string
-    {
-        if ($score === 0) {
-            return null;
-        }
-
-        if ($score >= self::HIGH_RISK) {
-            return 'high';
-        }
-
-        if ($score >= self::MEDIUM_RISK) {
-            return 'medium';
-        }
-
-        return 'low';
-    }
-
-    /**
-     * Each paying account's subscription (alive, active or past due), keyed
-     * by account id, or one account's only.
-     *
-     * @return Collection<string, Subscription>
-     */
-    public static function paidSubscriptions(?string $accountId = null): Collection
-    {
-        return Subscription::query()
-            ->where('type', Account::SUBSCRIPTION_NAME)
-            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('account_id', $accountId))
-            ->whereIn('stripe_status', SubscriptionPlans::PAYING_STATUSES)
-            ->where(fn (Builder $query): Builder => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
-            ->get(['id', 'account_id', 'stripe_status', 'stripe_price', 'quantity', 'ends_at', 'created_at'])
-            ->keyBy('account_id');
-    }
-
-    /**
-     * Each account's channels, and how many of them need reconnecting, or
-     * one account's only, counted in SQL. Every page that counts an
-     * account's channels reads them here.
-     *
-     * @return Collection<string, array{total: int, broken: int}>
-     */
-    public static function channelHealth(?string $accountId = null): Collection
-    {
-        return SocialAccount::query()
-            ->join('workspaces', 'workspaces.id', '=', 'social_accounts.workspace_id')
-            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('workspaces.account_id', $accountId))
-            ->tallyBy(['workspaces.account_id', 'social_accounts.status'])
-            ->toBase()
-            ->get()
-            ->groupBy('account_id')
-            ->map(fn (Collection $groups): array => [
-                'total' => (int) $groups->sum('total'),
-                'broken' => (int) $groups->whereIn('status', [Status::TokenExpired->value, Status::Disconnected->value])->sum('total'),
-            ]);
     }
 
     private static function monthlyCents(?Subscription $subscription): int

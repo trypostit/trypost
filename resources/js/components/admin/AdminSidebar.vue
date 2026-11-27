@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { IconArrowLeft } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import { index as postsIndex } from '@/actions/App/Http/Controllers/App/PostController';
 import BuildVersion from '@/components/settings/BuildVersion.vue';
@@ -27,6 +28,15 @@ import { ADMIN_NAV_GROUPS } from '@/lib/adminNavigation';
 
 const { urlIsActive } = useActiveUrl();
 const { isMobile, state: sidebarState } = useSidebar();
+
+/** The back link names itself only while the sidebar shows icons alone, never on a phone. */
+const hidesBackTooltip = computed((): boolean => {
+    if (isMobile.value) {
+        return true;
+    }
+
+    return sidebarState.value !== 'collapsed';
+});
 </script>
 
 <template>
@@ -56,7 +66,7 @@ const { isMobile, state: sidebarState } = useSidebar();
                 <TooltipContent
                     side="right"
                     align="center"
-                    :hidden="sidebarState !== 'collapsed' || isMobile"
+                    :hidden="hidesBackTooltip"
                 >
                     Back to app
                 </TooltipContent>

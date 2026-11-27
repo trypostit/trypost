@@ -4,72 +4,50 @@ declare(strict_types=1);
 
 namespace App\Support\Admin;
 
+use App\Enums\Billing\Interval;
 use App\Models\Plan;
-use App\Models\Subscription;
-use Carbon\CarbonInterface;
 
 /**
- * How the backoffice reads a subscription: its plan and interval from the
- * Stripe price (a price no plan lists anymore is legacy), and the state it
- * is in now (a scheduled cancellation and an ended subscription read apart
- * from Stripe's own status).
+ * How the backoffice reads a subscription's plan and interval: from its
+ * Stripe price, where a price no plan lists anymore is legacy. Where a
+ * subscription stands is the SubscriptionStatusFilter it falls in.
  */
 final class SubscriptionPlans
 {
     public const string LEGACY = 'legacy';
 
-    /** Stripe statuses of a subscription that is paid for. */
-    public const array PAYING_STATUSES = ['active', 'past_due'];
-
-    /** Stripe statuses of a checkout that never billed. */
-    public const array NEVER_BILLED_STATUSES = ['incomplete', 'incomplete_expired'];
-
     /** How many months one of each Stripe billing interval lasts. */
     public const array MONTHS_PER_INTERVAL = ['day' => 12 / 365, 'week' => 12 / 52, 'month' => 1, 'year' => 12];
 
     /**
-     * Every plan's prices, by price id.
+     * Every plan's prices, by price id, read once per request.
      *
      * @return array<string, array{plan: string, name: string, interval: string}>
      */
     public static function byPrice(): array
     {
-        return Plan::query()
+        return once(fn (): array => Plan::query()
             ->get()
-            ->flatMap(fn (Plan $plan): array => [
-                (string) $plan->stripe_monthly_price_id => ['plan' => $plan->slug->value, 'name' => $plan->name, 'interval' => 'monthly'],
-                (string) $plan->stripe_yearly_price_id => ['plan' => $plan->slug->value, 'name' => $plan->name, 'interval' => 'yearly'],
-            ])
+            ->flatMap(fn (Plan $plan): array => collect(Interval::cases())
+                ->mapWithKeys(fn (Interval $interval): array => [
+                    (string) $interval->priceIdFor($plan) => ['plan' => $plan->slug->value, 'name' => $plan->name, 'interval' => $interval->value],
+                ])
+                ->all())
             ->reject(fn (array $price, string $id): bool => blank($id))
-            ->all();
+            ->all());
     }
 
     /**
-     * @param  array<string, array{plan: string, name: string, interval: string}>  $prices
      * @return array{plan: string, name: string, interval: string}
      */
-    public static function describe(?string $price, array $prices): array
+    public static function describe(?string $price): array
     {
-        $known = data_get($prices, (string) $price);
+        $known = data_get(self::byPrice(), (string) $price);
 
         if (filled($known)) {
             return $known;
         }
 
         return ['plan' => self::LEGACY, 'name' => 'Legacy', 'interval' => 'unknown'];
-    }
-
-    /** Ended, cancelling at the period end, or Stripe's status. */
-    public static function state(Subscription $subscription, CarbonInterface $now): string
-    {
-        if ($subscription->ends_at !== null && $subscription->ends_at->lte($now)) {
-            return 'canceled';
-        }
-
-        if ($subscription->ends_at !== null) {
-            return 'cancelling';
-        }
-
-        return $subscription->stripe_status;
     }
 }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { filled } from '@/lib/helpers';
-import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { type WelcomeOptionArt, welcomeOptionArt } from '@/lib/welcomeOptions';
 import type { AdminBreakdownRow } from '@/types/admin';
 
@@ -28,7 +29,7 @@ const props = withDefaults(
         /** Off where every answer subscribed by how it is asked, so the share tells nothing. */
         showsSubscribed?: boolean;
     }>(),
-    { art: undefined, showsSubscribed: true },
+    { showsSubscribed: true },
 );
 
 const hasRows = computed(() => filled(props.rows));
@@ -37,7 +38,7 @@ const most = computed(() => Math.max(1, ...props.rows.map((row) => row.count)));
 
 const shareOf = (count: number): string => {
     if (props.answered === 0) {
-        return '—';
+        return MISSING_VALUE;
     }
 
     return formatPercent(percentOf(count, props.answered), 1);
@@ -75,12 +76,7 @@ const items = computed(() =>
 
 <template>
     <AnalyticsSection :title="title" :subtitle="subtitle" flush>
-        <p
-            v-if="!hasRows"
-            class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
-        >
-            No answers in this period.
-        </p>
+        <AdminEmptyState v-if="!hasRows" variant="section">No answers in this period.</AdminEmptyState>
         <template v-else>
             <div
                 class="flex items-center gap-3 border-t border-border px-4 pt-3 pb-1 text-xs text-muted-foreground sm:px-5"

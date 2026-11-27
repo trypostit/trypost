@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Support\Auth\DatabaseSessions;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class ListActiveSessions
 {
@@ -18,14 +18,7 @@ class ListActiveSessions
      */
     public static function execute(User $user, string $currentSessionId): array
     {
-        if (config('session.driver') !== 'database') {
-            return [];
-        }
-
-        return DB::table(config('session.table', 'sessions'))
-            ->where('user_id', $user->id)
-            ->orderByDesc('last_activity')
-            ->get()
+        return DatabaseSessions::of($user)
             ->map(fn (object $session): array => [
                 'id' => $session->id,
                 'user_agent' => $session->user_agent,

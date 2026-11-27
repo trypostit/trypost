@@ -7,29 +7,20 @@ namespace App\Actions\Admin;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Post\PublishStatus;
 use App\Enums\User\Goal;
+use App\Enums\User\PreviousSoftware;
+use App\Enums\User\SignupMethod;
 use App\Models\Account;
-use App\Models\Post;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\Admin\KeyLabel;
 use App\Support\Admin\StripePriceAmounts;
-use App\Support\Admin\SubscriptionPlans;
 use App\Support\Percent;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class BuildSignupInsights
 {
-    /** Brand names the Welcome software step shows as logos, spelled as the brands do. */
-    private const array SOFTWARE_NAMES = [
-        'sprout_social' => 'Sprout Social',
-        'socialbee' => 'SocialBee',
-        'none' => 'None yet',
-    ];
-
-    private const array SIGNUP_METHODS = ['google' => 'Google', 'github' => 'GitHub', 'email' => 'Email and password'];
-
     /**
      * Who signed up on the range's days of the viewer's zone and how far they
      * went: account owners only (an invited member skips Welcome and never
@@ -49,41 +40,60 @@ class BuildSignupInsights
         $subscribed = self::subscribedAccounts($owners);
         $previousOwners = self::owners($previous->startsAt(), $previous->endsAt());
         $previousSubscribed = self::subscribedAccounts($previousOwners);
+        $answered = self::answered($owners);
         $signupsPerDay = $owners->countBy(fn (User $user): string => $range->localDate($user->created_at));
         $subscribedPerDay = $owners
             ->filter(fn (User $user): bool => $subscribed->has($user->account_id))
             ->countBy(fn (User $user): string => $range->localDate($user->created_at));
 
         return [
-            'totals' => [
-                'signups' => $owners->count(),
-                'subscribed' => $subscribed->count(),
-                'new_mrr_cents' => self::newMrrCents($subscribed),
-                'minutes_to_subscribe' => self::medianMinutesToSubscribe($owners, $subscribed),
-                'subscribed_rate' => Percent::of($subscribed->count(), $owners->count()),
-            ],
-            'previous' => [
-                'signups' => $previousOwners->count(),
-                'subscribed' => $previousSubscribed->count(),
-                'new_mrr_cents' => self::newMrrCents($previousSubscribed),
-                'minutes_to_subscribe' => self::medianMinutesToSubscribe($previousOwners, $previousSubscribed),
-                'subscribed_rate' => Percent::of($previousSubscribed->count(), $previousOwners->count()),
-            ],
+            'totals' => self::totals($owners, $subscribed),
+            'previous' => self::totals($previousOwners, $previousSubscribed),
             'days' => $days->all(),
             'signups_by_day' => $days->map(fn (string $day): int => (int) $signupsPerDay->get($day, 0))->all(),
             'subscribed_by_day' => $days->map(fn (string $day): int => (int) $subscribedPerDay->get($day, 0))->all(),
-            'funnel' => self::funnel($owners, $subscribed),
+            'funnel' => self::funnel($owners, $subscribed, $answered),
             'personas' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->persona?->value], fn (string $value): string => (string) __("welcome.personas.{$value}", [], 'en')),
-            'software' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->previous_software?->value], fn (string $value): string => self::softwareName($value)),
+            'software' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->previous_software?->value], fn (string $value): string => PreviousSoftware::from($value)->label()),
             'goals' => self::breakdown($owners, $subscribed, fn (User $user): array => collect($user->goals ?? [])->filter(fn (mixed $goal): bool => is_string($goal) && Goal::tryFrom($goal) !== null)->values()->all(), fn (string $value): string => (string) __("welcome.goals.{$value}", [], 'en')),
             'referral_sources' => self::breakdown($owners, $subscribed, fn (User $user): array => [$user->referral_source?->value], fn (string $value): string => (string) __("referral_source.options.{$value}", [], 'en')),
-            'signup_methods' => self::breakdown($owners, $subscribed, fn (User $user): array => [self::signupMethod($user)], fn (string $value): string => (string) data_get(self::SIGNUP_METHODS, $value, $value)),
-            'answered' => [
-                'persona' => $owners->whereNotNull('persona')->count(),
-                'software' => $owners->whereNotNull('previous_software')->count(),
-                'goals' => $owners->filter(fn (User $user): bool => filled($user->goals))->count(),
-                'referral_source' => $owners->whereNotNull('referral_source')->count(),
-            ],
+            'signup_methods' => self::breakdown($owners, $subscribed, fn (User $user): array => [SignupMethod::of($user)->value], fn (string $value): string => SignupMethod::from($value)->label()),
+            'answered' => $answered,
+        ];
+    }
+
+    /**
+     * How many of the owners signed up, subscribed, what that brings each
+     * month and how long it took them.
+     *
+     * @param  Collection<int, User>  $owners
+     * @param  Collection<string, Subscription>  $subscribed
+     * @return array{signups: int, subscribed: int, new_mrr_cents: int, minutes_to_subscribe: ?float, subscribed_rate: float}
+     */
+    private static function totals(Collection $owners, Collection $subscribed): array
+    {
+        return [
+            'signups' => $owners->count(),
+            'subscribed' => $subscribed->count(),
+            'new_mrr_cents' => self::newMrrCents($subscribed),
+            'minutes_to_subscribe' => self::medianMinutesToSubscribe($owners, $subscribed),
+            'subscribed_rate' => Percent::of($subscribed->count(), $owners->count()),
+        ];
+    }
+
+    /**
+     * How many of the owners answered each Welcome question.
+     *
+     * @param  Collection<int, User>  $owners
+     * @return array{persona: int, software: int, goals: int, referral_source: int}
+     */
+    private static function answered(Collection $owners): array
+    {
+        return [
+            'persona' => $owners->whereNotNull('persona')->count(),
+            'software' => $owners->whereNotNull('previous_software')->count(),
+            'goals' => $owners->filter(fn (User $user): bool => filled($user->goals))->count(),
+            'referral_source' => $owners->whereNotNull('referral_source')->count(),
         ];
     }
 
@@ -110,10 +120,10 @@ class BuildSignupInsights
     private static function subscribedAccounts(Collection $owners): Collection
     {
         return Subscription::query()
+            ->billed()
             ->whereIn('account_id', $owners->pluck('account_id'))
-            ->where('type', Account::SUBSCRIPTION_NAME)
-            ->whereNotIn('stripe_status', SubscriptionPlans::NEVER_BILLED_STATUSES)
             ->orderBy('created_at')
+            ->orderBy('id')
             ->get(['id', 'account_id', 'stripe_price', 'quantity', 'created_at'])
             ->unique('account_id')
             ->keyBy('account_id');
@@ -153,36 +163,27 @@ class BuildSignupInsights
      *
      * @param  Collection<int, User>  $owners
      * @param  Collection<string, Subscription>  $subscribed
+     * @param  array{persona: int, software: int, goals: int, referral_source: int}  $answered
      * @return list<array{key: string, label: string, count: int}>
      */
-    private static function funnel(Collection $owners, Collection $subscribed): array
+    private static function funnel(Collection $owners, Collection $subscribed, array $answered): array
     {
-        $accountIds = $owners->pluck('account_id');
-        $workspaces = Workspace::query()->whereIn('account_id', $accountIds)->get(['id', 'account_id']);
-        $accountOf = $workspaces->pluck('account_id', 'id');
-        $connected = Workspace::query()
-            ->whereIn('id', $workspaces->pluck('id'))
-            ->whereHas('socialAccounts')
-            ->pluck('account_id')
-            ->unique();
-        $published = Post::query()
-            ->createdInTryPost()
-            ->whereIn('workspace_id', $workspaces->pluck('id'))
-            ->whereIn('publish_status', PublishStatus::wentOutCases())
-            ->distinct()
-            ->pluck('workspace_id')
-            ->map(fn (string $workspaceId): ?string => $accountOf->get($workspaceId))
-            ->filter()
-            ->unique();
+        $workspaces = Workspace::query()->whereIn('account_id', $owners->pluck('account_id'));
 
         return [
             ['key' => 'signed_up', 'label' => 'Signed up', 'count' => $owners->count()],
-            ['key' => 'persona', 'label' => 'Said who they are', 'count' => $owners->whereNotNull('persona')->count()],
-            ['key' => 'goals', 'label' => 'Picked their goals', 'count' => $owners->filter(fn (User $user): bool => filled($user->goals))->count()],
-            ['key' => 'software', 'label' => 'Named their tool', 'count' => $owners->whereNotNull('previous_software')->count()],
+            ['key' => 'persona', 'label' => 'Said who they are', 'count' => $answered['persona']],
+            ['key' => 'goals', 'label' => 'Picked their goals', 'count' => $answered['goals']],
+            ['key' => 'software', 'label' => 'Named their tool', 'count' => $answered['software']],
             ['key' => 'subscribed', 'label' => 'Subscribed', 'count' => $subscribed->count()],
-            ['key' => 'connected', 'label' => 'Connected a channel', 'count' => $connected->count()],
-            ['key' => 'published', 'label' => 'Sent a post', 'count' => $published->count()],
+            ['key' => 'connected', 'label' => 'Connected a channel', 'count' => (clone $workspaces)
+                ->whereHas('socialAccounts')
+                ->distinct()
+                ->count('account_id')],
+            ['key' => 'published', 'label' => 'Sent a post', 'count' => (clone $workspaces)
+                ->whereHas('posts', fn (Builder $posts): Builder => $posts->createdInTryPost()->whereIn('publish_status', PublishStatus::wentOutCases()))
+                ->distinct()
+                ->count('account_id')],
         ];
     }
 
@@ -205,39 +206,19 @@ class BuildSignupInsights
                 ->map(fn (string $value): array => ['value' => $value, 'subscribed' => $subscribed->has($user->account_id)])
                 ->all())
             ->groupBy('value')
-            ->map(fn (Collection $group, string $value): array => [
-                'value' => $value,
-                'label' => $label($value),
-                'count' => $group->count(),
-                'subscribed' => $group->where('subscribed', true)->count(),
-                'subscribed_rate' => Percent::of($group->where('subscribed', true)->count(), $group->count()),
-            ])
+            ->map(function (Collection $group, string $value) use ($label): array {
+                $subscribedCount = $group->where('subscribed', true)->count();
+
+                return [
+                    'value' => $value,
+                    'label' => $label($value),
+                    'count' => $group->count(),
+                    'subscribed' => $subscribedCount,
+                    'subscribed_rate' => Percent::of($subscribedCount, $group->count()),
+                ];
+            })
             ->sortByDesc('count')
             ->values()
             ->all();
-    }
-
-    private static function signupMethod(User $user): string
-    {
-        if (filled($user->google_id)) {
-            return 'google';
-        }
-
-        if (filled($user->github_id)) {
-            return 'github';
-        }
-
-        return 'email';
-    }
-
-    private static function softwareName(string $value): string
-    {
-        $known = data_get(self::SOFTWARE_NAMES, $value);
-
-        if (filled($known)) {
-            return $known;
-        }
-
-        return KeyLabel::of($value);
     }
 }

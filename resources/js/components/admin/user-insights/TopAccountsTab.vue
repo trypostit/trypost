@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import AdminCustomerCell from '@/components/admin/AdminCustomerCell.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { joinFilled } from '@/lib/adminFormat';
-import { customerName } from '@/lib/adminUsers';
-import { filled } from '@/lib/helpers';
+import { customerName, profileUrl } from '@/lib/adminUsers';
+import { filled, transform } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
-import { show as userShow } from '@/routes/admin/users';
 import type {
     AdminTableColumn,
     AdminUsageInsights,
@@ -29,11 +29,12 @@ const COLUMNS: AdminTableColumn[] = [
     { key: 'failed', label: 'Posts failed', numeric: true },
 ];
 
-/** Each account with what its customer cell shows: the name to sort on, and email and plan under it. */
+/** Each account with what its customer cell shows: the name to sort on, its profile, and email and plan under it. */
 const rows = computed(() =>
     props.accounts.map((account) => ({
         ...account,
         customer: customerName(account.name),
+        href: transform(account.user_id, profileUrl),
         detail: joinFilled([account.email, account.plan]),
     })),
 );
@@ -41,8 +42,6 @@ const rows = computed(() =>
 const hasRows = computed(() => filled(props.accounts));
 
 const rowKey = (row: TopAccount): string => row.account_id;
-
-const profileUrl = (userId: string): string => userShow.url(userId);
 
 const sectionSubtitle = computed(
     (): string => `${props.subtitle} · posts are counted in the period, channels as they are now · click a column to sort`,
@@ -64,12 +63,7 @@ const failedClass = (failed: number): string => {
         :subtitle="sectionSubtitle"
         flush
     >
-        <p
-            v-if="!hasRows"
-            class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
-        >
-            Nobody sent a post in this period.
-        </p>
+        <AdminEmptyState v-if="!hasRows" variant="section">Nobody sent a post in this period.</AdminEmptyState>
         <AdminSortableTable
             v-else
             :columns="COLUMNS"
@@ -79,16 +73,7 @@ const failedClass = (failed: number): string => {
             test-id="admin-user-insights-top-accounts"
         >
             <template #cell-customer="{ row }">
-                <div class="grid min-w-0 max-w-72">
-                    <Link
-                        v-if="row.user_id"
-                        :href="profileUrl(row.user_id)"
-                        class="truncate text-sm font-emphasis text-foreground hover:underline"
-                        >{{ row.customer }}</Link
-                    >
-                    <span v-else class="truncate text-sm text-muted-foreground">{{ row.customer }}</span>
-                    <span class="truncate text-xs text-muted-foreground">{{ row.detail }}</span>
-                </div>
+                <AdminCustomerCell :name="row.name" :href="row.href" :detail="row.detail" class="max-w-72" />
             </template>
             <template #cell-posts="{ row }">
                 <span class="text-sm font-medium text-foreground">{{ formatFullNumber(row.posts) }}</span>

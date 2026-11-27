@@ -15,25 +15,12 @@ class PostRetryController extends Controller
 {
     public function store(RetryPostRequest $request, Post $post, RetryPost $retryPost): RedirectResponse
     {
-        $outcome = $retryPost->execute($request->user(), $post, $request->boolean('instagram_comment_checked'));
+        $outcome = $retryPost->execute($request->user(), $post, $request->instagramCommentChecked());
 
-        return match ($outcome) {
-            RetryOutcome::Queued => back(),
-            RetryOutcome::NeedsInstagramConfirmation => back()->withErrors([
-                'instagram_comment_checked' => 'Check on Instagram that the first comment is missing, then confirm.',
-            ]),
-            RetryOutcome::CommentUnconfirmed => back()->withErrors([
-                'post' => __('posts.errors.instagram.comment_unconfirmed'),
-            ]),
-            RetryOutcome::NotRetryable => back()->withErrors([
-                'post' => 'Only a failed post with a channel can be retried.',
-            ]),
-            RetryOutcome::OwnerBlocked => back()->withErrors([
-                'post' => 'The account owner is blocked: unblock them to retry this post.',
-            ]),
-            RetryOutcome::Changed => back()->withErrors([
-                'post' => 'The post changed meanwhile; nothing was retried.',
-            ]),
-        };
+        if ($outcome === RetryOutcome::Queued) {
+            return back();
+        }
+
+        return back()->withErrors([$outcome->errorField() => $outcome->message()]);
     }
 }

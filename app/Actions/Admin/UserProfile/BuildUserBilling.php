@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Admin\UserProfile;
 
 use App\Actions\Billing\ListAccountCards;
+use App\Enums\Billing\Interval;
 use App\Http\Resources\App\InvoiceResource;
 use App\Models\Account;
 use App\Models\Offer;
@@ -39,7 +40,7 @@ class BuildUserBilling
             return ['account' => null];
         }
 
-        $account->subscriptions->each(fn (Subscription $subscription): Subscription => $subscription->setRelation('owner', $account));
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
         return [
             'account' => [
@@ -52,23 +53,21 @@ class BuildUserBilling
                 'generic_trial_ends_at' => $account->trial_ends_at?->toIso8601String(),
             ],
             'plan' => $account->plan?->name,
-            'subscription' => self::subscription($account),
+            'subscription' => self::subscription($account, $subscription),
             'offers' => $account->offers->map(fn (Offer $offer): array => [
                 'slug' => $offer->slug,
                 'claimed_at' => data_get($offer, 'pivot.claimed_at'),
                 'redeemed_at' => data_get($offer, 'pivot.redeemed_at'),
             ])->values()->all(),
-            'stripe' => self::fromStripe($account),
+            'stripe' => self::fromStripe($account, $subscription),
         ];
     }
 
     /**
      * @return array<string, mixed>|null
      */
-    private static function subscription(Account $account): ?array
+    private static function subscription(Account $account, ?Subscription $subscription): ?array
     {
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
         if ($subscription === null) {
             return null;
         }
@@ -84,38 +83,32 @@ class BuildUserBilling
         ];
     }
 
+    /** The interval of the plan's price the subscription is on; null for a price the plan does not list. */
     private static function interval(?Plan $plan, ?string $price): ?string
     {
         if ($plan === null || $price === null) {
             return null;
         }
 
-        if ($price === $plan->stripe_yearly_price_id) {
-            return 'yearly';
-        }
-
-        if ($price === $plan->stripe_monthly_price_id) {
-            return 'monthly';
-        }
-
-        return null;
+        return collect(Interval::cases())
+            ->first(fn (Interval $interval): bool => $interval->priceIdFor($plan) === $price)
+            ?->value;
     }
 
     /**
      * @return array<string, mixed>|null
      */
-    private static function fromStripe(Account $account): ?array
+    private static function fromStripe(Account $account, ?Subscription $subscription): ?array
     {
         if (blank($account->stripe_id)) {
             return null;
         }
 
         try {
-            $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
             $invoices = $account->invoicesIncludingPending(['limit' => self::INVOICES, 'expand' => ['data.discounts']]);
 
             return [
-                'cards' => self::cards($account),
+                'cards' => self::cards($account, $subscription),
                 'discount' => self::discount($subscription?->discount() ?? $account->discount()),
                 'used_discounts' => $invoices->flatMap(fn (Invoice $invoice): array => self::usedDiscounts($invoice))->values()->all(),
                 'invoices' => $invoices
@@ -162,10 +155,8 @@ class BuildUserBilling
      *
      * @return list<array<string, mixed>>
      */
-    private static function cards(Account $account): array
+    private static function cards(Account $account, ?Subscription $subscription): array
     {
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
         if ($subscription !== null) {
             return ListAccountCards::execute($account, $subscription);
         }

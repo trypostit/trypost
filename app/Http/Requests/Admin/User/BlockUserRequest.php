@@ -46,4 +46,10 @@ class BlockUserRequest extends FormRequest
             },
         ];
     }
+
+    /** Why the user is blocked, trimmed like every input. */
+    public function reason(): string
+    {
+        return $this->string('reason')->toString();
+    }
 }

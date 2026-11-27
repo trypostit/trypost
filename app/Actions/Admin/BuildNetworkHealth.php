@@ -51,8 +51,7 @@ class BuildNetworkHealth
             ->toBase()
             ->pluck('last_failure_at', 'platform');
 
-        return collect(Platform::cases())
-            ->filter(fn (Platform $platform): bool => $platform->isEnabled())
+        return collect(Platform::enabledCases())
             ->map(fn (Platform $platform): array => [
                 'platform' => $platform->value,
                 'label' => $platform->label(),

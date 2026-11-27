@@ -68,6 +68,19 @@ class Account extends Model
             ->chaperone('owner');
     }
 
+    /**
+     * The subscription the account pays through now (live, active or past
+     * due). A plan change can leave a subscription cancelling at its period
+     * end next to the new one, so one that is not cancelling comes first,
+     * else the newest.
+     */
+    public function payingSubscription(): ?Subscription
+    {
+        $paying = $this->subscriptions->filter(fn (Subscription $subscription): bool => $subscription->isPaying());
+
+        return $paying->first(fn (Subscription $subscription): bool => $subscription->ends_at === null) ?? $paying->first();
+    }
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);

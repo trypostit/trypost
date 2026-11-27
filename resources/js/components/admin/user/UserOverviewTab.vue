@@ -25,10 +25,10 @@ import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import date from '@/date';
 import { metricChange } from '@/lib/adminChange';
-import { dateTimeOrDash, formatUsd, humanize, NO_VALUE, orDash } from '@/lib/adminFormat';
+import { formatUsd, humanize, orDash } from '@/lib/adminFormat';
 import { blank, filled, transform } from '@/lib/helpers';
-import { formatFullNumber, formatPercent } from '@/lib/utils';
-import type { Language } from '@/types';
+import { formatFullNumber, formatPercent, MISSING_VALUE } from '@/lib/utils';
+import type { Language, SharedData } from '@/types';
 import type {
     AdminDetailRow,
     AdminStat,
@@ -57,10 +57,10 @@ const hasLastSession = computed(() => filled(props.data.last_seen.user_agent));
 
 const account = computed((): AdminDetailRow[] => [
     { key: 'sign-in', label: 'Signs in with' },
-    { key: 'verified', label: 'Email verified', value: dateTimeOrDash(props.data.sign_in.email_verified_at) },
-    { key: 'signup', label: 'Signed up', value: dateTimeOrDash(props.data.signup.at) },
+    { key: 'verified', label: 'Email verified', value: date.formatDateTime(props.data.sign_in.email_verified_at) },
+    { key: 'signup', label: 'Signed up', value: date.formatDateTime(props.data.signup.at) },
     { key: 'signup-ip', label: 'Signup IP', value: orDash(props.data.signup.ip) },
-    { key: 'last-seen', label: 'Last seen', value: dateTimeOrDash(props.data.last_seen.at) },
+    { key: 'last-seen', label: 'Last seen', value: date.formatDateTime(props.data.last_seen.at) },
     { key: 'last-ip', label: 'Last IP', value: orDash(props.data.last_seen.ip) },
     { key: 'device', label: 'Last device' },
     { key: 'stripe', label: 'Stripe customer' },
@@ -117,9 +117,9 @@ const lastPost = (value: string | null): string => {
 
 const lifecycle = computed((): AdminDetailRow[] => [
     { key: 'stage', label: 'Lifecycle stage', value: humanize(props.data.lifecycle.stage) },
-    { key: 'activated', label: 'Activated', value: dateTimeOrDash(props.data.lifecycle.activated_at) },
-    { key: 'first-paid', label: 'First paid', value: dateTimeOrDash(props.data.lifecycle.first_paid_at) },
-    { key: 'onboarding', label: 'Finished onboarding', value: dateTimeOrDash(props.data.lifecycle.onboarding_completed_at) },
+    { key: 'activated', label: 'Activated', value: date.formatDateTime(props.data.lifecycle.activated_at) },
+    { key: 'first-paid', label: 'First paid', value: date.formatDateTime(props.data.lifecycle.first_paid_at) },
+    { key: 'onboarding', label: 'Finished onboarding', value: date.formatDateTime(props.data.lifecycle.onboarding_completed_at) },
 ]);
 
 const welcome = computed((): AdminDetailRow[] => [
@@ -131,7 +131,7 @@ const welcome = computed((): AdminDetailRow[] => [
 
 const goalsLabel = computed((): string => {
     if (blank(props.data.welcome.goals)) {
-        return NO_VALUE;
+        return MISSING_VALUE;
     }
 
     return props.data.welcome.goals.map(humanize).join(', ');
@@ -147,11 +147,11 @@ const preferences: AdminDetailRow[] = [
     { key: 'post-action', label: 'Default posting action' },
 ];
 
-const page = usePage();
+const page = usePage<SharedData>();
 
 /** The user's language as the app lists it, with its flag. */
 const language = computed((): Language | undefined => {
-    const languages = page.props.languages as Language[] | undefined;
+    const languages = page.props.languages;
 
     if (filled(languages)) {
         return languages.find((option) => option.code === props.data.signup.locale);
@@ -260,7 +260,7 @@ const hasAttribution = computed(() => filled(attribution.value));
                             />
                             GitHub
                         </span>
-                        <span v-if="!hasSignInMethod">—</span>
+                        <span v-if="!hasSignInMethod">{{ MISSING_VALUE }}</span>
                     </span>
                 </template>
                 <template #row-device>
@@ -269,11 +269,11 @@ const hasAttribution = computed(() => filled(attribution.value));
                         :user-agent="data.last_seen.user_agent"
                         data-testid="admin-user-last-device"
                     />
-                    <span v-else>—</span>
+                    <span v-else>{{ MISSING_VALUE }}</span>
                 </template>
                 <template #row-stripe>
                     <StripeCustomerLink v-if="data.links.stripe" :url="data.links.stripe" />
-                    <span v-else>—</span>
+                    <span v-else>{{ MISSING_VALUE }}</span>
                 </template>
             </AdminDetailList>
         </SettingsSection>
@@ -312,7 +312,7 @@ const hasAttribution = computed(() => filled(attribution.value));
                         />
                         {{ language.name }}
                     </span>
-                    <span v-else>—</span>
+                    <span v-else>{{ MISSING_VALUE }}</span>
                 </template>
                 <template v-for="row in preferenceIcons" :key="row.key" #[`row-${row.key}`]>
                     <span class="inline-flex items-center gap-1.5">

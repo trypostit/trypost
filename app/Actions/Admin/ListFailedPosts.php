@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Actions\Admin;
 
-use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Models\Post;
+use App\Support\Admin\PublishingCounts;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class ListFailedPosts
 {
     /**
-     * Posts the networks refused, across every workspace, the most recently
+     * Posts the networks refused or rejected in review (what the backoffice
+     * calls failed everywhere), across every workspace, the most recently
      * failed first (`updated_at`, set on every post, sorts the same on
      * PostgreSQL and MySQL; `publication_updated_at` may be null),
      * optionally only those of one error category.
@@ -77,7 +78,7 @@ class ListFailedPosts
     {
         return Post::query()
             ->failed()
-            ->where('posts.publish_status', PublishStatus::Failed)
+            ->whereIn('posts.publish_status', PublishingCounts::failedStatuses())
             ->when(filled($platforms), fn (Builder $query) => $query->whereIn('posts.platform', $platforms));
     }
 }

@@ -2,7 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-import AdminBarRows from '@/components/admin/AdminBarRows.vue';
+import AdminBarList from '@/components/admin/AdminBarList.vue';
 import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminSortableTable from '@/components/admin/AdminSortableTable.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
@@ -16,7 +16,7 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { ALARMING_FAILURE_RATE } from '@/lib/adminPublishing';
+import { ALARMING_FAILURE_RATE, originLabel } from '@/lib/adminPublishing';
 import { filled } from '@/lib/helpers';
 import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
 import { index as postsIndex } from '@/routes/admin/posts';
@@ -39,29 +39,17 @@ const props = defineProps<{
 
 const selectedNetworks = ref<string[]>([...props.filters.networks]);
 
-/** The range as the URL carries it: a preset, or custom with its days. */
-const rangeQuery = (): Record<string, string> => {
-    if (props.filters.range === 'custom') {
-        return {
-            range: 'custom',
-            start: props.filters.start,
-            end: props.filters.end,
-        };
-    }
-
-    return { range: props.filters.range };
-};
-
 const networkQuery = computed((): Record<string, string[]> => ({
     networks: selectedNetworks.value,
 }));
 
+/** Picking networks keeps the range the URL carries. */
 watch(
     selectedNetworks,
     () => {
         router.get(
-            postsIndex.url(),
-            { ...rangeQuery(), ...networkQuery.value },
+            postsIndex.url({ mergeQuery: networkQuery.value }),
+            {},
             { preserveState: true, preserveScroll: true, replace: true },
         );
     },
@@ -110,29 +98,12 @@ const TYPE_COLUMNS: AdminTableColumn[] = [
     { key: 'failure_rate', label: 'Failure rate', numeric: true },
 ];
 
-const ORIGIN_LABELS: Record<string, string> = {
-    web: 'Web app',
-    api: 'REST API',
-    mcp: 'AI apps (MCP)',
-    repurpose: 'Repurpose',
-};
-
 const rateClass = (rate: number): string => {
     if (rate >= ALARMING_FAILURE_RATE) {
         return 'text-destructive';
     }
 
     return 'text-foreground';
-};
-
-const originLabel = (origin: string): string => {
-    const label = ORIGIN_LABELS[origin];
-
-    if (filled(label)) {
-        return label;
-    }
-
-    return origin;
 };
 
 const totalSent = computed(() =>
@@ -188,7 +159,6 @@ const categoryRows = computed((): AdminBarRow[] =>
     })),
 );
 
-const hasCategories = computed(() => filled(props.stats.categories));
 const hasTypes = computed(() => filled(props.stats.content_types));
 
 const networkRows = computed(() =>
@@ -209,7 +179,6 @@ const networkKey = (row: { platform: string }): string => row.platform;
 const errorKey = (row: { platform: string; message: string }): string =>
     `${row.platform}-${row.message}`;
 
-const hasOrigins = computed(() => filled(props.stats.origins));
 /** A network row exists only for a network that sent posts, so it also tells whether anything was sent. */
 const hasNetworks = computed(() => filled(props.stats.networks));
 const hasErrors = computed(() => filled(props.stats.top_errors));
@@ -297,46 +266,36 @@ const hasErrors = computed(() => filled(props.stats.top_errors));
             </AnalyticsSection>
 
             <div class="grid gap-6 lg:grid-cols-2">
-                <AnalyticsSection
+                <AdminBarList
                     title="Failures by cause"
                     subtitle="Click a cause to see its posts"
-                    flush
-                >
-                    <AdminEmptyState v-if="!hasCategories" variant="section">No failures in this period.</AdminEmptyState>
-                    <AdminBarRows
-                        v-else
-                        :rows="categoryRows"
-                        label-class="w-32"
-                        test-id="admin-publishing-categories"
-                    />
-                </AnalyticsSection>
+                    :rows="categoryRows"
+                    label-class="w-32"
+                    empty="No failures in this period."
+                    test-id="admin-publishing-categories"
+                />
 
-                <AnalyticsSection
+                <AdminBarList
                     title="By origin"
                     subtitle="Where the posts were made: share of posts, published, failure rate"
-                    flush
+                    :rows="originRows"
+                    label-class="w-28"
+                    empty="No posts in this period."
+                    test-id="admin-publishing-origins"
                 >
-                    <AdminEmptyState v-if="!hasOrigins" variant="section">No posts in this period.</AdminEmptyState>
-                    <AdminBarRows
-                        v-else
-                        :rows="originRows"
-                        label-class="w-28"
-                        test-id="admin-publishing-origins"
-                    >
-                        <template #value="{ row }">
-                            <span
-                                class="w-16 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
-                                >{{ formatFullNumber(row.count) }}</span
-                            >
-                            <span
-                                class="w-12 shrink-0 text-right text-xs tabular-nums"
-                                :class="rateClass(originFailureRate(row))"
-                                title="Failure rate"
-                                >{{ formatPercent(originFailureRate(row), 1) }}</span
-                            >
-                        </template>
-                    </AdminBarRows>
-                </AnalyticsSection>
+                    <template #value="{ row }">
+                        <span
+                            class="w-16 shrink-0 text-right text-sm font-medium text-foreground tabular-nums"
+                            >{{ formatFullNumber(row.count) }}</span
+                        >
+                        <span
+                            class="w-12 shrink-0 text-right text-xs tabular-nums"
+                            :class="rateClass(originFailureRate(row))"
+                            title="Failure rate"
+                            >{{ formatPercent(originFailureRate(row), 1) }}</span
+                        >
+                    </template>
+                </AdminBarList>
             </div>
 
             <AnalyticsSection

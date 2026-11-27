@@ -23,4 +23,30 @@ enum RetryOutcome: string
 
     /** The post changed while the retry was being prepared; nothing was queued. */
     case Changed = 'changed';
+
+    /** The form field the backoffice shows the outcome under. */
+    public function errorField(): string
+    {
+        return match ($this) {
+            self::NeedsInstagramConfirmation => 'instagram_comment_checked',
+            self::Queued,
+            self::NotRetryable,
+            self::CommentUnconfirmed,
+            self::OwnerBlocked,
+            self::Changed => 'post',
+        };
+    }
+
+    /** What the backoffice tells the admin who retried. */
+    public function message(): string
+    {
+        return match ($this) {
+            self::Queued => 'A publish attempt was queued.',
+            self::NotRetryable => 'Only a failed post with a channel can be retried.',
+            self::CommentUnconfirmed => __('posts.errors.instagram.comment_unconfirmed'),
+            self::NeedsInstagramConfirmation => 'Check on Instagram that the first comment is missing, then confirm.',
+            self::OwnerBlocked => 'The account owner is blocked: unblock them to retry this post.',
+            self::Changed => 'The post changed meanwhile; nothing was retried.',
+        };
+    }
 }

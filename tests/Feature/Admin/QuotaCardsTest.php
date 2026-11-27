@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Admin\BuildQuotaCards;
+use App\Dto\Analytics\DateRange;
 use App\Enums\Admin\QuotaSource;
 use App\Support\Admin\QuotaSnapshots;
 use App\Support\Admin\XPricing;
@@ -24,7 +25,7 @@ test('the cards show the latest readings exactly as the providers reported them'
     QuotaSnapshots::put(QuotaSource::YouTube, $youtube);
     QuotaSnapshots::put(QuotaSource::X, $x);
 
-    $cards = BuildQuotaCards::execute(now('UTC')->subDays(29)->toDateString(), now('UTC')->toDateString());
+    $cards = BuildQuotaCards::execute(DateRange::fromDates(now('UTC')->subDays(29)->toDateString(), now('UTC')->toDateString(), 'UTC'));
 
     expect($cards['youtube'])->toMatchArray(['configured' => true, 'quotas' => $youtube['quotas'], 'since' => $youtube['since']])
         ->and($cards['x'])->toMatchArray(['configured' => true, 'credits' => $x['credits']])
@@ -41,7 +42,7 @@ test('the x card estimates the cost of every day of the range', function () {
         ['date' => $today, 'usage' => 100],
     ]]]);
 
-    $x = BuildQuotaCards::execute(now('UTC')->subDays(29)->toDateString(), $today)['x'];
+    $x = BuildQuotaCards::execute(DateRange::fromDates(now('UTC')->subDays(29)->toDateString(), $today, 'UTC'))['x'];
 
     expect($x['estimate'])->toHaveCount(30)
         ->and(collect($x['estimate'])->last()['date'])->toBe($today)
@@ -61,7 +62,7 @@ test('the x daily usage is cut to the chosen range', function () {
         ['date' => $today, 'usage' => 100],
     ]]]);
 
-    $cards = BuildQuotaCards::execute(now('UTC')->subDays(6)->toDateString(), $today);
+    $cards = BuildQuotaCards::execute(DateRange::fromDates(now('UTC')->subDays(6)->toDateString(), $today, 'UTC'));
 
     expect($cards['x']['usage']['daily_project_usage'])->toBe([['date' => $today, 'usage' => 100]])
         ->and($cards['x']['estimate'])->toHaveCount(7);
@@ -86,7 +87,7 @@ test('a source that is off reads as not configured', function () {
     config()->set('trypost.admin.quotas.youtube.enabled', false);
     config()->set('trypost.admin.quotas.x.bearer_token', null);
 
-    $cards = BuildQuotaCards::execute(now('UTC')->subDays(29)->toDateString(), now('UTC')->toDateString());
+    $cards = BuildQuotaCards::execute(DateRange::fromDates(now('UTC')->subDays(29)->toDateString(), now('UTC')->toDateString(), 'UTC'));
 
     expect($cards['youtube']['configured'])->toBeFalse()
         ->and($cards['x']['configured'])->toBeFalse();

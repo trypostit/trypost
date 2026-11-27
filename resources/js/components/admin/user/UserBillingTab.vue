@@ -10,147 +10,135 @@ import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import date from '@/date';
-import { dateTimeOrDash, humanize, joinFilled, orDash } from '@/lib/adminFormat';
-import { subscriptionState } from '@/lib/adminSubscriptions';
+import { humanize, joinFilled, orDash } from '@/lib/adminFormat';
+import { subscriptionState, UNPAID_STATES } from '@/lib/adminSubscriptions';
+import { planName } from '@/lib/adminUsers';
 import { cardBrand } from '@/lib/cardBrands';
-import { filled } from '@/lib/helpers';
-import type { AdminDetailRow, AdminUserBillingData, BadgeVariant } from '@/types/admin';
+import { blank, filled } from '@/lib/helpers';
+import { MISSING_VALUE } from '@/lib/utils';
+import type { AdminAccountBilling, AdminDetailRow, BadgeVariant } from '@/types/admin';
 
+/** The billing of a user's account; a user without one never reaches this tab's content. */
 const props = defineProps<{
-    data: AdminUserBillingData;
+    data: AdminAccountBilling;
 }>();
 
-type Discount = NonNullable<NonNullable<AdminUserBillingData['stripe']>['discount']>;
+type Subscription = NonNullable<AdminAccountBilling['subscription']>;
+type Stripe = NonNullable<AdminAccountBilling['stripe']>;
+type Discount = NonNullable<Stripe['discount']>;
 
-const subscription = computed(() => props.data.subscription ?? null);
-const stripe = computed(() => props.data.stripe ?? null);
+const subscription = computed(() => props.data.subscription);
+const stripe = computed(() => props.data.stripe);
 const account = computed(() => props.data.account);
-const hasAccount = computed(() => filled(account.value));
-const isCancelling = computed(() => filled(subscription.value?.cancels_at));
 
-/** Stripe statuses where the last payment did not go through. */
-const UNPAID_STATUSES = ['past_due', 'unpaid', 'incomplete', 'incomplete_expired'];
+/** A payment that did not go through. */
+const isOverdue = (current: Subscription): boolean => UNPAID_STATES.includes(current.status);
 
-const isOverdue = computed((): boolean => {
-    if (filled(subscription.value)) {
-        return UNPAID_STATUSES.includes(subscription.value.status);
+const OVERDUE_MESSAGES: Record<string, string> = {
+    past_due: 'Payment overdue: the last invoice failed and Stripe is retrying it. The user keeps app access while it retries.',
+    unpaid: 'Unpaid: Stripe stopped retrying the last invoice.',
+};
+
+/** What went wrong with the subscription's last payment; none while the payments go through. */
+const overdueReason = (current: Subscription): string | null => {
+    if (!isOverdue(current)) {
+        return null;
     }
 
-    return false;
-});
+    const message = OVERDUE_MESSAGES[current.status];
 
-const overdueMessage = computed((): string => {
-    if (subscription.value?.status === 'past_due') {
-        return 'Payment overdue: the last invoice failed and Stripe is retrying it. The user keeps app access while it retries.';
-    }
-
-    if (subscription.value?.status === 'unpaid') {
-        return 'Unpaid: Stripe stopped retrying the last invoice.';
+    if (filled(message)) {
+        return message;
     }
 
     return 'Incomplete: the first payment never went through.';
-});
+};
 
-const stripeUrl = computed(() => account.value?.stripe_url);
-const stripeId = computed(() => account.value?.stripe_id);
-const hasAppAccess = computed((): boolean => {
-    if (filled(account.value)) {
-        return account.value.has_app_access;
-    }
-
-    return false;
-});
-
-const subscriptionStatus = computed((): string => {
+const overdueMessage = computed((): string | null => {
     if (filled(subscription.value)) {
-        return subscription.value.status;
+        return overdueReason(subscription.value);
     }
 
-    return '';
+    return null;
 });
 
-/**
- * Where the subscription stands, as the Subscriptions list shows it: a
- * payment that failed first, then a cancellation at the period end.
- */
-const subscriptionBadge = computed((): { label: string; variant: BadgeVariant } => {
-    if (isOverdue.value) {
-        return subscriptionState(subscriptionStatus.value);
+/** Why Stripe could not be read, when it could not. */
+const stripeError = computed((): string | null => {
+    if (filled(stripe.value)) {
+        return stripe.value.error;
     }
 
-    if (isCancelling.value) {
+    return null;
+});
+
+/** A cancellation shows while the payments go through; a failed payment says more. */
+const showsCancellation = (current: Subscription): boolean => {
+    if (isOverdue(current)) {
+        return false;
+    }
+
+    return filled(current.cancels_at);
+};
+
+/** Where the subscription stands, as the Subscriptions list shows it. */
+const subscriptionBadge = (current: Subscription): { label: string; variant: BadgeVariant } => {
+    if (showsCancellation(current)) {
         return { label: 'Cancels at period end', variant: 'warning' };
     }
 
-    return subscriptionState(subscriptionStatus.value);
-});
-
-const planName = computed((): string => {
-    if (filled(props.data.plan)) {
-        return props.data.plan;
-    }
-
-    return 'No plan';
-});
-
-const planRows = computed((): AdminDetailRow[] => [
-    { key: 'plan', label: 'Plan', value: planName.value },
-    { key: 'status', label: 'Subscription' },
-    { key: 'interval', label: 'Billed', value: humanize(subscription.value?.interval) },
-    { key: 'started', label: 'Subscribed', value: dateTimeOrDash(subscription.value?.started_at) },
-    { key: 'trial', label: 'Trial ends', value: dateTimeOrDash(subscription.value?.trial_ends_at) },
-    { key: 'cancels', label: 'Cancels on', value: dateTimeOrDash(subscription.value?.cancels_at) },
-    { key: 'generic-trial', label: 'Trial without a card ends', value: dateTimeOrDash(account.value?.generic_trial_ends_at) },
-    { key: 'access', label: 'App access' },
-    { key: 'stripe-id', label: 'Stripe customer' },
-]);
-
-const discount = computed(() => stripe.value?.discount ?? null);
-
-/** What the discount takes off; a coupon Stripe gave no amount for leaves it empty. */
-const discountAmount = (current: Discount): string => {
-    if (filled(current.percent_off)) {
-        return `${current.percent_off}% off`;
-    }
-
-    if (filled(current.amount_off)) {
-        return `${current.amount_off} off`;
-    }
-
-    return '';
+    return subscriptionState(current.status);
 };
 
-/** The discount in one line, as the billing page shows it: what it takes off and its coupon. */
-const discountSummary = computed((): string => {
-    if (filled(discount.value)) {
-        return joinFilled([discountAmount(discount.value), discount.value.name]);
-    }
+/** When and how the subscription bills; an account without one has none of these. */
+const subscriptionRows = computed((): AdminDetailRow[] => {
+    const current = subscription.value;
 
-    return '';
-});
-
-const discountRows = computed((): AdminDetailRow[] => {
-    if (filled(discount.value)) {
+    if (filled(current)) {
         return [
-            { key: 'coupon', label: 'Coupon', value: orDash(discount.value.name) },
-            { key: 'amount', label: 'Discount', value: discountAmount(discount.value) },
-            { key: 'duration', label: 'Duration', value: humanize(discount.value.duration) },
-            { key: 'ends', label: 'Ends', value: dateTimeOrDash(discount.value.ends_at) },
-            { key: 'code', label: 'Promotion code', value: orDash(discount.value.promotion_code) },
+            { key: 'interval', label: 'Billed', value: humanize(current.interval) },
+            { key: 'started', label: 'Subscribed', value: date.formatDateTime(current.started_at) },
+            { key: 'trial', label: 'Trial ends', value: date.formatDateTime(current.trial_ends_at) },
+            { key: 'cancels', label: 'Cancels on', value: date.formatDateTime(current.cancels_at) },
         ];
     }
 
     return [];
 });
 
-const cards = computed(() => stripe.value?.cards ?? []);
-const invoices = computed(() => stripe.value?.invoices ?? []);
-const offers = computed(() => props.data.offers ?? []);
-const hasCards = computed(() => filled(cards.value));
-const hasInvoices = computed(() => filled(invoices.value));
-const hasOffers = computed(() => filled(offers.value));
-const stripeError = computed(() => stripe.value?.error ?? null);
-const readsStripe = computed(() => filled(stripe.value));
+const planRows = computed((): AdminDetailRow[] => [
+    { key: 'plan', label: 'Plan', value: planName(props.data.plan) },
+    { key: 'status', label: 'Subscription' },
+    ...subscriptionRows.value,
+    { key: 'generic-trial', label: 'Trial without a card ends', value: date.formatDateTime(account.value.generic_trial_ends_at) },
+    { key: 'access', label: 'App access' },
+    { key: 'stripe-id', label: 'Stripe customer' },
+]);
+
+/** What the discount takes off; a coupon Stripe gave no amount for leaves it empty. */
+const discountAmount = (discount: Discount): string => {
+    if (filled(discount.percent_off)) {
+        return `${discount.percent_off}% off`;
+    }
+
+    if (filled(discount.amount_off)) {
+        return `${discount.amount_off} off`;
+    }
+
+    return '';
+};
+
+/** The discount in one line, as the billing page shows it: what it takes off and its coupon. */
+const discountSummary = (discount: Discount): string => joinFilled([discountAmount(discount), discount.name]);
+
+const discountRows = (discount: Discount): AdminDetailRow[] => [
+    { key: 'coupon', label: 'Coupon', value: orDash(discount.name) },
+    { key: 'amount', label: 'Discount', value: discountAmount(discount) },
+    { key: 'duration', label: 'Duration', value: humanize(discount.duration) },
+    { key: 'ends', label: 'Ends', value: date.formatDateTime(discount.ends_at) },
+    { key: 'code', label: 'Promotion code', value: orDash(discount.promotion_code) },
+];
+
+const hasOffers = computed(() => filled(props.data.offers));
 
 const expiry = (month: number, year: number): string =>
     `Expires ${String(month).padStart(2, '0')}/${year}`;
@@ -180,10 +168,7 @@ const invoiceVariant = (status: string): BadgeVariant => {
     return 'secondary';
 };
 
-const usedDiscounts = computed(() => stripe.value?.used_discounts ?? []);
-const hasUsedDiscounts = computed(() => filled(usedDiscounts.value));
-
-const usedDiscountLabel = (used: { name: string | null; amount_off: string; invoice_date: string }): string => {
+const usedDiscountLabel = (used: Stripe['used_discounts'][number]): string => {
     const off = `${used.amount_off} off the invoice of ${date.formatDateOnly(used.invoice_date)}`;
 
     if (filled(used.name)) {
@@ -196,69 +181,63 @@ const usedDiscountLabel = (used: { name: string | null; amount_off: string; invo
 
 <template>
     <div class="flex flex-col gap-10" data-testid="admin-user-billing">
-        <AdminEmptyState v-if="!hasAccount">This user has no account.</AdminEmptyState>
+        <p
+            v-if="stripeError"
+            class="rounded-xl border border-destructive/40 bg-destructive/5 px-5 py-3 text-sm text-destructive"
+            data-testid="admin-user-billing-stripe-error"
+        >
+            Couldn't read Stripe: {{ stripeError }}
+        </p>
 
-        <template v-else>
-            <p
-                v-if="stripeError"
-                class="rounded-xl border border-destructive/40 bg-destructive/5 px-5 py-3 text-sm text-destructive"
-                data-testid="admin-user-billing-stripe-error"
-            >
-                Couldn't read Stripe: {{ stripeError }}
-            </p>
+        <p
+            v-if="overdueMessage"
+            class="rounded-xl border border-destructive/40 bg-destructive/5 px-5 py-3 text-sm text-destructive"
+            data-testid="admin-user-billing-overdue"
+        >
+            {{ overdueMessage }}
+        </p>
 
-            <p
-                v-if="isOverdue"
-                class="rounded-xl border border-destructive/40 bg-destructive/5 px-5 py-3 text-sm text-destructive"
-                data-testid="admin-user-billing-overdue"
-            >
-                {{ overdueMessage }}
-            </p>
+        <SettingsSection title="Subscription">
+            <AdminDetailList :rows="planRows" test-id="admin-user-billing-plan">
+                <template #row-status>
+                    <Badge v-if="subscription" :variant="subscriptionBadge(subscription).variant">{{
+                        subscriptionBadge(subscription).label
+                    }}</Badge>
+                    <span v-else>No subscription</span>
+                </template>
+                <template #row-stripe-id>
+                    <StripeCustomerLink
+                        v-if="account.stripe_url"
+                        :url="account.stripe_url"
+                        :customer-id="account.stripe_id"
+                    />
+                    <span v-else>{{ MISSING_VALUE }}</span>
+                </template>
+                <template #row-access>
+                    <Badge v-if="account.has_app_access" variant="success">Yes</Badge>
+                    <Badge v-else variant="secondary">No</Badge>
+                </template>
+            </AdminDetailList>
+        </SettingsSection>
 
-            <SettingsSection title="Subscription">
-                <AdminDetailList :rows="planRows" test-id="admin-user-billing-plan">
-                    <template #row-status>
-                        <Badge v-if="subscription" :variant="subscriptionBadge.variant">{{
-                            subscriptionBadge.label
-                        }}</Badge>
-                        <span v-else>No subscription</span>
-                    </template>
-                    <template #row-stripe-id>
-                        <StripeCustomerLink
-                            v-if="stripeUrl"
-                            :url="stripeUrl"
-                            :customer-id="stripeId"
-                        />
-                        <span v-else>—</span>
-                    </template>
-                    <template #row-access>
-                        <Badge v-if="hasAppAccess" variant="success">Yes</Badge>
-                        <Badge v-else variant="secondary">No</Badge>
-                    </template>
-                </AdminDetailList>
-            </SettingsSection>
-
-            <SettingsSection
-                v-if="readsStripe"
-                title="Discount"
-                description="Read from Stripe."
-            >
-                <div v-if="discount" class="flex flex-col gap-3">
+        <template v-if="stripe">
+            <SettingsSection title="Discount" description="Read from Stripe.">
+                <div v-if="stripe.discount" class="flex flex-col gap-3">
                     <p
                         class="flex items-center gap-1.5 text-sm font-emphasis text-foreground"
                         data-testid="admin-user-billing-discount-summary"
                     >
                         <IconDiscount class="size-4 shrink-0 text-success-text" />
-                        {{ discountSummary }}
+                        {{ discountSummary(stripe.discount) }}
                     </p>
-                    <AdminDetailList :rows="discountRows" test-id="admin-user-billing-discount" />
+                    <AdminDetailList :rows="discountRows(stripe.discount)" test-id="admin-user-billing-discount" />
                 </div>
                 <AdminEmptyState v-else>No discount on the subscription now.</AdminEmptyState>
-                <div v-if="hasUsedDiscounts" class="mt-4 flex flex-col gap-2">
+                <div v-if="filled(stripe.used_discounts)" class="mt-4 flex flex-col gap-2">
                     <p class="text-xs font-medium text-muted-foreground">Used on past invoices</p>
                     <ul class="flex flex-col gap-2" data-testid="admin-user-billing-used-discounts">
                         <li
-                            v-for="(used, index) in usedDiscounts"
+                            v-for="(used, index) in stripe.used_discounts"
                             :key="index"
                             class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"
                         >
@@ -269,14 +248,10 @@ const usedDiscountLabel = (used: { name: string | null; amount_off: string; invo
                 </div>
             </SettingsSection>
 
-            <SettingsSection
-                title="Cards"
-                description="Read from Stripe."
-            >
-                <AdminEmptyState v-if="!readsStripe">No Stripe customer.</AdminEmptyState>
-                <AdminEmptyState v-else-if="!hasCards">No card saved in Stripe.</AdminEmptyState>
+            <SettingsSection title="Cards" description="Read from Stripe.">
+                <AdminEmptyState v-if="blank(stripe.cards)">No card saved in Stripe.</AdminEmptyState>
                 <ul v-else class="flex flex-col gap-2" data-testid="admin-user-billing-cards">
-                    <SettingsListRow v-for="card in cards" :key="card.id">
+                    <SettingsListRow v-for="card in stripe.cards" :key="card.id">
                         <template #media>
                             <img
                                 :src="cardBrand(card.brand).logo"
@@ -297,14 +272,14 @@ const usedDiscountLabel = (used: { name: string | null; amount_off: string; invo
                 </ul>
             </SettingsSection>
 
-            <SettingsSection v-if="readsStripe" title="Invoices">
-                <AdminEmptyState v-if="!hasInvoices">No invoices.</AdminEmptyState>
+            <SettingsSection title="Invoices">
+                <AdminEmptyState v-if="blank(stripe.invoices)">No invoices.</AdminEmptyState>
                 <ul
                     v-else
                     class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
                 >
                     <li
-                        v-for="invoice in invoices"
+                        v-for="invoice in stripe.invoices"
                         :key="invoice.id"
                         class="flex items-center gap-3 px-5 py-3 sm:px-6"
                     >
@@ -333,27 +308,30 @@ const usedDiscountLabel = (used: { name: string | null; amount_off: string; invo
                     </li>
                 </ul>
             </SettingsSection>
-
-            <SettingsSection title="Offers">
-                <AdminEmptyState v-if="!hasOffers">No offers claimed.</AdminEmptyState>
-                <ul
-                    v-else
-                    class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
-                >
-                    <li
-                        v-for="offer in offers"
-                        :key="offer.slug"
-                        class="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
-                    >
-                        <span class="text-sm font-emphasis text-foreground">{{
-                            offer.slug
-                        }}</span>
-                        <span class="text-xs text-muted-foreground">{{
-                            offerState(offer.redeemed_at)
-                        }}</span>
-                    </li>
-                </ul>
-            </SettingsSection>
         </template>
+        <SettingsSection v-else title="Cards" description="Read from Stripe.">
+            <AdminEmptyState>No Stripe customer.</AdminEmptyState>
+        </SettingsSection>
+
+        <SettingsSection title="Offers">
+            <AdminEmptyState v-if="!hasOffers">No offers claimed.</AdminEmptyState>
+            <ul
+                v-else
+                class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+            >
+                <li
+                    v-for="offer in data.offers"
+                    :key="offer.slug"
+                    class="flex items-center justify-between gap-3 px-5 py-3 sm:px-6"
+                >
+                    <span class="text-sm font-emphasis text-foreground">{{
+                        offer.slug
+                    }}</span>
+                    <span class="text-xs text-muted-foreground">{{
+                        offerState(offer.redeemed_at)
+                    }}</span>
+                </li>
+            </ul>
+        </SettingsSection>
     </div>
 </template>

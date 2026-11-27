@@ -13,7 +13,7 @@ import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import date from '@/date';
-import { humanize, joinFilled } from '@/lib/adminFormat';
+import { countLabel, humanize, joinFilled } from '@/lib/adminFormat';
 import { filled, transform } from '@/lib/helpers';
 import { mcpAppLogos } from '@/lib/mcpClients';
 import type { AdminUserIntegrationsData, BadgeVariant } from '@/types/admin';
@@ -98,24 +98,12 @@ const webhookBadge = (status: string | null): { label: string; variant: BadgeVar
     return { label: humanize(status), variant: 'secondary' };
 };
 
-const eventsLabel = (events: string[]): string => {
-    if (events.length === 1) {
-        return '1 event';
-    }
-
-    return `${events.length} events`;
-};
-
 const failuresLabel = (failures: number): string => {
     if (failures === 0) {
         return 'No failures';
     }
 
-    if (failures === 1) {
-        return '1 failure in a row';
-    }
-
-    return `${failures} failures in a row`;
+    return countLabel(failures, 'failure in a row', 'failures in a row');
 };
 
 const apiKeys = computed(() =>
@@ -147,7 +135,7 @@ const webhooks = computed(() =>
         endpoint: webhook.endpoint,
         detail: joinFilled([
             webhook.workspace_name,
-            eventsLabel(webhook.events),
+            countLabel(webhook.events.length, 'event', 'events'),
             failuresLabel(webhook.consecutive_failures),
         ]),
         badge: webhookBadge(webhook.status),

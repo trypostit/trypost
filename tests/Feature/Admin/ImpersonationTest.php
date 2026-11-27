@@ -17,7 +17,7 @@ test('an admin impersonates a user and lands in the app as them', function () {
     $user = workspaceOwner(['name' => 'Grace']);
 
     $this->actingAs($this->admin)
-        ->post(route('admin.users.impersonate', $user))
+        ->post(route('admin.users.impersonation.store', $user))
         ->assertRedirect(route('app.calendar'));
 
     $this->assertAuthenticatedAs($user);
@@ -68,19 +68,21 @@ test('stopping works after the admin left ADMIN_EMAILS and gives no admin access
     $this->get(route('admin.dashboard'))->assertForbidden();
 });
 
-test('an admin cannot impersonate another admin, a blocked user or themselves', function () {
+test('an admin cannot impersonate another admin, a blocked user or themselves, and nothing is recorded', function (Closure $target, string $message) {
     config()->set('trypost.admin.emails', [$this->admin->email, 'other@trypost.test']);
-    $otherAdmin = User::factory()->create(['email' => 'other@trypost.test']);
-    $blocked = User::factory()->blocked()->create();
 
-    foreach ([$otherAdmin, $blocked, $this->admin] as $target) {
-        $this->actingAs($this->admin)
-            ->post(route('admin.users.impersonate', $target))
-            ->assertSessionHasErrors('user');
+    $this->actingAs($this->admin)
+        ->post(route('admin.users.impersonation.store', $target()))
+        ->assertSessionHasErrors(['user' => $message]);
 
-        $this->assertAuthenticatedAs($this->admin);
-    }
-});
+    $this->assertAuthenticatedAs($this->admin);
+    expect(session()->has(Impersonation::SESSION_KEY))->toBeFalse()
+        ->and(Activity::query()->exists())->toBeFalse();
+})->with([
+    'another admin' => [fn (): User => User::factory()->create(['email' => 'other@trypost.test']), 'You cannot view the app as a backoffice admin.'],
+    'themselves' => [fn (): User => test()->admin, 'You cannot view the app as a backoffice admin.'],
+    'a blocked user' => [fn (): User => User::factory()->blocked()->create(), 'Unblock this user before viewing the app as them.'],
+]);
 
 test('a user who is not impersonating cannot stop', function () {
     $user = workspaceOwner(['name' => 'Grace']);

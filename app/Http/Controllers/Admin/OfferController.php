@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\Offers\DeleteOffer;
+use App\Actions\Admin\Offers\ListOffers;
 use App\Actions\Admin\Offers\SaveOffer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Offer\DestroyOfferRequest;
@@ -21,15 +22,9 @@ class OfferController extends Controller
 {
     public function index(Request $request): Response
     {
-        $offers = Offer::query()
-            ->withCount(['accounts', 'redemptions'])
-            ->orderByDesc('starts_at')
-            ->orderBy('slug')
-            ->get();
-
         return Inertia::render('admin/billing/offers/Index', [
-            'offers' => AdminOfferResource::collection($offers),
-            'today' => now((string) $request->user()->timezone)->toDateString(),
+            'offers' => AdminOfferResource::collection(ListOffers::execute()),
+            'today' => now($request->user()->timezone)->toDateString(),
         ]);
     }
 

@@ -476,6 +476,19 @@ enum Platform: string
         };
     }
 
+    /**
+     * The platforms this install turns on, in their declared order.
+     *
+     * @return list<self>
+     */
+    public static function enabledCases(): array
+    {
+        return collect(self::cases())
+            ->filter(fn (self $platform): bool => $platform->isEnabled())
+            ->values()
+            ->all();
+    }
+
     public function isEnabled(): bool
     {
         return (bool) config(

@@ -43,15 +43,6 @@ class RetryFailedPost
         return PublishCheckpoint::instagramCommentIsUnconfirmed($post->error_context);
     }
 
-    /**
-     * The retry picks up a remote publish already in flight instead of
-     * starting over.
-     */
-    public function resumes(Post $post): bool
-    {
-        return filled($this->contextForRetry($post->error_context));
-    }
-
     public function execute(Post $post, bool $instagramCommentChecked = false): RetryOutcome
     {
         if (! $this->isRetryable($post)) {

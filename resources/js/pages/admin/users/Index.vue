@@ -20,26 +20,31 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { planName } from '@/lib/adminUsers';
 import { blank, filled } from '@/lib/helpers';
 import { index as usersIndex, show as userShow } from '@/routes/admin/users';
-import type { AdminUser, ScrollPage } from '@/types/admin';
+import type { AdminUser, ScrollPage, UserStatusFilter } from '@/types/admin';
 
-type StatusFilter = 'all' | 'blocked';
-
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+const STATUS_FILTERS: { value: UserStatusFilter; label: string }[] = [
     { value: 'all', label: 'All users' },
     { value: 'blocked', label: 'Blocked' },
 ];
 
+/** What each tab's list says when it holds nobody. */
+const EMPTY_MESSAGES: Record<UserStatusFilter, string> = {
+    all: 'No users yet.',
+    blocked: 'No blocked users.',
+};
+
 const props = defineProps<{
     users: ScrollPage<AdminUser>;
-    filters: { search: string; status: StatusFilter };
+    filters: { search: string; status: UserStatusFilter };
 }>();
 
 const searchQuery = ref(props.filters.search);
 
 /** The filters as the URL carries them; an empty search leaves the URL. */
-const filterQuery = (): { status: StatusFilter; search?: string } => {
+const filterQuery = (): { status: UserStatusFilter; search?: string } => {
     if (filled(searchQuery.value)) {
         return { status: status.value, search: searchQuery.value };
     }
@@ -70,13 +75,14 @@ watch(searchQuery, () => search());
 
 const hasNoResults = computed(() => blank(props.users.data));
 
-const planLabel = (user: AdminUser): string => {
-    if (filled(user.plan)) {
-        return user.plan;
+/** Read from the filters the list came with, never the search box, which changes before the list does. */
+const emptyMessage = computed((): string => {
+    if (filled(props.filters.search)) {
+        return 'No users match this search.';
     }
 
-    return 'No plan';
-};
+    return EMPTY_MESSAGES[props.filters.status];
+});
 </script>
 
 <template>
@@ -110,7 +116,7 @@ const planLabel = (user: AdminUser): string => {
             />
 
             <AdminEmptyState v-if="hasNoResults" variant="page" test-id="admin-users-empty">
-                No users match this search.
+                {{ emptyMessage }}
             </AdminEmptyState>
 
             <div
@@ -182,10 +188,10 @@ const planLabel = (user: AdminUser): string => {
                                             <Badge
                                                 v-if="user.has_app_access"
                                                 variant="success"
-                                                >{{ planLabel(user) }}</Badge
+                                                >{{ planName(user.plan) }}</Badge
                                             >
                                             <Badge v-else variant="secondary">{{
-                                                planLabel(user)
+                                                planName(user.plan)
                                             }}</Badge>
                                         </template>
                                     </TableCell>

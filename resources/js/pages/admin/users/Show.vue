@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { IconEye, IconLock, IconLockOpen } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import BlockUserDialog from '@/components/admin/BlockUserDialog.vue';
 import UserActivityTab from '@/components/admin/user/UserActivityTab.vue';
@@ -17,14 +18,16 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
+import { planName } from '@/lib/adminUsers';
 import { filled } from '@/lib/helpers';
-import { impersonate, show as userShow } from '@/routes/admin/users';
+import { show as userShow } from '@/routes/admin/users';
 import { destroy as blockDestroy } from '@/routes/admin/users/block';
+import { store as startImpersonation } from '@/routes/admin/users/impersonation';
 import type {
+    AdminAccountBilling,
     AdminStat,
     AdminUser,
     AdminUserActivityData,
-    AdminUserBillingData,
     AdminUserIntegrationsData,
     AdminUserOverview,
     AdminUserPostsData,
@@ -95,12 +98,25 @@ const integrations = computed((): AdminUserIntegrationsData | null => {
     return null;
 });
 
-const billing = computed((): AdminUserBillingData | null => {
-    if (props.tab === 'billing') {
-        return props.data;
+/** The Billing tab of a user whose account the server sent; a user without one has none. */
+const billing = computed((): AdminAccountBilling | null => {
+    if (props.tab !== 'billing') {
+        return null;
     }
 
-    return null;
+    if (props.data.account === null) {
+        return null;
+    }
+
+    return props.data;
+});
+
+const hasNoAccount = computed((): boolean => {
+    if (props.tab !== 'billing') {
+        return false;
+    }
+
+    return props.data.account === null;
 });
 
 const activity = computed((): AdminUserActivityData | null => {
@@ -122,17 +138,9 @@ const canViewAs = computed((): boolean => {
     return !isBlocked.value;
 });
 
-const planLabel = computed((): string => {
-    if (filled(props.user.plan)) {
-        return props.user.plan;
-    }
-
-    return 'No plan';
-});
-
 /** Who the user is at a glance: their plan, their role, when they joined and their email. */
 const facts = computed((): AdminStat[] => [
-    { key: 'user-plan', label: 'Plan', value: planLabel.value, hint: accessLabel.value },
+    { key: 'user-plan', label: 'Plan', value: planName(props.user.plan), hint: accessLabel.value },
     { key: 'user-role', label: 'Role', value: roleLabel.value, hint: 'In the account' },
     {
         key: 'user-signed-up',
@@ -167,21 +175,13 @@ const emailLabel = computed((): string => {
     return 'Not verified';
 });
 
-const blockedSince = computed((): string => {
-    if (filled(props.user.blocked_at)) {
-        return date.formatDateTime(props.user.blocked_at);
-    }
-
-    return '';
-});
-
 const viewingAs = ref(false);
 const unblocking = ref(false);
 const blockDialogOpen = ref(false);
 
 const viewAs = (): void => {
     router.post(
-        impersonate.url(props.user.id),
+        startImpersonation.url(props.user.id),
         {},
         {
             onStart: () => {
@@ -254,18 +254,15 @@ const unblock = (): void => {
                 data-testid="admin-user-blocked"
             >
                 <p class="px-5 pt-4 text-sm font-emphasis text-destructive sm:px-6">
-                    Blocked since {{ blockedSince }}
+                    Blocked since {{ date.formatDateTime(user.blocked_at) }}
                 </p>
                 <p class="px-5 pt-1 pb-4 text-sm text-muted-foreground sm:px-6">
                     {{ user.blocked_reason }}
                 </p>
             </div>
 
-            <div
-                class="overflow-hidden rounded-xl border border-border bg-card [&>div]:border-t-0"
-                data-testid="admin-user-facts"
-            >
-                <AdminStatGrid :stats="facts" />
+            <div class="overflow-hidden rounded-xl border border-border bg-card" data-testid="admin-user-facts">
+                <AdminStatGrid :stats="facts" flush-top />
             </div>
 
             <Tabs
@@ -300,6 +297,9 @@ const unblock = (): void => {
                 <UserWorkspacesTab v-if="workspaces" :data="workspaces" />
                 <UserPostsTab v-if="posts" :data="posts" />
                 <UserIntegrationsTab v-if="integrations" :data="integrations" />
+                <AdminEmptyState v-if="hasNoAccount" test-id="admin-user-billing-no-account">
+                    This user has no account.
+                </AdminEmptyState>
                 <UserBillingTab v-if="billing" :data="billing" />
                 <UserActivityTab v-if="activity" :data="activity" :user-name="user.name" />
             </template>

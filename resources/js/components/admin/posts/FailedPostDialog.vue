@@ -11,25 +11,23 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import date from '@/date';
+import { channelStatus } from '@/lib/adminChannels';
 import { errorCategoryLabel } from '@/lib/adminErrorCategories';
-import { dateTimeOrDash, joinFilled, orDash } from '@/lib/adminFormat';
+import { joinFilled, orDash } from '@/lib/adminFormat';
+import { originLabel } from '@/lib/adminPublishing';
 import { filled } from '@/lib/helpers';
 import { isVideo } from '@/lib/mediaType';
-import type {
-    AdminDetailRow,
-    AdminFailedPost,
-} from '@/types/admin';
+import { MISSING_VALUE } from '@/lib/utils';
+import type { AdminDetailRow, AdminFailedPost } from '@/types/admin';
 
 /** A failed post as it was sent: its text, media, when and how, and what the network answered. */
 const props = defineProps<{
+    /** The last post opened, kept while the dialog animates out. */
     post: AdminFailedPost | null;
 }>();
 
-const emit = defineEmits<{
-    close: [];
-}>();
-
-const isOpen = computed(() => filled(props.post));
+const open = defineModel<boolean>('open', { default: false });
 
 const platformLabel = computed((): string => {
     if (filled(props.post)) {
@@ -54,36 +52,53 @@ const subtitle = computed((): string => joinFilled([platformLabel.value, props.p
 const hasContent = computed(() => filled(props.post?.content));
 const hasMedia = computed(() => filled(props.post?.media));
 
-/** An attachment whose file is gone links nowhere. */
-const mediaUrl = (url: string | null): string | undefined => {
-    if (filled(url)) {
-        return url;
-    }
-
-    return undefined;
-};
-
-/** Each attachment with the link it opens and what a screen reader names it. */
+/** Each attachment with its file, if it is still there, and what a screen reader names it. */
 const mediaItems = computed(() => {
     if (filled(props.post)) {
         return props.post.media.map((item, index) => ({
             key: index,
-            url: mediaUrl(item.url),
+            url: item.url,
             isVideo: isVideo(item),
             label: `Open attachment ${index + 1} in a new tab`,
+            missingLabel: `Attachment ${index + 1}: the file is gone`,
         }));
     }
 
     return [];
 });
 
-const detailRows = computed((): AdminDetailRow[] => [
-    { key: 'type', label: 'Post type', value: orDash(props.post?.content_type_label) },
-    { key: 'via', label: 'Created via', value: orDash(props.post?.created_via) },
-    { key: 'scheduled', label: 'Scheduled for', value: dateTimeOrDash(props.post?.scheduled_at) },
-    { key: 'failed', label: 'Failed', value: dateTimeOrDash(props.post?.failed_at) },
-    { key: 'channel', label: 'Channel status', value: orDash(props.post?.channel_status) },
-]);
+const viaLabel = (post: AdminFailedPost): string => {
+    if (filled(post.created_via)) {
+        return originLabel(post.created_via);
+    }
+
+    return MISSING_VALUE;
+};
+
+/** A post whose channel was deleted has no channel status. */
+const channelStatusLabel = (post: AdminFailedPost): string => {
+    if (filled(post.channel_status)) {
+        return channelStatus(post.channel_status).label;
+    }
+
+    return 'Channel gone';
+};
+
+const postDetails = (post: AdminFailedPost): AdminDetailRow[] => [
+    { key: 'type', label: 'Post type', value: orDash(post.content_type_label) },
+    { key: 'via', label: 'Created via', value: viaLabel(post) },
+    { key: 'scheduled', label: 'Scheduled for', value: date.formatDateTime(post.scheduled_at) },
+    { key: 'failed', label: 'Failed', value: date.formatDateTime(post.failed_at) },
+    { key: 'channel', label: 'Channel status', value: channelStatusLabel(post) },
+];
+
+const detailRows = computed((): AdminDetailRow[] => {
+    if (filled(props.post)) {
+        return postDetails(props.post);
+    }
+
+    return [];
+});
 
 /** What the network answered, as TryPost stored it, for debugging. */
 const rawContext = computed((): string => {
@@ -95,16 +110,10 @@ const rawContext = computed((): string => {
 
     return '{}';
 });
-
-const onOpenChange = (open: boolean): void => {
-    if (!open) {
-        emit('close');
-    }
-};
 </script>
 
 <template>
-    <Dialog :open="isOpen" @update:open="onOpenChange">
+    <Dialog v-model:open="open">
         <DialogContent
             class="gap-0 p-0 sm:max-h-[min(720px,85dvh)] sm:max-w-2xl"
             data-testid="admin-failed-post-dialog"
@@ -142,30 +151,36 @@ const onOpenChange = (open: boolean): void => {
                     </p>
                     <p v-else class="text-sm text-muted-foreground">No text.</p>
                     <div v-if="hasMedia" class="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        <a
-                            v-for="item in mediaItems"
-                            :key="item.key"
-                            :href="item.url"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            :aria-label="item.label"
-                            class="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
-                        >
-                            <video
-                                v-if="item.isVideo"
-                                :src="item.url"
-                                class="size-full object-cover"
-                                muted
-                                preload="metadata"
-                            />
-                            <img
+                        <template v-for="item in mediaItems" :key="item.key">
+                            <a
+                                v-if="item.url"
+                                :href="item.url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                :aria-label="item.label"
+                                class="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+                            >
+                                <video
+                                    v-if="item.isVideo"
+                                    :src="item.url"
+                                    class="size-full object-cover"
+                                    muted
+                                    preload="metadata"
+                                />
+                                <img
+                                    v-else
+                                    :src="item.url"
+                                    alt=""
+                                    class="size-full object-cover"
+                                    loading="lazy"
+                                />
+                            </a>
+                            <span
                                 v-else
-                                :src="item.url"
-                                alt=""
-                                class="size-full object-cover"
-                                loading="lazy"
-                            />
-                        </a>
+                                class="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border p-2 text-center text-xs text-muted-foreground"
+                                >{{ item.missingLabel }}</span
+                            >
+                        </template>
                     </div>
                 </section>
 

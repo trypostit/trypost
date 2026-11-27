@@ -31,6 +31,9 @@ class BuildDashboard
     /** A post still publishing after this many minutes is stuck: a worker is likely down. */
     public const int STUCK_MINUTES = 30;
 
+    /** The days the channels connected lately cover. */
+    public const int NEW_CHANNEL_DAYS = 7;
+
     /** A daily quota used past this share needs attention. */
     public const float QUOTA_WARNING_PERCENT = 80.0;
 
@@ -85,14 +88,14 @@ class BuildDashboard
                 'retrying' => Post::query()->where('publish_status', PublishStatus::Retrying)->count(),
                 'pending_review' => Post::query()->where('publish_status', PublishStatus::PendingReview)->count(),
             ],
-            'publishing' => BuildPublishingStats::execute(DateRange::fromDates(
+            'publishing_days' => BuildPublishingStats::days(DateRange::fromDates(
                 $now->setTimezone($timezone)->subDays(self::CHART_DAYS - 1)->toDateString(),
                 $now->setTimezone($timezone)->toDateString(),
                 $timezone,
             )),
             'channels' => [
                 'total' => SocialAccount::query()->count(),
-                'last_7_days' => SocialAccount::query()->where('created_at', '>=', $now->subDays(7))->count(),
+                'last_7_days' => SocialAccount::query()->where('created_at', '>=', $now->subDays(self::NEW_CHANNEL_DAYS))->count(),
                 'connected' => SocialAccount::query()->where('status', Status::Connected)->count(),
                 'to_reconnect' => SocialAccount::query()->whereIn('status', [Status::TokenExpired, Status::Disconnected])->count(),
             ],

@@ -2,11 +2,11 @@
 import { computed } from 'vue';
 
 import { riskLevel } from '@/lib/churnRisk';
-import type { AdminRiskLevel } from '@/types/admin';
+import type { RiskLevel } from '@/types/admin';
 
 /** A churn risk level: a colored dot and its name. */
 const props = defineProps<{
-    level: AdminRiskLevel;
+    level: RiskLevel;
 }>();
 
 const shown = computed(() => riskLevel(props.level));

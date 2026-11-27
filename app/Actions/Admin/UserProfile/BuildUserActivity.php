@@ -11,8 +11,8 @@ use App\Http\Resources\App\Changelog\ChangelogEntryResource;
 use App\Models\Activity;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
+use App\Support\Auth\DatabaseSessions;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 
 class BuildUserActivity
 {
@@ -20,9 +20,9 @@ class BuildUserActivity
 
     /**
      * What happened around the user: what backoffice admins did to them, the
-     * sessions they are signed in with (shaped like `ListActiveSessions`, plus
-     * the IP; the session id is hashed, never sent), and the changelog entries
-     * they opened.
+     * sessions they are signed in with (`DatabaseSessions`: none under another
+     * session driver; the id is hashed, never sent, and the last activity is
+     * an ISO instant), and the changelog entries they opened.
      *
      * @return array<string, mixed>
      */
@@ -45,16 +45,12 @@ class BuildUserActivity
 
         return [
             'history' => AdminActivityResource::collection($history)->resolve(),
-            'sessions' => DB::table(config()->string('session.table'))
-                ->where('user_id', $user->id)
-                ->orderByDesc('last_activity')
-                ->get(['id', 'ip_address', 'user_agent', 'last_activity'])
+            'sessions' => DatabaseSessions::of($user)
                 ->map(fn (object $session): array => [
-                    'id' => hash('sha256', (string) $session->id),
+                    'id' => hash('sha256', $session->id),
                     'user_agent' => $session->user_agent,
                     'ip' => $session->ip_address,
-                    'last_active' => CarbonImmutable::createFromTimestampUTC((int) $session->last_activity)->diffForHumans(),
-                    'last_activity' => CarbonImmutable::createFromTimestampUTC((int) $session->last_activity)->toIso8601String(),
+                    'last_activity' => CarbonImmutable::createFromTimestampUTC($session->last_activity)->toIso8601String(),
                 ])
                 ->values()
                 ->all(),

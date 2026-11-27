@@ -12,8 +12,9 @@ import {
     componentToString,
     numericTick,
 } from '@/components/ui/chart';
-import { DAILY_CHART_PADDING, useAdminDayAxis, valueAt } from '@/composables/admin/useAdminDayAxis';
+import { DAILY_CHART_PADDING, useAdminDayAxis } from '@/composables/admin/useAdminDayAxis';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
+import { countIn } from '@/lib/adminFormat';
 import { blank } from '@/lib/helpers';
 import { formatFullNumber, formatPercent } from '@/lib/utils';
 
@@ -57,7 +58,7 @@ const chartConfig = computed(
 );
 
 const chartData = computed<ChartPoint[]>(() =>
-    props.days.map((_, index) => ({ index, value: valueAt(props.values, index) })),
+    props.days.map((_, index) => ({ index, value: countIn(props.values, index) })),
 );
 
 /** The axis starts near the lowest value, so a change of a few channels still shows; no values give 0 to 1. */

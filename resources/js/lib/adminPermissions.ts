@@ -1,8 +1,7 @@
-import { humanize } from '@/lib/adminFormat';
-import { filled } from '@/lib/helpers';
+import type { GatedFeatureValue } from '@/types/channel-permission';
 
 /** How the backoffice names each `GatedFeature` a channel's scopes turn on. */
-const FEATURE_LABELS: Record<string, string> = {
+const FEATURE_LABELS: Record<GatedFeatureValue, string> = {
     publish: 'Publish',
     thread_replies: 'Replies',
     followers: 'Followers',
@@ -13,13 +12,4 @@ const FEATURE_LABELS: Record<string, string> = {
     facebook_reel_cover: 'Reel cover',
 };
 
-/** A feature added later reads as its own name, without underscores. */
-export const featureLabel = (feature: string): string => {
-    const label = FEATURE_LABELS[feature];
-
-    if (filled(label)) {
-        return label;
-    }
-
-    return humanize(feature);
-};
+export const featureLabel = (feature: GatedFeatureValue): string => FEATURE_LABELS[feature];

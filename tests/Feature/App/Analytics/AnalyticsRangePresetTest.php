@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\ResolveAnalyticsRangePreset;
+use App\Enums\Analytics\DateRangePreset;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -40,20 +41,18 @@ function analyticsPresetUserWithSnapshot(string $date): User
 test('7d covers the last seven days including today', function () {
     $this->travelTo('2026-09-30 12:00 UTC');
 
-    expect((new ResolveAnalyticsRangePreset)->handle('7d', null, null, 'UTC'))
+    expect(DateRangePreset::SevenDays->dates('UTC'))
         ->toBe(['start' => '2026-09-24', 'end' => '2026-09-30']);
 });
 
 test('month presets follow the user calendar day rather than the UTC day', function () {
     $this->travelTo('2026-10-01 02:30 UTC');
-    $action = new ResolveAnalyticsRangePreset;
-
-    expect($action->handle('mtd', null, null, 'America/Sao_Paulo'))
+    expect(DateRangePreset::MonthToDate->dates('America/Sao_Paulo'))
         ->toBe(['start' => '2026-09-01', 'end' => '2026-09-30']);
 });
 
 test('custom returns the given dates', function () {
-    expect((new ResolveAnalyticsRangePreset)->handle('custom', '2026-01-05', '2026-02-10', 'UTC'))
+    expect(DateRangePreset::Custom->dates('UTC', '2026-01-05', '2026-02-10'))
         ->toBe(['start' => '2026-01-05', 'end' => '2026-02-10']);
 });
 

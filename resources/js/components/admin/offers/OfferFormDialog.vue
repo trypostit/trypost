@@ -92,7 +92,6 @@ const asText = (value: number | null): string => {
     return '';
 };
 
-/** Fills the form from the offer being edited, or empties it for a new one, each time the dialog opens. */
 /** The form's values for the offer being edited, its empty fields as empty text. */
 const offerForm = (offer: AdminOffer): ReturnType<typeof blankForm> => ({
     slug: offer.slug,
@@ -115,6 +114,7 @@ const formValues = (): ReturnType<typeof blankForm> => {
     return blankForm();
 };
 
+/** Fills the form from the offer being edited, or empties it for a new one, each time the dialog opens. */
 const fill = (): void => {
     form.clearErrors();
     form.defaults(formValues());

@@ -10,6 +10,7 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { store as blockStore } from '@/routes/admin/users/block';
 
@@ -56,7 +57,9 @@ const submit = (): void => {
                 </div>
 
                 <div class="flex flex-col gap-2 px-8 pb-6">
+                    <Label for="block-user-reason">Reason</Label>
                     <Textarea
+                        id="block-user-reason"
                         v-model="form.reason"
                         placeholder="Why are you blocking this user?"
                         rows="3"

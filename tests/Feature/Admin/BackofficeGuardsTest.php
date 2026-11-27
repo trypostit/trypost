@@ -38,7 +38,7 @@ test('a user who is not a backoffice admin cannot block, unblock or view the app
         ->delete(route('admin.users.block.destroy', $blocked))
         ->assertForbidden();
     $this->actingAs($someone)
-        ->post(route('admin.users.impersonate', $target))
+        ->post(route('admin.users.impersonation.store', $target))
         ->assertForbidden();
 
     $this->assertAuthenticatedAs($someone);
@@ -88,7 +88,7 @@ test('a blocked user signing in with google or github is signed out on the next 
     'github' => ['github', 'auth.github.callback'],
 ]);
 
-test('stopping after the admin account was deleted leaves the user signed in and records nothing', function () {
+test('stopping after the admin account was deleted signs the person out instead of leaving them in as the customer', function () {
     $user = workspaceOwner();
     $adminId = $this->admin->id;
     $this->admin->delete();
@@ -96,9 +96,9 @@ test('stopping after the admin account was deleted leaves the user signed in and
     $this->actingAs($user)
         ->withSession([Impersonation::SESSION_KEY => $adminId])
         ->delete(route('app.impersonation.destroy'))
-        ->assertRedirect(route('app.calendar'));
+        ->assertRedirect(route('login'));
 
-    $this->assertAuthenticatedAs($user);
+    $this->assertGuest();
     expect(session()->has(Impersonation::SESSION_KEY))->toBeFalse()
         ->and(Activity::query()->exists())->toBeFalse();
 });

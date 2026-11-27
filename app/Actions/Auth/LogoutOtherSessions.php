@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Support\Auth\DatabaseSessions;
 
 class LogoutOtherSessions
 {
@@ -15,13 +15,6 @@ class LogoutOtherSessions
      */
     public static function execute(User $user, string $currentSessionId): void
     {
-        if (config('session.driver') !== 'database') {
-            return;
-        }
-
-        DB::table(config('session.table', 'sessions'))
-            ->where('user_id', $user->id)
-            ->where('id', '!=', $currentSessionId)
-            ->delete();
+        DatabaseSessions::forget($user, $currentSessionId);
     }
 }

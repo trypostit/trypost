@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Admin;
 
+use App\Models\Subscription;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
@@ -123,7 +124,7 @@ final class StripeNetMrr
         $count = 0;
         $discounted = 0;
 
-        foreach (SubscriptionPlans::PAYING_STATUSES as $status) {
+        foreach (Subscription::PAYING_STATUSES as $status) {
             $page = Cashier::stripe()->subscriptions->all([
                 'status' => $status,
                 'limit' => 100,

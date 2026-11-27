@@ -1,8 +1,41 @@
 import type { BadgeVariants } from '@/components/ui/badge';
+import type { MediaType } from '@/lib/mediaType';
 import type { ChangelogEntry } from '@/types/changelog';
+import type { GatedFeatureValue } from '@/types/channel-permission';
+import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 /** A `Badge` variant, as the backoffice maps a state to one. */
 export type BadgeVariant = NonNullable<BadgeVariants['variant']>;
+
+/** The Users list's tabs (`App\Enums\Admin\UserStatusFilter`). */
+export type UserStatusFilter = 'all' | 'blocked';
+
+/** The Subscriptions list's tabs (`App\Enums\Admin\SubscriptionStatusFilter`). */
+export type SubscriptionStatusFilter = 'all' | 'active' | 'cancelling' | 'past_due' | 'trialing' | 'canceled';
+
+/** A network whose quota the backoffice reads (`App\Enums\Admin\QuotaSource`). */
+export type QuotaSource = 'youtube' | 'x';
+
+/** Where a post was made (`App\Enums\Post\CreatedVia`). */
+export type PostCreatedVia = 'web' | 'api' | 'mcp' | 'repurpose';
+
+/** Where an offer stands (`App\Enums\Offer\OfferState`). */
+export type OfferState = 'scheduled' | 'live' | 'full' | 'ended';
+
+/** A sign that a paying account may leave, as `BuildChurnRisk` reads it. */
+export type ChurnSignal =
+    | 'dormant'
+    | 'at_risk'
+    | 'never_posted'
+    | 'no_channels'
+    | 'cancelling'
+    | 'past_due'
+    | 'channels_broken'
+    | 'posting_dropped'
+    | 'failing';
+
+/** How likely a paying account is to leave, as `BuildChurnRisk` grades it. */
+export type RiskLevel = 'high' | 'medium' | 'low';
 
 /** A figure's change from a past value, as the backoffice's tiles show it. */
 export interface AdminChange {
@@ -60,14 +93,6 @@ export interface AdminUser {
     created_at: string;
 }
 
-export interface AdminUserWorkspace {
-    id: string;
-    name: string;
-    is_owner: boolean;
-    is_admin: boolean;
-    channels_count: number;
-}
-
 export interface AdminActivity {
     id: string;
     event: string;
@@ -123,12 +148,12 @@ export interface AdminFailedPost {
     workspace_name: string | null;
     owner_id: string | null;
     owner_name: string | null;
-    channel_status: string | null;
+    channel_status: SocialAccountStatusValue | null;
     content_type: string | null;
     content_type_label: string | null;
-    created_via: string | null;
+    created_via: PostCreatedVia | null;
     content: string;
-    media: { url: string | null; type: string | null; mime_type: string | null }[];
+    media: { url: string | null; type: MediaType | null; mime_type: string | null }[];
     error_message: string | null;
     error_category: string;
     error_context: Record<string, unknown> | null;
@@ -150,11 +175,11 @@ export interface AdminNetworkHealth {
 export interface AdminScopePermission {
     scope: string;
     required: boolean;
-    features: string[];
+    features: GatedFeatureValue[];
 }
 
 export interface AdminFeaturePermission {
-    feature: string;
+    feature: GatedFeatureValue;
     enabled: boolean;
     missing: string[];
 }
@@ -229,7 +254,7 @@ export interface AdminDashboard {
     };
     last_24h: AdminPublishingCounts;
     queue: { scheduled: number; publishing: number; retrying: number; pending_review: number };
-    publishing: AdminPublishingStats;
+    publishing_days: AdminPublishingDay[];
     channels: { total: number; last_7_days: number; connected: number; to_reconnect: number };
 }
 
@@ -243,14 +268,6 @@ export interface AdminXCostDay {
     cost_created_with_link: number;
 }
 
-export type AdminUserTab =
-    | 'overview'
-    | 'workspaces'
-    | 'posts'
-    | 'integrations'
-    | 'billing'
-    | 'activity';
-
 /** The open tab of a user's profile and the data the server sent for it. */
 export type AdminUserTabData =
     | { tab: 'overview'; data: AdminUserOverview }
@@ -260,7 +277,8 @@ export type AdminUserTabData =
     | { tab: 'billing'; data: AdminUserBillingData }
     | { tab: 'activity'; data: AdminUserActivityData };
 
-export type AdminRiskLevel = 'high' | 'medium' | 'low';
+/** A tab of a user's profile (`App\Enums\Admin\UserTab`). */
+export type AdminUserTab = AdminUserTabData['tab'];
 
 export interface AdminUserHealth {
     stage: string;
@@ -268,7 +286,7 @@ export interface AdminUserHealth {
     posts: { sent: number; previous: number; automated: number; failed: number; failure_rate: number };
     channels: { total: number; broken: number };
     /** Null on a self-hosted install or for an account that pays nothing now. */
-    risk: { signals: string[]; score: number; level: AdminRiskLevel | null; mrr_cents: number } | null;
+    risk: { signals: ChurnSignal[]; score: number; level: RiskLevel | null; mrr_cents: number } | null;
 }
 
 export interface AdminUserOverview {
@@ -309,10 +327,10 @@ export interface AdminUserChannel {
     name: string | null;
     username: string | null;
     avatar_url: string | null;
-    status: string;
+    status: SocialAccountStatusValue;
     connected_at: string | null;
     last_verified_at: string | null;
-    missing_permissions: string[];
+    missing_permissions: GatedFeatureValue[];
 }
 
 export interface AdminUserWorkspaceDetail {
@@ -376,7 +394,8 @@ export interface AdminUserIntegrationsData {
     media_sources: { id: string; source: string | null; connected_at: string | null }[];
 }
 
-export interface AdminUserBillingData {
+/** The billing of the account a user belongs to, as `BuildUserBilling` reads it. */
+export interface AdminAccountBilling {
     account: {
         id: string;
         name: string | null;
@@ -385,9 +404,9 @@ export interface AdminUserBillingData {
         stripe_url: string | null;
         has_app_access: boolean;
         generic_trial_ends_at: string | null;
-    } | null;
-    plan?: string | null;
-    subscription?: {
+    };
+    plan: string | null;
+    subscription: {
         status: string;
         interval: string | null;
         started_at: string | null;
@@ -396,8 +415,9 @@ export interface AdminUserBillingData {
         on_grace_period: boolean;
         past_due: boolean;
     } | null;
-    offers?: { slug: string; claimed_at: string | null; redeemed_at: string | null }[];
-    stripe?: {
+    offers: { slug: string; claimed_at: string | null; redeemed_at: string | null }[];
+    /** Null for an account Stripe has no customer for. */
+    stripe: {
         cards: {
             id: string;
             brand: string;
@@ -426,13 +446,15 @@ export interface AdminUserBillingData {
     } | null;
 }
 
+/** A user's Billing tab: their account's billing, or no account at all. */
+export type AdminUserBillingData = AdminAccountBilling | { account: null };
+
 export interface AdminUserActivityData {
     history: AdminActivity[];
     sessions: {
         id: string;
         user_agent: string | null;
         ip: string | null;
-        last_active: string;
         last_activity: string;
     }[];
     changelog: {
@@ -482,17 +504,7 @@ export interface AdminSubscriptionChurn {
     days: string[];
     canceled_by_day: number[];
     churn_rate_by_day: number[];
-    recent: {
-        id: string;
-        user_id: string | null;
-        user_name: string | null;
-        user_email: string | null;
-        plan: AdminSubscriptionPlan;
-        started_at: string;
-        ended_at: string;
-        lifetime_days: number;
-        offers: string[];
-    }[];
+    recent: (AdminSubscription & { lifetime_days: number })[];
     lifetimes: { label: string; count: number }[];
     cohorts: { month: string; started: number; alive: number; retention: number }[];
 }
@@ -521,9 +533,6 @@ export type AdminNetMrr =
           taken_at: string;
       }
     | { error: string };
-
-/** Where an offer stands, as `AdminOfferResource::state()` reads it. */
-export type OfferState = 'live' | 'scheduled' | 'full' | 'ended';
 
 export interface AdminOffer {
     id: string;
@@ -632,16 +641,17 @@ export interface AdminChurnRisk {
     at_risk: number;
     at_risk_share: number;
     mrr_at_risk_cents: number;
-    levels: Partial<Record<AdminRiskLevel, number>>;
-    signals: Record<string, number>;
+    levels: Partial<Record<RiskLevel, number>>;
+    /** Most frequent first. */
+    signals: Partial<Record<ChurnSignal, number>>;
     accounts: (AdminAccountRow & {
         mrr_cents: number;
         posts: number;
         previous_posts: number;
         stage: string;
         last_posted_at: string | null;
-        signals: string[];
+        signals: ChurnSignal[];
         score: number;
-        level: AdminRiskLevel;
+        level: RiskLevel;
     })[];
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\BuildSignupInsights;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Insights\IndexSignupInsightsRequest;
 use Inertia\Inertia;
@@ -16,7 +17,7 @@ class SignupInsightsController extends Controller
     {
         return Inertia::render('admin/billing/insights/Index', [
             'insights' => BuildSignupInsights::execute($request->dateRange()),
-            'ranges' => IndexSignupInsightsRequest::RANGES,
+            'ranges' => DateRangePreset::backoffice(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

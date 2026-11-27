@@ -27,7 +27,8 @@ export const useUrlTab = <Tab extends string>(
     const [fallback] = tabs;
     const page = usePage();
 
-    const toTab = (value: unknown): Tab => {
+    /** The tab the value names; anything else (none, a stale link) opens the first one. */
+    const toTab = (value: string | null): Tab => {
         const known = tabs.find((tab) => tab === value);
 
         if (filled(known)) {
@@ -49,8 +50,13 @@ export const useUrlTab = <Tab extends string>(
 
     const tab: Ref<Tab> = shallowRef(initialTab());
 
+    /**
+     * Takes Reka's `Tabs` `update:modelValue` payload as it comes: a
+     * `string | number`, since Reka lets a tab's value be either. Ours are
+     * always text, so the number case never names a tab.
+     */
     const selectTab = (value: string | number): void => {
-        tab.value = toTab(value);
+        tab.value = toTab(String(value));
 
         if (filled(onSelect)) {
             onSelect(tab.value);

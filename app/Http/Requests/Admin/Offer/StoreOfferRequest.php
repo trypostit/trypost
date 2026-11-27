@@ -62,6 +62,10 @@ class StoreOfferRequest extends FormRequest
                 if (blank($this->input('stripe_coupon_id')) && (int) $this->input('trial_days') === 0 && ! $this->boolean('allow_promotion_codes')) {
                     $validator->errors()->add('stripe_coupon_id', 'An offer needs a coupon, a trial or the promotion code field.');
                 }
+
+                if (! $this->boolean('requires_card') && $this->filled('trial_days') && $this->integer('trial_days') < 1) {
+                    $validator->errors()->add('trial_days', 'A trial without a card needs at least one day.');
+                }
             },
         ];
     }

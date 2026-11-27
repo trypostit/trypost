@@ -26,25 +26,29 @@ class ImpersonateUserRequest extends FormRequest
     /**
      * An admin views the app only as a user who is neither an admin, nor
      * blocked, nor themselves.
+     *
+     * @return array<int, callable(Validator): void>
      */
-    public function withValidator(Validator $validator): void
+    public function after(): array
     {
-        $validator->after(function (Validator $validator): void {
-            $target = $this->route('user');
+        return [
+            function (Validator $validator): void {
+                $target = $this->route('user');
 
-            if (! $target instanceof User) {
-                return;
-            }
+                if (! $target instanceof User) {
+                    return;
+                }
 
-            if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
-                $validator->errors()->add('user', 'You cannot view the app as a backoffice admin.');
+                if ($target->is($this->user()) || $target->isBackofficeAdmin()) {
+                    $validator->errors()->add('user', 'You cannot view the app as a backoffice admin.');
 
-                return;
-            }
+                    return;
+                }
 
-            if ($target->isBlocked()) {
-                $validator->errors()->add('user', 'Unblock this user before viewing the app as them.');
-            }
-        });
+                if ($target->isBlocked()) {
+                    $validator->errors()->add('user', 'Unblock this user before viewing the app as them.');
+                }
+            },
+        ];
     }
 }

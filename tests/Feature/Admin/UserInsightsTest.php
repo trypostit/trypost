@@ -13,6 +13,7 @@ use App\Enums\SocialAccount\Status;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Support\Admin\AccountActivity;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia;
 use Stripe\ApiRequestor;
@@ -50,7 +51,7 @@ test('usage ranks the accounts by posts, channels, automation and failures, agai
     adminPostSentAt($quietChannel, $this->now->subHour(), 'failed');
     adminPostSentAt($quietChannel, $this->now->subDays(10));
 
-    $usage = BuildUsageInsights::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
+    $usage = BuildUsageInsights::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')));
 
     expect($usage['totals'])->toMatchArray(['active_accounts' => 2, 'posts' => 4, 'posts_per_active' => 2.0, 'channels_per_account' => 1.0])
         ->and($usage['previous'])->toMatchArray(['active_accounts' => 1, 'posts' => 1])
@@ -72,7 +73,7 @@ test('churn risk flags the paying accounts that stopped, cancel, owe or lost the
     adminPostSentAt($fineChannel, $this->now->subHour());
     $leaving->account->subscription()->update(['ends_at' => $this->now->addDays(5)]);
 
-    $churn = BuildChurnRisk::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
+    $churn = BuildChurnRisk::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')));
 
     expect($churn)->toMatchArray(['base' => 2, 'active' => 1, 'at_risk' => 1, 'mrr_at_risk_cents' => 1900])
         ->and($churn['accounts'][0]['name'])->toBe('Leaving')
@@ -125,7 +126,7 @@ test('a post the network rejected in review counts as failed, as everywhere in t
 
     $range = DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC');
 
-    expect(collect(BuildUsageInsights::execute($range)['top_accounts'])->firstWhere('name', 'Rejected')['failed'])->toBe(1)
+    expect(collect(BuildUsageInsights::execute(AccountActivity::during($range))['top_accounts'])->firstWhere('name', 'Rejected')['failed'])->toBe(1)
         ->and(BuildUserHealth::execute($owner)['posts']['failed'])->toBe(1);
 });
 
@@ -140,19 +141,17 @@ test('usage and churn count a post on the day it went out in the viewer\'s zone'
     $saoPaulo = DateRange::fromDates($yesterday, $yesterday, 'America/Sao_Paulo');
     $utc = DateRange::fromDates($yesterday, $yesterday, 'UTC');
 
-    expect(BuildUsageInsights::execute($saoPaulo)['totals']['posts'])->toBe(1)
-        ->and(BuildUsageInsights::execute($utc)['totals']['posts'])->toBe(0)
-        ->and(BuildChurnRisk::execute($saoPaulo)['active'])->toBe(1)
-        ->and(BuildChurnRisk::execute($utc)['active'])->toBe(0);
+    expect(BuildUsageInsights::execute(AccountActivity::during($saoPaulo))['totals']['posts'])->toBe(1)
+        ->and(BuildUsageInsights::execute(AccountActivity::during($utc))['totals']['posts'])->toBe(0)
+        ->and(BuildChurnRisk::execute(AccountActivity::during($saoPaulo))['active'])->toBe(1)
+        ->and(BuildChurnRisk::execute(AccountActivity::during($utc))['active'])->toBe(0);
 });
 
 test('each churn signal weighs into the risk level', function (array $subscription, LifecycleStage $stage, ?array $channels, array $posts, array $signals, ?string $level) {
     fakeStripeReads(['price_123' => [1900, 'month']]);
     [$owner] = adminOwnerWithChannel('Someone');
     adminBackdateSubscription(subscribeAccount($owner->account, $subscription), $this->now->subDays(30));
-    $paid = BuildChurnRisk::paidSubscriptions($owner->account_id)->get($owner->account_id);
-
-    $risk = BuildChurnRisk::assess($owner->account, $stage, $paid, $channels, ...$posts);
+    $risk = BuildChurnRisk::assess($owner->account->fresh(), $stage, $channels, ...$posts);
 
     expect($risk['signals'])->toEqualCanonicalizing($signals)
         ->and($risk['level'])->toBe($level)
@@ -170,3 +169,61 @@ test('each churn signal weighs into the risk level', function (array $subscripti
     'several at once' => [['stripe_status' => 'past_due'], LifecycleStage::Dormant, ['total' => 1, 'broken' => 0], [0, 0, 0], ['past_due', 'dormant'], 'high'],
     'none' => [[], LifecycleStage::Active, ['total' => 1, 'broken' => 0], [5, 5, 0], [], null],
 ]);
+
+test('an account that renewed after cancelling is read through the subscription it pays now', function () {
+    fakeStripeReads(['price_123' => [1900, 'month'], 'price_old' => [1200, 'month']]);
+    [$owner, $channel] = adminOwnerWithChannel('Renewed');
+    adminPostSentAt($channel, $this->now->subHour());
+    $renewed = subscribeAccount($owner->account);
+    $cancelling = subscribeAccount($owner->account, ['stripe_price' => 'price_old', 'ends_at' => $this->now->addDays(5)]);
+    adminBackdateSubscription($cancelling, $this->now->subDays(60));
+    adminBackdateSubscription($renewed, $this->now->subDays(30));
+
+    $churn = BuildChurnRisk::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')));
+
+    expect($churn)->toMatchArray(['base' => 1, 'at_risk' => 0, 'mrr_at_risk_cents' => 0])
+        ->and(BuildUserHealth::execute($owner)['risk'])->toBe(['signals' => [], 'score' => 0, 'level' => null, 'mrr_cents' => 1900]);
+});
+
+test('a customer who subscribed less than the settling days ago is not flagged for having no channel or post yet', function () {
+    fakeStripeReads(['price_123' => [1900, 'month']]);
+    $owner = workspaceOwner(['name' => 'Newcomer']);
+    adminBackdateSubscription(subscribeAccount($owner->account), $this->now->subDays(BuildChurnRisk::SETTLING_DAYS - 4));
+
+    $churn = BuildChurnRisk::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')));
+    $risk = BuildUserHealth::execute($owner)['risk'];
+
+    expect($churn)->toMatchArray(['base' => 1, 'at_risk' => 0])
+        ->and($risk['signals'])->toBe([])
+        ->and($risk['level'])->toBeNull();
+});
+
+test('the lifecycle counts only the accounts with access, by stage', function () {
+    [$customer, $channel] = adminOwnerWithChannel('Customer');
+    subscribeAccount($customer->account);
+    adminPostSentAt($channel, $this->now->subDay());
+    [$former] = adminOwnerWithChannel('Former');
+    subscribeAccount($former->account, ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    [$expired] = adminOwnerWithChannel('Expired trial');
+    $expired->account->forceFill(['trial_ends_at' => $this->now->subDay()])->save();
+
+    $lifecycle = BuildUsageInsights::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')))['lifecycle'];
+
+    expect($lifecycle['customers'])->toBe(1)
+        ->and(collect($lifecycle['stages'])->pluck('count', 'key')->all())->toBe([
+            LifecycleStage::Onboarding->value => 0,
+            LifecycleStage::Connected->value => 0,
+            LifecycleStage::Active->value => 1,
+            LifecycleStage::AtRisk->value => 0,
+            LifecycleStage::Dormant->value => 0,
+        ]);
+});
+
+test('an owner who signed up without a readable name is named by their email', function () {
+    [$owner, $channel] = adminOwnerWithChannel('_');
+    adminPostSentAt($channel, $this->now->subHour());
+
+    $top = BuildUsageInsights::execute(AccountActivity::during(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC')))['top_accounts'];
+
+    expect(collect($top)->firstWhere('user_id', $owner->id)['name'])->toBe($owner->email);
+});

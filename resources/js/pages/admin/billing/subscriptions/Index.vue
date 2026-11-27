@@ -12,7 +12,8 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import debounce from '@/debounce';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { filled, isNumber } from '@/lib/helpers';
+import { countIn } from '@/lib/adminFormat';
+import { filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
 import { index as subscriptionsIndex } from '@/routes/admin/billing/subscriptions';
 import type {
@@ -21,6 +22,7 @@ import type {
     AdminSubscriptionChurn,
     AdminSubscriptionOverview,
     ScrollPage,
+    SubscriptionStatusFilter,
 } from '@/types/admin';
 import type { AnalyticsFilters, AnalyticsRangePreset, DateRange } from '@/types/analytics';
 
@@ -32,9 +34,7 @@ const TABS: { value: SubscriptionsTab; label: string }[] = [
     { value: 'churn', label: 'Churn' },
 ];
 
-type StatusFilter = 'all' | 'active' | 'cancelling' | 'past_due' | 'trialing' | 'canceled';
-
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+const STATUS_FILTERS: { value: SubscriptionStatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'cancelling', label: 'Cancelling' },
@@ -51,8 +51,8 @@ const props = defineProps<{
     range: DateRange;
     ranges: Exclude<AnalyticsRangePreset, 'custom'>[];
     bounds: { min: string | null; max: string | null };
-    filters: AnalyticsFilters & { status: StatusFilter; search: string };
-    statusCounts: Record<string, number>;
+    filters: AnalyticsFilters & { status: SubscriptionStatusFilter; search: string };
+    statusCounts: Partial<Record<SubscriptionStatusFilter, number>>;
 }>();
 
 /** Overview opens by default. */
@@ -106,15 +106,7 @@ const { tab: status, selectTab: selectStatus } = useUrlTab({
 
 const search = debounce(reloadTable, 300);
 
-const statusCount = (value: string): string => {
-    const count = props.statusCounts[value];
-
-    if (isNumber(count)) {
-        return formatFullNumber(count);
-    }
-
-    return formatFullNumber(0);
-};
+const statusCount = (value: SubscriptionStatusFilter): string => formatFullNumber(countIn(props.statusCounts, value));
 
 watch(searchQuery, () => search());
 </script>
@@ -180,7 +172,11 @@ watch(searchQuery, () => search());
                     </TabsList>
                 </Tabs>
                 <SettingsSearch v-model="searchQuery" placeholder="Search by name or email" />
-                <SubscriptionsTableTab :subscriptions="subscriptions" />
+                <SubscriptionsTableTab
+                    :subscriptions="subscriptions"
+                    :search="filters.search"
+                    :status="filters.status"
+                />
             </TabsContent>
 
             <TabsContent value="churn">

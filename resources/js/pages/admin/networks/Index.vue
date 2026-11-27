@@ -20,11 +20,10 @@ import { useUrlTab } from '@/composables/admin/useUrlTab';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { NO_VALUE } from '@/lib/adminFormat';
 import { ALARMING_FAILURE_RATE } from '@/lib/adminPublishing';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
-import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { index as networksIndex } from '@/routes/admin/networks';
 import type {
     AdminBarRow,
@@ -49,9 +48,16 @@ const props = defineProps<{
     filters: AnalyticsFilters;
 }>();
 
+type NetworksTab = 'health' | 'permissions';
+
+const TABS: { value: NetworksTab; label: string }[] = [
+    { value: 'health', label: 'Health' },
+    { value: 'permissions', label: 'Permissions' },
+];
+
 /** Health opens by default. */
 const { tab, selectTab } = useUrlTab({
-    tabs: ['health', 'permissions'] as const,
+    tabs: TABS.map((option) => option.value),
     url: (mergeQuery) => networksIndex.url({ mergeQuery }),
 });
 
@@ -243,7 +249,7 @@ const lastFailure = (row: NetworkRow): string => {
         return date.diffForHumans(row.last_failure_at);
     }
 
-    return NO_VALUE;
+    return MISSING_VALUE;
 };
 </script>
 
@@ -261,11 +267,13 @@ const lastFailure = (row: NetworkRow): string => {
             @update:model-value="selectTab"
         >
             <TabsList variant="line">
-                <TabsTrigger value="health" data-testid="admin-networks-tab-health">
-                    Health
-                </TabsTrigger>
-                <TabsTrigger value="permissions" data-testid="admin-networks-tab-permissions">
-                    Permissions
+                <TabsTrigger
+                    v-for="option in TABS"
+                    :key="option.value"
+                    :value="option.value"
+                    :data-testid="`admin-networks-tab-${option.value}`"
+                >
+                    {{ option.label }}
                 </TabsTrigger>
             </TabsList>
 

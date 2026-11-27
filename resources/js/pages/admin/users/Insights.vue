@@ -24,9 +24,17 @@ const props = defineProps<{
     filters: AnalyticsFilters;
 }>();
 
+type InsightsTab = 'overview' | 'top' | 'churn';
+
+const TABS: { value: InsightsTab; label: string }[] = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'top', label: 'Top accounts' },
+    { value: 'churn', label: 'Churn risk' },
+];
+
 /** Overview opens by default. */
 const { tab, selectTab } = useUrlTab({
-    tabs: ['overview', 'top', 'churn'] as const,
+    tabs: TABS.map((option) => option.value),
     url: (mergeQuery) => insightsIndex.url({ mergeQuery }),
 });
 
@@ -37,6 +45,9 @@ const rangeLabel = computed((): string => date.formatDayMonthYearRange(props.ran
 const subtitle = computed((): string => `${rangeLabel.value} · against the period before`);
 
 const atRiskCount = computed((): string => formatFullNumber(props.churn.at_risk));
+
+/** Churn risk carries how many accounts are at risk. */
+const showsCount = (value: InsightsTab): boolean => value === 'churn';
 </script>
 
 <template>
@@ -61,11 +72,16 @@ const atRiskCount = computed((): string => formatFullNumber(props.churn.at_risk)
             @update:model-value="selectTab"
         >
             <TabsList variant="line">
-                <TabsTrigger value="overview" data-testid="admin-user-insights-tab-overview">Overview</TabsTrigger>
-                <TabsTrigger value="top" data-testid="admin-user-insights-tab-top">Top accounts</TabsTrigger>
-                <TabsTrigger value="churn" data-testid="admin-user-insights-tab-churn">
-                    Churn risk
-                    <span class="text-xs text-muted-foreground tabular-nums">{{ atRiskCount }}</span>
+                <TabsTrigger
+                    v-for="option in TABS"
+                    :key="option.value"
+                    :value="option.value"
+                    :data-testid="`admin-user-insights-tab-${option.value}`"
+                >
+                    {{ option.label }}
+                    <span v-if="showsCount(option.value)" class="text-xs text-muted-foreground tabular-nums">{{
+                        atRiskCount
+                    }}</span>
                 </TabsTrigger>
             </TabsList>
 

@@ -26,9 +26,8 @@ class BuildPublishingStats
      * day, per network (every way of connecting it together, like the network
      * filter), and the errors that failed most. A post counts on the day its
      * publication last moved (`publication_updated_at`); imported posts and
-     * posts still on their way are left out. Everything but the days is
-     * counted in SQL; days are bucketed here, from the few columns they need,
-     * so PostgreSQL and MySQL agree.
+     * posts still on their way are left out. Everything but the days
+     * ({@see self::days()}) is counted in SQL.
      *
      * @param  list<Platform>  $platforms  empty means every platform
      * @return array{
@@ -55,26 +54,10 @@ class BuildPublishingStats
                 'total' => (int) $group->total,
             ]);
 
-        $byDate = self::counted($range, $platforms)
-            ->toBase()
-            ->get(['posts.publish_status', 'posts.publication_updated_at'])
-            ->map(fn (object $post): array => [
-                'date' => $range->localDate($post->publication_updated_at),
-                'publish_status' => (string) $post->publish_status,
-                'total' => 1,
-            ])
-            ->groupBy('date');
-
         $failures = self::failures($range, $platforms);
 
         return [
-            'days' => collect($range->calendarDays())
-                ->map(function (string $date) use ($byDate): array {
-                    $counts = PublishingCounts::of($byDate->get($date, collect()));
-
-                    return ['date' => $date, 'published' => $counts['published'], 'failed' => $counts['failed']];
-                })
-                ->all(),
+            'days' => self::days($range, $platforms),
             'totals' => PublishingCounts::of($groups),
             'networks' => self::countedBy($groups, fn (array $group): string => Platform::from(data_get($group, 'platform'))->network())
                 ->map(fn (Collection $networkGroups, string $network): array => ['platform' => $network, ...PublishingCounts::of($networkGroups)])
@@ -119,6 +102,34 @@ class BuildPublishingStats
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * What went out and what failed on each of the range's days, bucketed
+     * here from the few columns they need, so PostgreSQL and MySQL agree.
+     *
+     * @param  list<Platform>  $platforms  empty means every platform
+     * @return list<array{date: string, published: int, failed: int}>
+     */
+    public static function days(DateRange $range, array $platforms = []): array
+    {
+        $byDate = self::counted($range, $platforms)
+            ->toBase()
+            ->get(['posts.publish_status', 'posts.publication_updated_at'])
+            ->map(fn (object $post): array => [
+                'date' => $range->localDate($post->publication_updated_at),
+                'publish_status' => (string) $post->publish_status,
+                'total' => 1,
+            ])
+            ->groupBy('date');
+
+        return collect($range->calendarDays())
+            ->map(function (string $date) use ($byDate): array {
+                $counts = PublishingCounts::of($byDate->get($date, collect()));
+
+                return ['date' => $date, 'published' => $counts['published'], 'failed' => $counts['failed']];
+            })
+            ->all();
     }
 
     /**

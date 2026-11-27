@@ -29,7 +29,7 @@ test('sums up the last 24 hours of publishing and the channels to reconnect', fu
     expect($dashboard)->not->toHaveKeys(['users', 'accounts'])
         ->and($dashboard['last_24h'])->toMatchArray(['published' => 2, 'failed' => 1])
         ->and($dashboard['channels'])->toMatchArray(['to_reconnect' => 1])
-        ->and($dashboard['publishing']['days'])->toHaveCount(14);
+        ->and($dashboard['publishing_days'])->toHaveCount(14);
 });
 
 test('flags a network failing often, posts stuck publishing and quotas running out', function () {
@@ -71,7 +71,8 @@ test('the admin dashboard renders the summary', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('admin/Index')
             ->has('dashboard.channels')
-            ->has('dashboard.publishing.days', 14),
+            ->has('dashboard.publishing_days', 14)
+            ->missing('dashboard.publishing'),
         );
 });
 
@@ -80,4 +81,20 @@ test('raises no quota alert while YouTube is under the warning share and X credi
     QuotaSnapshots::put(QuotaSource::X, ['credits' => ['total_balance' => BuildDashboard::X_LOW_BALANCE]]);
 
     expect(BuildDashboard::execute('UTC')['attention']['quotas'])->toBe([]);
+});
+
+test('a network with a few failures among many posts does not need attention', function () {
+    $now = CarbonImmutable::now('UTC');
+    $busy = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    foreach ([...array_fill(0, BuildDashboard::ALARMING_FAILURES, 'failed'), ...array_fill(0, 30, 'published')] as $state) {
+        $post = Post::factory()->forAccount($busy)->{$state}()->create();
+        Post::query()->whereKey($post->id)->toBase()->update(['publication_updated_at' => $now->subHour()]);
+    }
+
+    $dashboard = BuildDashboard::execute('UTC');
+
+    expect($dashboard['last_24h']['failure_rate'])->toBeLessThan(BuildDashboard::ALARMING_FAILURE_RATE)
+        ->and($dashboard['last_24h']['failed'])->toBe(BuildDashboard::ALARMING_FAILURES)
+        ->and($dashboard['attention']['networks'])->toBe([]);
 });

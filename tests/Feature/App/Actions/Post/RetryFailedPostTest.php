@@ -81,7 +81,6 @@ test('it resumes a TikTok publish_id instead of starting from scratch', function
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     Storage::assertExists($derivativePath);
@@ -108,7 +107,6 @@ test('it resumes a TikTok publish_id after an account or job interruption', func
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Pending)
@@ -140,7 +138,6 @@ test('it keeps an Instagram workflow checkpoint on retry', function () {
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedInstagram->fresh()->publish_status)->toBe(PlatformStatus::Pending)
@@ -166,7 +163,6 @@ test('it removes stale TikTok derivatives when there is no publish_id to resume'
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     Storage::assertMissing($derivativePath);
@@ -185,6 +181,24 @@ test('it rejects posts that are not in a terminal failure state', function () {
 
     expect(app(RetryFailedPost::class)->execute($post->fresh()))->toBe(RetryOutcome::NotRetryable);
 
+    Bus::assertNotDispatched(PublishToSocialPlatform::class);
+});
+
+test('it queues nothing when the post changed after it was read', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    $account = SocialAccount::factory()->threads()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+    $post = Post::factory()->forAccount($account)->failed()->create([
+        'user_id' => $this->user->id,
+        'error_context' => ['category' => 'rate_limit'],
+    ]);
+    $stale = $post->fresh();
+    Post::query()->whereKey($post->id)->toBase()->update(['error_context' => json_encode(['category' => 'server_error'])]);
+
+    expect(app(RetryFailedPost::class)->execute($stale))->toBe(RetryOutcome::Changed)
+        ->and($post->fresh()->status)->toBe(PostStatus::Failed)
+        ->and($post->fresh()->error_context)->toBe(['category' => 'server_error']);
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
 
@@ -330,7 +344,6 @@ test('it treats an empty TikTok publish_id as a new attempt', function () {
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     Storage::assertMissing($derivativePath);
@@ -352,7 +365,6 @@ test('it treats an empty Instagram workflow as a new attempt', function () {
         ],
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedInstagram->fresh()->publish_status)->toBe(PlatformStatus::Pending)
@@ -376,7 +388,6 @@ test('it starts over when the failure category is not resumable', function (?str
         'error_context' => $errorContext,
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Pending)
@@ -417,7 +428,6 @@ test('a TikTok retry after a remote FAILED starts a new publish', function () {
     Mail::fake();
     Queue::fake();
 
-    expect(app(RetryFailedPost::class)->resumes($failedTikTok->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedTikTok->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedTikTok->fresh()->error_context)->toBeNull();
@@ -471,7 +481,6 @@ test('an Instagram retry after a container ERROR starts a new container', functi
     Mail::fake();
     Queue::fake();
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedInstagram->fresh()->error_context)->toBeNull();
@@ -522,7 +531,6 @@ test('an Instagram retry after a container EXPIRED starts a new container', func
     Mail::fake();
     Queue::fake();
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     Http::fake([
@@ -536,7 +544,6 @@ test('an Instagram retry after a container EXPIRED starts a new container', func
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeFalse();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedInstagram->fresh()->error_context)->toBeNull();
@@ -580,7 +587,6 @@ test('an Instagram resume of a published container completes without media_publi
     Mail::fake();
     Queue::fake();
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     Http::fake(function (Request $request) {
@@ -633,7 +639,6 @@ test('an Instagram resume of a checkpointed media id completes without media_pub
     Mail::fake();
     Queue::fake();
 
-    expect(app(RetryFailedPost::class)->resumes($failedInstagram->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedInstagram->fresh()))->toBe(RetryOutcome::Queued);
 
     Http::fake(function (Request $request) {
@@ -669,7 +674,6 @@ test('it keeps the live segments of a thread whatever the failure category', fun
         'error_context' => array_filter(['category' => $category, 'thread_progress' => $progress, 'failed_at' => now()->toIso8601String()]),
     ]);
 
-    expect(app(RetryFailedPost::class)->resumes($failedMastodon->fresh()))->toBeTrue();
     expect(app(RetryFailedPost::class)->execute($failedMastodon->fresh()))->toBe(RetryOutcome::Queued);
 
     expect($failedMastodon->fresh()->publish_status)->toBe(PlatformStatus::Pending)

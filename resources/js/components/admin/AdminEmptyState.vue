@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** The dashed box a backoffice list shows when it has nothing to list. */
+/** What a backoffice list shows when it has nothing to list. */
 import { computed } from 'vue';
 
 type EmptyStateVariant = 'page' | 'card' | 'section';
@@ -7,17 +7,19 @@ type EmptyStateVariant = 'page' | 'card' | 'section';
 const VARIANT_CLASSES: Record<EmptyStateVariant, string> = {
     page: 'rounded-xl border border-dashed border-border px-4 py-12',
     card: 'rounded-xl border border-dashed border-border px-4 py-8',
-    section:
-        'mx-4 mb-4 rounded-lg border border-dashed border-border-strong px-5 py-10 sm:mx-5 sm:mb-5',
+    section: 'border-t border-border px-4 py-6 sm:px-5',
 };
 
 const props = withDefaults(
     defineProps<{
-        /** `page` stands for a whole list, `card` for a settings section, `section` sits inside an `AnalyticsSection`. */
+        /**
+         * `page` stands for a whole list and `card` for a settings section, both
+         * a dashed box; `section` is a row under the title of a flush `AnalyticsSection`.
+         */
         variant?: EmptyStateVariant;
         testId?: string;
     }>(),
-    { variant: 'card', testId: undefined },
+    { variant: 'card' },
 );
 
 const variantClass = computed((): string => VARIANT_CLASSES[props.variant]);

@@ -27,8 +27,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | The people who may open the backoffice (/admin) and Horizon: a
-    | comma-separated list of emails, matched without case against verified
-    | accounts. Empty by default, which closes both to everyone.
+    | comma-separated list of emails, matched without case against the
+    | accounts' emails, verified or not: list only emails that already have
+    | an account. Empty by default, which closes both to everyone.
     |
     */
 

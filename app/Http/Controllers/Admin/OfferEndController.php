@@ -6,13 +6,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\Offers\EndOffer;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Offer\EndOfferRequest;
 use App\Models\Offer;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class OfferEndController extends Controller
 {
-    public function store(Request $request, Offer $offer, EndOffer $endOffer): RedirectResponse
+    public function store(EndOfferRequest $request, Offer $offer, EndOffer $endOffer): RedirectResponse
     {
         $endOffer->execute($request->user(), $offer);
 

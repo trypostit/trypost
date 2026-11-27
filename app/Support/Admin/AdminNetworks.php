@@ -20,8 +20,7 @@ final class AdminNetworks
      */
     public static function options(): array
     {
-        return collect(Platform::cases())
-            ->filter(fn (Platform $platform): bool => $platform->isEnabled())
+        return collect(Platform::enabledCases())
             ->map(fn (Platform $platform): string => $platform->network())
             ->unique()
             ->values()

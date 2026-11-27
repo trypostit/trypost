@@ -32,8 +32,8 @@ export const formatNumber = (value: number): string => {
     return value.toLocaleString('en-US');
 };
 
-/** What a number reads while it has no value. */
-const MISSING_VALUE = '—';
+/** What a value reads while it has none. */
+export const MISSING_VALUE = '—';
 
 /** A number that may have no value yet; the formatters below read it as a dash. */
 type MaybeNumber = number | null | undefined;

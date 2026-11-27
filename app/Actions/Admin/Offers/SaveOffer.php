@@ -24,7 +24,7 @@ class SaveOffer
      */
     public function execute(User $admin, array $data, ?Offer $offer = null): Offer
     {
-        $timezone = (string) $admin->timezone;
+        $timezone = $admin->timezone;
         $attributes = [
             ...collect($data)->except(['slug', 'starts_at', 'ends_at'])->all(),
             'starts_at' => CarbonImmutable::parse(data_get($data, 'starts_at'), $timezone)->startOfDay()->utc(),

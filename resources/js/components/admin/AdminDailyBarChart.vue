@@ -17,10 +17,11 @@ import {
     componentToString,
     numericTick,
 } from '@/components/ui/chart';
-import { DAILY_CHART_PADDING, useAdminDayAxis, valueAt } from '@/composables/admin/useAdminDayAxis';
+import { DAILY_CHART_PADDING, useAdminDayAxis } from '@/composables/admin/useAdminDayAxis';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
-import { filled, isNumber } from '@/lib/helpers';
-import { formatFullNumber, formatMoney } from '@/lib/utils';
+import { countIn, formatUsd } from '@/lib/adminFormat';
+import { filled } from '@/lib/helpers';
+import { formatFullNumber } from '@/lib/utils';
 
 /** One stacked series of the chart: a value per day, in the order of `days`. */
 export interface AdminChartSeries {
@@ -54,7 +55,7 @@ const { ticks, formatDay } = useAdminDayAxis(() => props.days);
 
 const formatValueTick = numericTick((tick, index, ticks): string => {
     if (props.currency) {
-        return formatMoney(tick);
+        return formatUsd(tick, 2);
     }
 
     return formatCountTick(tick, index, ticks);
@@ -70,21 +71,10 @@ const wantsTotal = computed((): boolean => {
 
 const formatTotal = (total: number): string => {
     if (props.currency) {
-        return formatMoney(total);
+        return formatUsd(total, 2);
     }
 
     return formatFullNumber(total);
-};
-
-/** A series' value on a day; a day it has no value for reads 0. */
-const pointValue = (point: ChartPoint, key: string): number => {
-    const value = point[key];
-
-    if (isNumber(value)) {
-        return value;
-    }
-
-    return 0;
 };
 
 /** The day's total across the series, as money when the chart is a cost. */
@@ -96,7 +86,7 @@ const dayTotal = numericTick((tick): ChartTooltipDetail | null => {
     const point = chartData.value[Math.round(tick)];
 
     if (filled(point)) {
-        const total = props.series.reduce((sum, series) => sum + pointValue(point, series.key), 0);
+        const total = props.series.reduce((sum, series) => sum + countIn(point, series.key), 0);
 
         return { label: 'Total', value: formatTotal(total) };
     }
@@ -119,7 +109,7 @@ const chartData = computed<ChartPoint[]>(() =>
         const point: ChartPoint = { index };
 
         props.series.forEach((series) => {
-            point[series.key] = valueAt(series.values, index);
+            point[series.key] = countIn(series.values, index);
         });
 
         return point;
@@ -131,7 +121,7 @@ const yAccessors = computed(() =>
     props.series.map(
         (series) =>
             (point: ChartPoint): number =>
-                pointValue(point, series.key),
+                countIn(point, series.key),
     ),
 );
 const barColors = computed(() => props.series.map((series) => series.color));

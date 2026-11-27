@@ -6,8 +6,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Admin\Users\BuildChurnRisk;
 use App\Actions\Admin\Users\BuildUsageInsights;
+use App\Enums\Analytics\DateRangePreset;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\IndexUserInsightsRequest;
+use App\Support\Admin\AccountActivity;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,12 +17,12 @@ class UserInsightsController extends Controller
 {
     public function index(IndexUserInsightsRequest $request): Response
     {
-        $range = $request->dateRange();
+        $activity = AccountActivity::during($request->dateRange());
 
         return Inertia::render('admin/users/Insights', [
-            'usage' => BuildUsageInsights::execute($range),
-            'churn' => BuildChurnRisk::execute($range),
-            'ranges' => IndexUserInsightsRequest::RANGES,
+            'usage' => BuildUsageInsights::execute($activity),
+            'churn' => BuildChurnRisk::execute($activity),
+            'ranges' => DateRangePreset::backoffice(),
             ...$request->rangeProps(),
             'filters' => $request->rangeFilters(),
         ]);

@@ -87,3 +87,18 @@ test('a limit retry waits while the account owner is blocked', function () {
 
     expect(Post::query()->dueForLimitRetry()->whereKey($this->draft->id)->exists())->toBeTrue();
 });
+
+test('a publish attempt of a limit retry that is due waits again while the account owner is blocked', function () {
+    $this->freezeSecond();
+    $this->draft->forceFill(['status' => PostStatus::Publishing, 'scheduled_at' => now()->subHour()])->save();
+    $this->draft->writePublication(['publish_status' => PublishStatus::Retrying, 'retry_at' => now()->subMinute()]);
+
+    (new PublishToSocialPlatform($this->draft->fresh()))->handle();
+
+    $post = $this->draft->fresh();
+
+    expect($post->publish_status)->toBe(PublishStatus::Retrying)
+        ->and($post->status)->toBe(PostStatus::Publishing)
+        ->and($post->retry_at->equalTo(now()))->toBeTrue();
+    Http::assertNothingSent();
+});

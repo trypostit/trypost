@@ -7,6 +7,7 @@ namespace App\Http\Resources\Admin;
 use App\Actions\Post\RetryFailedPost;
 use App\Exceptions\Social\ErrorCategory;
 use App\Models\Post;
+use App\Models\User;
 use App\Services\Social\ContentSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -47,8 +48,21 @@ class AdminFailedPostResource extends JsonResource
             'error_context' => $this->error_context,
             'scheduled_at' => $this->scheduled_at?->toIso8601String(),
             'failed_at' => $this->publication_updated_at?->toIso8601String(),
-            'retryable' => $retry->isRetryable($this->resource),
+            'retryable' => $this->retryable($retry, $owner),
             'needs_instagram_confirmation' => $retry->needsInstagramConfirmation($this->resource),
         ];
+    }
+
+    /**
+     * A blocked owner's posts wait until they are unblocked, so the
+     * backoffice offers no retry for them.
+     */
+    private function retryable(RetryFailedPost $retry, ?User $owner): bool
+    {
+        if ($owner?->isBlocked() === true) {
+            return false;
+        }
+
+        return $retry->isRetryable($this->resource);
     }
 }

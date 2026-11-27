@@ -18,6 +18,7 @@ use App\Models\WorkspaceLabel;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 
 beforeEach(function () {
     $this->admin = backofficeAdmin(['name' => 'Admin']);
@@ -30,6 +31,7 @@ afterEach(function () {
 });
 
 test('the overview shows how the user signs in, came in and was last seen', function () {
+    config(['session.driver' => 'database']);
     DB::table('sessions')->insert(['id' => 'sess-1', 'user_id' => $this->user->id, 'ip_address' => '203.0.113.7', 'user_agent' => 'Safari', 'payload' => '', 'last_activity' => now()->timestamp]);
 
     $this->actingAs($this->admin)
@@ -143,6 +145,7 @@ test('the billing tab keeps the stored part and every Stripe key when Stripe fai
 test('the activity tab shows admin history and sessions', function () {
     app(RecordAdminAction::class)->execute($this->admin, AdminActionType::BlockUser, $this->user, ['reason' => 'Spam']);
     $this->freezeSecond();
+    config(['session.driver' => 'database']);
     DB::table('sessions')->insert(['id' => 'sess-2', 'user_id' => $this->user->id, 'ip_address' => '198.51.100.2', 'user_agent' => 'Chrome', 'payload' => '', 'last_activity' => now()->subHours(2)->timestamp]);
 
     $this->actingAs($this->admin)
@@ -152,7 +155,8 @@ test('the activity tab shows admin history and sessions', function () {
             ->where('data.history.0.causer_name', 'Admin')
             ->where('data.sessions.0.ip', '198.51.100.2')
             ->where('data.sessions.0.id', hash('sha256', 'sess-2'))
-            ->where('data.sessions.0.last_active', '2 hours ago'),
+            ->where('data.sessions.0.last_activity', now()->subHours(2)->toIso8601String())
+            ->missing('data.sessions.0.last_active'),
         );
 });
 
@@ -190,5 +194,68 @@ test('the activity tab lists the updates the user opened with their reaction', f
             ->where('data.changelog.entries.0.entry.reaction', 'like')
             ->where('data.changelog.entries.1.entry.title', 'Reel covers')
             ->where('data.changelog.entries.1.entry.reaction', null),
+        );
+});
+
+test('the workspaces tab marks a workspace the user only belongs to and leaves accepted invitations out', function () {
+    $other = workspaceOwner(['name' => 'Ada'], ['name' => 'Ada Co']);
+    $other->currentWorkspace->members()->attach($this->user->id, membershipPivot('member'));
+    Invite::factory()->create(['account_id' => $this->user->account_id, 'email' => 'pending@example.test']);
+    Invite::factory()->create(['account_id' => $this->user->account_id, 'email' => 'joined@example.test', 'accepted_at' => now()]);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'workspaces']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('data.workspaces.0.name', 'Ada Co')
+            ->where('data.workspaces.0.is_owner', false)
+            ->where('data.workspaces.1.name', 'Grace Co')
+            ->where('data.workspaces.1.is_owner', true)
+            ->has('data.pending_invites', 1)
+            ->where('data.pending_invites.0.email', 'pending@example.test'),
+        );
+});
+
+test('the billing tab of an account without a current subscription reads the saved cards and the discount of its other live subscription', function () {
+    config(['cashier.secret' => 'sk_test_fake']);
+    $this->user->account->forceFill(['stripe_id' => 'cus_former'])->save();
+    subscribeAccount($this->user->account, ['type' => 'legacy', 'stripe_id' => 'sub_legacy']);
+    ApiRequestor::setHttpClient(new class implements ClientInterface
+    {
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $body = match (true) {
+                str_contains($absUrl, '/v1/subscriptions/sub_legacy') => ['id' => 'sub_legacy', 'object' => 'subscription', 'discounts' => [[
+                    'id' => 'di_legacy',
+                    'object' => 'discount',
+                    'coupon' => ['id' => 'LOYAL', 'object' => 'coupon', 'name' => 'Loyalty', 'percent_off' => 20, 'amount_off' => null, 'duration' => 'forever'],
+                    'promotion_code' => null,
+                    'start' => now()->subMonth()->timestamp,
+                    'end' => null,
+                ]]],
+                str_contains($absUrl, '/v1/payment_methods'), str_contains($absUrl, '/v1/customers/cus_former/payment_methods') => ['object' => 'list', 'has_more' => false, 'url' => '/v1/payment_methods', 'data' => [[
+                    'id' => 'pm_saved',
+                    'object' => 'payment_method',
+                    'customer' => 'cus_former',
+                    'type' => 'card',
+                    'card' => ['brand' => 'mastercard', 'last4' => '4444', 'exp_month' => 1, 'exp_year' => 2040],
+                ]]],
+                default => ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => '/v1/invoices'],
+            };
+
+            return [json_encode($body), 200, []];
+        }
+    });
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.users.show', ['user' => $this->user, 'tab' => 'billing']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('data.subscription', null)
+            ->where('data.stripe.error', null)
+            ->has('data.stripe.cards', 1)
+            ->where('data.stripe.cards.0.brand', 'mastercard')
+            ->where('data.stripe.cards.0.last4', '4444')
+            ->where('data.stripe.cards.0.is_default', false)
+            ->where('data.stripe.discount.name', 'Loyalty')
+            ->where('data.stripe.discount.percent_off', 20),
         );
 });

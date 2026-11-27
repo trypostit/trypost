@@ -28,7 +28,7 @@ Route::middleware(['auth', EnsureBackofficeEnabled::class, EnsureBackofficeAdmin
     Route::get('admin/users/{user}', [UserController::class, 'show'])->name('admin.users.show');
     Route::post('admin/users/{user}/block', [UserBlockController::class, 'store'])->name('admin.users.block.store');
     Route::delete('admin/users/{user}/block', [UserBlockController::class, 'destroy'])->name('admin.users.block.destroy');
-    Route::post('admin/users/{user}/impersonate', [ImpersonationController::class, 'store'])->name('admin.users.impersonate');
+    Route::post('admin/users/{user}/impersonate', [ImpersonationController::class, 'store'])->name('admin.users.impersonation.store');
 
     Route::get('admin/posts', [PostStatsController::class, 'index'])->name('admin.posts.index');
     Route::get('admin/posts/failed', [FailedPostController::class, 'index'])->name('admin.posts.failed.index');

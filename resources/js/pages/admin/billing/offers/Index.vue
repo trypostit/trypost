@@ -35,12 +35,13 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useUrlTab } from '@/composables/admin/useUrlTab';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
-import { firstError } from '@/lib/adminFormat';
+import { countLabel, firstError } from '@/lib/adminFormat';
 import { filled, isNumber } from '@/lib/helpers';
-import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
-import { destroy as offersDestroy } from '@/routes/admin/billing/offers';
+import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
+import { destroy as offersDestroy, index as offersIndex } from '@/routes/admin/billing/offers';
 import { store as offerEndStore } from '@/routes/admin/billing/offers/end';
 import type { AdminOffer, AdminStat, BadgeVariant, OfferState } from '@/types/admin';
 
@@ -61,51 +62,58 @@ const props = defineProps<{
 
 type OffersTab = 'all' | OfferState;
 
-/** The tabs, each a set of states; All holds every offer. */
-const TABS: { value: OffersTab; label: string; states: OfferState[] }[] = [
-    { value: 'all', label: 'All', states: ['live', 'scheduled', 'full', 'ended'] },
-    { value: 'live', label: 'Live', states: ['live'] },
-    { value: 'scheduled', label: 'Scheduled', states: ['scheduled'] },
-    { value: 'full', label: 'Full', states: ['full'] },
-    { value: 'ended', label: 'Ended', states: ['ended'] },
+/** All holds every offer; each other tab, the offers in its state. */
+const TABS: { value: OffersTab; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'live', label: 'Live' },
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'full', label: 'Full' },
+    { value: 'ended', label: 'Ended' },
 ];
 
-const tab = ref<OffersTab>('all');
-
-const tabStates = computed((): OfferState[] => {
-    const current = TABS.find((option) => option.value === tab.value);
-
-    if (filled(current)) {
-        return current.states;
-    }
-
-    return [];
+/** All opens by default; the open tab lives in the URL. */
+const { tab, selectTab } = useUrlTab({
+    tabs: TABS.map((option) => option.value),
+    url: (mergeQuery) => offersIndex.url({ mergeQuery }),
 });
 
-const shownOffers = computed(() =>
-    props.offers.filter((offer) => tabStates.value.includes(offer.state)),
-);
-
-const tabCount = (states: OfferState[]): string =>
-    formatFullNumber(props.offers.filter((offer) => states.includes(offer.state)).length);
-
-const selectTab = (value: string | number): void => {
-    const picked = TABS.find((option) => option.value === value);
-
-    if (filled(picked)) {
-        tab.value = picked.value;
+const offersIn = (value: OffersTab): AdminOffer[] => {
+    if (value === 'all') {
+        return props.offers;
     }
+
+    return props.offers.filter((offer) => offer.state === value);
 };
+
+const shownOffers = computed(() => offersIn(tab.value));
+
+const tabCount = (value: OffersTab): string => formatFullNumber(offersIn(value).length);
 
 const hasOffers = computed(() => filled(props.offers));
 const hasShownOffers = computed(() => filled(shownOffers.value));
+
+/** What each state's tab says when it holds no offer. */
+const EMPTY_MESSAGES: Record<OfferState, string> = {
+    live: 'No offer is live.',
+    scheduled: 'No offer is scheduled.',
+    full: 'No offer is full.',
+    ended: 'No offer has ended.',
+};
+
+const emptyMessage = computed((): string => {
+    if (tab.value === 'all') {
+        return 'No offers yet.';
+    }
+
+    return EMPTY_MESSAGES[tab.value];
+});
 
 const sum = (pick: (offer: AdminOffer) => number): number =>
     props.offers.reduce((total, offer) => total + pick(offer), 0);
 
 const conversion = (redeemed: number, claimed: number): string => {
     if (claimed === 0) {
-        return '—';
+        return MISSING_VALUE;
     }
 
     return formatPercent(percentOf(redeemed, claimed), 1);
@@ -115,7 +123,7 @@ const summary = computed((): AdminStat[] => [
     {
         key: 'offers-live',
         label: 'Live offers',
-        value: formatFullNumber(props.offers.filter((offer) => offer.state === 'live').length),
+        value: tabCount('live'),
     },
     {
         key: 'offers-claimed',
@@ -205,13 +213,8 @@ const redemptions = (offer: AdminOffer): string => {
 
 const hasMissingCopy = (offer: AdminOffer): boolean => filled(offer.missing_copy);
 
-const missingCopyLabel = (offer: AdminOffer): string => {
-    if (offer.missing_copy.length === 1) {
-        return 'Copy missing in 1 locale';
-    }
-
-    return `Copy missing in ${offer.missing_copy.length} locales`;
-};
+const missingCopyLabel = (offer: AdminOffer): string =>
+    `Copy missing in ${countLabel(offer.missing_copy.length, 'locale', 'locales')}`;
 
 const missingCopyList = (offer: AdminOffer): string =>
     `Add it to lang/<locale>/offers.php: ${offer.missing_copy.join(', ')}`;
@@ -358,13 +361,13 @@ const confirm = (): void => {
                     >
                         {{ option.label }}
                         <span class="text-xs text-muted-foreground tabular-nums">{{
-                            tabCount(option.states)
+                            tabCount(option.value)
                         }}</span>
                     </TabsTrigger>
                 </TabsList>
             </Tabs>
 
-            <AdminEmptyState v-if="!hasShownOffers" variant="page">No offers here.</AdminEmptyState>
+            <AdminEmptyState v-if="!hasShownOffers" variant="page">{{ emptyMessage }}</AdminEmptyState>
 
             <div v-else class="overflow-hidden rounded-xl border border-border bg-card">
                 <div class="overflow-x-auto">

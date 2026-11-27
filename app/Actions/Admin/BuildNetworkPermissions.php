@@ -26,8 +26,7 @@ class BuildNetworkPermissions
      */
     public static function execute(): array
     {
-        return collect(Platform::cases())
-            ->filter(fn (Platform $platform): bool => $platform->isEnabled())
+        return collect(Platform::enabledCases())
             ->map(fn (Platform $platform): array => self::platform($platform))
             ->values()
             ->all();
@@ -39,7 +38,7 @@ class BuildNetworkPermissions
     private static function platform(Platform $platform): array
     {
         $requested = ChannelPermissions::requestedScopes($platform);
-        $required = config("trypost.platforms.{$platform->value}.required_scopes", []);
+        $required = ChannelPermissions::requiredScopes($platform);
         $features = collect(GatedFeature::cases())
             ->filter(fn (GatedFeature $feature): bool => filled(ChannelPermissions::scopes($platform, $feature)));
 

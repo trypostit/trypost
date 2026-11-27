@@ -4,12 +4,10 @@
  * picks the chart under it. Drawn like `AdminStatGrid`, with the open one
  * underlined and the others dimmed; each figure is a toggle button.
  */
-import { computed } from 'vue';
-
 import AdminStatTile from '@/components/admin/AdminStatTile.vue';
 import type { AdminMetricTab } from '@/types/admin';
 
-const props = defineProps<{
+defineProps<{
     tabs: AdminMetricTab<Value>[];
     testId: string;
 }>();
@@ -29,17 +27,10 @@ const figureClass = (value: Value): string => {
 
     return 'text-muted-foreground group-hover:text-foreground';
 };
-
-const gridStyle = computed(() => ({
-    '--admin-metric-columns': `repeat(${props.tabs.length}, minmax(0, 1fr))`,
-}));
 </script>
 
 <template>
-    <div
-        class="grid grid-cols-2 border-t border-border md:grid-cols-(--admin-metric-columns)"
-        :style="gridStyle"
-    >
+    <div class="grid grid-cols-2 border-t border-border md:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
         <button
             v-for="tab in tabs"
             :key="tab.value"

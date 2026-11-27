@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Offer\OfferState;
 use Database\Factories\OfferFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -95,6 +96,37 @@ class Offer extends Model
     public function hasTrial(): bool
     {
         return $this->trial_days > 0;
+    }
+
+    /**
+     * Scheduled, live, full (every place redeemed) or ended, by the same
+     * rules as `scopeAvailable()`. Reads `redemptions_count` when the query
+     * counted it, else counts the redemptions.
+     */
+    public function state(): OfferState
+    {
+        if (filled($this->ends_at) && ! $this->ends_at->isFuture()) {
+            return OfferState::Ended;
+        }
+
+        if ($this->starts_at->isFuture()) {
+            return OfferState::Scheduled;
+        }
+
+        if (filled($this->max_redemptions) && $this->redemptionsCount() >= $this->max_redemptions) {
+            return OfferState::Full;
+        }
+
+        return OfferState::Live;
+    }
+
+    private function redemptionsCount(): int
+    {
+        if ($this->hasAttribute('redemptions_count')) {
+            return (int) $this->redemptions_count;
+        }
+
+        return $this->redemptions()->count();
     }
 
     /**

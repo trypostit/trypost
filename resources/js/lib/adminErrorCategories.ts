@@ -1,7 +1,7 @@
 import { filled } from '@/lib/helpers';
 
 /** How the backoffice names each `ErrorCategory` a failed post is filed under. */
-export const ERROR_CATEGORY_LABELS: Record<string, string> = {
+const ERROR_CATEGORY_LABELS: Record<string, string> = {
     unknown: 'Unknown',
     server_error: 'Server error',
     content_policy: 'Content policy',

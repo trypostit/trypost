@@ -6,6 +6,7 @@ namespace App\Actions\Admin;
 
 use App\Enums\Admin\AdminActionType;
 use App\Models\User;
+use App\Support\Auth\DatabaseSessions;
 use Illuminate\Support\Facades\DB;
 
 class BlockUser
@@ -32,7 +33,7 @@ class BlockUser
                 'blocked_reason' => $reason,
             ])->save();
 
-            DB::table(config()->string('session.table'))->where('user_id', $user->id)->delete();
+            DatabaseSessions::forget($user);
 
             $this->recordAdminAction->execute($admin, AdminActionType::BlockUser, $user, ['reason' => $reason]);
         });

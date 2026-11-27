@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Admin;
 
+use App\Enums\Admin\SubscriptionStatusFilter;
+use App\Models\Offer;
 use App\Models\Subscription;
 use App\Support\Admin\SubscriptionPlans;
 use Illuminate\Http\Request;
@@ -14,14 +16,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class AdminSubscriptionResource extends JsonResource
 {
-    /**
-     * @param  array<string, array{plan: string, name: string, interval: string}>  $prices
-     */
-    public function __construct(Subscription $resource, private readonly array $prices = [])
-    {
-        parent::__construct($resource);
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -35,13 +29,13 @@ class AdminSubscriptionResource extends JsonResource
             'user_name' => $user?->name,
             'user_email' => $user?->email,
             'account_name' => $this->owner?->name,
-            'plan' => SubscriptionPlans::describe($this->stripe_price, $this->prices),
+            'plan' => SubscriptionPlans::describe($this->stripe_price),
             'quantity' => (int) $this->quantity,
-            'state' => SubscriptionPlans::state($this->resource, now('UTC')),
+            'state' => SubscriptionStatusFilter::forSubscription($this->resource, now('UTC'))?->value ?? $this->stripe_status,
             'started_at' => $this->created_at?->toIso8601String(),
             'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
             'ends_at' => $this->ends_at?->toIso8601String(),
-            'offers' => $this->owner?->offers->pluck('slug')->values()->all() ?? [],
+            'offers' => $this->owner?->redeemedOffers->map(fn (Offer $offer): string => $offer->slug)->values()->all() ?? [],
         ];
     }
 }

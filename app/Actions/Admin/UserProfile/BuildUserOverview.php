@@ -6,9 +6,9 @@ namespace App\Actions\Admin\UserProfile;
 
 use App\Models\User;
 use App\Support\Admin\StripeDashboard;
+use App\Support\Auth\DatabaseSessions;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 
 class BuildUserOverview
 {
@@ -29,10 +29,7 @@ class BuildUserOverview
     {
         $account = $user->account;
         $health = BuildUserHealth::execute($user);
-        $lastSession = DB::table(config()->string('session.table'))
-            ->where('user_id', $user->id)
-            ->orderByDesc('last_activity')
-            ->first(['ip_address', 'user_agent', 'last_activity']);
+        $lastSession = DatabaseSessions::of($user)->first();
 
         return [
             'sign_in' => [
@@ -84,6 +81,6 @@ class BuildUserOverview
             return null;
         }
 
-        return CarbonImmutable::createFromTimestampUTC((int) $session->last_activity)->toIso8601String();
+        return CarbonImmutable::createFromTimestampUTC($session->last_activity)->toIso8601String();
     }
 }

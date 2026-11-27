@@ -26,14 +26,13 @@ import AdminBreakdownList, {
 } from '@/components/admin/insights/AdminBreakdownList.vue';
 import AnalyticsRangePresets from '@/components/analytics/AnalyticsRangePresets.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
-import { valueAt } from '@/composables/admin/useAdminDayAxis';
 import date from '@/date';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import { metricChange } from '@/lib/adminChange';
-import { formatUsd, NO_VALUE } from '@/lib/adminFormat';
+import { countIn, formatUsd } from '@/lib/adminFormat';
 import { accountColor } from '@/lib/analyticsColors';
 import { isNumber } from '@/lib/helpers';
-import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import { formatFullNumber, formatPercent, MISSING_VALUE, percentOf } from '@/lib/utils';
 import { goalArt, personaArt, softwareArt, type WelcomeOptionArt } from '@/lib/welcomeOptions';
 import { index as insightsIndex } from '@/routes/admin/billing/insights';
 import type {
@@ -90,7 +89,7 @@ const subtitle = computed((): string => date.formatDayMonthYearRange(props.range
 /** A median wait, in the unit it reads best in. */
 const duration = (minutes: number | null): string => {
     if (!isNumber(minutes)) {
-        return NO_VALUE;
+        return MISSING_VALUE;
     }
 
     if (minutes < 60) {
@@ -151,7 +150,7 @@ const summary = computed((): AdminStat[] => [
     },
 ]);
 
-const subscribedOn = (index: number): number => valueAt(props.insights.subscribed_by_day, index);
+const subscribedOn = (index: number): number => countIn(props.insights.subscribed_by_day, index);
 
 /** Each day's signups, the ones that subscribed stacked on the ones that did not, so the bar is the day's signups. */
 const signupSeries = computed((): AdminChartSeries[] => [
@@ -169,7 +168,7 @@ const signupSeries = computed((): AdminChartSeries[] => [
         details: (index) => [
             {
                 label: 'Conversion',
-                value: formatPercent(percentOf(subscribedOn(index), valueAt(props.insights.signups_by_day, index)), 1),
+                value: formatPercent(percentOf(subscribedOn(index), countIn(props.insights.signups_by_day, index)), 1),
             },
         ],
     },

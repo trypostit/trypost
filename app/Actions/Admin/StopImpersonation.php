@@ -16,9 +16,11 @@ class StopImpersonation
 
     /**
      * Sign the admin back in. It works even if the admin left `ADMIN_EMAILS`
-     * meanwhile: they get their own account back, not the backoffice.
+     * meanwhile: they get their own account back, not the backoffice. When
+     * the admin's account is gone, nobody stays signed in as the customer:
+     * the session ends.
      *
-     * @return User|null the admin, or null when the session holds no admin
+     * @return User|null the admin, or null when their account no longer exists
      */
     public function execute(Request $request, User $impersonated): ?User
     {
@@ -27,6 +29,10 @@ class StopImpersonation
         $request->session()->forget(Impersonation::SESSION_KEY);
 
         if (! $admin instanceof User) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
             return null;
         }
 

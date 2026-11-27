@@ -3,17 +3,30 @@
  * A row of numbers inside an `AnalyticsSection` (`flush`), drawn like the
  * Insights summary cards: a muted label over a large figure.
  */
+import { computed } from 'vue';
+
 import AdminStatTile from '@/components/admin/AdminStatTile.vue';
 import type { AdminStat } from '@/types/admin';
 
-defineProps<{
+const props = defineProps<{
     stats: AdminStat[];
+    /** At the top of a card of its own, with no title above to draw a line under. */
+    flushTop?: boolean;
 }>();
+
+const gridClass = computed((): string => {
+    if (props.flushTop) {
+        return '';
+    }
+
+    return 'border-t border-border';
+});
 </script>
 
 <template>
     <div
-        class="grid grid-cols-2 border-t border-border md:grid-cols-[repeat(auto-fit,minmax(0,1fr))]"
+        class="grid grid-cols-2 md:grid-cols-[repeat(auto-fit,minmax(0,1fr))]"
+        :class="gridClass"
     >
         <div
             v-for="stat in stats"

@@ -5,16 +5,10 @@ import { computed, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { destroy as stopImpersonation } from '@/routes/app/impersonation';
+import type { SharedData } from '@/types';
 
-interface Impersonating {
-    name: string;
-    email: string;
-}
-
-const page = usePage();
-const impersonating = computed(
-    () => page.props.impersonating as Impersonating | null | undefined,
-);
+const page = usePage<SharedData>();
+const impersonating = computed(() => page.props.impersonating);
 
 const stopping = ref(false);
 

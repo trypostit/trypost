@@ -2,24 +2,13 @@ import { computed, type ComputedRef } from 'vue';
 
 import { numericTick } from '@/components/ui/chart';
 import date from '@/date';
-import { filled, isNumber } from '@/lib/helpers';
+import { filled } from '@/lib/helpers';
 
 /** One label every few days, so a long range stays readable. */
 const MAX_TICKS = 8;
 
 /** The room the backoffice's daily charts leave around their plot. */
 export const DAILY_CHART_PADDING = { top: 14, right: 8, bottom: 8, left: 0 };
-
-/** A day's value from a list in the order of the days; a day past its end reads 0. */
-export const valueAt = (values: number[], index: number): number => {
-    const value = values[index];
-
-    if (isNumber(value)) {
-        return value;
-    }
-
-    return 0;
-};
 
 /**
  * The day axis the backoffice's daily charts share: a label per day

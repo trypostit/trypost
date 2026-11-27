@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import AdminBarRows from '@/components/admin/AdminBarRows.vue';
+import AdminBarList from '@/components/admin/AdminBarList.vue';
 import AdminDailyBarChart, {
     type AdminChartSeries,
 } from '@/components/admin/AdminDailyBarChart.vue';
 import AdminDailyLineChart from '@/components/admin/AdminDailyLineChart.vue';
+import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
 import AdminMetricTabs from '@/components/admin/AdminMetricTabs.vue';
 import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
-import { valueAt } from '@/composables/admin/useAdminDayAxis';
 import { metricChange } from '@/lib/adminChange';
-import { formatUsd, NO_VALUE } from '@/lib/adminFormat';
-import { planLabel } from '@/lib/adminSubscriptions';
+import { countIn, countLabel, formatUsd } from '@/lib/adminFormat';
+import { subscriptionPlanLabel } from '@/lib/adminSubscriptions';
 import { accountColor } from '@/lib/analyticsColors';
 import { filled } from '@/lib/helpers';
-import { formatFullNumber, formatPercent, percentOf } from '@/lib/utils';
+import { formatFullNumber, formatPercent, formatSignedNumber, MISSING_VALUE, percentOf } from '@/lib/utils';
 import type {
     AdminBarRow,
     AdminMetricTab,
@@ -53,27 +53,19 @@ const now = computed((): AdminStat[] => [
         key: 'subs-past-due',
         label: 'Past due',
         value: `${formatUsd(props.overview.at_risk.past_due_cents)}/mo`,
-        hint: subscriptionsCount(props.overview.now.past_due, 'unpaid'),
+        hint: countLabel(props.overview.now.past_due, 'subscription unpaid', 'subscriptions unpaid'),
     },
     {
         key: 'subs-cancelling',
         label: 'Cancelling',
         value: `${formatUsd(props.overview.at_risk.cancelling_cents)}/mo`,
-        hint: subscriptionsCount(props.overview.now.cancelling, 'cancelling'),
+        hint: countLabel(props.overview.now.cancelling, 'subscription cancelling', 'subscriptions cancelling'),
     },
 ]);
 
-const subscriptionsCount = (count: number, state: string): string => {
-    if (count === 1) {
-        return `1 subscription ${state}`;
-    }
-
-    return `${formatFullNumber(count)} subscriptions ${state}`;
-};
-
 const readNetMrr = (netMrr: AdminNetMrr): string => {
     if ('error' in netMrr) {
-        return NO_VALUE;
+        return MISSING_VALUE;
     }
 
     return formatUsd(netMrr.cents);
@@ -139,7 +131,7 @@ const trends = computed((): AdminMetricTab<TrendView>[] => [
     {
         value: 'net',
         label: 'Net',
-        figure: netLabel.value,
+        figure: formatSignedNumber(props.overview.period.new - props.overview.period.canceled),
     },
     {
         value: 'churn',
@@ -169,7 +161,7 @@ const netByDay = computed((): number[] => {
     let total = 0;
 
     return props.overview.new_by_day.map((count, index) => {
-        total += count - valueAt(props.overview.canceled_by_day, index);
+        total += count - countIn(props.overview.canceled_by_day, index);
 
         return total;
     });
@@ -183,20 +175,10 @@ const canceledSeries = computed((): AdminChartSeries[] => [
     { key: 'canceled', label: 'Canceled', color: CANCELED_COLOR, values: props.overview.canceled_by_day },
 ]);
 
-const netLabel = computed((): string => {
-    const net = props.overview.period.new - props.overview.period.canceled;
-
-    if (net > 0) {
-        return `+${formatFullNumber(net)}`;
-    }
-
-    return formatFullNumber(net);
-});
-
 const planRows = computed((): AdminBarRow[] =>
     props.overview.plans.map((plan) => ({
         key: `${plan.plan}-${plan.interval}`,
-        label: planLabel(plan),
+        label: subscriptionPlanLabel(plan),
         count: plan.count,
         share: percentOf(plan.count, props.overview.now.alive),
     })),
@@ -267,17 +249,17 @@ const offerRows = computed(() =>
         </AnalyticsSection>
 
         <div class="grid gap-6 lg:grid-cols-2">
-            <AnalyticsSection title="By plan" subtitle="Subscriptions alive now" flush>
-                <AdminBarRows :rows="planRows" label-class="w-40" test-id="admin-subscriptions-plans" />
-            </AnalyticsSection>
+            <AdminBarList
+                title="By plan"
+                subtitle="Subscriptions alive now"
+                :rows="planRows"
+                label-class="w-40"
+                empty="No subscription alive now."
+                test-id="admin-subscriptions-plans"
+            />
 
             <AnalyticsSection title="Offers" subtitle="Redeemed, and still subscribed now" flush>
-                <p
-                    v-if="!hasOffers"
-                    class="border-t border-border px-4 py-6 text-center text-sm text-muted-foreground sm:px-5"
-                >
-                    No offer redeemed yet.
-                </p>
+                <AdminEmptyState v-if="!hasOffers" variant="section">No offer redeemed yet.</AdminEmptyState>
                 <ul v-else class="divide-y divide-border border-t border-border" data-testid="admin-subscriptions-offers">
                     <li
                         v-for="offer in offerRows"

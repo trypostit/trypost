@@ -6,12 +6,14 @@ use App\Actions\Admin\Subscriptions\BuildSubscriptionChurn;
 use App\Actions\Admin\Subscriptions\BuildSubscriptionOverview;
 use App\Dto\Analytics\DateRange;
 use App\Enums\Plan\Slug;
+use App\Http\Resources\Admin\AdminSubscriptionResource;
 use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\Admin\StripeNetMrr;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia;
 use Stripe\ApiRequestor;
 use Stripe\Subscription as StripeSubscription;
@@ -249,3 +251,59 @@ test('the overview counts a subscription on the day it started in the viewer\'s 
     expect($saoPaulo['new_by_day'])->toBe([1, 0])
         ->and($utc['new_by_day'])->toBe([0, 1]);
 });
+
+test('a subscription lists only the offers its account redeemed, not those it only claimed', function () {
+    $redeemed = Offer::factory()->create(['slug' => 'fm1']);
+    $claimed = Offer::factory()->create(['slug' => 'bf26']);
+    $left = adminSubscriptionFor('Left', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    $left->owner->offers()->attach($redeemed->id, ['claimed_at' => $this->now->subMonth(), 'redeemed_at' => $this->now->subMonth()]);
+    $left->owner->offers()->attach($claimed->id, ['claimed_at' => $this->now->subWeek(), 'redeemed_at' => null]);
+
+    $churn = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'));
+
+    expect($churn['recent'][0]['offers'])->toBe(['fm1']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.billing.subscriptions.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('subscriptions.data.0.offers', ['fm1']));
+});
+
+test('a canceled subscription in the churn list reads like a row of the subscriptions table, with how long it lasted', function () {
+    $leaver = adminSubscriptionFor('Leaver', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDays(2)]);
+    adminBackdateSubscription($leaver, $this->now->subDays(40));
+
+    $row = BuildSubscriptionChurn::execute(DateRange::fromDates($this->now->subDays(6)->toDateString(), $this->now->toDateString(), 'UTC'))['recent'][0];
+
+    expect($row)->toMatchArray([
+        ...AdminSubscriptionResource::make($leaver->fresh())->resolve(),
+        'state' => 'canceled',
+        'ends_at' => $this->now->subDays(2)->toIso8601String(),
+        'lifetime_days' => 38,
+    ]);
+});
+
+test('each status filter lists exactly the subscriptions its count says, each in that state', function (string $status, int $count, ?string $state) {
+    adminSubscriptionFor('Active Ann');
+    adminSubscriptionFor('Trial Tom', ['stripe_status' => 'trialing']);
+    adminSubscriptionFor('Late Lia', ['stripe_status' => 'past_due']);
+    adminSubscriptionFor('Late Leo', ['stripe_status' => 'past_due', 'ends_at' => $this->now->addDays(3)]);
+    adminSubscriptionFor('Cancelling Carl', ['ends_at' => $this->now->addDays(3)]);
+    adminSubscriptionFor('Gone Gina', ['stripe_status' => 'canceled', 'ends_at' => $this->now->subDay()]);
+    adminSubscriptionFor('Unpaid Uma', ['stripe_status' => 'unpaid']);
+    adminSubscriptionFor('Never Ned', ['stripe_status' => 'incomplete']);
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.billing.subscriptions.index', ['status' => $status]))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where("statusCounts.{$status}", $count)
+            ->has('subscriptions.data', $count)
+            ->where('subscriptions.data', fn (Collection $rows): bool => $state === null || $rows->every(fn (array $row): bool => $row['state'] === $state)),
+        );
+})->with([
+    'all' => ['all', 7, null],
+    'active' => ['active', 1, 'active'],
+    'cancelling, a past due one with an end included' => ['cancelling', 2, 'cancelling'],
+    'past due without an end only' => ['past_due', 1, 'past_due'],
+    'trialing' => ['trialing', 1, 'trialing'],
+    'canceled' => ['canceled', 1, 'canceled'],
+]);

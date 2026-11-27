@@ -9,26 +9,19 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { humanize } from '@/lib/adminFormat';
+import { channelStatus } from '@/lib/adminChannels';
+import { countLabel } from '@/lib/adminFormat';
 import { featureLabel } from '@/lib/adminPermissions';
 import { filled } from '@/lib/helpers';
-import { formatFullNumber } from '@/lib/utils';
 import type {
     AdminUserChannel,
     AdminUserWorkspaceDetail,
     AdminUserWorkspacesData,
-    BadgeVariant,
 } from '@/types/admin';
 
 const props = defineProps<{
     data: AdminUserWorkspacesData;
 }>();
-
-const STATUS_BADGES: Record<string, { label: string; variant: BadgeVariant }> = {
-    connected: { label: 'Connected', variant: 'success' },
-    token_expired: { label: 'Needs reconnect', variant: 'warning' },
-    disconnected: { label: 'Disconnected', variant: 'destructive' },
-};
 
 const channelCount = computed(() =>
     Object.values(props.data.channels_by_network).reduce((sum, count) => sum + count, 0),
@@ -45,13 +38,7 @@ const networkChips = computed(() =>
 
 const hasChannelsConnected = computed(() => filled(networkChips.value));
 
-const channelsTotal = computed((): string => {
-    if (channelCount.value === 1) {
-        return '1 channel';
-    }
-
-    return `${formatFullNumber(channelCount.value)} channels`;
-});
+const channelsTotal = computed((): string => countLabel(channelCount.value, 'channel', 'channels'));
 
 const hasWorkspaces = computed(() => filled(props.data.workspaces));
 const hasInvites = computed(() => filled(props.data.pending_invites));
@@ -70,16 +57,6 @@ const role = (workspace: AdminUserWorkspaceDetail): string => {
     }
 
     return 'Member';
-};
-
-const statusBadge = (channel: AdminUserChannel): { label: string; variant: BadgeVariant } => {
-    const badge = STATUS_BADGES[channel.status];
-
-    if (filled(badge)) {
-        return badge;
-    }
-
-    return { label: humanize(channel.status), variant: 'secondary' };
 };
 
 const channelName = (channel: AdminUserChannel): string => {
@@ -122,7 +99,7 @@ const workspaceRows = computed(() =>
             name: channelName(channel),
             lastChecked: lastChecked(channel),
             missingPermissions: missingPermissionsLabel(channel),
-            badge: statusBadge(channel),
+            badge: channelStatus(channel.status),
         })),
     })),
 );

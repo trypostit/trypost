@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import AdminEmptyState from '@/components/admin/AdminEmptyState.vue';
@@ -8,10 +7,10 @@ import AdminStatGrid from '@/components/admin/AdminStatGrid.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { dateTimeOrDash, joinFilled } from '@/lib/adminFormat';
-import { filled, isNumber } from '@/lib/helpers';
+import date from '@/date';
+import { countIn, joinFilled } from '@/lib/adminFormat';
+import { filled } from '@/lib/helpers';
 import { formatFullNumber } from '@/lib/utils';
-import { index as failedPostsIndex } from '@/routes/admin/posts/failed';
 import type {
     AdminStat,
     AdminTableColumn,
@@ -38,17 +37,6 @@ const CONTENT_LABELS: Record<string, string> = {
     ideas: 'Ideas',
     repurposes: 'Repurposes',
     rss_feeds: 'RSS feeds',
-};
-
-/** A count the server left out reads 0. */
-const countIn = (counts: Record<string, number>, key: string): number => {
-    const count = counts[key];
-
-    if (isNumber(count)) {
-        return count;
-    }
-
-    return 0;
 };
 
 const statusStats = computed((): AdminStat[] => [
@@ -105,7 +93,7 @@ const failures = computed(() =>
     props.data.recent_failures.map((failure) => ({
         ...failure,
         where: joinFilled([failure.channel_name, failure.workspace_name]),
-        failedAt: dateTimeOrDash(failure.failed_at),
+        failedAt: date.formatDateTime(failure.failed_at),
     })),
 );
 </script>
@@ -146,14 +134,6 @@ const failures = computed(() =>
         </AnalyticsSection>
 
         <AnalyticsSection title="Latest failures" flush>
-            <template #actions>
-                <Link
-                    :href="failedPostsIndex.url()"
-                    class="text-sm text-primary-text hover:underline"
-                >
-                    All failed posts
-                </Link>
-            </template>
             <AdminEmptyState v-if="!hasFailures" variant="section">No failed posts.</AdminEmptyState>
             <ul v-else class="divide-y divide-border border-t border-border">
                 <li

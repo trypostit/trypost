@@ -14,6 +14,9 @@ const STATES: Record<string, { label: string; variant: BadgeVariant }> = {
     canceled: { label: 'Canceled', variant: 'secondary' },
 };
 
+/** Stripe statuses where the last payment did not go through. */
+export const UNPAID_STATES = ['past_due', 'unpaid', 'incomplete', 'incomplete_expired'];
+
 export const subscriptionState = (state: string): { label: string; variant: BadgeVariant } => {
     const known = STATES[state];
 
@@ -27,7 +30,7 @@ export const subscriptionState = (state: string): { label: string; variant: Badg
 const INTERVALS: Record<string, string> = { monthly: 'monthly', yearly: 'yearly' };
 
 /** "Socials · monthly", or the plan's name alone when the interval is unknown (legacy prices). */
-export const planLabel = (plan: AdminSubscriptionPlan): string => {
+export const subscriptionPlanLabel = (plan: AdminSubscriptionPlan): string => {
     const interval = INTERVALS[plan.interval];
 
     if (filled(interval)) {

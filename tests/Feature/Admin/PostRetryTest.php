@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\Admin\RetryPost;
 use App\Enums\Activity\LogName;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
+use App\Http\Controllers\Admin\PostRetryController;
+use App\Http\Requests\Admin\Post\RetryPostRequest;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Activity;
 use App\Models\Post;
@@ -119,7 +122,7 @@ test('a post that is no longer failed is not retried twice', function () {
     $this->actingAs($this->admin)->post(route('admin.posts.retry.store', $post));
     $this->actingAs($this->admin)
         ->post(route('admin.posts.retry.store', $post))
-        ->assertSessionHasErrors('post');
+        ->assertSessionHasErrors(['post' => 'Only a failed post with a channel can be retried.']);
 
     Queue::assertPushed(PublishToSocialPlatform::class, 1);
 });
@@ -133,7 +136,7 @@ test('an instagram post whose first comment may be live needs the admin to confi
 
     $this->actingAs($this->admin)
         ->post(route('admin.posts.retry.store', $post))
-        ->assertSessionHasErrors('instagram_comment_checked');
+        ->assertSessionHasErrors(['instagram_comment_checked' => 'Check on Instagram that the first comment is missing, then confirm.']);
 
     Queue::assertNotPushed(PublishToSocialPlatform::class);
 
@@ -179,4 +182,34 @@ test('a post whose account owner is blocked is not retried', function () {
     Queue::assertNotPushed(PublishToSocialPlatform::class);
     expect($post->fresh()->status)->toBe(PostStatus::Failed)
         ->and(Activity::query()->inLog(LogName::Admin)->forSubject($post)->exists())->toBeFalse();
+});
+
+test('a post that changed while the retry was prepared is not retried', function () {
+    Queue::fake();
+    $post = adminFailedPostOn(Platform::X, ['error_context' => ['category' => 'rate_limit']]);
+    $stale = $post->fresh();
+    Post::query()->whereKey($post->id)->toBase()->update(['error_context' => json_encode(['category' => 'server_error'])]);
+    $request = RetryPostRequest::create(route('admin.posts.retry.store', $post), 'POST');
+    $request->setUserResolver(fn (): User => $this->admin);
+
+    $response = app(PostRetryController::class)->store($request, $stale, app(RetryPost::class));
+
+    expect($response->getSession()->get('errors')->first('post'))->toBe('The post changed meanwhile; nothing was retried.')
+        ->and($post->fresh()->status)->toBe(PostStatus::Failed)
+        ->and(Activity::query()->inLog(LogName::Admin)->forSubject($post)->exists())->toBeFalse();
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+});
+
+test('a failed post is offered for retry only while its account owner is not blocked', function () {
+    $post = adminFailedPostOn();
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.posts.failed.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('posts.data.0.retryable', true));
+
+    $post->workspace->account->owner->forceFill(['blocked_at' => now(), 'blocked_reason' => 'Spam'])->save();
+
+    $this->actingAs($this->admin)
+        ->get(route('admin.posts.failed.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('posts.data.0.retryable', false));
 });

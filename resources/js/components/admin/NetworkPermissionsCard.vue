@@ -5,6 +5,7 @@ import { computed } from 'vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { countLabel } from '@/lib/adminFormat';
 import { featureLabel } from '@/lib/adminPermissions';
 import { blank, filled } from '@/lib/helpers';
 import type {
@@ -27,13 +28,9 @@ const featuresSummary = computed(
     (): string => `${enabledCount.value} of ${props.network.features.length} on`,
 );
 
-const scopesSummary = computed((): string => {
-    if (props.network.scopes.length === 1) {
-        return '1 scope requested';
-    }
-
-    return `${props.network.scopes.length} scopes requested`;
-});
+const scopesSummary = computed((): string =>
+    countLabel(props.network.scopes.length, 'scope requested', 'scopes requested'),
+);
 
 /** What the scope is for, in words: needed to connect, the features it turns on, or nothing. */
 const scopePurpose = (scope: AdminScopePermission): string => {
@@ -110,18 +107,20 @@ const featureTooltip = (feature: AdminFeaturePermission): string => {
             <li v-for="feature in network.features" :key="feature.feature">
                 <Tooltip>
                     <TooltipTrigger as-child>
-                        <span
-                            class="inline-flex cursor-default items-center gap-1.5 text-sm"
+                        <button
+                            type="button"
+                            class="inline-flex cursor-default items-center gap-1.5 rounded-sm text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             :class="featureClass(feature)"
                             :data-testid="`admin-permissions-${network.platform}-${feature.feature}`"
                         >
                             <IconCircleCheckFilled
                                 v-if="feature.enabled"
                                 class="size-4 text-success-text"
+                                aria-hidden="true"
                             />
-                            <IconCircleX v-else class="size-4" />
+                            <IconCircleX v-else class="size-4" aria-hidden="true" />
                             {{ featureLabel(feature.feature) }}
-                        </span>
+                        </button>
                     </TooltipTrigger>
                     <TooltipContent class="max-w-xs">
                         {{ featureTooltip(feature) }}

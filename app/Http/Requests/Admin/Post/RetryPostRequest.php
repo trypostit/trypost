@@ -22,4 +22,10 @@ class RetryPostRequest extends FormRequest
             'instagram_comment_checked' => ['sometimes', 'boolean'],
         ];
     }
+
+    /** The admin checked on Instagram that the post's first comment is missing. */
+    public function instagramCommentChecked(): bool
+    {
+        return $this->boolean('instagram_comment_checked');
+    }
 }

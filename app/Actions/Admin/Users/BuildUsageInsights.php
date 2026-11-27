@@ -5,19 +5,16 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Users;
 
 use App\Actions\Account\ResolveLifecycleStage;
-use App\Dto\Analytics\DateRange;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\PublishStatus;
 use App\Models\Account;
-use App\Models\Post;
+use App\Support\Admin\AccountActivity;
+use App\Support\Admin\AccountSummary;
 use App\Support\Admin\KeyLabel;
-use App\Support\Admin\PublishingCounts;
 use App\Support\Percent;
-use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class BuildUsageInsights
 {
@@ -47,19 +44,13 @@ class BuildUsageInsights
      *
      * @return array<string, mixed>
      */
-    public static function execute(DateRange $range): array
+    public static function execute(AccountActivity $activity): array
     {
-        $first = $range->startsAt();
-        $last = $range->endsAt();
-        $previous = $range->previous();
+        $range = $activity->range;
+        $automated = CountAccountActivity::posts($range->startsAt(), $range->endsAt(), PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
+        $channels = $activity->channels->map(fn (array $health): int => data_get($health, 'total'));
 
-        $sent = self::postsPerAccount($first, $last, PublishStatus::wentOutCases());
-        $previousSent = self::postsPerAccount($previous->startsAt(), $previous->endsAt(), PublishStatus::wentOutCases());
-        $failed = self::postsPerAccount($first, $last, PublishingCounts::failedStatuses());
-        $automated = self::postsPerAccount($first, $last, PublishStatus::wentOutCases(), [CreatedVia::Api, CreatedVia::Mcp]);
-        $channels = BuildChurnRisk::channelHealth()->map(fn (array $health): int => data_get($health, 'total'));
-
-        $topIds = collect([$sent, $failed, $automated, $channels])
+        $topIds = collect([$activity->sent, $activity->failed, $automated, $channels])
             ->flatMap(fn (Collection $counts): array => $counts->sortDesc()->take(self::TOP_PER_MEASURE)->keys()->all())
             ->unique()
             ->values();
@@ -67,50 +58,26 @@ class BuildUsageInsights
 
         return [
             'totals' => [
-                ...self::sending($sent),
+                ...self::sending($activity->sent),
                 'channels_per_account' => self::average($channels),
             ],
-            'previous' => self::sending($previousSent),
+            'previous' => self::sending($activity->previousSent),
             'lifecycle' => self::lifecycle(),
             'top_accounts' => $topIds
                 ->map(fn (string $accountId): array => [
-                    ...self::accountSummary($accounts->get($accountId)),
+                    ...AccountSummary::of($accounts->get($accountId)),
                     'account_id' => $accountId,
-                    'posts' => (int) $sent->get($accountId, 0),
+                    'posts' => $activity->sentBy($accountId),
                     'automated' => (int) $automated->get($accountId, 0),
                     'channels' => (int) $channels->get($accountId, 0),
-                    'failed' => (int) $failed->get($accountId, 0),
+                    'failed' => $activity->failedFor($accountId),
                 ])
                 ->sortByDesc('posts')
                 ->values()
                 ->all(),
             'channel_buckets' => self::buckets($channels, self::CHANNEL_BUCKETS),
-            'post_buckets' => self::buckets($sent, self::POST_BUCKETS),
+            'post_buckets' => self::buckets($activity->sent, self::POST_BUCKETS),
         ];
-    }
-
-    /**
-     * How many posts each account sent then, by publication status and,
-     * optionally, by how they were made, or of one account only. Imported
-     * posts are left out.
-     *
-     * @param  list<PublishStatus>  $statuses
-     * @param  list<CreatedVia>  $via
-     * @return Collection<string, int>
-     */
-    public static function postsPerAccount(CarbonImmutable $from, CarbonImmutable $until, array $statuses, array $via = [], ?string $accountId = null): Collection
-    {
-        return Post::query()
-            ->createdInTryPost()
-            ->join('workspaces', 'workspaces.id', '=', 'posts.workspace_id')
-            ->whereIn('posts.publish_status', $statuses)
-            ->whereBetween('posts.publication_updated_at', [$from, $until])
-            ->when(filled($via), fn (Builder $query): Builder => $query->whereIn('posts.created_via', $via))
-            ->when(filled($accountId), fn (Builder $query): Builder => $query->where('workspaces.account_id', $accountId))
-            ->tallyBy(['workspaces.account_id'])
-            ->toBase()
-            ->pluck('total', 'account_id')
-            ->map(fn (mixed $total): int => (int) $total);
     }
 
     /**
@@ -154,8 +121,7 @@ class BuildUsageInsights
     {
         return Account::query()
             ->where(fn (Builder $query): Builder => $query
-                ->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions
-                    ->where(fn (Builder $live): Builder => $live->whereNull('ends_at')->orWhere('ends_at', '>', now())))
+                ->whereHas('subscriptions', fn (Builder $subscriptions): Builder => $subscriptions->live())
                 ->orWhere('trial_ends_at', '>', now()))
             ->with('subscriptions')
             ->withLifecycleActivity()
@@ -202,31 +168,6 @@ class BuildUsageInsights
             ->with(['owner', 'plan'])
             ->get()
             ->keyBy('id');
-    }
-
-    /**
-     * @return array{user_id: ?string, name: ?string, email: ?string, plan: ?string}
-     */
-    public static function accountSummary(?Account $account): array
-    {
-        return [
-            'user_id' => $account?->owner?->id,
-            'name' => self::displayName($account),
-            'email' => $account?->owner?->email,
-            'plan' => $account?->plan?->name,
-        ];
-    }
-
-    /** The owner's name when it holds a letter or a digit (some sign up as "_"), else their email. */
-    private static function displayName(?Account $account): ?string
-    {
-        $name = (string) $account?->owner?->name;
-
-        if (Str::isMatch('/[\pL\pN]/u', $name)) {
-            return $name;
-        }
-
-        return $account?->owner?->email;
     }
 
     /**

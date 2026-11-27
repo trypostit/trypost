@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Admin\Subscriptions;
 
 use App\Dto\Analytics\DateRange;
+use App\Enums\Admin\SubscriptionStatusFilter;
+use App\Http\Resources\Admin\AdminSubscriptionResource;
 use App\Models\Subscription;
-use App\Support\Admin\SubscriptionPlans;
+use App\Support\Admin\SubscriptionHistory;
 use App\Support\Percent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -34,49 +36,36 @@ class BuildSubscriptionChurn
      */
     public static function execute(DateRange $range): array
     {
-        $now = CarbonImmutable::now('UTC');
-        $first = $range->startsAt();
-        $subscriptions = BuildSubscriptionOverview::billable();
-        $ended = $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null && $subscription->ends_at->lte($now));
-        $endedInPeriod = $ended->filter(fn (Subscription $subscription): bool => $subscription->ends_at->between($first, $range->endsAt()));
-        $prices = SubscriptionPlans::byPrice();
-        $days = collect($range->calendarDays());
+        $history = SubscriptionHistory::read();
+        $subscriptions = $history->subscriptions;
+        $now = $history->now;
+        $canceled = $history->canceledIn($range);
 
         $recent = Subscription::query()
-            ->whereIn('id', $endedInPeriod->pluck('id'))
-            ->with(['owner.owner', 'owner.offers'])
+            ->whereIn('id', $canceled->pluck('id'))
+            ->with(['owner.owner', 'owner.redeemedOffers'])
             ->orderByDesc('ends_at')
             ->limit(self::RECENT)
             ->get();
 
         return [
             'summary' => [
-                'canceled' => $endedInPeriod->count(),
-                'churn_rate' => Percent::of(
-                    $endedInPeriod->count(),
-                    $subscriptions->filter(fn (Subscription $subscription): bool => BuildSubscriptionOverview::aliveAt($subscription, $first))->count(),
-                ),
-                'average_lifetime_days' => (int) round((float) $endedInPeriod->avg(fn (Subscription $subscription): int => (int) $subscription->created_at->diffInDays($subscription->ends_at))),
-                'cancelling' => $subscriptions->filter(fn (Subscription $subscription): bool => $subscription->ends_at !== null && $subscription->ends_at->gt($now))->count(),
+                'canceled' => $canceled->count(),
+                'churn_rate' => $history->churnRate($range),
+                'average_lifetime_days' => (int) round((float) $canceled->avg(fn (Subscription $subscription): int => self::lifetimeDays($subscription))),
+                'cancelling' => $subscriptions->filter(fn (Subscription $subscription): bool => SubscriptionStatusFilter::forSubscription($subscription, $now) === SubscriptionStatusFilter::Cancelling)->count(),
             ],
-            'days' => $days->all(),
-            'canceled_by_day' => BuildSubscriptionOverview::perDay($days, $endedInPeriod->map(fn (Subscription $subscription): string => $range->localDate($subscription->ends_at))),
-            'churn_rate_by_day' => $days->map(fn (string $day): float => BuildSubscriptionOverview::rollingChurn($subscriptions, $ended, BuildSubscriptionOverview::endOfDay($range, $day)))->all(),
+            'days' => $range->calendarDays(),
+            'canceled_by_day' => $history->canceledByDay($range),
+            'churn_rate_by_day' => $history->churnRateByDay($range),
             'recent' => $recent->map(fn (Subscription $subscription): array => [
-                'id' => $subscription->id,
-                'user_id' => $subscription->owner?->owner?->id,
-                'user_name' => $subscription->owner?->owner?->name,
-                'user_email' => $subscription->owner?->owner?->email,
-                'plan' => SubscriptionPlans::describe($subscription->stripe_price, $prices),
-                'started_at' => $subscription->created_at->toIso8601String(),
-                'ended_at' => $subscription->ends_at->toIso8601String(),
-                'lifetime_days' => (int) $subscription->created_at->diffInDays($subscription->ends_at),
-                'offers' => $subscription->owner?->offers->pluck('slug')->values()->all() ?? [],
+                ...AdminSubscriptionResource::make($subscription)->resolve(),
+                'lifetime_days' => self::lifetimeDays($subscription),
             ])->values()->all(),
             'lifetimes' => collect(self::LIFETIMES)
                 ->map(fn (array $bounds, string $label): array => [
                     'label' => $label,
-                    'count' => $ended->filter(fn (Subscription $subscription): bool => self::lastedWithin($subscription, $bounds))->count(),
+                    'count' => $history->ended->filter(fn (Subscription $subscription): bool => self::lastedWithin($subscription, $bounds))->count(),
                 ])
                 ->values()
                 ->all(),
@@ -102,7 +91,7 @@ class BuildSubscriptionChurn
     /** Alive now and not cancelling at its period end. */
     private static function stays(Subscription $subscription, CarbonImmutable $now): bool
     {
-        return BuildSubscriptionOverview::aliveAt($subscription, $now) && $subscription->ends_at === null;
+        return $subscription->isAliveAt($now) && $subscription->ends_at === null;
     }
 
     /**
@@ -110,8 +99,14 @@ class BuildSubscriptionChurn
      */
     private static function lastedWithin(Subscription $subscription, array $bounds): bool
     {
-        $days = (int) $subscription->created_at->diffInDays($subscription->ends_at);
+        $days = self::lifetimeDays($subscription);
 
         return $days >= $bounds[0] && $days < $bounds[1];
+    }
+
+    /** How many whole days an ended subscription lasted. */
+    private static function lifetimeDays(Subscription $subscription): int
+    {
+        return (int) $subscription->created_at->diffInDays($subscription->ends_at);
     }
 }
